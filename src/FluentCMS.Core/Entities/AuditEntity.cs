@@ -15,12 +15,12 @@
 
     public class AuditEntity<TKey> : IAuditEntity<TKey> where TKey : IEquatable<TKey>
     {
-        public TKey Id { get; set; }
+        public TKey Id { get; set; } = default!;
 
-        public string CreatedBy { get; set; } // UserName
+        public string CreatedBy { get; set; } = string.Empty; // UserName
         public DateTime CreatedAt { get; set; }
 
-        public string LastUpdatedBy { get; set; } // UserName
+        public string LastUpdatedBy { get; set; } = string.Empty; // UserName
         public DateTime LastUpdatedAt { get; set; }
     }
 

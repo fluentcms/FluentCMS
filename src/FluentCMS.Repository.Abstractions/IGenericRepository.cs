@@ -4,8 +4,8 @@ using System.Linq.Expressions;
 namespace FluentCMS.Repository.Abstractions
 {
     public interface IGenericRepository<TKey, TEntity>
-    where TKey : IEquatable<TKey>
-    where TEntity : IEntity<TKey>
+        where TKey : IEquatable<TKey>
+        where TEntity : IEntity<TKey>
     {
         Task Create(TEntity entity, CancellationToken cancellationToken = default);
         Task Update(TEntity entity, CancellationToken cancellationToken = default);
