@@ -1,17 +1,19 @@
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Configuration.AddConfig(builder.Environment);
+
 var services = builder.Services;
 
 services.AddControllers();
 
-services.AddCmsDocumentation();
+services.AddApiDocumentation();
 
 var app = builder.Build();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.UseCmsDocumentation();
+app.UseApiDocumentation();
 
 app.UseHttpsRedirection();
 
