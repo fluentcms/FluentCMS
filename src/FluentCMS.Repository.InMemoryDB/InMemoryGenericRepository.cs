@@ -33,7 +33,7 @@ public class InMemoryGenericRepository<TKey, TEntity> : IGenericRepository<TKey,
 
     public async Task Delete(TKey id, CancellationToken cancellationToken = default)
     {
-        var item = await _dBContext.DbSet.FindAsync(new object?[] { id, cancellationToken }, cancellationToken: cancellationToken);
+        var item = await GetById(id, cancellationToken);
         if (item != null)
         {
             _dBContext.DbSet.Remove(item);
