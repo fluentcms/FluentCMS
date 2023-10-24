@@ -4,16 +4,14 @@ var services = builder.Services;
 
 services.AddControllers();
 
-services.AddEndpointsApiExplorer();
-services.AddSwaggerGen();
+services.AddCmsDocumentation();
 
 var app = builder.Build();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.UseSwagger();
-app.UseSwaggerUI();
+app.UseCmsDocumentation();
 
 app.UseHttpsRedirection();
 
