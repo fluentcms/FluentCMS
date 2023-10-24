@@ -38,9 +38,9 @@ namespace FluentCMS.Repository.LiteDb
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            ////todo: implement ApplicationContext and SetPropertiesOnCreate
+            ////todo: implement ApplicationContext
             ////If the entity is extend from IAuditEntity, the audit properties (CreatedAt, CreatedBy, etc.) should be set
-            //if (entity is IAuditEntity<TKey> audit) SetPropertiesOnCreate(audit, ApplicationContext);
+            if (entity is IAuditEntity<TKey> audit) SetPropertiesOnCreate(audit);
 
             return Collection.InsertAsync(entity);
 
@@ -48,6 +48,11 @@ namespace FluentCMS.Repository.LiteDb
             //await History.Write(entity, actionName, cancellationToken);
         }
 
+        private void SetPropertiesOnCreate(IAuditEntity<TKey> audit)
+        {
+            audit.CreatedAt = DateTime.UtcNow;
+            //todo set user
+        }
 
         public virtual Task Delete(TKey id, CancellationToken cancellationToken = default)
         {
@@ -88,14 +93,20 @@ namespace FluentCMS.Repository.LiteDb
         public virtual Task Update(TEntity entity, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            
-            ////todo: Implement SetPropertiesOnUpdate
+
+            ////todo: implement ApplicationContext
             ////If the entity is extend from IAuditEntity, the audit properties (LastUpdatedAt, LastUpdatedBy, etc.) should be set
-            //if (entity is IAuditEntity<TKey> audit) SetPropertiesOnUpdate(audit, ApplicationContext);
+            if (entity is IAuditEntity<TKey> audit) SetPropertiesOnUpdate(audit);
 
             return Collection.UpdateAsync(entity);
 
             //await History.Write(entity, actionName, cancellationToken);
+        }
+
+        private void SetPropertiesOnUpdate(IAuditEntity<TKey> audit)
+        {
+            audit.LastUpdatedAt = DateTime.UtcNow;
+            //todo set user
         }
     }
     public class LiteDbGenericRepository<TEntity> : LiteDbGenericRepository<Guid, TEntity>, IGenericRepository<TEntity>
