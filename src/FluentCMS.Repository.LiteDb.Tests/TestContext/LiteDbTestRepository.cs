@@ -9,12 +9,7 @@ using System.Threading.Tasks;
 namespace FluentCMS.Repository.LiteDb.Tests.TestContext
 {
     // Extension of repository to expose collection for easier Testing
-    internal class LiteDbTestRepository<TEntity> : LiteDbGenericRepository<TEntity> where TEntity : IEntity
+    internal class LiteDbTestRepository<TEntity>(ILiteDbContext liteDbContext) : LiteDbGenericRepository<TEntity>(liteDbContext) where TEntity : IEntity
     {
-        public LiteDbTestRepository(ILiteDbContext liteDbContext) : base(liteDbContext)
-        {
-        }
-
-        internal ILiteCollectionAsync<TEntity> GetLiteCollection() => this.Collection;
     }
 }

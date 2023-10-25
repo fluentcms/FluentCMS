@@ -16,12 +16,11 @@ namespace FluentCMS.Repository.LiteDb.Tests
         public async Task Should_Create()
         {
             var utcNow = DateTime.UtcNow;
-            LiteDbTestContext context;
-            var repository = GetInstance(out context);
+            var repository = GetInstance();
             var guid = Guid.NewGuid();
             var entity = new AuditedDummyEntity(guid);
             await repository.Create(entity);
-            var dbEntity = await repository.GetLiteCollection().FindByIdAsync(guid);
+            var dbEntity = await repository.GetById(guid);
             dbEntity.ShouldNotBeNull();
             dbEntity.Id.ShouldBe(guid);
             dbEntity.CreatedAt.ShouldNotBe(default);
@@ -31,17 +30,16 @@ namespace FluentCMS.Repository.LiteDb.Tests
         public async Task Should_Update()
         {
             var utcNow = DateTime.UtcNow;
-            LiteDbTestContext context;
-            var repository = GetInstance(out context);
+            var repository = GetInstance();
             var guid = Guid.NewGuid();
             var entity = new AuditedDummyEntity(guid);
-            await repository.GetLiteCollection().InsertAsync(entity);
+            await repository.Create(entity);
             // Serialize & Deserialize the entity to break reference (deep-copy)
             // todo: can utilize Prototype Pattern to avoid this mess
             var deepCopy = JsonConvert.DeserializeObject<AuditedDummyEntity>(JsonConvert.SerializeObject(entity)) ?? throw new InvalidOperationException("This should not happen");
             deepCopy.DummyField = "Updated!";
             await repository.Update(deepCopy);
-            var dbEntity = await repository.GetLiteCollection().FindByIdAsync(guid);
+            var dbEntity = await repository.GetById(guid);
             dbEntity.ShouldNotBeNull();
             dbEntity.Id.ShouldBe(guid);
             dbEntity.DummyField.ShouldBe("Updated!");
@@ -49,9 +47,9 @@ namespace FluentCMS.Repository.LiteDb.Tests
             dbEntity.LastUpdatedAt.ShouldBeGreaterThan(utcNow);
         }
 
-        private LiteDbTestRepository<AuditedDummyEntity> GetInstance([Optional] out LiteDbTestContext liteDbContext)
+        private static LiteDbTestRepository<AuditedDummyEntity> GetInstance()
         {
-            liteDbContext = new LiteDbTestContext();
+            var liteDbContext = new LiteDbTestContext();
             return new LiteDbTestRepository<AuditedDummyEntity>(liteDbContext);
         }
     }
