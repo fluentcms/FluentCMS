@@ -1,17 +1,13 @@
-
 using FluentCMS.Repository.Abstractions;
 using FluentCMS.Repository.LiteDb.Tests.Entities;
 using FluentCMS.Repository.LiteDb.Tests.TestContext;
 using Newtonsoft.Json;
 using Shouldly;
-using System.Net.Http.Json;
-using System.Runtime.InteropServices;
 
 namespace FluentCMS.Repository.LiteDb.Tests
 {
     public class LiteDbAuditRepository_Tests
     {
-
         [Fact]
         public async Task Should_Create()
         {
@@ -26,6 +22,7 @@ namespace FluentCMS.Repository.LiteDb.Tests
             dbEntity.CreatedAt.ShouldNotBe(default);
             dbEntity.CreatedAt.ShouldBeGreaterThan(utcNow);
         }
+
         [Fact]
         public async Task Should_Update()
         {
@@ -47,10 +44,10 @@ namespace FluentCMS.Repository.LiteDb.Tests
             dbEntity.LastUpdatedAt.ShouldBeGreaterThan(utcNow);
         }
 
-        private static LiteDbTestRepository<AuditedDummyEntity> GetInstance()
+        private static LiteDbGenericRepository<AuditedDummyEntity> GetInstance()
         {
             var liteDbContext = new LiteDbTestContext();
-            return new LiteDbTestRepository<AuditedDummyEntity>(liteDbContext);
+            return new LiteDbGenericRepository<AuditedDummyEntity>(liteDbContext);
         }
     }
 }

@@ -1,17 +1,13 @@
-
 using FluentCMS.Repository.Abstractions;
 using FluentCMS.Repository.LiteDb.Tests.Entities;
 using FluentCMS.Repository.LiteDb.Tests.TestContext;
 using Newtonsoft.Json;
 using Shouldly;
-using System.Net.Http.Json;
-using System.Runtime.InteropServices;
 
 namespace FluentCMS.Repository.LiteDb.Tests
 {
     public class LiteDbRepository_Tests
     {
-
         [Fact]
         public async Task Should_Create()
         {
@@ -23,6 +19,7 @@ namespace FluentCMS.Repository.LiteDb.Tests
             dbEntity.ShouldNotBeNull();
             dbEntity.Id.ShouldBe(guid);
         }
+
         [Fact]
         public async Task Should_Update()
         {
@@ -40,6 +37,7 @@ namespace FluentCMS.Repository.LiteDb.Tests
             dbEntity.Id.ShouldBe(guid);
             dbEntity.DummyField.ShouldBe("Updated!");
         }
+
         [Fact]
         public async Task Should_Delete()
         {
@@ -52,6 +50,7 @@ namespace FluentCMS.Repository.LiteDb.Tests
             dbEntities.ShouldNotBeNull();
             dbEntities.ShouldBeEmpty();
         }
+
         [Fact]
         public async Task Should_GetById()
         {
@@ -63,6 +62,7 @@ namespace FluentCMS.Repository.LiteDb.Tests
             dbEntity.ShouldNotBeNull();
             dbEntity.Id.ShouldBe(guid);
         }
+
         [Fact]
         public async Task Should_GetByIds()
         {
@@ -76,12 +76,13 @@ namespace FluentCMS.Repository.LiteDb.Tests
             {
                 await repository.Create(entity);
             }
-            
+
             var dbEntities = (await repository.GetByIds(guids)).ToList();
             dbEntities.ShouldNotBeNull();
             dbEntities.Count.ShouldBe(count);
             dbEntities.Select(x => x.Id).ShouldAllBe(x => guids.Contains(x));
         }
+
         [Fact]
         public async Task Should_GetAll()
         {
@@ -99,6 +100,7 @@ namespace FluentCMS.Repository.LiteDb.Tests
             dbEntities.Count.ShouldBe(count);
             dbEntities.Select(x => x.Id).ShouldAllBe(x => guids.Contains(x));
         }
+
         [Fact]
         public async Task Should_GetAll_With_Filter()
         {
@@ -112,15 +114,16 @@ namespace FluentCMS.Repository.LiteDb.Tests
                 await repository.Create(entity);
             }
             var firstGuid = guids.First();
-            var dbEntities = (await repository.GetAll(x=>x.Id == firstGuid)).ToList();
+            var dbEntities = (await repository.GetAll(x => x.Id == firstGuid)).ToList();
             dbEntities.ShouldNotBeNull();
             dbEntities.Count.ShouldBe(1);
-            dbEntities.All(x=>x.Id == firstGuid).ShouldBeTrue();
+            dbEntities.All(x => x.Id == firstGuid).ShouldBeTrue();
         }
-        private static LiteDbTestRepository<DummyEntity> GetInstance()
+
+        private static LiteDbGenericRepository<DummyEntity> GetInstance()
         {
             var liteDbContext = new LiteDbTestContext();
-            return new LiteDbTestRepository<DummyEntity>(liteDbContext);
+            return new LiteDbGenericRepository<DummyEntity>(liteDbContext);
         }
     }
 }
