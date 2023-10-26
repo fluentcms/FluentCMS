@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.7.34031.279
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Core", "FluentCMS.Core\FluentCMS.Core.csproj", "{4D5CE77A-A7C9-4B26-A9E3-0449DEB67F69}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Domain", "FluentCMS.Domain\FluentCMS.Domain.csproj", "{FB993569-9D06-4702-8B6F-872B5DAA1624}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Repository.LiteDb", "FluentCMS.Repository.LiteDb\FluentCMS.Repository.LiteDb.csproj", "{43F2C6BF-2C35-49EB-9625-99114020DDC7}"
 EndProject
@@ -15,10 +15,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{4D5CE77A-A7C9-4B26-A9E3-0449DEB67F69}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4D5CE77A-A7C9-4B26-A9E3-0449DEB67F69}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4D5CE77A-A7C9-4B26-A9E3-0449DEB67F69}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4D5CE77A-A7C9-4B26-A9E3-0449DEB67F69}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FB993569-9D06-4702-8B6F-872B5DAA1624}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB993569-9D06-4702-8B6F-872B5DAA1624}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB993569-9D06-4702-8B6F-872B5DAA1624}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB993569-9D06-4702-8B6F-872B5DAA1624}.Release|Any CPU.Build.0 = Release|Any CPU
 		{43F2C6BF-2C35-49EB-9625-99114020DDC7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{43F2C6BF-2C35-49EB-9625-99114020DDC7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{43F2C6BF-2C35-49EB-9625-99114020DDC7}.Release|Any CPU.ActiveCfg = Release|Any CPU
