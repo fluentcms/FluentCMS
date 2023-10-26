@@ -1,23 +1,23 @@
 ﻿namespace FluentCMS.Entities.ContentTypes;
 
+public record ContentTypeField(string typeId, Type Type)
+{
+    public static ContentTypeField Text = new("text", typeof(string));
+    public static ContentTypeField Number = new("number", typeof(decimal));
+    public static ContentTypeField Date = new("date", typeof(DateOnly));
+    public static ContentTypeField DateTime = new("date-time", typeof(DateTime));
+    public static ContentTypeField Bool = new("bool", typeof(bool));
 
-public abstract class ContentTypeField
-{
-    public virtual Type Type => throw new NotImplementedException();
-}
-public abstract class ContentTypeField<T>: ContentTypeField
-{
-    public ContentTypeField(FieldType<T> fieldType,T initialValue)
+    public ContentTypeField FindById(string id)
     {
-        FieldType = fieldType;
-        SetValue(initialValue);
-    }
-    public override Type Type => typeof(T);
-    public FieldType<T> FieldType { get; }
-    public T? FieldValue { get; protected set; }
-    public virtual void SetValue(T value)
-    {
-        // validate the value
-        FieldValue = value;
+        return id switch
+        {
+            "text" => Text,
+            "number" => Number,
+            "date" => Date,
+            "date-time" => DateTime,
+            "bool" => Bool,
+            _ => throw new IndexOutOfRangeException()
+        };
     }
 }
