@@ -22,10 +22,10 @@ public static class Extensions
 
         fcBuilder.Services.AddScoped<LiteDbContext>(p => new LiteDbContext(options));
 
-        fcBuilder.Services.AddSingleton(typeof(IGenericRepository<>), typeof(LiteDbGenericRepository<>));
-        fcBuilder.Services.AddSingleton(typeof(IGenericRepository<,>), typeof(LiteDbGenericRepository<,>));
+        fcBuilder.Services.AddScoped(typeof(IGenericRepository<>), typeof(LiteDbGenericRepository<>));
+        fcBuilder.Services.AddScoped(typeof(IGenericRepository<,>), typeof(LiteDbGenericRepository<,>));
 
-        fcBuilder.Services.AddSingleton<IUserRepository, LiteDbUserRepository>();
+        fcBuilder.Services.AddScoped<IUserRepository, LiteDbUserRepository>();
 
         return fcBuilder;
     }

@@ -1,5 +1,4 @@
-﻿using FluentCMS.Dtos.Users;
-using FluentCMS.Entities;
+﻿using FluentCMS.Entities;
 using FluentCMS.Repository;
 
 namespace FluentCMS.Services;
@@ -12,28 +11,26 @@ public class UserService
         _userRepository = userRepository;
     }
 
-    public async Task<IEnumerable<UserDto>> GetAll()
+    public async Task<IEnumerable<User>> GetAll()
     {
         var users = await _userRepository.GetAll();
-        return users.Select(x => mapUserToUserDto(x));
+        return users;
     }
 
-    public async Task<UserDto> GetById(Guid id)
+    public async Task<User> GetById(Guid id)
     {
         var user = await _userRepository.GetById(id);
-        if (user == null)
-            throw new ApplicationException("Requested user does not exists.");
-
-        return mapUserToUserDto(user);
+        return user == null
+            ? throw new ApplicationException("Requested user does not exists.")
+            : user;
     }
 
-    public async Task<UserDto> GetByUsername(string username)
+    public async Task<User> GetByUsername(string username)
     {
         var user = await _userRepository.GetByUsername(username);
-        if (user == null)
-            throw new ApplicationException("Requested user does not exists.");
-
-        return mapUserToUserDto(user);
+        return user == null
+            ? throw new ApplicationException("Requested user does not exists.")
+            : user;
     }
 
     public Task Create(User user, CancellationToken cancellationToken = default)
@@ -79,12 +76,4 @@ public class UserService
 
         return _userRepository.Delete(user.Id, cancellationToken);
     }
-
-    private UserDto mapUserToUserDto(User user) => new UserDto
-    {
-        Id = user.Id,
-        Name = user.Name,
-        Username = user.Username,
-        Password = user.Password,
-    };
 }
