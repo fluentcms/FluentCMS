@@ -1,0 +1,60 @@
+﻿@page "/weather"
+@inject HttpClient _http;
+
+@using FluentCMS.Models
+
+<PageTitle>Weather</PageTitle>
+
+<h1>Weather</h1>
+
+<p>This component demonstrates showing data.</p>
+
+@if (forecasts == null)
+{
+    <p><em>Calling Web Api:  @_http.BaseAddress@endpoint</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Temp. (C)</th>
+                <th>Temp. (F)</th>
+                <th>Summary</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var forecast in forecasts)
+            {
+                <tr>
+                    <td>@forecast.Date.ToShortDateString()</td>
+                    <td>@forecast.TemperatureC</td>
+                    <td>@forecast.TemperatureF</td>
+                    <td>@forecast.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<WeatherForecast>? forecasts;
+    private string endpoint = "WeatherForecast/GetAll";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Simulate asynchronous loading to demonstrate a loading indicator
+        await Task.Delay(1000);
+
+        try
+        {
+            forecasts = await _http.GetFromJsonAsync<List<WeatherForecast>>(endpoint);
+        }
+        catch (Exception ex)
+        {            
+            throw;
+        }
+    }
+
+}
