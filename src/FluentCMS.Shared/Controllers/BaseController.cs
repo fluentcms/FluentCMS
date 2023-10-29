@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-namespace FluentCMS.Controllers;
+namespace FluentCMS.Web.Controllers;
 
 [Route("api/[controller]/[action]/")]
 [ApiController]

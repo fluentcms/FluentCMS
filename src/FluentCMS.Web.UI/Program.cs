@@ -1,3 +1,5 @@
+using FluentCMS;
+using FluentCMS.Repository.LiteDb;
 using FluentCMS.Web.UI;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -5,6 +7,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddConfig(builder.Environment);
 
 var services = builder.Services;
+
+// add FluentCms core
+services.AddFluentCMSCore()
+    .AddLiteDbRepository(b => b.SetFilePath(
+        builder.Configuration.GetConnectionString("LiteDbFile") ?? throw new Exception("LiteDb file not defined.")));
 
 // Add services to the container.
 services.AddRazorComponents()
@@ -26,7 +33,6 @@ services.AddScoped(sp =>
     return new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
     {
         BaseAddress = new Uri(domain),
-
     };
 });
 

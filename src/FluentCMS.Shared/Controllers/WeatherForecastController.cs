@@ -1,7 +1,7 @@
 ﻿using FluentCMS.Models;
 using Microsoft.AspNetCore.Mvc;
 
-namespace FluentCMS.Controllers;
+namespace FluentCMS.Web.Controllers;
 
 public class WeatherForecastController : BaseController
 {
