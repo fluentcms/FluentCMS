@@ -33,12 +33,12 @@ public class ContentType : IAuditEntity
         Slug = slug;
     }
 
-    //this way we'll make sure that we don't have duplicate field names!
-
     public ICollection<ContentTypeField> ContentTypeFields { get; set; } = new List<ContentTypeField>();
 
     public void AddContentTypeField(ContentTypeField field)
     {
+        Guard.Against.Null(field);
+        Guard.Against.NullOrEmpty(field.Title);
         if (ContentTypeFields.Any(x => x.Title == field.Title))
         {
             throw new ApplicationException("Duplicate field name");

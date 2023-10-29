@@ -2,22 +2,19 @@
 using FluentCMS.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FluentCMS.Repository.LiteDb.Tests.Entities.ContentTypes;
 public class ContentType_Tests
 {
     IServiceProvider _serviceProvider;
+
     public ContentType_Tests()
     {
         var services = new ServiceCollection();
         services.AddFluentCMSCore().AddLiteDbRepository(b => b.UseInMemory());
         _serviceProvider = services.BuildServiceProvider();
     }
+
     [Fact]
     public async Task Should_Create()
     {
@@ -32,6 +29,7 @@ public class ContentType_Tests
         result.Title.ShouldBe(title);
         result.Slug.ShouldBe("test-1");
     }
+
     [Fact]
     public async Task Should_Delete()
     {
@@ -49,6 +47,7 @@ public class ContentType_Tests
         var all = await service.GetAll();
         all.Count().ShouldBe(0);
     }
+
     [Fact]
     public async Task Should_Update()
     {
@@ -71,6 +70,7 @@ public class ContentType_Tests
         editedResult.Title.ShouldBe(editedTitle);
         editedResult.Slug.ShouldBe("test-2");
     }
+
     [Fact]
     public async Task Should_NotAllowDuplicateSlugOn_Update()
     {
@@ -81,11 +81,12 @@ public class ContentType_Tests
         await service.Create(contentType);
         var title2 = "Test 2";
         var id2 = Guid.NewGuid();
-        var contentType2 = new ContentType(id2, title);
+        var contentType2 = new ContentType(id2, title2);
         contentType2.SetSlug("test-1");
         await service.Create(contentType2).ShouldThrowAsync<ApplicationException>();
 
     }
+
     [Fact]
     public async Task Should_GetAll()
     {
@@ -106,6 +107,7 @@ public class ContentType_Tests
         result.Count().ShouldBe(count);
         result.All(x => ids.Contains(x.Id)).ShouldBeTrue();
     }
+
     [Fact]
     public async Task Should_GetById()
     {
@@ -120,6 +122,7 @@ public class ContentType_Tests
         result.Title.ShouldBe(title);
         result.Slug.ShouldBe("test-1");
     }
+
     [Fact]
     public async Task Should_GetBySlug()
     {
@@ -137,4 +140,61 @@ public class ContentType_Tests
         result.Slug.ShouldBe("test-1");
     }
 
+    [Fact]
+    public async Task Should_AddContentTypeField()
+    {
+        var service = _serviceProvider.GetRequiredService<ContentTypeService>();
+        var id = Guid.NewGuid();
+        var title = "Test 1";
+        var contentType = new ContentType(id, title);
+        ContentTypeField field = new ContentTypeField("field1",
+                                                      FieldType.Text,
+                                                      new Dictionary<string, string>() { { "option1", "option1Value" } });
+        contentType.AddContentTypeField(field);
+        await service.Create(contentType);
+        var result = await service.GetById(id);
+        result.ShouldNotBeNull();
+        result.Id.ShouldBe(id);
+        result.Title.ShouldBe(title);
+        result.Slug.ShouldBe("test-1");
+        result.ContentTypeFields.ShouldNotBeEmpty();
+        result.ContentTypeFields.Count().ShouldBe(1);
+        result.ContentTypeFields.First().Title.ShouldBe("field1");
+        result.ContentTypeFields.First().FieldType.ShouldBe(FieldType.Text);
+        result.ContentTypeFields.First().Options["option1"].ShouldBe("option1Value");
+    }
+    [Fact]
+    public async Task Should_NotAddDuplicateContentTypeField()
+    {
+        var service = _serviceProvider.GetRequiredService<ContentTypeService>();
+        var id = Guid.NewGuid();
+        var title = "Test 1";
+        var contentType = new ContentType(id, title);
+        ContentTypeField field = new ContentTypeField("field1",
+                                                      FieldType.Text,
+                                                      new Dictionary<string, string>() { { "option1", "option1Value" } });
+        contentType.AddContentTypeField(field);
+        ContentTypeField field2 = new ContentTypeField("field1",
+                                                      FieldType.Text,
+                                                      new Dictionary<string, string>() { });
+        await Task.Run(() =>
+        {
+            contentType.AddContentTypeField(field2);
+        }).ShouldThrowAsync<ApplicationException>();
+
+    }
+    [Fact]
+    public void Should_RemoveContentTypeField()
+    {
+        var service = _serviceProvider.GetRequiredService<ContentTypeService>();
+        var id = Guid.NewGuid();
+        var title = "Test 1";
+        var contentType = new ContentType(id, title);
+        ContentTypeField field = new ContentTypeField("field1",
+                                                      FieldType.Text,
+                                                      new Dictionary<string, string>() { { "option1", "option1Value" } });
+        contentType.AddContentTypeField(field);
+        contentType.RemoveContentTypeField(contentType.ContentTypeFields.First());
+        contentType.ContentTypeFields.ShouldBeEmpty();
+    }
 }
