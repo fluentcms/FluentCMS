@@ -32,9 +32,8 @@ public class ContentType : IAuditEntity
         Guard.Against.NullOrEmpty(title);
         Title = title.Trim();
     }
-    internal void SetSlug(string slug)
+    public void SetSlug(string slug)
     {
-        //keep this internal so that it only can be called by service
         //service should check for duplication and other validations
         Guard.Against.NullOrEmpty(slug);
         Slug = slug;
