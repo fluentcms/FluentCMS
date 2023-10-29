@@ -18,6 +18,13 @@ All contributors are expected to adhere to our [Code of Conduct](./CODE_OF_CONDU
   ```bash
   git checkout -b feature/your-feature-name
 
+## Coding Conventions
+
+Before you want to start making your changes, consider these conventions in your codes:
+- [Naming Conventions by Microsoft](https://learn.microsoft.com/en-us/dotnet/standard/design-guidelines/naming-guidelines)
+- [C# identifier naming rules and conventions by Microsoft](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/identifier-names)
+- [Common C# code conventions by Microsoft](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions)
+
 ## Submitting Changes
 
 Once you've made your changes, push the branch to your fork on GitHub. Navigate to the main FluentCMS repository and create a new Pull Request. Ensure your PR title is descriptive, and include "Fixes #IssueNumber" if your PR closes a specific issue. In the PR description, provide a detailed overview of the changes. 
