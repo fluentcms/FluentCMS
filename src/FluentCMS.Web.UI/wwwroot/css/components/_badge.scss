@@ -1,0 +1,11 @@
+﻿$prefix-badge: $prefix + 'badge' !default;
+
+.#{$prefix-badge} {
+    @extend .badge;
+
+    @each $color, $value in $theme-colors {
+        &-color-#{$color} {
+            @extend .text-bg-#{$color};
+        }
+    }
+}

@@ -3,6 +3,12 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# Client packages (bootstrap, etc.)
+lib/
+
+# Compiled css
+/FluentCMS.Web.UI/wwwroot/css/*.css
+
 # User-specific files
 *.rsuser
 *.suo

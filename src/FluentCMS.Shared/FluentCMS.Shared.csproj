@@ -5,14 +5,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="LiteDB" Version="5.0.17" />
-    <PackageReference Include="LiteDB.Async" Version="0.1.7" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.13" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\FluentCMS.Domain\FluentCMS.Domain.csproj" />
   </ItemGroup>
-
 </Project>
