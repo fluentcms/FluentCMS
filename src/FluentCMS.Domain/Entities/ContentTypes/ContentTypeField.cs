@@ -1,22 +1,15 @@
-﻿
-
-using System.Dynamic;
-
-namespace FluentCMS.Entities.ContentTypes;
+﻿namespace FluentCMS.Entities.ContentTypes;
 
 public class ContentTypeField
 {
-    public ContentTypeField(FieldType fieldType, IFieldOptions options)
+    public ContentTypeField(string title, FieldType fieldType, IDictionary<string, string> options)
     {
-        if(fieldType != options.FieldType)
-        {
-            throw new Exception("Field type does not match options type");
-        }
+        Title = title;
         FieldType = fieldType;
         Options = options;
     }
 
-
+    public string Title { get; }
     public FieldType FieldType { get; }
-    public IFieldOptions Options { get; }
+    public IDictionary<string, string> Options { get; }
 }

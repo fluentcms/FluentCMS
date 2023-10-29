@@ -34,10 +34,10 @@ public class ContentTypeService
         await _contentTypeRepository.Update(contentType); 
     }
 
-    public async Task Delete(ContentType contentType)
+    public async Task Delete(Guid id)
     {
-        Guard.Against.Null(contentType);
-        await _contentTypeRepository.Delete(contentType.Id);
+        Guard.Against.NullOrEmpty(id);
+        await _contentTypeRepository.Delete(id);
     }
 
     public async Task<IEnumerable<ContentType>> GetAll()
