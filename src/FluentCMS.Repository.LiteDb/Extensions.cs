@@ -26,6 +26,7 @@ public static class Extensions
         fcBuilder.Services.AddScoped(typeof(IGenericRepository<,>), typeof(LiteDbGenericRepository<,>));
 
         fcBuilder.Services.AddScoped<IUserRepository, LiteDbUserRepository>();
+        fcBuilder.Services.AddScoped<IContentTypeRepository, LiteDbContentTypeRepository>();
 
         return fcBuilder;
     }
