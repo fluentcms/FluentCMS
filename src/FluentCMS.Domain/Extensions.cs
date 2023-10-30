@@ -10,6 +10,7 @@ public static class Extensions
         // register domain services
         services.AddTransient<UserService>();
         services.AddTransient<ContentTypeService>();
+        services.AddTransient<SiteService>();
 
         return FluentCMSBuilder.Create(services);
     }
