@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace FluentCMS.Repository.LiteDb.Tests.Entities.Sites;
 public class SiteService_Tests
 {
-    private IServiceProvider _serviceProvider;
+    private readonly IServiceProvider _serviceProvider;
     public SiteService_Tests()
     {
         var services = new ServiceCollection();
@@ -123,7 +123,7 @@ public class SiteService_Tests
             await service.Create(site);
         }
         var result = (await service.GetAll()).ToList();
-        result.Count().ShouldBe(count);
+        result.Count.ShouldBe(count);
         result.ForEach(x => x.Name.ShouldBe($"test site {x.Id}"));
         result.ForEach(x => x.Description.ShouldBe($"test site description {x.Id}"));
         result.ForEach(x => x.Urls.Contains($"{x.Id}.com").ShouldBeTrue());
