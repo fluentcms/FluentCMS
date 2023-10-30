@@ -84,7 +84,6 @@ public class ContentType_Tests
         var contentType2 = new ContentType(id2, title2);
         contentType2.SetSlug("test-1");
         await service.Create(contentType2).ShouldThrowAsync<ApplicationException>();
-
     }
 
     [Fact]
@@ -100,7 +99,6 @@ public class ContentType_Tests
             var title = $"Test {index++}";
             var contentType = new ContentType(id, title);
             await service.Create(contentType);
-
         }
         var result = await service.GetAll();
         result.ShouldNotBeNull();
@@ -148,13 +146,13 @@ public class ContentType_Tests
         var title = "Test 1";
         var contentType = new ContentType(id, title);
         ContentTypeField field = new(
-            title:"field1",
-            fieldType:FieldType.Text,
-            options:new Dictionary<string, string>() { { "option1", "option1Value" } },
-            label:"label1",
-            description:"description 1",
-            hidden:true,
-            defaultValue:"field1DefaultValue");
+            title: "field1",
+            fieldType: FieldType.Text,
+            options: new Dictionary<string, string>() { { "option1", "option1Value" } },
+            label: "label1",
+            description: "description 1",
+            hidden: true,
+            defaultValue: "field1DefaultValue");
         contentType.AddContentTypeField(field);
         await service.Create(contentType);
         var result = await service.GetById(id);
@@ -171,7 +169,6 @@ public class ContentType_Tests
         result.ContentTypeFields.First().Hidden.ShouldBe(true);
         result.ContentTypeFields.First().DefaultValue.ShouldBe("field1DefaultValue");
         result.ContentTypeFields.First().Options["option1"].ShouldBe("option1Value");
-
     }
 
     [Fact]
