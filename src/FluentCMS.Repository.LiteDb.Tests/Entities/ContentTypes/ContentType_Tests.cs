@@ -6,7 +6,7 @@ using Shouldly;
 namespace FluentCMS.Repository.LiteDb.Tests.Entities.ContentTypes;
 public class ContentType_Tests
 {
-    IServiceProvider _serviceProvider;
+    readonly IServiceProvider _serviceProvider;
 
     public ContentType_Tests()
     {
@@ -147,9 +147,14 @@ public class ContentType_Tests
         var id = Guid.NewGuid();
         var title = "Test 1";
         var contentType = new ContentType(id, title);
-        ContentTypeField field = new ContentTypeField("field1",
-                                                      FieldType.Text,
-                                                      new Dictionary<string, string>() { { "option1", "option1Value" } });
+        ContentTypeField field = new(
+            title:"field1",
+            fieldType:FieldType.Text,
+            options:new Dictionary<string, string>() { { "option1", "option1Value" } },
+            label:"label1",
+            description:"description 1",
+            hidden:true,
+            defaultValue:"field1DefaultValue");
         contentType.AddContentTypeField(field);
         await service.Create(contentType);
         var result = await service.GetById(id);
@@ -158,11 +163,17 @@ public class ContentType_Tests
         result.Title.ShouldBe(title);
         result.Slug.ShouldBe("test-1");
         result.ContentTypeFields.ShouldNotBeEmpty();
-        result.ContentTypeFields.Count().ShouldBe(1);
+        result.ContentTypeFields.Count.ShouldBe(1);
         result.ContentTypeFields.First().Title.ShouldBe("field1");
         result.ContentTypeFields.First().FieldType.ShouldBe(FieldType.Text);
+        result.ContentTypeFields.First().Description.ShouldBe("description 1");
+        result.ContentTypeFields.First().Label.ShouldBe("label1");
+        result.ContentTypeFields.First().Hidden.ShouldBe(true);
+        result.ContentTypeFields.First().DefaultValue.ShouldBe("field1DefaultValue");
         result.ContentTypeFields.First().Options["option1"].ShouldBe("option1Value");
+
     }
+
     [Fact]
     public async Task Should_NotAddDuplicateContentTypeField()
     {
@@ -170,19 +181,20 @@ public class ContentType_Tests
         var id = Guid.NewGuid();
         var title = "Test 1";
         var contentType = new ContentType(id, title);
-        ContentTypeField field = new ContentTypeField("field1",
-                                                      FieldType.Text,
-                                                      new Dictionary<string, string>() { { "option1", "option1Value" } });
+        ContentTypeField field = new("field1",
+            FieldType.Text,
+            new Dictionary<string, string>() { { "option1", "option1Value" } });
         contentType.AddContentTypeField(field);
-        ContentTypeField field2 = new ContentTypeField("field1",
-                                                      FieldType.Text,
-                                                      new Dictionary<string, string>() { });
+        ContentTypeField field2 = new("field1",
+            FieldType.Text,
+            new Dictionary<string, string>() { });
         await Task.Run(() =>
         {
             contentType.AddContentTypeField(field2);
         }).ShouldThrowAsync<ApplicationException>();
 
     }
+
     [Fact]
     public void Should_RemoveContentTypeField()
     {
