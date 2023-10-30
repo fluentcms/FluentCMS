@@ -5,13 +5,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
   <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0-rc.2.23480.2" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+    <PackageReference Include="MediatR" Version="12.1.1" />
   </ItemGroup>
+
   <ItemGroup>
-    <ProjectReference Include="..\FluentCMS.Application\FluentCMS.Application.csproj" />
     <ProjectReference Include="..\FluentCMS.Domain\FluentCMS.Domain.csproj" />
   </ItemGroup>
+
 </Project>
