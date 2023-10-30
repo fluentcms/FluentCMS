@@ -1,4 +1,5 @@
 using FluentCMS;
+using FluentCMS.Application;
 using FluentCMS.Repository.LiteDb;
 using FluentCMS.Web.UI;
 
@@ -10,8 +11,14 @@ var services = builder.Services;
 
 // add FluentCms core
 services.AddFluentCMSCore()
-    .AddLiteDbRepository(b => b.SetFilePath(
-        builder.Configuration.GetConnectionString("LiteDbFile") ?? throw new Exception("LiteDb file not defined.")));
+    .AddApplication()
+    .AddLiteDbRepository(b =>
+    {
+        var liteDbFilePath = builder.Configuration.GetConnectionString("LiteDbFile")
+            ?? throw new Exception("LiteDb file not defined.");
+        Directory.CreateDirectory(Path.GetDirectoryName(liteDbFilePath)!);
+        b.SetFilePath(liteDbFilePath);
+    });
 
 // Add services to the container.
 services.AddRazorComponents()
@@ -38,12 +45,16 @@ services.AddScoped(sp =>
 
 
 var app = builder.Build();
-
-app.UseExceptionHandler("/Error", createScopeForErrors: true);
-
-//app.UseHsts();
-
-app.UseHttpsRedirection();
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+else
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+}
 
 app.UseStaticFiles();
 
