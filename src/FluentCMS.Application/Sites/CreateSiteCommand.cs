@@ -8,3 +8,4 @@ public class CreateSiteCommand : IRequest<Guid>
     public string[] URLs { get; set; } = [];
     public Guid RoleId { get; set; }
 }
+    

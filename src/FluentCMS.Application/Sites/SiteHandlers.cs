@@ -41,6 +41,8 @@ public class SiteHandlers(SiteService siteService) :
         var site = await siteService.GetById(request.Id);
         if (site.Name != request.Name) site.SetName(request.Name);
         if (site.Description != request.Description) site.SetDescription(request.Description);
+        if (site.RoleId != request.RoleId) site.SetRoleId(request.RoleId);
+        site.Urls = request.URLs.ToList();
         await siteService.Update(site);
         return request.Id;
     }

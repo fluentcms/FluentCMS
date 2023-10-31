@@ -3,7 +3,8 @@
 namespace FluentCMS.Entities.Sites;
 public class Site : IAuditEntity
 {
-    protected Site() { }
+    //todo : create a dto and revert these changes 
+    public Site() { }
     public Site(
         Guid id,
         string name,
@@ -56,8 +57,10 @@ public class Site : IAuditEntity
     public DateTime CreatedAt { get; set; } = default;
     public string LastUpdatedBy { get; set; } = "";
     public DateTime LastUpdatedAt { get; set; } = default;
-    public string Name { get; protected set; } = "";
-    public string Description { get; protected set; } = "";
+    //todo : create a dto and revert these changes 
+    public string Name { get;  set; } = "";
+    //todo : create a dto and revert these changes 
+    public string Description { get;  set; } = "";
     public List<string> Urls { get; set; } = [];
-    public Guid RoleId { get; protected set; } = Guid.Empty;
+    public Guid RoleId { get;  set; } = Guid.Empty;
 }
