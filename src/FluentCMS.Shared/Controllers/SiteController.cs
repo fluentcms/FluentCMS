@@ -18,14 +18,14 @@ public class SiteController(IMediator mediator) : BaseController
     [HttpGet("{id}")]
     public async Task<ActionResult<Site?>> GetById(Guid id)
     {
-        return Ok(await mediator.Send(new GetSiteByIdQuery { SiteId = id }));
+        return Ok(await mediator.Send(new GetSiteByIdQuery { Id = id }));
     }
 
     [HttpGet]
     //GetByUrl
     public async Task<ActionResult<Site?>> GetByUrl([FromQuery] string url)
     {
-        return Ok(await mediator.Send(new GetSiteByUrl { Url = url }));
+        return Ok(await mediator.Send(new GetSiteByUrlQuery { Url = url }));
     }
 
     //Create
@@ -46,7 +46,7 @@ public class SiteController(IMediator mediator) : BaseController
     //Delete
     public async Task<ActionResult<Guid>> Delete(Guid id)
     {
-        return Ok(await mediator.Send(new DeleteSiteCommand { SiteId = id }));
+        return Ok(await mediator.Send(new DeleteSiteCommand { Id = id }));
     }
 
     [HttpPut]

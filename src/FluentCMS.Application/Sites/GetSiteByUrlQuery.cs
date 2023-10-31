@@ -3,7 +3,7 @@ using MediatR;
 
 namespace FluentCMS.Application.Sites;
 
-public class GetSiteByUrl : IRequest<Site>
+public class GetSiteByUrlQuery : IRequest<Site>
 {
     public string Url { get; set; } = "";
 }
