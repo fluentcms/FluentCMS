@@ -32,7 +32,8 @@ public class LiteDbGenericRepository<TKey, TEntity> : IGenericRepository<TKey, T
 
         ////todo: implement ApplicationContext
         ////If the entity is extend from IAuditEntity, the audit properties (CreatedAt, CreatedBy, etc.) should be set
-        if (entity is IAuditEntity<TKey> audit) SetPropertiesOnCreate(audit);
+        if (entity is IAuditEntity<TKey> audit)
+            SetPropertiesOnCreate(audit);
 
         return Collection.InsertAsync(entity);
     }
@@ -63,10 +64,11 @@ public class LiteDbGenericRepository<TKey, TEntity> : IGenericRepository<TKey, T
         return Collection.FindAsync(filter);
     }
 
-    public virtual Task<TEntity> GetById(TKey id, CancellationToken cancellationToken = default)
+    public virtual async Task<TEntity?> GetById(TKey id, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Collection.FindByIdAsync(new BsonValue(id));
+        var model = await Collection.FindByIdAsync(new BsonValue(id));
+        return model;
     }
 
     public virtual Task<IEnumerable<TEntity>> GetByIds(IEnumerable<TKey> ids, CancellationToken cancellationToken = default)
@@ -81,7 +83,8 @@ public class LiteDbGenericRepository<TKey, TEntity> : IGenericRepository<TKey, T
 
         ////todo: implement ApplicationContext
         ////If the entity is extend from IAuditEntity, the audit properties (LastUpdatedAt, LastUpdatedBy, etc.) should be set
-        if (entity is IAuditEntity<TKey> audit) SetPropertiesOnUpdate(audit);
+        if (entity is IAuditEntity<TKey> audit)
+            SetPropertiesOnUpdate(audit);
 
         return Collection.UpdateAsync(entity);
     }

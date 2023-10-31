@@ -29,7 +29,7 @@ public static class ConfigurationExtensions
         return configBuilder;
     }
 
-    public static T GetInstance<T>(this IConfiguration configuration, string sectionName)
+    public static T? GetInstance<T>(this IConfiguration configuration, string sectionName)
     {
         return configuration.GetSection(sectionName).Get<T>();
     }
