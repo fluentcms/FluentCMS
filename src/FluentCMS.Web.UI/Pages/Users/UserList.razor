@@ -1,0 +1,55 @@
+﻿@page "/users"
+@inject HttpClient httpClient
+
+<h3>Users</h3>
+<p>List of all users.</p>
+<NavigationButton To="/users/create">Create</NavigationButton>
+
+@if (users == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Username</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in users)
+            {
+                <tr>
+                    <td>@user.Name</td>
+                    <td>@user.Username</td>
+                    <td>
+                        <NavigationButton To="@("/users/edit?id=" + user.Id)">Edit</NavigationButton>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Entities.User>? users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await httpClient.GetFromJsonAsync<ApiResult<IEnumerable<Entities.User>>>("users");
+            if (response.IsSuccess)
+            {
+                users = response.Data!.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+}
