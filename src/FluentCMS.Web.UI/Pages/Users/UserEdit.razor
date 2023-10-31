@@ -1,7 +1,94 @@
 ﻿@page "/users/create"
+@page "/users/edit/{Id:guid}"
+@inject HttpClient _httpClient
+@inject NavigationManager _navigationManager
 
-<h3>UserEdit</h3>
+<h3>@(Id.HasValue ? "Edit" : "Create") User</h3>
+
+<EditForm Model="User" OnValidSubmit="ValidSubmit">
+    <div class="mb-3">
+        <label class="form-label">Name</label>
+        <InputText type="text" class="form-control" required @bind-Value="User.Name" name="name" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Username</label>
+        <InputText type="text" class="form-control" required @bind-Value="User.Username" name="username" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Password</label>
+        <InputText type="text" class="form-control" required @bind-Value="User.Password" name="password" />
+    </div>
+
+    <Button Type="submit" Color="Colors.Primary">Save</Button>
+</EditForm>
 
 @code {
+    [Parameter]
+    public Guid? Id { get; set; }
 
+    public Entities.User User { get; set; } = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+
+        if (Id.HasValue)
+        {
+            try
+            {
+                var response = await _httpClient.GetFromJsonAsync<ApiResult<Entities.User>>($"users/{Id.Value}");
+                if (response != null && response.IsSuccess)
+                {
+                    User = response.Data!;
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+    }
+
+    public async Task ValidSubmit()
+    {
+        //Create
+        if (Id.HasValue == false)
+        {
+            var createCommand = new Application.Users.CreateUserCommand
+                {
+                    Name = User.Name,
+                    Username = User.Username,
+                    Password = User.Password,
+                };
+            try
+            {
+                await _httpClient.PostAsJsonAsync($"users", createCommand);
+                _navigationManager.NavigateTo("/users");
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+        //Edit
+        else
+        {
+            var editCommand = new Application.Users.EditUserCommand
+                {
+                    Id = Id.Value,
+                    Name = User.Name,
+                    Username = User.Username,
+                    Password = User.Password,
+                };
+            try
+            {
+                await _httpClient.PutAsJsonAsync($"users", editCommand);
+                _navigationManager.NavigateTo("/users");
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+    }
 }
