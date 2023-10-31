@@ -1,4 +1,4 @@
-﻿using FluentCMS.Entities;
+﻿using FluentCMS.Entities.Users;
 using FluentCMS.Services;
 using MediatR;
 

@@ -26,7 +26,7 @@
     [Parameter]
     public Guid? Id { get; set; }
 
-    public Entities.User User { get; set; } = new();
+    public FluentCMS.Entities.Users.User User { get; set; } = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -36,7 +36,7 @@
         {
             try
             {
-                var response = await _httpClient.GetFromJsonAsync<ApiResult<Entities.User>>($"users/{Id.Value}");
+                var response = await _httpClient.GetFromJsonAsync<ApiResult<FluentCMS.Entities.Users.User>>($"users/{Id.Value}");
                 if (response != null && response.IsSuccess)
                 {
                     User = response.Data!;

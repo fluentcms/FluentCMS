@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Entities;
+﻿namespace FluentCMS.Entities.Users;
 
 public class User : Entity
 {
