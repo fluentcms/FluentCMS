@@ -26,13 +26,13 @@ public class SiteHandlers(SiteService siteService)
         await siteService.Update(site);
     }
 
-    async Task<Guid> IRequestHandler<DeleteSiteCommand, Guid>.Handle(DeleteSiteCommand request, CancellationToken cancellationToken)
+    public async Task<Guid> Handle(DeleteSiteCommand request, CancellationToken cancellationToken)
     {
         await siteService.Delete(request.SiteId);
         return request.SiteId;
     }
 
-    async Task<Guid> IRequestHandler<EditSiteCommand, Guid>.Handle(EditSiteCommand request, CancellationToken cancellationToken)
+    public async Task<Guid> Handle(EditSiteCommand request, CancellationToken cancellationToken)
     {
         var site = await siteService.GetById(request.SiteId);
         if (site.Name != request.Name) site.SetName(request.Name);
@@ -41,7 +41,7 @@ public class SiteHandlers(SiteService siteService)
         return request.SiteId;
     }
 
-    async Task<Guid> IRequestHandler<CreateSiteCommand, Guid>.Handle(CreateSiteCommand request, CancellationToken cancellationToken)
+    public async Task<Guid> Handle(CreateSiteCommand request, CancellationToken cancellationToken)
     {
         var newId = Guid.NewGuid();
         var site = new Site(newId, request.Name, request.Description, request.URLs, request.RoleId);
@@ -49,17 +49,17 @@ public class SiteHandlers(SiteService siteService)
         return newId;
     }
 
-    async Task<IEnumerable<Site>> IRequestHandler<GetSitesQuery, IEnumerable<Site>>.Handle(GetSitesQuery request, CancellationToken cancellationToken)
+    public async Task<IEnumerable<Site>> Handle(GetSitesQuery request, CancellationToken cancellationToken)
     {
         return await siteService.GetAll();
     }
 
-    async Task<Site> IRequestHandler<GetSiteByIdQuery, Site>.Handle(GetSiteByIdQuery request, CancellationToken cancellationToken)
+    public async Task<Site> Handle(GetSiteByIdQuery request, CancellationToken cancellationToken)
     {
         return await siteService.GetById(request.SiteId);
     }
 
-    async Task<Site> IRequestHandler<GetSiteByUrl, Site>.Handle(GetSiteByUrl request, CancellationToken cancellationToken)
+    public async Task<Site> Handle(GetSiteByUrl request, CancellationToken cancellationToken)
     {
         return await siteService.GetByUrl(request.Url);
 

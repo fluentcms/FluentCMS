@@ -2,11 +2,6 @@
 using FluentCMS.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FluentCMS.Repository.LiteDb.Tests.Entities.Sites;
 public class SiteService_Tests
@@ -19,6 +14,7 @@ public class SiteService_Tests
                 .AddLiteDbRepository(x => x.UseInMemory());
         _serviceProvider = services.BuildServiceProvider();
     }
+
     //Should Create New Site
     [Fact]
     public async Task Should_Create_New_Site()
@@ -35,6 +31,7 @@ public class SiteService_Tests
         result.Urls.Contains("test.com").ShouldBeTrue();
         result.RoleId.ShouldBe(roleId);
     }
+
     //Should Update Site
     [Fact]
     public async Task Should_Update_Site()
@@ -57,6 +54,7 @@ public class SiteService_Tests
         result.Urls.Contains("test.com").ShouldBeTrue();
         result.RoleId.ShouldBe(roleId);
     }
+
     //Should Delete Site
     [Fact]
     public async Task Should_Delete_Site()
@@ -71,6 +69,7 @@ public class SiteService_Tests
         var result = await service.GetAll();
         result.Count().ShouldBe(0);
     }
+
     //Should Get Site
     [Fact]
     public async Task Should_Get_Site()
@@ -87,6 +86,7 @@ public class SiteService_Tests
         result.Urls.Contains("test.com").ShouldBeTrue();
         result.RoleId.ShouldBe(roleId);
     }
+
     //Should Get Site By Url
     [Fact]
     public async Task Should_GetByUrl_Site()
@@ -103,6 +103,7 @@ public class SiteService_Tests
         result.Urls.Contains("test.com").ShouldBeTrue();
         result.RoleId.ShouldBe(roleId);
     }
+
     //Should Get All Sites
     [Fact]
     public async Task Should_GetAll_Site()

@@ -18,12 +18,14 @@ public class SiteService(ISiteRepository siteRepository)
         return await siteRepository.GetById(id)
                ?? throw new ApplicationException("Provided SiteId does not exists.");
     }
+
     public async Task<Site> GetByUrl(string Url)
     {
         Guard.Against.NullOrEmpty(Url);
         return await siteRepository.GetByUrl(Url)
                ?? throw new ApplicationException("Provided Url does not exists.");
     }
+
     public async Task<IEnumerable<Site>> GetAll()
     {
         return await siteRepository.GetAll();
