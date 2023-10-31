@@ -19,18 +19,16 @@ public class UserService
 
     public async Task<User> GetById(Guid id)
     {
-        var user = await _userRepository.GetById(id);
-        return user == null
-            ? throw new ApplicationException("Requested user does not exists.")
-            : user;
+        var user = await _userRepository.GetById(id)
+            ?? throw new ApplicationException("Requested user does not exists.");
+        return user;
     }
 
     public async Task<User> GetByUsername(string username)
     {
-        var user = await _userRepository.GetByUsername(username);
-        return user == null
-            ? throw new ApplicationException("Requested user does not exists.")
-            : user;
+        var user = await _userRepository.GetByUsername(username)
+            ?? throw new ApplicationException("Requested user does not exists.");
+        return user;
     }
 
     public Task Create(User user, CancellationToken cancellationToken = default)

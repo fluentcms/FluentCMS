@@ -13,7 +13,7 @@ public interface IGenericRepository<TKey, TEntity>
 
     Task<IEnumerable<TEntity>> GetAll(CancellationToken cancellationToken = default);
     Task<IEnumerable<TEntity>> GetAll(Expression<Func<TEntity, bool>> filter, CancellationToken cancellationToken = default);
-    Task<TEntity> GetById(TKey id, CancellationToken cancellationToken = default);
+    Task<TEntity?> GetById(TKey id, CancellationToken cancellationToken = default);
     Task<IEnumerable<TEntity>> GetByIds(IEnumerable<TKey> ids, CancellationToken cancellationToken = default);
 }
 

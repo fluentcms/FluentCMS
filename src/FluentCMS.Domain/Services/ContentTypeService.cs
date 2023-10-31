@@ -1,11 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 using FluentCMS.Entities.ContentTypes;
 using FluentCMS.Repository;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FluentCMS.Services;
 public class ContentTypeService
@@ -26,12 +21,13 @@ public class ContentTypeService
         await _contentTypeRepository.Create(contentType);
     }
 
-    public async Task Edit(ContentType contentType) {
+    public async Task Edit(ContentType contentType)
+    {
         Guard.Against.Null(contentType);
         Guard.Against.NullOrEmpty(contentType.Title);
         Guard.Against.NullOrEmpty(contentType.Slug);
         await CheckForDuplicateSlug(contentType);
-        await _contentTypeRepository.Update(contentType); 
+        await _contentTypeRepository.Update(contentType);
     }
 
     public async Task Delete(Guid id)
@@ -47,7 +43,8 @@ public class ContentTypeService
 
     public async Task<ContentType> GetById(Guid id)
     {
-        return await _contentTypeRepository.GetById(id) ?? throw new ApplicationException("Requested contentType does not exists.");
+        return await _contentTypeRepository.GetById(id)
+            ?? throw new ApplicationException("Requested contentType does not exists.");
     }
 
     public async Task<ContentType?> GetBySlug(string slug)
