@@ -12,42 +12,42 @@ public class SiteController(IMediator mediator) : BaseController
     [HttpGet]
     public async Task<ActionResult<ApiResult<IEnumerable<Site>>>> GetAll()
     {
-        return SucessResult(await mediator.Send(new GetSitesQuery()));
+        return SuccessResult(await mediator.Send(new GetSitesQuery()));
     }
 
     //GetById
     [HttpGet("{id}")]
     public async Task<ActionResult<ApiResult<Site>>> GetById(Guid id)
     {
-        return SucessResult(await mediator.Send(new GetSiteByIdQuery { Id = id }));
+        return SuccessResult(await mediator.Send(new GetSiteByIdQuery { Id = id }));
     }
 
     [HttpGet("[action]")]
     //GetByUrl
     public async Task<ActionResult<ApiResult<Site>>> GetByUrl([FromQuery] string url)
     {
-        return SucessResult(await mediator.Send(new GetSiteByUrlQuery { Url = url }));
+        return SuccessResult(await mediator.Send(new GetSiteByUrlQuery { Url = url }));
     }
 
     //Create
     [HttpPost()]
     public async Task<ActionResult<ApiResult<Guid>>> Create(CreateSiteCommand request)
     {
-        return SucessResult(await mediator.Send(request));
+        return SuccessResult(await mediator.Send(request));
     }
 
     //Update
     [HttpPatch]
     public async Task<ActionResult<ApiResult<Guid>>> Update(EditSiteCommand request)
     {
-        return SucessResult(await mediator.Send(request));
+        return SuccessResult(await mediator.Send(request));
     }
 
     [HttpDelete("{id}")]
     //Delete
     public async Task<ActionResult<ApiResult<Guid>>> Delete(Guid id)
     {
-        return SucessResult(await mediator.Send(new DeleteSiteCommand { Id = id }));
+        return SuccessResult(await mediator.Send(new DeleteSiteCommand { Id = id }));
     }
 
     [HttpPut("[action]")]
