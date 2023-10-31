@@ -43,7 +43,7 @@ public class SiteController(IMediator mediator) : BaseController
         return SucessResult(await mediator.Send(request));
     }
 
-    [HttpDelete]
+    [HttpDelete("{id}")]
     //Delete
     public async Task<ActionResult<ApiResult<Guid>>> Delete(Guid id)
     {

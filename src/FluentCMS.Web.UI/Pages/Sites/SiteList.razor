@@ -1,5 +1,6 @@
 ﻿@page "/sites"
 @inject HttpClient _httpClient;
+@inject IJSRuntime _jsRuntime;
 @using FluentCMS.Entities.Sites
 
 <h3>Sites</h3>
@@ -30,10 +31,15 @@ else
                         @foreach (var url in site.Urls)
                         {
                             <a target="_blank" href="@url">@url</a>
+                            if (url != site.Urls.Last())
+                            {
+                                <span>|</span>
+                            }
                         }
                     </td>
                     <td>
-                        <NavigationButton To="@("/sites/edit?id=" + site.Id)">Edit</NavigationButton>
+                        <NavigationButton To="@("/sites/edit/" + site.Id)">Edit</NavigationButton>
+                        <Button Color="Colors.Danger" @onclick="@(()=>Delete(site.Id))">Delete</Button>
                     </td>
                 </tr>
             }
@@ -45,7 +51,7 @@ else
 @code {
     private List<Entities.Sites.Site>? sites;
 
-    protected override async Task OnInitializedAsync()
+    public async Task Fetch()
     {
         try
         {
@@ -58,6 +64,30 @@ else
         catch (Exception ex)
         {
             throw;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await Fetch();
+    }
+
+    public async Task Delete(Guid id)
+    {
+        var result = await _jsRuntime.InvokeAsync<bool>("confirm", "Delete site?");
+        if (result)
+        {
+            try
+            {
+                await _httpClient.DeleteAsync("site/" + id);
+                await Fetch();
+            }
+            catch (Exception)
+            {
+                
+                throw;
+            }
         }
     }
 }
