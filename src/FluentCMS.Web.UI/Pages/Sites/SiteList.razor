@@ -1,0 +1,63 @@
+﻿@page "/sites"
+@inject HttpClient _httpClient;
+@using FluentCMS.Entities.Sites
+
+<h3>Sites</h3>
+<p>List of all sites.</p>
+<NavigationButton To="/sites/create">Create</NavigationButton>
+@if (sites == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Urls</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var site in sites)
+            {
+                <tr>
+                    <td>@site.Name</td>
+                    <td>@site.Description</td>
+                    <td>
+                        @foreach (var url in site.Urls)
+                        {
+                            <a target="_blank" href="@url">@url</a>
+                        }
+                    </td>
+                    <td>
+                        <NavigationButton To="@("/sites/edit?id=" + site.Id)">Edit</NavigationButton>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+
+@code {
+    private List<Entities.Sites.Site>? sites;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<ApiResult<IEnumerable<Entities.Sites.Site>>>("site");
+            if (response.IsSuccess)
+            {
+                sites = response.Data!.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+}

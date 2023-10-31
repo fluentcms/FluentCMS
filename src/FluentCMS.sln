@@ -13,7 +13,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Shared", "FluentC
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.UI", "FluentCMS.Web.UI\FluentCMS.Web.UI.csproj", "{144A959D-F8C0-4478-B8DA-57A2959B8C7D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Application", "FluentCMS.Application\FluentCMS.Application.csproj", "{675100EE-B527-4941-9B5E-CCE683E1EF34}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Application", "FluentCMS.Application\FluentCMS.Application.csproj", "{675100EE-B527-4941-9B5E-CCE683E1EF34}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
