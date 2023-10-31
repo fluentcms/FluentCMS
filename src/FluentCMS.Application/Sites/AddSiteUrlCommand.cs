@@ -2,8 +2,8 @@
 
 namespace FluentCMS.Application.Sites;
 
-public class AddUrlSiteCommand : IRequest
+public class AddSiteUrlCommand : IRequest
 {
-    public Guid Id { get; set; }
+    public Guid SideId { get; set; }
     public string NewUrl { get; set; } = "";
 }

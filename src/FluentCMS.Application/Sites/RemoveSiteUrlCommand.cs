@@ -2,8 +2,8 @@
 
 namespace FluentCMS.Application.Sites;
 
-public class RemoveUrlSiteCommand : IRequest
+public class RemoveSiteUrlCommand : IRequest
 {
-    public Guid Id { get; set; }
+    public Guid SiteId { get; set; }
     public string Url { get; set; } = "";
 }

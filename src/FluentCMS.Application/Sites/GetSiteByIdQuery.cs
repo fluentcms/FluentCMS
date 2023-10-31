@@ -5,5 +5,5 @@ namespace FluentCMS.Application.Sites;
 
 public class GetSiteByIdQuery : IRequest<Site>
 {
-    public Guid Id { get; set; }
+    public Guid SiteId { get; set; }
 }

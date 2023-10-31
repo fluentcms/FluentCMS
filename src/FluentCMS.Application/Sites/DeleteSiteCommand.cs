@@ -4,5 +4,5 @@ namespace FluentCMS.Application.Sites;
 
 public class DeleteSiteCommand : IRequest<Guid>
 {
-    public Guid Id { get; set; }
+    public Guid SiteId { get; set; }
 }
