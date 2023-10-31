@@ -35,7 +35,6 @@ services.AddScoped(sp =>
     var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
     var request = httpContextAccessor?.HttpContext?.Request;
     var domain = string.Format("{0}://{1}/api/", request?.Scheme, request?.Host.Value);
-    var baseAddress = new Uri(domain);
 
     return new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
     {
