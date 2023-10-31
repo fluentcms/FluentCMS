@@ -27,6 +27,7 @@ public static class Extensions
 
         fcBuilder.Services.AddScoped<IUserRepository, LiteDbUserRepository>();
         fcBuilder.Services.AddScoped<IContentTypeRepository, LiteDbContentTypeRepository>();
+        fcBuilder.Services.AddScoped<ISiteRepository, LiteDbSiteRepository>();
 
         return fcBuilder;
     }

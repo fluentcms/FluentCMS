@@ -1,11 +1,19 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using FluentCMS.Models;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Web.Controllers;
 
-[Route("api/[controller]/[action]/")]
+[Route("api/[controller]/")]
 [ApiController]
 [Produces("application/json")]
 public abstract class BaseController : ControllerBase
 {
 
+    public ApiResult<TData> SucessResult<TData>(TData data)
+    {
+        return new ApiResult<TData>
+        {
+            Data = data,
+        };
+    }
 }
