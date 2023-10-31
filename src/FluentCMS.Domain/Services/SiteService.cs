@@ -5,7 +5,6 @@ using FluentCMS.Repository;
 namespace FluentCMS.Services;
 public class SiteService(ISiteRepository siteRepository)
 {
-
     public async Task Create(Site site)
     {
         Guard.Against.Null(site);
@@ -16,14 +15,14 @@ public class SiteService(ISiteRepository siteRepository)
     {
         Guard.Against.NullOrEmpty(id);
         return await siteRepository.GetById(id)
-               ?? throw new ApplicationException("Provided SiteId does not exists.");
+            ?? throw new ApplicationException("Provided SiteId does not exists.");
     }
 
     public async Task<Site> GetByUrl(string Url)
     {
         Guard.Against.NullOrEmpty(Url);
         return await siteRepository.GetByUrl(Url)
-               ?? throw new ApplicationException("Provided Url does not exists.");
+            ?? throw new ApplicationException("Provided Url does not exists.");
     }
 
     public async Task<IEnumerable<Site>> GetAll()
@@ -35,7 +34,7 @@ public class SiteService(ISiteRepository siteRepository)
     {
         Guard.Against.Null(site);
         _ = await siteRepository.GetById(site.Id)
-                       ?? throw new ApplicationException("Provided SiteId does not exists.");
+            ?? throw new ApplicationException("Provided SiteId does not exists.");
         await siteRepository.Update(site);
     }
 
@@ -43,7 +42,7 @@ public class SiteService(ISiteRepository siteRepository)
     {
         Guard.Against.NullOrEmpty(id);
         _ = await siteRepository.GetById(id)
-                       ?? throw new ApplicationException("Provided SiteId does not exists.");
+            ?? throw new ApplicationException("Provided SiteId does not exists.");
         await siteRepository.Delete(id);
     }
 }

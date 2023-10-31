@@ -3,10 +3,9 @@ using FluentCMS.Services;
 using MediatR;
 
 namespace FluentCMS.Application.Sites;
-public class SiteHandlers(SiteService siteService)
-    :
-    IRequestHandler<GetSiteByUrl, Site>,
+public class SiteHandlers(SiteService siteService) :
     IRequestHandler<GetSiteByIdQuery, Site>,
+    IRequestHandler<GetSiteByUrlQuery, Site>,
     IRequestHandler<GetSitesQuery, IEnumerable<Site>>,
     IRequestHandler<CreateSiteCommand, Guid>,
     IRequestHandler<EditSiteCommand, Guid>,
@@ -14,31 +13,19 @@ public class SiteHandlers(SiteService siteService)
     IRequestHandler<AddSiteUrlCommand>,
     IRequestHandler<RemoveSiteUrlCommand>
 {
-    async Task IRequestHandler<RemoveSiteUrlCommand>.Handle(RemoveSiteUrlCommand request, CancellationToken cancellationToken)
+    public async Task<Site> Handle(GetSiteByIdQuery request, CancellationToken cancellationToken)
     {
-        await siteService.Delete(request.SiteId);
+        return await siteService.GetById(request.Id);
     }
 
-    async Task IRequestHandler<AddSiteUrlCommand>.Handle(AddSiteUrlCommand request, CancellationToken cancellationToken)
+    public async Task<Site> Handle(GetSiteByUrlQuery request, CancellationToken cancellationToken)
     {
-        var site = await siteService.GetById(request.SideId);
-        site.AddUrl(request.NewUrl);
-        await siteService.Update(site);
+        return await siteService.GetByUrl(request.Url);
     }
 
-    public async Task<Guid> Handle(DeleteSiteCommand request, CancellationToken cancellationToken)
+    public async Task<IEnumerable<Site>> Handle(GetSitesQuery request, CancellationToken cancellationToken)
     {
-        await siteService.Delete(request.SiteId);
-        return request.SiteId;
-    }
-
-    public async Task<Guid> Handle(EditSiteCommand request, CancellationToken cancellationToken)
-    {
-        var site = await siteService.GetById(request.SiteId);
-        if (site.Name != request.Name) site.SetName(request.Name);
-        if (site.Description != request.Description) site.SetDescription(request.Description);
-        await siteService.Update(site);
-        return request.SiteId;
+        return await siteService.GetAll();
     }
 
     public async Task<Guid> Handle(CreateSiteCommand request, CancellationToken cancellationToken)
@@ -49,19 +36,30 @@ public class SiteHandlers(SiteService siteService)
         return newId;
     }
 
-    public async Task<IEnumerable<Site>> Handle(GetSitesQuery request, CancellationToken cancellationToken)
+    public async Task<Guid> Handle(EditSiteCommand request, CancellationToken cancellationToken)
     {
-        return await siteService.GetAll();
+        var site = await siteService.GetById(request.Id);
+        if (site.Name != request.Name) site.SetName(request.Name);
+        if (site.Description != request.Description) site.SetDescription(request.Description);
+        await siteService.Update(site);
+        return request.Id;
     }
 
-    public async Task<Site> Handle(GetSiteByIdQuery request, CancellationToken cancellationToken)
+    public async Task<Guid> Handle(DeleteSiteCommand request, CancellationToken cancellationToken)
     {
-        return await siteService.GetById(request.SiteId);
+        await siteService.Delete(request.Id);
+        return request.Id;
     }
 
-    public async Task<Site> Handle(GetSiteByUrl request, CancellationToken cancellationToken)
+    public async Task Handle(AddSiteUrlCommand request, CancellationToken cancellationToken)
     {
-        return await siteService.GetByUrl(request.Url);
+        var site = await siteService.GetById(request.SideId);
+        site.AddUrl(request.NewUrl);
+        await siteService.Update(site);
+    }
 
+    public async Task Handle(RemoveSiteUrlCommand request, CancellationToken cancellationToken)
+    {
+        await siteService.Delete(request.SiteId);
     }
 }
