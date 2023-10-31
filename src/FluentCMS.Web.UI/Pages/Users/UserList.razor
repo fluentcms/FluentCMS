@@ -26,7 +26,8 @@ else
                     <td>@user.Name</td>
                     <td>@user.Username</td>
                     <td>
-                        <NavigationButton To="@("/users/edit?id=" + user.Id)">Edit</NavigationButton>
+                        <NavigationButton To="@("/users/edit/" + user.Id)">Edit</NavigationButton>
+                        <Button @onclick="() => OnDeleteClick(user.Id)">Delete</Button>
                     </td>
                 </tr>
             }
@@ -37,14 +38,36 @@ else
 @code {
     private List<Entities.User>? users;
 
-    protected override async Task OnInitializedAsync()
+    private async Task LoadUsers()
     {
         try
         {
             var response = await httpClient.GetFromJsonAsync<ApiResult<IEnumerable<Entities.User>>>("users");
-            if (response.IsSuccess)
+            if (response != null && response.IsSuccess)
             {
                 users = response.Data!.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task OnDeleteClick(Guid id)
+    {
+        try
+        {
+            var response = await httpClient.DeleteFromJsonAsync<ApiResult<bool>>("users/" + id);
+            if (response != null && response.IsSuccess)
+            {
+                await LoadUsers();
+                StateHasChanged();
             }
         }
         catch (Exception ex)

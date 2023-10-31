@@ -6,7 +6,9 @@ namespace FluentCMS.Application.Users;
 internal class UserHandlers :
     IRequestHandler<GetUsersQuery, IEnumerable<User>>,
     IRequestHandler<GetUserByIdQuery, User?>,
-    IRequestHandler<CreateUserCommand, Guid>
+    IRequestHandler<CreateUserCommand, Guid>,
+    IRequestHandler<EditUserCommand>,
+    IRequestHandler<DeleteUserCommand>
 {
     private readonly UserService _userService;
 
@@ -38,5 +40,21 @@ internal class UserHandlers :
         };
         await _userService.Create(user, cancellationToken);
         return user.Id;
+    }
+
+    public async Task Handle(EditUserCommand request, CancellationToken cancellationToken)
+    {
+        var user = await _userService.GetById(request.Id);
+        user.Name = request.Name;
+        user.Username = request.Username;
+        user.Password = request.Password;
+
+        await _userService.Update(user);
+    }
+
+    public async Task Handle(DeleteUserCommand request, CancellationToken cancellationToken)
+    {
+        var user = await _userService.GetById(request.Id);
+        await _userService.Delete(user);
     }
 }

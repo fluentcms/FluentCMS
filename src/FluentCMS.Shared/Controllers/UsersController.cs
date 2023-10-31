@@ -18,20 +18,34 @@ public class UsersController : BaseController
     public async Task<ActionResult<ApiResult<IEnumerable<User>>>> GetUsers()
     {
         var data = await _mediator.Send(new GetUsersQuery());
-        return SucessResult(data);
+        return SuccessResult(data);
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<ApiResult<User?>>> GetUserById([FromRoute] Guid id)
     {
         var data = await _mediator.Send(new GetUserByIdQuery { Id = id });
-        return SucessResult(data);
+        return SuccessResult(data);
     }
 
     [HttpPost]
     public async Task<ActionResult<ApiResult<Guid>>> CreateUser(CreateUserCommand request)
     {
         var result = await _mediator.Send(request);
-        return SucessResult(result);
+        return SuccessResult(result);
+    }
+
+    [HttpPut]
+    public async Task<ActionResult<ApiResult<bool>>> EditUser(EditUserCommand request)
+    {
+        await _mediator.Send(request);
+        return SuccessResult(true);
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<ActionResult<ApiResult<bool>>> DeleteUser([FromRoute] DeleteUserCommand request)
+    {
+        await _mediator.Send(request);
+        return SuccessResult(true);
     }
 }
