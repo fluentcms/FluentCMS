@@ -9,6 +9,7 @@ public static class Extensions
     {
         // register domain services
         services.AddTransient<UserService>();
+        services.AddTransient<RoleService>();
         services.AddTransient<ContentTypeService>();
         services.AddTransient<SiteService>();
 

@@ -1,8 +1,8 @@
 ﻿using FluentCMS.Application.Users;
+using FluentCMS.Entities.Users;
 using FluentCMS.Models;
 using Microsoft.AspNetCore.Mvc;
 using MediatR;
-using FluentCMS.Entities.Users;
 
 namespace FluentCMS.Web.Controllers;
 public class UsersController : BaseController

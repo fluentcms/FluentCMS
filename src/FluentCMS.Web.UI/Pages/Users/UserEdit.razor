@@ -5,18 +5,41 @@
 
 <h3>@(Id.HasValue ? "Edit" : "Create") User</h3>
 
-<EditForm Model="User" OnValidSubmit="ValidSubmit">
+<EditForm Model="data" OnValidSubmit="ValidSubmit">
     <div class="mb-3">
         <label class="form-label">Name</label>
-        <InputText type="text" class="form-control" required @bind-Value="User.Name" name="name" />
+        <InputText type="text" class="form-control" required @bind-Value="data.Name" name="name" />
     </div>
     <div class="mb-3">
         <label class="form-label">Username</label>
-        <InputText type="text" class="form-control" required @bind-Value="User.Username" name="username" />
+        <InputText type="text" class="form-control" required @bind-Value="data.Username" name="username" />
     </div>
     <div class="mb-3">
         <label class="form-label">Password</label>
-        <InputText type="text" class="form-control" required @bind-Value="User.Password" name="password" />
+        <InputText type="text" class="form-control" required @bind-Value="data.Password" name="password" />
+    </div>
+    <div>
+        <Label Class="form-label">Roles:</Label>
+        @if (roles == null)
+        {
+            <span>Loading user roles...</span>
+        }
+        else
+        {
+            foreach (var r in roles)
+            {
+                <div class="form-check">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           id="@("chkRole-" + r.Name)"
+                           @onchange="e => onRoleCheckboxChanged((bool)e.Value!, r.Id)"
+                           value="">
+                    <label class="form-check-label" for="@("chkRole-" + r.Name)">
+                        @r.Name
+                    </label>
+                </div>
+            }
+        }
     </div>
 
     <Button Type="submit" Color="Colors.Primary">Save</Button>
@@ -26,7 +49,17 @@
     [Parameter]
     public Guid? Id { get; set; }
 
-    public FluentCMS.Entities.Users.User User { get; set; } = new();
+    private IEnumerable<FluentCMS.Entities.Users.Role>? roles;
+    private Application.Users.CreateUserCommand data = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var getRolesResponse = await _httpClient.GetFromJsonAsync<ApiResult<IEnumerable<FluentCMS.Entities.Users.Role>>>("roles");
+        if (getRolesResponse != null && getRolesResponse.IsSuccess)
+        {
+            roles = getRolesResponse.Data;
+        }
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -39,7 +72,10 @@
                 var response = await _httpClient.GetFromJsonAsync<ApiResult<FluentCMS.Entities.Users.User>>($"users/{Id.Value}");
                 if (response != null && response.IsSuccess)
                 {
-                    User = response.Data!;
+                    data.Name = response.Data!.Name;
+                    data.Username = response.Data!.Username;
+                    data.Password = response.Data!.Password;
+                    data.Roles = new List<Guid>();
                 }
             }
             catch (Exception)
@@ -54,15 +90,9 @@
         //Create
         if (Id.HasValue == false)
         {
-            var createCommand = new Application.Users.CreateUserCommand
-                {
-                    Name = User.Name,
-                    Username = User.Username,
-                    Password = User.Password,
-                };
             try
             {
-                await _httpClient.PostAsJsonAsync($"users", createCommand);
+                await _httpClient.PostAsJsonAsync($"users", data);
                 _navigationManager.NavigateTo("/users");
             }
             catch (Exception)
@@ -76,9 +106,10 @@
             var editCommand = new Application.Users.EditUserCommand
                 {
                     Id = Id.Value,
-                    Name = User.Name,
-                    Username = User.Username,
-                    Password = User.Password,
+                    Name = data.Name,
+                    Username = data.Username,
+                    Password = data.Password,
+                    Roles = data.Roles,
                 };
             try
             {
@@ -89,6 +120,19 @@
             {
                 throw;
             }
+        }
+    }
+
+    private void onRoleCheckboxChanged(bool isChecked, Guid roleId)
+    {
+        if (isChecked)
+        {
+            if (data.Roles.Any(x => x == roleId) == false)
+                data.Roles.Add(roleId);
+        }
+        else
+        {
+            data.Roles.Remove(roleId);
         }
     }
 }

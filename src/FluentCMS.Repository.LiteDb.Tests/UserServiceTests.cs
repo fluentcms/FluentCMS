@@ -24,11 +24,15 @@ public class UserServiceTests
         var userToCreate = new User
         {
             Id = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            LastUpdatedAt = DateTime.UtcNow,
+            CreatedBy = "",
+            LastUpdatedBy = "",
             Name = "TestUser",
             Username = username,
             Password = "password",
         };
-        await userService.Create(userToCreate);
+        await userService.Create(userToCreate, Enumerable.Empty<Guid>());
 
         var loadedUser = await userService.GetByUsername(username);
         loadedUser.ShouldNotBeNull();
@@ -44,12 +48,16 @@ public class UserServiceTests
         var userToCreate = new User
         {
             Id = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            LastUpdatedAt = DateTime.UtcNow,
+            CreatedBy = "",
+            LastUpdatedBy = "",
             Name = "TestUser",
             Username = "",
             Password = "password",
         };
 
         // it should throw a ApplicationException
-        await Should.ThrowAsync<ApplicationException>(() => userService.Create(userToCreate));
+        await Should.ThrowAsync<ApplicationException>(() => userService.Create(userToCreate, Enumerable.Empty<Guid>()));
     }
 }

@@ -1,4 +1,5 @@
-﻿using FluentCMS.Entities.Users;
+﻿using Ardalis.GuardClauses;
+using FluentCMS.Entities.Users;
 using FluentCMS.Repository;
 
 namespace FluentCMS.Services;
@@ -6,9 +7,13 @@ namespace FluentCMS.Services;
 public class UserService
 {
     private readonly IUserRepository _userRepository;
-    public UserService(IUserRepository userRepository)
+    private readonly IGenericRepository<UserRole> _userRoleRepository;
+    public UserService(
+        IUserRepository userRepository,
+        IGenericRepository<UserRole> userRoleRepository)
     {
         _userRepository = userRepository;
+        _userRoleRepository = userRoleRepository;
     }
 
     public async Task<IEnumerable<User>> GetAll()
@@ -31,47 +36,81 @@ public class UserService
         return user;
     }
 
-    public Task Create(User user, CancellationToken cancellationToken = default)
+    public async Task Create(User user, IEnumerable<Guid> roles, CancellationToken cancellationToken = default)
     {
-        if (user == null)
-            throw new ApplicationException("User parameter is not provided.");
-        if (string.IsNullOrWhiteSpace(user.Username))
-            throw new ApplicationException("Username parameter is not provided.");
-        if (string.IsNullOrWhiteSpace(user.Name))
-            throw new ApplicationException("Name parameter is not provided.");
+        Guard.Against.Null(user);
+        Guard.Against.NullOrWhiteSpace(user.Name);
+        Guard.Against.NullOrWhiteSpace(user.Username);
 
-        return _userRepository.Create(user, cancellationToken);
+        await _userRepository.Create(user, cancellationToken);
+
+        if (roles != null && roles.Any())
+        {
+            await AddUserRoles(user.Id, roles);
+        }
     }
 
-    public Task Update(User user, CancellationToken cancellationToken = default)
+    public async Task Update(User user, IEnumerable<Guid> roles, CancellationToken cancellationToken = default)
     {
-        if (user == null)
-            throw new ApplicationException("User parameter is not provided.");
-        if (user.Id == Guid.Empty)
-            throw new ApplicationException("Id parameter is not provided.");
-        if (string.IsNullOrWhiteSpace(user.Username))
-            throw new ApplicationException("Username parameter is not provided.");
-        if (string.IsNullOrWhiteSpace(user.Name))
-            throw new ApplicationException("Name parameter is not provided.");
+        Guard.Against.Null(user);
+        Guard.Against.Default(user.Id);
+        Guard.Against.NullOrWhiteSpace(user.Name);
+        Guard.Against.NullOrWhiteSpace(user.Username);
 
-        var oldUser = _userRepository.GetById(user.Id);
+        var oldUser = await _userRepository.GetById(user.Id);
         if (oldUser == null)
             throw new ApplicationException("Provided UserId does not exists.");
 
-        return _userRepository.Update(user, cancellationToken);
+        await _userRepository.Update(user, cancellationToken);
+
+        // update user-roles
+        await RemoveUserRoles(user.Id);
+        if (roles != null && roles.Any())
+        {
+            await AddUserRoles(user.Id, roles);
+        }
     }
 
-    public Task Delete(User user, CancellationToken cancellationToken = default)
+    public async Task Delete(User user, CancellationToken cancellationToken = default)
     {
-        if (user == null)
-            throw new ApplicationException("User parameter is not provided.");
-        if (user.Id == Guid.Empty)
-            throw new ApplicationException("Id parameter is not provided.");
+        Guard.Against.Null(user);
+        Guard.Against.Default(user.Id);
 
-        var oldUser = _userRepository.GetById(user.Id);
+        var oldUser = await _userRepository.GetById(user.Id);
         if (oldUser == null)
             throw new ApplicationException("Provided UserId does not exists.");
 
-        return _userRepository.Delete(user.Id, cancellationToken);
+        await _userRepository.Delete(user.Id, cancellationToken);
+
+        // remove user-roles
+        await RemoveUserRoles(user.Id);
+    }
+
+    public async Task AddUserRoles(Guid userId, IEnumerable<Guid> roles)
+    {
+        Guard.Against.Default(userId);
+        Guard.Against.NullOrEmpty(roles);
+
+        var roleModels = new List<UserRole>();
+        foreach (var roleId in roles)
+        {
+            var role = new UserRole
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                RoleId = roleId,
+            };
+            roleModels.Add(role);
+        }
+        await _userRoleRepository.CreateMany(roleModels);
+    }
+
+    public async Task RemoveUserRoles(Guid userId)
+    {
+        var userRoles = await _userRoleRepository.GetAll(x => x.UserId == userId);
+        foreach (var role in userRoles)
+        {
+            await _userRoleRepository.Delete(role.Id);
+        }
     }
 }

@@ -38,6 +38,21 @@ public class LiteDbGenericRepository<TKey, TEntity> : IGenericRepository<TKey, T
         return Collection.InsertAsync(entity);
     }
 
+    public virtual Task CreateMany(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        ////todo: implement ApplicationContext
+        ////If the entity is extend from IAuditEntity, the audit properties (CreatedAt, CreatedBy, etc.) should be set
+        if (typeof(TEntity) is IAuditEntity<TKey>)
+        {
+            foreach (var audit in entities.Cast<IAuditEntity<TKey>>())
+                SetPropertiesOnCreate(audit);
+        }
+
+        return Collection.InsertBulkAsync(entities);
+    }
+
     private void SetPropertiesOnCreate(IAuditEntity<TKey> audit)
     {
         audit.CreatedAt = DateTime.UtcNow;
@@ -50,18 +65,20 @@ public class LiteDbGenericRepository<TKey, TEntity> : IGenericRepository<TKey, T
         return Collection.DeleteAsync(new BsonValue(id));
     }
 
-    public virtual Task<IEnumerable<TEntity>> GetAll(CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TEntity>> GetAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Collection.FindAllAsync();
+        var result = await Collection.FindAllAsync();
+        return result.ToArray();
     }
 
-    public virtual Task<IEnumerable<TEntity>> GetAll(Expression<Func<TEntity, bool>> filter, CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TEntity>> GetAll(Expression<Func<TEntity, bool>> filter, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         //todo: Implement Pagination
 
-        return Collection.FindAsync(filter);
+        var result = await Collection.FindAsync(filter);
+        return result.ToArray();
     }
 
     public virtual async Task<TEntity?> GetById(TKey id, CancellationToken cancellationToken = default)

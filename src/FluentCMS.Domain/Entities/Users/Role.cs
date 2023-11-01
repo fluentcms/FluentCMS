@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Entities.Users;
 
-public class User : IAuditEntity
+public class Role : IAuditEntity
 {
     public required Guid Id { get; set; }
     public required string CreatedBy { get; set; }
@@ -8,7 +8,9 @@ public class User : IAuditEntity
     public required string LastUpdatedBy { get; set; }
     public required DateTime LastUpdatedAt { get; set; }
 
-    public string Name { get; set; } = string.Empty;
-    public string Username { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
+    public required string Name { get; set; }
+    public string? Description { get; set; }
+    public required bool AutoAssigned { get; set; }
+
+    public Guid? SiteId { get; set; }
 }
