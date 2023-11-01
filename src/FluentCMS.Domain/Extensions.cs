@@ -11,6 +11,7 @@ public static class Extensions
         services.AddTransient<UserService>();
         services.AddTransient<ContentTypeService>();
         services.AddTransient<SiteService>();
+        services.AddTransient<PageService>();
 
         return FluentCMSBuilder.Create(services);
     }
