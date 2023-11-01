@@ -6,12 +6,8 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace FluentCMS.Repository.LiteDb;
-internal class LiteDbPageRepository : LiteDbGenericRepository<Page>, IPageRepository
+internal class LiteDbPageRepository(LiteDbContext dbContext) : LiteDbGenericRepository<Page>(dbContext), IPageRepository
 {
-    public LiteDbPageRepository(LiteDbContext dbContext) : base(dbContext)
-    {
-    }
-
     public Task<Page> FindByPath(string path)
     {
         return Collection.FindOneAsync(x => x.Path == path);
