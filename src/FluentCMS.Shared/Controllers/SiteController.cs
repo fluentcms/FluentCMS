@@ -4,65 +4,12 @@ using FluentCMS.Web.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using MediatR;
 using FluentCMS.Models;
+using FluentCMS.Application;
 
 namespace FluentCMS.Shared.Controllers;
-public class SiteController(IMediator mediator) : BaseController
+public class SiteController : GenericCrudController<Site, SiteDto>
 {
-    //GetAll
-    [HttpGet]
-    public async Task<ActionResult<ApiResult<IEnumerable<Site>>>> GetAll()
+    public SiteController(IServiceProvider serviceProvider, SiteService siteService) : base(serviceProvider, siteService)
     {
-        return SuccessResult(await mediator.Send(new GetSitesQuery()));
-    }
-
-    //GetById
-    [HttpGet("{id}")]
-    public async Task<ActionResult<ApiResult<Site>>> GetById(Guid id)
-    {
-        return SuccessResult(await mediator.Send(new GetSiteByIdQuery { Id = id }));
-    }
-
-    [HttpGet("[action]")]
-    //GetByUrl
-    public async Task<ActionResult<ApiResult<Site>>> GetByUrl([FromQuery] string url)
-    {
-        return SuccessResult(await mediator.Send(new GetSiteByUrlQuery { Url = url }));
-    }
-
-    //Create
-    [HttpPost()]
-    public async Task<ActionResult<ApiResult<Guid>>> Create(CreateSiteCommand request)
-    {
-        return SuccessResult(await mediator.Send(request));
-    }
-
-    //Update
-    [HttpPatch]
-    public async Task<ActionResult<ApiResult<Guid>>> Update(EditSiteCommand request)
-    {
-        return SuccessResult(await mediator.Send(request));
-    }
-
-    [HttpDelete("{id}")]
-    //Delete
-    public async Task<ActionResult<ApiResult<Guid>>> Delete(Guid id)
-    {
-        return SuccessResult(await mediator.Send(new DeleteSiteCommand { Id = id }));
-    }
-
-    [HttpPut("[action]")]
-    //AddUrl
-    public async Task<ActionResult> AddUrl(AddSiteUrlCommand request)
-    {
-        await mediator.Send(request);
-        return Ok();
-    }
-
-    [HttpDelete("[action]")]
-    //RemoveUrl
-    public async Task<ActionResult> RemoveUrl(RemoveSiteUrlCommand request)
-    {
-        await mediator.Send(request);
-        return Ok();
     }
 }

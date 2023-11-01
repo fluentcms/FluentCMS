@@ -71,47 +71,47 @@
     public async Task ValidSubmit()
     {
         //Create
-        if (Id == null)
-        {
-            var createCommand = new Application.Sites.CreateSiteCommand()
-                {
-                    Name = Site.Name,
-                    Description = Site.Description,
-                    RoleId = Site.RoleId,
-                    URLs = Site.Urls.ToArray()
-                };
-            try
-            {
-                await _httpClient.PostAsJsonAsync<Application.Sites.CreateSiteCommand>($"site", createCommand);
-                _navigationManager.NavigateTo("/sites");
-            }
-            catch (Exception)
-            {
+        // if (Id == null)
+        // {
+        //     var createCommand = new Application.Sites.CreateSiteCommand()
+        //         {
+        //             Name = Site.Name,
+        //             Description = Site.Description,
+        //             RoleId = Site.RoleId,
+        //             URLs = Site.Urls.ToArray()
+        //         };
+        //     try
+        //     {
+        //         await _httpClient.PostAsJsonAsync<Application.Sites.CreateSiteCommand>($"site", createCommand);
+        //         _navigationManager.NavigateTo("/sites");
+        //     }
+        //     catch (Exception)
+        //     {
 
-                throw;
-            }
-        }
-        //Edit
-        else
-        {
-            var editCommand = new Application.Sites.EditSiteCommand()
-                {
-                    Id = Id.Value,
-                    Name = Site.Name,
-                    Description = Site.Description,
-                    RoleId = Site.RoleId,
-                    URLs = Site.Urls.ToArray()
-                };
-            try
-            {
-                await _httpClient.PatchAsJsonAsync<Application.Sites.EditSiteCommand>($"site", editCommand);
-                _navigationManager.NavigateTo("/sites");
-            }
-            catch (Exception)
-            {
+        //         throw;
+        //     }
+        // }
+        // //Edit
+        // else
+        // {
+        //     var editCommand = new Application.Sites.EditSiteCommand()
+        //         {
+        //             Id = Id.Value,
+        //             Name = Site.Name,
+        //             Description = Site.Description,
+        //             RoleId = Site.RoleId,
+        //             URLs = Site.Urls.ToArray()
+        //         };
+        //     try
+        //     {
+        //         await _httpClient.PatchAsJsonAsync<Application.Sites.EditSiteCommand>($"site", editCommand);
+        //         _navigationManager.NavigateTo("/sites");
+        //     }
+        //     catch (Exception)
+        //     {
 
-                throw;
-            }
-        }
+        //         throw;
+        //     }
+        // }
     }
 }

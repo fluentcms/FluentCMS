@@ -1,4 +1,5 @@
-﻿using FluentCMS.Models;
+﻿using FluentCMS.Application.Sites;
+using FluentCMS.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Web.Controllers;
