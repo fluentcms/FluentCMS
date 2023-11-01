@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace FluentCMS.Entities.Pages;
 public class Page:IAuditEntity
 {
-    public Page(Guid id,Guid siteId, string path, Guid parentId, string title, int order)
+    public Page(Guid id,Guid siteId, string path, Guid? parentId, string title, int order)
     {
         Guard.Against.NullOrEmpty(id);
         Guard.Against.NullOrEmpty(siteId);
