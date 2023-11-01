@@ -1,5 +1,5 @@
 ﻿using FluentCMS.Application.Users;
-using FluentCMS.Entities;
+using FluentCMS.Entities.Users;
 using FluentCMS.Models;
 using Microsoft.AspNetCore.Mvc;
 using MediatR;

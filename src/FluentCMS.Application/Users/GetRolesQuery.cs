@@ -2,7 +2,6 @@
 using MediatR;
 
 namespace FluentCMS.Application.Users;
-public class GetUserByIdQuery : IRequest<User?>
+public class GetRolesQuery : IRequest<IEnumerable<Role>>
 {
-    public Guid Id { get; set; }
 }

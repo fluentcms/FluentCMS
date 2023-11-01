@@ -8,6 +8,7 @@ public interface IGenericRepository<TKey, TEntity>
     where TEntity : IEntity<TKey>
 {
     Task Create(TEntity entity, CancellationToken cancellationToken = default);
+    Task CreateMany(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default);
     Task Update(TEntity entity, CancellationToken cancellationToken = default);
     Task Delete(TKey id, CancellationToken cancellationToken = default);
 

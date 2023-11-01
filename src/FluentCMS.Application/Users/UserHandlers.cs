@@ -1,4 +1,4 @@
-﻿using FluentCMS.Entities;
+﻿using FluentCMS.Entities.Users;
 using FluentCMS.Services;
 using MediatR;
 
@@ -34,22 +34,28 @@ internal class UserHandlers :
         var user = new User
         {
             Id = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            LastUpdatedAt = DateTime.UtcNow,
+            CreatedBy = "",
+            LastUpdatedBy = "",
             Name = request.Name,
             Username = request.Username,
             Password = request.Password,
         };
-        await _userService.Create(user, cancellationToken);
+        await _userService.Create(user, request.Roles.AsEnumerable(), cancellationToken);
         return user.Id;
     }
 
     public async Task Handle(EditUserCommand request, CancellationToken cancellationToken)
     {
         var user = await _userService.GetById(request.Id);
+        user.LastUpdatedAt = DateTime.UtcNow;
+        user.LastUpdatedBy = "";
         user.Name = request.Name;
         user.Username = request.Username;
         user.Password = request.Password;
 
-        await _userService.Update(user);
+        await _userService.Update(user, request.Roles.AsEnumerable());
     }
 
     public async Task Handle(DeleteUserCommand request, CancellationToken cancellationToken)
