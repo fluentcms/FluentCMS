@@ -1,9 +1,9 @@
-﻿@page "/roles"
+﻿@page "/admin/roles"
 @inject HttpClient httpClient
 
 <h3>Roles</h3>
 <p>List of all roles.</p>
-<NavigationButton To="/roles/create">Create</NavigationButton>
+<NavigationButton To="/admin/roles/create">Create</NavigationButton>
 
 @if (roles == null)
 {
@@ -28,7 +28,7 @@ else
                     <td>@role.Description</td>
                     <td>@role.AutoAssigned.ToString()</td>
                     <td>
-                        <NavigationButton To="@("/roles/edit/" + role.Id)">Edit</NavigationButton>
+                        <NavigationButton To="@("/admin/roles/edit/" + role.Id)">Edit</NavigationButton>
                         <Button @onclick="() => OnDeleteClick(role.Id)">Delete</Button>
                     </td>
                 </tr>

@@ -55,6 +55,7 @@ else
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
 }
 
+app.UseRouting();
 app.UseStaticFiles();
 
 app.UseAntiforgery();
@@ -63,6 +64,14 @@ app.UseApiDocumentation();
 
 app.UseAuthorization();
 
+app.UseEndpoints(endpoints =>
+{
+    _ = endpoints.MapGet("/", (context) =>
+    {
+        context.Response.Redirect("/admin");
+        return Task.CompletedTask;
+    });
+});
 app.MapControllers();
 
 app.MapRazorComponents<App>()
