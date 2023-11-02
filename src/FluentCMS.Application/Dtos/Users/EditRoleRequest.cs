@@ -1,7 +1,5 @@
-﻿using MediatR;
-
-namespace FluentCMS.Application.Users;
-public class EditRoleCommand : IRequest
+﻿namespace FluentCMS.Application.Dtos.Users;
+public class EditRoleRequest
 {
     public required Guid Id { get; set; }
     public required string Name { get; set; }

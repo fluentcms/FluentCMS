@@ -1,7 +1,5 @@
-﻿using MediatR;
-
-namespace FluentCMS.Application.Users;
-public class CreateRoleCommand : IRequest<Guid>
+﻿namespace FluentCMS.Application.Dtos.Users;
+public class CreateRoleRequest
 {
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }

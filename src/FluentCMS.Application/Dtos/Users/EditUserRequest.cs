@@ -1,7 +1,5 @@
-﻿using MediatR;
-
-namespace FluentCMS.Application.Users;
-public class EditUserCommand : IRequest
+﻿namespace FluentCMS.Application.Dtos.Users;
+public class EditUserRequest
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;

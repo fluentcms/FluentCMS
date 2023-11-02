@@ -36,16 +36,16 @@ else
 }
 
 @code {
-    private List<FluentCMS.Entities.Users.User>? users;
+    private IEnumerable<FluentCMS.Application.Dtos.Users.UserDto>? users;
 
     private async Task LoadUsers()
     {
         try
         {
-            var response = await httpClient.GetFromJsonAsync<ApiResult<IEnumerable<FluentCMS.Entities.Users.User>>>("users");
+            var response = await httpClient.GetFromJsonAsync<ApiResult<PagingResponse<FluentCMS.Application.Dtos.Users.UserDto>>>("users");
             if (response != null && response.IsSuccess)
             {
-                users = response.Data!.ToList();
+                users = response.Data!.Data;
             }
         }
         catch (Exception ex)

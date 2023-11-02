@@ -1,68 +1,62 @@
-﻿using FluentCMS.Application.Sites;
-using FluentCMS.Entities.Sites;
-using FluentCMS.Web.Controllers;
-using Microsoft.AspNetCore.Mvc;
-using MediatR;
+﻿using FluentCMS.Application.Dtos;
+using FluentCMS.Application.Dtos.Sites;
+using FluentCMS.Application.Services;
 using FluentCMS.Models;
+using Microsoft.AspNetCore.Mvc;
 
-namespace FluentCMS.Shared.Controllers;
-public class SiteController(IMediator mediator) : BaseController
+namespace FluentCMS.Web.Controllers;
+public class SiteController(ISiteService siteService) : BaseController
 {
-    //GetAll
     [HttpGet]
-    public async Task<ActionResult<ApiResult<IEnumerable<Site>>>> GetAll()
+    public async Task<ActionResult<ApiResult<PagingResponse<SiteDto>>>> Search([FromQuery] SearchSiteRequest request)
     {
-        return SuccessResult(await mediator.Send(new GetSitesQuery()));
+        return SuccessResult(await siteService.Search(request));
     }
 
-    //GetById
     [HttpGet("{id}")]
-    public async Task<ActionResult<ApiResult<Site>>> GetById(Guid id)
+    public async Task<ActionResult<ApiResult<SiteDto>>> GetById(Guid id)
     {
-        return SuccessResult(await mediator.Send(new GetSiteByIdQuery { Id = id }));
+        return SuccessResult(await siteService.GetById(id));
     }
 
     [HttpGet("[action]")]
-    //GetByUrl
-    public async Task<ActionResult<ApiResult<Site>>> GetByUrl([FromQuery] string url)
+    public async Task<ActionResult<ApiResult<SiteDto>>> GetByUrl([FromQuery] string url)
     {
-        return SuccessResult(await mediator.Send(new GetSiteByUrlQuery { Url = url }));
+        return SuccessResult(await siteService.GetByUrl(url));
     }
 
-    //Create
-    [HttpPost()]
-    public async Task<ActionResult<ApiResult<Guid>>> Create(CreateSiteCommand request)
+    [HttpPost]
+    public async Task<ActionResult<ApiResult<Guid>>> Create(CreateSiteRequest request)
     {
-        return SuccessResult(await mediator.Send(request));
+        var result = await siteService.Create(request);
+        return SuccessResult(result);
     }
 
-    //Update
     [HttpPatch]
-    public async Task<ActionResult<ApiResult<Guid>>> Update(EditSiteCommand request)
+    public async Task<ActionResult<ApiResult<bool>>> Edit(EditSiteRequest request)
     {
-        return SuccessResult(await mediator.Send(request));
+        await siteService.Edit(request);
+        return SuccessResult(true);
     }
 
     [HttpDelete("{id}")]
-    //Delete
-    public async Task<ActionResult<ApiResult<Guid>>> Delete(Guid id)
+    public async Task<ActionResult<ApiResult<bool>>> Delete([FromRoute] DeleteSiteRequest request)
     {
-        return SuccessResult(await mediator.Send(new DeleteSiteCommand { Id = id }));
+        await siteService.Delete(request);
+        return SuccessResult(true);
     }
 
     [HttpPut("[action]")]
-    //AddUrl
-    public async Task<ActionResult> AddUrl(AddSiteUrlCommand request)
+    public async Task<ActionResult<ApiResult<bool>>> AddUrl(AddSiteUrlRequest request)
     {
-        await mediator.Send(request);
-        return Ok();
+        await siteService.AddSiteUrl(request);
+        return SuccessResult(true);
     }
 
     [HttpDelete("[action]")]
-    //RemoveUrl
-    public async Task<ActionResult> RemoveUrl(RemoveSiteUrlCommand request)
+    public async Task<ActionResult<ApiResult<bool>>> RemoveUrl(RemoveSiteUrlRequest request)
     {
-        await mediator.Send(request);
-        return Ok();
+        await siteService.RemoveSiteUrl(request);
+        return SuccessResult(true);
     }
 }

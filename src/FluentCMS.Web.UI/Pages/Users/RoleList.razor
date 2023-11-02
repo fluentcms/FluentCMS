@@ -38,16 +38,16 @@ else
 }
 
 @code {
-    private List<FluentCMS.Entities.Users.Role>? roles;
+    private IEnumerable<FluentCMS.Application.Dtos.Users.RoleDto>? roles;
 
     private async Task LoadRoles()
     {
         try
         {
-            var response = await httpClient.GetFromJsonAsync<ApiResult<IEnumerable<FluentCMS.Entities.Users.Role>>>("roles");
+            var response = await httpClient.GetFromJsonAsync<ApiResult<PagingResponse<FluentCMS.Application.Dtos.Users.RoleDto>>>("roles");
             if (response != null && response.IsSuccess)
             {
-                roles = response.Data!.ToList();
+                roles = response.Data!.Data;
             }
         }
         catch (Exception ex)

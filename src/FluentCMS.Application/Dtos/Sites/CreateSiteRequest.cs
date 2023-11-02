@@ -1,7 +1,5 @@
-﻿using MediatR;
-
-namespace FluentCMS.Application.Sites;
-public class CreateSiteCommand : IRequest<Guid>
+﻿namespace FluentCMS.Application.Dtos.Sites;
+public class CreateSiteRequest
 {
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
