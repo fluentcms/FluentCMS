@@ -1,7 +1,8 @@
-﻿@page "/sites/edit/{Id:guid}"
-@page "/sites/create"
+﻿@page "/admin/sites/edit/{Id:guid}"
+@page "/admin/sites/create"
 @inject HttpClient _httpClient
 @inject NavigationManager _navigationManager
+
 <h3>SiteEdit</h3>
 <EditForm Model="Site" OnValidSubmit="ValidSubmit">
     <div class="mb-3">
