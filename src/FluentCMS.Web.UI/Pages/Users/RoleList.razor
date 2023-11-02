@@ -1,0 +1,80 @@
+﻿@page "/roles"
+@inject HttpClient httpClient
+
+<h3>Roles</h3>
+<p>List of all roles.</p>
+<NavigationButton To="/roles/create">Create</NavigationButton>
+
+@if (roles == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Auto Assigned</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var role in roles)
+            {
+                <tr>
+                    <td>@role.Name</td>
+                    <td>@role.Description</td>
+                    <td>@role.AutoAssigned.ToString()</td>
+                    <td>
+                        <NavigationButton To="@("/roles/edit/" + role.Id)">Edit</NavigationButton>
+                        <Button @onclick="() => OnDeleteClick(role.Id)">Delete</Button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<FluentCMS.Entities.Users.Role>? roles;
+
+    private async Task LoadRoles()
+    {
+        try
+        {
+            var response = await httpClient.GetFromJsonAsync<ApiResult<IEnumerable<FluentCMS.Entities.Users.Role>>>("roles");
+            if (response != null && response.IsSuccess)
+            {
+                roles = response.Data!.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+    }
+
+    private async Task OnDeleteClick(Guid id)
+    {
+        try
+        {
+            var response = await httpClient.DeleteFromJsonAsync<ApiResult<bool>>("roles/" + id);
+            if (response != null && response.IsSuccess)
+            {
+                await LoadRoles();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+}
