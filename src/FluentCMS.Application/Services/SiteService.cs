@@ -1,5 +1,4 @@
 ﻿using Ardalis.GuardClauses;
-using FluentCMS.Application.Dtos;
 using FluentCMS.Application.Dtos.Sites;
 using FluentCMS.Entities.Sites;
 using FluentCMS.Repository;
@@ -10,7 +9,7 @@ public interface ISiteService
 {
     Task<SiteDto> GetById(Guid id);
     Task<SiteDto> GetByUrl(string Url);
-    Task<PagingResponse<SiteDto>> Search(SearchSiteRequest request);
+    Task<SearchSiteResponse> Search(SearchSiteRequest request);
     Task<Guid> Create(CreateSiteRequest request);
     Task Edit(EditSiteRequest request);
     Task Delete(DeleteSiteRequest request);
@@ -40,10 +39,10 @@ internal class SiteService(AutoMapper.IMapper mapper, ISiteRepository siteReposi
         return mapper.Map<SiteDto>(site);
     }
 
-    public async Task<PagingResponse<SiteDto>> Search(SearchSiteRequest request)
+    public async Task<SearchSiteResponse> Search(SearchSiteRequest request)
     {
         var data = await siteRepository.GetAll();
-        return new PagingResponse<SiteDto>
+        return new SearchSiteResponse
         {
             Data = data.Select(x => mapper.Map<SiteDto>(x)),
             Total = data.Count(),

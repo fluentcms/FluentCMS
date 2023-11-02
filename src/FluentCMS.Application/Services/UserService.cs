@@ -1,5 +1,4 @@
 ﻿using Ardalis.GuardClauses;
-using FluentCMS.Application.Dtos;
 using FluentCMS.Application.Dtos.Users;
 using FluentCMS.Entities.Users;
 using FluentCMS.Repository;
@@ -9,7 +8,7 @@ public interface IUserService
 {
     Task<UserDto> GetById(Guid id);
     Task<UserDto> GetByUsername(string username);
-    Task<PagingResponse<UserDto>> Search(SearchUserRequest request);
+    Task<SearchUserResponse> Search(SearchUserRequest request);
     Task<Guid> Create(CreateUserRequest request, CancellationToken cancellationToken = default);
     Task Edit(EditUserRequest request, CancellationToken cancellationToken = default);
     Task Delete(DeleteUserRequest request, CancellationToken cancellationToken = default);
@@ -41,11 +40,11 @@ internal class UserService : IUserService
         return _mapper.Map<UserDto>(user);
     }
 
-    public async Task<PagingResponse<UserDto>> Search(SearchUserRequest request)
+    public async Task<SearchUserResponse> Search(SearchUserRequest request)
     {
         var users = await _userRepository.GetAll(x =>
             string.IsNullOrWhiteSpace(request.Name) || x.Name.Contains(request.Name));
-        return new PagingResponse<UserDto>
+        return new SearchUserResponse
         {
             Data = users.Select(x => _mapper.Map<UserDto>(x)),
             Total = users.Count(),

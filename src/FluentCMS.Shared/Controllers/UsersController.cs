@@ -1,5 +1,4 @@
 ﻿using FluentCMS.Application.Dtos.Users;
-using FluentCMS.Application.Dtos;
 using FluentCMS.Application.Services;
 using FluentCMS.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +7,7 @@ namespace FluentCMS.Web.Controllers;
 public class UsersController(IUserService userService) : BaseController
 {
     [HttpGet]
-    public async Task<ActionResult<ApiResult<PagingResponse<UserDto>>>> Search([FromQuery] SearchUserRequest request)
+    public async Task<ActionResult<ApiResult<SearchUserResponse>>> Search([FromQuery] SearchUserRequest request)
     {
         var data = await userService.Search(request);
         return SuccessResult(data);

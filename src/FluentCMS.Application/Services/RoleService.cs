@@ -1,5 +1,4 @@
 ﻿using Ardalis.GuardClauses;
-using FluentCMS.Application.Dtos;
 using FluentCMS.Application.Dtos.Users;
 using FluentCMS.Entities.Users;
 using FluentCMS.Repository;
@@ -9,7 +8,7 @@ namespace FluentCMS.Application.Services;
 public interface IRoleService
 {
     Task<RoleDto> GetById(Guid id);
-    Task<PagingResponse<RoleDto>> Search(SearchRoleRequest request);
+    Task<SearchRoleResponse> Search(SearchRoleRequest request);
     Task<Guid> Create(CreateRoleRequest request, CancellationToken cancellationToken = default);
     Task Edit(EditRoleRequest request, CancellationToken cancellationToken = default);
     Task Delete(DeleteRoleRequest request, CancellationToken cancellationToken = default);
@@ -24,10 +23,10 @@ internal class RoleService(AutoMapper.IMapper mapper, IGenericRepository<Role> r
         return mapper.Map<RoleDto>(roles);
     }
 
-    public async Task<PagingResponse<RoleDto>> Search(SearchRoleRequest request)
+    public async Task<SearchRoleResponse> Search(SearchRoleRequest request)
     {
         var roles = await roleRepository.GetAll();
-        return new PagingResponse<RoleDto>
+        return new SearchRoleResponse
         {
             Data = roles.Select(x => mapper.Map<RoleDto>(x)),
             Total = roles.Count(),

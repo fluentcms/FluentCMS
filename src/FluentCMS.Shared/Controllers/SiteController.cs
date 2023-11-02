@@ -1,5 +1,4 @@
-﻿using FluentCMS.Application.Dtos;
-using FluentCMS.Application.Dtos.Sites;
+﻿using FluentCMS.Application.Dtos.Sites;
 using FluentCMS.Application.Services;
 using FluentCMS.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +7,7 @@ namespace FluentCMS.Web.Controllers;
 public class SiteController(ISiteService siteService) : BaseController
 {
     [HttpGet]
-    public async Task<ActionResult<ApiResult<PagingResponse<SiteDto>>>> Search([FromQuery] SearchSiteRequest request)
+    public async Task<ActionResult<ApiResult<SearchSiteResponse>>> Search([FromQuery] SearchSiteRequest request)
     {
         return SuccessResult(await siteService.Search(request));
     }

@@ -1,5 +1,4 @@
-﻿using FluentCMS.Application.Dtos;
-using FluentCMS.Application.Dtos.Users;
+﻿using FluentCMS.Application.Dtos.Users;
 using FluentCMS.Application.Services;
 using FluentCMS.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +7,7 @@ namespace FluentCMS.Web.Controllers;
 public class RolesController(IRoleService roleService) : BaseController
 {
     [HttpGet]
-    public async Task<ActionResult<ApiResult<PagingResponse<RoleDto>>>> Search([FromQuery] SearchRoleRequest request)
+    public async Task<ActionResult<ApiResult<SearchRoleResponse>>> Search([FromQuery] SearchRoleRequest request)
     {
         var data = await roleService.Search(request);
         return SuccessResult(data);
