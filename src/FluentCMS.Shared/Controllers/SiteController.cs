@@ -7,6 +7,7 @@ using FluentCMS.Models;
 using FluentCMS.Application;
 
 namespace FluentCMS.Shared.Controllers;
+[ValidationActionFilter]
 public class SiteController : GenericCrudController<Site, SiteDto>
 {
     public SiteController(IServiceProvider serviceProvider, SiteService siteService) : base(serviceProvider, siteService)
