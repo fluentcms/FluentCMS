@@ -16,7 +16,7 @@
     </div>
     <div class="mb-3">
         <label class="form-label">Password</label>
-        <InputText type="text" class="form-control" required @bind-Value="data.Password" name="password" />
+        <InputText type="password" class="form-control" required @bind-Value="data.Password" name="password" />
     </div>
     <div>
         <Label Class="form-label">Roles:</Label>
@@ -33,9 +33,9 @@
                            type="checkbox"
                            id="@("chkRole-" + r.Name)"
                            @onchange="e => onRoleCheckboxChanged((bool)e.Value!, r.Id)"
-                           value="">
+                           @attributes="addCheckedAttribute(data.Roles.Any(x => x == r.Id))">
                     <label class="form-check-label" for="@("chkRole-" + r.Name)">
-                        @r.Name
+                        @r.Name <span class="fw-light">(@r.Description)</span>
                     </label>
                 </div>
             }
@@ -75,7 +75,7 @@
                     data.Name = response.Data!.Name;
                     data.Username = response.Data!.Username;
                     data.Password = response.Data!.Password;
-                    data.Roles = new List<Guid>();
+                    data.Roles = response.Data.UserRoles.Select(r => r.RoleId).ToList();
                 }
             }
             catch (Exception)
@@ -122,6 +122,9 @@
             }
         }
     }
+
+    private Dictionary<string, object> addCheckedAttribute(bool isChecked) =>
+        new Dictionary<string, object>() { ["checked"] = isChecked };
 
     private void onRoleCheckboxChanged(bool isChecked, Guid roleId)
     {

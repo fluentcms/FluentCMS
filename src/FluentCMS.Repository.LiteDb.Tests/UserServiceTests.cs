@@ -31,8 +31,9 @@ public class UserServiceTests
             Name = "TestUser",
             Username = username,
             Password = "password",
+            UserRoles = new List<UserRole>(),
         };
-        await userService.Create(userToCreate, Enumerable.Empty<Guid>());
+        await userService.Create(userToCreate);
 
         var loadedUser = await userService.GetByUsername(username);
         loadedUser.ShouldNotBeNull();
@@ -55,9 +56,10 @@ public class UserServiceTests
             Name = "TestUser",
             Username = "",
             Password = "password",
+            UserRoles = new List<UserRole>(),
         };
 
         // it should throw a ApplicationException
-        await Should.ThrowAsync<ApplicationException>(() => userService.Create(userToCreate, Enumerable.Empty<Guid>()));
+        await Should.ThrowAsync<ApplicationException>(() => userService.Create(userToCreate));
     }
 }
