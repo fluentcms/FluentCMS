@@ -1,4 +1,5 @@
-﻿using FluentCMS.Repositories.MongoDb;
+﻿using FluentCMS.Repositories.Abstractions;
+using FluentCMS.Repositories.MongoDb;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MongoDB.Bson;
@@ -28,6 +29,13 @@ public static class MongoDbServiceExtensions
 
         services.TryAddSingleton<MongoDbContext>();
         services.TryAddSingleton<IMongoDBContext, MongoDbContext>();
+
+
+        services.AddScoped(typeof(IGenericRepository<>), typeof(MongoDbGenericRepository<>));
+
+        services.AddScoped<IUserRepository, MongoDbUserRepository>();
+        services.AddScoped<ISiteRepository, MongoDbSiteRepository>();
+        services.AddScoped<IPageRepository, MongoDbPageRepository>();
 
         return services;
     }
