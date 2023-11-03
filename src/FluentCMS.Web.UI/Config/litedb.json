@@ -1,0 +1,6 @@
+{
+  "LiteDb": {
+    "UseInMemory": false,
+    "FilePath": "database.litedb"
+  }
+}
