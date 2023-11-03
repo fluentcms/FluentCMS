@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Application.Services;
+using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Application;
@@ -14,6 +15,7 @@ public static class Extensions
 
         // register automapper
         fcBuilder.Services.AddAutoMapper(typeof(Extensions).Assembly);
+        fcBuilder.Services.AddValidatorsFromAssembly(typeof(Extensions).Assembly);
 
         return fcBuilder;
     }

@@ -2,6 +2,7 @@ using FluentCMS;
 using FluentCMS.Application;
 using FluentCMS.Repository.LiteDb;
 using FluentCMS.Web.UI;
+using FluentCMS.Web;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,7 @@ services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 services.AddControllers();
+services.AddRequestValidation();
 
 services.AddApiDocumentation();
 
