@@ -31,10 +31,15 @@ public class MongoDbGenericRepository<TEntity> : IGenericRepository<TEntity>
         cancellationToken.ThrowIfCancellationRequested();
 
         var idFilter = Builders<TEntity>.Filter.Eq(doc => doc.Id, id);
+        
+        var options = new FindOneAndDeleteOptions<TEntity>
+        {
+            //Projection = Builders<TEntity>.Projection.Include(doc => doc)
+        };
 
-        var entity = await Collection.FindOneAndDeleteAsync(idFilter, null, cancellationToken);
+        var entity = await Collection.FindOneAndDeleteAsync(idFilter, options, cancellationToken);
 
-        return entity;        
+        return entity;
     }
 
     public virtual async Task<IEnumerable<TEntity>> GetAll(CancellationToken cancellationToken = default)
