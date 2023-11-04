@@ -43,7 +43,8 @@ public class SiteOtherService : ISiteOtherService
         // TODO: check permissions, only super admin can delete a site
 
         // TODO: all pages should be deleted either by cascade or manually
-        await _siteRepository.Delete(id, cancellationToken);
+
+        _ = await _siteRepository.Delete(id, cancellationToken) ?? throw new Exception(id.ToString());
     }
 
     public async Task<List<Site>> GetAll(CancellationToken cancellationToken = default)
