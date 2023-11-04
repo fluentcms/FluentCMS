@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Server;
 
-public interface IListResult<TData> : IResult<IEnumerable<TData>>
+public interface IApiListResult<TData> : IApiResult<IEnumerable<TData>>
 {
     public int PageSize { get; }
     public int TotalPages { get; }
@@ -10,7 +10,7 @@ public interface IListResult<TData> : IResult<IEnumerable<TData>>
     public bool HasNext { get; }
 }
 
-public class ListResult<TData> : Result<IEnumerable<TData>>, IListResult<TData>
+public class ApiListResult<TData> : ApiResult<IEnumerable<TData>>, IApiListResult<TData>
 {
     public int PageSize { get; }
     public int TotalPages { get; }
@@ -41,7 +41,7 @@ public class ListResult<TData> : Result<IEnumerable<TData>>, IListResult<TData>
     //    HasNext = hasNext;
     //}
 
-    public ListResult(IEnumerable<TData> data)
+    public ApiListResult(IEnumerable<TData> data)
     {
         Data = data;
         PageNumber = 1;

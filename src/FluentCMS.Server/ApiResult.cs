@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Server;
 
-public interface IResult<TData>
+public interface IApiResult<TData>
 {
     List<Error> Errors { get; }
     List<object> Debug { get; }
@@ -12,11 +12,11 @@ public interface IResult<TData>
     DateTime Timestamp { get; }
 }
 
-public interface IResult : IResult<object>
+public interface IApiResult : IApiResult<object>
 {
 }
 
-public class Result<TData> : IResult<TData>
+public class ApiResult<TData> : IApiResult<TData>
 {
     public List<Error> Errors { get; } = [];
     public List<object> Debug { get; } = [];
@@ -27,24 +27,24 @@ public class Result<TData> : IResult<TData>
     public TData? Data { get; set; }
     public DateTime Timestamp { get; } = DateTime.Now;
 
-    public Result()
+    public ApiResult()
     {
-        
+
     }
-    public Result(TData data)
+    public ApiResult(TData data)
     {
         Data = data;
     }
 }
 
-public class Result : Result<object>, IResult
+public class ApiResult : ApiResult<object>, IApiResult
 {
-    public Result()
+    public ApiResult()
     {
-        
+
     }
 
-    public Result(object data)
+    public ApiResult(object data)
     {
         Data = data;
     }

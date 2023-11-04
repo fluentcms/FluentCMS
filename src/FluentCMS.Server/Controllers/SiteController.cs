@@ -14,46 +14,46 @@ public class SiteController : BaseController
     }
 
     [HttpGet]
-    public async Task<IListResult<SiteDto>> GetAll(CancellationToken cancellationToken = default)
+    public async Task<IApiListResult<SiteDto>> GetAll(CancellationToken cancellationToken = default)
     {
         var siteDtos = await _siteService.GetAll(cancellationToken);
-        return new ListResult<SiteDto>(siteDtos);
+        return new ApiListResult<SiteDto>(siteDtos);
     }
 
     [HttpGet("{id}")]
-    public async Task<IResult<SiteDto>> GetById(Guid id, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<SiteDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var siteDto = await _siteService.GetById(id, cancellationToken);
-        return new Result<SiteDto>(siteDto);
+        return new ApiResult<SiteDto>(siteDto);
     }
 
     [HttpGet]
-    public async Task<IResult<SiteDto>> GetByUrl([FromQuery] string url, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<SiteDto>> GetByUrl([FromQuery] string url, CancellationToken cancellationToken = default)
     {
         // TODO: should we change Url to domain?
         var siteDto = await _siteService.GetByUrl(url, cancellationToken);
-        return new Result<SiteDto>(siteDto);
+        return new ApiResult<SiteDto>(siteDto);
     }
 
     [HttpPost]
-    public async Task<IResult<SiteDto>> Create(CreateSiteDto request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<SiteDto>> Create(CreateSiteDto request, CancellationToken cancellationToken = default)
     {
         var siteDto = await _siteService.Create(request, cancellationToken);
-        return new Result<SiteDto>(siteDto);
+        return new ApiResult<SiteDto>(siteDto);
     }
 
     [HttpPatch]
-    public async Task<IResult<SiteDto>> Update(UpdateSiteDto request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<SiteDto>> Update(UpdateSiteDto request, CancellationToken cancellationToken = default)
     {
         var siteDto = await _siteService.Update(request, cancellationToken);
-        return new Result<SiteDto>(siteDto);
+        return new ApiResult<SiteDto>(siteDto);
     }
 
     [HttpDelete("{id}")]
-    public async Task<IResult> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    public async Task<IApiResult> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         await _siteService.Delete(id, cancellationToken);
-        return new Result();
+        return new ApiResult();
     }
 
 }
