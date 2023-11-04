@@ -20,6 +20,8 @@ services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
+app.Services.SeedDefaultData(@".\SeedData\");
+
 app.UseDeveloperExceptionPage();
 
 app.UseHsts();
