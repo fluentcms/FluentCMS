@@ -1,7 +1,6 @@
 ﻿using FluentCMS.Repositories.Abstractions;
 using FluentCMS.Repositories.MongoDb;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
@@ -16,7 +15,7 @@ public static class MongoDbServiceExtensions
         BsonSerializer.RegisterSerializer(typeof(decimal?), new NullableSerializer<decimal>(new DecimalSerializer(BsonType.Decimal128)));
         BsonSerializer.RegisterSerializer(typeof(Guid), new GuidSerializer(GuidRepresentation.Standard));
 
-        services.TryAddSingleton(provider =>
+        services.AddSingleton(provider =>
         {
             var configuration = provider.GetService<IConfiguration>() ?? throw new InvalidOperationException("IConfiguration is not registered.");
 
@@ -27,9 +26,7 @@ public static class MongoDbServiceExtensions
                 : new MongoDbOptions<MongoDbContext>(connString);
         });
 
-        services.TryAddSingleton<MongoDbContext>();
-        services.TryAddSingleton<IMongoDBContext, MongoDbContext>();
-
+        services.AddSingleton<IMongoDBContext, MongoDbContext>();
 
         services.AddScoped(typeof(IGenericRepository<>), typeof(MongoDbGenericRepository<>));
 

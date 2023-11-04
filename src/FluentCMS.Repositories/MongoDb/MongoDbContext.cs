@@ -4,7 +4,7 @@ namespace FluentCMS.Repositories.MongoDb;
 
 public class MongoDbContext : IMongoDBContext
 {
-    protected MongoDbContext(MongoDbOptions<MongoDbContext> options)
+    public MongoDbContext(MongoDbOptions<MongoDbContext> options)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(options.ConnectionString);

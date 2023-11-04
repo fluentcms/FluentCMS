@@ -12,6 +12,10 @@ public interface IResult<TData>
     DateTime Timestamp { get; }
 }
 
+public interface IResult : IResult<object>
+{
+}
+
 public class Result<TData> : IResult<TData>
 {
     public List<Error> Errors { get; } = [];
@@ -22,4 +26,26 @@ public class Result<TData> : IResult<TData>
     public int Code { get; set; } = 200;
     public TData? Data { get; set; }
     public DateTime Timestamp { get; } = DateTime.Now;
+
+    public Result()
+    {
+        
+    }
+    public Result(TData data)
+    {
+        Data = data;
+    }
+}
+
+public class Result : Result<object>, IResult
+{
+    public Result()
+    {
+        
+    }
+
+    public Result(object data)
+    {
+        Data = data;
+    }
 }

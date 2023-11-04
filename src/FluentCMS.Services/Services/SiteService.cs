@@ -1,4 +1,6 @@
-﻿using FluentCMS.Entities;
+﻿using FluentCMS.Application.Dtos.Pages;
+using FluentCMS.Application.Dtos.Sites;
+using FluentCMS.Entities;
 using FluentCMS.Repositories.Abstractions;
 
 namespace FluentCMS.Application.Services;
@@ -6,10 +8,11 @@ namespace FluentCMS.Application.Services;
 public interface ISiteService
 {
     Task<SiteDto> GetByUrl(string url, CancellationToken cancellationToken = default);
+    Task<List<SiteDto>> GetAll(CancellationToken cancellationToken = default);
     Task<SiteDto> GetById(Guid id, CancellationToken cancellationToken = default);
     Task Delete(Guid id, CancellationToken cancellationToken = default);
-    Task<SiteDto> Create(SiteDto siteDto, CancellationToken cancellationToken = default);
-    Task<SiteDto> Update(SiteDto siteDto, CancellationToken cancellationToken = default);
+    Task<SiteDto> Create(CreateSiteDto createSite, CancellationToken cancellationToken = default);
+    Task<SiteDto> Update(UpdateSiteDto updateSite, CancellationToken cancellationToken = default);
 }
 
 public class SiteService : ISiteService
@@ -23,14 +26,32 @@ public class SiteService : ISiteService
         _pageRepository = pageRepository;
     }
 
-    public Task<SiteDto> Create(SiteDto siteDto, CancellationToken cancellationToken = default)
+    public async Task<SiteDto> Create(CreateSiteDto createSite, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var site = await _siteRepository.Create(new Site
+        {
+            Name = createSite.Name,
+            Description = createSite.Description,
+            Urls = createSite.Urls
+        }, cancellationToken);
+
+        return site == null ? throw new Exception("Site not created") : await GetSiteDto(site, cancellationToken);
     }
 
-    public Task Delete(Guid id, CancellationToken cancellationToken = default)
+    public async Task Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        _ = await _siteRepository.Delete(id, cancellationToken) ?? throw new Exception(id.ToString());
+    }
+
+    public async Task<List<SiteDto>> GetAll(CancellationToken cancellationToken = default)
+    {
+        var sites = await _siteRepository.GetAll(cancellationToken);
+        var siteDtos = new List<SiteDto>();
+        foreach (var site in sites)
+        {
+            siteDtos.Add(await GetSiteDto(site, cancellationToken));
+        }
+        return siteDtos;
     }
 
     public async Task<SiteDto> GetById(Guid id, CancellationToken cancellationToken = default)
@@ -47,9 +68,19 @@ public class SiteService : ISiteService
         return await GetSiteDto(site, cancellationToken);
     }
 
-    public Task<SiteDto> Update(SiteDto siteDto, CancellationToken cancellationToken = default)
+    public async Task<SiteDto> Update(UpdateSiteDto updateSite, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var siteUpdate = new Site
+        {
+            Id = updateSite.Id,
+            Name = updateSite.Name,
+            Description = updateSite.Description,
+            Urls = updateSite.Urls
+        };
+
+        var site = await _siteRepository.Update(siteUpdate, cancellationToken);
+
+        return site == null ? throw new Exception(updateSite.Id.ToString()) : await GetSiteDto(site, cancellationToken);
     }
 
     private async Task<SiteDto> GetSiteDto(Site site, CancellationToken cancellationToken = default)
@@ -74,28 +105,5 @@ public class SiteService : ISiteService
 
         return siteDto;
     }
-
-}
-
-public class SiteDto
-{
-    public Guid Id { get; set; }
-    public required string Name { get; set; }
-    public string? Description { get; set; }
-    public required List<string> Urls { get; set; } = [];
-    public List<PageDto> Pages { get; set; } = [];
-}
-
-public class PageDto
-{
-    public Guid Id { get; set; }
-    public required string Title { get; set; }
-    public List<Page> Children { get; set; } = [];
-    public int Order { get; set; }
-    public required string Path { get; set; }
-}
-
-public class RoleDto : Role
-{
 
 }
