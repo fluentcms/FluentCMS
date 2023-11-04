@@ -15,6 +15,9 @@ public static class MongoDbServiceExtensions
         BsonSerializer.RegisterSerializer(typeof(decimal?), new NullableSerializer<decimal>(new DecimalSerializer(BsonType.Decimal128)));
         BsonSerializer.RegisterSerializer(typeof(Guid), new GuidSerializer(GuidRepresentation.Standard));
 
+        // TODO: if we remove this line, Id queries will not work
+        BsonDefaults.GuidRepresentation = GuidRepresentation.Standard;
+
         services.AddSingleton(provider =>
         {
             var configuration = provider.GetService<IConfiguration>() ?? throw new InvalidOperationException("IConfiguration is not registered.");
