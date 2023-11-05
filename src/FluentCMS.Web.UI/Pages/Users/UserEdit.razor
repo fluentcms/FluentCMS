@@ -15,8 +15,10 @@
         <InputText type="text" class="form-control" required @bind-Value="data.Username" name="username" />
     </div>
     <div class="mb-3">
-        <label class="form-label">Password</label>
-        <InputText type="password" class="form-control" required @bind-Value="data.Password" name="password" />
+        <label class="form-label">Password @(Id.HasValue ? "(leave empty to ignore change password)" : "")</label>
+        <InputText type="password" class="form-control" name="password"
+                   @attributes="addRequiredAttribute(Id == null)"
+                   @bind-Value="data.Password" />
     </div>
     <div>
         <Label Class="form-label">Roles:</Label>
@@ -49,15 +51,15 @@
     [Parameter]
     public Guid? Id { get; set; }
 
-    private IEnumerable<FluentCMS.Entities.Users.Role>? roles;
-    private Application.Users.CreateUserCommand data = new();
+    private IEnumerable<Application.Dtos.Users.RoleDto>? roles;
+    private Application.Dtos.Users.CreateUserRequest data = new();
 
     protected override async Task OnInitializedAsync()
     {
-        var getRolesResponse = await _httpClient.GetFromJsonAsync<ApiResult<IEnumerable<FluentCMS.Entities.Users.Role>>>("roles");
+        var getRolesResponse = await _httpClient.GetFromJsonAsync<ApiResult<PagingResponse<Application.Dtos.Users.RoleDto>>>("roles");
         if (getRolesResponse != null && getRolesResponse.IsSuccess)
         {
-            roles = getRolesResponse.Data;
+            roles = getRolesResponse.Data!.Data;
         }
     }
 
@@ -69,13 +71,13 @@
         {
             try
             {
-                var response = await _httpClient.GetFromJsonAsync<ApiResult<FluentCMS.Entities.Users.User>>($"users/{Id.Value}");
+                var response = await _httpClient.GetFromJsonAsync<ApiResult<Application.Dtos.Users.UserDto>>($"users/{Id.Value}");
                 if (response != null && response.IsSuccess)
                 {
                     data.Name = response.Data!.Name;
                     data.Username = response.Data!.Username;
-                    data.Password = response.Data!.Password;
-                    data.Roles = response.Data.UserRoles.Select(r => r.RoleId).ToList();
+                    data.Password = "";
+                    data.Roles = response.Data.UserRoles.ToList();
                 }
             }
             catch (Exception)
@@ -93,7 +95,7 @@
             try
             {
                 await _httpClient.PostAsJsonAsync($"users", data);
-                _navigationManager.NavigateTo("/users");
+                _navigationManager.NavigateTo("/admin/users");
             }
             catch (Exception)
             {
@@ -103,7 +105,7 @@
         //Edit
         else
         {
-            var editCommand = new Application.Users.EditUserCommand
+            var editCommand = new Application.Dtos.Users.EditUserRequest
                 {
                     Id = Id.Value,
                     Name = data.Name,
@@ -114,7 +116,7 @@
             try
             {
                 await _httpClient.PutAsJsonAsync($"users", editCommand);
-                _navigationManager.NavigateTo("/users");
+                _navigationManager.NavigateTo("/admin/users");
             }
             catch (Exception)
             {
@@ -122,6 +124,9 @@
             }
         }
     }
+
+    private Dictionary<string, object> addRequiredAttribute(bool isRequired) =>
+        new Dictionary<string, object>() { ["required"] = isRequired };
 
     private Dictionary<string, object> addCheckedAttribute(bool isChecked) =>
         new Dictionary<string, object>() { ["checked"] = isChecked };

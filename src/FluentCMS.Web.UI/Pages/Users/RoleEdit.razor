@@ -31,7 +31,7 @@
     [Parameter]
     public Guid? Id { get; set; }
 
-    private Application.Users.CreateRoleCommand data = new();
+    private Application.Dtos.Users.CreateRoleRequest data = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -41,7 +41,7 @@
         {
             try
             {
-                var response = await _httpClient.GetFromJsonAsync<ApiResult<FluentCMS.Entities.Users.Role>>($"roles/{Id.Value}");
+                var response = await _httpClient.GetFromJsonAsync<ApiResult<Application.Dtos.Users.RoleDto>>($"roles/{Id.Value}");
                 if (response != null && response.IsSuccess)
                 {
                     data.Name = response.Data!.Name;
@@ -64,7 +64,7 @@
             try
             {
                 await _httpClient.PostAsJsonAsync($"roles", data);
-                _navigationManager.NavigateTo("/roles");
+                _navigationManager.NavigateTo("/admin/roles");
             }
             catch (Exception)
             {
@@ -74,7 +74,7 @@
         //Edit
         else
         {
-            var editCommand = new Application.Users.EditRoleCommand
+            var editCommand = new Application.Dtos.Users.EditRoleRequest
                 {
                     Id = Id.Value,
                     Name = data.Name,
@@ -84,7 +84,7 @@
             try
             {
                 await _httpClient.PutAsJsonAsync($"roles", editCommand);
-                _navigationManager.NavigateTo("/roles");
+                _navigationManager.NavigateTo("/admin/roles");
             }
             catch (Exception)
             {

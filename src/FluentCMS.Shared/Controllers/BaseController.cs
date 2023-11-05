@@ -9,7 +9,7 @@ namespace FluentCMS.Web.Controllers;
 public abstract class BaseController : ControllerBase
 {
 
-    public ApiResult<TData> SuccessResult<TData>(TData data)
+    public ApiResult<TData> SuccessResult<TData>(TData? data)
     {
         return new ApiResult<TData>
         {

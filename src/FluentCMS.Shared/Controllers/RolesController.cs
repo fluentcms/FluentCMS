@@ -1,44 +1,43 @@
-﻿using FluentCMS.Application.Users;
-using FluentCMS.Entities.Users;
+﻿using FluentCMS.Application.Dtos.Users;
+using FluentCMS.Application.Services;
 using FluentCMS.Models;
-using FluentCMS.Web.Controllers;
 using Microsoft.AspNetCore.Mvc;
 
-namespace FluentCMS.Shared.Controllers;
-public class RolesController(MediatR.IMediator mediator) : BaseController
+namespace FluentCMS.Web.Controllers;
+public class RolesController(IRoleService roleService) : BaseController
 {
     [HttpGet]
-    public async Task<ActionResult<ApiResult<IEnumerable<Role>>>> GetAll()
+    public async Task<ActionResult<ApiResult<SearchRoleResponse>>> Search([FromQuery] SearchRoleRequest request)
     {
-        var data = await mediator.Send(new GetRolesQuery());
+        var data = await roleService.Search(request);
         return SuccessResult(data);
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<ApiResult<Role?>>> GetById([FromRoute] Guid id)
+    public async Task<ActionResult<ApiResult<RoleDto>>> GetById([FromRoute] Guid id)
     {
-        var data = await mediator.Send(new GetRolesQuery());
-        return SuccessResult(data.FirstOrDefault(x => x.Id == id));
+        var data = await roleService.GetById(id);
+        return SuccessResult(data);
     }
 
     [HttpPost]
-    public async Task<ActionResult<ApiResult<bool>>> Create(CreateRoleCommand request)
+    public async Task<ActionResult<ApiResult<Guid>>> Create(CreateRoleRequest request)
     {
-        await mediator.Send(request);
-        return SuccessResult(true);
+        var result = await roleService.Create(request);
+        return SuccessResult(result);
     }
 
     [HttpPut]
-    public async Task<ActionResult<ApiResult<bool>>> Edit(EditRoleCommand request)
+    public async Task<ActionResult<ApiResult<bool>>> Edit(EditRoleRequest request)
     {
-        await mediator.Send(request);
+        await roleService.Edit(request);
         return SuccessResult(true);
     }
 
     [HttpDelete("{id}")]
-    public async Task<ActionResult<ApiResult<bool>>> Delete([FromRoute] DeleteRoleCommand request)
+    public async Task<ActionResult<ApiResult<bool>>> Delete([FromRoute] DeleteRoleRequest request)
     {
-        await mediator.Send(request);
+        await roleService.Delete(request);
         return SuccessResult(true);
     }
 }

@@ -74,7 +74,7 @@
         //Create
         if (Id == null)
         {
-            var createCommand = new Application.Sites.CreateSiteCommand()
+            var createCommand = new Application.Dtos.Sites.CreateSiteRequest()
                 {
                     Name = Site.Name,
                     Description = Site.Description,
@@ -83,8 +83,8 @@
                 };
             try
             {
-                await _httpClient.PostAsJsonAsync<Application.Sites.CreateSiteCommand>($"site", createCommand);
-                _navigationManager.NavigateTo("/sites");
+                await _httpClient.PostAsJsonAsync($"site", createCommand);
+                _navigationManager.NavigateTo("/admin/sites");
             }
             catch (Exception)
             {
@@ -95,7 +95,7 @@
         //Edit
         else
         {
-            var editCommand = new Application.Sites.EditSiteCommand()
+            var editCommand = new Application.Dtos.Sites.EditSiteRequest
                 {
                     Id = Id.Value,
                     Name = Site.Name,
@@ -105,8 +105,8 @@
                 };
             try
             {
-                await _httpClient.PatchAsJsonAsync<Application.Sites.EditSiteCommand>($"site", editCommand);
-                _navigationManager.NavigateTo("/sites");
+                await _httpClient.PatchAsJsonAsync($"site", editCommand);
+                _navigationManager.NavigateTo("/admin/sites");
             }
             catch (Exception)
             {
