@@ -38,16 +38,16 @@ else
 }
 
 @code {
-    private IEnumerable<FluentCMS.Application.Dtos.Users.RoleDto>? roles;
+    private IEnumerable<Api.Models.Users.RoleResponse>? roles;
 
     private async Task LoadRoles()
     {
         try
         {
-            var response = await httpClient.GetFromJsonAsync<ApiResult<PagingResponse<FluentCMS.Application.Dtos.Users.RoleDto>>>("roles");
-            if (response != null && response.IsSuccess)
+            var response = await httpClient.GetFromJsonAsync<IApiPagingResult<Api.Models.Users.RoleResponse>>("roles");
+            if (response != null)
             {
-                roles = response.Data!.Data;
+                roles = response!.Data;
             }
         }
         catch (Exception ex)
@@ -65,8 +65,8 @@ else
     {
         try
         {
-            var response = await httpClient.DeleteFromJsonAsync<ApiResult<bool>>("roles/" + id);
-            if (response != null && response.IsSuccess)
+            var response = await httpClient.DeleteFromJsonAsync<IApiResult<bool>>("roles/" + id);
+            if (response != null)
             {
                 await LoadRoles();
                 StateHasChanged();

@@ -51,15 +51,15 @@
     [Parameter]
     public Guid? Id { get; set; }
 
-    private IEnumerable<Application.Dtos.Users.RoleDto>? roles;
-    private Application.Dtos.Users.CreateUserRequest data = new();
+    private IEnumerable<Api.Models.Users.RoleResponse>? roles;
+    private Api.Models.Users.CreateUserRequest data = new();
 
     protected override async Task OnInitializedAsync()
     {
-        var getRolesResponse = await _httpClient.GetFromJsonAsync<ApiResult<PagingResponse<Application.Dtos.Users.RoleDto>>>("roles");
-        if (getRolesResponse != null && getRolesResponse.IsSuccess)
+        var getRolesResponse = await _httpClient.GetFromJsonAsync<IApiPagingResult<Api.Models.Users.RoleResponse>>("roles");
+        if (getRolesResponse != null)
         {
-            roles = getRolesResponse.Data!.Data;
+            roles = getRolesResponse!.Data;
         }
     }
 
@@ -71,8 +71,8 @@
         {
             try
             {
-                var response = await _httpClient.GetFromJsonAsync<ApiResult<Application.Dtos.Users.UserDto>>($"users/{Id.Value}");
-                if (response != null && response.IsSuccess)
+                var response = await _httpClient.GetFromJsonAsync<IApiResult<Api.Models.Users.UserResponse>>($"users/{Id.Value}");
+                if (response != null)
                 {
                     data.Name = response.Data!.Name;
                     data.Username = response.Data!.Username;
@@ -105,7 +105,7 @@
         //Edit
         else
         {
-            var editCommand = new Application.Dtos.Users.EditUserRequest
+            var editCommand = new Api.Models.Users.EditUserRequest
                 {
                     Id = Id.Value,
                     Name = data.Name,

@@ -24,8 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FluentCMS.Application\FluentCMS.Application.csproj" />
-    <ProjectReference Include="..\FluentCMS.Repository.LiteDb\FluentCMS.Repository.LiteDb.csproj" />
+    <ProjectReference Include="..\FluentCMS.Services\FluentCMS.Services.csproj" />
   </ItemGroup>
 
 </Project>

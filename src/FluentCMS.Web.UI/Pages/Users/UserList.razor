@@ -36,16 +36,16 @@ else
 }
 
 @code {
-    private IEnumerable<FluentCMS.Application.Dtos.Users.UserDto>? users;
+    private IEnumerable<Api.Models.Users.UserResponse>? users;
 
     private async Task LoadUsers()
     {
         try
         {
-            var response = await httpClient.GetFromJsonAsync<ApiResult<PagingResponse<FluentCMS.Application.Dtos.Users.UserDto>>>("users");
-            if (response != null && response.IsSuccess)
+            var response = await httpClient.GetFromJsonAsync<IApiPagingResult<Api.Models.Users.UserResponse>>("users");
+            if (response != null)
             {
-                users = response.Data!.Data;
+                users = response!.Data;
             }
         }
         catch (Exception ex)
@@ -63,8 +63,8 @@ else
     {
         try
         {
-            var response = await httpClient.DeleteFromJsonAsync<ApiResult<bool>>("users/" + id);
-            if (response != null && response.IsSuccess)
+            var response = await httpClient.DeleteFromJsonAsync<IApiResult<bool>>("users/" + id);
+            if (response != null)
             {
                 await LoadUsers();
                 StateHasChanged();
