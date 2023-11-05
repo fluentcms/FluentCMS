@@ -2,6 +2,7 @@
 using FluentCMS.Repositories.Abstractions;
 using LiteDB;
 using LiteDB.Async;
+using System.Linq.Expressions;
 
 namespace FluentCMS.Repositories.LiteDb;
 
@@ -59,17 +60,25 @@ public class LiteDbGenericRepository<TEntity> : IGenericRepository<TEntity>
         return entities;
     }
 
+    public virtual async Task<TEntity?> Update(TEntity entity, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (entity is IAuditEntity audit)
+            audit.LastUpdatedAt = DateTime.UtcNow;
+
+        return await Collection.UpdateAsync(entity) ? entity : default;
+    }
+
     public virtual async Task<TEntity?> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var entity = await GetById(id, cancellationToken);
-
         if (entity is null)
             return default;
 
         var deleteCount = await Collection.DeleteManyAsync(x => x.Id == id);
-
         return deleteCount == 1 ? entity : default;
     }
 
@@ -79,14 +88,14 @@ public class LiteDbGenericRepository<TEntity> : IGenericRepository<TEntity>
         return await Collection.FindAllAsync();
     }
 
-    // TODO: See the comment in IGenericRepository
-    //public virtual async Task<IEnumerable<TEntity>> GetAll(Expression<Func<TEntity, bool>> filter, CancellationToken cancellationToken = default)
-    //{
-    //    cancellationToken.ThrowIfCancellationRequested();
+    protected virtual async Task<IEnumerable<TEntity>> GetAll(Expression<Func<TEntity, bool>> filter, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
 
-    //    var result = await Collection.FindAsync(filter);
-    //    return result.ToArray();
-    //}
+        //todo: Implement Pagination
+        var result = await Collection.FindAsync(filter);
+        return result.ToArray();
+    }
 
     public virtual async Task<TEntity?> GetById(Guid id, CancellationToken cancellationToken = default)
     {
@@ -100,15 +109,4 @@ public class LiteDbGenericRepository<TEntity> : IGenericRepository<TEntity>
         cancellationToken.ThrowIfCancellationRequested();
         return Collection.FindAsync(x => ids.Contains(x.Id));
     }
-
-    public virtual async Task<TEntity?> Update(TEntity entity, CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (entity is IAuditEntity audit)
-            audit.LastUpdatedAt = DateTime.UtcNow;
-
-        return await Collection.UpdateAsync(entity) ? entity : default;
-    }
-
 }

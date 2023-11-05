@@ -1,4 +1,4 @@
-﻿using FluentCMS.Entities;
+﻿using FluentCMS.Entities.Sites;
 using FluentCMS.Repositories.Abstractions;
 
 namespace FluentCMS.Repositories.LiteDb;
@@ -11,7 +11,7 @@ public class LiteDbSiteRepository : LiteDbGenericRepository<Site>, ISiteReposito
 
     public Task<bool> CheckUrls(IList<string> urls, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        return Task.FromResult(false);
     }
 
     public async Task<Site?> GetByUrl(string url, CancellationToken cancellationToken = default)

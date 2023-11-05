@@ -31,7 +31,7 @@
     [Parameter]
     public Guid? Id { get; set; }
 
-    private Application.Dtos.Users.CreateRoleRequest data = new();
+    private Api.Models.Users.CreateRoleRequest data = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -41,8 +41,8 @@
         {
             try
             {
-                var response = await _httpClient.GetFromJsonAsync<ApiResult<Application.Dtos.Users.RoleDto>>($"roles/{Id.Value}");
-                if (response != null && response.IsSuccess)
+                var response = await _httpClient.GetFromJsonAsync<IApiResult<Api.Models.Users.RoleResponse>>($"roles/{Id.Value}");
+                if (response != null)
                 {
                     data.Name = response.Data!.Name;
                     data.Description = response.Data!.Description;
@@ -74,7 +74,7 @@
         //Edit
         else
         {
-            var editCommand = new Application.Dtos.Users.EditRoleRequest
+            var editCommand = new Api.Models.Users.EditRoleRequest
                 {
                     Id = Id.Value,
                     Name = data.Name,

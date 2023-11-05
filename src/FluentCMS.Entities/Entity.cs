@@ -2,11 +2,10 @@
 
 public interface IEntity
 {
-    public Guid Id { get; set; }
+    Guid Id { get; set; }
 }
 
 public class Entity : IEntity
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = default!;
 }
-

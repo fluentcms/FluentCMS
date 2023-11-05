@@ -1,8 +1,7 @@
-using FluentCMS;
-using FluentCMS.Application;
-using FluentCMS.Repository.LiteDb;
+using FluentCMS.Api;
+using FluentCMS.Repositories;
+using FluentCMS.Services;
 using FluentCMS.Web.UI;
-using FluentCMS.Web;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,15 +10,9 @@ builder.Configuration.AddConfig(builder.Environment);
 var services = builder.Services;
 
 // add FluentCms core
-services.AddFluentCMSCore()
-    .AddApplication()
-    .AddLiteDbRepository(b =>
-    {
-        var liteDbFilePath = builder.Configuration.GetConnectionString("LiteDbFile")
-            ?? throw new Exception("LiteDb file not defined.");
-        Directory.CreateDirectory(Path.GetDirectoryName(liteDbFilePath)!);
-        b.SetFilePath(liteDbFilePath);
-    });
+services
+    .AddApplicationServices()
+    .AddLiteDbRepository(builder.Configuration.GetConnectionString("LiteDb")!);
 
 // Add services to the container.
 services.AddRazorComponents()
@@ -27,6 +20,7 @@ services.AddRazorComponents()
 
 services.AddControllers();
 services.AddRequestValidation();
+services.AddMappingProfiles();
 
 services.AddApiDocumentation();
 
@@ -49,6 +43,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
+    app.Services.SeedDefaultData(@".\SeedData\");
 }
 else
 {

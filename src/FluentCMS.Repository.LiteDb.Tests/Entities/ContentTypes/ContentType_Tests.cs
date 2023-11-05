@@ -1,6 +1,6 @@
-﻿using FluentCMS.Application;
-using FluentCMS.Application.Services;
-using FluentCMS.Entities.ContentTypes;
+﻿using FluentCMS.Entities.ContentTypes;
+using FluentCMS.Repositories;
+using FluentCMS.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
@@ -12,9 +12,9 @@ public class ContentType_Tests
     public ContentType_Tests()
     {
         var services = new ServiceCollection();
-        services.AddFluentCMSCore()
-            .AddApplication()
-            .AddLiteDbRepository(b => b.UseInMemory());
+        services
+            .AddApplicationServices()
+            .AddLiteDbInMemoryRepository();
         _serviceProvider = services.BuildServiceProvider();
     }
 

@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <_ContentIncludedByDefault Remove="Config\appsettings.Production.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="wwwroot\lib\" />
   </ItemGroup>
   
@@ -15,8 +19,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <ProjectReference Include="..\FluentCMS.Repository.LiteDb\FluentCMS.Repository.LiteDb.csproj" />
-    <ProjectReference Include="..\FluentCMS.Shared\FluentCMS.Shared.csproj" />
+    <ProjectReference Include="..\FluentCMS.Api\FluentCMS.Api.csproj" />
   </ItemGroup>
 
 </Project>

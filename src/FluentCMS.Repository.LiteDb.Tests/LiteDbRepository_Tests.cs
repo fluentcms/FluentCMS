@@ -1,3 +1,4 @@
+using FluentCMS.Repositories.LiteDb;
 using FluentCMS.Repository.LiteDb.Tests.Entities;
 using Newtonsoft.Json;
 using Shouldly;
@@ -111,7 +112,7 @@ public class LiteDbRepository_Tests
             await repository.Create(entity);
         }
         var firstGuid = guids.First();
-        var dbEntities = (await repository.GetAll(x => x.Id == firstGuid)).ToList();
+        var dbEntities = (await repository.GetAll()).Where(x => x.Id == firstGuid).ToList();
         dbEntities.ShouldNotBeNull();
         dbEntities.Count.ShouldBe(1);
         dbEntities.All(x => x.Id == firstGuid).ShouldBeTrue();
@@ -119,8 +120,7 @@ public class LiteDbRepository_Tests
 
     private static LiteDbGenericRepository<DummyEntity> GetInstance()
     {
-        var liteDbContext = new LiteDbContext(
-            new LiteDbOptionsBuilder().UseInMemory().Build());
+        var liteDbContext = new LiteDbContext(new LiteDbOptions());
         return new LiteDbGenericRepository<DummyEntity>(liteDbContext);
     }
 }

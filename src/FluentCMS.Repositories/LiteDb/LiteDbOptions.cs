@@ -1,5 +1,4 @@
 ﻿using LiteDB.Async;
-using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Repositories.LiteDb;
 
@@ -8,22 +7,14 @@ public class LiteDbContext
     private readonly LiteDatabaseAsync _db = default!;
     public LiteDatabaseAsync Database => _db;
 
-    public LiteDbContext(IOptions<LiteDbOptions> options)
+    public LiteDbContext(LiteDbOptions options)
     {
-        if (options.Value is null)
+        if (options is null)
             throw new ArgumentNullException(nameof(options));
 
-        var liteDbConfig = options.Value;
-
-
-        if (string.IsNullOrWhiteSpace(liteDbConfig.FilePath) == false)
+        if (string.IsNullOrWhiteSpace(options.ConnectionString) == false)
         {
-            var connectionString = $"Filename={liteDbConfig.FilePath};Connection=shared";
-
-            if (string.IsNullOrWhiteSpace(liteDbConfig.Password) == false)
-                connectionString += ";Password=" + liteDbConfig.Password;
-
-            _db = new LiteDatabaseAsync(connectionString);
+            _db = new LiteDatabaseAsync(options.ConnectionString);
         }
         else
         {
