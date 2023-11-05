@@ -1,7 +1,8 @@
-﻿@page "/sites/edit/{Id:guid}"
-@page "/sites/create"
+﻿@page "/admin/sites/edit/{Id:guid}"
+@page "/admin/sites/create"
 @inject HttpClient _httpClient
 @inject NavigationManager _navigationManager
+
 <h3>SiteEdit</h3>
 <EditForm Model="Site" OnValidSubmit="ValidSubmit">
     <div class="mb-3">
@@ -73,7 +74,7 @@
         //Create
         if (Id == null)
         {
-            var createCommand = new Application.Sites.CreateSiteCommand()
+            var createCommand = new Application.Dtos.Sites.CreateSiteRequest()
                 {
                     Name = Site.Name,
                     Description = Site.Description,
@@ -82,8 +83,8 @@
                 };
             try
             {
-                await _httpClient.PostAsJsonAsync<Application.Sites.CreateSiteCommand>($"site", createCommand);
-                _navigationManager.NavigateTo("/sites");
+                await _httpClient.PostAsJsonAsync($"site", createCommand);
+                _navigationManager.NavigateTo("/admin/sites");
             }
             catch (Exception)
             {
@@ -94,7 +95,7 @@
         //Edit
         else
         {
-            var editCommand = new Application.Sites.EditSiteCommand()
+            var editCommand = new Application.Dtos.Sites.EditSiteRequest
                 {
                     Id = Id.Value,
                     Name = Site.Name,
@@ -104,8 +105,8 @@
                 };
             try
             {
-                await _httpClient.PatchAsJsonAsync<Application.Sites.EditSiteCommand>($"site", editCommand);
-                _navigationManager.NavigateTo("/sites");
+                await _httpClient.PatchAsJsonAsync($"site", editCommand);
+                _navigationManager.NavigateTo("/admin/sites");
             }
             catch (Exception)
             {

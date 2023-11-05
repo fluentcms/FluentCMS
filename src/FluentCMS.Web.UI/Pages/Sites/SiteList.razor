@@ -1,11 +1,11 @@
-﻿@page "/sites"
+﻿@page "/admin/sites"
 @inject HttpClient _httpClient;
 @inject IJSRuntime _jsRuntime;
 @using FluentCMS.Entities.Sites
 
 <h3>Sites</h3>
 <p>List of all sites.</p>
-<NavigationButton To="/sites/create">Create</NavigationButton>
+<NavigationButton To="/admin/sites/create">Create</NavigationButton>
 @if (sites == null)
 {
     <p>Loading...</p>
@@ -38,7 +38,7 @@ else
                         }
                     </td>
                     <td>
-                        <NavigationButton To="@("/sites/edit/" + site.Id)">Edit</NavigationButton>
+                        <NavigationButton To="@("/admin/sites/edit/" + site.Id)">Edit</NavigationButton>
                         <Button Color="Colors.Danger" @onclick="@(()=>Delete(site.Id))">Delete</Button>
                     </td>
                 </tr>
@@ -49,16 +49,16 @@ else
 
 
 @code {
-    private List<Entities.Sites.Site>? sites;
+    private IEnumerable<Application.Dtos.Sites.SiteDto>? sites;
 
     public async Task Fetch()
     {
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<ApiResult<IEnumerable<Entities.Sites.Site>>>("site");
+            var response = await _httpClient.GetFromJsonAsync<ApiResult<PagingResponse<Application.Dtos.Sites.SiteDto>>>("site");
             if (response.IsSuccess)
             {
-                sites = response.Data!.ToList();
+                sites = response.Data!.Data;
             }
         }
         catch (Exception ex)

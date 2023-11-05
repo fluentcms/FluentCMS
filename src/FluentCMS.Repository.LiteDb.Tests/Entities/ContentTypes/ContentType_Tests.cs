@@ -1,5 +1,6 @@
-﻿using FluentCMS.Entities.ContentTypes;
-using FluentCMS.Services;
+﻿using FluentCMS.Application;
+using FluentCMS.Application.Services;
+using FluentCMS.Entities.ContentTypes;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
@@ -11,14 +12,16 @@ public class ContentType_Tests
     public ContentType_Tests()
     {
         var services = new ServiceCollection();
-        services.AddFluentCMSCore().AddLiteDbRepository(b => b.UseInMemory());
+        services.AddFluentCMSCore()
+            .AddApplication()
+            .AddLiteDbRepository(b => b.UseInMemory());
         _serviceProvider = services.BuildServiceProvider();
     }
 
     [Fact]
     public async Task Should_Create()
     {
-        var service = _serviceProvider.GetRequiredService<ContentTypeService>();
+        var service = _serviceProvider.GetRequiredService<IContentTypeService>();
         var id = Guid.NewGuid();
         var title = "Test 1";
         var contentType = new ContentType(id, title);
@@ -33,7 +36,7 @@ public class ContentType_Tests
     [Fact]
     public async Task Should_Delete()
     {
-        var service = _serviceProvider.GetRequiredService<ContentTypeService>();
+        var service = _serviceProvider.GetRequiredService<IContentTypeService>();
         var id = Guid.NewGuid();
         var title = "Test 1";
         var contentType = new ContentType(id, title);
@@ -44,14 +47,14 @@ public class ContentType_Tests
         result.Title.ShouldBe(title);
         result.Slug.ShouldBe("test-1");
         await service.Delete(id);
-        var all = await service.GetAll();
+        var all = await service.Search();
         all.Count().ShouldBe(0);
     }
 
     [Fact]
     public async Task Should_Update()
     {
-        var service = _serviceProvider.GetRequiredService<ContentTypeService>();
+        var service = _serviceProvider.GetRequiredService<IContentTypeService>();
         var id = Guid.NewGuid();
         var title = "Test 1";
         var contentType = new ContentType(id, title);
@@ -74,7 +77,7 @@ public class ContentType_Tests
     [Fact]
     public async Task Should_NotAllowDuplicateSlugOn_Update()
     {
-        var service = _serviceProvider.GetRequiredService<ContentTypeService>();
+        var service = _serviceProvider.GetRequiredService<IContentTypeService>();
         var id = Guid.NewGuid();
         var title = "Test 1";
         var contentType = new ContentType(id, title);
@@ -89,7 +92,7 @@ public class ContentType_Tests
     [Fact]
     public async Task Should_GetAll()
     {
-        var service = _serviceProvider.GetRequiredService<ContentTypeService>();
+        var service = _serviceProvider.GetRequiredService<IContentTypeService>();
 
         const int count = 10;
         var ids = Enumerable.Range(1, count).Select(_ => Guid.NewGuid()).ToList();
@@ -100,7 +103,7 @@ public class ContentType_Tests
             var contentType = new ContentType(id, title);
             await service.Create(contentType);
         }
-        var result = await service.GetAll();
+        var result = await service.Search();
         result.ShouldNotBeNull();
         result.Count().ShouldBe(count);
         result.All(x => ids.Contains(x.Id)).ShouldBeTrue();
@@ -109,7 +112,7 @@ public class ContentType_Tests
     [Fact]
     public async Task Should_GetById()
     {
-        var service = _serviceProvider.GetRequiredService<ContentTypeService>();
+        var service = _serviceProvider.GetRequiredService<IContentTypeService>();
         var id = Guid.NewGuid();
         var title = "Test 1";
         var contentType = new ContentType(id, title);
@@ -124,7 +127,7 @@ public class ContentType_Tests
     [Fact]
     public async Task Should_GetBySlug()
     {
-        var service = _serviceProvider.GetRequiredService<ContentTypeService>();
+        var service = _serviceProvider.GetRequiredService<IContentTypeService>();
         var id = Guid.NewGuid();
         var title = "Test 1";
         var slug = "test-1";
@@ -141,7 +144,7 @@ public class ContentType_Tests
     [Fact]
     public async Task Should_AddContentTypeField()
     {
-        var service = _serviceProvider.GetRequiredService<ContentTypeService>();
+        var service = _serviceProvider.GetRequiredService<IContentTypeService>();
         var id = Guid.NewGuid();
         var title = "Test 1";
         var contentType = new ContentType(id, title);
@@ -174,7 +177,7 @@ public class ContentType_Tests
     [Fact]
     public async Task Should_NotAddDuplicateContentTypeField()
     {
-        var service = _serviceProvider.GetRequiredService<ContentTypeService>();
+        var service = _serviceProvider.GetRequiredService<IContentTypeService>();
         var id = Guid.NewGuid();
         var title = "Test 1";
         var contentType = new ContentType(id, title);
@@ -195,7 +198,7 @@ public class ContentType_Tests
     [Fact]
     public void Should_RemoveContentTypeField()
     {
-        var service = _serviceProvider.GetRequiredService<ContentTypeService>();
+        var service = _serviceProvider.GetRequiredService<IContentTypeService>();
         var id = Guid.NewGuid();
         var title = "Test 1";
         var contentType = new ContentType(id, title);

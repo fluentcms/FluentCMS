@@ -1,0 +1,98 @@
+﻿@page "/admin/roles/create"
+@page "/admin/roles/edit/{Id:guid}"
+@inject HttpClient _httpClient
+@inject NavigationManager _navigationManager
+
+<h3>@(Id.HasValue ? "Edit" : "Create") Role</h3>
+
+<EditForm Model="data" OnValidSubmit="ValidSubmit">
+    <div class="mb-3">
+        <label class="form-label">Name</label>
+        <InputText type="text" class="form-control" required @bind-Value="data.Name" name="name" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Description</label>
+        <InputText type="text" class="form-control" required @bind-Value="data.Description" name="description" />
+    </div>
+    <div class="mb-3">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox"
+                   id="autoAssigned" name="autoAssigned"
+                   @bind-value="data.AutoAssigned"
+                   @attributes="addCheckedAttribute(data.AutoAssigned)">
+            <label class="form-check-label" for="autoAssigned">AutoAssigned</label>
+        </div>
+    </div>
+
+    <Button Type="submit" Color="Colors.Primary">Save</Button>
+</EditForm>
+
+@code {
+    [Parameter]
+    public Guid? Id { get; set; }
+
+    private Application.Dtos.Users.CreateRoleRequest data = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+
+        if (Id.HasValue)
+        {
+            try
+            {
+                var response = await _httpClient.GetFromJsonAsync<ApiResult<Application.Dtos.Users.RoleDto>>($"roles/{Id.Value}");
+                if (response != null && response.IsSuccess)
+                {
+                    data.Name = response.Data!.Name;
+                    data.Description = response.Data!.Description;
+                    data.AutoAssigned = response.Data!.AutoAssigned;
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+    }
+
+    public async Task ValidSubmit()
+    {
+        //Create
+        if (Id.HasValue == false)
+        {
+            try
+            {
+                await _httpClient.PostAsJsonAsync($"roles", data);
+                _navigationManager.NavigateTo("/admin/roles");
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+        //Edit
+        else
+        {
+            var editCommand = new Application.Dtos.Users.EditRoleRequest
+                {
+                    Id = Id.Value,
+                    Name = data.Name,
+                    Description = data.Description,
+                    AutoAssigned = data.AutoAssigned,
+                };
+            try
+            {
+                await _httpClient.PutAsJsonAsync($"roles", editCommand);
+                _navigationManager.NavigateTo("/admin/roles");
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+    }
+
+    private Dictionary<string, object> addCheckedAttribute(bool isChecked) =>
+        new Dictionary<string, object>() { ["checked"] = isChecked };
+}

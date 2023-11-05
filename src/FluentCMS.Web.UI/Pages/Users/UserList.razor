@@ -1,9 +1,9 @@
-﻿@page "/users"
+﻿@page "/admin/users"
 @inject HttpClient httpClient
 
 <h3>Users</h3>
 <p>List of all users.</p>
-<NavigationButton To="/users/create">Create</NavigationButton>
+<NavigationButton To="/admin/users/create">Create</NavigationButton>
 
 @if (users == null)
 {
@@ -26,7 +26,7 @@ else
                     <td>@user.Name</td>
                     <td>@user.Username</td>
                     <td>
-                        <NavigationButton To="@("/users/edit/" + user.Id)">Edit</NavigationButton>
+                        <NavigationButton To="@("/admin/users/edit/" + user.Id)">Edit</NavigationButton>
                         <Button @onclick="() => OnDeleteClick(user.Id)">Delete</Button>
                     </td>
                 </tr>
@@ -36,16 +36,16 @@ else
 }
 
 @code {
-    private List<Entities.User>? users;
+    private IEnumerable<FluentCMS.Application.Dtos.Users.UserDto>? users;
 
     private async Task LoadUsers()
     {
         try
         {
-            var response = await httpClient.GetFromJsonAsync<ApiResult<IEnumerable<Entities.User>>>("users");
+            var response = await httpClient.GetFromJsonAsync<ApiResult<PagingResponse<FluentCMS.Application.Dtos.Users.UserDto>>>("users");
             if (response != null && response.IsSuccess)
             {
-                users = response.Data!.ToList();
+                users = response.Data!.Data;
             }
         }
         catch (Exception ex)

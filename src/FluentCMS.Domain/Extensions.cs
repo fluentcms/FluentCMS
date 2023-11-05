@@ -1,5 +1,4 @@
-﻿using FluentCMS.Services;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS;
 
@@ -7,12 +6,6 @@ public static class Extensions
 {
     public static FluentCMSBuilder AddFluentCMSCore(this IServiceCollection services)
     {
-        // register domain services
-        services.AddTransient<UserService>();
-        services.AddTransient<ContentTypeService>();
-        services.AddTransient<SiteService>();
-        services.AddTransient<PageService>();
-
         return FluentCMSBuilder.Create(services);
     }
 }

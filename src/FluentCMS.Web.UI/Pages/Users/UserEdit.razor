@@ -1,22 +1,47 @@
-﻿@page "/users/create"
-@page "/users/edit/{Id:guid}"
+﻿@page "/admin/users/create"
+@page "/admin/users/edit/{Id:guid}"
 @inject HttpClient _httpClient
 @inject NavigationManager _navigationManager
 
 <h3>@(Id.HasValue ? "Edit" : "Create") User</h3>
 
-<EditForm Model="User" OnValidSubmit="ValidSubmit">
+<EditForm Model="data" OnValidSubmit="ValidSubmit">
     <div class="mb-3">
         <label class="form-label">Name</label>
-        <InputText type="text" class="form-control" required @bind-Value="User.Name" name="name" />
+        <InputText type="text" class="form-control" required @bind-Value="data.Name" name="name" />
     </div>
     <div class="mb-3">
         <label class="form-label">Username</label>
-        <InputText type="text" class="form-control" required @bind-Value="User.Username" name="username" />
+        <InputText type="text" class="form-control" required @bind-Value="data.Username" name="username" />
     </div>
     <div class="mb-3">
-        <label class="form-label">Password</label>
-        <InputText type="text" class="form-control" required @bind-Value="User.Password" name="password" />
+        <label class="form-label">Password @(Id.HasValue ? "(leave empty to ignore change password)" : "")</label>
+        <InputText type="password" class="form-control" name="password"
+                   @attributes="addRequiredAttribute(Id == null)"
+                   @bind-Value="data.Password" />
+    </div>
+    <div>
+        <Label Class="form-label">Roles:</Label>
+        @if (roles == null)
+        {
+            <span>Loading user roles...</span>
+        }
+        else
+        {
+            foreach (var r in roles)
+            {
+                <div class="form-check">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           id="@("chkRole-" + r.Name)"
+                           @onchange="e => onRoleCheckboxChanged((bool)e.Value!, r.Id)"
+                           @attributes="addCheckedAttribute(data.Roles.Any(x => x == r.Id))">
+                    <label class="form-check-label" for="@("chkRole-" + r.Name)">
+                        @r.Name <span class="fw-light">(@r.Description)</span>
+                    </label>
+                </div>
+            }
+        }
     </div>
 
     <Button Type="submit" Color="Colors.Primary">Save</Button>
@@ -26,7 +51,17 @@
     [Parameter]
     public Guid? Id { get; set; }
 
-    public Entities.User User { get; set; } = new();
+    private IEnumerable<Application.Dtos.Users.RoleDto>? roles;
+    private Application.Dtos.Users.CreateUserRequest data = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var getRolesResponse = await _httpClient.GetFromJsonAsync<ApiResult<PagingResponse<Application.Dtos.Users.RoleDto>>>("roles");
+        if (getRolesResponse != null && getRolesResponse.IsSuccess)
+        {
+            roles = getRolesResponse.Data!.Data;
+        }
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -36,10 +71,13 @@
         {
             try
             {
-                var response = await _httpClient.GetFromJsonAsync<ApiResult<Entities.User>>($"users/{Id.Value}");
+                var response = await _httpClient.GetFromJsonAsync<ApiResult<Application.Dtos.Users.UserDto>>($"users/{Id.Value}");
                 if (response != null && response.IsSuccess)
                 {
-                    User = response.Data!;
+                    data.Name = response.Data!.Name;
+                    data.Username = response.Data!.Username;
+                    data.Password = "";
+                    data.Roles = response.Data.UserRoles.ToList();
                 }
             }
             catch (Exception)
@@ -54,16 +92,10 @@
         //Create
         if (Id.HasValue == false)
         {
-            var createCommand = new Application.Users.CreateUserCommand
-                {
-                    Name = User.Name,
-                    Username = User.Username,
-                    Password = User.Password,
-                };
             try
             {
-                await _httpClient.PostAsJsonAsync($"users", createCommand);
-                _navigationManager.NavigateTo("/users");
+                await _httpClient.PostAsJsonAsync($"users", data);
+                _navigationManager.NavigateTo("/admin/users");
             }
             catch (Exception)
             {
@@ -73,22 +105,42 @@
         //Edit
         else
         {
-            var editCommand = new Application.Users.EditUserCommand
+            var editCommand = new Application.Dtos.Users.EditUserRequest
                 {
                     Id = Id.Value,
-                    Name = User.Name,
-                    Username = User.Username,
-                    Password = User.Password,
+                    Name = data.Name,
+                    Username = data.Username,
+                    Password = data.Password,
+                    Roles = data.Roles,
                 };
             try
             {
                 await _httpClient.PutAsJsonAsync($"users", editCommand);
-                _navigationManager.NavigateTo("/users");
+                _navigationManager.NavigateTo("/admin/users");
             }
             catch (Exception)
             {
                 throw;
             }
+        }
+    }
+
+    private Dictionary<string, object> addRequiredAttribute(bool isRequired) =>
+        new Dictionary<string, object>() { ["required"] = isRequired };
+
+    private Dictionary<string, object> addCheckedAttribute(bool isChecked) =>
+        new Dictionary<string, object>() { ["checked"] = isChecked };
+
+    private void onRoleCheckboxChanged(bool isChecked, Guid roleId)
+    {
+        if (isChecked)
+        {
+            if (data.Roles.Any(x => x == roleId) == false)
+                data.Roles.Add(roleId);
+        }
+        else
+        {
+            data.Roles.Remove(roleId);
         }
     }
 }

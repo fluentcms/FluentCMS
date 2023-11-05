@@ -2,6 +2,7 @@ using FluentCMS;
 using FluentCMS.Application;
 using FluentCMS.Repository.LiteDb;
 using FluentCMS.Web.UI;
+using FluentCMS.Web;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,7 @@ services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 services.AddControllers();
+services.AddRequestValidation();
 
 services.AddApiDocumentation();
 
@@ -55,6 +57,7 @@ else
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
 }
 
+app.UseRouting();
 app.UseStaticFiles();
 
 app.UseAntiforgery();
@@ -63,6 +66,14 @@ app.UseApiDocumentation();
 
 app.UseAuthorization();
 
+app.UseEndpoints(endpoints =>
+{
+    _ = endpoints.MapGet("/", (context) =>
+    {
+        context.Response.Redirect("/admin");
+        return Task.CompletedTask;
+    });
+});
 app.MapControllers();
 
 app.MapRazorComponents<App>()
