@@ -1,4 +1,5 @@
-﻿using FluentCMS.Application.Dtos.Users;
+﻿using FluentCMS.Application;
+using FluentCMS.Application.Dtos.Users;
 using FluentCMS.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -11,6 +12,7 @@ public class UserServiceTests
     {
         var services = new ServiceCollection();
         services.AddFluentCMSCore()
+            .AddApplication()
             .AddLiteDbRepository(b => b.UseInMemory());
         _serviceProvider = services.BuildServiceProvider();
     }
@@ -44,12 +46,12 @@ public class UserServiceTests
         var userToCreate = new CreateUserRequest
         {
             Name = "TestUser",
-            Username = "testuser",
+            Username = "",
             Password = "password",
             Roles = []
         };
 
         // it should throw a ApplicationException
-        await Should.ThrowAsync<ApplicationException>(() => userService.Create(userToCreate));
+        await Should.ThrowAsync<ArgumentException>(() => userService.Create(userToCreate));
     }
 }

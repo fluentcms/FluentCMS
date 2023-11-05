@@ -1,4 +1,5 @@
-﻿using FluentCMS.Application.Services;
+﻿using FluentCMS.Application;
+using FluentCMS.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
@@ -11,6 +12,7 @@ public class PageService_Tests
     {
         var services = new ServiceCollection();
         services.AddFluentCMSCore()
+            .AddApplication()
             .AddLiteDbRepository(b => b.UseInMemory());
         _serviceProvider = services.BuildServiceProvider();
     }

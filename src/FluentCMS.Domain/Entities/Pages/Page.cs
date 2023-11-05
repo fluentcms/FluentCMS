@@ -1,15 +1,9 @@
 ﻿using Ardalis.GuardClauses;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FluentCMS.Entities.Pages;
-public class Page:IAuditEntity
+public class Page : IAuditEntity
 {
-    public Page(Guid id,Guid siteId, string path, Guid? parentId, string title, int order)
+    public Page(Guid id, Guid siteId, string path, Guid? parentId, string title, int order)
     {
         Guard.Against.NullOrEmpty(id);
         Guard.Against.NullOrEmpty(siteId);
@@ -22,7 +16,7 @@ public class Page:IAuditEntity
     }
     public Page()
     {
-        
+
     }
 
     public void SetOrder(int order)

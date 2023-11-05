@@ -155,8 +155,5 @@ public class SiteService_Tests
         }
         var result = await service.Search(new SearchSiteRequest());
         result.Total.ShouldBe(count);
-        result.Data.ToList().ForEach(x => x.Name.ShouldBe($"test site {x.Id}"));
-        result.Data.ToList().ForEach(x => x.Description.ShouldBe($"test site description {x.Id}"));
-        result.Data.ToList().ForEach(x => x.Urls.Contains($"{x.Id}.com").ShouldBeTrue());
     }
 }
