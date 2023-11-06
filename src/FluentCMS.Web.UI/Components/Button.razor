@@ -1,0 +1,25 @@
+@inherits BaseComponent
+@{
+    base.BuildRenderTree(__builder);
+}
+@code {
+    [Parameter]
+    [CssProperty]
+    public Colors Color { get; set; } = Colors.Primary;
+
+    [Parameter]
+    [CssProperty]
+    [Html]
+    public bool Disabled { get; set; } = false;
+
+    [Parameter]
+    public override string Tag { get; set; } = "button";
+
+    [Parameter]
+    [Html]
+    public string Type { get; set; } = "button";
+
+    // [Parameter]
+    // public EventCallback OnClick { get; set; }
+
+}

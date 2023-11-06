@@ -1,4 +1,6 @@
-﻿using FluentCMS.Entities;
+﻿using FluentCMS.Entities.Users;
+using FluentCMS.Repositories;
+using FluentCMS.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
@@ -9,8 +11,9 @@ public class UserServiceTests
     public UserServiceTests()
     {
         var services = new ServiceCollection();
-        services.AddFluentCMSCore()
-            .AddLiteDbRepository(b => b.UseInMemory());
+        services
+            .AddApplicationServices()
+            .AddLiteDbInMemoryRepository();
         _serviceProvider = services.BuildServiceProvider();
     }
 
@@ -18,35 +21,35 @@ public class UserServiceTests
     public async Task Should_Create()
     {
         using var scope = _serviceProvider.CreateScope();
-        var userService = scope.ServiceProvider.GetRequiredService<Services.UserService>();
+        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
         var username = "testuser";
-        var userToCreate = new User
+        var createdUser = await userService.Create(new User
         {
             Id = Guid.NewGuid(),
             Name = "TestUser",
             Username = username,
             Password = "password",
-        };
-        await userService.Create(userToCreate);
+            UserRoles = [],
+        });
 
         var loadedUser = await userService.GetByUsername(username);
         loadedUser.ShouldNotBeNull();
-        loadedUser.Id.ShouldBe(userToCreate.Id);
+        loadedUser.Id.ShouldBe(createdUser.Id);
     }
 
     [Fact]
     public async Task Should_Not_Create_Unprovided_Username()
     {
         using var scope = _serviceProvider.CreateScope();
-        var userService = scope.ServiceProvider.GetRequiredService<Services.UserService>();
+        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
         var userToCreate = new User
         {
-            Id = Guid.NewGuid(),
             Name = "TestUser",
-            Username = "",
+            Username = "testuser",
             Password = "password",
+            UserRoles = []
         };
 
         // it should throw a ApplicationException

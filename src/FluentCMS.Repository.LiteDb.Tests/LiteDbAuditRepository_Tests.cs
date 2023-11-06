@@ -1,3 +1,4 @@
+using FluentCMS.Repositories.LiteDb;
 using FluentCMS.Repository.LiteDb.Tests.Entities;
 using Newtonsoft.Json;
 using Shouldly;
@@ -10,12 +11,11 @@ public class LiteDbAuditRepository_Tests
     {
         var utcNow = DateTime.UtcNow;
         var repository = GetInstance();
-        var guid = Guid.NewGuid();
-        var entity = new AuditedDummyEntity(guid);
-        await repository.Create(entity);
-        var dbEntity = await repository.GetById(guid);
+        var entity = new AuditedDummyEntity();
+        entity = await repository.Create(entity);
+        var dbEntity = await repository.GetById(entity.Id);
         dbEntity.ShouldNotBeNull();
-        dbEntity.Id.ShouldBe(guid);
+        dbEntity.Id.ShouldBe(entity.Id);
         dbEntity.CreatedAt.ShouldNotBe(default);
         dbEntity.CreatedAt.ShouldBeGreaterThan(utcNow);
     }
@@ -25,17 +25,16 @@ public class LiteDbAuditRepository_Tests
     {
         var utcNow = DateTime.UtcNow;
         var repository = GetInstance();
-        var guid = Guid.NewGuid();
-        var entity = new AuditedDummyEntity(guid);
-        await repository.Create(entity);
+        var entity = new AuditedDummyEntity();
+        entity = await repository.Create(entity);
         // Serialize & Deserialize the entity to break reference (deep-copy)
         // todo: can utilize Prototype Pattern to avoid this mess
         var deepCopy = JsonConvert.DeserializeObject<AuditedDummyEntity>(JsonConvert.SerializeObject(entity)) ?? throw new InvalidOperationException("This should not happen");
         deepCopy.DummyField = "Updated!";
         await repository.Update(deepCopy);
-        var dbEntity = await repository.GetById(guid);
+        var dbEntity = await repository.GetById(entity.Id);
         dbEntity.ShouldNotBeNull();
-        dbEntity.Id.ShouldBe(guid);
+        dbEntity.Id.ShouldBe(entity.Id);
         dbEntity.DummyField.ShouldBe("Updated!");
         dbEntity.LastUpdatedAt.ShouldNotBe(default);
         dbEntity.LastUpdatedAt.ShouldBeGreaterThan(utcNow);
@@ -43,8 +42,7 @@ public class LiteDbAuditRepository_Tests
 
     private static LiteDbGenericRepository<AuditedDummyEntity> GetInstance()
     {
-        var liteDbContext = new LiteDbContext(
-            new LiteDbOptionsBuilder().UseInMemory().Build());
+        var liteDbContext = new LiteDbContext(new LiteDbOptions());
         return new LiteDbGenericRepository<AuditedDummyEntity>(liteDbContext);
     }
 }

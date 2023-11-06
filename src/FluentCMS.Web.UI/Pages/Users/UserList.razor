@@ -1,0 +1,78 @@
+﻿@page "/admin/users"
+@inject HttpClient httpClient
+
+<h3>Users</h3>
+<p>List of all users.</p>
+<NavigationButton To="/admin/users/create">Create</NavigationButton>
+
+@if (users == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Username</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in users)
+            {
+                <tr>
+                    <td>@user.Name</td>
+                    <td>@user.Username</td>
+                    <td>
+                        <NavigationButton To="@("/admin/users/edit/" + user.Id)">Edit</NavigationButton>
+                        <Button @onclick="() => OnDeleteClick(user.Id)">Delete</Button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IEnumerable<Api.Models.Users.UserResponse>? users;
+
+    private async Task LoadUsers()
+    {
+        try
+        {
+            var response = await httpClient.GetFromJsonAsync<ApiPagingResult<Api.Models.Users.UserResponse>>("users/getAll");
+            if (response != null)
+            {
+                users = response.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task OnDeleteClick(Guid id)
+    {
+        try
+        {
+            var response = await httpClient.DeleteFromJsonAsync<ApiResult<bool>>("users/delete/" + id);
+            if (response != null)
+            {
+                await LoadUsers();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+}

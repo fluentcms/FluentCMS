@@ -13,9 +13,5 @@ internal class AuditedDummyEntity : IAuditEntity
     public string LastUpdatedBy { get; set; } = "";
     public DateTime LastUpdatedAt { get; set; } = default;
 
-    protected AuditedDummyEntity() { }
-    public AuditedDummyEntity(Guid id)
-    {
-        Id = id;
-    }
+    public AuditedDummyEntity() { }
 }

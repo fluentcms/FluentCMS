@@ -1,0 +1,80 @@
+﻿@page "/admin/roles"
+@inject HttpClient httpClient
+
+<h3>Roles</h3>
+<p>List of all roles.</p>
+<NavigationButton To="/admin/roles/create">Create</NavigationButton>
+
+@if (roles == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Auto Assigned</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var role in roles)
+            {
+                <tr>
+                    <td>@role.Name</td>
+                    <td>@role.Description</td>
+                    <td>@role.AutoAssigned.ToString()</td>
+                    <td>
+                        <NavigationButton To="@("/admin/roles/edit/" + role.Id)">Edit</NavigationButton>
+                        <Button @onclick="() => OnDeleteClick(role.Id)">Delete</Button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IEnumerable<Api.Models.Users.RoleResponse>? roles;
+
+    private async Task LoadRoles()
+    {
+        try
+        {
+            var response = await httpClient.GetFromJsonAsync<ApiPagingResult<Api.Models.Users.RoleResponse>>("roles/getAll");
+            if (response != null)
+            {
+                roles = response!.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+    }
+
+    private async Task OnDeleteClick(Guid id)
+    {
+        try
+        {
+            var response = await httpClient.DeleteFromJsonAsync<ApiResult<bool>>("roles/delete/" + id);
+            if (response != null)
+            {
+                await LoadRoles();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+}
