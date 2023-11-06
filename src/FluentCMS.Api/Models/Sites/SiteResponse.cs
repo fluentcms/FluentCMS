@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Api.Models.Sites;
+﻿using FluentCMS.Api.Models.Pages;
+
+namespace FluentCMS.Api.Models.Sites;
 public class SiteResponse
 {
     public Guid Id { get; set; }

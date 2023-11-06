@@ -20,4 +20,14 @@ public class LiteDbPageRepository : LiteDbGenericRepository<Page>, IPageReposito
     {
         return await Collection.FindOneAsync(x => x.Path == path);
     }
+
+    public async Task<IEnumerable<Page>> GetByParentId(Guid parentId)
+    {
+        return await Collection.FindAsync(x => x.ParentId == parentId);
+    }
+
+    public async Task<IEnumerable<Page>> GetBySiteIdAndParentId(Guid siteId, Guid? parentId = null)
+    {
+        return await Collection.FindAsync(x => x.ParentId == parentId && x.SiteId == siteId);
+    }
 }

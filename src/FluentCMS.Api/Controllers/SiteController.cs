@@ -4,6 +4,7 @@ using FluentCMS.Api.Models;
 using FluentCMS.Api.Models.Sites;
 using FluentCMS.Services;
 using Microsoft.AspNetCore.Mvc;
+using FluentCMS.Api.Models.Pages;
 
 namespace FluentCMS.Api.Controllers;
 
