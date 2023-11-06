@@ -1,0 +1,20 @@
+[
+  {
+    "Title": "Home",
+    "Description": "This is my home page",
+    "Path": "/",
+    "Order": 0
+  },
+  {
+    "Title": "About me",
+    "Description": "This is about me page",
+    "Path": "/about-me",
+    "Order": 1
+  },
+  {
+    "Title": "Contact me",
+    "Description": "This is contact me page",
+    "Path": "/contact",
+    "Order": 2
+  }
+]

@@ -56,8 +56,8 @@
         }
         try
         {
-            var response = (await _httpClient.GetFromJsonAsync<ApiResult<Entities.Sites.Site>>($"site/{Id.Value}"))!;
-            if (response != null && response.IsSuccess)
+            var response = (await _httpClient.GetFromJsonAsync<ApiResult<Entities.Sites.Site>>($"site/getById/{Id.Value}"))!;
+            if (response != null)
             {
                 Site = response.Data!;
             }
@@ -74,16 +74,16 @@
         //Create
         if (Id == null)
         {
-            var createCommand = new Application.Dtos.Sites.CreateSiteRequest()
+            var createCommand = new Api.Models.Sites.CreateSiteRequest()
                 {
                     Name = Site.Name,
                     Description = Site.Description,
                     RoleId = Site.RoleId,
-                    URLs = Site.Urls.ToArray()
+                    Urls = Site.Urls.ToArray()
                 };
             try
             {
-                await _httpClient.PostAsJsonAsync($"site", createCommand);
+                await _httpClient.PostAsJsonAsync($"site/create", createCommand);
                 _navigationManager.NavigateTo("/admin/sites");
             }
             catch (Exception)
@@ -95,17 +95,17 @@
         //Edit
         else
         {
-            var editCommand = new Application.Dtos.Sites.EditSiteRequest
+            var editCommand = new Api.Models.Sites.EditSiteRequest
                 {
                     Id = Id.Value,
                     Name = Site.Name,
                     Description = Site.Description,
                     RoleId = Site.RoleId,
-                    URLs = Site.Urls.ToArray()
+                    Urls = Site.Urls.ToArray()
                 };
             try
             {
-                await _httpClient.PatchAsJsonAsync($"site", editCommand);
+                await _httpClient.PatchAsJsonAsync($"site/edit", editCommand);
                 _navigationManager.NavigateTo("/admin/sites");
             }
             catch (Exception)

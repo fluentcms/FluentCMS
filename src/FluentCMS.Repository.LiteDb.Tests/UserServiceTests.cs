@@ -1,6 +1,6 @@
-﻿using FluentCMS.Application;
-using FluentCMS.Application.Dtos.Users;
-using FluentCMS.Application.Services;
+﻿using FluentCMS.Entities.Users;
+using FluentCMS.Repositories;
+using FluentCMS.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
@@ -11,9 +11,9 @@ public class UserServiceTests
     public UserServiceTests()
     {
         var services = new ServiceCollection();
-        services.AddFluentCMSCore()
-            .AddApplication()
-            .AddLiteDbRepository(b => b.UseInMemory());
+        services
+            .AddApplicationServices()
+            .AddLiteDbInMemoryRepository();
         _serviceProvider = services.BuildServiceProvider();
     }
 
@@ -24,17 +24,18 @@ public class UserServiceTests
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
         var username = "testuser";
-        var createdUserId = await userService.Create(new CreateUserRequest
+        var createdUser = await userService.Create(new User
         {
+            Id = Guid.NewGuid(),
             Name = "TestUser",
             Username = username,
             Password = "password",
-            Roles = []
+            UserRoles = [],
         });
 
         var loadedUser = await userService.GetByUsername(username);
         loadedUser.ShouldNotBeNull();
-        loadedUser.Id.ShouldBe(createdUserId);
+        loadedUser.Id.ShouldBe(createdUser.Id);
     }
 
     [Fact]
@@ -43,15 +44,15 @@ public class UserServiceTests
         using var scope = _serviceProvider.CreateScope();
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
-        var userToCreate = new CreateUserRequest
+        var userToCreate = new User
         {
             Name = "TestUser",
-            Username = "",
+            Username = "testuser",
             Password = "password",
-            Roles = []
+            UserRoles = []
         };
 
         // it should throw a ApplicationException
-        await Should.ThrowAsync<ArgumentException>(() => userService.Create(userToCreate));
+        await Should.ThrowAsync<ApplicationException>(() => userService.Create(userToCreate));
     }
 }

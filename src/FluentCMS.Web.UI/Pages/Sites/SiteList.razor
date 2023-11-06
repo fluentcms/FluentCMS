@@ -49,17 +49,14 @@ else
 
 
 @code {
-    private IEnumerable<Application.Dtos.Sites.SiteDto>? sites;
+    private IEnumerable<Api.Models.Sites.SiteResponse>? sites;
 
     public async Task Fetch()
     {
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<ApiResult<PagingResponse<Application.Dtos.Sites.SiteDto>>>("site");
-            if (response.IsSuccess)
-            {
-                sites = response.Data!.Data;
-            }
+            var response = await _httpClient.GetFromJsonAsync<ApiPagingResult<Api.Models.Sites.SiteResponse>>("site/getAll");
+            sites = response!.Data;
         }
         catch (Exception ex)
         {
