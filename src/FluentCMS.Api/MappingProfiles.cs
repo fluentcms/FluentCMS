@@ -1,5 +1,5 @@
 ﻿using AutoMapper;
-using FluentCMS.Api.Models;
+using FluentCMS.Api.Models.Pages;
 using FluentCMS.Api.Models.Sites;
 using FluentCMS.Api.Models.Users;
 using FluentCMS.Entities.Pages;
@@ -19,6 +19,8 @@ public class MappingProfiles : Profile
 
         // Page
         CreateMap<Page, PageResponse>().ReverseMap();
+        CreateMap<CreatePageRequest, Page>().ReverseMap();
+        CreateMap<EditPageRequest, Page>().ReverseMap();
 
         // User
         CreateMap<User, UserResponse>()

@@ -9,9 +9,6 @@ internal class DummyEntity : IEntity
     public Guid Id { get; set; }
     public string DummyField { get; set; } = "";
 
-    protected DummyEntity() { }
-    public DummyEntity(Guid id)
-    {
-        Id = id;
-    }
+    
+    public DummyEntity(){}
 }

@@ -10,6 +10,16 @@ public class MongoDbPageRepository : MongoDbGenericRepository<Page>, IPageReposi
     {
     }
 
+    public Task<IEnumerable<Page>> GetByParentId(Guid id)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Page> GetByPath(string path)
+    {
+        throw new NotImplementedException();
+    }
+
     public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -19,5 +29,10 @@ public class MongoDbPageRepository : MongoDbGenericRepository<Page>, IPageReposi
         var findResult = await Collection.FindAsync(filter, null, cancellationToken);
 
         return findResult.ToEnumerable(cancellationToken);
+    }
+
+    public Task<IEnumerable<Page>> GetBySiteIdAndParentId(Guid siteId, Guid? parentId = null)
+    {
+        throw new NotImplementedException();
     }
 }
