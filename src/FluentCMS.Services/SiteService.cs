@@ -16,28 +16,45 @@ public interface ISiteService
 public class SiteService : ISiteService
 {
     private readonly ISiteRepository _siteRepository;
+    private readonly ISecurityContext _securityContext;
 
-    public SiteService(ISiteRepository repository)
+    public SiteService(ISiteRepository repository, ISecurityContext securityContext)
     {
         _siteRepository = repository;
+        _securityContext = securityContext;
     }
 
     public async Task<IEnumerable<Site>> GetAll(CancellationToken cancellationToken = default)
     {
         var sites = await _siteRepository.GetAll(cancellationToken);
-        return sites;
+
+        // Checking if the user has access to the site
+        var accessibleSites = sites.Where(x => _securityContext.HasAccess(x, AccessType.Read));
+
+        return accessibleSites;
     }
 
     public async Task<Site> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _siteRepository.GetById(id, cancellationToken)
-            ?? throw new ApplicationException("Requested site does not exists.");
+        var site = await _siteRepository.GetById(id, cancellationToken) ?? throw new ApplicationException("Requested site does not exists.");
+
+        // Checking if the user has access to the site
+        if (_securityContext.HasAccess(site, AccessType.Read))
+            return site;
+        else
+            throw new ApplicationException("Requested site does not exists.");
     }
 
     public async Task<Site> GetByUrl(string url, CancellationToken cancellationToken = default)
     {
-        return await _siteRepository.GetByUrl(url, cancellationToken)
-            ?? throw new ApplicationException("Requested site does not exists.");
+        var site = await _siteRepository.GetByUrl(url, cancellationToken) ?? throw new ApplicationException("Requested site does not exists.");
+
+        // Checking if the user has access to the site
+        if (_securityContext.HasAccess(site, AccessType.Read))
+            return site;
+        else
+            throw new ApplicationException("Requested site does not exists.");
+
     }
 
     public async Task<Site> Create(Site site, CancellationToken cancellationToken = default)
@@ -58,13 +75,21 @@ public class SiteService : ISiteService
 
     public async Task<Site> Edit(Site site, CancellationToken cancellationToken = default)
     {
+        // Checking if the user has access to update the site
+        if (!_securityContext.HasAccess(site, AccessType.Update))
+            throw new ApplicationException("You don't have access to update this site.");
+
         var updateSite = await _siteRepository.Update(site, cancellationToken);
+
         return updateSite ?? throw new ApplicationException("Site not updated");
     }
 
     public async Task Delete(Site site, CancellationToken cancellationToken = default)
     {
         // TODO: check permissions, only super admin can delete a site
+        // Checking if the user has access to update the site
+        if (!_securityContext.HasAccess(site, AccessType.Delete))
+            throw new ApplicationException("You don't have access to delete this site.");
 
         // TODO: all pages should be deleted either by cascade or manually
 
