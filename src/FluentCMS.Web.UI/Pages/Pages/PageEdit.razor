@@ -5,7 +5,7 @@
 @inject HttpClient _httpClient
 @inject NavigationManager _navigationManager
 
-<h3>SiteEdit</h3>
+<h3>Page Edit</h3>
 <EditForm Model="Page" OnValidSubmit="ValidSubmit">
 
     @* public Guid SiteId { get; set; } *@
@@ -36,9 +36,6 @@
     [Parameter]
     public Guid? ParentId { get; set; }
     public FluentCMS.Api.Models.Pages.CreatePageRequest Page { get; set; } = new();
-
-
-
 
     protected override async Task OnParametersSetAsync()
     {
@@ -71,11 +68,10 @@
         }
         catch (Exception)
         {
-
             throw;
         }
-
     }
+
     public async Task ValidSubmit()
     {
         //Create
@@ -89,7 +85,6 @@
             }
             catch (Exception)
             {
-
                 throw;
             }
         }
@@ -113,7 +108,6 @@
             }
             catch (Exception)
             {
-
                 throw;
             }
         }

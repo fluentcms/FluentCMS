@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.8.0" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\FluentCMS.Repositories\FluentCMS.Repositories.csproj" />
   </ItemGroup>
 

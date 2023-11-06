@@ -1,5 +1,4 @@
 ﻿using FluentCMS.Entities.Pages;
-using FluentCMS.Entities.Sites;
 using FluentCMS.Repositories.Abstractions;
 
 namespace FluentCMS.Services;
@@ -92,7 +91,7 @@ public class PageService : IPageService
     public async Task<IEnumerable<Page>> GetBySiteIdAndParentId(Guid siteId, Guid? parentId)
     {
         var sitePages = await _pageRepository.GetBySiteIdAndParentId(siteId);
-        if(parentId is null)
+        if (parentId is null)
         {
             return sitePages;
         }

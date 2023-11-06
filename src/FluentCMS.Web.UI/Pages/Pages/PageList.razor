@@ -5,6 +5,7 @@
 @inject HttpClient _httpClient
 @inject NavigationManager _navigationManager
 @inject IJSRuntime _jsRuntime;
+
 <h3>Pages</h3>
 <p>List of pages for site:@SiteId parent:@ParentId</p>
 <NavigationButton To="@(ParentId == null ?  $"/admin/pages/create/{SiteId}" : $"/admin/pages/create/{SiteId}/{ParentId}")">Create</NavigationButton>
@@ -46,6 +47,7 @@ else
     [Parameter]
     public Guid? ParentId { get; set; }
     private IEnumerable<Api.Models.Pages.PageResponse>? pages;
+
     public async Task Fetch()
     {
         try
@@ -61,7 +63,6 @@ else
         {
             throw;
         }
-        StateHasChanged();
     }
 
     protected override async Task OnInitializedAsync()
@@ -79,6 +80,7 @@ else
             {
                 await _httpClient.DeleteAsync("pages/Delete/" + id);
                 await Fetch();
+                StateHasChanged();
             }
             catch (Exception)
             {

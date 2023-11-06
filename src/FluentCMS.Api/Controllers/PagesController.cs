@@ -1,11 +1,9 @@
 ﻿using AutoMapper;
-using FluentCMS.Entities.Sites;
 using FluentCMS.Api.Models;
-using FluentCMS.Api.Models.Sites;
+using FluentCMS.Api.Models.Pages;
+using FluentCMS.Entities.Pages;
 using FluentCMS.Services;
 using Microsoft.AspNetCore.Mvc;
-using FluentCMS.Entities.Pages;
-using FluentCMS.Api.Models.Pages;
 
 namespace FluentCMS.Api.Controllers;
 
@@ -19,14 +17,15 @@ public class PagesController : BaseController
         _pageService = pageService;
         _mapper = mapper;
     }
+
     // GetBy Site and ParentId
     [HttpPost]
-    public async Task<IApiPagingResult<PageResponse>> GetAll([FromBody]PageSearchRequest request)
+    public async Task<IApiPagingResult<PageResponse>> GetAll([FromBody] PageSearchRequest request)
     {
         var pages = await _pageService.GetBySiteIdAndParentId(request.SiteId, request.ParentId);
         return new ApiPagingResult<PageResponse>(_mapper.Map<List<PageResponse>>(pages));
-
     }
+
     [HttpGet("{id}")]
     public async Task<IApiResult<PageResponse>> GetById([FromRoute] Guid id)
     {
@@ -68,5 +67,4 @@ public class PagesController : BaseController
         await _pageService.Delete(page);
         return new ApiResult<bool>(true);
     }
-
 }

@@ -80,6 +80,7 @@ else
             {
                 await _httpClient.DeleteAsync("site/" + id);
                 await Fetch();
+                StateHasChanged();
             }
             catch (Exception)
             {
