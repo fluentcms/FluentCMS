@@ -55,7 +55,7 @@ else
     {
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<IApiPagingResult<Api.Models.Sites.SiteResponse>>("site");
+            var response = await _httpClient.GetFromJsonAsync<ApiPagingResult<Api.Models.Sites.SiteResponse>>("site/getAll");
             sites = response!.Data;
         }
         catch (Exception ex)

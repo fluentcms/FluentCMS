@@ -28,6 +28,13 @@ public class UsersController(IMapper mapper, IUserService userService) : BaseCon
     public async Task<IApiResult<UserResponse>> Create(CreateUserRequest request)
     {
         var user = mapper.Map<User>(request);
+        user.Id = Guid.NewGuid();
+        user.UserRoles = request.Roles?.Select(x => new UserRole
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            RoleId = x
+        }).ToList() ?? [];
         var newUser = await userService.Create(user);
         var result = mapper.Map<UserResponse>(newUser);
         return new ApiResult<UserResponse>(result);
@@ -37,6 +44,12 @@ public class UsersController(IMapper mapper, IUserService userService) : BaseCon
     public async Task<IApiResult<UserResponse>> Edit(EditUserRequest request)
     {
         var user = mapper.Map<User>(request);
+        user.UserRoles = request.Roles?.Select(x => new UserRole
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            RoleId = x
+        }).ToList() ?? [];
         var editedUser = await userService.Edit(user);
         var result = mapper.Map<UserResponse>(editedUser);
         return new ApiResult<UserResponse>(result);

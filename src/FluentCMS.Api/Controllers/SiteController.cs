@@ -63,7 +63,7 @@ public class SiteController : BaseController
     }
 
     [HttpPatch]
-    public async Task<IApiResult<SiteResponse>> Update(EditSiteRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<SiteResponse>> Edit(EditSiteRequest request, CancellationToken cancellationToken = default)
     {
         var site = _mapper.Map<Site>(request);
         var updateSite = await _siteService.Edit(site, cancellationToken);

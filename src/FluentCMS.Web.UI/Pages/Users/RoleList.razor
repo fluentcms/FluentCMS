@@ -44,7 +44,7 @@ else
     {
         try
         {
-            var response = await httpClient.GetFromJsonAsync<IApiPagingResult<Api.Models.Users.RoleResponse>>("roles");
+            var response = await httpClient.GetFromJsonAsync<ApiPagingResult<Api.Models.Users.RoleResponse>>("roles/getAll");
             if (response != null)
             {
                 roles = response!.Data;
@@ -65,7 +65,7 @@ else
     {
         try
         {
-            var response = await httpClient.DeleteFromJsonAsync<IApiResult<bool>>("roles/" + id);
+            var response = await httpClient.DeleteFromJsonAsync<ApiResult<bool>>("roles/delete/" + id);
             if (response != null)
             {
                 await LoadRoles();

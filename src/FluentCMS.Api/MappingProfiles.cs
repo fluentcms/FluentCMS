@@ -23,8 +23,14 @@ public class MappingProfiles : Profile
         // User
         CreateMap<User, UserResponse>()
             .ForMember(x => x.UserRoles, cfg => cfg.MapFrom(y => y.UserRoles.Select(z => z.RoleId.ToString())));
+        CreateMap<CreateUserRequest, User>()
+            .ForMember(x => x.UserRoles, cfg => cfg.Ignore());
+        CreateMap<EditUserRequest, User>()
+            .ForMember(x => x.UserRoles, cfg => cfg.Ignore());
 
         // Role
         CreateMap<Role, RoleResponse>();
+        CreateMap<CreateRoleRequest, Role>();
+        CreateMap<EditRoleRequest, Role>();
     }
 }

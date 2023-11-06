@@ -56,7 +56,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var getRolesResponse = await _httpClient.GetFromJsonAsync<IApiPagingResult<Api.Models.Users.RoleResponse>>("roles");
+        var getRolesResponse = await _httpClient.GetFromJsonAsync<ApiPagingResult<Api.Models.Users.RoleResponse>>("roles/getAll");
         if (getRolesResponse != null)
         {
             roles = getRolesResponse!.Data;
@@ -71,7 +71,7 @@
         {
             try
             {
-                var response = await _httpClient.GetFromJsonAsync<IApiResult<Api.Models.Users.UserResponse>>($"users/{Id.Value}");
+                var response = await _httpClient.GetFromJsonAsync<ApiResult<Api.Models.Users.UserResponse>>($"users/getById/{Id.Value}");
                 if (response != null)
                 {
                     data.Name = response.Data!.Name;
@@ -94,7 +94,7 @@
         {
             try
             {
-                await _httpClient.PostAsJsonAsync($"users", data);
+                await _httpClient.PostAsJsonAsync($"users/create", data);
                 _navigationManager.NavigateTo("/admin/users");
             }
             catch (Exception)
@@ -115,7 +115,7 @@
                 };
             try
             {
-                await _httpClient.PutAsJsonAsync($"users", editCommand);
+                await _httpClient.PutAsJsonAsync($"users/edit", editCommand);
                 _navigationManager.NavigateTo("/admin/users");
             }
             catch (Exception)

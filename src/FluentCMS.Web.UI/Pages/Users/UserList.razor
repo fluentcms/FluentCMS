@@ -42,10 +42,10 @@ else
     {
         try
         {
-            var response = await httpClient.GetFromJsonAsync<IApiPagingResult<Api.Models.Users.UserResponse>>("users");
+            var response = await httpClient.GetFromJsonAsync<ApiPagingResult<Api.Models.Users.UserResponse>>("users/getAll");
             if (response != null)
             {
-                users = response!.Data;
+                users = response.Data;
             }
         }
         catch (Exception ex)
@@ -63,7 +63,7 @@ else
     {
         try
         {
-            var response = await httpClient.DeleteFromJsonAsync<IApiResult<bool>>("users/" + id);
+            var response = await httpClient.DeleteFromJsonAsync<ApiResult<bool>>("users/delete/" + id);
             if (response != null)
             {
                 await LoadUsers();
