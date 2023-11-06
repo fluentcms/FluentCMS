@@ -1,5 +1,7 @@
-﻿using FluentCMS.Application;
-using FluentCMS.Application.Services;
+﻿using FluentCMS.Entities.Pages;
+using FluentCMS.Repositories;
+using FluentCMS.Repositories.Abstractions;
+using FluentCMS.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
@@ -11,9 +13,8 @@ public class PageService_Tests
     public PageService_Tests()
     {
         var services = new ServiceCollection();
-        services.AddFluentCMSCore()
-            .AddApplication()
-            .AddLiteDbRepository(b => b.UseInMemory());
+        services.AddApplicationServices()
+            .AddLiteDbInMemoryRepository();
         _serviceProvider = services.BuildServiceProvider();
     }
 
@@ -24,8 +25,8 @@ public class PageService_Tests
         var pageService = _serviceProvider.GetRequiredService<IPageService>();
         var pageRepository = _serviceProvider.GetRequiredService<IPageRepository>();
         Guid siteId = Guid.NewGuid();
-        var page = await pageService.Create("test", siteId, null);
-        await pageRepository.Create(page);
+        var page = new Page() { Title = "test", SiteId = siteId, Path = "/test" };
+        await pageService.Create(page);
         var result = await pageRepository.GetById(page.Id);
         result.ShouldNotBeNull();
         result.Title.ShouldBe("test");
@@ -40,11 +41,11 @@ public class PageService_Tests
         var pageService = _serviceProvider.GetRequiredService<IPageService>();
         var pageRepository = _serviceProvider.GetRequiredService<IPageRepository>();
         Guid siteId = Guid.NewGuid();
-        var page = await pageService.Create("test", siteId, null);
-        await pageRepository.Create(page);
+        var page = new Page() { Title = "test", SiteId = siteId, Path = "/test" };
+        await pageService.Create(page);
         var dbEntity = await pageRepository.GetById(page.Id);
-        dbEntity?.SetTitle("test2");
-        await pageService.ValidateEdit(dbEntity);
+        dbEntity.ShouldNotBeNull();
+        dbEntity.Title = "test2";
         await pageRepository.Update(dbEntity);
         var result = await pageRepository.GetById(page.Id);
         result.ShouldNotBeNull();
@@ -60,17 +61,12 @@ public class PageService_Tests
         var pageService = _serviceProvider.GetRequiredService<IPageService>();
         var pageRepository = _serviceProvider.GetRequiredService<IPageRepository>();
         Guid siteId = Guid.NewGuid();
-        var page = await pageService.Create("test", siteId, null);
-        await pageRepository.Create(page);
+        var page = new Page() { Title = "test", SiteId = siteId, Path = "/test" };
+        await pageService.Create(page);
         Guid siteId2 = Guid.NewGuid();
-        var taskToCreateDuplicatePage = pageService.Create("test2", siteId, null, path: "/test");
+        var duplciatePage = new Page() { Title = "test2", SiteId = siteId2, Path = "/test" };
+        var taskToCreateDuplicatePage = pageService.Create(duplciatePage);
         await taskToCreateDuplicatePage.ShouldThrowAsync<ApplicationException>();
-        var taskToEditDuplicatePage = pageService.Create("test2", siteId, null, path: "/test");
-        var page2 = await pageService.Create("test2", siteId, null);
-        await pageRepository.Create(page2);
-        page.SetPath("/test2");
-        var taskToValidateEdit_DuplicatePath = pageService.ValidateEdit(page);
-        await taskToValidateEdit_DuplicatePath.ShouldThrowAsync<ApplicationException>();
 
     }
 }

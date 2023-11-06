@@ -10,29 +10,26 @@ public class LiteDbRepository_Tests
     public async Task Should_Create()
     {
         var repository = GetInstance();
-        var guid = Guid.NewGuid();
-        var entity = new DummyEntity(guid);
+        var entity = new DummyEntity();
         await repository.Create(entity);
-        var dbEntity = await repository.GetById(guid);
-        dbEntity.ShouldNotBeNull();
-        dbEntity.Id.ShouldBe(guid);
+        var dbEntities = await repository.GetAll();
+        dbEntities.Count().ShouldBe(1);
     }
 
     [Fact]
     public async Task Should_Update()
     {
         var repository = GetInstance();
-        var guid = Guid.NewGuid();
-        var entity = new DummyEntity(guid);
-        await repository.Create(entity);
+        var entity = new DummyEntity();
+        entity = await repository.Create(entity);
         // Serialize & Deserialize the entity to break reference (deep-copy)
         // todo: can utilize Prototype Pattern to avoid this mess
         var deepCopy = JsonConvert.DeserializeObject<DummyEntity>(JsonConvert.SerializeObject(entity)) ?? throw new InvalidOperationException("This should not happen");
         deepCopy.DummyField = "Updated!";
         await repository.Update(deepCopy);
-        var dbEntity = await repository.GetById(guid);
+        var dbEntity = await repository.GetById(deepCopy.Id);
         dbEntity.ShouldNotBeNull();
-        dbEntity.Id.ShouldBe(guid);
+        dbEntity.Id.ShouldBe(deepCopy.Id);
         dbEntity.DummyField.ShouldBe("Updated!");
     }
 
@@ -40,10 +37,9 @@ public class LiteDbRepository_Tests
     public async Task Should_Delete()
     {
         var repository = GetInstance();
-        var guid = Guid.NewGuid();
-        var entity = new DummyEntity(guid);
-        await repository.Create(entity);
-        await repository.Delete(guid);
+        var entity = new DummyEntity();
+        entity = await repository.Create(entity);
+        await repository.Delete(entity.Id);
         var dbEntities = await repository.GetAll();
         dbEntities.ShouldNotBeNull();
         dbEntities.ShouldBeEmpty();
@@ -53,12 +49,11 @@ public class LiteDbRepository_Tests
     public async Task Should_GetById()
     {
         var repository = GetInstance();
-        var guid = Guid.NewGuid();
-        var entity = new DummyEntity(guid);
-        await repository.Create(entity);
-        var dbEntity = await repository.GetById(guid);
+        var entity = new DummyEntity();
+        entity = await repository.Create(entity);
+        var dbEntity = await repository.GetById(entity.Id);
         dbEntity.ShouldNotBeNull();
-        dbEntity.Id.ShouldBe(guid);
+        dbEntity.Id.ShouldBe(entity.Id);
     }
 
     [Fact]
@@ -67,12 +62,13 @@ public class LiteDbRepository_Tests
         var repository = GetInstance();
         const int count = 10;
         // generate N guids and entities
-        var guids = Enumerable.Range(1, count).Select(_ => Guid.NewGuid()).ToList();
-        var entities = guids.Select(x => new DummyEntity(x)).ToList();
+        var guids = new List<Guid>();
+        var entities = Enumerable.Range(1, count).Select(_ => new DummyEntity()).ToList();
         // todo:investigate feasibility of Implementing a CreateMany Method
         foreach (var entity in entities)
         {
-            await repository.Create(entity);
+            var saved = await repository.Create(entity);
+            guids.Add(saved.Id);
         }
 
         var dbEntities = (await repository.GetByIds(guids)).ToList();
@@ -87,11 +83,12 @@ public class LiteDbRepository_Tests
         var repository = GetInstance();
         const int count = 10;
         // generate N guids and entities
-        var guids = Enumerable.Range(1, count).Select(_ => Guid.NewGuid()).ToList();
-        var entities = guids.Select(x => new DummyEntity(x)).ToList();
+        var guids = new List<Guid>();
+        var entities = Enumerable.Range(1, count).Select(_ => new DummyEntity()).ToList();
         foreach (var entity in entities)
         {
-            await repository.Create(entity);
+            var saved = await repository.Create(entity);
+            guids.Add(saved.Id);
         }
         var dbEntities = (await repository.GetAll()).ToList();
         dbEntities.ShouldNotBeNull();
@@ -105,11 +102,12 @@ public class LiteDbRepository_Tests
         var repository = GetInstance();
         const int count = 10;
         // generate N guids and entities
-        var guids = Enumerable.Range(1, count).Select(_ => Guid.NewGuid()).ToList();
-        var entities = guids.Select(x => new DummyEntity(x)).ToList();
+        var guids = new List<Guid>();
+        var entities = Enumerable.Range(1, count).Select(_ => new DummyEntity()).ToList();
         foreach (var entity in entities)
         {
-            await repository.Create(entity);
+            var saved = await repository.Create(entity);
+            guids.Add(saved.Id);
         }
         var firstGuid = guids.First();
         var dbEntities = (await repository.GetAll()).Where(x => x.Id == firstGuid).ToList();
