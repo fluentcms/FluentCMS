@@ -39,7 +39,12 @@ public class PageService : IPageService
         // normalizing the page path to lowercase
         page.Path = page.Path.ToLower();
 
-        // TODO: check if the page path is unique
+        // check if the page path is unique
+        var samePathPage = await _pageRepository.GetByPath(page.Path);
+        if (samePathPage != null)
+        {
+            throw new ApplicationException("Page path must be unique");
+        }
 
         var newPage = await _pageRepository.Create(page, cancellationToken);
         return newPage ?? throw new Exception("Page not created");

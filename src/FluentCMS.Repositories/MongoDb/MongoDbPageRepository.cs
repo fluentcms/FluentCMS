@@ -10,6 +10,11 @@ public class MongoDbPageRepository : MongoDbGenericRepository<Page>, IPageReposi
     {
     }
 
+    public Task<Page> GetByPath(string path)
+    {
+        throw new NotImplementedException();
+    }
+
     public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

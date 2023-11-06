@@ -15,4 +15,9 @@ public class LiteDbPageRepository : LiteDbGenericRepository<Page>, IPageReposito
 
         return await Collection.FindAsync(x => x.SiteId == siteId);
     }
+
+    public async Task<Page> GetByPath(string path)
+    {
+        return await Collection.FindOneAsync(x => x.Path == path);
+    }
 }
