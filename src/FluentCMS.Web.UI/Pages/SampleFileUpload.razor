@@ -1,0 +1,135 @@
+﻿@page "/admin/fileupload"
+@inject HttpClient httpClient
+@using System.Net.Http.Headers
+
+<h3>Sample File Upload</h3>
+
+<p>
+    <label>
+        Upload up to @maxAllowedFiles files:
+        <InputFile OnChange="@OnInputFileChange" multiple />
+    </label>
+</p>
+
+@if (files.Count > 0)
+{
+    <div class="card">
+        <div class="card-body">
+            <ul>
+                @foreach (var file in files)
+                {
+                    <li>
+                        File: @file.Name
+
+                        @if (FileUpload(uploadResults, file.Name, out var result))
+                        {
+                            <span>
+                                Stored File Name: @result.StoredFileName
+                            </span>
+                        }
+                        else
+                        {
+                            <span>
+                                There was an error uploading the file
+                                (Error: @result.Error).
+                            </span>
+                        }
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+}
+
+@code {
+    private List<File> files = new();
+    private List<Api.Models.UploadedFile> uploadResults = new();
+    private int maxAllowedFiles = 3;
+    private bool shouldRender;
+    private string? message;
+
+    protected override bool ShouldRender() => shouldRender;
+
+    private async Task OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        shouldRender = false;
+        long maxFileSize = 1024 * 600; // 600kb
+        var upload = false;
+        uploadResults.Clear();
+        files.Clear();
+
+        using var content = new MultipartFormDataContent();
+
+        if (e.FileCount > maxAllowedFiles)
+        {
+            message = $"Try again with no more than {maxAllowedFiles} files.";
+        }
+        else
+        {
+            foreach (var file in e.GetMultipleFiles(maxAllowedFiles))
+            {
+                if (uploadResults.SingleOrDefault(f => f.FileName == file.Name) is null)
+                {
+                    try
+                    {
+                        files.Add(new() { Name = file.Name });
+
+                        var fileContent = new StreamContent(file.OpenReadStream(maxFileSize));
+                        fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+                        content.Add(
+                            content: fileContent,
+                            name: "\"files\"",
+                            fileName: file.Name);
+
+                        upload = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        uploadResults.Add(new()
+                        {
+                            FileName = file.Name,
+                            Error = "{FileName} not uploaded (Err: 5): {Message}",
+                            Successful = false
+                        });
+                    }
+                }
+            }
+
+            message = string.Empty;
+        }
+
+        if (upload)
+        {
+            var response = await httpClient.PostAsync("FileStorage/Upload", content);
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                    };
+
+                using var responseStream = await response.Content.ReadAsStreamAsync();
+                var newUploadResults = await System.Text.Json.JsonSerializer.DeserializeAsync<IList<Api.Models.UploadedFile>>(responseStream, options);
+                if (newUploadResults is not null)
+                {
+                    uploadResults = uploadResults.Concat(newUploadResults).ToList();
+                }
+            }
+        }
+
+        shouldRender = true;
+    }
+
+    private static bool FileUpload(IList<Api.Models.UploadedFile> uploadResults,
+        string? fileName, out Api.Models.UploadedFile result)
+    {
+        result = uploadResults.SingleOrDefault(f => f.FileName == fileName) ?? new();
+
+        return result.Successful;
+    }
+
+    private class File
+    {
+        public string? Name { get; set; }
+    }
+}

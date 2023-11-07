@@ -11,6 +11,10 @@ public static class Extensions
         services.AddScoped<ISiteService, SiteService>();
         services.AddScoped<IPageService, PageService>();
         services.AddScoped<IContentTypeService, ContentTypeService>();
+
+        // plugins
+        services.AddTransient<Pluginses.IFileStoragePlugin, Pluginses.FileSystemStoragePlugin>();
+
         return services;
     }
 }
