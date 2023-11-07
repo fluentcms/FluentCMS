@@ -1,7 +1,12 @@
 using FluentCMS.Api;
+using FluentCMS.Api.Identity;
+using FluentCMS.Entities.Users;
 using FluentCMS.Repositories;
 using FluentCMS.Services;
+using FluentCMS.Services.Identity;
 using FluentCMS.Web.UI;
+using FluentCMS.Api.Identity;
+using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +30,22 @@ services.AddMappingProfiles();
 services.AddApiDocumentation();
 
 services.AddHttpContextAccessor();
+
+services.AddScoped<FluentUserManager>();
+services.AddScoped<FluentSignInManager>();
+
+services.AddIdentity<User, Role>()
+            .AddUserStore<FluentCmsUserStore>()
+            .AddRoleStore<FluentCmsRoleStore>()
+            //.AddApiEndpoints()
+            ;
+
+services.AddAuthentication().AddBearerToken(o =>
+{
+    o.BearerTokenExpiration = TimeSpan.FromMinutes(5);
+    o.RefreshTokenExpiration = TimeSpan.FromDays(7);
+});
+
 
 services.AddScoped(sp =>
 {
@@ -70,7 +91,8 @@ app.UseEndpoints(endpoints =>
     });
 });
 app.MapControllers();
-
+//app.MapIdentityApi<User>();
+app.MapFluentIdentity();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
