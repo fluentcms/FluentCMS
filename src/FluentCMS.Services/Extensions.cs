@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using FluentCMS.Entities.Users;
+using FluentCMS.Services.Identity;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Services;
 
@@ -11,6 +14,11 @@ public static class Extensions
         services.AddScoped<ISiteService, SiteService>();
         services.AddScoped<IPageService, PageService>();
         services.AddScoped<IContentTypeService, ContentTypeService>();
+
+        services.AddTransient<FluentCmsUserStore>();
+        services.AddTransient<FluentCmsRoleStore>();
+
+
         return services;
     }
 }
