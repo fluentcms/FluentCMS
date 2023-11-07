@@ -16,8 +16,8 @@ public interface IApiResult : IApiResult<object>
 
 public class ApiResult<TData> : IApiResult<TData>
 {
-    public List<Error> Errors { get; internal set; } = [];
-    public List<object> Debug { get; internal set; } = [];
+    public List<Error> Errors { get; set; } = [];
+    public List<object> Debug { get; set; } = [];
     public string TraceId { get; set; } = string.Empty;
     public string SessionId { get; set; } = string.Empty;
     public double Duration { get; set; } = 0;

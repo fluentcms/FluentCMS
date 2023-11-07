@@ -1,7 +1,6 @@
 ﻿using AutoMapper;
 using FluentCMS.Api.Models;
 using FluentCMS.Api.Models.Users;
-using FluentCMS.Entities.Users;
 using FluentCMS.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -27,39 +26,31 @@ public class UsersController(IMapper mapper, IUserService userService) : BaseCon
     [HttpPost]
     public async Task<IApiResult<UserResponse>> Create(CreateUserRequest request)
     {
-        var user = mapper.Map<User>(request);
-        user.Id = Guid.NewGuid();
-        user.UserRoles = request.Roles?.Select(x => new UserRole
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            RoleId = x
-        }).ToList() ?? [];
-        var newUser = await userService.Create(user);
-        var result = mapper.Map<UserResponse>(newUser);
-        return new ApiResult<UserResponse>(result);
+        var user = await userService.Create(
+            name: request.Name,
+            username: request.Username,
+            password: request.Password,
+            roles: request.Roles);
+        return new ApiResult<UserResponse>(
+            mapper.Map<UserResponse>(user));
     }
 
     [HttpPut]
     public async Task<IApiResult<UserResponse>> Edit(EditUserRequest request)
     {
-        var user = mapper.Map<User>(request);
-        user.UserRoles = request.Roles?.Select(x => new UserRole
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            RoleId = x
-        }).ToList() ?? [];
-        var editedUser = await userService.Edit(user);
-        var result = mapper.Map<UserResponse>(editedUser);
-        return new ApiResult<UserResponse>(result);
+        var user = await userService.Edit(request.Id,
+            name: request.Name,
+            username: request.Username,
+            password: request.Password,
+            roles: request.Roles);
+        return new ApiResult<UserResponse>(
+            mapper.Map<UserResponse>(user));
     }
 
     [HttpDelete("{id}")]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
     {
-        var user = await userService.GetById(id);
-        await userService.Delete(user);
+        await userService.Delete(id);
         return new ApiResult<bool>(true);
     }
 }

@@ -19,6 +19,7 @@ services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 services.AddControllers();
+services.AddScoped<FluentCMS.Api.Middlewares.ErrorMiddleware>();
 services.AddRequestValidation();
 services.AddMappingProfiles();
 
@@ -61,6 +62,7 @@ app.UseApiDocumentation();
 
 app.UseAuthorization();
 
+app.UseMiddleware<FluentCMS.Api.Middlewares.ErrorMiddleware>();
 app.UseEndpoints(endpoints =>
 {
     _ = endpoints.MapGet("/", (context) =>

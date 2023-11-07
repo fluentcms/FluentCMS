@@ -2,6 +2,7 @@
 @page "/admin/users/edit/{Id:guid}"
 @inject HttpClient _httpClient
 @inject NavigationManager _navigationManager
+@inject ILogger<UserEdit> _logger
 
 <h3>@(Id.HasValue ? "Edit" : "Create") User</h3>
 
@@ -45,6 +46,16 @@
     </div>
 
     <Button Type="submit" Color="Colors.Primary">Save</Button>
+    @if (errors.Any())
+    {
+        <p>Errors:</p>
+        <ul class="">
+            @foreach (var errorMessage in errors)
+            {
+                <li>@errorMessage</li>
+            }
+        </ul>
+    }
 </EditForm>
 
 @code {
@@ -53,6 +64,7 @@
 
     private IEnumerable<Api.Models.Users.RoleResponse>? roles;
     private Api.Models.Users.CreateUserRequest data = new();
+    private List<string> errors = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -89,38 +101,53 @@
 
     public async Task ValidSubmit()
     {
-        //Create
-        if (Id.HasValue == false)
+        try
         {
-            try
+            errors.Clear();
+            HttpResponseMessage? response;
+            if (Id.HasValue == false)
             {
-                await _httpClient.PostAsJsonAsync($"users/create", data);
-                _navigationManager.NavigateTo("/admin/users");
+                //Create
+                response = await _httpClient.PostAsJsonAsync("users/create", data);
             }
-            catch (Exception)
+            else
             {
-                throw;
+                //Edit
+                response = await _httpClient.PutAsJsonAsync("users/edit",
+                    new Api.Models.Users.EditUserRequest
+                        {
+                            Id = Id.Value,
+                            Name = data.Name,
+                            Username = data.Username,
+                            Password = data.Password,
+                            Roles = data.Roles,
+                        });
             }
+            await handleCreateOrEditResponse(response);
         }
-        //Edit
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "error in create or edit user page");
+            errors.Add("Unknown error");
+        }
+    }
+
+    private async Task handleCreateOrEditResponse(HttpResponseMessage response)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            _navigationManager.NavigateTo("/admin/users");
+        }
         else
         {
-            var editCommand = new Api.Models.Users.EditUserRequest
-                {
-                    Id = Id.Value,
-                    Name = data.Name,
-                    Username = data.Username,
-                    Password = data.Password,
-                    Roles = data.Roles,
-                };
-            try
+            var result = await response.Content.ReadFromJsonAsync<ApiResult>();
+            if (result != null)
             {
-                await _httpClient.PutAsJsonAsync($"users/edit", editCommand);
-                _navigationManager.NavigateTo("/admin/users");
+                errors = result.Errors.Select(x => x.Description).ToList();
             }
-            catch (Exception)
+            else
             {
-                throw;
+                errors.Add("Unknown error");
             }
         }
     }

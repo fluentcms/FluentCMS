@@ -1,5 +1,4 @@
-﻿using FluentCMS.Entities.Users;
-using FluentCMS.Repositories;
+﻿using FluentCMS.Repositories;
 using FluentCMS.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -24,35 +23,14 @@ public class UserServiceTests
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
         var username = "testuser";
-        var createdUser = await userService.Create(new User
-        {
-            Id = Guid.NewGuid(),
-            Name = "TestUser",
-            Username = username,
-            Password = "password",
-            UserRoles = [],
-        });
+        var createdUser = await userService.Create(
+            name: "TestUser",
+            username: username,
+            password: "password",
+            roles: []);
 
         var loadedUser = await userService.GetByUsername(username);
         loadedUser.ShouldNotBeNull();
         loadedUser.Id.ShouldBe(createdUser.Id);
-    }
-
-    [Fact]
-    public async Task Should_Not_Create_Unprovided_Username()
-    {
-        using var scope = _serviceProvider.CreateScope();
-        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
-
-        var userToCreate = new User
-        {
-            Name = "TestUser",
-            Username = "testuser",
-            Password = "password",
-            UserRoles = []
-        };
-
-        // it should throw a ApplicationException
-        await Should.ThrowAsync<ApplicationException>(() => userService.Create(userToCreate));
     }
 }
