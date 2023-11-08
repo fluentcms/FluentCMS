@@ -73,6 +73,7 @@ public class SiteController : BaseController
     [HttpDelete("{id}")]
     public async Task<IApiResult> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
+        // TODO: we should avoid calling GetById twice, first one is in the service, te other one in here
         var site = await _siteService.GetById(id);
         await _siteService.Delete(site, cancellationToken);
         return new ApiResult();

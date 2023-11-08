@@ -10,6 +10,8 @@ public interface ISiteService
     Task<Site> GetByUrl(string url, CancellationToken cancellationToken = default);
     Task<Site> Create(Site site, CancellationToken cancellationToken = default);
     Task<Site> Update(Site site, CancellationToken cancellationToken = default);
+    // TODO: argument should be Guid id instead of Site site
+    // TODO: it should returns Task<Site> instead of Task
     Task Delete(Site site, CancellationToken cancellationToken = default);
 }
 
