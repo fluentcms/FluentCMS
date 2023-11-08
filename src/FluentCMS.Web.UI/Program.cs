@@ -5,8 +5,10 @@ using FluentCMS.Repositories;
 using FluentCMS.Services;
 using FluentCMS.Services.Identity;
 using FluentCMS.Web.UI;
-using FluentCMS.Api.Identity;
-using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,13 +39,29 @@ services.AddScoped<FluentSignInManager>();
 services.AddIdentity<User, Role>()
             .AddUserStore<FluentCmsUserStore>()
             .AddRoleStore<FluentCmsRoleStore>()
+            .AddTokenProvider<RefreshTokenProvider>(RefreshTokenProviderOptions.RefreshTokenProviderName)
             //.AddApiEndpoints()
             ;
 
-services.AddAuthentication().AddBearerToken(o =>
+services.AddAuthentication().AddJwtBearer(o =>
 {
-    o.BearerTokenExpiration = TimeSpan.FromMinutes(5);
-    o.RefreshTokenExpiration = TimeSpan.FromDays(7);
+    var key = builder.Configuration["Jwt:Key"] ?? "no-key";
+    var keyBytes = Encoding.UTF8.GetBytes(key);
+    o.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters()
+    {
+        IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
+        ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256 },
+        ValidateIssuerSigningKey = true,
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        ValidateLifetime = true,
+        
+    };
+    o.RefreshInterval = TimeSpan.FromMinutes(5);
+});
+services.AddAuthorization(o =>
+{
+
 });
 
 
@@ -91,8 +109,6 @@ app.UseEndpoints(endpoints =>
     });
 });
 app.MapControllers();
-//app.MapIdentityApi<User>();
-app.MapFluentIdentity();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
