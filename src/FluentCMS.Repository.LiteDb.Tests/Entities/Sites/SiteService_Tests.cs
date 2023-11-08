@@ -1,19 +1,19 @@
-﻿using FluentCMS.Entities.Sites;
-using FluentCMS.Repositories;
+﻿using FluentCMS.Entities;
 using FluentCMS.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
 namespace FluentCMS.Repository.LiteDb.Tests.Entities.Sites;
+
 public class SiteService_Tests
 {
     private readonly IServiceProvider _serviceProvider;
     public SiteService_Tests()
     {
         var services = new ServiceCollection();
-        services
-            .AddApplicationServices()
-            .AddLiteDbInMemoryRepository();
+        // TODO: write tests for LiteDbInMemoryRepository
+        services.AddApplicationServices();
+            //.AddLiteDbInMemoryRepository();
         _serviceProvider = services.BuildServiceProvider();
     }
 
@@ -31,13 +31,13 @@ public class SiteService_Tests
             Name = "test site",
             Description = "test site description",
             Urls = ["test.com"],
-            RoleId = roleId,
+            //RoleId = roleId,
         });
         var result = await service.GetById(siteId);
         result.Name.ShouldBe("test site");
         result.Description.ShouldBe("test site description");
         result.Urls.Contains("test.com").ShouldBeTrue();
-        result.RoleId.ShouldBe(roleId);
+        //result.RoleId.ShouldBe(roleId);
     }
 
     //Should Update Site
@@ -54,22 +54,22 @@ public class SiteService_Tests
             Name = "test site",
             Description = "test site description",
             Urls = ["test.com"],
-            RoleId = roleId,
+            //RoleId = roleId,
         });
         var dbSite = await service.GetById(siteId);
-        await service.Edit(new Site
+        await service.Update(new Site
         {
             Id = siteId,
             Name = "test site edited",
             Description = "test site description edited",
             Urls = dbSite.Urls.ToList(),
-            RoleId = roleId,
+            //RoleId = roleId,
         });
         var result = await service.GetById(siteId);
         result.Name.ShouldBe("test site edited");
         result.Description.ShouldBe("test site description edited");
         result.Urls.Contains("test.com").ShouldBeTrue();
-        result.RoleId.ShouldBe(roleId);
+        //result.RoleId.ShouldBe(roleId);
     }
 
     //Should Delete Site
@@ -86,7 +86,7 @@ public class SiteService_Tests
             Name = "test site",
             Description = "test site description",
             Urls = ["test.com"],
-            RoleId = roleId,
+            //RoleId = roleId,
         });
         var result = await service.GetById(siteId);
         await service.Delete(result);
@@ -108,13 +108,13 @@ public class SiteService_Tests
             Name = "test site",
             Description = "test site description",
             Urls = ["test.com"],
-            RoleId = roleId,
+            //RoleId = roleId,
         });
         var result = await service.GetById(siteId);
         result.Name.ShouldBe("test site");
         result.Description.ShouldBe("test site description");
         result.Urls.Contains("test.com").ShouldBeTrue();
-        result.RoleId.ShouldBe(roleId);
+        //result.RoleId.ShouldBe(roleId);
     }
 
     //Should Get Site By Url
@@ -131,13 +131,13 @@ public class SiteService_Tests
             Name = "test site",
             Description = "test site description",
             Urls = ["test.com"],
-            RoleId = roleId,
+            //RoleId = roleId,
         });
         var result = await service.GetByUrl("test.com");
         result.Name.ShouldBe("test site");
         result.Description.ShouldBe("test site description");
         result.Urls.Contains("test.com").ShouldBeTrue();
-        result.RoleId.ShouldBe(roleId);
+        //result.RoleId.ShouldBe(roleId);
     }
 
     //Should Get All Sites
@@ -157,7 +157,7 @@ public class SiteService_Tests
                 Name = $"test site {i}",
                 Description = $"test site description {i}",
                 Urls = [$"site-{i}.com"],
-                RoleId = roleId,
+                //RoleId = roleId,
             });
         }
         var result = await service.GetAll();

@@ -1,6 +1,6 @@
 ﻿using FluentValidation;
 
-namespace FluentCMS.Api.Models.Sites;
+namespace FluentCMS.Api.Models;
 
 public class CreateSiteRequest
 {

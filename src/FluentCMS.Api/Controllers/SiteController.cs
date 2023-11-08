@@ -1,7 +1,6 @@
 ﻿using AutoMapper;
-using FluentCMS.Entities.Sites;
 using FluentCMS.Api.Models;
-using FluentCMS.Api.Models.Sites;
+using FluentCMS.Entities;
 using FluentCMS.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -63,10 +62,10 @@ public class SiteController : BaseController
     }
 
     [HttpPatch]
-    public async Task<IApiResult<SiteResponse>> Edit(EditSiteRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<SiteResponse>> Update(UpdateSiteRequest request, CancellationToken cancellationToken = default)
     {
         var site = _mapper.Map<Site>(request);
-        var updateSite = await _siteService.Edit(site, cancellationToken);
+        var updateSite = await _siteService.Update(site, cancellationToken);
         var siteResponse = _mapper.Map<SiteResponse>(updateSite);
         return new ApiResult<SiteResponse>(siteResponse);
     }
