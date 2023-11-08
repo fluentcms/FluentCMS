@@ -125,7 +125,7 @@ public class FluentCmsUserStore : IUserStore<User>, IUserPasswordStore<User>,IUs
 
     public Task SetSecurityStampAsync(User user, string stamp, CancellationToken cancellationToken)
     {
-        _inMemorySecurityStampStore.Add(user.Id, stamp);
+        _inMemorySecurityStampStore[user.Id] = stamp;
         return Task.CompletedTask;
     }
 
