@@ -1,4 +1,4 @@
-﻿using FluentCMS.Entities.Pages;
+﻿using FluentCMS.Entities;
 using FluentCMS.Repositories.Abstractions;
 
 namespace FluentCMS.Services;
@@ -17,10 +17,12 @@ public interface IPageService
 public class PageService : IPageService
 {
     private readonly IPageRepository _pageRepository;
+    private readonly IApplicationContext _applicationContext;
 
-    public PageService(IPageRepository pageRepository)
+    public PageService(IPageRepository pageRepository, IApplicationContext applicationContext)
     {
         _pageRepository = pageRepository;
+        _applicationContext = applicationContext;
     }
 
     public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
@@ -43,6 +45,9 @@ public class PageService : IPageService
         // normalizing the page path to lowercase
         NormalizePath(page);
         await CheckForDuplicatePath(page);
+
+        page.CreatedBy = _applicationContext.Current?.User?.Username ?? string.Empty;
+        page.LastUpdatedBy = _applicationContext.Current?.User?.Username ?? string.Empty;
 
         var newPage = await _pageRepository.Create(page, cancellationToken);
         return newPage ?? throw new Exception("Page not created");

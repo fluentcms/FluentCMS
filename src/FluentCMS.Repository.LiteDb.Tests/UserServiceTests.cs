@@ -1,4 +1,4 @@
-﻿using FluentCMS.Entities.Users;
+﻿using FluentCMS.Entities;
 using FluentCMS.Repositories;
 using FluentCMS.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,8 +12,8 @@ public class UserServiceTests
     {
         var services = new ServiceCollection();
         services
-            .AddApplicationServices()
-            .AddLiteDbInMemoryRepository();
+            .AddApplicationServices();
+            //.AddLiteDbInMemoryRepository();
         _serviceProvider = services.BuildServiceProvider();
     }
 

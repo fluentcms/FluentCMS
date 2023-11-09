@@ -1,7 +1,7 @@
 ﻿@page "/admin/sites"
 @inject HttpClient _httpClient;
 @inject IJSRuntime _jsRuntime;
-@using FluentCMS.Entities.Sites
+@using FluentCMS.Entities
 
 <h3>Sites</h3>
 <p>List of all sites.</p>
@@ -50,13 +50,13 @@ else
 
 
 @code {
-    private IEnumerable<Api.Models.Sites.SiteResponse>? sites;
+    private IEnumerable<Api.Models.SiteResponse>? sites;
 
     public async Task Fetch()
     {
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<ApiPagingResult<Api.Models.Sites.SiteResponse>>("site/getAll");
+            var response = await _httpClient.GetFromJsonAsync<ApiPagingResult<Api.Models.SiteResponse>>("site/getAll");
             sites = response!.Data;
         }
         catch (Exception ex)

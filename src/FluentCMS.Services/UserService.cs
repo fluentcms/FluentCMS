@@ -1,4 +1,4 @@
-﻿using FluentCMS.Entities.Users;
+﻿using FluentCMS.Entities;
 using FluentCMS.Repositories.Abstractions;
 
 namespace FluentCMS.Services;
@@ -9,7 +9,7 @@ public interface IUserService
     Task<User> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<User> GetByUsername(string username, CancellationToken cancellationToken = default);
     Task<User> Create(User user, CancellationToken cancellationToken = default);
-    Task<User> Edit(User user, CancellationToken cancellationToken = default);
+    Task<User> Update(User user, CancellationToken cancellationToken = default);
     Task Delete(User user, CancellationToken cancellationToken = default);
 }
 
@@ -50,7 +50,7 @@ internal class UserService : IUserService
         return newUser ?? throw new ApplicationException("User not created");
     }
 
-    public async Task<User> Edit(User user, CancellationToken cancellationToken = default)
+    public async Task<User> Update(User user, CancellationToken cancellationToken = default)
     {
         if (user == null)
             throw new ApplicationException("user is not provided");
