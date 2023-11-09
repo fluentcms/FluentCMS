@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using FluentCMS.Api.Models;
 using FluentCMS.Api.Models.Pages;
+using FluentCMS.Entities;
 using FluentCMS.Services;
 using Microsoft.AspNetCore.Mvc;
 

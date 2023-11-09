@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using FluentCMS.Api.Models;
+using FluentCMS.Api.Models.Pages;
 using FluentCMS.Api.Models.Users;
 using FluentCMS.Entities;
 

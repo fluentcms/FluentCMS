@@ -12,12 +12,14 @@ public class MongoDbPageRepository : MongoDbGenericRepository<Page>, IPageReposi
 
     public Task<IEnumerable<Page>> GetByParentId(Guid id)
     {
-        throw new NotImplementedException();
+        // TODO: implement here
+        return Task.FromResult<IEnumerable<Page>>([]);
     }
 
     public Task<Page> GetByPath(string path)
     {
-        throw new NotImplementedException();
+        // TODO: implement here
+        return Task.FromResult<Page>(null);
     }
 
     public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
