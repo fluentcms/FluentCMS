@@ -34,14 +34,14 @@ internal class UserService : IUserService
     public async Task<User> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var user = await _userRepository.GetById(id, cancellationToken)
-            ?? throw AppException.BadRequest("Requested user does not exists.");
+            ?? throw new AppException(Errors.Users.UserDoesNotExists);
         return user;
     }
 
     public async Task<User> GetByUsername(string username, CancellationToken cancellationToken = default)
     {
         var user = await _userRepository.GetByUsername(username, cancellationToken)
-            ?? throw AppException.BadRequest("Requested user does not exists.");
+            ?? throw new AppException(Errors.Users.UserDoesNotExists);
         return user;
     }
 
@@ -52,7 +52,7 @@ internal class UserService : IUserService
         // check for duplicate username
         var duplicateUser = await _userRepository.GetByUsername(username, cancellationToken);
         if (duplicateUser != null)
-            throw AppException.BadRequest("duplicate user exists");
+            throw new AppException(Errors.Users.DuplicateUserFound);
 
         var userId = Guid.NewGuid();
         var user = new User
@@ -79,14 +79,14 @@ internal class UserService : IUserService
     {
         var user = await _userRepository.GetById(id, cancellationToken);
         if (user == null)
-            throw AppException.BadRequest("user is not exists.");
+            throw new AppException(Errors.Users.UserDoesNotExists);
 
         // check for duplicate username
         if (user.Username != username)
         {
             var duplicateUser = await _userRepository.GetByUsername(user.Username, cancellationToken);
             if (duplicateUser != null)
-                throw AppException.BadRequest("duplicate username exists");
+                throw new AppException(Errors.Users.DuplicateUserFound);
         }
 
         user.Name = name;
@@ -107,7 +107,7 @@ internal class UserService : IUserService
     {
         var user = await _userRepository.GetById(id, cancellationToken);
         if (user == null)
-            throw AppException.BadRequest("user is not exists.");
+            throw new AppException(Errors.Users.UserDoesNotExists);
 
         var deletedUser = await _userRepository.Delete(user.Id, cancellationToken);
         if (deletedUser is null) throw new Exception("User not deleted.");

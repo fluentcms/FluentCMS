@@ -19,9 +19,15 @@ services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 services.AddControllers();
-services.AddScoped<FluentCMS.Api.Middlewares.ErrorMiddleware>();
 services.AddRequestValidation();
 services.AddMappingProfiles();
+
+// api error handling
+services.AddScoped<FluentCMS.Api.Middlewares.ErrorMiddleware>();
+services.Configure<FluentCMS.Api.Middlewares.ErrorMiddlewareOptions>(options =>
+{
+    options.IncludeErrorDebugInResponse = builder.Environment.IsDevelopment();
+});
 
 services.AddApiDocumentation();
 
