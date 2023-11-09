@@ -2,5 +2,5 @@
 
 public interface ISecureEntity
 {
-    public List<Permission> Permissions { get; set; }
+    //public List<Permission> Permissions { get; set; }
 }

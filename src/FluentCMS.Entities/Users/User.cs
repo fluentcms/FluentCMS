@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Entities;
 
-public class User : IAuditEntity
+public class User : IAuditEntity,ISecureEntity
 {
     public Guid Id { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
