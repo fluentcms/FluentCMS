@@ -11,8 +11,8 @@ public class UserServiceTests
     {
         var services = new ServiceCollection();
         services
-            .AddApplicationServices()
-            .AddLiteDbInMemoryRepository();
+            .AddApplicationServices();
+            //.AddLiteDbInMemoryRepository();
         _serviceProvider = services.BuildServiceProvider();
     }
 

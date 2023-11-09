@@ -1,4 +1,4 @@
-﻿using FluentCMS.Entities.Users;
+﻿using FluentCMS.Entities;
 using FluentCMS.Repositories.Abstractions;
 
 namespace FluentCMS.Services;

@@ -12,9 +12,9 @@ public class ContentType_Tests
     public ContentType_Tests()
     {
         var services = new ServiceCollection();
-        services
-            .AddApplicationServices()
-            .AddLiteDbInMemoryRepository();
+        //services
+        //    .AddApplicationServices()
+        //    .AddLiteDbInMemoryRepository();
         _serviceProvider = services.BuildServiceProvider();
     }
 

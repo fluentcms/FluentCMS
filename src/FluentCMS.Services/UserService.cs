@@ -1,4 +1,4 @@
-﻿using FluentCMS.Entities.Users;
+﻿using FluentCMS.Entities;
 using FluentCMS.Repositories.Abstractions;
 
 namespace FluentCMS.Services;
@@ -11,7 +11,7 @@ public interface IUserService
     Task<User> Create(
         string name, string username, string password, IEnumerable<Guid> roles,
         CancellationToken cancellationToken = default);
-    Task<User> Edit(Guid id,
+    Task<User> Update(Guid id,
         string name, string username, string password, IEnumerable<Guid> roles,
         CancellationToken cancellationToken = default);
     Task Delete(Guid id, CancellationToken cancellationToken = default);
@@ -73,7 +73,7 @@ internal class UserService : IUserService
         return newUser ?? throw new Exception("User not created");
     }
 
-    public async Task<User> Edit(Guid id,
+    public async Task<User> Update(Guid id,
         string name, string username, string password, IEnumerable<Guid> roles,
         CancellationToken cancellationToken = default)
     {

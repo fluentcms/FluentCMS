@@ -36,9 +36,9 @@ public class UsersController(IMapper mapper, IUserService userService) : BaseCon
     }
 
     [HttpPut]
-    public async Task<IApiResult<UserResponse>> Edit(EditUserRequest request)
+    public async Task<IApiResult<UserResponse>> Update(EditUserRequest request)
     {
-        var user = await userService.Edit(request.Id,
+        var user = await userService.Update(request.Id,
             name: request.Name,
             username: request.Username,
             password: request.Password,

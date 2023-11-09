@@ -1,6 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using FluentCMS.Services;
 
-namespace FluentCMS.Services;
+namespace Microsoft.Extensions.DependencyInjection;
 
 public static class Extensions
 {
@@ -10,7 +10,8 @@ public static class Extensions
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<ISiteService, SiteService>();
         services.AddScoped<IPageService, PageService>();
-        services.AddScoped<IContentTypeService, ContentTypeService>();
+        services.AddScoped<IHostService, HostService>();
+
         return services;
     }
 }

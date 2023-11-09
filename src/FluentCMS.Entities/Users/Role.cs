@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Entities.Users;
+﻿namespace FluentCMS.Entities;
 
 public class Role : IAuditEntity
 {

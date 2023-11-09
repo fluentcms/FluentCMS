@@ -1,5 +1,4 @@
-﻿using FluentCMS.Entities.Pages;
-using FluentCMS.Repositories;
+﻿using FluentCMS.Entities;
 using FluentCMS.Repositories.Abstractions;
 using FluentCMS.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,8 +12,7 @@ public class PageService_Tests
     public PageService_Tests()
     {
         var services = new ServiceCollection();
-        services.AddApplicationServices()
-            .AddLiteDbInMemoryRepository();
+        services.AddApplicationServices();
         _serviceProvider = services.BuildServiceProvider();
     }
 

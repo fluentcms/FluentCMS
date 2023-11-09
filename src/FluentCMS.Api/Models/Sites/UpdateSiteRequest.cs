@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Api.Models.Sites;
 
-public class EditSiteRequest
+public class UpdateSiteRequest
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = "";
@@ -11,9 +11,9 @@ public class EditSiteRequest
     public ICollection<string> Urls { get; set; } = new List<string>();
 }
 
-public class EditSiteRequestValidator : AbstractValidator<EditSiteRequest>
+public class UpdateSiteRequestValidator : AbstractValidator<UpdateSiteRequest>
 {
-    public EditSiteRequestValidator()
+    public UpdateSiteRequestValidator()
     {
         RuleFor(x => x.Id).NotEmpty();
         RuleFor(x => x.Name).NotEmpty().MaximumLength(64);

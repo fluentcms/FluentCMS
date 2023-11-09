@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Entities.Pages;
+﻿namespace FluentCMS.Entities;
 
 public class Page : AuditEntity
 {
