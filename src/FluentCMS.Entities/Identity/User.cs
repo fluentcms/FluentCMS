@@ -1,0 +1,33 @@
+﻿using Microsoft.AspNetCore.Identity;
+
+namespace FluentCMS.Entities.Identity;
+
+public class User : IdentityUser<Guid>, IAuditEntity
+{
+    public DateTime? LastLoginAt { get; set; }
+    public int LoginsCount { get; set; }
+    public DateTime? LastPasswordChangedAt { get; set; }
+    public string LastPasswordChangedBy { get; set; } = string.Empty;
+    public bool Enabled { get; set; } = false;
+
+    public string CreatedBy { get; set; } = string.Empty; // UserName
+    public DateTime CreatedAt { get; set; }
+
+    public string LastUpdatedBy { get; set; } = string.Empty; // UserName
+    public DateTime LastUpdatedAt { get; set; }
+
+    public string AuthenticatorKey { get; set; } = string.Empty;
+    public List<IdentityUserClaim<Guid>> Claims { get; set; } = [];
+    public List<IdentityUserLogin<Guid>> Logins { get; set; } = [];
+    public List<IdentityUserToken<Guid>> Tokens { get; set; } = [];
+    public List<TwoFactorRecoveryCode> RecoveryCodes { get; set; } = [];
+    public List<string> Roles { get; set; } = [];
+
+    public User()
+    {
+    }
+
+    public User(string userName) : base(userName)
+    {
+    }
+}

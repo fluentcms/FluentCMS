@@ -10,4 +10,8 @@
     <ProjectReference Include="..\FluentCMS.Repositories\FluentCMS.Repositories.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Identity\" />
+  </ItemGroup>
+
 </Project>
