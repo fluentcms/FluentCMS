@@ -1,9 +1,9 @@
 ﻿@page "/admin/roles/create"
-@page "/admin/roles/edit/{Id:guid}"
+@page "/admin/roles/update/{Id:guid}"
 @inject HttpClient _httpClient
 @inject NavigationManager _navigationManager
 
-<h3>@(Id.HasValue ? "Edit" : "Create") Role</h3>
+<h3>@(Id.HasValue ? "Update" : "Create") Role</h3>
 
 <EditForm Model="data" OnValidSubmit="ValidSubmit">
     <div class="mb-3">
@@ -31,7 +31,7 @@
     [Parameter]
     public Guid? Id { get; set; }
 
-    private Api.Models.Users.CreateRoleRequest data = new();
+    private Api.Models.RoleCreateRequest data = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -41,7 +41,7 @@
         {
             try
             {
-                var response = await _httpClient.GetFromJsonAsync<ApiResult<Api.Models.Users.RoleResponse>>($"roles/getById/{Id.Value}");
+                var response = await _httpClient.GetFromJsonAsync<ApiResult<Api.Models.RoleResponse>>($"roles/getById/{Id.Value}");
                 if (response != null)
                 {
                     data.Name = response.Data!.Name;
@@ -74,7 +74,7 @@
         //Edit
         else
         {
-            var editCommand = new Api.Models.Users.EditRoleRequest
+            var editCommand = new Api.Models.RoleUpdateRequest
                 {
                     Id = Id.Value,
                     Name = data.Name,
@@ -83,7 +83,7 @@
                 };
             try
             {
-                await _httpClient.PutAsJsonAsync($"roles/edit", editCommand);
+                await _httpClient.PutAsJsonAsync($"roles/update", editCommand);
                 _navigationManager.NavigateTo("/admin/roles");
             }
             catch (Exception)

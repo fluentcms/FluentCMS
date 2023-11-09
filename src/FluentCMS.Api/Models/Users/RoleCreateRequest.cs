@@ -1,8 +1,8 @@
 ﻿using FluentValidation;
 
-namespace FluentCMS.Api.Models.Users;
+namespace FluentCMS.Api.Models;
 
-public class CreateRoleRequest
+public class RoleCreateRequest
 {
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
@@ -10,7 +10,7 @@ public class CreateRoleRequest
     public Guid? SiteId { get; set; }
 }
 
-public class CreateRoleRequestValidator : AbstractValidator<CreateRoleRequest>
+public class CreateRoleRequestValidator : AbstractValidator<RoleCreateRequest>
 {
     public CreateRoleRequestValidator()
     {

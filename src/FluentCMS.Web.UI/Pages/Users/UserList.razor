@@ -26,7 +26,7 @@ else
                     <td>@user.Name</td>
                     <td>@user.Username</td>
                     <td>
-                        <NavigationButton To="@("/admin/users/edit/" + user.Id)">Edit</NavigationButton>
+                        <NavigationButton To="@("/admin/users/update/" + user.Id)">Edit</NavigationButton>
                         <Button @onclick="() => OnDeleteClick(user.Id)">Delete</Button>
                     </td>
                 </tr>
@@ -36,13 +36,13 @@ else
 }
 
 @code {
-    private IEnumerable<Api.Models.Users.UserResponse>? users;
+    private IEnumerable<UserResponse>? users;
 
     private async Task LoadUsers()
     {
         try
         {
-            var response = await httpClient.GetFromJsonAsync<ApiPagingResult<Api.Models.Users.UserResponse>>("users/getAll");
+            var response = await httpClient.GetFromJsonAsync<ApiPagingResult<UserResponse>>("users/getAll");
             if (response != null)
             {
                 users = response.Data;

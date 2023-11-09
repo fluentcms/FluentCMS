@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Api.Models.Users;
+﻿namespace FluentCMS.Api.Models;
 public class RoleResponse
 {
     public required Guid Id { get; set; }

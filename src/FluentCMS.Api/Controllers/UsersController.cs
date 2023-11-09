@@ -1,6 +1,5 @@
 ﻿using AutoMapper;
 using FluentCMS.Api.Models;
-using FluentCMS.Api.Models.Users;
 using FluentCMS.Entities;
 using FluentCMS.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +8,7 @@ namespace FluentCMS.Api.Controllers;
 public class UsersController(IMapper mapper, IUserService userService) : BaseController
 {
     [HttpGet]
-    public async Task<IApiPagingResult<UserResponse>> GetAll([FromQuery] SearchUserRequest request)
+    public async Task<IApiPagingResult<UserResponse>> GetAll([FromQuery] UserSearchRequest request)
     {
         var users = await userService.GetAll();
         var result = mapper.Map<IEnumerable<UserResponse>>(users);
@@ -25,7 +24,7 @@ public class UsersController(IMapper mapper, IUserService userService) : BaseCon
     }
 
     [HttpPost]
-    public async Task<IApiResult<UserResponse>> Create(CreateUserRequest request)
+    public async Task<IApiResult<UserResponse>> Create(UserCreateRequest request)
     {
         var user = mapper.Map<User>(request);
         user.Id = Guid.NewGuid();
@@ -41,7 +40,7 @@ public class UsersController(IMapper mapper, IUserService userService) : BaseCon
     }
 
     [HttpPut]
-    public async Task<IApiResult<UserResponse>> Update(EditUserRequest request)
+    public async Task<IApiResult<UserResponse>> Update(UserUpdateRequest request)
     {
         var user = mapper.Map<User>(request);
         user.UserRoles = request.Roles?.Select(x => new UserRole
@@ -50,8 +49,8 @@ public class UsersController(IMapper mapper, IUserService userService) : BaseCon
             UserId = user.Id,
             RoleId = x
         }).ToList() ?? [];
-        var editedUser = await userService.Update(user);
-        var result = mapper.Map<UserResponse>(editedUser);
+        var updatedUser = await userService.Update(user);
+        var result = mapper.Map<UserResponse>(updatedUser);
         return new ApiResult<UserResponse>(result);
     }
 

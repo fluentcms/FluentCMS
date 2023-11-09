@@ -8,7 +8,7 @@ public interface IRoleService
     Task<IEnumerable<Role>> GetAll(CancellationToken cancellationToken = default);
     Task<Role> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<Role> Create(Role role, CancellationToken cancellationToken = default);
-    Task<Role> Edit(Role role, CancellationToken cancellationToken = default);
+    Task<Role> Update(Role role, CancellationToken cancellationToken = default);
     Task Delete(Role role, CancellationToken cancellationToken = default);
 }
 
@@ -36,7 +36,7 @@ internal class RoleService(IGenericRepository<Role> roleRepository) : IRoleServi
         return newRole ?? throw new ApplicationException("Role not created");
     }
 
-    public async Task<Role> Edit(Role role, CancellationToken cancellationToken = default)
+    public async Task<Role> Update(Role role, CancellationToken cancellationToken = default)
     {
         if (role == null)
             throw new ApplicationException("role is not provided");

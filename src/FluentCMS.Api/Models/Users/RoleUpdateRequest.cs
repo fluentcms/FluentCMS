@@ -1,8 +1,8 @@
 ﻿using FluentValidation;
 
-namespace FluentCMS.Api.Models.Users;
+namespace FluentCMS.Api.Models;
 
-public class EditRoleRequest
+public class RoleUpdateRequest
 {
     public required Guid Id { get; set; }
     public required string Name { get; set; }
@@ -11,9 +11,9 @@ public class EditRoleRequest
     public Guid? SiteId { get; set; }
 }
 
-public class EditRoleRequestValidator : AbstractValidator<EditRoleRequest>
+public class RoleUpdateRequestValidator : AbstractValidator<RoleUpdateRequest>
 {
-    public EditRoleRequestValidator()
+    public RoleUpdateRequestValidator()
     {
         RuleFor(x => x.Id).NotEmpty();
         RuleFor(x => x.Name).NotEmpty().MaximumLength(50);

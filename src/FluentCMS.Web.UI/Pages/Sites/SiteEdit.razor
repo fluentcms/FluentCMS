@@ -1,9 +1,10 @@
-﻿@page "/admin/sites/edit/{Id:guid}"
+﻿@page "/admin/sites/update/{Id:guid}"
 @page "/admin/sites/create"
+@using FluentCMS.Entities
 @inject HttpClient _httpClient
 @inject NavigationManager _navigationManager
 
-<h3>SiteEdit</h3>
+<h3>Site Update</h3>
 <EditForm Model="Site" OnValidSubmit="ValidSubmit">
     <div class="mb-3">
         <label class="form-label">Name</label>
@@ -34,7 +35,7 @@
 @code {
     [Parameter]
     public Guid? Id { get; set; }
-    public Entities.Site Site { get; set; } = new();
+    public Site Site { get; set; } = new();
 
     public string Urls
     {
@@ -56,7 +57,7 @@
         }
         try
         {
-            var response = (await _httpClient.GetFromJsonAsync<ApiResult<Entities.Site>>($"site/getById/{Id.Value}"))!;
+            var response = (await _httpClient.GetFromJsonAsync<ApiResult<Site>>($"site/getById/{Id.Value}"))!;
             if (response != null)
             {
                 Site = response.Data!;
@@ -74,7 +75,7 @@
         //Create
         if (Id == null)
         {
-            var createCommand = new Api.Models.CreateSiteRequest()
+            var createCommand = new SiteCreateRequest()
                 {
                     Name = Site.Name,
                     Description = Site.Description,
@@ -95,7 +96,7 @@
         //Edit
         else
         {
-            var editCommand = new Api.Models.UpdateSiteRequest
+            var updateCommand = new SiteUpdateRequest
                 {
                     Id = Id.Value,
                     Name = Site.Name,
@@ -105,7 +106,7 @@
                 };
             try
             {
-                await _httpClient.PatchAsJsonAsync($"site/edit", editCommand);
+                await _httpClient.PatchAsJsonAsync($"site/update", updateCommand);
                 _navigationManager.NavigateTo("/admin/sites");
             }
             catch (Exception)

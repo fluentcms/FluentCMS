@@ -1,8 +1,8 @@
 ﻿using FluentValidation;
 
-namespace FluentCMS.Api.Models.Users;
+namespace FluentCMS.Api.Models;
 
-public class CreateUserRequest
+public class UserCreateRequest
 {
     public string Name { get; set; } = string.Empty;
     public string Username { get; set; } = string.Empty;
@@ -10,7 +10,7 @@ public class CreateUserRequest
     public ICollection<Guid> Roles { get; set; } = new List<Guid>();
 }
 
-public class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
+public class CreateUserRequestValidator : AbstractValidator<UserCreateRequest>
 {
     public CreateUserRequestValidator()
     {

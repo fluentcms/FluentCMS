@@ -1,9 +1,9 @@
 ﻿@page "/admin/users/create"
-@page "/admin/users/edit/{Id:guid}"
+@page "/admin/users/update/{Id:guid}"
 @inject HttpClient _httpClient
 @inject NavigationManager _navigationManager
 
-<h3>@(Id.HasValue ? "Edit" : "Create") User</h3>
+<h3>@(Id.HasValue ? "Update" : "Create") User</h3>
 
 <EditForm Model="data" OnValidSubmit="ValidSubmit">
     <div class="mb-3">
@@ -51,12 +51,12 @@
     [Parameter]
     public Guid? Id { get; set; }
 
-    private IEnumerable<Api.Models.Users.RoleResponse>? roles;
-    private Api.Models.Users.CreateUserRequest data = new();
+    private IEnumerable<RoleResponse>? roles;
+    private UserCreateRequest data = new();
 
     protected override async Task OnInitializedAsync()
     {
-        var getRolesResponse = await _httpClient.GetFromJsonAsync<ApiPagingResult<Api.Models.Users.RoleResponse>>("roles/getAll");
+        var getRolesResponse = await _httpClient.GetFromJsonAsync<ApiPagingResult<RoleResponse>>("roles/getAll");
         if (getRolesResponse != null)
         {
             roles = getRolesResponse!.Data;
@@ -71,12 +71,12 @@
         {
             try
             {
-                var response = await _httpClient.GetFromJsonAsync<ApiResult<Api.Models.Users.UserResponse>>($"users/getById/{Id.Value}");
+                var response = await _httpClient.GetFromJsonAsync<ApiResult<UserResponse>>($"users/getById/{Id.Value}");
                 if (response != null)
                 {
                     data.Name = response.Data!.Name;
                     data.Username = response.Data!.Username;
-                    data.Password = "";
+                    data.Password = string.Empty;
                     data.Roles = response.Data.UserRoles.ToList();
                 }
             }
@@ -102,10 +102,10 @@
                 throw;
             }
         }
-        //Edit
+        //Update
         else
         {
-            var editCommand = new Api.Models.Users.EditUserRequest
+            var updateCommand = new UserUpdateRequest
                 {
                     Id = Id.Value,
                     Name = data.Name,
@@ -115,7 +115,7 @@
                 };
             try
             {
-                await _httpClient.PutAsJsonAsync($"users/edit", editCommand);
+                await _httpClient.PutAsJsonAsync($"users/update", updateCommand);
                 _navigationManager.NavigateTo("/admin/users");
             }
             catch (Exception)

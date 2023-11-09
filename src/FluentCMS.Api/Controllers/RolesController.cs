@@ -1,6 +1,5 @@
 ﻿using AutoMapper;
 using FluentCMS.Api.Models;
-using FluentCMS.Api.Models.Users;
 using FluentCMS.Entities;
 using FluentCMS.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +8,7 @@ namespace FluentCMS.Api.Controllers;
 public class RolesController(IMapper mapper, IRoleService roleService) : BaseController
 {
     [HttpGet]
-    public async Task<IApiPagingResult<RoleResponse>> GetAll([FromQuery] SearchRoleRequest request)
+    public async Task<IApiPagingResult<RoleResponse>> GetAll([FromQuery] RoleSearchRequest request)
     {
         var roles = await roleService.GetAll();
         var result = mapper.Map<IEnumerable<RoleResponse>>(roles);
@@ -25,7 +24,7 @@ public class RolesController(IMapper mapper, IRoleService roleService) : BaseCon
     }
 
     [HttpPost]
-    public async Task<IApiResult<RoleResponse>> Create(CreateRoleRequest request)
+    public async Task<IApiResult<RoleResponse>> Create(RoleCreateRequest request)
     {
         var role = mapper.Map<Role>(request);
         var newRole = await roleService.Create(role);
@@ -34,11 +33,11 @@ public class RolesController(IMapper mapper, IRoleService roleService) : BaseCon
     }
 
     [HttpPut]
-    public async Task<IApiResult<RoleResponse>> Edit(EditRoleRequest request)
+    public async Task<IApiResult<RoleResponse>> Update(RoleUpdateRequest request)
     {
         var role = mapper.Map<Role>(request);
-        var editedRole = await roleService.Edit(role);
-        var result = mapper.Map<RoleResponse>(editedRole);
+        var updatedRole = await roleService.Update(role);
+        var result = mapper.Map<RoleResponse>(updatedRole);
         return new ApiResult<RoleResponse>(result);
     }
 

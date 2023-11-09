@@ -9,7 +9,7 @@ public interface IContentTypeService
     Task<ContentType?> GetBySlug(string slug);
     Task<IEnumerable<ContentType>> Search();
     Task Create(ContentType contentType);
-    Task Edit(ContentType contentType);
+    Task Update(ContentType contentType);
     Task Delete(Guid id);
 }
 
@@ -44,7 +44,7 @@ internal class ContentTypeService : IContentTypeService
         await _contentTypeRepository.Create(contentType);
     }
 
-    public async Task Edit(ContentType contentType)
+    public async Task Update(ContentType contentType)
     {
         await CheckForDuplicateSlug(contentType);
         await _contentTypeRepository.Update(contentType);
