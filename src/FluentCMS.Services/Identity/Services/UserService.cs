@@ -2,54 +2,53 @@
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using FluentCMS.Entities.Identity;
+using FluentCMS.Repositories.Identity.Abstractions;
 
-namespace uBeac.Identity;
+namespace FluentCMS.Services.Identity;
 
-public class UserService<TUserKey, TUser> : IUserService<TUserKey, TUser>
-    where TUserKey : IEquatable<TUserKey>
-    where TUser : User<TUserKey>
+public class UserService : IUserService
 {
     const string LOCAL_LOGIN_PROVIDER = "local";
     const string REFRESH_TOKEN_NAME = "refreshToken";
 
-    protected readonly UserManager<TUser> UserManager;
-    protected readonly ITokenService<TUserKey, TUser> TokenService;
-    protected readonly IUserTokenRepository<TUserKey> UserTokenRepository;
-    protected readonly IEmailProvider EmailProvider;
+    protected readonly UserManager<User> UserManager;
+    protected readonly ITokenService TokenService;
+    protected readonly IUserTokenRepository UserTokenRepository;
+    //protected readonly IEmailProvider EmailProvider;
     protected readonly IApplicationContext AppContext;
-    protected readonly IHttpContextAccessor Accessor;
-    protected readonly UserRegisterOptions Options;
+    //protected readonly IHttpContextAccessor Accessor;
+    //protected readonly UserRegisterOptions Options;
 
-    public UserService(UserManager<TUser> userManager, ITokenService<TUserKey, TUser> tokenService, IUserTokenRepository<TUserKey> userTokenRepository, IEmailProvider emailProvider, IApplicationContext appContext, IHttpContextAccessor accessor, Microsoft.Extensions.Options.IOptions<UserRegisterOptions> options)
+    public UserService(UserManager<User> userManager, ITokenService tokenService, IUserTokenRepository userTokenRepository, IApplicationContext appContext, IHttpContextAccessor accessor)
     {
         UserManager = userManager;
         TokenService = tokenService;
         UserTokenRepository = userTokenRepository;
-        EmailProvider = emailProvider;
         AppContext = appContext;
-        Accessor = accessor;
-        Options = options.Value;
     }
 
-    public virtual async Task Create(TUser user, string password, CancellationToken cancellationToken = default)
+    public virtual async Task Create(User user, string password, CancellationToken cancellationToken = default)
     {
         var identityResult = await UserManager.CreateAsync(user, password);
         identityResult.ThrowIfInvalid();
     }
 
-    public virtual async Task<TUser> Register(string username, string email, string password, CancellationToken cancellationToken = default)
+    public virtual async Task<User> Register(string username, string email, string password, CancellationToken cancellationToken = default)
     {
-        var user = Activator.CreateInstance<TUser>();
-        user.UserName = username;
-        user.Email = email;
-        user.EmailConfirmed = false;
-        user.PhoneNumberConfirmed = false;
-        user.Enabled = Options.EnableUserOnRegister;
+        var user = new User 
+        {
+            UserName = username,
+            Email = email,
+            EmailConfirmed = false,
+            PhoneNumberConfirmed = false,
+            //Enabled = Options.EnableUserOnRegister
+        };
         await Create(user, password, cancellationToken);
         return user;
     }
 
-    public virtual async Task<SignInResult<TUserKey>> Authenticate(string username, string password, CancellationToken cancellationToken = default)
+    public virtual async Task<Entities.Identity.SignInResult> Authenticate(string username, string password, CancellationToken cancellationToken = default)
     {
         var user = await UserManager.FindByNameAsync(username);
 
@@ -68,7 +67,7 @@ public class UserService<TUserKey, TUser> : IUserService<TUserKey, TUser>
         user.LoginsCount++;
         await UserManager.UpdateAsync(user);
 
-        return new SignInResult<TUserKey>
+        return new Entities.Identity.SignInResult
         {
             UserId = user.Id,
             Roles = user.Roles,
@@ -78,7 +77,7 @@ public class UserService<TUserKey, TUser> : IUserService<TUserKey, TUser>
         };
     }
 
-    public virtual Task<TUserKey> GetCurrentUserId(CancellationToken cancellationToken = default)
+    public virtual Task<Guid> GetCurrentUserId(CancellationToken cancellationToken = default)
     {
         if (Accessor.HttpContext == null) return default;
 
@@ -86,7 +85,7 @@ public class UserService<TUserKey, TUser> : IUserService<TUserKey, TUser>
         return string.IsNullOrEmpty(userId) ? default : Task.FromResult(userId.GetTypedKey<TUserKey>());
     }
 
-    public async Task ChangePassword(TUser user, string newPassword, CancellationToken cancellationToken = default)
+    public async Task ChangePassword(User user, string newPassword, CancellationToken cancellationToken = default)
     {
         var token = await UserManager.GeneratePasswordResetTokenAsync(user);
         var result = await UserManager.ResetPasswordAsync(user, token, newPassword);
@@ -94,7 +93,7 @@ public class UserService<TUserKey, TUser> : IUserService<TUserKey, TUser>
         result.ThrowIfInvalid();
     }
 
-    public async Task<IEnumerable<Claim>> GetClaims(TUser user, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Claim>> GetClaims(User user, CancellationToken cancellationToken = default)
     {
         var claims = new List<Claim>
         {
@@ -111,7 +110,7 @@ public class UserService<TUserKey, TUser> : IUserService<TUserKey, TUser>
         return claims;
     }
 
-    public virtual async Task Update(TUser entity, CancellationToken cancellationToken = default)
+    public virtual async Task Update(User entity, CancellationToken cancellationToken = default)
     {
         await UserManager.UpdateAsync(entity);
     }
@@ -122,7 +121,7 @@ public class UserService<TUserKey, TUser> : IUserService<TUserKey, TUser>
         return await UserManager.FindByNameAsync(userName) != null;
     }
 
-    public virtual async Task<bool> Delete(TUserKey id, CancellationToken cancellationToken = default)
+    public virtual async Task<bool> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var user = await UserManager.FindByIdAsync(id.ToString());
         if (user is null) throw new Exception("User doesn't exist!");
@@ -133,18 +132,18 @@ public class UserService<TUserKey, TUser> : IUserService<TUserKey, TUser>
         return true;
     }
 
-    public async Task<IEnumerable<TUser>> GetAll(CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<User>> GetAll(CancellationToken cancellationToken = default)
     {
         // TODO: Check this: ToListAsync() is not working - throws exception! For this reason, the ToList() method is used
         return await Task.Run(() => UserManager.Users.ToList(), cancellationToken);
     }
 
-    public virtual Task<TUser> GetById(TUserKey id, CancellationToken cancellationToken = default)
+    public virtual Task<User> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         return UserManager.FindByIdAsync(id.ToString());
     }
 
-    public virtual async Task ChangePassword(ChangePassword<TUserKey> changePassword, CancellationToken cancellationToken = default)
+    public virtual async Task ChangePassword(ChangePassword changePassword, CancellationToken cancellationToken = default)
     {
         var user = await GetById(changePassword.UserId, cancellationToken);
 
@@ -170,12 +169,12 @@ public class UserService<TUserKey, TUser> : IUserService<TUserKey, TUser>
         await SendResetPasswordToken(user, resetPasswordToken);
     }
 
-    protected virtual async Task SendResetPasswordToken(TUser user, string token)
+    protected virtual async Task SendResetPasswordToken(User user, string token)
     {
         // Send email in background to prevent in interruptions
-        var backgroundWorker = new BackgroundWorker();
-        backgroundWorker.DoWork += async (_, _) => await EmailProvider.Send(user.Email, ForgotPasswordMessage.Subject, ForgotPasswordMessage.GetBodyWithReplaces(token));
-        backgroundWorker.RunWorkerAsync();
+        //var backgroundWorker = new BackgroundWorker();
+        //backgroundWorker.DoWork += async (_, _) => await EmailProvider.Send(user.Email, ForgotPasswordMessage.Subject, ForgotPasswordMessage.GetBodyWithReplaces(token));
+        //backgroundWorker.RunWorkerAsync();
         await Task.CompletedTask;
     }
 
@@ -193,7 +192,7 @@ public class UserService<TUserKey, TUser> : IUserService<TUserKey, TUser>
         await UserManager.UpdateAsync(user);
     }
 
-    public virtual async Task RevokeTokens(TUserKey id, CancellationToken cancellationToken = default)
+    public virtual async Task RevokeTokens(Guid id, CancellationToken cancellationToken = default)
     {
         var user = await UserManager.FindByIdAsync(id.ToString());
         if (user == null) return;
@@ -203,7 +202,7 @@ public class UserService<TUserKey, TUser> : IUserService<TUserKey, TUser>
 
     }
 
-    public virtual async Task<SignInResult<TUserKey>> RefreshToken(string refreshToken, string expiredToken, CancellationToken cancellationToken = default)
+    public virtual async Task<Entities.Identity.SignInResult> RefreshToken(string refreshToken, string expiredToken, CancellationToken cancellationToken = default)
     {
         var userId = await TokenService.ValidateExpiredToken(expiredToken);
         var user = await UserManager.FindByIdAsync(userId.ToString());
@@ -219,21 +218,13 @@ public class UserService<TUserKey, TUser> : IUserService<TUserKey, TUser>
         user.LoginsCount++;
         await UserManager.UpdateAsync(user);
 
-        return new SignInResult<TUserKey>
+        return new Entities.Identity.SignInResult
         {
             UserId = user.Id,
-            Roles = user.Roles,
+            RoleIds = user.RoleIds,
             Token = newToken.AccessToken,
             RefreshToken = refreshToken,
             Expiry = newToken.Expiry
         };
-    }
-}
-
-public class UserService<TUser> : UserService<Guid, TUser>, IUserService<TUser>
-    where TUser : User
-{
-    public UserService(UserManager<TUser> userManager, ITokenService<TUser> tokenService, IUserTokenRepository userTokenRepository, IEmailProvider emailProvider, IApplicationContext appContext, IHttpContextAccessor accessor, Microsoft.Extensions.Options.IOptions<UserRegisterOptions> options) : base(userManager, tokenService, userTokenRepository, emailProvider, appContext, accessor, options)
-    {
     }
 }

@@ -21,7 +21,7 @@ public class User : IdentityUser<Guid>, IAuditEntity
     public List<IdentityUserLogin<Guid>> Logins { get; set; } = [];
     public List<IdentityUserToken<Guid>> Tokens { get; set; } = [];
     public List<TwoFactorRecoveryCode> RecoveryCodes { get; set; } = [];
-    public List<string> Roles { get; set; } = [];
+    public List<Guid> RoleIds { get; set; } = [];
 
     public User()
     {

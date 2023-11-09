@@ -14,7 +14,6 @@ public static class LiteDbServiceExtensions
 
         services.AddScoped(typeof(IGenericRepository<>), typeof(LiteDbGenericRepository<>));
 
-        services.AddScoped<IUserRepository, LiteDbUserRepository>();
         services.AddScoped<IContentTypeRepository, LiteDbContentTypeRepository>();
         services.AddScoped<ISiteRepository, LiteDbSiteRepository>();
         services.AddScoped<IHostRepository, LiteDbHostRepository>();

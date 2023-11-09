@@ -32,21 +32,21 @@ public class RoleService : IRoleService
         return RoleManager.RoleExistsAsync(roleName);
     }
 
-    public virtual Task<IEnumerable<TRole>> GetAll(CancellationToken cancellationToken = default)
+    public virtual Task<IEnumerable<Role>> GetAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         // TODO: Refactor this:
         return Task.FromResult(RoleManager.Roles.AsEnumerable());
     }
 
-    public virtual Task<TRole> GetById(TKey id, CancellationToken cancellationToken = default)
+    public virtual Task<Role> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         // TODO: Refactor this:
         return Task.FromResult(RoleManager.Roles.AsEnumerable().Single(r => r.Id.Equals(id)));
     }
 
-    public virtual async Task Create(TRole role, CancellationToken cancellationToken = default)
+    public virtual async Task Create(Role role, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -55,10 +55,10 @@ public class RoleService : IRoleService
 
     }
 
-    public virtual async Task<bool> Update(TRole role, CancellationToken cancellationToken = default)
+    public virtual async Task<bool> Update(Role role, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        
+
         var idResult = await RoleManager.UpdateAsync(role);
         idResult.ThrowIfInvalid();
 

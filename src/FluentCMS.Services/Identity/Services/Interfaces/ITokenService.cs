@@ -1,15 +1,10 @@
-﻿namespace uBeac.Identity;
+﻿using FluentCMS.Entities.Identity;
 
-public interface ITokenService<TUserKey, TUser> 
-    where TUserKey : IEquatable<TUserKey>
-    where TUser : User<TUserKey>
-{
-    Task<TokenResult> Generate(TUser user);
-    Task<TUserKey> Validate(string accessToken);
-    Task<TUserKey> ValidateExpiredToken(string accessToken);
-}
+namespace FluentCMS.Services.Identity;
 
-public interface ITokenService<TUser> : ITokenService<Guid, TUser>
-    where TUser : User
+public interface ITokenService
 {
+    Task<TokenResult> Generate(User user);
+    Task<Guid> Validate(string accessToken);
+    Task<Guid> ValidateExpiredToken(string accessToken);
 }

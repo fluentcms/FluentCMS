@@ -1,20 +1,13 @@
-﻿using uBeac.Services;
+﻿using FluentCMS.Entities.Identity;
 
-namespace uBeac.Identity;
+namespace FluentCMS.Services.Identity;
 
-public interface IRoleService<TKey, TRole> : IService
-    where TKey : IEquatable<TKey>
-    where TRole : Role<TKey>
+public interface IRoleService
 {
-    Task Create(TRole role, CancellationToken cancellationToken = default);
-    Task<bool> Delete(TKey id, CancellationToken cancellationToken = default);
-    Task<bool> Update(TRole role, CancellationToken cancellationToken = default);
+    Task Create(Role role, CancellationToken cancellationToken = default);
+    Task<bool> Delete(Guid id, CancellationToken cancellationToken = default);
+    Task<bool> Update(Role role, CancellationToken cancellationToken = default);
     Task<bool> Exists(string roleName, CancellationToken cancellationToken = default);
-    Task<IEnumerable<TRole>> GetAll(CancellationToken cancellationToken = default);
-    Task<TRole> GetById(TKey id, CancellationToken cancellationToken = default);
-}
-
-public interface IRoleService<TRole> : IRoleService<Guid, TRole>
-   where TRole : Role
-{
+    Task<IEnumerable<Role>> GetAll(CancellationToken cancellationToken = default);
+    Task<Role> GetById(Guid id, CancellationToken cancellationToken = default);
 }
