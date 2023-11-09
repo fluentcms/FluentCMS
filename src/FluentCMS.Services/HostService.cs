@@ -30,7 +30,7 @@ public class HostService : IHostService
         // this should be called only for the first time on installation
         var hosts = await _hostRepository.GetAll(cancellationToken);
         if (hosts.Any())
-            throw new Exception("Host already exists");
+            throw new AppException(Errors.Hosts.DuplicateHostFound);
 
         await CheckSuperUsers(host, cancellationToken);
 
@@ -46,7 +46,7 @@ public class HostService : IHostService
 
         // throw exception for guest user
         if (_applicationContext.Current.User == null)
-            throw new Exception("You don't have enough permission to do the operation");
+            throw new AppException(Errors.Permission);
 
         var currentUsername = _applicationContext.Current.User.Username;
 
@@ -54,11 +54,11 @@ public class HostService : IHostService
         var hosts = await _hostRepository.GetAll(cancellationToken);
         var oldHost = hosts.Single();
         if (oldHost.SuperUsers.Contains(currentUsername))
-            throw new Exception("You don't have enough permission to do the operation");
+            throw new AppException(Errors.Permission);
 
         // super user can't remove himself from super user list
         if (!host.SuperUsers.Contains(_applicationContext.Current.User.Username))
-            throw new Exception("You can't remove yourself from super user list");
+            throw new AppException(Errors.Hosts.CantRemoveYourselfFromSuperUsers);
 
         // setting id from old host to the updated one
         host.Id = oldHost.Id;
@@ -72,14 +72,14 @@ public class HostService : IHostService
     {
         // throw exception for guest user
         if (_applicationContext.Current.User == null)
-            throw new Exception("You don't have enough permission to do the operation");
+            throw new AppException(Errors.Permission);
 
         var currentUsername = _applicationContext.Current.User.Name;
 
         var hosts = await _hostRepository.GetAll(cancellationToken);
 
         if (!hosts.Any() || !hosts.First().SuperUsers.Contains(currentUsername))
-            throw new Exception("Host not found");
+            throw new AppException(Errors.Hosts.HostDoesNotExists);
 
         return hosts.Single();
     }
@@ -95,7 +95,7 @@ public class HostService : IHostService
     {
         // host should have at least one super user
         if (host.SuperUsers.Count == 0)
-            throw new Exception("Host should have at least one super user");
+            throw new AppException(Errors.Hosts.HostShouldHaveAtLeastOneSuperUser);
 
         // check if user ids are valid
         // TODO: check if user ids are valid
