@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Api.Models;
+﻿using FluentCMS.Api.Models.Pages;
+
+namespace FluentCMS.Api.Models;
 
 public class SiteResponse
 {
