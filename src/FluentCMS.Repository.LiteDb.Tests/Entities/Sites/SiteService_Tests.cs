@@ -23,17 +23,15 @@ public class SiteService_Tests
     {
         var scope = _serviceProvider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<ISiteService>();
-        var siteId = Guid.NewGuid();
         var roleId = Guid.NewGuid();
-        await service.Create(new Site
+        var site = await service.Create(new Site
         {
-            Id = siteId,
             Name = "test site",
             Description = "test site description",
             Urls = ["test.com"],
             //RoleId = roleId,
         });
-        var result = await service.GetById(siteId);
+        var result = await service.GetById(site.Id);
         result.Name.ShouldBe("test site");
         result.Description.ShouldBe("test site description");
         result.Urls.Contains("test.com").ShouldBeTrue();
@@ -46,11 +44,9 @@ public class SiteService_Tests
     {
         var scope = _serviceProvider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<ISiteService>();
-        var siteId = Guid.NewGuid();
         var roleId = Guid.NewGuid();
-        await service.Create(new Site
+        var site = await service.Create(new Site
         {
-            Id = siteId,
             Name = "test site",
             Description = "test site description",
             Urls = ["test.com"],
@@ -59,13 +55,13 @@ public class SiteService_Tests
         var dbSite = await service.GetById(siteId);
         await service.Update(new Site
         {
-            Id = siteId,
+            Id = dbSite.Id,
             Name = "test site edited",
             Description = "test site description edited",
             Urls = dbSite.Urls.ToList(),
             //RoleId = roleId,
         });
-        var result = await service.GetById(siteId);
+        var result = await service.GetById(editedSite.Id);
         result.Name.ShouldBe("test site edited");
         result.Description.ShouldBe("test site description edited");
         result.Urls.Contains("test.com").ShouldBeTrue();
@@ -78,17 +74,15 @@ public class SiteService_Tests
     {
         var scope = _serviceProvider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<ISiteService>();
-        var siteId = Guid.NewGuid();
         var roleId = Guid.NewGuid();
-        await service.Create(new Site
+        var site = await service.Create(new Site
         {
-            Id = siteId,
             Name = "test site",
             Description = "test site description",
             Urls = ["test.com"],
             //RoleId = roleId,
         });
-        var result = await service.GetById(siteId);
+        var result = await service.GetById(site.Id);
         await service.Delete(result);
         var sites = await service.GetAll();
         sites.Count().ShouldBe(0);
@@ -100,17 +94,15 @@ public class SiteService_Tests
     {
         var scope = _serviceProvider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<ISiteService>();
-        var siteId = Guid.NewGuid();
         var roleId = Guid.NewGuid();
-        await service.Create(new Site
+        var site = await service.Create(new Site
         {
-            Id = siteId,
             Name = "test site",
             Description = "test site description",
             Urls = ["test.com"],
             //RoleId = roleId,
         });
-        var result = await service.GetById(siteId);
+        var result = await service.GetById(site.Id);
         result.Name.ShouldBe("test site");
         result.Description.ShouldBe("test site description");
         result.Urls.Contains("test.com").ShouldBeTrue();
@@ -123,11 +115,9 @@ public class SiteService_Tests
     {
         var scope = _serviceProvider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<ISiteService>();
-        var siteId = Guid.NewGuid();
         var roleId = Guid.NewGuid();
-        await service.Create(new Site
+        var site = await service.Create(new Site
         {
-            Id = siteId,
             Name = "test site",
             Description = "test site description",
             Urls = ["test.com"],
@@ -153,7 +143,6 @@ public class SiteService_Tests
         {
             await service.Create(new Site
             {
-                Id = Guid.NewGuid(),
                 Name = $"test site {i}",
                 Description = $"test site description {i}",
                 Urls = [$"site-{i}.com"],
@@ -162,8 +151,12 @@ public class SiteService_Tests
         }
         var result = await service.GetAll();
         result.Count().ShouldBe(count);
-        result.ToList().ForEach(x => x.Name.ShouldBe($"test site {x.Id}"));
-        result.ToList().ForEach(x => x.Description.ShouldBe($"test site description {x.Id}"));
-        result.ToList().ForEach(x => x.Urls.Contains($"{x.Id}.com").ShouldBeTrue());
+        result.ToList().ForEach(x => x.Name.ShouldStartWith("test site"));
+        result.ToList().ForEach(x => x.Description.ShouldStartWith("test site description"));
+        result.ToList().ForEach(x =>
+        {
+            x.Urls.First().ShouldStartWith("site-");
+            x.Urls.First().ShouldEndWith(".com");
+        });
     }
 }

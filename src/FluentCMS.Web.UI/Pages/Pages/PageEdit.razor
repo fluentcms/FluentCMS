@@ -1,0 +1,115 @@
+﻿@page "/admin/pages/edit/{Id:guid}"
+@page "/admin/pages/create/{SiteId:guid}"
+@page "/admin/pages/create/{SiteId:guid}/{ParentId:guid}"
+@using FluentCMS.Api.Models.Pages
+@inject HttpClient _httpClient
+@inject NavigationManager _navigationManager
+
+<h3>Page Edit</h3>
+<EditForm Model="Page" OnValidSubmit="ValidSubmit">
+
+    @* public Guid SiteId { get; set; } *@
+    @* public Guid? ParentId { get; set; } *@
+    @* public string Title { get; set; } *@
+    <div class="mb-3">
+        <label class="form-label">Title</label>
+        <InputText type="text" class="form-control" required @bind-Value="Page.Title" name="title" />
+    </div>
+    @* public int Order { get; set; } *@
+    <div class="mb-3">
+        <label class="form-label">Order</label>
+        <InputNumber type="text" class="form-control" required @bind-Value="Page.Order" name="Order" />
+    </div>
+    @* public string Path { get; set; } *@
+    <div class="mb-3">
+        <label class="form-label">Path</label>
+        <InputText type="text" class="form-control" required @bind-Value="Page.Path" name="path" />
+    </div>
+    <Button Type="submit" Color="Colors.Primary">Save</Button>
+</EditForm>
+
+@code {
+    [Parameter]
+    public Guid? Id { get; set; }
+    [Parameter]
+    public Guid SiteId { get; set; }
+    [Parameter]
+    public Guid? ParentId { get; set; }
+    public FluentCMS.Api.Models.Pages.CreatePageRequest Page { get; set; } = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+        if (Id == null)
+        {
+            Page = new()
+                {
+                    ParentId = ParentId,
+                    SiteId = SiteId,
+
+                };
+            return;
+        }
+        try
+        {
+            var response = (await _httpClient.GetFromJsonAsync<ApiResult<PageResponse>>($"pages/getById/{Id.Value}"))!;
+            if (response.Data != null)
+            {
+                Page = new()
+                    {
+                        Title = response.Data.Title,
+                        Order = response.Data.Order,
+                        ParentId = response.Data.ParentId,
+                        Path = response.Data.Path,
+                        SiteId = response.Data.SiteId,
+
+                    };
+            }
+        }
+        catch (Exception)
+        {
+            throw;
+        }
+    }
+
+    public async Task ValidSubmit()
+    {
+        //Create
+        if (Id == null)
+        {
+            var createCommand = Page;
+            try
+            {
+                await _httpClient.PostAsJsonAsync($"pages/create", createCommand);
+                _navigationManager.NavigateTo($"/admin/pages/{SiteId}");
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+        //Edit
+        else
+        {
+            var editCommand = new Api.Models.Pages.EditPageRequest
+                {
+                    Id = Id ?? throw new Exception("Impossible state"),
+                    Title = Page.Title,
+                    Path = Page.Path,
+                    Order = Page.Order,
+                    ParentId = Page.ParentId,
+                    SiteId = Page.SiteId,
+
+                };
+            try
+            {
+                await _httpClient.PutAsJsonAsync($"pages/edit", editCommand);
+                _navigationManager.NavigateTo($"/admin/pages/{editCommand.SiteId}");
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+    }
+}
