@@ -22,26 +22,31 @@ public static class SeedData
 
         if (!hostService.IsInitialized().GetAwaiter().GetResult())
         {
-            // User creation
             var defaultUser = LoadData<DefaultUser>($@"{dataFolder}\user.json");
+            var host = LoadData<Host>($@"{dataFolder}\host.json");
+            var site = LoadData<Site>($@"{dataFolder}\site.json");
+
             var user = new User
             {
                 UserName = defaultUser.UserName,
                 Email = defaultUser.Email
             };
-            user = userService.Create(user, defaultUser.Password).GetAwaiter().GetResult();
+
+            appContext.Current = new CurrentContext
+            {
+                User = user,
+                Host = host,
+                Site = site
+            };
+
+            // User creation
+            userService.Create(user, defaultUser.Password).GetAwaiter().GetResult();
 
             // Host creation
-            var host = LoadData<Host>($@"{dataFolder}\host.json");
-
-            appContext.Current = new CurrentContext { User = user, Host = host };
-
             hostService.Create(host).GetAwaiter().GetResult();
 
-            // Site creation
-            var site = LoadData<Site>($@"{dataFolder}\site.json");
+            // Site creation            
             siteService.Create(site).GetAwaiter().GetResult();
-            appContext.Current.Site = site;
 
             // Pages creation: adding a few default pages
             var pages = LoadData<List<Page>>($@"{dataFolder}\pages.json");
