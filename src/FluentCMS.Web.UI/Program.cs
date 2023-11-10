@@ -12,6 +12,9 @@ services.AddApplicationServices();
 
 services.AddMongoDbRepositories("MongoDb");
 
+services.AddJwtTokenProvider();
+services.AddSmtpEmailProvider();
+
 // Add services to the container.
 services.AddRazorComponents()
     .AddInteractiveServerComponents();

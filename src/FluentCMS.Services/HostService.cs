@@ -34,8 +34,8 @@ public class HostService : IHostService
 
         await CheckSuperUsers(host, cancellationToken);
 
-        host.CreatedBy = _applicationContext.Current?.User?.Username ?? string.Empty;
-        host.LastUpdatedBy = _applicationContext.Current?.User?.Username ?? string.Empty;
+        host.CreatedBy = _applicationContext.Current?.User?.UserName ?? string.Empty;
+        host.LastUpdatedBy = _applicationContext.Current?.User?.UserName ?? string.Empty;
 
         return await _hostRepository.Create(host, cancellationToken) ?? throw new Exception("Host not created");
     }
@@ -48,7 +48,7 @@ public class HostService : IHostService
         if (_applicationContext.Current.User == null)
             throw new Exception("You don't have enough permission to do the operation");
 
-        var currentUsername = _applicationContext.Current.User.Username;
+        var currentUsername = _applicationContext.Current.User.UserName;
 
         // checking current user is super user or not
         var hosts = await _hostRepository.GetAll(cancellationToken);
@@ -57,13 +57,13 @@ public class HostService : IHostService
             throw new Exception("You don't have enough permission to do the operation");
 
         // super user can't remove himself from super user list
-        if (!host.SuperUsers.Contains(_applicationContext.Current.User.Username))
+        if (!host.SuperUsers.Contains(_applicationContext.Current.User.UserName))
             throw new Exception("You can't remove yourself from super user list");
 
         // setting id from old host to the updated one
         host.Id = oldHost.Id;
 
-        host.LastUpdatedBy = _applicationContext.Current?.User?.Username ?? string.Empty;
+        host.LastUpdatedBy = _applicationContext.Current?.User?.UserName ?? string.Empty;
 
         return await _hostRepository.Update(host, cancellationToken) ?? throw new Exception("Host not updated");
     }
@@ -74,7 +74,7 @@ public class HostService : IHostService
         if (_applicationContext.Current.User == null)
             throw new Exception("You don't have enough permission to do the operation");
 
-        var currentUsername = _applicationContext.Current.User.Name;
+        var currentUsername = _applicationContext.Current.User.UserName;
 
         var hosts = await _hostRepository.GetAll(cancellationToken);
 

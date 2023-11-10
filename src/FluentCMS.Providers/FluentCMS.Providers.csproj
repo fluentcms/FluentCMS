@@ -7,12 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FluentCMS.Providers\FluentCMS.Providers.csproj" />
-    <ProjectReference Include="..\FluentCMS.Repositories\FluentCMS.Repositories.csproj" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.0.3" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Identity\" />
+    <ProjectReference Include="..\FluentCMS.Entities\FluentCMS.Entities.csproj" />
   </ItemGroup>
 
 </Project>

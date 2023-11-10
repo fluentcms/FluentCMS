@@ -1,10 +1,9 @@
-﻿using FluentCMS.Repositories.MongoDb;
-using FluentCMS.Entities.Identity;
-using FluentCMS.Repositories.Identity.Abstractions;
+﻿using FluentCMS.Entities;
+using FluentCMS.Repositories.Abstractions;
 using MongoDB.Driver;
 using System.Security.Claims;
 
-namespace FluentCMS.Repositories.Identity.MongoDb;
+namespace FluentCMS.Repositories.MongoDb;
 
 public class MongoDbUserRepository : MongoDbGenericRepository<User>, IUserRepository
 {
@@ -58,7 +57,7 @@ public class MongoDbUserRepository : MongoDbGenericRepository<User>, IUserReposi
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var user = Collection.AsQueryable().Where(x => x.Roles.Any(r => roleId.Equals(r))).ToList();
+        var user = Collection.AsQueryable().Where(x => x.RoleIds.Any(r => roleId.Equals(r))).ToList();
 
         return Task.FromResult((IList<User>)user);
     }

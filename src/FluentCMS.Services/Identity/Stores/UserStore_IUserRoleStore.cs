@@ -1,4 +1,4 @@
-﻿using FluentCMS.Entities.Identity;
+﻿using FluentCMS.Entities;
 using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Services.Identity.Stores;
@@ -7,13 +7,21 @@ public partial class UserStore : IUserRoleStore<User>
 {
     public Task AddToRoleAsync(User user, string roleId, CancellationToken cancellationToken)
     {
-        user.Roles.Add(roleId);
+        var id = Guid.Parse(roleId);
+
+        // check if user is already in role
+        if (user.RoleIds.Contains(id))
+            user.RoleIds.Add(id);
+
         return Task.CompletedTask;
     }
 
     public Task RemoveFromRoleAsync(User user, string roleId, CancellationToken cancellationToken)
     {
-        user.Roles.Remove(roleId);
+        var id = Guid.Parse(roleId);
+
+        user.RoleIds.Remove(id);
+
         return Task.CompletedTask;
     }
 
@@ -26,11 +34,19 @@ public partial class UserStore : IUserRoleStore<User>
 
     public Task<IList<string>> GetRolesAsync(User user, CancellationToken cancellationToken)
     {
-        return Task.FromResult((IList<string>)user.Roles);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var roleIds = user.RoleIds.Select(id => id.ToString()).ToList();
+
+        return Task.FromResult((IList<string>)roleIds);
     }
 
     public Task<bool> IsInRoleAsync(User user, string roleId, CancellationToken cancellationToken)
     {
-        return Task.FromResult(user.Roles.Contains(roleId));
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var id = Guid.Parse(roleId);
+
+        return Task.FromResult(user.RoleIds.Contains(id));
     }
 }

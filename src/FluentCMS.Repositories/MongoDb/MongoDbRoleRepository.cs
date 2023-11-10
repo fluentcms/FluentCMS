@@ -1,9 +1,8 @@
-﻿using FluentCMS.Entities.Identity;
-using FluentCMS.Repositories.Identity.Abstractions;
-using FluentCMS.Repositories.MongoDb;
+﻿using FluentCMS.Entities;
+using FluentCMS.Repositories.Abstractions;
 using MongoDB.Driver;
 
-namespace FluentCMS.Repositories.Identity.MongoDb;
+namespace FluentCMS.Repositories.MongoDb;
 
 public class MongoDbRoleRepository : MongoDbGenericRepository<Role>, IRoleRepository
 {

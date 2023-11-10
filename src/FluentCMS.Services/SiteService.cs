@@ -35,7 +35,7 @@ public class SiteService : ISiteService
             ?? throw new ApplicationException("User not authenticated.");
 
         // Checking if the user is super user
-        sites = sites.Where(x => _applicationContext.Current.Host.SuperUsers.Contains(currentUser.Username));
+        sites = sites.Where(x => _applicationContext.Current.Host.SuperUsers.Contains(currentUser.UserName));
 
         return sites;
     }
@@ -78,11 +78,11 @@ public class SiteService : ISiteService
         if (await _siteRepository.CheckUrls(site.Urls, cancellationToken))
             throw new ApplicationException("Site URLs must be unique");
 
-        if (!_applicationContext.Current.Host.SuperUsers.Contains(_applicationContext.Current.User.Username))
+        if (!_applicationContext.Current.Host.SuperUsers.Contains(_applicationContext.Current.User.UserName))
             throw new ApplicationException("Only super admin can create a site.");
 
-        site.CreatedBy = _applicationContext.Current?.User?.Username ?? string.Empty;
-        site.LastUpdatedBy = _applicationContext.Current?.User?.Username ?? string.Empty;
+        site.CreatedBy = _applicationContext.Current?.User?.UserName ?? string.Empty;
+        site.LastUpdatedBy = _applicationContext.Current?.User?.UserName ?? string.Empty;
 
         var newSite = await _siteRepository.Create(site, cancellationToken);
         return newSite ?? throw new ApplicationException("Site not created");
@@ -98,13 +98,13 @@ public class SiteService : ISiteService
             throw new ApplicationException("Site URLs must be unique");
 
         // Checking if the user has access to update the site
-        if (!_applicationContext.Current.Host.SuperUsers.Contains(_applicationContext.Current.User.Username))
+        if (!_applicationContext.Current.Host.SuperUsers.Contains(_applicationContext.Current.User.UserName))
             throw new ApplicationException("Only super admin or admin can update a site.");
 
         var hasAccess = site.Permissions.Where(x => x.Name == "ADMIN").Any(x => x.Roles.Any(y => _applicationContext.Current.Roles.Select(x => x.Name).Contains(y)));
         if (!hasAccess) throw new ApplicationException("You do not have access to this site.");
 
-        site.LastUpdatedBy = _applicationContext.Current?.User?.Username ?? string.Empty;
+        site.LastUpdatedBy = _applicationContext.Current?.User?.UserName ?? string.Empty;
 
         var updateSite = await _siteRepository.Update(site, cancellationToken);
 
@@ -114,7 +114,7 @@ public class SiteService : ISiteService
     public async Task Delete(Site site, CancellationToken cancellationToken = default)
     {
         // Checking if the user is super user
-        if (!_applicationContext.Current.Host.SuperUsers.Contains(_applicationContext.Current.User.Username))
+        if (!_applicationContext.Current.Host.SuperUsers.Contains(_applicationContext.Current.User.UserName))
             throw new ApplicationException("Only super admin can delete a site.");
 
 

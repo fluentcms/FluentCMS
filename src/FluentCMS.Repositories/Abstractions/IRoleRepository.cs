@@ -1,7 +1,6 @@
-﻿using FluentCMS.Entities.Identity;
-using FluentCMS.Repositories.Abstractions;
+﻿using FluentCMS.Entities;
 
-namespace FluentCMS.Repositories.Identity.Abstractions;
+namespace FluentCMS.Repositories.Abstractions;
 
 public interface IRoleRepository : IGenericRepository<Role>, IQueryableRepository<Role>
 {

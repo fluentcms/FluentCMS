@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 
-namespace FluentCMS.Entities.Identity;
+namespace FluentCMS.Entities;
 
 public class User : IdentityUser<Guid>, IAuditEntity
 {
@@ -20,7 +20,8 @@ public class User : IdentityUser<Guid>, IAuditEntity
     public List<IdentityUserClaim<Guid>> Claims { get; set; } = [];
     public List<IdentityUserLogin<Guid>> Logins { get; set; } = [];
     public List<IdentityUserToken<Guid>> Tokens { get; set; } = [];
-    public List<TwoFactorRecoveryCode> RecoveryCodes { get; set; } = [];
+    public virtual List<TwoFactorRecoveryCode> RecoveryCodes { get; set; } = [];
+
     public List<Guid> RoleIds { get; set; } = [];
 
     public User()
@@ -30,4 +31,10 @@ public class User : IdentityUser<Guid>, IAuditEntity
     public User(string userName) : base(userName)
     {
     }
+}
+
+public class TwoFactorRecoveryCode
+{
+    public string? Code { get; set; }
+    public bool Redeemed { get; set; }
 }

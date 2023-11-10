@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using FluentCMS.Entities.Identity;
+using FluentCMS.Entities;
 
 namespace FluentCMS.Services.Identity.Stores;
 

@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
-using FluentCMS.Entities.Identity;
-using FluentCMS.Repositories.Identity.Abstractions;
+using FluentCMS.Entities;
+using FluentCMS.Repositories.Abstractions;
 
 namespace FluentCMS.Services.Identity.Stores;
 

@@ -17,8 +17,4 @@
     <ProjectReference Include="..\FluentCMS.Entities\FluentCMS.Entities.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Identity\Abstractions\" />
-  </ItemGroup>
-
 </Project>

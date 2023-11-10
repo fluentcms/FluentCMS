@@ -1,56 +1,73 @@
 ﻿using FluentCMS.Entities;
-using FluentCMS.Repositories.Abstractions;
+using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Services;
 
 public interface IRoleService
 {
-    Task<IEnumerable<Role>> GetAll(CancellationToken cancellationToken = default);
+    Task<IEnumerable<Role>> GetAll(Guid siteId, CancellationToken cancellationToken = default);
     Task<Role> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<Role> Create(Role role, CancellationToken cancellationToken = default);
-    Task<Role> Edit(Role role, CancellationToken cancellationToken = default);
+    Task<Role> Update(Role role, CancellationToken cancellationToken = default);
     Task Delete(Role role, CancellationToken cancellationToken = default);
 }
 
-internal class RoleService(IGenericRepository<Role> roleRepository) : IRoleService
+
+public class RoleService : IRoleService
 {
-    public async Task<IEnumerable<Role>> GetAll(CancellationToken cancellationToken = default)
+    protected readonly RoleManager<Role> RoleManager;
+
+    public RoleService(RoleManager<Role> roleManager)
     {
-        var roles = await roleRepository.GetAll(cancellationToken);
-        return roles;
+        RoleManager = roleManager;
     }
 
-    public async Task<Role> GetById(Guid id, CancellationToken cancellationToken = default)
+    public Task<Role> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var roles = await roleRepository.GetById(id, cancellationToken)
-            ?? throw new ApplicationException("Requested role does not exists.");
-        return roles;
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var roles = RoleManager.Roles.AsEnumerable().Single(r => r.Id.Equals(id));
+
+        return Task.FromResult(roles);
     }
 
-    public async Task<Role> Create(Role role, CancellationToken cancellationToken = default)
+    public Task<IEnumerable<Role>> GetAll(Guid siteId, CancellationToken cancellationToken = default)
     {
-        if (role is null)
-            throw new ApplicationException("role is not provided");
+        cancellationToken.ThrowIfCancellationRequested();
 
-        var newRole = await roleRepository.Create(role, cancellationToken);
-        return newRole ?? throw new ApplicationException("Role not created");
+        var roles = RoleManager.Roles.Where(role => role.SiteId.Equals(siteId)).AsEnumerable();
+
+        return Task.FromResult(roles);
     }
 
-    public async Task<Role> Edit(Role role, CancellationToken cancellationToken = default)
+    public async Task<Role> Create(Role role, CancellationToken cancellationToken)
     {
-        if (role == null)
-            throw new ApplicationException("role is not provided");
+        cancellationToken.ThrowIfCancellationRequested();
 
-        var updatedRole = await roleRepository.Update(role, cancellationToken);
-        return updatedRole ?? throw new ApplicationException("Role not updated.");
+        var idResult = await RoleManager.CreateAsync(role);
+
+        idResult.ThrowIfInvalid();
+
+        return role;
+    }
+
+    public async Task<Role> Update(Role role, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var idResult = await RoleManager.UpdateAsync(role);
+
+        idResult.ThrowIfInvalid();
+
+        return role;
     }
 
     public async Task Delete(Role role, CancellationToken cancellationToken = default)
     {
-        if (role == null)
-            throw new ApplicationException("role is not provided");
+        cancellationToken.ThrowIfCancellationRequested();
 
-        var deletedRole = await roleRepository.Delete(role.Id, cancellationToken);
-        if (deletedRole is null) throw new ApplicationException("Role not deleted.");
+        var idResult = await RoleManager.DeleteAsync(role);
+
+        idResult.ThrowIfInvalid();
     }
 }

@@ -1,4 +1,4 @@
-﻿using FluentCMS.Entities.Identity;
+﻿using FluentCMS.Entities;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 

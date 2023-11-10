@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Entities.Identity;
+﻿namespace FluentCMS.Entities;
 
 public class UserToken : Entity
 {

@@ -1,8 +1,7 @@
-﻿using FluentCMS.Repositories.Abstractions;
-using FluentCMS.Entities.Identity;
+﻿using FluentCMS.Entities;
 using System.Security.Claims;
 
-namespace FluentCMS.Repositories.Identity.Abstractions;
+namespace FluentCMS.Repositories.Abstractions;
 
 public interface IUserRepository : IGenericRepository<User>, IQueryableRepository<User>
 {

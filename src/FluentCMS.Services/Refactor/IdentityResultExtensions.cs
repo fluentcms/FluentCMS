@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 
-namespace FluentCMS.Services.Identity;
+namespace FluentCMS.Services;
 
 public static class IdentityResultExtensions
 {
