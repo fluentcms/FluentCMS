@@ -1,8 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using System.Security.Claims;
 using FluentCMS.Entities;
-using FluentCMS.Services.Models;
 using FluentCMS.Providers.Identity;
+using UserToken = FluentCMS.Providers.Identity.UserToken;
 
 namespace FluentCMS.Services;
 
@@ -10,12 +9,12 @@ public interface IUserService
 {
     Task<IEnumerable<User>> GetAll(CancellationToken cancellationToken = default);
     Task<User> GetById(Guid id, CancellationToken cancellationToken = default);
-    Task<IEnumerable<Claim>> GetClaims(User user, CancellationToken cancellationToken = default);
     Task<User> Update(User user, CancellationToken cancellationToken = default);
     Task<User> Create(User user, string password, CancellationToken cancellationToken = default);
-    Task<UserSignInResult> Authenticate(string username, string password, CancellationToken cancellationToken = default);
+    Task<User> Authenticate(string username, string password, CancellationToken cancellationToken = default);
+    Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default);
     Task ChangePassword(User user, string newPassword, CancellationToken cancellationToken = default);
-    Task ChangePassword(UserChangePassword changePassword, CancellationToken cancellationToken = default);
+    Task<User> ChangePassword(Guid id, string oldPassword, string newPassword, CancellationToken cancellationToken = default);
 }
 
 public class UserService : IUserService
@@ -39,31 +38,36 @@ public class UserService : IUserService
         return await GetById(user.Id, cancellationToken);
     }
 
-    public async Task<UserSignInResult> Authenticate(string username, string password, CancellationToken cancellationToken = default)
+    public async Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default)
+    {
+        // Generate token
+        var userToken = await _userTokenProvider.Generate(user);
+
+        if (userToken is null || string.IsNullOrEmpty(userToken.AccessToken))
+            throw new Exception("Token generation failed!");
+
+        // Store refresh token
+        var identityResult = await _userManager.SetAuthenticationTokenAsync(user, LOCAL_LOGIN_PROVIDER, REFRESH_TOKEN_NAME, userToken.RefreshToken);
+
+        identityResult.ThrowIfInvalid();
+
+        return userToken;
+    }
+
+    public async Task<User> Authenticate(string username, string password, CancellationToken cancellationToken = default)
     {
         var user = await _userManager.FindByNameAsync(username);
 
         // Validate user password
-        if (user is null || !user.Enabled || !await _userManager.CheckPasswordAsync(user, password)) throw new Exception("User doesn't exist or username/password is not valid!");
-
-        // Generate token
-        var token = await _userTokenProvider.Generate(user);
-
-        // Store refresh token
-        var identityResult = await _userManager.SetAuthenticationTokenAsync(user, LOCAL_LOGIN_PROVIDER, REFRESH_TOKEN_NAME, token.RefreshToken);
-        identityResult.ThrowIfInvalid();
+        if (user is null || !user.Enabled || !await _userManager.CheckPasswordAsync(user, password))
+            throw new Exception("User doesn't exist or username/password is not valid!");
 
         // Update user properties related to login
         user.LastLoginAt = DateTime.Now;
         user.LoginsCount++;
         await _userManager.UpdateAsync(user);
 
-        return new UserSignInResult
-        {
-            UserId = user.Id,
-            RoleIds = user.RoleIds,
-            Token = token.AccessToken
-        };
+        return user;
     }
 
     public async Task ChangePassword(User user, string newPassword, CancellationToken cancellationToken = default)
@@ -72,23 +76,6 @@ public class UserService : IUserService
         var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
 
         result.ThrowIfInvalid();
-    }
-
-    public async Task<IEnumerable<Claim>> GetClaims(User user, CancellationToken cancellationToken = default)
-    {
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.NormalizedUserName)
-        };
-        if (!string.IsNullOrWhiteSpace(user.NormalizedEmail)) claims.Add(new Claim(ClaimTypes.Email, user.NormalizedEmail));
-        if (!string.IsNullOrWhiteSpace(user.PhoneNumber)) claims.Add(new Claim(ClaimTypes.Email, user.PhoneNumber));
-
-        var userRoles = await _userManager.GetRolesAsync(user);
-        var userRoleClaims = userRoles.Select(userRole => new Claim(ClaimTypes.Role, userRole));
-        claims.AddRange(userRoleClaims);
-
-        return claims;
     }
 
     public async Task<User> Update(User entity, CancellationToken cancellationToken = default)
@@ -122,14 +109,14 @@ public class UserService : IUserService
         return _userManager.FindByIdAsync(id.ToString()) ?? throw new Exception("User doesn't exist!");
     }
 
-    public async Task ChangePassword(UserChangePassword changePassword, CancellationToken cancellationToken = default)
+    public async Task<User> ChangePassword(Guid id, string oldPassword, string newPassword, CancellationToken cancellationToken = default)
     {
-        var user = await GetById(changePassword.UserId, cancellationToken);
+        var user = await GetById(id, cancellationToken);
 
-        if (changePassword.UserId == null || user == null || !await _userManager.CheckPasswordAsync(user, changePassword.CurrentPassword))
+        if (!await _userManager.CheckPasswordAsync(user, oldPassword))
             throw new Exception("User doesn't exist or username/password is not valid!");
 
-        var idResult = await _userManager.ChangePasswordAsync(user, changePassword.CurrentPassword, changePassword.NewPassword);
+        var idResult = await _userManager.ChangePasswordAsync(user, oldPassword, newPassword);
 
         idResult.ThrowIfInvalid();
 
@@ -137,6 +124,7 @@ public class UserService : IUserService
         user.LastPasswordChangedAt = DateTime.Now;
         //user.LastPasswordChangedBy = AppContext.UserName;
         await _userManager.UpdateAsync(user);
-    }
 
+        return user;
+    }
 }

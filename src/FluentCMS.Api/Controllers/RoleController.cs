@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Api.Controllers;
 
-public class RolesController(IMapper mapper, IRoleService roleService) : BaseController
+public class RoleController(IMapper mapper, IRoleService roleService) : BaseController
 {
     [HttpGet]
     public async Task<IApiPagingResult<RoleDto>> GetAll([FromQuery] Guid siteId, CancellationToken cancellationToken = default)

@@ -152,7 +152,7 @@ public class JwtUserTokenProvider : IUserTokenProvider
 
 public class UserToken
 {
-    public string? AccessToken { get; set; }
+    public required string AccessToken { get; set; }
     public string? RefreshToken { get; set; }
     public DateTime Expiry { get; set; }
 }

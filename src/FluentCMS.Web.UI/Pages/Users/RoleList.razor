@@ -38,13 +38,13 @@ else
 }
 
 @code {
-    private IEnumerable<Api.Models.Users.RoleResponse>? roles;
+    private IEnumerable<RoleDto>? roles;
 
     private async Task LoadRoles()
     {
         try
         {
-            var response = await httpClient.GetFromJsonAsync<ApiPagingResult<Api.Models.Users.RoleResponse>>("roles/getAll");
+            var response = await httpClient.GetFromJsonAsync<ApiPagingResult<RoleDto>>("roles/getAll");
             if (response != null)
             {
                 roles = response!.Data;
