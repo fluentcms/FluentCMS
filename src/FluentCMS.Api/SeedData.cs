@@ -17,22 +17,26 @@ public static class SeedData
         var hostService = scope.ServiceProvider.GetRequiredService<IHostService>();
         var siteService = scope.ServiceProvider.GetRequiredService<ISiteService>();
         var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
+        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
         var appContext = scope.ServiceProvider.GetRequiredService<IApplicationContext>();
 
         if (!hostService.IsInitialized().GetAwaiter().GetResult())
         {
             // User creation
-            var user = LoadData<User>($@"{dataFolder}\user.json");
-            user.Id = Guid.Empty;
-            // TODO: call service to create user
-
-            // TODO: is this the correct way? We may use proxy objects instead
-            appContext.Current = new CurrentContext { User = user, };
+            var defaultUser = LoadData<DefaultUser>($@"{dataFolder}\user.json");
+            var user = new User
+            {
+                UserName = defaultUser.UserName,
+                Email = defaultUser.Email
+            };
+            user = userService.Create(user, defaultUser.Password).GetAwaiter().GetResult();
 
             // Host creation
             var host = LoadData<Host>($@"{dataFolder}\host.json");
+
+            appContext.Current = new CurrentContext { User = user, Host = host };
+
             hostService.Create(host).GetAwaiter().GetResult();
-            appContext.Current.Host = host;
 
             // Site creation
             var site = LoadData<Site>($@"{dataFolder}\site.json");
@@ -49,12 +53,14 @@ public static class SeedData
         }
     }
 
+    private static JsonSerializerOptions serializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
     private static T LoadData<T>(string jsonFile)
     {
         try
         {
             var json = File.ReadAllText(jsonFile);
-            var result = JsonSerializer.Deserialize<T>(json);
+            var result = JsonSerializer.Deserialize<T>(json, serializerOptions);
 
             return result == null ?
                 throw new Exception($"Unable to load seed data from {jsonFile}") : result;
@@ -63,6 +69,11 @@ public static class SeedData
         {
             throw new Exception($"Unable to load seed data from {jsonFile}");
         }
+    }
+
+    private class DefaultUser : User
+    {
+        public required string Password { get; set; }
     }
 
 }

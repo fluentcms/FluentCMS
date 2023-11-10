@@ -21,7 +21,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Web", "Web", "{7C02D34F-74C
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{20EB94BE-CA55-4798-A864-B977FC6E0808}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers", "FluentCMS.Providers\FluentCMS.Providers.csproj", "{8A9050C2-DFEB-4774-A680-A60598828121}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Providers", "FluentCMS.Providers\FluentCMS.Providers.csproj", "{8A9050C2-DFEB-4774-A680-A60598828121}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

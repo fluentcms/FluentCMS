@@ -91,17 +91,21 @@ public class HostService : IHostService
         return hosts.Any();
     }
 
-    private static async Task CheckSuperUsers(Host host, CancellationToken cancellationToken = default)
+    private async Task CheckSuperUsers(Host host, CancellationToken cancellationToken = default)
     {
         // host should have at least one super user
         if (host.SuperUsers.Count == 0)
             throw new Exception("Host should have at least one super user");
 
-        // check if user ids are valid
-        // TODO: check if user ids are valid
-        //var users = await _userRepository.GetByIds(host.SuperUserIds, cancellationToken);
-        //if (users.Count() != host.SuperUserIds.Count)
-        //    throw new Exception($"One or some user ids are not found");
+        // check if user is authenticated and current user is in super user's list 
+        var userContext = _applicationContext.Current?.User;
+
+        var currentUsername = userContext?.UserName ?? throw new Exception("User should be authenticated");
+
+        var hostContext = _applicationContext.Current?.Host;
+        
+        if (userContext == null || hostContext == null || !hostContext.SuperUsers.Contains(currentUsername))
+            throw new Exception("You don't have enough permission to do the operation");
 
         await Task.CompletedTask;
     }
