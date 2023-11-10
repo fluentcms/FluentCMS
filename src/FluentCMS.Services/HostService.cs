@@ -11,79 +11,68 @@ public interface IHostService
     Task<bool> IsInitialized(CancellationToken cancellationToken = default);
 }
 
-public class HostService : IHostService
+public class HostService : BaseService<Host>, IHostService
 {
     private readonly IHostRepository _hostRepository;
-    private readonly IUserRepository _userRepository;
-    private readonly IApplicationContext _applicationContext;
 
-    public HostService(IHostRepository hostRepository, IUserRepository userRepository, IApplicationContext applicationContext)
+    public HostService(IHostRepository hostRepository, IApplicationContext appContext) : base(appContext)
     {
         _hostRepository = hostRepository;
-        _userRepository = userRepository;
-        _applicationContext = applicationContext;
     }
 
     public async Task<Host> Create(Host host, CancellationToken cancellationToken = default)
     {
+        // TODO: move this to a validator
+        CheckSuperUsers(host);
+
         // checking if host record exists or not. if exists, throw exception
         // this should be called only for the first time on installation
-        var hosts = await _hostRepository.GetAll(cancellationToken);
-        if (hosts.Any())
-            throw new Exception("Host already exists");
+        if (!await IsInitialized(cancellationToken))
+            throw new Exception("Host already initialized");
 
-        await CheckSuperUsers(host, cancellationToken);
+        PrepareForCreate(host);
 
-        host.CreatedBy = _applicationContext.Current?.User?.UserName ?? string.Empty;
-        host.LastUpdatedBy = _applicationContext.Current?.User?.UserName ?? string.Empty;
-
-        return await _hostRepository.Create(host, cancellationToken) ?? throw new Exception("Host not created");
+        return await _hostRepository.Create(host, cancellationToken) ??
+            throw new Exception("Host not created");
     }
 
     public async Task<Host> Update(Host host, CancellationToken cancellationToken = default)
     {
-        await CheckSuperUsers(host, cancellationToken);
-
-        // throw exception for guest user
-        if (_applicationContext.Current.User == null)
-            throw new Exception("You don't have enough permission to do the operation");
-
-        var currentUsername = _applicationContext.Current.User.UserName;
+        // TODO: move this to a validator
+        CheckSuperUsers(host);
 
         // checking current user is super user or not
         var hosts = await _hostRepository.GetAll(cancellationToken);
         var oldHost = hosts.Single();
-        if (oldHost.SuperUsers.Contains(currentUsername))
+        if (!Current.IsSuperAdmin)
             throw new Exception("You don't have enough permission to do the operation");
 
         // super user can't remove himself from super user list
-        if (!host.SuperUsers.Contains(_applicationContext.Current.User.UserName))
+        if (!host.SuperUsers.Contains(Current.UserName))
             throw new Exception("You can't remove yourself from super user list");
 
         // setting id from old host to the updated one
         host.Id = oldHost.Id;
 
-        host.LastUpdatedBy = _applicationContext.Current?.User?.UserName ?? string.Empty;
+        PrepareForUpdate(host);
 
-        return await _hostRepository.Update(host, cancellationToken) ?? throw new Exception("Host not updated");
+        return await _hostRepository.Update(host, cancellationToken)
+            ?? throw new Exception("Host not updated");
     }
 
     public async Task<Host> Get(CancellationToken cancellationToken = default)
     {
         // throw exception for guest user
-        if (_applicationContext.Current.User == null)
+        if (Current.IsSuperAdmin)
             throw new Exception("You don't have enough permission to do the operation");
-
-        var currentUsername = _applicationContext.Current.User.UserName;
 
         var hosts = await _hostRepository.GetAll(cancellationToken);
 
-        if (!hosts.Any() || !hosts.First().SuperUsers.Contains(currentUsername))
+        if (!hosts.Any())
             throw new Exception("Host not found");
 
         return hosts.Single();
     }
-
 
     public async Task<bool> IsInitialized(CancellationToken cancellationToken = default)
     {
@@ -91,23 +80,11 @@ public class HostService : IHostService
         return hosts.Any();
     }
 
-    private async Task CheckSuperUsers(Host host, CancellationToken cancellationToken = default)
+    private void CheckSuperUsers(Host host)
     {
         // host should have at least one super user
         if (host.SuperUsers.Count == 0)
             throw new Exception("Host should have at least one super user");
-
-        // check if user is authenticated and current user is in super user's list 
-        var userContext = _applicationContext.Current?.User;
-
-        var currentUsername = userContext?.UserName ?? throw new Exception("User should be authenticated");
-
-        var hostContext = _applicationContext.Current?.Host;
-        
-        if (userContext == null || hostContext == null || !hostContext.SuperUsers.Contains(currentUsername))
-            throw new Exception("You don't have enough permission to do the operation");
-
-        await Task.CompletedTask;
     }
 
 }

@@ -13,4 +13,7 @@ public interface ICurrentContext
     public List<Role> Roles { get; set; }
     public Host Host { get; set; }
     public Site Site { get; set; }
+    public string UserName { get; }
+    public bool IsAuthenticated { get; }
+    public bool IsSuperAdmin { get; }
 }
