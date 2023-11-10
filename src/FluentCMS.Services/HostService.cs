@@ -27,7 +27,7 @@ public class HostService : BaseService<Host>, IHostService
 
         // checking if host record exists or not. if exists, throw exception
         // this should be called only for the first time on installation
-        if (!await IsInitialized(cancellationToken))
+        if (await IsInitialized(cancellationToken))
             throw new Exception("Host already initialized");
 
         PrepareForCreate(host);

@@ -5,12 +5,11 @@ namespace FluentCMS.Services;
 public abstract class BaseService
 {
     protected readonly IApplicationContext AppContext;
-    protected readonly ICurrentContext Current;
+    protected ICurrentContext Current => AppContext.Current;
 
     public BaseService(IApplicationContext appContext)
     {
         AppContext = appContext;
-        Current = appContext.Current;
     }
 
 }
