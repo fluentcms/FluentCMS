@@ -31,6 +31,9 @@ public class CurrentContext : ICurrentContext
 
     public bool IsInRole(IEnumerable<Guid> roleIds)
     {
+        if (IsSuperAdmin)
+            return true;
+
         return roleIds.Any(IsInRole);
     }
 }
