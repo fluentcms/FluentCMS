@@ -1,0 +1,11 @@
+{
+  "Email": {
+    "DisplayName": "YourMailName",
+    "MailAddress": "your@mail.address",
+    "UserName": "ThisIsSmtpUserName",
+    "Password": "ThisIsSmtpPassword",
+    "SmtpHost": "ThisIsSmtpHost",
+    "SmtpPort": 80,
+    "EnableSsl": true
+  }
+}
