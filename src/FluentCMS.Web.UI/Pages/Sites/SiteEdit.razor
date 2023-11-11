@@ -1,5 +1,6 @@
 ﻿@page "/admin/sites/edit/{Id:guid}"
 @page "/admin/sites/create"
+@using FluentCMS.Entities
 @inject HttpClient _httpClient
 @inject NavigationManager _navigationManager
 
@@ -16,10 +17,10 @@
     <div class="mb-3">
         <label class="form-label">Role</label>
         @* <select class="form-select" required @bind="Site.RoleId" name="roleId">
-            @foreach (var role in Roles)
-            {
-                <option value="@role.Id">@role.Name</option>
-            }
+        @foreach (var role in Roles)
+        {
+        <option value="@role.Id">@role.Name</option>
+        }
         </select> *@
     </div>
     @* Urls *@
@@ -34,12 +35,12 @@
 @code {
     [Parameter]
     public Guid? Id { get; set; }
-    public Entities.Site Site { get; set; } = new();
+    public Entities.Site Site { get; set; } = new Site() { Name = "Site name" };
 
     public string Urls
     {
-        get { return string.Join(", ",Site?.Urls); }
-        set { Site.Urls = value.Split(['\n',',']).Select(x=>x.Trim()).ToList(); }
+        get { return string.Join(", ", Site?.Urls); }
+        set { Site.Urls = value.Split(['\n', ',']).Select(x => x.Trim()).ToList(); }
     }
 
     public List<dynamic> Roles { get; set; } = new()

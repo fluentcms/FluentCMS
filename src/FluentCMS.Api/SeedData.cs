@@ -18,34 +18,51 @@ public static class SeedData
         var siteService = scope.ServiceProvider.GetRequiredService<ISiteService>();
         var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+        var roleService = scope.ServiceProvider.GetRequiredService<IRoleService>();
         var appContext = scope.ServiceProvider.GetRequiredService<IApplicationContext>();
 
         if (!hostService.IsInitialized().GetAwaiter().GetResult())
         {
-            var defaultUser = LoadData<DefaultUser>($@"{dataFolder}\user.json");
+            var superAdmin = LoadData<DefaultUser>($@"{dataFolder}\superadmin.json");
             var host = LoadData<Host>($@"{dataFolder}\host.json");
             var site = LoadData<Site>($@"{dataFolder}\site.json");
+            var admin = LoadData<DefaultUser>($@"{dataFolder}\admin.json");
+            var adminRole = LoadData<Role>($@"{dataFolder}\adminrole.json");
 
-            var user = new User
+            var superUser = new User
             {
-                UserName = defaultUser.UserName,
-                Email = defaultUser.Email
+                UserName = superAdmin.UserName,
+                Email = superAdmin.Email
+            };
+
+            var adminUser = new User
+            {
+                UserName = admin.UserName,
+                Email = admin.Email
             };
 
             appContext.Current = new CurrentContext
             {
-                User = user,
+                User = superUser,
                 Host = host,
                 Site = site
             };
 
-            // User creation
-            userService.Create(user, defaultUser.Password).GetAwaiter().GetResult();
+            // Super Admin creation
+            userService.Create(superUser, superAdmin.Password).GetAwaiter().GetResult();
+            
+            // Admin Role creation
+            roleService.Create(adminRole).GetAwaiter().GetResult();
+
+            // Admin creation
+            adminUser.RoleIds = [adminRole.Id];
+            userService.Create(adminUser, admin.Password).GetAwaiter().GetResult();
 
             // Host creation
             hostService.Create(host).GetAwaiter().GetResult();
 
             // Site creation            
+            site.AdminRoleIds = [adminRole.Id];
             siteService.Create(site).GetAwaiter().GetResult();
 
             // Pages creation: adding a few default pages
@@ -76,8 +93,10 @@ public static class SeedData
         }
     }
 
-    private class DefaultUser : User
+    private class DefaultUser 
     {
+        public required string UserName { get; set; }
+        public required string Email { get; set; }
         public required string Password { get; set; }
     }
 
