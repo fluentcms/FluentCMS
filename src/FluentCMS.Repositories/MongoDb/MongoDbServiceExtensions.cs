@@ -33,10 +33,11 @@ public static class MongoDbServiceExtensions
 
         services.AddScoped(typeof(IGenericRepository<>), typeof(MongoDbGenericRepository<>));
 
-        services.AddScoped<IUserRepository, MongoDbUserRepository>();
         services.AddScoped<ISiteRepository, MongoDbSiteRepository>();
         services.AddScoped<IPageRepository, MongoDbPageRepository>();
         services.AddScoped<IHostRepository, MongoDbHostRepository>();
+        services.AddScoped<IUserRepository, MongoDbUserRepository>();
+        services.AddScoped<IRoleRepository, MongoDbRoleRepository>();
 
         return services;
     }

@@ -46,8 +46,8 @@ public class PageService : IPageService
         NormalizePath(page);
         await CheckForDuplicatePath(page);
 
-        page.CreatedBy = _applicationContext.Current?.User?.Username ?? string.Empty;
-        page.LastUpdatedBy = _applicationContext.Current?.User?.Username ?? string.Empty;
+        page.CreatedBy = _applicationContext.Current?.User?.UserName ?? string.Empty;
+        page.LastUpdatedBy = _applicationContext.Current?.User?.UserName ?? string.Empty;
 
         var newPage = await _pageRepository.Create(page, cancellationToken);
         return newPage ?? throw new Exception("Page not created");

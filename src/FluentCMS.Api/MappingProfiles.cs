@@ -1,7 +1,6 @@
 ﻿using AutoMapper;
 using FluentCMS.Api.Models;
 using FluentCMS.Api.Models.Pages;
-using FluentCMS.Api.Models.Users;
 using FluentCMS.Entities;
 
 namespace FluentCMS.Api;
@@ -23,16 +22,16 @@ public class MappingProfiles : Profile
         CreateMap<Page, PageResponse>();
 
         // User
-        CreateMap<User, UserResponse>()
-            .ForMember(x => x.UserRoles, cfg => cfg.MapFrom(y => y.UserRoles.Select(z => z.RoleId.ToString())));
-        CreateMap<CreateUserRequest, User>()
-            .ForMember(x => x.UserRoles, cfg => cfg.Ignore());
-        CreateMap<EditUserRequest, User>()
-            .ForMember(x => x.UserRoles, cfg => cfg.Ignore());
+        //CreateMap<User, UserResponse>()
+        //    .ForMember(x => x.UserRoles, cfg => cfg.MapFrom(y => y.UserRoles.Select(z => z.RoleId.ToString())));
+        //CreateMap<CreateUserRequest, User>()
+        //    .ForMember(x => x.UserRoles, cfg => cfg.Ignore());
+        //CreateMap<EditUserRequest, User>()
+        //    .ForMember(x => x.UserRoles, cfg => cfg.Ignore());
 
         // Role
-        CreateMap<Role, RoleResponse>();
-        CreateMap<CreateRoleRequest, Role>();
-        CreateMap<EditRoleRequest, Role>();
+        CreateMap<Role, RoleDto>();
+        CreateMap<RoleCreateRequest, Role>();
+        CreateMap<RoleUpdateRequest, Role>();
     }
 }
