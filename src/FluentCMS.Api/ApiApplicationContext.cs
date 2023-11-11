@@ -17,4 +17,20 @@ public class CurrentContext : ICurrentContext
     public string UserName => User?.UserName ?? string.Empty;
     public bool IsAuthenticated => !string.IsNullOrEmpty(UserName);
     public bool IsSuperAdmin => Host.SuperUsers.Contains(UserName);
+
+    public bool IsInRole(Guid roleId)
+    {
+        if (IsSuperAdmin)
+            return true;
+
+        if (Roles == null || !Roles.Any())
+            return false;
+
+        return Roles.Any(x => x.Id == roleId);
+    }
+
+    public bool IsInRole(IEnumerable<Guid> roleIds)
+    {
+        return roleIds.Any(IsInRole);
+    }
 }
