@@ -7,8 +7,8 @@
 
 <EditForm Model="data" OnValidSubmit="ValidSubmit">
     <div class="mb-3">
-        <label class="form-label">Name</label>
-        <InputText type="text" class="form-control" required @bind-Value="data.Name" name="name" />
+        <label class="form-label">Email</label>
+        <InputText type="text" class="form-control" required @bind-Value="data.Email" name="name" />
     </div>
     <div class="mb-3">
         <label class="form-label">Username</label>
@@ -35,7 +35,7 @@
                            type="checkbox"
                            id="@("chkRole-" + r.Name)"
                            @onchange="e => onRoleCheckboxChanged((bool)e.Value!, r.Id)"
-                           @attributes="addCheckedAttribute(data.Roles.Any(x => x == r.Id))">
+                           @attributes="addCheckedAttribute(data.RoleIds.Any(x => x == r.Id))">
                     <label class="form-check-label" for="@("chkRole-" + r.Name)">
                         @r.Name <span class="fw-light">(@r.Description)</span>
                     </label>
@@ -56,7 +56,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var getRolesResponse = await _httpClient.GetFromJsonAsync<ApiPagingResult<RoleResponse>>("roles/getAll");
+        var getRolesResponse = await _httpClient.GetFromJsonAsync<ApiPagingResult<RoleDto>>("roles/getAll");
         if (getRolesResponse != null)
         {
             roles = getRolesResponse!.Data;
@@ -71,13 +71,12 @@
         {
             try
             {
-                var response = await _httpClient.GetFromJsonAsync<ApiResult<UserResponse>>($"users/getById/{Id.Value}");
+                var response = await _httpClient.GetFromJsonAsync<ApiResult<UserDto>>($"users/getById/{Id.Value}");
                 if (response != null)
                 {
-                    data.Name = response.Data!.Name;
+                    data.Email = response.Data!.Email;
                     data.Username = response.Data!.Username;
-                    data.Password = string.Empty;
-                    data.Roles = response.Data.UserRoles.ToList();
+                    data.RoleIds = response.Data.RoleIds.ToList();
                 }
             }
             catch (Exception)
@@ -105,13 +104,11 @@
         //Update
         else
         {
-            var updateCommand = new UserUpdateRequest
+            var editCommand = new UserUpdateRequest
                 {
                     Id = Id.Value,
-                    Name = data.Name,
-                    Username = data.Username,
-                    Password = data.Password,
-                    Roles = data.Roles,
+                    Email = data.Email,
+                    RoleIds = data.RoleIds.ToList(),
                 };
             try
             {
@@ -135,12 +132,12 @@
     {
         if (isChecked)
         {
-            if (data.Roles.Any(x => x == roleId) == false)
-                data.Roles.Add(roleId);
+            if (data.RoleIds.Any(x => x == roleId) == false)
+                data.RoleIds.Add(roleId);
         }
         else
         {
-            data.Roles.Remove(roleId);
+            data.RoleIds.Remove(roleId);
         }
     }
 }

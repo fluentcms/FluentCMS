@@ -3,18 +3,37 @@ using FluentCMS.Services;
 
 namespace FluentCMS.Api;
 
-//TODO: Nullables
 public class ApiApplicationContext : IApplicationContext
 {
-    // todo: we should use IHttpContextAccessor to get the current HttpContext
-    // and extract current user, role, host, etc...
-    public ICurrentContext Current { get; set; }
+    public required ICurrentContext Current { get; set; }
 }
 
 public class CurrentContext : ICurrentContext
 {
     public User? User { get; set; }
     public List<Role> Roles { get; set; } = [];
-    public Host Host { get; set; }
-    public Site Site { get; set; }
+    public required Host Host { get; set; }
+    public required Site Site { get; set; }
+    public string UserName => User?.UserName ?? string.Empty;
+    public bool IsAuthenticated => !string.IsNullOrEmpty(UserName);
+    public bool IsSuperAdmin => Host.SuperUsers.Contains(UserName);
+
+    public bool IsInRole(Guid roleId)
+    {
+        if (IsSuperAdmin)
+            return true;
+
+        if (Roles == null || !Roles.Any())
+            return false;
+
+        return Roles.Any(x => x.Id == roleId);
+    }
+
+    public bool IsInRole(IEnumerable<Guid> roleIds)
+    {
+        if (IsSuperAdmin)
+            return true;
+
+        return roleIds.Any(IsInRole);
+    }
 }

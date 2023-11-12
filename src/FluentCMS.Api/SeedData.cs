@@ -17,27 +17,53 @@ public static class SeedData
         var hostService = scope.ServiceProvider.GetRequiredService<IHostService>();
         var siteService = scope.ServiceProvider.GetRequiredService<ISiteService>();
         var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
+        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+        var roleService = scope.ServiceProvider.GetRequiredService<IRoleService>();
         var appContext = scope.ServiceProvider.GetRequiredService<IApplicationContext>();
 
         if (!hostService.IsInitialized().GetAwaiter().GetResult())
         {
-            // User creation
-            var user = LoadData<User>($@"{dataFolder}\user.json");
-            user.Id = Guid.Empty;
-            // TODO: call service to create user
+            var superAdmin = LoadData<DefaultUser>($@"{dataFolder}\superadmin.json");
+            var host = LoadData<Host>($@"{dataFolder}\host.json");
+            var site = LoadData<Site>($@"{dataFolder}\site.json");
+            var admin = LoadData<DefaultUser>($@"{dataFolder}\admin.json");
+            var adminRole = LoadData<Role>($@"{dataFolder}\adminrole.json");
 
-            // TODO: is this the correct way? We may use proxy objects instead
-            appContext.Current = new CurrentContext { User = user, };
+            var superUser = new User
+            {
+                UserName = superAdmin.UserName,
+                Email = superAdmin.Email
+            };
+
+            var adminUser = new User
+            {
+                UserName = admin.UserName,
+                Email = admin.Email
+            };
+
+            appContext.Current = new CurrentContext
+            {
+                User = superUser,
+                Host = host,
+                Site = site
+            };
+
+            // Super Admin creation
+            userService.Create(superUser, superAdmin.Password).GetAwaiter().GetResult();
+            
+            // Admin Role creation
+            roleService.Create(adminRole).GetAwaiter().GetResult();
+
+            // Admin creation
+            adminUser.RoleIds = [adminRole.Id];
+            userService.Create(adminUser, admin.Password).GetAwaiter().GetResult();
 
             // Host creation
-            var host = LoadData<Host>($@"{dataFolder}\host.json");
             hostService.Create(host).GetAwaiter().GetResult();
-            appContext.Current.Host = host;
 
-            // Site creation
-            var site = LoadData<Site>($@"{dataFolder}\site.json");
+            // Site creation            
+            site.AdminRoleIds = [adminRole.Id];
             siteService.Create(site).GetAwaiter().GetResult();
-            appContext.Current.Site = site;
 
             // Pages creation: adding a few default pages
             var pages = LoadData<List<Page>>($@"{dataFolder}\pages.json");
@@ -49,12 +75,14 @@ public static class SeedData
         }
     }
 
+    private static JsonSerializerOptions serializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
     private static T LoadData<T>(string jsonFile)
     {
         try
         {
             var json = File.ReadAllText(jsonFile);
-            var result = JsonSerializer.Deserialize<T>(json);
+            var result = JsonSerializer.Deserialize<T>(json, serializerOptions);
 
             return result == null ?
                 throw new Exception($"Unable to load seed data from {jsonFile}") : result;
@@ -63,6 +91,13 @@ public static class SeedData
         {
             throw new Exception($"Unable to load seed data from {jsonFile}");
         }
+    }
+
+    private class DefaultUser 
+    {
+        public required string UserName { get; set; }
+        public required string Email { get; set; }
+        public required string Password { get; set; }
     }
 
 }

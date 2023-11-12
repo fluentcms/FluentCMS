@@ -14,7 +14,7 @@ else
     <table class="table">
         <thead>
             <tr>
-                <th>Name</th>
+                <th>Email</th>
                 <th>Username</th>
                 <th>Actions</th>
             </tr>
@@ -23,7 +23,7 @@ else
             @foreach (var user in users)
             {
                 <tr>
-                    <td>@user.Name</td>
+                    <td>@user.Email</td>
                     <td>@user.Username</td>
                     <td>
                         <NavigationButton To="@("/admin/users/update/" + user.Id)">Edit</NavigationButton>
@@ -36,13 +36,13 @@ else
 }
 
 @code {
-    private IEnumerable<UserResponse>? users;
+    private IEnumerable<UserDto>? users;
 
     private async Task LoadUsers()
     {
         try
         {
-            var response = await httpClient.GetFromJsonAsync<ApiPagingResult<UserResponse>>("users/getAll");
+            var response = await httpClient.GetFromJsonAsync<ApiPagingResult<UserDto>>("users/getAll");
             if (response != null)
             {
                 users = response.Data;

@@ -1,5 +1,6 @@
 ﻿namespace FluentCMS.Api.Models;
-public class UserResponse
+
+public class UserDto
 {
     public required Guid Id { get; set; }
     public required string CreatedBy { get; set; }
@@ -7,8 +8,8 @@ public class UserResponse
     public required string LastUpdatedBy { get; set; }
     public required DateTime LastUpdatedAt { get; set; }
 
-    public string Name { get; set; } = string.Empty;
-    public string Username { get; set; } = string.Empty;
+    public required string Email { get; set; }
+    public required string Username { get; set; }
 
-    public virtual IEnumerable<Guid> UserRoles { get; set; } = Enumerable.Empty<Guid>();
+    public IEnumerable<Guid> RoleIds { get; set; } = [];
 }

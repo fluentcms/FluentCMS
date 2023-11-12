@@ -1,19 +1,64 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories.Abstractions;
 using MongoDB.Driver;
+using System.Security.Claims;
 
 namespace FluentCMS.Repositories.MongoDb;
 
-public class MongoDbUserRepository(IMongoDBContext mongoDbContext) : MongoDbGenericRepository<User>(mongoDbContext), IUserRepository
+public class MongoDbUserRepository : MongoDbGenericRepository<User>, IUserRepository
 {
-    public async Task<User?> GetByUsername(string username, CancellationToken cancellationToken = default)
+    // TODO: add index
+    public MongoDbUserRepository(IMongoDBContext mongoDbContext) : base(mongoDbContext)
+    {
+    }
+
+    public IQueryable<User> AsQueryable()
+    {
+        return Collection.AsQueryable();
+    }
+
+    public Task<IList<User>> GetUsersForClaim(Claim claim, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var filter = Builders<User>.Filter.Eq(x => x.Username, username);
+        var users = Collection.AsQueryable().Where(u => u.Claims.Any(c => c.ClaimType == claim.Type && c.ClaimValue == claim.Value)).ToList();
 
-        var findResult = await Collection.FindAsync(filter, null, cancellationToken);
+        return Task.FromResult((IList<User>)users);
+    }
 
-        return await findResult.SingleOrDefaultAsync(cancellationToken);
+    public Task<User?> FindByEmail(string normalizedEmail, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var user = Collection.AsQueryable().Where(x => x.NormalizedEmail == normalizedEmail).SingleOrDefault();
+
+        return Task.FromResult(user);
+    }
+
+    public Task<User?> FindByLogin(string loginProvider, string providerKey, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var user = Collection.AsQueryable().Where(user => user.Logins.Any(x => x.LoginProvider == loginProvider && x.ProviderKey == providerKey)).FirstOrDefault();
+
+        return Task.FromResult(user);
+    }
+
+    public Task<User?> FindByName(string normalizedUserName, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var user = Collection.AsQueryable().Where(x => x.NormalizedUserName == normalizedUserName).FirstOrDefault();
+
+        return Task.FromResult(user);
+    }
+
+    public Task<IList<User>> GetUsersInRole(string roleId, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var user = Collection.AsQueryable().Where(x => x.RoleIds.Any(r => roleId.Equals(r))).ToList();
+
+        return Task.FromResult((IList<User>)user);
     }
 }

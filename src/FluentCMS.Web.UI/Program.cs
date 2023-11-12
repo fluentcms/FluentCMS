@@ -12,6 +12,12 @@ services.AddApplicationServices();
 
 services.AddMongoDbRepositories("MongoDb");
 
+services.AddJwtTokenProvider();
+services.AddSmtpEmailProvider();
+
+services.AddAuthentication();
+services.AddAuthorization();
+
 // Add services to the container.
 services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -57,6 +63,8 @@ app.UseStaticFiles();
 app.UseAntiforgery();
 
 app.UseApiDocumentation();
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 

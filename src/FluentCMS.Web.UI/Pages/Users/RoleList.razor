@@ -16,7 +16,6 @@ else
             <tr>
                 <th>Name</th>
                 <th>Description</th>
-                <th>Auto Assigned</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -26,7 +25,6 @@ else
                 <tr>
                     <td>@role.Name</td>
                     <td>@role.Description</td>
-                    <td>@role.AutoAssigned.ToString()</td>
                     <td>
                         <NavigationButton To="@("/admin/roles/update/" + role.Id)">Edit</NavigationButton>
                         <Button @onclick="() => OnDeleteClick(role.Id)">Delete</Button>

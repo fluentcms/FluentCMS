@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using FluentCMS.Api.Models;
+using FluentCMS.Api.Models.Pages;
 using FluentCMS.Entities;
 
 namespace FluentCMS.Api;
@@ -21,15 +22,15 @@ public class MappingProfiles : Profile
         CreateMap<Page, PageResponse>();
 
         // User
-        CreateMap<User, UserResponse>()
-            .ForMember(x => x.UserRoles, cfg => cfg.MapFrom(y => y.UserRoles.Select(z => z.RoleId.ToString())));
-        CreateMap<UserCreateRequest, User>()
-            .ForMember(x => x.UserRoles, cfg => cfg.Ignore());
-        CreateMap<UserUpdateRequest, User>()
-            .ForMember(x => x.UserRoles, cfg => cfg.Ignore());
+        //CreateMap<User, UserResponse>()
+        //    .ForMember(x => x.UserRoles, cfg => cfg.MapFrom(y => y.UserRoles.Select(z => z.RoleId.ToString())));
+        //CreateMap<CreateUserRequest, User>()
+        //    .ForMember(x => x.UserRoles, cfg => cfg.Ignore());
+        //CreateMap<EditUserRequest, User>()
+        //    .ForMember(x => x.UserRoles, cfg => cfg.Ignore());
 
         // Role
-        CreateMap<Role, RoleResponse>();
+        CreateMap<Role, RoleDto>();
         CreateMap<RoleCreateRequest, Role>();
         CreateMap<RoleUpdateRequest, Role>();
     }
