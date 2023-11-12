@@ -51,7 +51,7 @@
     [Parameter]
     public Guid? Id { get; set; }
 
-    private IEnumerable<RoleResponse>? roles;
+    private IEnumerable<RoleDto>? roles;
     private UserCreateRequest data = new();
 
     protected override async Task OnInitializedAsync()
@@ -104,7 +104,7 @@
         //Update
         else
         {
-            var editCommand = new UserUpdateRequest
+            var updateCommand = new UserUpdateRequest
                 {
                     Id = Id.Value,
                     Email = data.Email,
