@@ -6,12 +6,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Shouldly;
 
-namespace FluentCMS.Repository.LiteDb.Tests.Entities.ContentTypes;
-public class ContentType_Tests
+namespace FluentCMS.Tests.Services;
+public class ContentTypeService_Tests
 {
     readonly IServiceProvider _serviceProvider;
 
-    public ContentType_Tests()
+    public ContentTypeService_Tests()
     {
         var services = new ServiceCollection();
         services
@@ -26,7 +26,7 @@ public class ContentType_Tests
         var service = _serviceProvider.GetRequiredService<IContentTypeService>();
         var id = Guid.NewGuid();
         var title = "Test 1";
-        var contentType = new ContentType { Id=id,Title = title };
+        var contentType = new ContentType { Id = id, Title = title };
         await service.Create(contentType);
         var result = await service.GetById(id);
         result.ShouldNotBeNull();
@@ -102,7 +102,7 @@ public class ContentType_Tests
         foreach (var id in ids)
         {
             var title = $"Test {index++}";
-            var contentType = new ContentType{ Id = id, Title = title };
+            var contentType = new ContentType { Id = id, Title = title };
             await service.Create(contentType);
         }
         var result = await service.Search();
@@ -117,7 +117,7 @@ public class ContentType_Tests
         var service = _serviceProvider.GetRequiredService<IContentTypeService>();
         var id = Guid.NewGuid();
         var title = "Test 1";
-        var contentType = new ContentType{ Id = id, Title = title };
+        var contentType = new ContentType { Id = id, Title = title };
         await service.Create(contentType);
         var result = await service.GetById(id);
         result.ShouldNotBeNull();
@@ -133,7 +133,7 @@ public class ContentType_Tests
         var id = Guid.NewGuid();
         var title = "Test 1";
         var slug = "test-1";
-        var contentType = new ContentType{ Id = id, Title = title };
+        var contentType = new ContentType { Id = id, Title = title };
         contentType.Slug = slug;
         await service.Create(contentType);
         var result = await service.GetBySlug(slug);

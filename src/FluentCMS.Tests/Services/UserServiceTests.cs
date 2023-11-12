@@ -4,7 +4,7 @@ using FluentCMS.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
-namespace FluentCMS.Repository.LiteDb.Tests;
+namespace FluentCMS.Tests.Services;
 public class UserServiceTests
 {
     private readonly IServiceProvider _serviceProvider;
@@ -13,7 +13,7 @@ public class UserServiceTests
         var services = new ServiceCollection();
         services
             .AddApplicationServices();
-            //.AddLiteDbInMemoryRepository();
+        //.AddLiteDbInMemoryRepository();
         _serviceProvider = services.BuildServiceProvider();
     }
 
@@ -30,7 +30,7 @@ public class UserServiceTests
             Email = "TestUser",
             UserName = username,
             RoleIds = [],
-        },"password");
+        }, "password");
 
         var loadedUser = await userService.GetByUsername(username);
         loadedUser.ShouldNotBeNull();
@@ -52,6 +52,6 @@ public class UserServiceTests
         };
 
         // it should throw a ApplicationException
-        await Should.ThrowAsync<ApplicationException>(() => userService.Create(userToCreate,"password"));
+        await Should.ThrowAsync<ApplicationException>(() => userService.Create(userToCreate, "password"));
     }
 }

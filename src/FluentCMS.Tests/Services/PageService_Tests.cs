@@ -6,7 +6,7 @@ using FluentCMS.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
-namespace FluentCMS.Repository.LiteDb.Tests.Entities.Pages;
+namespace FluentCMS.Tests.Services;
 public class PageService_Tests
 {
     private ServiceProvider _serviceProvider;

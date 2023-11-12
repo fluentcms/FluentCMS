@@ -1,9 +1,9 @@
 using FluentCMS.Repositories.LiteDb;
-using FluentCMS.Repository.LiteDb.Tests.Entities;
+using FluentCMS.Tests.DummyEntities;
 using Newtonsoft.Json;
 using Shouldly;
 
-namespace FluentCMS.Repository.LiteDb.Tests;
+namespace FluentCMS.Tests.Repositories;
 public class LiteDbRepository_Tests
 {
     [Fact]

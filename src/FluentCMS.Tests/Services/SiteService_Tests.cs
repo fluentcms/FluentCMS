@@ -1,10 +1,9 @@
 ﻿using FluentCMS.Entities;
-using FluentCMS.Repositories.LiteDb;
 using FluentCMS.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
-namespace FluentCMS.Repository.LiteDb.Tests.Entities.Sites;
+namespace FluentCMS.Tests.Services;
 
 public class SiteService_Tests
 {
