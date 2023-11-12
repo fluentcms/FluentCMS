@@ -2,15 +2,15 @@
 
 namespace FluentCMS.Api.Models;
 
-public class CreateSiteRequest
+public class SiteCreateRequest
 {
-    public string Name { get; set; } = "";
-    public string Description { get; set; } = "";
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
     public string[] Urls { get; set; } = [];
     public Guid RoleId { get; set; }
 }
 
-public class CreateSiteRequestValidator : AbstractValidator<CreateSiteRequest>
+public class CreateSiteRequestValidator : AbstractValidator<SiteCreateRequest>
 {
     public CreateSiteRequestValidator()
     {

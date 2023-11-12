@@ -1,6 +1,5 @@
 ﻿using AutoMapper;
 using FluentCMS.Api.Models;
-using FluentCMS.Api.Models.Pages;
 using FluentCMS.Entities;
 
 namespace FluentCMS.Api;
@@ -11,12 +10,12 @@ public class MappingProfiles : Profile
     {
         // Host
         CreateMap<Host, HostResponse>();
-        CreateMap<UpdateHostRequest, Host>();
+        CreateMap<HostUpdateRequest, Host>();
 
         // Site
         CreateMap<Site, SiteResponse>();
-        CreateMap<CreateSiteRequest, Site>();
-        CreateMap<UpdateSiteRequest, Site>();
+        CreateMap<SiteCreateRequest, Site>();
+        CreateMap<SiteUpdateRequest, Site>();
 
         // Page
         CreateMap<Page, PageResponse>();

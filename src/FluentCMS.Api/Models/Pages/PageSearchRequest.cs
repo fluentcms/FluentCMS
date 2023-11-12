@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Api.Models.Pages;
+﻿namespace FluentCMS.Api.Models;
 
 public class PageSearchRequest
 {

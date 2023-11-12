@@ -1,6 +1,5 @@
 ﻿using AutoMapper;
 using FluentCMS.Api.Models;
-using FluentCMS.Api.Models.Pages;
 using FluentCMS.Entities;
 using FluentCMS.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +20,7 @@ public class SiteController : BaseController
     }
 
     [HttpGet]
-    public async Task<IApiPagingResult<SiteResponse>> GetAll([FromQuery] SearchSiteRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<SiteResponse>> GetAll([FromQuery] SiteSearchRequest request, CancellationToken cancellationToken = default)
     {
         var sites = await _siteService.GetAll(cancellationToken);
         var siteResponses = _mapper.Map<List<SiteResponse>>(sites);
@@ -54,7 +53,7 @@ public class SiteController : BaseController
     }
 
     [HttpPost]
-    public async Task<IApiResult<SiteResponse>> Create(CreateSiteRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<SiteResponse>> Create(SiteCreateRequest request, CancellationToken cancellationToken = default)
     {
         var site = _mapper.Map<Site>(request);
         var newSite = await _siteService.Create(site, cancellationToken);
@@ -63,7 +62,7 @@ public class SiteController : BaseController
     }
 
     [HttpPatch]
-    public async Task<IApiResult<SiteResponse>> Update(UpdateSiteRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<SiteResponse>> Update(SiteUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var site = _mapper.Map<Site>(request);
         var updateSite = await _siteService.Update(site, cancellationToken);

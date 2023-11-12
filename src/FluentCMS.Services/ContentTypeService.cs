@@ -1,5 +1,4 @@
-﻿using Ardalis.GuardClauses;
-using FluentCMS.Entities.ContentTypes;
+﻿using FluentCMS.Entities;
 using FluentCMS.Repositories.Abstractions;
 
 namespace FluentCMS.Services;
@@ -10,7 +9,7 @@ public interface IContentTypeService
     Task<ContentType?> GetBySlug(string slug);
     Task<IEnumerable<ContentType>> Search();
     Task Create(ContentType contentType);
-    Task Edit(ContentType contentType);
+    Task Update(ContentType contentType);
     Task Delete(Guid id);
 }
 
@@ -41,27 +40,18 @@ internal class ContentTypeService : IContentTypeService
 
     public async Task Create(ContentType contentType)
     {
-        Guard.Against.Null(contentType);
-        Guard.Against.NullOrEmpty(contentType.Title);
-        Guard.Against.NullOrEmpty(contentType.Slug);
-
         await CheckForDuplicateSlug(contentType);
         await _contentTypeRepository.Create(contentType);
     }
 
-    public async Task Edit(ContentType contentType)
+    public async Task Update(ContentType contentType)
     {
-        Guard.Against.Null(contentType);
-        Guard.Against.NullOrEmpty(contentType.Title);
-        Guard.Against.NullOrEmpty(contentType.Slug);
-
         await CheckForDuplicateSlug(contentType);
         await _contentTypeRepository.Update(contentType);
     }
 
     public async Task Delete(Guid id)
     {
-        Guard.Against.NullOrEmpty(id);
         await _contentTypeRepository.Delete(id);
     }
 

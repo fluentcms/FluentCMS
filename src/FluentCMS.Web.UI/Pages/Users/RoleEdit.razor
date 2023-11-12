@@ -1,9 +1,9 @@
 ﻿@page "/admin/roles/create"
-@page "/admin/roles/edit/{Id:guid}"
+@page "/admin/roles/update/{Id:guid}"
 @inject HttpClient _httpClient
 @inject NavigationManager _navigationManager
 
-<h3>@(Id.HasValue ? "Edit" : "Create") Role</h3>
+<h3>@(Id.HasValue ? "Update" : "Create") Role</h3>
 
 <EditForm Model="data" OnValidSubmit="ValidSubmit">
     <div class="mb-3">
@@ -82,7 +82,7 @@
                 };
             try
             {
-                await _httpClient.PutAsJsonAsync($"roles/edit", editCommand);
+                await _httpClient.PutAsJsonAsync($"roles/update", editCommand);
                 _navigationManager.NavigateTo("/admin/roles");
             }
             catch (Exception)
