@@ -1,7 +1,7 @@
 ﻿using FluentCMS.Entities;
 using LiteDB;
 
-namespace FluentCMS.Repository.LiteDb.Tests.Entities;
+namespace FluentCMS.Tests.DummyEntities;
 
 internal class AuditedDummyEntity : IAuditEntity
 {
