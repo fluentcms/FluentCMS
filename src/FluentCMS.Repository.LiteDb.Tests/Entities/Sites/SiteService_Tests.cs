@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Entities;
+using FluentCMS.Repositories.LiteDb;
 using FluentCMS.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -12,8 +13,8 @@ public class SiteService_Tests
     {
         var services = new ServiceCollection();
         // TODO: write tests for LiteDbInMemoryRepository
-        services.AddApplicationServices();
-            //.AddLiteDbInMemoryRepository();
+        services.AddApplicationServices()
+            .AddInMemoryLiteDbRepositories();
         _serviceProvider = services.BuildServiceProvider();
     }
 
@@ -52,18 +53,18 @@ public class SiteService_Tests
             Urls = ["test.com"],
             //RoleId = roleId,
         });
-        var dbSite = await service.GetById(siteId);
-        await service.Update(new Site
+        var dbSite = await service.GetById(site.Id);
+        var updatedSite = await service.Update(new Site
         {
             Id = dbSite.Id,
-            Name = "test site edited",
-            Description = "test site description edited",
+            Name = "test site updated",
+            Description = "test site description updated",
             Urls = dbSite.Urls.ToList(),
             //RoleId = roleId,
         });
-        var result = await service.GetById(editedSite.Id);
-        result.Name.ShouldBe("test site edited");
-        result.Description.ShouldBe("test site description edited");
+        var result = await service.GetById(updatedSite.Id);
+        result.Name.ShouldBe("test site updated");
+        result.Description.ShouldBe("test site description updated");
         result.Urls.Contains("test.com").ShouldBeTrue();
         //result.RoleId.ShouldBe(roleId);
     }

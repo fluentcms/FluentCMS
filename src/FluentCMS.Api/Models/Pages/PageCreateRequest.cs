@@ -1,6 +1,6 @@
-﻿namespace FluentCMS.Api.Models.Pages;
+﻿namespace FluentCMS.Api.Models;
 
-public class CreatePageRequest
+public class PageCreateRequest
 {
     public Guid SiteId { get; set; }
     public Guid? ParentId { get; set; }

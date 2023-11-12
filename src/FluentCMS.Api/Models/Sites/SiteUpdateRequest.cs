@@ -2,16 +2,16 @@
 
 namespace FluentCMS.Api.Models;
 
-public class UpdateSiteRequest
+public class SiteUpdateRequest
 {
     public Guid Id { get; set; }
-    public string Name { get; set; } = "";
-    public string Description { get; set; } = "";
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
     public Guid RoleId { get; set; }
     public ICollection<string> Urls { get; set; } = new List<string>();
 }
 
-public class UpdateSiteRequestValidator : AbstractValidator<UpdateSiteRequest>
+public class UpdateSiteRequestValidator : AbstractValidator<SiteUpdateRequest>
 {
     public UpdateSiteRequestValidator()
     {

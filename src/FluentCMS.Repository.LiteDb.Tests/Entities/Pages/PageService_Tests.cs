@@ -1,6 +1,7 @@
-﻿using FluentCMS.Entities.Pages;
+﻿using FluentCMS.Entities;
 using FluentCMS.Repositories;
 using FluentCMS.Repositories.Abstractions;
+using FluentCMS.Repositories.LiteDb;
 using FluentCMS.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -14,7 +15,7 @@ public class PageService_Tests
     {
         var services = new ServiceCollection();
         services.AddApplicationServices()
-            .AddLiteDbInMemoryRepository();
+            .AddInMemoryLiteDbRepositories();
         _serviceProvider = services.BuildServiceProvider();
     }
 
@@ -36,7 +37,7 @@ public class PageService_Tests
     }
 
     [Fact]
-    public async Task Should_EditPage()
+    public async Task Should_UpdatePage()
     {
         var pageService = _serviceProvider.GetRequiredService<IPageService>();
         var pageRepository = _serviceProvider.GetRequiredService<IPageRepository>();
@@ -56,7 +57,7 @@ public class PageService_Tests
     }
 
     [Fact]
-    public async Task ShouldNot_CreateOrEdit_DuplicatePath()
+    public async Task ShouldNot_CreateOrUpdate_DuplicatePath()
     {
         var pageService = _serviceProvider.GetRequiredService<IPageService>();
         var pageRepository = _serviceProvider.GetRequiredService<IPageRepository>();

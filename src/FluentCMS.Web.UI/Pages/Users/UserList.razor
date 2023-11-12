@@ -26,7 +26,7 @@ else
                     <td>@user.Email</td>
                     <td>@user.Username</td>
                     <td>
-                        <NavigationButton To="@("/admin/users/edit/" + user.Id)">Edit</NavigationButton>
+                        <NavigationButton To="@("/admin/users/update/" + user.Id)">Edit</NavigationButton>
                         <Button @onclick="() => OnDeleteClick(user.Id)">Delete</Button>
                     </td>
                 </tr>

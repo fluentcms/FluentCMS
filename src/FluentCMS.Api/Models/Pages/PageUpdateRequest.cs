@@ -1,6 +1,6 @@
-﻿namespace FluentCMS.Api.Models.Pages;
+﻿namespace FluentCMS.Api.Models;
 
-public class EditPageRequest
+public class PageUpdateRequest
 {
     public Guid Id { get; set; }
     public Guid SiteId { get; set; }

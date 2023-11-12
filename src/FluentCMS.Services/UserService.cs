@@ -15,6 +15,7 @@ public interface IUserService
     Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default);
     Task ChangePassword(User user, string newPassword, CancellationToken cancellationToken = default);
     Task<User> ChangePassword(Guid id, string oldPassword, string newPassword, CancellationToken cancellationToken = default);
+    Task<User?> GetByUsername(string username);
 }
 
 public class UserService : IUserService
@@ -126,5 +127,10 @@ public class UserService : IUserService
         await _userManager.UpdateAsync(user);
 
         return user;
+    }
+
+    public Task<User?> GetByUsername(string username)
+    {
+        return _userManager.FindByNameAsync(username);
     }
 }

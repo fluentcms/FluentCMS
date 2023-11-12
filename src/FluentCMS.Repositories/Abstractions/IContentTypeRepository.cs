@@ -1,4 +1,4 @@
-﻿using FluentCMS.Entities.ContentTypes;
+﻿using FluentCMS.Entities;
 
 namespace FluentCMS.Repositories.Abstractions;
 

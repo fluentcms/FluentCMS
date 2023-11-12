@@ -1,9 +1,9 @@
 ﻿@page "/admin/users/create"
-@page "/admin/users/edit/{Id:guid}"
+@page "/admin/users/update/{Id:guid}"
 @inject HttpClient _httpClient
 @inject NavigationManager _navigationManager
 
-<h3>@(Id.HasValue ? "Edit" : "Create") User</h3>
+<h3>@(Id.HasValue ? "Update" : "Create") User</h3>
 
 <EditForm Model="data" OnValidSubmit="ValidSubmit">
     <div class="mb-3">
@@ -101,10 +101,10 @@
                 throw;
             }
         }
-        //Edit
+        //Update
         else
         {
-            var editCommand = new UserUpdateRequest
+            var updateCommand = new UserUpdateRequest
                 {
                     Id = Id.Value,
                     Email = data.Email,
@@ -112,7 +112,7 @@
                 };
             try
             {
-                await _httpClient.PutAsJsonAsync($"users/edit", editCommand);
+                await _httpClient.PutAsJsonAsync($"users/update", updateCommand);
                 _navigationManager.NavigateTo("/admin/users");
             }
             catch (Exception)

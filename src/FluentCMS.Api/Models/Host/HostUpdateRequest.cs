@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Api.Models;
 
-public class UpdateHostRequest
+public class HostUpdateRequest
 {
     public List<Guid> SuperUserIds { get; set; } = [];
 }

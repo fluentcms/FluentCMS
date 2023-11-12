@@ -1,11 +1,11 @@
-﻿@page "/admin/pages/edit/{Id:guid}"
+﻿@page "/admin/pages/update/{Id:guid}"
 @page "/admin/pages/create/{SiteId:guid}"
 @page "/admin/pages/create/{SiteId:guid}/{ParentId:guid}"
-@using FluentCMS.Api.Models.Pages
+@using FluentCMS.Api.Models
 @inject HttpClient _httpClient
 @inject NavigationManager _navigationManager
 
-<h3>Page Edit</h3>
+<h3>Page Update</h3>
 <EditForm Model="Page" OnValidSubmit="ValidSubmit">
 
     @* public Guid SiteId { get; set; } *@
@@ -35,7 +35,7 @@
     public Guid SiteId { get; set; }
     [Parameter]
     public Guid? ParentId { get; set; }
-    public FluentCMS.Api.Models.Pages.CreatePageRequest Page { get; set; } = new();
+    public PageCreateRequest Page { get; set; } = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -91,7 +91,7 @@
         //Edit
         else
         {
-            var editCommand = new Api.Models.Pages.EditPageRequest
+            var updateCommand = new PageUpdateRequest
                 {
                     Id = Id ?? throw new Exception("Impossible state"),
                     Title = Page.Title,
@@ -103,8 +103,8 @@
                 };
             try
             {
-                await _httpClient.PutAsJsonAsync($"pages/edit", editCommand);
-                _navigationManager.NavigateTo($"/admin/pages/{editCommand.SiteId}");
+                await _httpClient.PutAsJsonAsync($"pages/update", updateCommand);
+                _navigationManager.NavigateTo($"/admin/pages/{updateCommand.SiteId}");
             }
             catch (Exception)
             {
