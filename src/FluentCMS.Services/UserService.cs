@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using FluentCMS.Entities;
 using FluentCMS.Providers.Identity;
+using FluentCMS.Services.Exceptions;
 using UserToken = FluentCMS.Providers.Identity.UserToken;
 
 namespace FluentCMS.Services;
@@ -61,7 +62,7 @@ public class UserService : IUserService
 
         // Validate user password
         if (user is null || !user.Enabled || !await _userManager.CheckPasswordAsync(user, password))
-            throw new Exception("User doesn't exist or username/password is not valid!");
+            throw new AppException(Errors.Users.AuthenticationFailed);
 
         // Update user properties related to login
         user.LastLoginAt = DateTime.Now;
@@ -91,7 +92,7 @@ public class UserService : IUserService
         cancellationToken.ThrowIfCancellationRequested();
 
         var user = await _userManager.FindByIdAsync(id.ToString());
-        if (user is null) throw new Exception("User doesn't exist!");
+        if (user is null) throw new AppException(Errors.Users.UserDoesNotExists);
 
         var userRemoveResult = await _userManager.DeleteAsync(user);
         userRemoveResult.ThrowIfInvalid();
@@ -107,7 +108,8 @@ public class UserService : IUserService
 
     public Task<User> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        return _userManager.FindByIdAsync(id.ToString()) ?? throw new Exception("User doesn't exist!");
+        return _userManager.FindByIdAsync(id.ToString())
+            ?? throw new AppException(Errors.Users.UserDoesNotExists);
     }
 
     public async Task<User> ChangePassword(Guid id, string oldPassword, string newPassword, CancellationToken cancellationToken = default)
@@ -115,7 +117,7 @@ public class UserService : IUserService
         var user = await GetById(id, cancellationToken);
 
         if (!await _userManager.CheckPasswordAsync(user, oldPassword))
-            throw new Exception("User doesn't exist or username/password is not valid!");
+            throw new AppException(Errors.Users.AuthenticationFailed);
 
         var idResult = await _userManager.ChangePasswordAsync(user, oldPassword, newPassword);
 
