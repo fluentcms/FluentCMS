@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.7.34031.279
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Repository.LiteDb.Tests", "FluentCMS.Repository.LiteDb.Tests\FluentCMS.Repository.LiteDb.Tests.csproj", "{F89AFE91-0413-4808-AEF9-5C380B3227E3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Tests", "FluentCMS.Repository.LiteDb.Tests\FluentCMS.Tests.csproj", "{F89AFE91-0413-4808-AEF9-5C380B3227E3}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.UI", "FluentCMS.Web.UI\FluentCMS.Web.UI.csproj", "{144A959D-F8C0-4478-B8DA-57A2959B8C7D}"
 EndProject
