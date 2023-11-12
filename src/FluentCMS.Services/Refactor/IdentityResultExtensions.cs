@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using FluentCMS.Services.Exceptions;
+using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Services;
 
@@ -9,7 +10,8 @@ public static class IdentityResultExtensions
         if (!identityResult.Succeeded)
         {
             var message = string.Empty;
-            throw new Exception(string.Join("\r\n", identityResult.Errors.Select(x => x.Code + "," + x.Description)));
+            throw new AppException(identityResult.Errors.Select(e =>
+                new AppError(ErrorType.BadRequest, ErrorArea.Users, e.Code, e.Description)));
         }
     }
 }

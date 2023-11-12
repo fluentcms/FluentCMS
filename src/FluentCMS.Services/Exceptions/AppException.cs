@@ -2,10 +2,15 @@
 
 public class AppException : ApplicationException
 {
-    public Error ErrorCode { get; private set; }
+    public IEnumerable<AppError> Errors { get; private set; }
 
-    public AppException(Error error) : base(error.Message)
+    public AppException(AppError error) : base(error.Code)
     {
-        ErrorCode = error;
+        Errors = new[] { error };
+    }
+
+    public AppException(IEnumerable<AppError> errors) : base(errors.First().Code)
+    {
+        Errors = errors;
     }
 }

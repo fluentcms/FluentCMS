@@ -3,14 +3,14 @@
 public static class Errors
 {
     // common errors
-    public static Error BadRequest => new(ErrorArea.Common, ErrorType.BadRequest, 1, nameof(BadRequest));
-    public static Error Permission => new(ErrorArea.Common, ErrorType.Forbidden, 1, "You don't have enough permission to do the operation");
-    public static Error UserIsNotAuthenticated => new(ErrorArea.Common, ErrorType.Forbidden, 2, "User not authenticated.");
+    public static AppError BadRequest => new(ErrorType.BadRequest, ErrorArea.Common, nameof(BadRequest));
+    public static AppError MissingPermission => new(ErrorType.Forbidden, ErrorArea.Common, nameof(MissingPermission), "You don't have enough permission to do the operation");
+    public static AppError UserIsNotAuthenticated => new(ErrorType.Forbidden, ErrorArea.Common, nameof(UserIsNotAuthenticated), "User not authenticated.");
 
     public static class Users
     {
-        public static Error UserDoesNotExists => new(ErrorArea.Users, ErrorType.BadRequest, 1, nameof(UserDoesNotExists));
-        public static Error DuplicateUserFound => new(ErrorArea.Users, ErrorType.BadRequest, 2, nameof(UserDoesNotExists));
-        public static Error AuthenticationFailed => new(ErrorArea.Users, ErrorType.BadRequest, 3, "User doesn't exist or username/password is not valid!");
+        public static AppError UserDoesNotExists => new(ErrorType.BadRequest, ErrorArea.Users, nameof(UserDoesNotExists));
+        public static AppError DuplicateUserFound => new(ErrorType.BadRequest, ErrorArea.Users, nameof(UserDoesNotExists));
+        public static AppError AuthenticationFailed => new(ErrorType.BadRequest, ErrorArea.Users, nameof(AuthenticationFailed), "User doesn't exist or username/password is not valid!");
     }
 }
