@@ -1,7 +1,6 @@
 ﻿using AutoMapper;
 using FluentCMS.Api.Models;
-using FluentCMS.Api.Models.Pages;
-using FluentCMS.Entities.Pages;
+using FluentCMS.Entities;
 using FluentCMS.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -43,7 +42,7 @@ public class PagesController : BaseController
     }
 
     [HttpPost]
-    public async Task<IApiResult<PageResponse>> Create(CreatePageRequest request)
+    public async Task<IApiResult<PageResponse>> Create(PageCreateRequest request)
     {
         var page = _mapper.Map<Page>(request);
         var newPage = await _pageService.Create(page);
@@ -52,10 +51,10 @@ public class PagesController : BaseController
     }
 
     [HttpPut]
-    public async Task<IApiResult<PageResponse>> Edit(EditPageRequest request)
+    public async Task<IApiResult<PageResponse>> Update(PageUpdateRequest request)
     {
         var page = _mapper.Map<Page>(request);
-        var updatedPage = await _pageService.Edit(page);
+        var updatedPage = await _pageService.Update(page);
         var pageResponse = _mapper.Map<PageResponse>(updatedPage);
         return new ApiResult<PageResponse>(pageResponse);
     }

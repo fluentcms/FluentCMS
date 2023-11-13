@@ -1,4 +1,4 @@
-﻿using FluentCMS.Entities.Pages;
+﻿using FluentCMS.Entities;
 using FluentCMS.Repositories.Abstractions;
 
 namespace FluentCMS.Services;
@@ -9,7 +9,7 @@ public interface IPageService
     Task<Page> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<IEnumerable<Page>> GetByParentId(Guid id);
     Task<Page> Create(Page page, CancellationToken cancellationToken = default);
-    Task<Page> Edit(Page page, CancellationToken cancellationToken = default);
+    Task<Page> Update(Page page, CancellationToken cancellationToken = default);
     Task Delete(Page page, CancellationToken cancellationToken = default);
     Task<IEnumerable<Page>> GetBySiteIdAndParentId(Guid siteId, Guid? parentId = null);
 }
@@ -17,10 +17,12 @@ public interface IPageService
 public class PageService : IPageService
 {
     private readonly IPageRepository _pageRepository;
+    private readonly IApplicationContext _applicationContext;
 
-    public PageService(IPageRepository pageRepository)
+    public PageService(IPageRepository pageRepository, IApplicationContext applicationContext)
     {
         _pageRepository = pageRepository;
+        _applicationContext = applicationContext;
     }
 
     public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
@@ -44,6 +46,9 @@ public class PageService : IPageService
         NormalizePath(page);
         await CheckForDuplicatePath(page);
 
+        page.CreatedBy = _applicationContext.Current?.User?.UserName ?? string.Empty;
+        page.LastUpdatedBy = _applicationContext.Current?.User?.UserName ?? string.Empty;
+
         var newPage = await _pageRepository.Create(page, cancellationToken);
         return newPage ?? throw new Exception("Page not created");
     }
@@ -58,7 +63,7 @@ public class PageService : IPageService
         }
     }
 
-    public async Task<Page> Edit(Page page, CancellationToken cancellationToken = default)
+    public async Task<Page> Update(Page page, CancellationToken cancellationToken = default)
     {
         // TODO: check permissions, only admins can create a page
         // Except for the first site, which is created by the system

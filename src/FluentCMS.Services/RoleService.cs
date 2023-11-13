@@ -1,56 +1,85 @@
-﻿using FluentCMS.Entities.Users;
-using FluentCMS.Repositories.Abstractions;
+﻿using FluentCMS.Entities;
+using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Services;
 
 public interface IRoleService
 {
-    Task<IEnumerable<Role>> GetAll(CancellationToken cancellationToken = default);
+    Task<IEnumerable<Role>> GetAll(Guid siteId, CancellationToken cancellationToken = default);
     Task<Role> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<Role> Create(Role role, CancellationToken cancellationToken = default);
-    Task<Role> Edit(Role role, CancellationToken cancellationToken = default);
+    Task<Role> Update(Role role, CancellationToken cancellationToken = default);
     Task Delete(Role role, CancellationToken cancellationToken = default);
 }
 
-internal class RoleService(IGenericRepository<Role> roleRepository) : IRoleService
+
+public class RoleService : BaseService<Role>, IRoleService
 {
-    public async Task<IEnumerable<Role>> GetAll(CancellationToken cancellationToken = default)
+    protected readonly RoleManager<Role> RoleManager;
+
+    public RoleService(RoleManager<Role> roleManager, IApplicationContext appContext) : base(appContext)
     {
-        var roles = await roleRepository.GetAll(cancellationToken);
-        return roles;
+        RoleManager = roleManager;
     }
 
-    public async Task<Role> GetById(Guid id, CancellationToken cancellationToken = default)
+    public Task<Role> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var roles = await roleRepository.GetById(id, cancellationToken)
-            ?? throw new ApplicationException("Requested role does not exists.");
-        return roles;
+        var roles = RoleManager.Roles.AsEnumerable().Single(r => r.Id.Equals(id));
+
+        return Task.FromResult(roles);
     }
 
-    public async Task<Role> Create(Role role, CancellationToken cancellationToken = default)
+    public Task<IEnumerable<Role>> GetAll(Guid siteId, CancellationToken cancellationToken = default)
     {
-        if (role is null)
-            throw new ApplicationException("role is not provided");
+        var roles = RoleManager.Roles.Where(role => role.SiteId.Equals(siteId)).AsEnumerable();
 
-        var newRole = await roleRepository.Create(role, cancellationToken);
-        return newRole ?? throw new ApplicationException("Role not created");
+        return Task.FromResult(roles);
     }
 
-    public async Task<Role> Edit(Role role, CancellationToken cancellationToken = default)
+    public async Task<Role> Create(Role role, CancellationToken cancellationToken)
     {
-        if (role == null)
-            throw new ApplicationException("role is not provided");
+        if (role.SiteId != Current.Site.Id)
+            throw new Exception("Role must be created for the current site.");
 
-        var updatedRole = await roleRepository.Update(role, cancellationToken);
-        return updatedRole ?? throw new ApplicationException("Role not updated.");
+        if (!Current.IsInRole(Current.Site.AdminRoleIds))
+            throw new Exception("Only admin can create a role.");
+
+        PrepareForCreate(role);
+
+        var idResult = await RoleManager.CreateAsync(role);
+
+        idResult.ThrowIfInvalid();
+
+        return role;
+    }
+
+    public async Task<Role> Update(Role role, CancellationToken cancellationToken)
+    {
+        if (role.SiteId != Current.Site.Id)
+            throw new Exception("Role must be updated for the current site.");
+
+        if (!Current.IsInRole(Current.Site.AdminRoleIds))
+            throw new Exception("Only admin can update a role.");
+
+        PrepareForUpdate(role);
+
+        var idResult = await RoleManager.UpdateAsync(role);
+
+        idResult.ThrowIfInvalid();
+
+        return role;
     }
 
     public async Task Delete(Role role, CancellationToken cancellationToken = default)
     {
-        if (role == null)
-            throw new ApplicationException("role is not provided");
+        if (role.SiteId != Current.Site.Id)
+            throw new Exception("Role must be deleted for the current site.");
 
-        var deletedRole = await roleRepository.Delete(role.Id, cancellationToken);
-        if (deletedRole is null) throw new ApplicationException("Role not deleted.");
+        if (!Current.IsInRole(Current.Site.AdminRoleIds))
+            throw new Exception("Only admin can update a role.");
+
+        var idResult = await RoleManager.DeleteAsync(role);
+
+        idResult.ThrowIfInvalid();
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Entities.ContentTypes;
+﻿namespace FluentCMS.Entities;
 
 public enum FieldType
 {

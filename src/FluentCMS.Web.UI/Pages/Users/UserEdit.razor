@@ -1,14 +1,14 @@
 ﻿@page "/admin/users/create"
-@page "/admin/users/edit/{Id:guid}"
+@page "/admin/users/update/{Id:guid}"
 @inject HttpClient _httpClient
 @inject NavigationManager _navigationManager
 
-<h3>@(Id.HasValue ? "Edit" : "Create") User</h3>
+<h3>@(Id.HasValue ? "Update" : "Create") User</h3>
 
 <EditForm Model="data" OnValidSubmit="ValidSubmit">
     <div class="mb-3">
-        <label class="form-label">Name</label>
-        <InputText type="text" class="form-control" required @bind-Value="data.Name" name="name" />
+        <label class="form-label">Email</label>
+        <InputText type="text" class="form-control" required @bind-Value="data.Email" name="name" />
     </div>
     <div class="mb-3">
         <label class="form-label">Username</label>
@@ -35,7 +35,7 @@
                            type="checkbox"
                            id="@("chkRole-" + r.Name)"
                            @onchange="e => onRoleCheckboxChanged((bool)e.Value!, r.Id)"
-                           @attributes="addCheckedAttribute(data.Roles.Any(x => x == r.Id))">
+                           @attributes="addCheckedAttribute(data.RoleIds.Any(x => x == r.Id))">
                     <label class="form-check-label" for="@("chkRole-" + r.Name)">
                         @r.Name <span class="fw-light">(@r.Description)</span>
                     </label>
@@ -51,12 +51,12 @@
     [Parameter]
     public Guid? Id { get; set; }
 
-    private IEnumerable<Api.Models.Users.RoleResponse>? roles;
-    private Api.Models.Users.CreateUserRequest data = new();
+    private IEnumerable<RoleDto>? roles;
+    private UserCreateRequest data = new();
 
     protected override async Task OnInitializedAsync()
     {
-        var getRolesResponse = await _httpClient.GetFromJsonAsync<ApiPagingResult<Api.Models.Users.RoleResponse>>("roles/getAll");
+        var getRolesResponse = await _httpClient.GetFromJsonAsync<ApiPagingResult<RoleDto>>("roles/getAll");
         if (getRolesResponse != null)
         {
             roles = getRolesResponse!.Data;
@@ -71,13 +71,12 @@
         {
             try
             {
-                var response = await _httpClient.GetFromJsonAsync<ApiResult<Api.Models.Users.UserResponse>>($"users/getById/{Id.Value}");
+                var response = await _httpClient.GetFromJsonAsync<ApiResult<UserDto>>($"users/getById/{Id.Value}");
                 if (response != null)
                 {
-                    data.Name = response.Data!.Name;
+                    data.Email = response.Data!.Email;
                     data.Username = response.Data!.Username;
-                    data.Password = "";
-                    data.Roles = response.Data.UserRoles.ToList();
+                    data.RoleIds = response.Data.RoleIds.ToList();
                 }
             }
             catch (Exception)
@@ -102,20 +101,18 @@
                 throw;
             }
         }
-        //Edit
+        //Update
         else
         {
-            var editCommand = new Api.Models.Users.EditUserRequest
+            var updateCommand = new UserUpdateRequest
                 {
                     Id = Id.Value,
-                    Name = data.Name,
-                    Username = data.Username,
-                    Password = data.Password,
-                    Roles = data.Roles,
+                    Email = data.Email,
+                    RoleIds = data.RoleIds.ToList(),
                 };
             try
             {
-                await _httpClient.PutAsJsonAsync($"users/edit", editCommand);
+                await _httpClient.PutAsJsonAsync($"users/update", updateCommand);
                 _navigationManager.NavigateTo("/admin/users");
             }
             catch (Exception)
@@ -135,12 +132,12 @@
     {
         if (isChecked)
         {
-            if (data.Roles.Any(x => x == roleId) == false)
-                data.Roles.Add(roleId);
+            if (data.RoleIds.Any(x => x == roleId) == false)
+                data.RoleIds.Add(roleId);
         }
         else
         {
-            data.Roles.Remove(roleId);
+            data.RoleIds.Remove(roleId);
         }
     }
 }

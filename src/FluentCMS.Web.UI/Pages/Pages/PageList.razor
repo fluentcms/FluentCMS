@@ -1,7 +1,7 @@
 ﻿@page "/admin/pages/{SiteId:guid}"
 @page "/admin/pages/{SiteId:guid}/{ParentId:guid}"
 @using FluentCMS.Api.Models
-@using Api.Models.Pages
+@using Api.Models
 @inject HttpClient _httpClient
 @inject NavigationManager _navigationManager
 @inject IJSRuntime _jsRuntime;
@@ -46,7 +46,7 @@ else
     public Guid SiteId { get; set; }
     [Parameter]
     public Guid? ParentId { get; set; }
-    private IEnumerable<Api.Models.Pages.PageResponse>? pages;
+    private IEnumerable<PageResponse>? pages;
 
     public async Task Fetch()
     {

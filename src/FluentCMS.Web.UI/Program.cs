@@ -1,5 +1,4 @@
 using FluentCMS.Api;
-using FluentCMS.Repositories;
 using FluentCMS.Services;
 using FluentCMS.Web.UI;
 
@@ -9,15 +8,21 @@ builder.Configuration.AddConfig(builder.Environment);
 
 var services = builder.Services;
 
-// add FluentCms core
-services
-    .AddApplicationServices()
-    .AddLiteDbRepository(builder.Configuration.GetConnectionString("LiteDb")!);
+services.AddApplicationServices();
+
+services.AddMongoDbRepositories("MongoDb");
+
+services.AddJwtTokenProvider();
+services.AddSmtpEmailProvider();
+
+services.AddAuthentication();
+services.AddAuthorization();
 
 // Add services to the container.
 services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+services.AddScoped<IApplicationContext, ApiApplicationContext>();
 services.AddControllers();
 services.AddRequestValidation();
 services.AddMappingProfiles();
@@ -58,6 +63,8 @@ app.UseStaticFiles();
 app.UseAntiforgery();
 
 app.UseApiDocumentation();
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 

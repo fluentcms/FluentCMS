@@ -1,9 +1,10 @@
-﻿@page "/admin/sites/edit/{Id:guid}"
+﻿@page "/admin/sites/update/{Id:guid}"
 @page "/admin/sites/create"
+@using FluentCMS.Entities
 @inject HttpClient _httpClient
 @inject NavigationManager _navigationManager
 
-<h3>SiteEdit</h3>
+<h3>Site Update</h3>
 <EditForm Model="Site" OnValidSubmit="ValidSubmit">
     <div class="mb-3">
         <label class="form-label">Name</label>
@@ -15,12 +16,12 @@
     </div>
     <div class="mb-3">
         <label class="form-label">Role</label>
-        <select class="form-select" required @bind="Site.RoleId" name="roleId">
-            @foreach (var role in Roles)
-            {
-                <option value="@role.Id">@role.Name</option>
-            }
-        </select>
+        @* <select class="form-select" required @bind="Site.RoleId" name="roleId">
+        @foreach (var role in Roles)
+        {
+        <option value="@role.Id">@role.Name</option>
+        }
+        </select> *@
     </div>
     @* Urls *@
     <div class="mb-3">
@@ -34,12 +35,12 @@
 @code {
     [Parameter]
     public Guid? Id { get; set; }
-    public Entities.Sites.Site Site { get; set; } = new();
+    public Entities.Site Site { get; set; } = new Site() { Name = "Site name" };
 
     public string Urls
     {
-        get { return string.Join(", ",Site?.Urls); }
-        set { Site.Urls = value.Split(['\n',',']).Select(x=>x.Trim()).ToList(); }
+        get { return string.Join(", ", Site?.Urls); }
+        set { Site.Urls = value.Split(['\n', ',']).Select(x => x.Trim()).ToList(); }
     }
 
     public List<dynamic> Roles { get; set; } = new()
@@ -56,7 +57,7 @@
         }
         try
         {
-            var response = (await _httpClient.GetFromJsonAsync<ApiResult<Entities.Sites.Site>>($"site/getById/{Id.Value}"))!;
+            var response = (await _httpClient.GetFromJsonAsync<ApiResult<Site>>($"site/getById/{Id.Value}"))!;
             if (response != null)
             {
                 Site = response.Data!;
@@ -74,11 +75,11 @@
         //Create
         if (Id == null)
         {
-            var createCommand = new Api.Models.Sites.CreateSiteRequest()
+            var createCommand = new SiteCreateRequest()
                 {
                     Name = Site.Name,
                     Description = Site.Description,
-                    RoleId = Site.RoleId,
+                    // RoleId = Site.RoleId,
                     Urls = Site.Urls.ToArray()
                 };
             try
@@ -95,17 +96,17 @@
         //Edit
         else
         {
-            var editCommand = new Api.Models.Sites.EditSiteRequest
+            var updateCommand = new SiteUpdateRequest
                 {
                     Id = Id.Value,
                     Name = Site.Name,
                     Description = Site.Description,
-                    RoleId = Site.RoleId,
+                    // RoleId = Site.RoleId,
                     Urls = Site.Urls.ToArray()
                 };
             try
             {
-                await _httpClient.PatchAsJsonAsync($"site/edit", editCommand);
+                await _httpClient.PatchAsJsonAsync($"site/update", updateCommand);
                 _navigationManager.NavigateTo("/admin/sites");
             }
             catch (Exception)

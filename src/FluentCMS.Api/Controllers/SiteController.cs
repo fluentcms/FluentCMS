@@ -1,8 +1,6 @@
 ﻿using AutoMapper;
 using FluentCMS.Api.Models;
-using FluentCMS.Api.Models.Sites;
-using FluentCMS.Api.Models.Pages;
-using FluentCMS.Entities.Sites;
+using FluentCMS.Entities;
 using FluentCMS.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,7 +20,7 @@ public class SiteController : BaseController
     }
 
     [HttpGet]
-    public async Task<IApiPagingResult<SiteResponse>> GetAll([FromQuery] SearchSiteRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<SiteResponse>> GetAll([FromQuery] SiteSearchRequest request, CancellationToken cancellationToken = default)
     {
         var sites = await _siteService.GetAll(cancellationToken);
         var siteResponses = _mapper.Map<List<SiteResponse>>(sites);
@@ -55,7 +53,7 @@ public class SiteController : BaseController
     }
 
     [HttpPost]
-    public async Task<IApiResult<SiteResponse>> Create(CreateSiteRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<SiteResponse>> Create(SiteCreateRequest request, CancellationToken cancellationToken = default)
     {
         var site = _mapper.Map<Site>(request);
         var newSite = await _siteService.Create(site, cancellationToken);
@@ -64,10 +62,10 @@ public class SiteController : BaseController
     }
 
     [HttpPatch]
-    public async Task<IApiResult<SiteResponse>> Edit(EditSiteRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<SiteResponse>> Update(SiteUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var site = _mapper.Map<Site>(request);
-        var updateSite = await _siteService.Edit(site, cancellationToken);
+        var updateSite = await _siteService.Update(site, cancellationToken);
         var siteResponse = _mapper.Map<SiteResponse>(updateSite);
         return new ApiResult<SiteResponse>(siteResponse);
     }
@@ -75,6 +73,7 @@ public class SiteController : BaseController
     [HttpDelete("{id}")]
     public async Task<IApiResult> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
+        // TODO: we should avoid calling GetById twice, first one is in the service, te other one in here
         var site = await _siteService.GetById(id);
         await _siteService.Delete(site, cancellationToken);
         return new ApiResult();
