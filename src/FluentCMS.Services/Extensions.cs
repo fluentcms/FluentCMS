@@ -15,9 +15,6 @@ public static class Extensions
         services.AddScoped<IPageService, PageService>();
         services.AddScoped<IHostService, HostService>();
 
-        // plugins
-        services.AddTransient<Pluginses.IFileStoragePlugin, Pluginses.FileSystemStoragePlugin>();
-
         services.AddIdentity();
 
         return services;

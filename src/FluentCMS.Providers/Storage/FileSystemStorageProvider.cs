@@ -1,16 +1,14 @@
 ﻿using Microsoft.Extensions.Configuration;
 
-namespace FluentCMS.Services.Pluginses;
+namespace FluentCMS.Providers.Storage;
 
-public class FileSystemStoragePlugin : IFileStoragePlugin
+internal class FileSystemStorageProvider : IStorageProvider
 {
-    public string Name => "File System Storage";
-    public string Description => "Stores files in local file system";
     public string BasePath { get; set; }
 
-    public FileSystemStoragePlugin(IConfiguration configuration)
+    public FileSystemStorageProvider(IConfiguration configuration)
     {
-        var options = configuration.GetSection("FileSystemStorage").Get<FileSystemStoragePluginOptions>();
+        var options = configuration.GetSection("storage").Get<FileSystemStorageProviderOptions>();
         BasePath = (string.IsNullOrWhiteSpace(options?.BasePath) ? null : options?.BasePath)
             ?? Path.Combine(Path.GetTempPath(), "fluentcms-uploads");
     }

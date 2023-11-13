@@ -1,5 +1,5 @@
 ﻿using FluentCMS.Api.Models;
-using FluentCMS.Services.Pluginses;
+using FluentCMS.Providers.Storage;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,10 +7,10 @@ namespace FluentCMS.Api.Controllers;
 
 public class FileStorageController : BaseController
 {
-    private readonly IFileStoragePlugin _fileStoragePlugin;
-    public FileStorageController(IFileStoragePlugin fileStoragePlugin)
+    private readonly IStorageProvider _storagePlugin;
+    public FileStorageController(IStorageProvider storagePlugin)
     {
-        _fileStoragePlugin = fileStoragePlugin;
+        _storagePlugin = storagePlugin;
     }
 
     [HttpPost]
@@ -48,7 +48,7 @@ public class FileStorageController : BaseController
 
             try
             {
-                await _fileStoragePlugin.SaveFile(file.OpenReadStream(), filePath);
+                await _storagePlugin.SaveFile(file.OpenReadStream(), filePath);
             }
             catch (Exception ex)
             {
