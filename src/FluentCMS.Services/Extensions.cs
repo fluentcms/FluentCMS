@@ -14,6 +14,7 @@ public static class Extensions
         services.AddScoped<ISiteService, SiteService>();
         services.AddScoped<IPageService, PageService>();
         services.AddScoped<IHostService, HostService>();
+        services.AddScoped<IAssetService, AssetService>();
 
         services.AddIdentity();
 

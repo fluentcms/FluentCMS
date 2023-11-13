@@ -38,6 +38,7 @@ public static class MongoDbServiceExtensions
         services.AddScoped<IHostRepository, MongoDbHostRepository>();
         services.AddScoped<IUserRepository, MongoDbUserRepository>();
         services.AddScoped<IRoleRepository, MongoDbRoleRepository>();
+        services.AddScoped<IAssetRepository, MongoDbAssetRepository>();
 
         return services;
     }

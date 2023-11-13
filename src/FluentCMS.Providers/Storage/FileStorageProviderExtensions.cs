@@ -2,11 +2,11 @@
 
 namespace Microsoft.Extensions.DependencyInjection;
 
-public static class StorageProviderExtensions
+public static class FileStorageProviderExtensions
 {
     public static IServiceCollection AddFileSystemStorageProvider(this IServiceCollection services)
     {
-        services.AddScoped<IStorageProvider, FileSystemStorageProvider>();
+        services.AddScoped<IFileStorageProvider, FileSystemStorageProvider>();
 
         return services;
     }

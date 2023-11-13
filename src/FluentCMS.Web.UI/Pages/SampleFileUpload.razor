@@ -1,15 +1,32 @@
 ﻿@page "/admin/fileupload"
-@inject HttpClient httpClient
+@inject HttpClient _httpClient
 @using System.Net.Http.Headers
 
 <h3>Sample File Upload</h3>
 
-<p>
-    <label>
-        Upload up to @maxAllowedFiles files:
-        <InputFile OnChange="@OnInputFileChange" multiple />
-    </label>
-</p>
+<div>
+    <div class="mb-3">
+        <label class="form-label">Site:</label>
+        <select class="form-control" @onchange="e => selectedSite = e.Value">
+            @foreach (var site in sites)
+            {
+                <option value="@site.Id">@site.Name</option>
+            }
+        </select>
+        <div>site: @selectedSite</div>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Sub Directory: (leave empty for root dir)</label>
+        <InputText type="text" class="form-control" required @bind-Value="selectedDirectory" />
+        <div>dir: @selectedDirectory</div>
+    </div>
+    <div class="mb-3">
+        <label>
+            Upload up to @maxAllowedFiles files:
+            <InputFile OnChange="@OnInputFileChange" multiple />
+        </label>
+    </div>
+</div>
 
 @if (files.Count > 0)
 {
@@ -42,6 +59,9 @@
 }
 
 @code {
+    private object? selectedSite;
+    private string? selectedDirectory;
+    private IEnumerable<SiteResponse> sites = new List<SiteResponse>();
     private List<File> files = new();
     private List<Api.Models.UploadedFile> uploadResults = new();
     private int maxAllowedFiles = 3;
@@ -49,6 +69,17 @@
     private string? message;
 
     protected override bool ShouldRender() => shouldRender;
+
+    protected override async Task OnInitializedAsync()
+    {
+        shouldRender = false;
+        var getSitesResponse = await _httpClient.GetFromJsonAsync<ApiPagingResult<SiteResponse>>("site/getAll");
+        if (getSitesResponse != null)
+        {
+            sites = getSitesResponse!.Data;
+        }
+        shouldRender = true;
+    }
 
     private async Task OnInputFileChange(InputFileChangeEventArgs e)
     {
@@ -59,6 +90,8 @@
         files.Clear();
 
         using var content = new MultipartFormDataContent();
+        content.Add(new StringContent(selectedSite!.ToString()), "siteId");
+        content.Add(new StringContent(selectedDirectory!), "directory");
 
         if (e.FileCount > maxAllowedFiles)
         {
@@ -100,7 +133,7 @@
 
         if (upload)
         {
-            var response = await httpClient.PostAsync("FileStorage/Upload", content);
+            var response = await _httpClient.PostAsync("Assets/Upload", content);
             if (response.IsSuccessStatusCode)
             {
                 var options = new System.Text.Json.JsonSerializerOptions
@@ -114,6 +147,10 @@
                 {
                     uploadResults = uploadResults.Concat(newUploadResults).ToList();
                 }
+            }
+            else
+            {
+                message = await response.Content.ReadAsStringAsync();
             }
         }
 

@@ -33,6 +33,7 @@ public static class LiteDbServiceExtensions
         services.AddScoped<ISiteRepository, LiteDbSiteRepository>();
         services.AddScoped<IHostRepository, LiteDbHostRepository>();
         services.AddScoped<IPageRepository, LiteDbPageRepository>();
+        services.AddScoped<IAssetRepository, LiteDbAssetRepository>();
     }
 
 }

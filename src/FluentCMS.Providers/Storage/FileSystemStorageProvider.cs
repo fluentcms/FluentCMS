@@ -2,13 +2,13 @@
 
 namespace FluentCMS.Providers.Storage;
 
-internal class FileSystemStorageProvider : IStorageProvider
+internal class FileSystemStorageProvider : IFileStorageProvider
 {
     public string BasePath { get; set; }
 
     public FileSystemStorageProvider(IConfiguration configuration)
     {
-        var options = configuration.GetSection("storage").Get<FileSystemStorageProviderOptions>();
+        var options = configuration.GetSection("FileSystemStorage").Get<FileSystemStorageProviderOptions>();
         BasePath = (string.IsNullOrWhiteSpace(options?.BasePath) ? null : options?.BasePath)
             ?? Path.Combine(Path.GetTempPath(), "fluentcms-uploads");
     }

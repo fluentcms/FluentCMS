@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Providers.Storage;
 
-public interface IStorageProvider
+public interface IFileStorageProvider
 {
     Task SaveFile(Stream inputStream, string filePath);
 }
