@@ -13,7 +13,7 @@ public static class TestApplicationContextExtensions
     // AddTestApplicationContext
     public static IServiceCollection AddTestApplicationContext(this IServiceCollection services)
     {
-        services.AddTransient<IApplicationContext, TestApplicationContext>();
+        services.AddScoped<IApplicationContext, TestApplicationContext>();
         return services;
     }
 }
