@@ -32,5 +32,9 @@ public class MappingProfiles : Profile
         CreateMap<Role, RoleDto>();
         CreateMap<RoleCreateRequest, Role>();
         CreateMap<RoleUpdateRequest, Role>();
+
+        // Assets
+        CreateMap<Asset, AssetResponse>()
+            .ForMember(x => x.FileName, cfg => cfg.MapFrom(x => x.VirtualFileName));
     }
 }

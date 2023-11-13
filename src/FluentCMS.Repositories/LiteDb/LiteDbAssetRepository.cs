@@ -8,4 +8,12 @@ public class LiteDbAssetRepository : LiteDbGenericRepository<Asset>, IAssetRepos
     public LiteDbAssetRepository(LiteDbContext dbContext) : base(dbContext)
     {
     }
+
+    public async Task<IEnumerable<Asset>> GetAllOfSite(Guid siteId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var data = await Collection.FindAsync(x => x.SiteId == siteId);
+        return data;
+    }
 }

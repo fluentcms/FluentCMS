@@ -6,7 +6,10 @@ namespace FluentCMS.Services;
 
 public interface IAssetService
 {
+    Task<IEnumerable<Asset>> GetAllSiteAssets(Guid siteId);
+    Task<(Asset, Stream)> GetAssetAsStream(Guid id);
     Task<Asset> AddFromStream(Stream stream, string fileNameAndPath, Guid siteId);
+    Task DeleteAsset(Guid id);
 }
 
 internal class AssetService : BaseService<Asset>, IAssetService
@@ -25,6 +28,20 @@ internal class AssetService : BaseService<Asset>, IAssetService
         _fileStorageProvider = fileStorageProvider;
         _assetRepository = assetRepository;
         _siteRepository = siteRepository;
+    }
+
+    public async Task<IEnumerable<Asset>> GetAllSiteAssets(Guid siteId)
+    {
+        var data = await _assetRepository.GetAllOfSite(siteId);
+        return data;
+    }
+
+    public async Task<(Asset, Stream)> GetAssetAsStream(Guid id)
+    {
+        var asset = await _assetRepository.GetById(id)
+            ?? throw new ApplicationException("Requested asset not found");
+
+        return (asset, await _fileStorageProvider.GetFileStream(asset.PhysicalFileName));
     }
 
     public async Task<Asset> AddFromStream(Stream stream, string fileNameAndPath, Guid siteId)
@@ -61,5 +78,14 @@ internal class AssetService : BaseService<Asset>, IAssetService
         PrepareForCreate(asset);
         await _assetRepository.Create(asset);
         return asset;
+    }
+
+    public async Task DeleteAsset(Guid id)
+    {
+        var asset = await _assetRepository.GetById(id)
+            ?? throw new ApplicationException("Requested asset not found");
+
+        await _fileStorageProvider.DeleteFile(asset.PhysicalFileName);
+        await _assetRepository.Delete(id);
     }
 }

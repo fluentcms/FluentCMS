@@ -63,7 +63,7 @@
     private string? selectedDirectory;
     private IEnumerable<SiteResponse> sites = new List<SiteResponse>();
     private List<File> files = new();
-    private List<Api.Models.UploadedFile> uploadResults = new();
+    private List<UploadedFile> uploadResults = new();
     private int maxAllowedFiles = 3;
     private bool shouldRender;
     private string? message;
@@ -142,7 +142,7 @@
                     };
 
                 using var responseStream = await response.Content.ReadAsStreamAsync();
-                var newUploadResults = await System.Text.Json.JsonSerializer.DeserializeAsync<IList<Api.Models.UploadedFile>>(responseStream, options);
+                var newUploadResults = await System.Text.Json.JsonSerializer.DeserializeAsync<IList<FluentCMS.Api.Models.UploadedFile>>(responseStream, options);
                 if (newUploadResults is not null)
                 {
                     uploadResults = uploadResults.Concat(newUploadResults).ToList();
@@ -157,8 +157,8 @@
         shouldRender = true;
     }
 
-    private static bool FileUpload(IList<Api.Models.UploadedFile> uploadResults,
-        string? fileName, out Api.Models.UploadedFile result)
+    private static bool FileUpload(IList<UploadedFile> uploadResults,
+        string? fileName, out UploadedFile result)
     {
         result = uploadResults.SingleOrDefault(f => f.FileName == fileName) ?? new();
 
