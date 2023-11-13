@@ -63,7 +63,7 @@ public class HostService : BaseService<Host>, IHostService
     public async Task<Host> Get(CancellationToken cancellationToken = default)
     {
         // throw exception for guest user
-        if (Current.IsSuperAdmin)
+        if (!Current.IsSuperAdmin)
             throw new Exception("You don't have enough permission to do the operation");
 
         var hosts = await _hostRepository.GetAll(cancellationToken);
