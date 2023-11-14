@@ -27,6 +27,8 @@ public class MappingProfiles : Profile
         //    .ForMember(x => x.UserRoles, cfg => cfg.Ignore());
         //CreateMap<EditUserRequest, User>()
         //    .ForMember(x => x.UserRoles, cfg => cfg.Ignore());
+        CreateMap<UserRegisterRequest, User>();
+        CreateMap<User, UserDto>();
 
         // Role
         CreateMap<Role, RoleDto>();
