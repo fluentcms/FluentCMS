@@ -1,5 +1,6 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories.Abstractions;
+using Microsoft.IdentityModel.Tokens;
 
 namespace FluentCMS.Services;
 
@@ -27,20 +28,43 @@ public class PageService : IPageService
 
     public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
     {
-        return await _pageRepository.GetBySiteId(siteId, cancellationToken);
+        var pages = await _pageRepository.GetBySiteId(siteId, cancellationToken);
+        return pages.Where(HasViewPermissionForPage);
     }
 
     public async Task<Page> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var page = await _pageRepository.GetById(id, cancellationToken) ?? throw new Exception(id.ToString());
+        if (!HasViewPermissionForPage(page))
+        {
+            throw new Exception("you are not authorized to view this page");
+        }
 
         return page;
+    }
+
+    private bool HasViewPermissionForPage(Page page)
+    {
+        if (!page.ViewRoleIds.IsNullOrEmpty())
+        {
+            // page is restricted
+            var userHasAccess = page.ViewRoleIds.Any(r => _applicationContext.Current.IsInRole(r));
+            var userIsPageAdmin = page.AdminRoleIds.Any(r => _applicationContext.Current.IsInRole(r));
+            var userIsSiteAdmin = _applicationContext.Current.Site.AdminRoleIds.Any(r => _applicationContext.Current.IsInRole(r));
+            var userIsSuperAdmin = _applicationContext.Current.IsSuperAdmin;
+            if (!userHasAccess && !userIsPageAdmin && !userIsSiteAdmin && !userIsSuperAdmin)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
     {
         // TODO: check permissions, only admins can create a page
         // Except for the first site, which is created by the system
+        CheckAdminPermission();
 
         // normalizing the page path to lowercase
         NormalizePath(page);
@@ -51,6 +75,16 @@ public class PageService : IPageService
 
         var newPage = await _pageRepository.Create(page, cancellationToken);
         return newPage ?? throw new Exception("Page not created");
+    }
+
+    private void CheckAdminPermission()
+    {
+        var userIsSiteAdmin = _applicationContext.Current.Site.AdminRoleIds.Any(r => _applicationContext.Current.IsInRole(r));
+        var userIsSuperAdmin = _applicationContext.Current.IsSuperAdmin;
+        if (!userIsSiteAdmin && !userIsSuperAdmin)
+        {
+            throw new Exception("only admins can create a page");
+        }
     }
 
     private async Task CheckForDuplicatePath(Page page)
@@ -67,7 +101,7 @@ public class PageService : IPageService
     {
         // TODO: check permissions, only admins can create a page
         // Except for the first site, which is created by the system
-
+        CheckPageOrAdminPermission(page);
         // normalizing the page path to lowercase
         NormalizePath(page);
 
@@ -78,13 +112,25 @@ public class PageService : IPageService
         return newPage ?? throw new Exception("Page not created");
     }
 
+    private void CheckPageOrAdminPermission(Page page)
+    {
+        var isSuperAdmin = _applicationContext.Current.IsSuperAdmin;
+        var isAdmin = !_applicationContext.Current.Site.AdminRoleIds.Any(r => _applicationContext.Current.IsInRole(r));
+        var isPageAdmin = _applicationContext.Current.IsInRole(page.AdminRoleIds);
+        if (!isSuperAdmin && !isAdmin && !isPageAdmin)
+        {
+            throw new Exception("only super-admins, site-admins and page-admins can update or delete a page");
+        }
+    }
+
     private static void NormalizePath(Page page)
     {
-        page.Path = page.Path.ToLower();
+        page.Path = page.Path.Trim().Replace(" ", "-").ToLower();
     }
 
     public Task Delete(Page page, CancellationToken cancellationToken = default)
     {
+        CheckPageOrAdminPermission(page);
         return _pageRepository.Delete(page.Id);
     }
 
