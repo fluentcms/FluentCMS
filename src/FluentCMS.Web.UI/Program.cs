@@ -10,8 +10,7 @@ var services = builder.Services;
 
 services.AddApplicationServices();
 
-services.AddInMemoryLiteDbRepositories();
-//services.AddMongoDbRepositories("MongoDb");
+services.AddMongoDbRepositories("MongoDb");
 
 services.AddJwtTokenProvider();
 services.AddSmtpEmailProvider();
