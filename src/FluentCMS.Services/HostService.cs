@@ -42,8 +42,7 @@ public class HostService : BaseService<Host>, IHostService
         CheckSuperUsers(host);
 
         // checking current user is super user or not
-        var hosts = await _hostRepository.GetAll(cancellationToken);
-        var oldHost = hosts.Single();
+        var oldHost = await _hostRepository.Get(cancellationToken);
         if (!Current.IsSuperAdmin)
             throw new AppPermissionException();
 

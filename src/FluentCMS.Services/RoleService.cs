@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Entities;
+using FluentCMS.Repositories.Abstractions;
 using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Services;
@@ -16,10 +17,12 @@ public interface IRoleService
 public class RoleService : BaseService<Role>, IRoleService
 {
     protected readonly RoleManager<Role> RoleManager;
+    private readonly ISiteRepository _siteRepository;
 
-    public RoleService(RoleManager<Role> roleManager, IApplicationContext appContext) : base(appContext)
+    public RoleService(RoleManager<Role> roleManager, IApplicationContext appContext, ISiteRepository siteRepository) : base(appContext)
     {
         RoleManager = roleManager;
+        _siteRepository = siteRepository;
     }
 
     public Task<Role> GetById(Guid id, CancellationToken cancellationToken = default)
@@ -38,10 +41,9 @@ public class RoleService : BaseService<Role>, IRoleService
 
     public async Task<Role> Create(Role role, CancellationToken cancellationToken)
     {
-        if (role.SiteId != Current.Site.Id)
-            throw new Exception("Role must be created for the current site.");
+        var site = await _siteRepository.GetById(role.SiteId, cancellationToken);
 
-        if (!Current.IsInRole(Current.Site.AdminRoleIds))
+        if (!Current.IsInRole(site.AdminRoleIds))
             throw new Exception("Only admin can create a role.");
 
         PrepareForCreate(role);
@@ -55,10 +57,12 @@ public class RoleService : BaseService<Role>, IRoleService
 
     public async Task<Role> Update(Role role, CancellationToken cancellationToken)
     {
-        if (role.SiteId != Current.Site.Id)
+        var site = await _siteRepository.GetById(role.SiteId, cancellationToken);
+
+        if (role.SiteId != site.Id)
             throw new Exception("Role must be updated for the current site.");
 
-        if (!Current.IsInRole(Current.Site.AdminRoleIds))
+        if (!Current.IsInRole(site.AdminRoleIds))
             throw new Exception("Only admin can update a role.");
 
         PrepareForUpdate(role);
@@ -72,10 +76,9 @@ public class RoleService : BaseService<Role>, IRoleService
 
     public async Task Delete(Role role, CancellationToken cancellationToken = default)
     {
-        if (role.SiteId != Current.Site.Id)
-            throw new Exception("Role must be deleted for the current site.");
+        var site = await _siteRepository.GetById(role.SiteId, cancellationToken);
 
-        if (!Current.IsInRole(Current.Site.AdminRoleIds))
+        if (!Current.IsInRole(site.AdminRoleIds))
             throw new Exception("Only admin can update a role.");
 
         var idResult = await RoleManager.DeleteAsync(role);

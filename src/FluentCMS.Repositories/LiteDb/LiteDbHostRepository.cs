@@ -8,4 +8,9 @@ public class LiteDbHostRepository : LiteDbGenericRepository<Host>, IHostReposito
     public LiteDbHostRepository(LiteDbContext dbContext) : base(dbContext)
     {
     }
+
+    public Task<Host> Get(CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
 }

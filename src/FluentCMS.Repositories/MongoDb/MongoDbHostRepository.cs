@@ -8,4 +8,10 @@ public class MongoDbHostRepository : MongoDbGenericRepository<Host>, IHostReposi
     public MongoDbHostRepository(IMongoDBContext mongoDbContext) : base(mongoDbContext)
     {
     }
+
+    public async Task<Host> Get(CancellationToken cancellationToken = default)
+    {
+        var hosts = await GetAll(cancellationToken);
+        return hosts.Single();
+    }
 }

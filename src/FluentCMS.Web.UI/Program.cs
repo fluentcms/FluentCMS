@@ -1,6 +1,9 @@
 using FluentCMS.Api;
 using FluentCMS;
 using FluentCMS.Web.UI;
+using FluentCMS.Providers.Identity;
+using System.Text;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,6 +46,37 @@ services.AddScoped(sp =>
     };
 });
 
+
+#region Identity
+
+var options = builder.Configuration.GetInstance<JwtOptions>("Jwt");
+
+services.AddAuthentication(configureOptions =>
+{
+    var defaultScheme = "Bearer";
+    configureOptions.DefaultAuthenticateScheme = defaultScheme;
+    configureOptions.DefaultScheme = defaultScheme;
+    configureOptions.DefaultChallengeScheme = defaultScheme;
+})
+    .AddJwtBearer(jwt =>
+    {
+        var key = Encoding.UTF8.GetBytes(options.Secret);
+        jwt.SaveToken = true;
+        jwt.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            RequireExpirationTime = true,
+            ValidateLifetime = true,
+            SaveSigninToken = true,
+            ValidAudience = options.Audience,
+            ValidIssuer = options.Issuer
+        };
+    });
+
+#endregion
 
 var app = builder.Build();
 if (app.Environment.IsDevelopment())
