@@ -66,7 +66,7 @@ public class MongoDbGenericRepository<TEntity> : IGenericRepository<TEntity>
         if (entity is IAuditEntity audit)
         {
             audit.CreatedAt = DateTime.UtcNow;
-            audit.LastUpdatedAt = DateTime.UtcNow;
+            //audit.LastUpdatedAt = DateTime.UtcNow;
         }
 
         await Collection.InsertOneAsync(entity, null, cancellationToken);
@@ -85,7 +85,7 @@ public class MongoDbGenericRepository<TEntity> : IGenericRepository<TEntity>
             foreach (var audit in entities.Cast<IAuditEntity>())
             {
                 audit.CreatedAt = DateTime.UtcNow;
-                audit.LastUpdatedAt = DateTime.UtcNow;
+                //audit.LastUpdatedAt = DateTime.UtcNow;
             }
 
         await Collection.InsertManyAsync(entities, null, cancellationToken);
