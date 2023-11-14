@@ -1,6 +1,5 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories.Abstractions;
-using Microsoft.IdentityModel.Tokens;
 
 namespace FluentCMS.Services;
 
@@ -17,7 +16,7 @@ public class PageService : BaseService<Page>, IPageService
 {
     private readonly IPageRepository _pageRepository;
 
-    public PageService(IApplicationContext applicationContext, IPageRepository pageRepository):base(applicationContext)
+    public PageService(IApplicationContext applicationContext, IPageRepository pageRepository) : base(applicationContext)
     {
         _pageRepository = pageRepository;
     }
@@ -30,25 +29,21 @@ public class PageService : BaseService<Page>, IPageService
 
     public async Task<Page> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var page = await _pageRepository.GetById(id, cancellationToken) ?? throw new AppException(ExceptionCodes.PageNotFound);
+        var page = await _pageRepository.GetById(id, cancellationToken)
+            ?? throw new AppException(ExceptionCodes.PageNotFound);
+
         if (!HasViewPermissionForPage(page))
-        {
-            throw new AppException(ExceptionCodes.PageNotAuthorizedToViewThisPage);
-        }
+            throw new AppPermissionException();
 
         return page;
     }
 
     private bool HasViewPermissionForPage(Page page)
     {
-        if (!page.ViewRoleIds.IsNullOrEmpty())
-        {
-            if (!Current.IsInRole(Current.Site.AdminRoleIds) && !Current.IsInRole(page.ViewRoleIds))
-            {
-                return false;
-            }
-        }
-        return true;
+        var permission = Current.IsInRole(page.ViewRoleIds);
+        permission = permission || Current.IsInRole(page.ViewRoleIds);
+        permission = permission || Current.IsInRole(page.AdminRoleIds);
+        return permission;
     }
 
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
@@ -72,7 +67,7 @@ public class PageService : BaseService<Page>, IPageService
     {
         if (Current.IsInRole(Current.Site.AdminRoleIds))
         {
-            throw new AppException(ExceptionCodes.PageNotAuthorizedToCreate);
+            throw new AppPermissionException();
         }
     }
 
@@ -103,13 +98,11 @@ public class PageService : BaseService<Page>, IPageService
 
     private void CheckPageOrAdminPermission(Page page)
     {
-;
         if (!Current.IsInRole(Current.Site.AdminRoleIds) && !Current.IsInRole(page.AdminRoleIds))
-        {
-            throw new AppException(ExceptionCodes.PageNotAuthorizedToDeleteOrUpdate);
-        }
+            throw new AppPermissionException();
     }
 
+    // TODO: should we replace space with - or _?
     private static void NormalizePath(Page page)
     {
         page.Path = page.Path.Trim().Replace(" ", "-").ToLower();
@@ -118,6 +111,7 @@ public class PageService : BaseService<Page>, IPageService
     public Task Delete(Page page, CancellationToken cancellationToken = default)
     {
         CheckPageOrAdminPermission(page);
-        return _pageRepository.Delete(page.Id) ?? throw new AppException(ExceptionCodes.PageUnableToDelete);
+        return _pageRepository.Delete(page.Id, cancellationToken)
+            ?? throw new AppException(ExceptionCodes.PageUnableToDelete);
     }
 }
