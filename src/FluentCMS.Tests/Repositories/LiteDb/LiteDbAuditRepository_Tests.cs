@@ -1,9 +1,10 @@
 using FluentCMS.Repositories.LiteDb;
-using FluentCMS.Repository.LiteDb.Tests.Entities;
+using FluentCMS.Tests.DummyEntities;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Shouldly;
 
-namespace FluentCMS.Repository.LiteDb.Tests;
+namespace FluentCMS.Tests.Repositories.LiteDb;
 public class LiteDbAuditRepository_Tests
 {
     [Fact]
@@ -42,7 +43,7 @@ public class LiteDbAuditRepository_Tests
 
     private static LiteDbGenericRepository<AuditedDummyEntity> GetInstance()
     {
-        var liteDbContext = new LiteDbContext(new LiteDbOptions());
+        var liteDbContext = new LiteDbContext(Options.Create(new LiteDbOptions()));
         return new LiteDbGenericRepository<AuditedDummyEntity>(liteDbContext);
     }
 }
