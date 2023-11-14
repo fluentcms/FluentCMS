@@ -28,12 +28,12 @@ public class HostService : BaseService<Host>, IHostService
         // checking if host record exists or not. if exists, throw exception
         // this should be called only for the first time on installation
         if (await IsInitialized(cancellationToken))
-            throw new Exception("Host already initialized");
+            throw new AppException(ExceptionCodes.HostAlreadyInitialized);
 
         PrepareForCreate(host);
 
         return await _hostRepository.Create(host, cancellationToken) ??
-            throw new Exception("Host not created");
+            throw new AppException(ExceptionCodes.HostUnableToCreate);
     }
 
     public async Task<Host> Update(Host host, CancellationToken cancellationToken = default)
@@ -45,11 +45,11 @@ public class HostService : BaseService<Host>, IHostService
         var hosts = await _hostRepository.GetAll(cancellationToken);
         var oldHost = hosts.Single();
         if (!Current.IsSuperAdmin)
-            throw new Exception("You don't have enough permission to do the operation");
+            throw new AppPermissionException();
 
         // super user can't remove himself from super user list
         if (!host.SuperUsers.Contains(Current.UserName))
-            throw new Exception("You can't remove yourself from super user list");
+            throw new AppException(ExceptionCodes.HostUnableToRemoveYourself);
 
         // setting id from old host to the updated one
         host.Id = oldHost.Id;
@@ -57,19 +57,19 @@ public class HostService : BaseService<Host>, IHostService
         PrepareForUpdate(host);
 
         return await _hostRepository.Update(host, cancellationToken)
-            ?? throw new Exception("Host not updated");
+            ?? throw new AppException(ExceptionCodes.HostUnableToUpdate);
     }
 
     public async Task<Host> Get(CancellationToken cancellationToken = default)
     {
-        // throw exception for guest user
+        // throw exception for all users except super admins
         if (!Current.IsSuperAdmin)
-            throw new Exception("You don't have enough permission to do the operation");
+            throw new AppPermissionException();
 
         var hosts = await _hostRepository.GetAll(cancellationToken);
 
         if (!hosts.Any())
-            throw new Exception("Host not found");
+            throw new AppException(ExceptionCodes.HostNotFound);
 
         return hosts.Single();
     }
@@ -84,7 +84,7 @@ public class HostService : BaseService<Host>, IHostService
     {
         // host should have at least one super user
         if (host.SuperUsers.Count == 0)
-            throw new Exception("Host should have at least one super user");
+            throw new AppException(ExceptionCodes.HostAtLeastOneSuperUser);
     }
 
 }
