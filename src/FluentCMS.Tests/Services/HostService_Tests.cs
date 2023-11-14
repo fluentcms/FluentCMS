@@ -21,7 +21,7 @@ public partial class HostService_Tests
             .AddTestApplicationContext();
         _serviceProvider = services.BuildServiceProvider();
     }
-    
+
     //Create
     [Fact]
     public async Task Should_Create()
@@ -51,16 +51,15 @@ public partial class HostService_Tests
         {
             SuperUsers = [ApplicationContextDefaults.SuperAdmins.TestSuperAdminUser.UserName!]
         };
-        
+
         await service.Create(host);
         //edit host
-        scope.SetupMockApplicationContextForSuperUser(host:host);
+        scope.SetupMockApplicationContextForSuperUser(host: host);
         var editedHost = await service.Get();
         editedHost.SuperUsers.Add("test2");
         await service.Update(editedHost);
         var result = await service.Get();
         result.SuperUsers.Count.ShouldBe(2);
-
     }
 
     //Limited Access
