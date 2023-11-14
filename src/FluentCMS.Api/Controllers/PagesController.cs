@@ -21,8 +21,8 @@ public class PagesController : BaseController
     [HttpPost]
     public async Task<IApiPagingResult<PageResponse>> GetAll([FromBody] PageSearchRequest request)
     {
-        var pages = (await _pageService.GetBySiteId(request.SiteId)).GroupBy(x=>x.ParentId);
-        return new ApiPagingResult<PageResponse>(_mapper.Map<List<PageResponse>>(pages));
+        var pages = (await _pageService.GetBySiteId(request.SiteId));
+        return new ApiPagingResult<PageResponse>(_mapper.Map<List<PageResponse>>(pages.ToList()));
     }
 
     [HttpGet("{id}")]

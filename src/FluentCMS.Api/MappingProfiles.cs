@@ -19,20 +19,32 @@ public class MappingProfiles : Profile
 
         // Page
         CreateMap<Page, PageResponse>();
-        CreateMap<IEnumerable<IGrouping<Guid?, Page>>, IEnumerable<PageResponse>>().ConstructUsing((x, ctx) =>
+        //CreateMap<IEnumerable<IGrouping<Guid?, Page>>, IEnumerable<PageResponse>>().ConstructUsing((x, ctx) =>
+        //{
+        //    return MapItemsWithParent(x, ctx, null);
+        //    static IEnumerable<PageResponse> MapItemsWithParent(IEnumerable<IGrouping<Guid?, Page>> x, ResolutionContext ctx, Guid? parentId)
+        //    {
+        //        var items = ctx.Mapper.Map<IEnumerable<PageResponse>>(x.Where(x => x.Key == parentId));
+        //        foreach (var item in items)
+        //        {
+        //            item.Children = MapItemsWithParent(x, ctx, item.Id);
+        //        }
+        //        return items;
+        //    }
+        //});
+        CreateMap<List<Page>, List<PageResponse>>().ConstructUsing((x, ctx) =>
         {
             return MapItemsWithParent(x, ctx, null);
-            static IEnumerable<PageResponse> MapItemsWithParent(IEnumerable<IGrouping<Guid?, Page>> x, ResolutionContext ctx, Guid? parentId)
+            static List<PageResponse> MapItemsWithParent(List<Page> x, ResolutionContext ctx, Guid? parentId)
             {
-                var items = ctx.Mapper.Map<IEnumerable<PageResponse>>(x.Where(x => x.Key == parentId));
+                var items = ctx.Mapper.Map<List<PageResponse>>(x.Where(x => x.ParentId == parentId));
                 foreach (var item in items)
                 {
                     item.Children = MapItemsWithParent(x, ctx, item.Id);
                 }
-                return items;
+                return items.ToList();
             }
         });
-
         // User
         //CreateMap<User, UserResponse>()
         //    .ForMember(x => x.UserRoles, cfg => cfg.MapFrom(y => y.UserRoles.Select(z => z.RoleId.ToString())));
