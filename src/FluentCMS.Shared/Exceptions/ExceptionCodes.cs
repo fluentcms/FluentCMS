@@ -29,4 +29,16 @@ public class ExceptionCodes
 
     #endregion
 
+    #region Page
+
+    public const string PageNotAuthorizedToViewThisPage = "Page.NotAuthorizedToViewThisPage";
+    public const string PageNotAuthorizedToCreate = "Page.PageNotAuthorizedToCreate";
+    public const string PageNotAuthorizedToDeleteOrUpdate = "Page.NotAuthorizedToDeleteOrUpdate";
+    public const string PageUnableToCreate = "Page.UnableToCreated";
+    public const string PageUnableToUpdate = "Page.UnableToUpdate";
+    public const string PageUnableToDelete = "Page.UnableToDelete";
+    public const string PagePathMustBeUnique = "Page.PathMustBeUnique";
+    public const string PageNotFound = "Page.NotFound";
+
+    #endregion
 }

@@ -8,22 +8,18 @@ public interface IPageService
 {
     Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     Task<Page> GetById(Guid id, CancellationToken cancellationToken = default);
-    Task<IEnumerable<Page>> GetByParentId(Guid id);
     Task<Page> Create(Page page, CancellationToken cancellationToken = default);
     Task<Page> Update(Page page, CancellationToken cancellationToken = default);
     Task Delete(Page page, CancellationToken cancellationToken = default);
-    Task<IEnumerable<Page>> GetBySiteIdAndParentId(Guid siteId, Guid? parentId = null);
 }
 
-public class PageService : IPageService
+public class PageService : BaseService<Page>, IPageService
 {
     private readonly IPageRepository _pageRepository;
-    private readonly IApplicationContext _applicationContext;
 
-    public PageService(IPageRepository pageRepository, IApplicationContext applicationContext)
+    public PageService(IApplicationContext applicationContext, IPageRepository pageRepository):base(applicationContext)
     {
         _pageRepository = pageRepository;
-        _applicationContext = applicationContext;
     }
 
     public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
@@ -34,10 +30,10 @@ public class PageService : IPageService
 
     public async Task<Page> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var page = await _pageRepository.GetById(id, cancellationToken) ?? throw new Exception(id.ToString());
+        var page = await _pageRepository.GetById(id, cancellationToken) ?? throw new AppException(ExceptionCodes.PageNotFound);
         if (!HasViewPermissionForPage(page))
         {
-            throw new Exception("you are not authorized to view this page");
+            throw new AppException(ExceptionCodes.PageNotAuthorizedToViewThisPage);
         }
 
         return page;
@@ -47,12 +43,7 @@ public class PageService : IPageService
     {
         if (!page.ViewRoleIds.IsNullOrEmpty())
         {
-            // page is restricted
-            var userHasAccess = page.ViewRoleIds.Any(r => _applicationContext.Current.IsInRole(r));
-            var userIsPageAdmin = page.AdminRoleIds.Any(r => _applicationContext.Current.IsInRole(r));
-            var userIsSiteAdmin = _applicationContext.Current.Site.AdminRoleIds.Any(r => _applicationContext.Current.IsInRole(r));
-            var userIsSuperAdmin = _applicationContext.Current.IsSuperAdmin;
-            if (!userHasAccess && !userIsPageAdmin && !userIsSiteAdmin && !userIsSuperAdmin)
+            if (!Current.IsInRole(Current.Site.AdminRoleIds) && !Current.IsInRole(page.ViewRoleIds))
             {
                 return false;
             }
@@ -64,26 +55,24 @@ public class PageService : IPageService
     {
         // TODO: check permissions, only admins can create a page
         // Except for the first site, which is created by the system
-        CheckAdminPermission();
+        CheckCreatePermission();
 
         // normalizing the page path to lowercase
         NormalizePath(page);
         await CheckForDuplicatePath(page);
 
-        page.CreatedBy = _applicationContext.Current?.User?.UserName ?? string.Empty;
-        page.LastUpdatedBy = _applicationContext.Current?.User?.UserName ?? string.Empty;
+        page.CreatedBy = Current?.User?.UserName ?? string.Empty;
+        page.LastUpdatedBy = Current?.User?.UserName ?? string.Empty;
 
         var newPage = await _pageRepository.Create(page, cancellationToken);
-        return newPage ?? throw new Exception("Page not created");
+        return newPage ?? throw new AppException(ExceptionCodes.PageUnableToCreate);
     }
 
-    private void CheckAdminPermission()
+    private void CheckCreatePermission()
     {
-        var userIsSiteAdmin = _applicationContext.Current.Site.AdminRoleIds.Any(r => _applicationContext.Current.IsInRole(r));
-        var userIsSuperAdmin = _applicationContext.Current.IsSuperAdmin;
-        if (!userIsSiteAdmin && !userIsSuperAdmin)
+        if (Current.IsInRole(Current.Site.AdminRoleIds))
         {
-            throw new Exception("only admins can create a page");
+            throw new AppException(ExceptionCodes.PageNotAuthorizedToCreate);
         }
     }
 
@@ -93,7 +82,7 @@ public class PageService : IPageService
         var samePathPage = await _pageRepository.GetByPath(page.Path);
         if (samePathPage != null && samePathPage?.Id != page.Id)
         {
-            throw new ApplicationException("Page path must be unique");
+            throw new AppException(ExceptionCodes.PagePathMustBeUnique);
         }
     }
 
@@ -109,17 +98,15 @@ public class PageService : IPageService
         await CheckForDuplicatePath(page);
 
         var newPage = await _pageRepository.Update(page, cancellationToken);
-        return newPage ?? throw new Exception("Page not created");
+        return newPage ?? throw new AppException(ExceptionCodes.PageUnableToUpdate);
     }
 
     private void CheckPageOrAdminPermission(Page page)
     {
-        var isSuperAdmin = _applicationContext.Current.IsSuperAdmin;
-        var isAdmin = !_applicationContext.Current.Site.AdminRoleIds.Any(r => _applicationContext.Current.IsInRole(r));
-        var isPageAdmin = _applicationContext.Current.IsInRole(page.AdminRoleIds);
-        if (!isSuperAdmin && !isAdmin && !isPageAdmin)
+;
+        if (!Current.IsInRole(Current.Site.AdminRoleIds) && !Current.IsInRole(page.AdminRoleIds))
         {
-            throw new Exception("only super-admins, site-admins and page-admins can update or delete a page");
+            throw new AppException(ExceptionCodes.PageNotAuthorizedToDeleteOrUpdate);
         }
     }
 
@@ -131,23 +118,6 @@ public class PageService : IPageService
     public Task Delete(Page page, CancellationToken cancellationToken = default)
     {
         CheckPageOrAdminPermission(page);
-        return _pageRepository.Delete(page.Id);
-    }
-
-    public Task<IEnumerable<Page>> GetByParentId(Guid id)
-    {
-        return _pageRepository.GetByParentId(id);
-    }
-
-    public async Task<IEnumerable<Page>> GetBySiteIdAndParentId(Guid siteId, Guid? parentId)
-    {
-        var sitePages = await _pageRepository.GetBySiteIdAndParentId(siteId);
-        if (parentId is null)
-        {
-            return sitePages;
-        }
-        // todo: handle edge-case that multiple sites contain the same parent page
-        var childPages = await _pageRepository.GetBySiteIdAndParentId(parentId.Value);
-        return childPages;
+        return _pageRepository.Delete(page.Id) ?? throw new AppException(ExceptionCodes.PageUnableToDelete);
     }
 }
