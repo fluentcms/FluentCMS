@@ -1,9 +1,10 @@
 {
-  "Jwt": {
-    "Issuer": "https://localhost:44352",
-    "Audience": "https://localhost:44352",
-    "TokenExpiry": 3600, // seconds
-    "RefreshTokenExpiry": 36000, // seconds
-    "Secret": "THIS SHOULD BE A COMPLEX SECRET!"
-  }
+    "Jwt": {
+        "Issuer": "https://localhost:44352",
+        "Audience": "https://localhost:44352",
+        "TokenExpiry": 3600, // seconds
+        "RefreshTokenExpiry": 36000, // seconds
+        //"Secret": "THIS SHOULD BE A COMPLEX SECRET!"
+        "Secret": "96671aab2e80ecc0be5e9e03a63f7f3789faa5bb646b43fe7f799f94a491ad8607af905d47cefe4b0d38784b3918c4c5751e98faaf08c5254fa2cacf2031c3c6" // base-64( sha-512("THIS SHOULD BE A COMPLEX SECRET!") )
+    }
 }

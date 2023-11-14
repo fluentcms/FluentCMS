@@ -1,4 +1,5 @@
 using FluentCMS.Api;
+using FluentCMS.Providers.Identity;
 using FluentCMS.Services;
 using FluentCMS.Web.UI;
 
@@ -12,11 +13,12 @@ services.AddApplicationServices();
 
 services.AddMongoDbRepositories("MongoDb");
 
-services.AddJwtTokenProvider();
+services.AddJwtTokenProvider(builder.Configuration);
 services.AddSmtpEmailProvider();
 
-services.AddAuthentication();
-services.AddAuthorization();
+services.AddAuthentication()
+    .AddBearerJwtAddAuthentication(builder.Configuration);
+services.AddAuthorization(b=>b.AddJwtAuthorization(builder.Configuration));
 
 // Add services to the container.
 services.AddRazorComponents()
