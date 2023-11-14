@@ -8,13 +8,31 @@ namespace FluentCMS.Tests.Services;
 public class SiteService_Tests
 {
     private readonly IServiceProvider _serviceProvider;
+
     public SiteService_Tests()
     {
         var services = new ServiceCollection();
         // TODO: write tests for LiteDbInMemoryRepository
         services.AddApplicationServices()
-            .AddInMemoryLiteDbRepositories();
+            .AddInMemoryLiteDbRepositories()
+            .AddTestApplicationContext();
         _serviceProvider = services.BuildServiceProvider();
+    }
+
+    private static void SetupMockApplicationContext(IApplicationContext applicationContext, Site site, Guid adminRoleGuid)
+    {
+        var superUser = new User("test");
+        var host = new Host()
+        {
+            SuperUsers = new List<string>() { superUser.UserName??throw new Exception("Invalid State") }
+        };
+        applicationContext.Current = new CurrentTestContext()
+        {
+            Host = host,
+            Site = site,
+            User = superUser,
+            Roles = new() { new Role() { SiteId = site.Id, Id = adminRoleGuid, Name = "TestAdmin" } },
+        };
     }
 
     //Should Create New Site
@@ -23,15 +41,18 @@ public class SiteService_Tests
     {
         var scope = _serviceProvider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<ISiteService>();
+        var applicationContext = scope.ServiceProvider.GetRequiredService<IApplicationContext>();
         var roleId = Guid.NewGuid();
-        var site = await service.Create(new Site
+        Site site = new Site
         {
             Name = "test site",
             Description = "test site description",
             Urls = ["test.com"],
-            //RoleId = roleId,
-        });
-        var result = await service.GetById(site.Id);
+            AdminRoleIds = new List<Guid>() { roleId }
+        };
+        SetupMockApplicationContext(applicationContext, site, roleId);
+        var createdSite = await service.Create(site);
+        var result = await service.GetById(createdSite.Id);
         result.Name.ShouldBe("test site");
         result.Description.ShouldBe("test site description");
         result.Urls.Contains("test.com").ShouldBeTrue();
@@ -44,22 +65,25 @@ public class SiteService_Tests
     {
         var scope = _serviceProvider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<ISiteService>();
+        var applicationContext = scope.ServiceProvider.GetRequiredService<IApplicationContext>();
         var roleId = Guid.NewGuid();
-        var site = await service.Create(new Site
+        Site site = new Site
         {
             Name = "test site",
             Description = "test site description",
             Urls = ["test.com"],
-            //RoleId = roleId,
-        });
-        var dbSite = await service.GetById(site.Id);
+            AdminRoleIds = new List<Guid>() { roleId }
+        };
+        SetupMockApplicationContext(applicationContext, site, roleId);
+        var editSite = await service.Create(site);
+        var dbSite = await service.GetById(editSite.Id);
         var updatedSite = await service.Update(new Site
         {
             Id = dbSite.Id,
             Name = "test site updated",
             Description = "test site description updated",
             Urls = dbSite.Urls.ToList(),
-            //RoleId = roleId,
+            AdminRoleIds = new List<Guid>() { roleId }
         });
         var result = await service.GetById(updatedSite.Id);
         result.Name.ShouldBe("test site updated");
@@ -74,6 +98,7 @@ public class SiteService_Tests
     {
         var scope = _serviceProvider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<ISiteService>();
+        var applicationContext = scope.ServiceProvider.GetRequiredService<IApplicationContext>();
         var roleId = Guid.NewGuid();
         var site = await service.Create(new Site
         {
@@ -94,6 +119,7 @@ public class SiteService_Tests
     {
         var scope = _serviceProvider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<ISiteService>();
+        var applicationContext = scope.ServiceProvider.GetRequiredService<IApplicationContext>();
         var roleId = Guid.NewGuid();
         var site = await service.Create(new Site
         {
@@ -115,6 +141,7 @@ public class SiteService_Tests
     {
         var scope = _serviceProvider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<ISiteService>();
+        var applicationContext = scope.ServiceProvider.GetRequiredService<IApplicationContext>();
         var roleId = Guid.NewGuid();
         var site = await service.Create(new Site
         {
@@ -136,6 +163,7 @@ public class SiteService_Tests
     {
         var scope = _serviceProvider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<ISiteService>();
+        var applicationContext = scope.ServiceProvider.GetRequiredService<IApplicationContext>();
         // create 10 sites
         const int count = 10;
         var roleId = Guid.NewGuid();
