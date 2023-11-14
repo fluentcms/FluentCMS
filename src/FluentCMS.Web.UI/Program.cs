@@ -1,6 +1,5 @@
 using FluentCMS.Api;
-using FluentCMS.Api.Middlewares;
-using FluentCMS.Services;
+using FluentCMS;
 using FluentCMS.Web.UI;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,13 +26,6 @@ services.AddScoped<IApplicationContext, ApiApplicationContext>();
 services.AddControllers();
 services.AddRequestValidation();
 services.AddMappingProfiles();
-
-// api error handling
-services.AddScoped<ErrorMiddleware>();
-services.Configure<ErrorMiddlewareOptions>(options =>
-{
-    options.IncludeErrorDebugInResponse = builder.Environment.IsDevelopment();
-});
 
 services.AddApiDocumentation();
 
@@ -75,8 +67,6 @@ app.UseApiDocumentation();
 app.UseAuthentication();
 
 app.UseAuthorization();
-
-app.UseMiddleware<ErrorMiddleware>();
 
 app.UseEndpoints(endpoints =>
 {

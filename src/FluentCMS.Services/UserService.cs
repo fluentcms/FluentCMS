@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using FluentCMS.Entities;
 using FluentCMS.Providers.Identity;
-using FluentCMS.Services.Exceptions;
 using UserToken = FluentCMS.Providers.Identity.UserToken;
 
 namespace FluentCMS.Services;
@@ -46,7 +45,7 @@ public class UserService : IUserService
         var userToken = await _userTokenProvider.Generate(user);
 
         if (userToken is null || string.IsNullOrEmpty(userToken.AccessToken))
-            throw new Exception("Token generation failed!");
+            throw new AppException(ExceptionCodes.UserTokenGenerationFailed);
 
         // Store refresh token
         var identityResult = await _userManager.SetAuthenticationTokenAsync(user, LOCAL_LOGIN_PROVIDER, REFRESH_TOKEN_NAME, userToken.RefreshToken);
@@ -62,7 +61,7 @@ public class UserService : IUserService
 
         // Validate user password
         if (user is null || !user.Enabled || !await _userManager.CheckPasswordAsync(user, password))
-            throw new AppException(Errors.Users.AuthenticationFailed);
+            throw new AppException(ExceptionCodes.UserLoginFailed);
 
         // Update user properties related to login
         user.LastLoginAt = DateTime.Now;
@@ -91,8 +90,8 @@ public class UserService : IUserService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var user = await _userManager.FindByIdAsync(id.ToString());
-        if (user is null) throw new AppException(Errors.Users.UserDoesNotExists);
+        var user = await _userManager.FindByIdAsync(id.ToString())
+            ?? throw new AppException(ExceptionCodes.UserNotFound);
 
         var userRemoveResult = await _userManager.DeleteAsync(user);
         userRemoveResult.ThrowIfInvalid();
@@ -106,10 +105,10 @@ public class UserService : IUserService
         return await Task.Run(() => _userManager.Users.ToList(), cancellationToken);
     }
 
-    public Task<User> GetById(Guid id, CancellationToken cancellationToken = default)
+    public async Task<User> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        return _userManager.FindByIdAsync(id.ToString())
-            ?? throw new AppException(Errors.Users.UserDoesNotExists);
+        return await _userManager.FindByIdAsync(id.ToString())
+            ?? throw new AppException(ExceptionCodes.UserNotFound);
     }
 
     public async Task<User> ChangePassword(Guid id, string oldPassword, string newPassword, CancellationToken cancellationToken = default)
@@ -117,7 +116,7 @@ public class UserService : IUserService
         var user = await GetById(id, cancellationToken);
 
         if (!await _userManager.CheckPasswordAsync(user, oldPassword))
-            throw new AppException(Errors.Users.AuthenticationFailed);
+            throw new AppException(ExceptionCodes.UserChangePasswordFailed);
 
         var idResult = await _userManager.ChangePasswordAsync(user, oldPassword, newPassword);
 
@@ -134,5 +133,17 @@ public class UserService : IUserService
     public Task<User?> GetByUsername(string username)
     {
         return _userManager.FindByNameAsync(username);
+    }
+}
+
+
+public static class IdentityResultExtensions
+{
+    public static void ThrowIfInvalid(this IdentityResult identityResult)
+    {
+        if (!identityResult.Succeeded)
+        {
+            throw new AppException(identityResult.Errors.Select(e => $"User.{e.Code}"));
+        }
     }
 }
