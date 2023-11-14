@@ -12,7 +12,7 @@ services.AddApplicationServices();
 
 services.AddMongoDbRepositories("MongoDb");
 
-services.AddJwtTokenProvider();
+services.AddJwtTokenProvider(builder.Configuration);
 services.AddSmtpEmailProvider();
 
 services.AddAuthentication();
