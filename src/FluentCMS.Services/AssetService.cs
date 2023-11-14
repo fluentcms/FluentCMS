@@ -77,7 +77,7 @@ internal class AssetService : BaseService<Asset>, IAssetService
 
         // check file type
         // todo: get allowed file types from host config
-        var allowedFileTypes = new[] { ".jpg", ".jpeg", ".png", ".pdf" };
+        var allowedFileTypes = new[] { ".jpg", ".jpeg", ".png", ".pdf", ".txt" };
         if (allowedFileTypes.Contains(assetExt) == false)
         {
             throw new ApplicationException("File type is not allowed");
