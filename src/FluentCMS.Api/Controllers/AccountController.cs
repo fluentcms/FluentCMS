@@ -3,7 +3,9 @@ using FluentCMS.Api.Models;
 using FluentCMS.Entities;
 using FluentCMS.Services;
 using FluentCMS.Services.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Api.Controllers;
 
@@ -32,6 +34,7 @@ public class AccountController(IMapper mapper, IUserService userService) : BaseC
     }
 
     [HttpPost]
+    [Authorize(JwtAuthorizationDefaults.JwtAuthorizationPolicyName)]
     public async Task<IApiResult<bool>> ChangePassword(UserChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
         await userService.ChangePassword(request.UserId, request.OldPassword, request.NewPassword, cancellationToken);
