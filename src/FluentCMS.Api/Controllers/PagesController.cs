@@ -21,7 +21,7 @@ public class PagesController : BaseController
     [HttpPost]
     public async Task<IApiPagingResult<PageResponse>> GetAll([FromBody] PageSearchRequest request)
     {
-        var pages = await _pageService.GetBySiteIdAndParentId(request.SiteId, request.ParentId);
+        var pages = (await _pageService.GetBySiteId(request.SiteId)).GroupBy(x=>x.ParentId);
         return new ApiPagingResult<PageResponse>(_mapper.Map<List<PageResponse>>(pages));
     }
 
@@ -30,16 +30,9 @@ public class PagesController : BaseController
     {
         var page = await _pageService.GetById(id);
         var pageResponse = _mapper.Map<PageResponse>(page);
-        // map recursive?
-        await MapChildren(id, pageResponse);
         return new ApiResult<PageResponse>(pageResponse);
     }
 
-    private async Task MapChildren(Guid id, PageResponse pageResponse)
-    {
-        var childrenPage = await _pageService.GetByParentId(id);
-        pageResponse.Children = childrenPage.Select(x => _mapper.Map<PageResponse>(x));
-    }
 
     [HttpPost]
     public async Task<IApiResult<PageResponse>> Create(PageCreateRequest request)
