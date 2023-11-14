@@ -8,7 +8,7 @@ public class User : IdentityUser<Guid>, IAuditEntity
     public int LoginsCount { get; set; }
     public DateTime? LastPasswordChangedAt { get; set; }
     public string LastPasswordChangedBy { get; set; } = string.Empty;
-    public bool Enabled { get; set; } = false;
+    public bool Enabled { get; set; } = true;
 
     public string CreatedBy { get; set; } = string.Empty; // UserName
     public DateTime CreatedAt { get; set; }
