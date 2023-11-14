@@ -44,13 +44,12 @@ public static class SeedData
             appContext.Current = new CurrentContext
             {
                 User = superUser,
-                Host = host,
-                Site = site
+                Host = host
             };
 
             // Super Admin creation
             userService.Create(superUser, superAdmin.Password).GetAwaiter().GetResult();
-            
+
             // Admin Role creation
             roleService.Create(adminRole).GetAwaiter().GetResult();
 
@@ -93,7 +92,7 @@ public static class SeedData
         }
     }
 
-    private class DefaultUser 
+    private class DefaultUser
     {
         public required string UserName { get; set; }
         public required string Email { get; set; }

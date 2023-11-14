@@ -17,7 +17,7 @@ public class MongoDbUserRepository : MongoDbGenericRepository<User>, IUserReposi
         return Collection.AsQueryable();
     }
 
-    public Task<IList<User>> GetUsersForClaim(Claim claim, CancellationToken cancellationToken)
+    public Task<IList<User>> GetUsersForClaim(Claim claim, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -26,7 +26,7 @@ public class MongoDbUserRepository : MongoDbGenericRepository<User>, IUserReposi
         return Task.FromResult((IList<User>)users);
     }
 
-    public Task<User?> FindByEmail(string normalizedEmail, CancellationToken cancellationToken)
+    public Task<User?> FindByEmail(string normalizedEmail, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -35,7 +35,7 @@ public class MongoDbUserRepository : MongoDbGenericRepository<User>, IUserReposi
         return Task.FromResult(user);
     }
 
-    public Task<User?> FindByLogin(string loginProvider, string providerKey, CancellationToken cancellationToken)
+    public Task<User?> FindByLogin(string loginProvider, string providerKey, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -44,7 +44,7 @@ public class MongoDbUserRepository : MongoDbGenericRepository<User>, IUserReposi
         return Task.FromResult(user);
     }
 
-    public Task<User?> FindByName(string normalizedUserName, CancellationToken cancellationToken)
+    public Task<User?> FindByName(string normalizedUserName, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -53,7 +53,7 @@ public class MongoDbUserRepository : MongoDbGenericRepository<User>, IUserReposi
         return Task.FromResult(user);
     }
 
-    public Task<IList<User>> GetUsersInRole(string roleId, CancellationToken cancellationToken)
+    public Task<IList<User>> GetUsersInRole(string roleId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
