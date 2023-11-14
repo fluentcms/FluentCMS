@@ -23,6 +23,11 @@ public static partial class ApplicationContextTestUtilExtensions
 
         scope.SetupMockApplicationContext(host, site, ApplicationContextDefaults.SuperAdmins.TestSuperAdminUser, [ApplicationContextDefaults.SuperAdmins.TestSuperAdminRole]);
     }
+    public static void SetupMockApplicationContextForAdminUser(this IServiceScope scope, Host? host = null, Site? site = null)
+    {
+
+        scope.SetupMockApplicationContext(host, site, ApplicationContextDefaults.Admins.TestAdminUser, [ApplicationContextDefaults.Admins.TestAdminRole]);
+    }
     public static void SetupMockApplicationContextForNonAdminUser(this IServiceScope scope, Host? host = null, Site? site = null)
     {
 
