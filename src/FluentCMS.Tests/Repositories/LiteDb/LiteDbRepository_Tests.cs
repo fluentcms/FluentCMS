@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Shouldly;
 
-namespace FluentCMS.Tests.Repositories;
+namespace FluentCMS.Tests.Repositories.LiteDb;
 public class LiteDbRepository_Tests
 {
     [Fact]

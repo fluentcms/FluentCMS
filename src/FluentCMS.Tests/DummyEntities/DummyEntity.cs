@@ -3,7 +3,7 @@ using LiteDB;
 
 namespace FluentCMS.Tests.DummyEntities;
 
-internal class DummyEntity : IEntity
+public class DummyEntity : IEntity
 {
     [BsonId]
     public Guid Id { get; set; }
