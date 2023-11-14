@@ -34,13 +34,14 @@ public class MappingProfiles : Profile
         //});
         CreateMap<List<Page>, List<PageResponse>>().ConstructUsing((x, ctx) =>
         {
-            return MapItemsWithParent(x, ctx, null);
-            static List<PageResponse> MapItemsWithParent(List<Page> x, ResolutionContext ctx, Guid? parentId)
+            return MapPagesWithParentId(x, ctx, null,"/");
+            static List<PageResponse> MapPagesWithParentId(List<Page> x, ResolutionContext ctx, Guid? parentId, string pathPrefix)
             {
                 var items = ctx.Mapper.Map<List<PageResponse>>(x.Where(x => x.ParentId == parentId));
                 foreach (var item in items)
                 {
-                    item.Children = MapItemsWithParent(x, ctx, item.Id);
+                    item.Path = pathPrefix + item.Path;
+                    item.Children = MapPagesWithParentId(x, ctx, item.Id, item.Path);
                 }
                 return items.ToList();
             }
