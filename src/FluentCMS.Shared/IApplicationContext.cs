@@ -1,6 +1,6 @@
 ﻿using FluentCMS.Entities;
 
-namespace FluentCMS.Services;
+namespace FluentCMS;
 
 public interface IApplicationContext
 {
