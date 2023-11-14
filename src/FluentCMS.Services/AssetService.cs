@@ -65,7 +65,6 @@ internal class AssetService : BaseService<Asset>, IAssetService
 
     public async Task<Asset> AddFileFromStream(Guid siteId, Guid? parentFolderId, string fileName, Stream stream)
     {
-
         var assetId = Guid.NewGuid();
         var assetName = Path.GetFileName(fileName);
         var assetExt = Path.GetExtension(assetName);

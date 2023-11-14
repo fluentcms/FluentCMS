@@ -20,9 +20,9 @@
         <label class="form-label">Sub Directory: (leave empty for root dir)</label>
         <select class="form-control" @onchange="e => selectedDirectory = e.Value != null ? e.Value.ToString() : string.Empty" required>
             <option value="">Root dir</option>
-            @foreach (var site in sites)
+            @foreach (var folder in siteFolders)
             {
-                <option value="@site.Id">@site.Name</option>
+                <option value="@folder.Key">@folder.Value</option>
             }
         </select>
         <div>dir: @selectedDirectory</div>
