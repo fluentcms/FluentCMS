@@ -28,15 +28,16 @@ public class AssetsController : BaseController
     [HttpGet("{id:Guid}")]
     public async Task<IResult> Download([FromRoute] Guid id)
     {
-        var (asset, stream) = await _assetService.GetAssetAsStream(id);
-        return Results.File(stream, "application/octet-stream", asset.VirtualFileName);
+        var (asset, stream) = await _assetService.GetFileAsStream(id);
+        return Results.File(stream, "application/octet-stream", asset.Name);
     }
 
     [HttpGet("{id:Guid}")]
     public async Task<IResult> View([FromRoute] Guid id)
     {
-        var (asset, stream) = await _assetService.GetAssetAsStream(id);
-        var mimeTypeFound = new FileExtensionContentTypeProvider().TryGetContentType(asset.Extension, out var mimeType);
+        var (asset, stream) = await _assetService.GetFileAsStream(id);
+        var ext = Path.GetExtension(asset.Name);
+        var mimeTypeFound = new FileExtensionContentTypeProvider().TryGetContentType(ext, out var mimeType);
         if (!mimeTypeFound) mimeType = "application/octet-stream";
         return Results.File(stream, mimeType);
     }
@@ -44,7 +45,7 @@ public class AssetsController : BaseController
     [HttpPost]
     public async Task<IApiResult<IEnumerable<UploadedFile>>> Upload(
         [FromForm] Guid siteId,
-        [FromForm] string directory,
+        [FromForm] Guid? folderId,
         [FromForm] IEnumerable<IFormFile> files)
     {
         // check max files count
@@ -55,7 +56,6 @@ public class AssetsController : BaseController
         var result = new List<UploadedFile>();
         foreach (var file in files)
         {
-            var filePath = $"{(string.IsNullOrWhiteSpace(directory) ? "" : directory + "/")}{file.FileName}";
             var uploadedFile = new UploadedFile
             {
                 Id = Guid.Empty,
@@ -65,8 +65,8 @@ public class AssetsController : BaseController
 
             try
             {
-                var asset = await _assetService.AddFromStream(file.OpenReadStream(), filePath, siteId);
-                uploadedFile.StoredFileName = asset.VirtualFileName;
+                var asset = await _assetService.AddFileFromStream(siteId, folderId, file.FileName, file.OpenReadStream());
+                uploadedFile.StoredFileName = asset.Name;
                 uploadedFile.Id = asset.Id;
             }
             catch (Exception ex)

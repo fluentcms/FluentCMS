@@ -34,7 +34,6 @@ public class MappingProfiles : Profile
         CreateMap<RoleUpdateRequest, Role>();
 
         // Assets
-        CreateMap<Asset, AssetResponse>()
-            .ForMember(x => x.FileName, cfg => cfg.MapFrom(x => x.VirtualFileName));
+        CreateMap<Asset, AssetResponse>();
     }
 }

@@ -7,7 +7,8 @@
 <div>
     <div class="mb-3">
         <label class="form-label">Site:</label>
-        <select class="form-control" @onchange="e => selectedSite = e.Value">
+        <select class="form-control" @onchange="OnSiteSelectChanged" required>
+            <option>Select a site</option>
             @foreach (var site in sites)
             {
                 <option value="@site.Id">@site.Name</option>
@@ -17,7 +18,13 @@
     </div>
     <div class="mb-3">
         <label class="form-label">Sub Directory: (leave empty for root dir)</label>
-        <InputText type="text" class="form-control" required @bind-Value="selectedDirectory" />
+        <select class="form-control" @onchange="e => selectedDirectory = e.Value != null ? e.Value.ToString() : string.Empty" required>
+            <option value="">Root dir</option>
+            @foreach (var site in sites)
+            {
+                <option value="@site.Id">@site.Name</option>
+            }
+        </select>
         <div>dir: @selectedDirectory</div>
     </div>
     <div class="mb-3">
@@ -59,9 +66,10 @@
 }
 
 @code {
-    private object? selectedSite;
+    private string? selectedSite;
     private string? selectedDirectory;
     private IEnumerable<SiteResponse> sites = new List<SiteResponse>();
+    private Dictionary<Guid, string> siteFolders = new Dictionary<Guid, string>();
     private List<File> files = new();
     private List<UploadedFile> uploadResults = new();
     private int maxAllowedFiles = 3;
@@ -76,7 +84,35 @@
         var getSitesResponse = await _httpClient.GetFromJsonAsync<ApiPagingResult<SiteResponse>>("site/getAll");
         if (getSitesResponse != null)
         {
-            sites = getSitesResponse!.Data;
+            sites = getSitesResponse!.Data!;
+        }
+        shouldRender = true;
+    }
+
+    private async Task OnSiteSelectChanged(ChangeEventArgs e)
+    {
+        if (e.Value == null || string.IsNullOrWhiteSpace(e.Value.ToString()))
+            return;
+
+        shouldRender = false;
+        selectedSite = e.Value.ToString();
+        var getSiteAssetsResponse = await _httpClient.GetFromJsonAsync<ApiResult<IEnumerable<AssetResponse>>>("assets/GetAllSiteAssets/" + selectedSite);
+        if (getSiteAssetsResponse != null)
+        {
+            var assets = getSiteAssetsResponse!.Data!.Where(x => x.Type == Entities.AssetType.Folder);
+            siteFolders.Clear();
+            foreach (var a in assets)
+            {
+                var folderName = a.Name;
+                var parentFolderId = a.FolderId;
+                while (parentFolderId.HasValue)
+                {
+                    var parentFolder = assets.Single(x => x.Id == parentFolderId.Value);
+                    folderName = parentFolder.Name + "/" + folderName;
+                    parentFolderId = parentFolder.FolderId;
+                }
+                siteFolders.Add(a.Id, folderName);
+            }
         }
         shouldRender = true;
     }
@@ -91,7 +127,7 @@
 
         using var content = new MultipartFormDataContent();
         content.Add(new StringContent(selectedSite!.ToString()), "siteId");
-        content.Add(new StringContent(selectedDirectory!), "directory");
+        content.Add(new StringContent(selectedDirectory!.ToString()), "directory");
 
         if (e.FileCount > maxAllowedFiles)
         {
@@ -119,11 +155,11 @@
                     catch (Exception ex)
                     {
                         uploadResults.Add(new()
-                        {
-                            FileName = file.Name,
-                            Error = "{FileName} not uploaded (Err: 5): {Message}",
-                            Successful = false
-                        });
+                            {
+                                FileName = file.Name,
+                                Error = "{FileName} not uploaded (Err: 5): {Message}",
+                                Successful = false
+                            });
                     }
                 }
             }

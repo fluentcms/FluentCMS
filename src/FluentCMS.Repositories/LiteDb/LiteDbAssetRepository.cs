@@ -16,4 +16,12 @@ public class LiteDbAssetRepository : LiteDbGenericRepository<Asset>, IAssetRepos
         var data = await Collection.FindAsync(x => x.SiteId == siteId);
         return data;
     }
+
+    public async Task<Asset?> GetAssetByName(Guid siteId, Guid? folderId, string name, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var data = await Collection.FindOneAsync(x => x.SiteId == siteId && x.FolderId == folderId && x.Name == name);
+        return data;
+    }
 }

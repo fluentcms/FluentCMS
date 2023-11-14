@@ -7,8 +7,9 @@ namespace FluentCMS.Services;
 public interface IAssetService
 {
     Task<IEnumerable<Asset>> GetAllSiteAssets(Guid siteId);
-    Task<(Asset, Stream)> GetAssetAsStream(Guid id);
-    Task<Asset> AddFromStream(Stream stream, string fileNameAndPath, Guid siteId);
+    Task<(Asset, Stream)> GetFileAsStream(Guid id);
+    Task<Asset> AddFolder(Guid siteId, Guid? parentFolderId, string folderName);
+    Task<Asset> AddFileFromStream(Guid siteId, Guid? parentFolderId, string fileName, Stream stream);
     Task DeleteAsset(Guid id);
 }
 
@@ -16,18 +17,15 @@ internal class AssetService : BaseService<Asset>, IAssetService
 {
     private readonly IFileStorageProvider _fileStorageProvider;
     private readonly IAssetRepository _assetRepository;
-    private readonly ISiteRepository _siteRepository;
 
     public AssetService(
         IApplicationContext appContext,
         IFileStorageProvider fileStorageProvider,
-        IAssetRepository assetRepository,
-        ISiteRepository siteRepository)
+        IAssetRepository assetRepository)
         : base(appContext)
     {
         _fileStorageProvider = fileStorageProvider;
         _assetRepository = assetRepository;
-        _siteRepository = siteRepository;
     }
 
     public async Task<IEnumerable<Asset>> GetAllSiteAssets(Guid siteId)
@@ -36,24 +34,47 @@ internal class AssetService : BaseService<Asset>, IAssetService
         return data;
     }
 
-    public async Task<(Asset, Stream)> GetAssetAsStream(Guid id)
+    public async Task<(Asset, Stream)> GetFileAsStream(Guid id)
     {
         var asset = await _assetRepository.GetById(id)
             ?? throw new ApplicationException("Requested asset not found");
 
-        return (asset, await _fileStorageProvider.GetFileStream(asset.PhysicalFileName));
+        return (asset, await _fileStorageProvider.GetFileStream(asset.PhysicalName));
     }
 
-    public async Task<Asset> AddFromStream(Stream stream, string fileNameAndPath, Guid siteId)
+    public async Task<Asset> AddFolder(Guid siteId, Guid? parentFolderId, string folderName)
     {
-        // check site
-        var site = await _siteRepository.GetById(siteId);
-        if (site == null)
-            throw new ApplicationException("Site not found");
+        // check for similar assets
+        var similarAsset = await _assetRepository.GetAssetByName(siteId, parentFolderId, folderName);
+        if (similarAsset != null)
+            throw new ApplicationException("Folder with similar name already exists.");
 
         var assetId = Guid.NewGuid();
-        var assetExt = Path.GetExtension(fileNameAndPath);
-        var saveFileNameAndPath = $"{siteId.ToString().ToLower()}/{assetId.ToString().ToLower()}{assetExt}";
+        var asset = new Asset
+        {
+            Id = assetId,
+            SiteId = siteId,
+            FolderId = parentFolderId,
+            Type = AssetType.Folder,
+            Name = folderName,
+        };
+        PrepareForCreate(asset);
+        await _assetRepository.Create(asset);
+        return asset;
+    }
+
+    public async Task<Asset> AddFileFromStream(Guid siteId, Guid? parentFolderId, string fileName, Stream stream)
+    {
+
+        var assetId = Guid.NewGuid();
+        var assetName = Path.GetFileName(fileName);
+        var assetExt = Path.GetExtension(assetName);
+        var physicalFileName = $"{siteId.ToString().ToLower()}/{assetId.ToString().ToLower()}{assetExt}";
+
+        // check for similar assets
+        var similarAsset = await _assetRepository.GetAssetByName(siteId, parentFolderId, assetName);
+        if (similarAsset != null)
+            throw new ApplicationException("File with similar name already exists.");
 
         // check file type
         // todo: get allowed file types from host config
@@ -64,16 +85,17 @@ internal class AssetService : BaseService<Asset>, IAssetService
         }
 
         // save asset to file storage
-        await _fileStorageProvider.SaveFile(stream, saveFileNameAndPath);
+        await _fileStorageProvider.SaveFile(stream, physicalFileName);
 
         var asset = new Asset
         {
             Id = assetId,
-            Extension = assetExt,
-            SizeInBytes = stream.Length,
-            VirtualFileName = fileNameAndPath,
-            PhysicalFileName = saveFileNameAndPath,
             SiteId = siteId,
+            FolderId = parentFolderId,
+            Type = AssetType.File,
+            SizeInBytes = stream.Length,
+            Name = assetName,
+            PhysicalName = physicalFileName,
         };
         PrepareForCreate(asset);
         await _assetRepository.Create(asset);
@@ -85,7 +107,10 @@ internal class AssetService : BaseService<Asset>, IAssetService
         var asset = await _assetRepository.GetById(id)
             ?? throw new ApplicationException("Requested asset not found");
 
-        await _fileStorageProvider.DeleteFile(asset.PhysicalFileName);
+        if (asset.Type == AssetType.File)
+        {
+            await _fileStorageProvider.DeleteFile(asset.PhysicalName);
+        }
         await _assetRepository.Delete(id);
     }
 }
