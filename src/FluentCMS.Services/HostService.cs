@@ -41,8 +41,10 @@ public class HostService : BaseService<Host>, IHostService
         // TODO: move this to a validator
         CheckSuperUsers(host);
 
+        var oldHost = await _hostRepository.Get(cancellationToken)
+            ?? throw new AppException(ExceptionCodes.HostUnableToUpdate);
+
         // checking current user is super user or not
-        var oldHost = await _hostRepository.Get(cancellationToken);
         if (!Current.IsSuperAdmin)
             throw new AppPermissionException();
 
@@ -65,18 +67,8 @@ public class HostService : BaseService<Host>, IHostService
         if (!Current.IsSuperAdmin)
             throw new AppPermissionException();
 
-        var hosts = await _hostRepository.GetAll(cancellationToken);
-
-        if (!hosts.Any())
-            throw new AppException(ExceptionCodes.HostNotFound);
-
-        return hosts.Single();
-    }
-
-    public async Task<bool> IsInitialized(CancellationToken cancellationToken = default)
-    {
-        var hosts = await _hostRepository.GetAll(cancellationToken);
-        return hosts.Any();
+        return await _hostRepository.Get(cancellationToken)
+            ?? throw new AppException(ExceptionCodes.HostNotFound);
     }
 
     private void CheckSuperUsers(Host host)
@@ -86,4 +78,9 @@ public class HostService : BaseService<Host>, IHostService
             throw new AppException(ExceptionCodes.HostAtLeastOneSuperUser);
     }
 
+    public async Task<bool> IsInitialized(CancellationToken cancellationToken = default)
+    {
+        var host = await _hostRepository.Get(cancellationToken);
+        return host != null;            
+    }
 }
