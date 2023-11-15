@@ -23,14 +23,21 @@ public class PageService : BaseService<Page>, IPageService
 
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
     {
-        if (!Current.IsSiteAdmin) throw new AppPermissionException();
+        if (!Current.IsSiteAdmin)
+            throw new AppPermissionException();
+
+        PrepareForCreate(page);
+
         await BlockDuplicatePath(page);
+
         return await _pageRepository.Create(page, cancellationToken) ?? throw new AppException(ExceptionCodes.PageUnableToCreate);
     }
 
     public async Task Delete(Page page, CancellationToken cancellationToken = default)
     {
-        if (IsPageAdmin(page)) throw new AppPermissionException();
+        if (IsPageAdmin(page))
+            throw new AppPermissionException();
+
         _ = await _pageRepository.Delete(page.Id, cancellationToken) ?? throw new AppException(ExceptionCodes.PageUnableToDelete);
     }
 
@@ -38,27 +45,38 @@ public class PageService : BaseService<Page>, IPageService
     public async Task<Page> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var page = await _pageRepository.GetById(id, cancellationToken) ?? throw new AppException(ExceptionCodes.PageNotFound);
-        if (!Current.IsInRole(page.ViewRoleIds) && !Current.IsSiteAdmin) throw new AppPermissionException();
+
+        if (!Current.IsInRole(page.ViewRoleIds) && !Current.IsSiteAdmin)
+            throw new AppPermissionException();
+
         return page;
     }
 
     public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
     {
         var pages = await _pageRepository.GetBySiteId(siteId, cancellationToken) ?? throw new AppException(ExceptionCodes.PageNotFound);
+
         return pages.Where(x => Current.IsInRole(x.ViewRoleIds) || Current.IsSiteAdmin);
     }
 
     public async Task<Page> Update(Page page, CancellationToken cancellationToken = default)
     {
         var previousPage = await _pageRepository.GetById(page.Id, cancellationToken) ?? throw new AppException(ExceptionCodes.PageNotFound);
-        if (!IsPageAdmin(previousPage)) throw new AppPermissionException(); // we should check previous roles
+
+        if (!IsPageAdmin(previousPage))
+            throw new AppPermissionException(); // we should check previous roles
+
         await BlockDuplicatePath(page);
+
+        PrepareForUpdate(page);
+
         return await _pageRepository.Update(page, cancellationToken) ?? throw new AppException(ExceptionCodes.HostUnableToUpdate);
     }
 
     private async Task BlockDuplicatePath(Page page)
     {
         var matchingPath = await _pageRepository.GetByPath(page.Path);
+
         if (matchingPath != null && matchingPath.Id != page.Id)
         {
             throw new AppException(ExceptionCodes.PagePathMustBeUnique);
@@ -67,6 +85,8 @@ public class PageService : BaseService<Page>, IPageService
 
     private bool IsPageAdmin(Page page)
     {
-        return Current.IsSiteAdmin || Current.IsInRole(page.AdminRoleIds);
+        return
+            Current.IsSiteAdmin ||
+            Current.IsInRole(page.AdminRoleIds);
     }
 }
