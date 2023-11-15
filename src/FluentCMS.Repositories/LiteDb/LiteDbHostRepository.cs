@@ -3,13 +3,23 @@ using FluentCMS.Repositories.Abstractions;
 
 namespace FluentCMS.Repositories.LiteDb;
 
-public class LiteDbHostRepository : LiteDbGenericRepository<Host>, IHostRepository
+public class LiteDbHostRepository : IHostRepository
 {
-    public LiteDbHostRepository(LiteDbContext dbContext) : base(dbContext)
+    public LiteDbHostRepository(LiteDbContext dbContext)
     {
     }
 
-    public Task<Host> Get(CancellationToken cancellationToken = default)
+    public Task<Host?> Create(Host host, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Host?> Get(CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Host?> Update(Host host, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }

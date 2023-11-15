@@ -2,7 +2,9 @@
 
 namespace FluentCMS.Repositories.Abstractions;
 
-public interface IHostRepository : IGenericRepository<Host>
+public interface IHostRepository 
 {
-    Task<Host> Get(CancellationToken cancellationToken = default);
+    Task<Host?> Get(CancellationToken cancellationToken = default);
+    Task<Host?> Update(Host host, CancellationToken cancellationToken = default);
+    Task<Host?> Create(Host host, CancellationToken cancellationToken = default);
 }
