@@ -24,22 +24,24 @@ public class TestApplicationContext : IApplicationContext
 public class CurrentTestContext : ICurrentContext
 {
     public User? User { get; set; }
-    public List<Role> Roles { get; set; } = [];
+    public List<Guid> RoleIds { get; set; } = [];
     public required Host Host { get; set; }
     public required Site Site { get; set; }
     public string UserName => User?.UserName ?? string.Empty;
     public bool IsAuthenticated => !string.IsNullOrEmpty(UserName);
     public bool IsSuperAdmin => Host.SuperUsers.Contains(UserName);
 
+    public bool IsSiteAdmin => IsInRole(Site.AdminRoleIds);
+
     public bool IsInRole(Guid roleId)
     {
         if (IsSuperAdmin)
             return true;
 
-        if (Roles == null || !Roles.Any())
+        if (RoleIds == null || !RoleIds.Any())
             return false;
 
-        return Roles.Any(x => x.Id == roleId);
+        return RoleIds.Any(x => x == roleId);
     }
 
     public bool IsInRole(IEnumerable<Guid> roleIds)

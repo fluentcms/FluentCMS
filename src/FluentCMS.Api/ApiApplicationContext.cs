@@ -43,6 +43,9 @@ public class CurrentContext : ICurrentContext
     public bool IsAuthenticated => !string.IsNullOrEmpty(UserName);
     public bool IsSuperAdmin => Host.SuperUsers.Contains(UserName);
 
+    public Site Site { get; set; }
+    public bool IsSiteAdmin => IsInRole(Site.AdminRoleIds);
+
     public bool IsInRole(Guid roleId)
     {
         if (IsSuperAdmin)

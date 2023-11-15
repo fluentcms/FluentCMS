@@ -21,97 +21,52 @@ public class PageService : BaseService<Page>, IPageService
         _pageRepository = pageRepository;
     }
 
-    public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
+    public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
     {
-        var pages = await _pageRepository.GetBySiteId(siteId, cancellationToken);
-        return pages.Where(HasViewPermissionForPage);
+        if (!Current.IsSiteAdmin) throw new AppPermissionException();
+        await BlockDuplicatePath(page);
+        return await _pageRepository.Create(page, cancellationToken) ?? throw new AppException(ExceptionCodes.PageUnableToCreate);
     }
+
+    public async Task Delete(Page page, CancellationToken cancellationToken = default)
+    {
+        if (IsPageAdmin(page)) throw new AppPermissionException();
+        _ = await _pageRepository.Delete(page.Id, cancellationToken) ?? throw new AppException(ExceptionCodes.PageUnableToDelete);
+    }
+
 
     public async Task<Page> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var page = await _pageRepository.GetById(id, cancellationToken)
-            ?? throw new AppException(ExceptionCodes.PageNotFound);
-
-        if (!HasViewPermissionForPage(page))
-            throw new AppPermissionException();
-
+        var page = await _pageRepository.GetById(id, cancellationToken) ?? throw new AppException(ExceptionCodes.PageNotFound);
+        if(!Current.IsInRole(page.ViewRoleIds)) throw new AppPermissionException();
         return page;
     }
 
-    private bool HasViewPermissionForPage(Page page)
+    public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
     {
-        var permission = Current.IsInRole(page.ViewRoleIds);
-        permission = permission || Current.IsInRole(page.ViewRoleIds);
-        permission = permission || Current.IsInRole(page.AdminRoleIds);
-        return permission;
+        var pages = await _pageRepository.GetBySiteId(siteId, cancellationToken) ?? throw new AppException(ExceptionCodes.PageNotFound);
+        return pages.Where(x => Current.IsInRole(x.ViewRoleIds)); ;
     }
 
-    public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
+    public async Task<Page> Update(Page page, CancellationToken cancellationToken = default)
     {
-        // TODO: check permissions, only admins can create a page
-        // Except for the first site, which is created by the system
-        CheckCreatePermission();
-
-        // normalizing the page path to lowercase
-        NormalizePath(page);
-        await CheckForDuplicatePath(page);
-
-        page.CreatedBy = Current?.User?.UserName ?? string.Empty;
-        page.LastUpdatedBy = Current?.User?.UserName ?? string.Empty;
-
-        var newPage = await _pageRepository.Create(page, cancellationToken);
-        return newPage ?? throw new AppException(ExceptionCodes.PageUnableToCreate);
+        var previousPage = await _pageRepository.GetById(page.Id, cancellationToken) ?? throw new AppException(ExceptionCodes.PageNotFound);
+        if (!IsPageAdmin(previousPage)) throw new AppPermissionException(); // we should check previous roles
+        await BlockDuplicatePath(page);
+        return await _pageRepository.Update(page, cancellationToken) ?? throw new AppException(ExceptionCodes.HostUnableToUpdate);
     }
 
-    private void CheckCreatePermission()
+    private async Task BlockDuplicatePath(Page page)
     {
-        if (Current.IsInRole(Current.Site.AdminRoleIds))
-        {
-            throw new AppPermissionException();
-        }
-    }
-
-    private async Task CheckForDuplicatePath(Page page)
-    {
-        // check if the page path is unique
-        var samePathPage = await _pageRepository.GetByPath(page.Path);
-        if (samePathPage != null && samePathPage?.Id != page.Id)
+        var matchingPath = await _pageRepository.GetByPath(page.Path);
+        if(matchingPath != null && matchingPath.Id != page.Id)
         {
             throw new AppException(ExceptionCodes.PagePathMustBeUnique);
         }
     }
 
-    public async Task<Page> Update(Page page, CancellationToken cancellationToken = default)
+    private bool IsPageAdmin(Page page)
     {
-        // TODO: check permissions, only admins can create a page
-        // Except for the first site, which is created by the system
-        CheckPageOrAdminPermission(page);
-        // normalizing the page path to lowercase
-        NormalizePath(page);
-
-        // check if the page path is unique
-        await CheckForDuplicatePath(page);
-
-        var newPage = await _pageRepository.Update(page, cancellationToken);
-        return newPage ?? throw new AppException(ExceptionCodes.PageUnableToUpdate);
-    }
-
-    private void CheckPageOrAdminPermission(Page page)
-    {
-        if (!Current.IsInRole(Current.Site.AdminRoleIds) && !Current.IsInRole(page.AdminRoleIds))
-            throw new AppPermissionException();
-    }
-
-    // TODO: should we replace space with - or _?
-    private static void NormalizePath(Page page)
-    {
-        page.Path = page.Path.Trim().Replace(" ", "-").ToLower();
-    }
-
-    public Task Delete(Page page, CancellationToken cancellationToken = default)
-    {
-        CheckPageOrAdminPermission(page);
-        return _pageRepository.Delete(page.Id, cancellationToken)
-            ?? throw new AppException(ExceptionCodes.PageUnableToDelete);
+        return Current.IsSiteAdmin || Current.IsInRole(page.AdminRoleIds);
     }
 }
