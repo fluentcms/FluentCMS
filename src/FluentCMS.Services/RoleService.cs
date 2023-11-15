@@ -43,7 +43,7 @@ public class RoleService : BaseService<Role>, IRoleService
     {
         var site = await _siteRepository.GetById(role.SiteId, cancellationToken);
 
-        if (!Current.IsInRole(site.AdminRoleIds))
+        if (!Current.IsInRole(site?.AdminRoleIds ?? []))
             throw new Exception("Only admin can create a role.");
 
         PrepareForCreate(role);
