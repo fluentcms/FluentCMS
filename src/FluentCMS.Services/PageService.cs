@@ -38,14 +38,14 @@ public class PageService : BaseService<Page>, IPageService
     public async Task<Page> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var page = await _pageRepository.GetById(id, cancellationToken) ?? throw new AppException(ExceptionCodes.PageNotFound);
-        if(!Current.IsInRole(page.ViewRoleIds)) throw new AppPermissionException();
+        if (!Current.IsInRole(page.ViewRoleIds)) throw new AppPermissionException();
         return page;
     }
 
     public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
     {
         var pages = await _pageRepository.GetBySiteId(siteId, cancellationToken) ?? throw new AppException(ExceptionCodes.PageNotFound);
-        return pages.Where(x => Current.IsInRole(x.ViewRoleIds)); ;
+        return pages.Where(x => Current.IsInRole(x.ViewRoleIds));
     }
 
     public async Task<Page> Update(Page page, CancellationToken cancellationToken = default)
@@ -59,7 +59,7 @@ public class PageService : BaseService<Page>, IPageService
     private async Task BlockDuplicatePath(Page page)
     {
         var matchingPath = await _pageRepository.GetByPath(page.Path);
-        if(matchingPath != null && matchingPath.Id != page.Id)
+        if (matchingPath != null && matchingPath.Id != page.Id)
         {
             throw new AppException(ExceptionCodes.PagePathMustBeUnique);
         }

@@ -26,11 +26,11 @@ public class CurrentTestContext : ICurrentContext
     public User? User { get; set; }
     public List<Guid> RoleIds { get; set; } = [];
     public required Host Host { get; set; }
-    public required Site Site { get; set; }
     public string UserName => User?.UserName ?? string.Empty;
     public bool IsAuthenticated => !string.IsNullOrEmpty(UserName);
     public bool IsSuperAdmin => Host.SuperUsers.Contains(UserName);
 
+    public required Site Site { get; set; }
     public bool IsSiteAdmin => IsInRole(Site.AdminRoleIds);
 
     public bool IsInRole(Guid roleId)
