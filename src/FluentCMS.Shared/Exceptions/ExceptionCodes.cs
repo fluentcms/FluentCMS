@@ -37,5 +37,12 @@ public class ExceptionCodes
     public const string PagePathMustBeUnique = "Page.PathMustBeUnique";
     public const string PageNotFound = "Page.NotFound";
 
+
+    #endregion
+
+    #region Site
+
+    public const string SiteNotFound = "Site.NotFound";
+
     #endregion
 }

@@ -1,6 +1,7 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories.Abstractions;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Policy;
 
 namespace FluentCMS.Services;
 
@@ -16,14 +17,19 @@ public interface IPageService
 public class PageService : BaseService<Page>, IPageService
 {
     private readonly IPageRepository _pageRepository;
+    private readonly ISiteRepository _siteRepository;
 
-    public PageService(IApplicationContext applicationContext, IPageRepository pageRepository) : base(applicationContext)
+    public PageService(IApplicationContext applicationContext, IPageRepository pageRepository, ISiteRepository siteRepository) : base(applicationContext)
     {
         _pageRepository = pageRepository;
+        _siteRepository = siteRepository;
     }
 
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
     {
+        // this will setup ApplicationContext.Site maybe we should move this method to ApplicationContext look at https://github.com/abpframework/abp/blob/5a2765f8cfff2d5db94460151ce7b3d123d3ef2f/framework/src/Volo.Abp.MultiTenancy/Volo/Abp/MultiTenancy/CurrentTenant.cs#L6
+        await SetSiteContext(page.SiteId);
+
         // Block users with roles lower than "SiteAdmin" from creating a page
         if (!Current.IsSiteAdmin)
             throw new AppPermissionException();
@@ -34,10 +40,20 @@ public class PageService : BaseService<Page>, IPageService
         await BlockDuplicatePath(page);
 
         return await _pageRepository.Create(page, cancellationToken) ?? throw new AppException(ExceptionCodes.PageUnableToCreate);
+
+    }
+
+    private async Task SetSiteContext(Guid siteId)
+    {
+        var site = await _siteRepository.GetById(siteId) ?? throw new AppException(ExceptionCodes.SiteNotFound);
+        Current.Site = site;
     }
 
     public async Task Delete(Page page, CancellationToken cancellationToken = default)
     {
+        // this will setup ApplicationContext.Site maybe we should move this method to ApplicationContext look at https://github.com/abpframework/abp/blob/5a2765f8cfff2d5db94460151ce7b3d123d3ef2f/framework/src/Volo.Abp.MultiTenancy/Volo/Abp/MultiTenancy/CurrentTenant.cs#L6
+        await SetSiteContext(page.SiteId);
+
         // make sure that we are checking permissions from database, not the data that user has sent
         var previousPage = await _pageRepository.GetById(page.Id, cancellationToken) ?? throw new AppException(ExceptionCodes.PageNotFound);
 
@@ -46,12 +62,17 @@ public class PageService : BaseService<Page>, IPageService
             throw new AppPermissionException();
 
         _ = await _pageRepository.Delete(page.Id, cancellationToken) ?? throw new AppException(ExceptionCodes.PageUnableToDelete);
+
     }
 
 
     public async Task<Page> GetById(Guid id, CancellationToken cancellationToken = default)
     {
+
         var page = await _pageRepository.GetById(id, cancellationToken) ?? throw new AppException(ExceptionCodes.PageNotFound);
+
+        // this will setup ApplicationContext.Site maybe we should move this method to ApplicationContext look at https://github.com/abpframework/abp/blob/5a2765f8cfff2d5db94460151ce7b3d123d3ef2f/framework/src/Volo.Abp.MultiTenancy/Volo/Abp/MultiTenancy/CurrentTenant.cs#L6
+        await SetSiteContext(page.SiteId);
 
         // check if the page has restricted view roles, and if the user is not in those roles, and user is not a site admin
         if (!page.ViewRoleIds.IsNullOrEmpty() &&
@@ -66,6 +87,9 @@ public class PageService : BaseService<Page>, IPageService
 
     public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
     {
+        // this will setup ApplicationContext.Site maybe we should move this method to ApplicationContext look at https://github.com/abpframework/abp/blob/5a2765f8cfff2d5db94460151ce7b3d123d3ef2f/framework/src/Volo.Abp.MultiTenancy/Volo/Abp/MultiTenancy/CurrentTenant.cs#L6
+        await SetSiteContext(siteId);
+
         var pages = await _pageRepository.GetBySiteId(siteId, cancellationToken) ?? throw new AppException(ExceptionCodes.PageNotFound);
 
         // filter pages based on the user roles
@@ -77,6 +101,10 @@ public class PageService : BaseService<Page>, IPageService
     {
         // make sure that we are checking permissions from database, not the data that user has sent
         var previousPage = await _pageRepository.GetById(page.Id, cancellationToken) ?? throw new AppException(ExceptionCodes.PageNotFound);
+
+        // this will setup ApplicationContext.Site maybe we should move this method to ApplicationContext look at https://github.com/abpframework/abp/blob/5a2765f8cfff2d5db94460151ce7b3d123d3ef2f/framework/src/Volo.Abp.MultiTenancy/Volo/Abp/MultiTenancy/CurrentTenant.cs#L6
+        await SetSiteContext(previousPage.SiteId);
+
 
         if (!IsPageAdmin(previousPage))
             throw new AppPermissionException();
