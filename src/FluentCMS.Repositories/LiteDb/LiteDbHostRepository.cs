@@ -1,26 +1,44 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories.Abstractions;
+using LiteDB.Async;
 
 namespace FluentCMS.Repositories.LiteDb;
 
 public class LiteDbHostRepository : IHostRepository
 {
+    private readonly LiteDbContext _dbContext;
     public LiteDbHostRepository(LiteDbContext dbContext)
     {
+        _dbContext = dbContext;
     }
 
-    public Task<Host?> Create(Host host, CancellationToken cancellationToken = default)
+    private ILiteCollectionAsync<Host> Collection => _dbContext.Database.GetCollection<Host>(typeof(Host).Name);
+
+    public async Task<Host?> Create(Host host, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        cancellationToken.ThrowIfCancellationRequested();
+
+        host.Id = Guid.NewGuid();
+        host.CreatedAt = DateTime.UtcNow;
+        host.LastUpdatedAt = DateTime.UtcNow;
+
+        await Collection.InsertAsync(host);
+        return host;
     }
 
-    public Task<Host?> Get(CancellationToken cancellationToken = default)
+    public async Task<Host?> Get(CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var model = await Collection.FindOneAsync(x => true);
+        return model;
     }
 
-    public Task<Host?> Update(Host host, CancellationToken cancellationToken = default)
+    public async Task<Host?> Update(Host host, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        cancellationToken.ThrowIfCancellationRequested();
+
+        host.LastUpdatedAt = DateTime.UtcNow;
+        return await Collection.UpdateAsync(host) ? host : default;
     }
 }
