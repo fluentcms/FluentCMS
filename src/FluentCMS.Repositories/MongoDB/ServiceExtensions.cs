@@ -11,9 +11,14 @@ public static class MongoDbServiceExtensions
 {
     public static IServiceCollection AddMongoDbRepositories(this IServiceCollection services, string connectionString)
     {
-        if (BsonSerializer.LookupSerializer<decimal>() == null) BsonSerializer.RegisterSerializer(typeof(decimal), new DecimalSerializer(BsonType.Decimal128));
-        if (BsonSerializer.LookupSerializer<decimal?>() == null) BsonSerializer.RegisterSerializer(typeof(decimal?), new NullableSerializer<decimal>(new DecimalSerializer(BsonType.Decimal128)));
-        if (BsonSerializer.LookupSerializer<Guid>() == null) BsonSerializer.RegisterSerializer(typeof(Guid), new GuidSerializer(GuidRepresentation.Standard));
+        if (BsonSerializer.LookupSerializer<decimal>() == null)
+            BsonSerializer.RegisterSerializer(typeof(decimal), new DecimalSerializer(BsonType.Decimal128));
+
+        if (BsonSerializer.LookupSerializer<decimal?>() == null)
+            BsonSerializer.RegisterSerializer(typeof(decimal?), new NullableSerializer<decimal>(new DecimalSerializer(BsonType.Decimal128)));
+
+        if (BsonSerializer.LookupSerializer<Guid>() == null)
+            BsonSerializer.RegisterSerializer(typeof(Guid), new GuidSerializer(GuidRepresentation.Standard));
 
         // TODO: if we remove this line, Id queries will not work
         BsonDefaults.GuidRepresentation = GuidRepresentation.Standard;
