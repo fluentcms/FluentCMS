@@ -10,7 +10,7 @@ public interface IRoleService
     Task<Role> GetById(Guid siteId, Guid id, CancellationToken cancellationToken = default);
     Task<Role> Create(Role role, CancellationToken cancellationToken = default);
     Task<Role> Update(Role role, CancellationToken cancellationToken = default);
-    Task Delete(Role role, CancellationToken cancellationToken = default);
+    Task Delete(Guid siteId, Guid id, CancellationToken cancellationToken = default);
 }
 
 public class RoleService(RoleManager<Role> roleManager, IApplicationContext appContext, ISiteRepository siteRepository) : BaseService<Role>(appContext), IRoleService
@@ -85,13 +85,10 @@ public class RoleService(RoleManager<Role> roleManager, IApplicationContext appC
         return role;
     }
 
-    public async Task Delete(Role role, CancellationToken cancellationToken = default)
+    public async Task Delete(Guid siteId, Guid id, CancellationToken cancellationToken = default)
     {
-        var site = await GetSite(role.SiteId, cancellationToken);
-
-        // check if current user has admin access to the site
-        if (!Current.IsInRole(site.AdminRoleIds))
-            throw new AppPermissionException();
+        // permission will be checked inside GetById
+        var role = await GetById(siteId, id, cancellationToken);
 
         var idResult = await roleManager.DeleteAsync(role);
 
