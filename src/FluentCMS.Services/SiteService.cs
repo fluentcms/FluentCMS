@@ -80,9 +80,9 @@ public class SiteService : BaseService<Site>, ISiteService
         // normalizing the site URLs to lowercase
         site.Urls = site.Urls.Select(x => x.ToLower()).ToList();
 
-        // check if the site URLs are unique in all sites
-        if (await _siteRepository.CheckUrls(site.Urls, cancellationToken))
-            throw new ApplicationException("Site URLs must be unique");
+        //// check if the site URLs are unique in all sites
+        //if (await _siteRepository.CheckUrls(site.Urls, cancellationToken))
+        //    throw new ApplicationException("Site URLs must be unique");
 
         PrepareForUpdate(site);
 

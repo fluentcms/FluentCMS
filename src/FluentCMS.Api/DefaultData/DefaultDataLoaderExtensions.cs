@@ -40,22 +40,27 @@ public static class DefaultDataLoaderExtensions
                 Host = defaultData.Host
             };
 
-            // Super Admin creation
+            // Default users creation
             userService.Create(superUser, defaultData.SuperAdmin.Password).GetAwaiter().GetResult();
-
-            // Admin Role creation
-            roleService.Create(defaultData.AdminRole).GetAwaiter().GetResult();
-
-            // Admin creation
-            adminUser.RoleIds = [defaultData.AdminRole.Id];
             userService.Create(adminUser, defaultData.Admin.Password).GetAwaiter().GetResult();
 
             // Host creation
             hostService.Create(defaultData.Host).GetAwaiter().GetResult();
 
             // Site creation            
-            defaultData.Site.AdminRoleIds = [defaultData.AdminRole.Id];
             siteService.Create(defaultData.Site).GetAwaiter().GetResult();
+
+            // Admin Role creation
+            defaultData.AdminRole.SiteId = defaultData.Site.Id;
+            roleService.Create(defaultData.AdminRole).GetAwaiter().GetResult();
+
+            // Add admin role to admin user 
+            adminUser.RoleIds = [defaultData.AdminRole.Id];
+            userService.Update(adminUser).GetAwaiter().GetResult();
+
+            // Updating site with admin role
+            defaultData.Site.AdminRoleIds = [defaultData.AdminRole.Id];
+            siteService.Update(defaultData.Site).GetAwaiter().GetResult();
 
             // Pages creation: adding a few default pages
             foreach (var page in defaultData.Pages)
