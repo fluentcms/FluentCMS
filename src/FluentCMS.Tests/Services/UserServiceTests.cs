@@ -1,19 +1,40 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories;
 using FluentCMS.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
-
+    
 namespace FluentCMS.Tests.Services;
 public class UserServiceTests
 {
     private readonly IServiceProvider _serviceProvider;
     public UserServiceTests()
     {
+        var configurationBuilder = new ConfigurationBuilder();
+        //"Jwt": {
+        //  "Issuer": "https://localhost:44352",
+        //  "Audience": "https://localhost:44352",
+        //  "TokenExpiry": 3600, // seconds
+        //  "RefreshTokenExpiry": 36000, // seconds
+        //  "Secret": "THIS SHOULD BE A LONG COMPLEX SECRET KEY, CHANGE THIS IN PRODUCTION!"
+        //}
+        configurationBuilder.AddInMemoryCollection(new KeyValuePair<string, string?>[]
+        {
+            new ("JWT:Issuer","https://localhost:44352"),
+            new ("JWT:Audience","https://localhost:44352"),
+            new ("JWT:TokenExpiry","3600"),
+            new ("JWT:RefreshTokenExpiry","36000"),
+            new ("JWT:Secret","THIS SHOULD BE A LONG COMPLEX SECRET KEY, CHANGE THIS IN PRODUCTION!"),
+        }) ;
+        var configuration = configurationBuilder.Build();
         var services = new ServiceCollection();
         services
-            .AddApplicationServices();
-        //.AddLiteDbInMemoryRepository();
+            .AddApplicationServices()
+            .AddInMemoryLiteDbRepositories();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddJwtTokenProvider(configuration);
+        services.AddDataProtection();
         _serviceProvider = services.BuildServiceProvider();
     }
 
@@ -30,7 +51,7 @@ public class UserServiceTests
             Email = "TestUser",
             UserName = username,
             RoleIds = [],
-        }, "password");
+        }, "1234Abcd%");
 
         var loadedUser = await userService.GetByUsername(username);
         loadedUser.ShouldNotBeNull();
