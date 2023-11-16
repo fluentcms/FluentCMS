@@ -45,8 +45,7 @@ public class RoleController(IMapper mapper, IRoleService roleService) : BaseCont
     [HttpDelete]
     public async Task<BooleanResponse> Delete(IdRequest request, CancellationToken cancellationToken = default)
     {
-        var role = await roleService.GetById(request.SiteId, request.Id, cancellationToken);
-        await roleService.Delete(role, cancellationToken);
+        await roleService.Delete(request.SiteId, request.Id, cancellationToken);
         return new BooleanResponse(true);
     }
 }
