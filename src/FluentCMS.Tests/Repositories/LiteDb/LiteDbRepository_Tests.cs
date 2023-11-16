@@ -117,9 +117,9 @@ public class LiteDbRepository_Tests
         dbEntities.All(x => x.Id == firstGuid).ShouldBeTrue();
     }
 
-    private static LiteDbGenericRepository<DummyEntity> GetInstance()
+    private static GenericRepository<DummyEntity> GetInstance()
     {
         var liteDbContext = new LiteDbContext(Options.Create(new LiteDbOptions()));
-        return new LiteDbGenericRepository<DummyEntity>(liteDbContext);
+        return new GenericRepository<DummyEntity>(liteDbContext);
     }
 }

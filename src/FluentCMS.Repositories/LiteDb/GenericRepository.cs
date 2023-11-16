@@ -5,14 +5,14 @@ using System.Linq.Expressions;
 
 namespace FluentCMS.Repositories.LiteDb;
 
-public class LiteDbGenericRepository<TEntity> : IGenericRepository<TEntity>
+public class GenericRepository<TEntity> : IGenericRepository<TEntity>
     where TEntity : IEntity
 {
     protected ILiteCollectionAsync<TEntity> Collection { get; }
     protected ILiteCollectionAsync<BsonDocument> BsonCollection { get; }
     protected LiteDbContext DbContext { get; private set; }
 
-    public LiteDbGenericRepository(LiteDbContext dbContext)
+    public GenericRepository(LiteDbContext dbContext)
     {
         DbContext = dbContext;
         Collection = dbContext.Database.GetCollection<TEntity>(GetCollectionName());

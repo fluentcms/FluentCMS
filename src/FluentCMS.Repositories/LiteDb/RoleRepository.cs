@@ -3,9 +3,9 @@ using LiteDB.Queryable;
 
 namespace FluentCMS.Repositories.LiteDb;
 
-internal class LiteDbRoleRepository : LiteDbGenericRepository<Role>, IRoleRepository
+internal class RoleRepository : GenericRepository<Role>, IRoleRepository
 {
-    public LiteDbRoleRepository(LiteDbContext dbContext) : base(dbContext)
+    public RoleRepository(LiteDbContext dbContext) : base(dbContext)
     {
     }
 
