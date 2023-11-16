@@ -1,5 +1,4 @@
 ﻿using FluentCMS.Entities;
-using FluentCMS.Repositories.Abstractions;
 using LiteDB.Async;
 
 namespace FluentCMS.Repositories.LiteDb;

@@ -1,5 +1,5 @@
-﻿using FluentCMS.Repositories.Abstractions;
-using FluentCMS.Repositories.MongoDb;
+﻿using FluentCMS.Repositories;
+using FluentCMS.Repositories.MongoDB;
 using Microsoft.Extensions.Configuration;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
@@ -26,18 +26,18 @@ public static class MongoDbServiceExtensions
 
             return connString is null
                 ? throw new InvalidOperationException($"Connection string '{connectionString}' not found.")
-                : new MongoDbOptions<MongoDbContext>(connString);
+                : new MongoDBOptions<MongoDBContext>(connString);
         });
 
-        services.AddSingleton<IMongoDBContext, MongoDbContext>();
+        services.AddSingleton<IMongoDBContext, MongoDBContext>();
 
-        services.AddScoped(typeof(IGenericRepository<>), typeof(MongoDbGenericRepository<>));
+        services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
-        services.AddScoped<ISiteRepository, MongoDbSiteRepository>();
-        services.AddScoped<IPageRepository, MongoDbPageRepository>();
-        services.AddScoped<IHostRepository, MongoDbHostRepository>();
-        services.AddScoped<IUserRepository, MongoDbUserRepository>();
-        services.AddScoped<IRoleRepository, MongoDbRoleRepository>();
+        services.AddScoped<ISiteRepository, SiteRepository>();
+        services.AddScoped<IPageRepository, PageRepository>();
+        services.AddScoped<IHostRepository, HostRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
 
         return services;
     }

@@ -1,12 +1,11 @@
 ﻿using FluentCMS.Entities;
-using FluentCMS.Repositories.Abstractions;
 using MongoDB.Driver;
 
-namespace FluentCMS.Repositories.MongoDb;
+namespace FluentCMS.Repositories.MongoDB;
 
-public class MongoDbPageRepository : MongoDbGenericRepository<Page>, IPageRepository
+public class PageRepository : GenericRepository<Page>, IPageRepository
 {
-    public MongoDbPageRepository(IMongoDBContext mongoDbContext) : base(mongoDbContext)
+    public PageRepository(IMongoDBContext mongoDbContext) : base(mongoDbContext)
     {
     }
 

@@ -1,5 +1,5 @@
 ﻿using FluentCMS.Entities;
-using FluentCMS.Repositories.Abstractions;
+using FluentCMS.Repositories;
 using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Services;
@@ -41,10 +41,10 @@ public class RoleService : BaseService<Role>, IRoleService
 
     public async Task<Role> Create(Role role, CancellationToken cancellationToken)
     {
-        var site = await _siteRepository.GetById(role.SiteId, cancellationToken);
+        //var site = await _siteRepository.GetById(role.SiteId, cancellationToken);
 
-        if (!Current.IsInRole(site?.AdminRoleIds ?? []))
-            throw new Exception("Only admin can create a role.");
+        //if (!Current.IsInRole(site?.AdminRoleIds ?? []))
+        //    throw new Exception("Only admin can create a role.");
 
         PrepareForCreate(role);
 
@@ -57,13 +57,13 @@ public class RoleService : BaseService<Role>, IRoleService
 
     public async Task<Role> Update(Role role, CancellationToken cancellationToken)
     {
-        var site = await _siteRepository.GetById(role.SiteId, cancellationToken);
+        //var site = await _siteRepository.GetById(role.SiteId, cancellationToken);
 
-        if (role.SiteId != site.Id)
-            throw new Exception("Role must be updated for the current site.");
+        //if (role.SiteId != site.Id)
+        //    throw new Exception("Role must be updated for the current site.");
 
-        if (!Current.IsInRole(site.AdminRoleIds))
-            throw new Exception("Only admin can update a role.");
+        //if (!Current.IsInRole(site.AdminRoleIds))
+        //    throw new Exception("Only admin can update a role.");
 
         PrepareForUpdate(role);
 
@@ -76,10 +76,10 @@ public class RoleService : BaseService<Role>, IRoleService
 
     public async Task Delete(Role role, CancellationToken cancellationToken = default)
     {
-        var site = await _siteRepository.GetById(role.SiteId, cancellationToken);
+        //var site = await _siteRepository.GetById(role.SiteId, cancellationToken);
 
-        if (!Current.IsInRole(site.AdminRoleIds))
-            throw new Exception("Only admin can update a role.");
+        //if (!Current.IsInRole(site.AdminRoleIds))
+        //    throw new Exception("Only admin can update a role.");
 
         var idResult = await RoleManager.DeleteAsync(role);
 

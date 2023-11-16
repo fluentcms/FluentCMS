@@ -1,5 +1,5 @@
 ﻿using FluentCMS.Entities;
-using FluentCMS.Repositories.Abstractions;
+using FluentCMS.Repositories;
 using FluentCMS.Services;
 using FluentCMS.Tests.Helpers.ApplicationContext;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,7 +18,6 @@ public class PageService_Tests
             .AddTestApplicationContext();
         _serviceProvider = services.BuildServiceProvider();
     }
-
 
     [Fact]
     public async Task Should_CreatePage()

@@ -1,0 +1,44 @@
+{
+    "Host": {
+        "SuperUsers": [ "superadmin" ]
+    },
+    "SuperAdmin": {
+        "Username": "superadmin",
+        "Password": "Passw0rd!",
+        "Email": "superadmin@example.com"
+    },
+    "Admin": {
+        "Username": "admin",
+        "Password": "Passw0rd!",
+        "Email": "admin@example.com"
+    },
+    "Site": {
+        "Name": "My First Site",
+        "Description": "This is my first site",
+        "Urls": [ "http://www.myfirstsite.com" ]
+    },
+    "AdminRole": {
+        "Name": "Administrators",
+        "Description": "Administrator roles for the site"
+    },
+    "Pages": [
+        {
+            "Title": "Home",
+            "Description": "This is my home page",
+            "Path": "/",
+            "Order": 0
+        },
+        {
+            "Title": "About me",
+            "Description": "This is about me page",
+            "Path": "/about-me",
+            "Order": 1
+        },
+        {
+            "Title": "Contact me",
+            "Description": "This is contact me page",
+            "Path": "/contact",
+            "Order": 2
+        }
+    ]
+}

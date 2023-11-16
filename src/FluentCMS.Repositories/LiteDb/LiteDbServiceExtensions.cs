@@ -1,4 +1,4 @@
-﻿using FluentCMS.Repositories.Abstractions;
+﻿using FluentCMS.Repositories;
 using FluentCMS.Repositories.LiteDb;
 using Microsoft.Extensions.Configuration;
 

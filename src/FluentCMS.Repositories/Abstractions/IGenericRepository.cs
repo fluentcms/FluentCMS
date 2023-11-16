@@ -1,6 +1,6 @@
 ﻿using FluentCMS.Entities;
 
-namespace FluentCMS.Repositories.Abstractions;
+namespace FluentCMS.Repositories;
 
 public interface IGenericRepository<TEntity>
     where TEntity : IEntity
