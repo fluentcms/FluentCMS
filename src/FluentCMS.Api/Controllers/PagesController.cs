@@ -55,8 +55,7 @@ public class PagesController : BaseController
     [HttpDelete("{id}")]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
     {
-        var page = await _pageService.GetById(id);
-        await _pageService.Delete(page);
+        await _pageService.Delete(id);
         return new ApiResult<bool>(true);
     }
 }
