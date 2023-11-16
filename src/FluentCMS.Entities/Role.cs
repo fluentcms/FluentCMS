@@ -10,7 +10,7 @@ public class Role : IdentityRole<Guid>, IAuditEntity
     public DateTime LastUpdatedAt { get; set; }
 
     public Guid SiteId { get; set; }
-    public string Description { get; set; } = default!;
+    public string? Description { get; set; }
 
     public Role()
     {

@@ -4,7 +4,7 @@ namespace FluentCMS.Api.Models;
 
 public class RoleUpdateRequest : RoleCreateRequest
 {
-    public required Guid Id { get; set; }
+    public Guid Id { get; set; }
 }
 
 public class RoleUpdateRequestValidator : AbstractValidator<RoleUpdateRequest>

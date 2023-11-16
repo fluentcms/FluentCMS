@@ -1,20 +1,14 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories;
 using Microsoft.AspNetCore.Identity;
-using System.Security.Claims;
 
 namespace FluentCMS.Services.Identity.Stores;
 
-public class RoleStore : IRoleClaimStore<Role>, IQueryableRoleStore<Role>
+public class RoleStore(IRoleRepository repository) : IQueryableRoleStore<Role>
 {
-    private readonly IRoleRepository _repository;
+    private readonly IRoleRepository _repository = repository;
 
     public IQueryable<Role> Roles => _repository.AsQueryable();
-
-    public RoleStore(IRoleRepository repository)
-    {
-        _repository = repository;
-    }
 
     public async Task<IdentityResult> CreateAsync(Role role, CancellationToken cancellationToken)
     {
@@ -84,21 +78,6 @@ public class RoleStore : IRoleClaimStore<Role>, IQueryableRoleStore<Role>
         cancellationToken.ThrowIfCancellationRequested();
 
         return _repository.FindByName(normalizedRoleName, cancellationToken);
-    }
-
-    public Task<IList<Claim>> GetClaimsAsync(Role role, CancellationToken cancellationToken = default)
-    {
-        return Task.FromResult(new List<Claim>() as IList<Claim>);
-    }
-
-    public Task AddClaimAsync(Role role, Claim claim, CancellationToken cancellationToken = default)
-    {
-        return Task.CompletedTask;
-    }
-
-    public Task RemoveClaimAsync(Role role, Claim claim, CancellationToken cancellationToken = default)
-    {
-        return Task.CompletedTask;
     }
 
     protected virtual void Dispose(bool disposing)
