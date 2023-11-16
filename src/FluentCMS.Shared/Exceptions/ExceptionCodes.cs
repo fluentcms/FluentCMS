@@ -29,4 +29,27 @@ public class ExceptionCodes
 
     #endregion
 
+    #region Page
+
+    public const string PageUnableToCreate = "Page.UnableToCreated";
+    public const string PageUnableToUpdate = "Page.UnableToUpdate";
+    public const string PageUnableToDelete = "Page.UnableToDelete";
+    public const string PagePathMustBeUnique = "Page.PathMustBeUnique";
+    public const string PageNotFound = "Page.NotFound";
+    public const string PageParentPageNotFound = "Page.ParentPageNotFound";
+    public const string PageParentMustBeOnTheSameSite = "Page.ParentMustBeOnTheSameSite";
+    public const string PageUrlNotUnique = "Page.UrlNotUnique";
+    public const string PageViewPermissionsAreNotASubsetOfParent = "Page.ViewPermissionsAreNotASubsetOfParent";
+    public const string PageSiteIdCannotBeChanged = "Page.SiteIdCannotBeChanged";
+    public const string PageHasChildren = "Page.PageHasChildren";
+
+
+    #endregion
+
+    #region Site
+
+    public const string SiteNotFound = "Site.NotFound";
+
+
+    #endregion
 }

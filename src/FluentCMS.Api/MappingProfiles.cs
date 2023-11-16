@@ -20,6 +20,20 @@ public class MappingProfiles : Profile
         // Page
         CreateMap<Page, PageResponse>();
 
+        CreateMap<List<Page>, List<PageResponse>>().ConstructUsing((x, ctx) =>
+        {
+            return MapPagesWithParentId(x, ctx, null,"");
+            static List<PageResponse> MapPagesWithParentId(List<Page> x, ResolutionContext ctx, Guid? parentId, string pathPrefix)
+            {
+                var items = ctx.Mapper.Map<List<PageResponse>>(x.Where(x => x.ParentId == parentId));
+                foreach (var item in items)
+                {
+                    item.Path = string.Join("/", pathPrefix , item.Path);
+                    item.Children = MapPagesWithParentId(x, ctx, item.Id, item.Path);
+                }
+                return items.ToList();
+            }
+        });
         // User
         //CreateMap<User, UserResponse>()
         //    .ForMember(x => x.UserRoles, cfg => cfg.MapFrom(y => y.UserRoles.Select(z => z.RoleId.ToString())));

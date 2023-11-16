@@ -10,12 +10,6 @@ public class MongoDbPageRepository : MongoDbGenericRepository<Page>, IPageReposi
     {
     }
 
-    public Task<IEnumerable<Page>> GetByParentId(Guid id)
-    {
-        // TODO: implement here
-        return Task.FromResult<IEnumerable<Page>>([]);
-    }
-
     public Task<Page> GetByPath(string path)
     {
         // TODO: implement here

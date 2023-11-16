@@ -3,8 +3,10 @@ using FluentCMS.Repositories;
 using FluentCMS.Repositories.Abstractions;
 using FluentCMS.Repositories.LiteDb;
 using FluentCMS.Services;
+using FluentCMS.Tests.Helpers.ApplicationContext;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace FluentCMS.Tests.Services;
 public class PageService_Tests
@@ -15,7 +17,8 @@ public class PageService_Tests
     {
         var services = new ServiceCollection();
         services.AddApplicationServices()
-            .AddInMemoryLiteDbRepositories();
+            .AddInMemoryLiteDbRepositories()
+            .AddTestApplicationContext();
         _serviceProvider = services.BuildServiceProvider();
     }
 
@@ -23,9 +26,12 @@ public class PageService_Tests
     [Fact]
     public async Task Should_CreatePage()
     {
-        var pageService = _serviceProvider.GetRequiredService<IPageService>();
-        var pageRepository = _serviceProvider.GetRequiredService<IPageRepository>();
-        Guid siteId = Guid.NewGuid();
+        var a = _serviceProvider.GetRequiredService<IApplicationContext>();
+        var scope = _serviceProvider.CreateScope();
+        var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
+        var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
+        scope.SetupMockApplicationContextForAdminUser();
+        Guid siteId = ApplicationContextDefaults.DefaultSite.Id;
         var page = new Page() { Title = "test", SiteId = siteId, Path = "/test" };
         await pageService.Create(page);
         var result = await pageRepository.GetById(page.Id);
@@ -35,14 +41,27 @@ public class PageService_Tests
         result.Path.ShouldBe("/test");
         result.Order.ShouldBe(0);
     }
+    [Fact]
+    public async Task ShouldNot_CreatePage_NonAdminUser()
+    {
+        var scope = _serviceProvider.CreateScope();
+        var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
+        var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
+        scope.SetupMockApplicationContextForNonAdminUser();
+        Guid siteId = ApplicationContextDefaults.DefaultSite.Id;
+        var page = new Page() { Title = "test", SiteId = siteId, Path = "/test" };
+        await pageService.Create(page).ShouldThrowAsync<Exception>();
+    }
 
     [Fact]
     public async Task Should_UpdatePage()
     {
-        var pageService = _serviceProvider.GetRequiredService<IPageService>();
-        var pageRepository = _serviceProvider.GetRequiredService<IPageRepository>();
-        Guid siteId = Guid.NewGuid();
+        var scope = _serviceProvider.CreateScope();
+        var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
+        var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
+        Guid siteId = ApplicationContextDefaults.DefaultSite.Id;
         var page = new Page() { Title = "test", SiteId = siteId, Path = "/test" };
+        scope.SetupMockApplicationContextForAdminUser();
         await pageService.Create(page);
         var dbEntity = await pageRepository.GetById(page.Id);
         dbEntity.ShouldNotBeNull();
@@ -57,12 +76,26 @@ public class PageService_Tests
     }
 
     [Fact]
+    public async Task ShouldNot_UpdatePage_NonAdminUser()
+    {
+        var scope = _serviceProvider.CreateScope();
+        var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
+        var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
+        Guid siteId = ApplicationContextDefaults.DefaultSite.Id;
+        scope.SetupMockApplicationContextForNonAdminUser();
+        var page = new Page() { Title = "test", SiteId = siteId, Path = "/test" };
+        await pageService.Create(page).ShouldThrowAsync<Exception>();
+    }
+
+    [Fact]
     public async Task ShouldNot_CreateOrUpdate_DuplicatePath()
     {
-        var pageService = _serviceProvider.GetRequiredService<IPageService>();
-        var pageRepository = _serviceProvider.GetRequiredService<IPageRepository>();
-        Guid siteId = Guid.NewGuid();
+        var scope = _serviceProvider.CreateScope();
+        var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
+        var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
+        Guid siteId = ApplicationContextDefaults.DefaultSite.Id;
         var page = new Page() { Title = "test", SiteId = siteId, Path = "/test" };
+        scope.SetupMockApplicationContextForAdminUser();
         await pageService.Create(page);
         Guid siteId2 = Guid.NewGuid();
         var duplciatePage = new Page() { Title = "test2", SiteId = siteId2, Path = "/test" };
