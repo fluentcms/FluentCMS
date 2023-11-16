@@ -138,6 +138,199 @@ public class PageService_Tests
         var duplciatePage = new Page() { Title = "test2", SiteId = siteId2, Path = "/test" };
         var taskToCreateDuplicatePage = pageService.Create(duplciatePage);
         await taskToCreateDuplicatePage.ShouldThrowAsync<ApplicationException>();
+    }
 
+
+    [Fact]
+    public async Task ShouldNot_CreateChildOnOtherSite()
+    {
+        var scope = _serviceProvider.CreateScope();
+
+        //Seed Test Site and Host to InMemory Db
+        _ = await SeedDefaultHost(scope);
+        var defaultSite = await SeedDefaultSite(scope);
+
+        // setup other site
+        var siteRepository = scope.ServiceProvider.GetRequiredService<ISiteRepository>();
+        var otherSite = await siteRepository.Create(new Site() { Id=Guid.NewGuid(), Name="OtherSite" });
+
+        //create parent page
+        var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
+        var parentPage = await pageRepository.Create(new Page() { Title="ParentPage",Path = "parent" ,SiteId = otherSite.Id});
+
+        // try to create child
+        scope.SetupMockApplicationContextForSuperUser();
+        var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
+        var exception = await pageService.Create(new Page() { Title = "ChildPage", Path = "child-page", ParentId = parentPage.Id, SiteId = defaultSite.Id })
+                                         .ShouldThrowAsync<AppException>();
+
+        //Check ErrorCode
+        exception.Errors.ShouldContain(x => x.Code == ExceptionCodes.PageParentMustBeOnTheSameSite);
+    }
+
+    [Fact]
+    public async Task ShouldNot_AllowRecursiveMatchingUrls()
+    {
+        var scope = _serviceProvider.CreateScope();
+
+        //Seed Test Site and Host to InMemory Db
+        _ = await SeedDefaultHost(scope);
+        var defaultSite = await SeedDefaultSite(scope);
+
+
+        //create parent page
+        var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
+        var parentPage = await pageRepository.Create(new Page() {Id = Guid.NewGuid(), Title = "ParentPage", Path = "parent", SiteId = defaultSite.Id });
+
+        // create a child
+        var childPage = await pageRepository.Create(new Page()
+        {
+            Id = Guid.NewGuid(),
+            Title = "ChildPage",
+            Path = "child-page",
+            ParentId = parentPage!.Id,
+            SiteId = defaultSite.Id
+        });
+
+        // try to create child with the same path
+        scope.SetupMockApplicationContextForSuperUser();
+        var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
+        var exception = await pageService.Create(new Page()
+        {
+            Id = Guid.NewGuid(),
+            Title = "ChildPage",
+            Path = "child-page",
+            ParentId = parentPage!.Id,
+            SiteId = defaultSite.Id
+        }).ShouldThrowAsync<AppException>();
+
+        //Check ErrorCode
+        exception.Errors.ShouldContain(x => x.Code == ExceptionCodes.PagePathMustBeUnique);
+
+        // try to create a child with matching path recursively 
+        var secondException = await pageService.Create(new Page()
+        {
+            Title = "ChildPage",
+            Path = "parent/child-page",
+            SiteId = defaultSite.Id
+        }).ShouldThrowAsync<AppException>();
+
+        //Check ErrorCode
+        secondException.Errors.ShouldContain(x => x.Code == ExceptionCodes.PagePathMustBeUnique);
+
+    }
+
+    [Fact]
+    public async Task ShouldNot_AllowMoreThanParentPermission()
+    {
+        var scope = _serviceProvider.CreateScope();
+
+        //Seed Test Site and Host to InMemory Db
+        _ = await SeedDefaultHost(scope);
+        var defaultSite = await SeedDefaultSite(scope);
+
+        //roles To Use
+        var roles = Enumerable.Range(0,3).Select(_=>Guid.NewGuid()).ToArray();
+
+        //create parent page
+        var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
+        var parentPage = await pageRepository.Create(new Page()
+        {
+            Id = Guid.NewGuid(),
+            Title = "ParentPage",
+            Path = "parent",
+            SiteId = defaultSite.Id,
+            ViewRoleIds = [roles[0], roles[1]]
+        });
+
+        // try to create a child with more required permissions than parent
+        scope.SetupMockApplicationContextForSuperUser();
+        var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
+        var exception = await pageService.Create(new Page()
+        {
+            Id = Guid.NewGuid(),
+            Title = "ChildPage",
+            Path = "child-page",
+            ParentId = parentPage!.Id,
+            SiteId = defaultSite.Id,
+            ViewRoleIds = [roles[0], roles[1], roles[2]]
+        }).ShouldThrowAsync<AppException>();
+
+        exception.Errors.ShouldContain(x => x.Code == ExceptionCodes.PageViewPermissionsAreNotASubsetOfParent);
+    }
+
+    [Fact]
+    public async Task ShouldNot_AllowModificationOfSiteId()
+    {
+        var scope = _serviceProvider.CreateScope();
+
+        //Seed Test Site and Host to InMemory Db
+        _ = await SeedDefaultHost(scope);
+        var defaultSite = await SeedDefaultSite(scope);
+
+        // setup other site
+        var siteRepository = scope.ServiceProvider.GetRequiredService<ISiteRepository>();
+        var otherSite = await siteRepository.Create(new Site() { Id = Guid.NewGuid(), Name = "OtherSite" });
+
+        //roles To Use
+        var roles = Enumerable.Range(0, 3).Select(_ => Guid.NewGuid()).ToArray();
+
+        //create a page
+        var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
+        var page = await pageRepository.Create(new Page()
+        {
+            Id = Guid.NewGuid(),
+            Title = "ParentPage",
+            Path = "parent",
+            SiteId = defaultSite.Id,
+            ViewRoleIds = [roles[0], roles[1]]
+        });
+        // Try Modification of SiteId
+        scope.SetupMockApplicationContextForSuperUser();
+        var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
+        var pageToEdit =new Page()
+        {
+            Id = page!.Id,
+            Title = "ParentPage",
+            Path = "parent",
+            SiteId = otherSite!.Id,
+            ViewRoleIds = [roles[0], roles[1]]
+        };
+        var exception = await pageService.Update(pageToEdit).ShouldThrowAsync<AppException>();
+
+        exception.Errors.ShouldContain(x => x.Code == ExceptionCodes.PageSiteIdCannotBeChanged);
+
+    }
+
+    [Fact]
+    public async Task ShouldNot_AllowRemovalOfAParentPageWithChildren()
+    {
+        var scope = _serviceProvider.CreateScope();
+
+        //Seed Test Site and Host to InMemory Db
+        _ = await SeedDefaultHost(scope);
+        var defaultSite = await SeedDefaultSite(scope);
+
+
+        //create parent page
+        var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
+        var parentPage = await pageRepository.Create(new Page() { Id = Guid.NewGuid(), Title = "ParentPage", Path = "parent", SiteId = defaultSite.Id });
+
+        // create a child
+        var childPage = await pageRepository.Create(new Page()
+        {
+            Id = Guid.NewGuid(),
+            Title = "ChildPage",
+            Path = "child-page",
+            ParentId = parentPage!.Id,
+            SiteId = defaultSite.Id
+        });
+
+        //try to delete parent page
+        scope.SetupMockApplicationContextForSuperUser();
+        var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
+        var exception = await pageService.Delete(parentPage.Id).ShouldThrowAsync<AppException>();
+
+        exception.Errors.ShouldContain(x => x.Code == ExceptionCodes.PageHasChildren);
     }
 }
