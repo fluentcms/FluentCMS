@@ -41,9 +41,9 @@ public class LiteDbAuditRepository_Tests
         dbEntity.LastUpdatedAt.ShouldBeGreaterThan(utcNow);
     }
 
-    private static LiteDbGenericRepository<AuditedDummyEntity> GetInstance()
+    private static GenericRepository<AuditedDummyEntity> GetInstance()
     {
         var liteDbContext = new LiteDbContext(Options.Create(new LiteDbOptions()));
-        return new LiteDbGenericRepository<AuditedDummyEntity>(liteDbContext);
+        return new GenericRepository<AuditedDummyEntity>(liteDbContext);
     }
 }

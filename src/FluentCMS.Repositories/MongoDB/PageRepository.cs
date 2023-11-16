@@ -1,5 +1,6 @@
 ﻿using FluentCMS.Entities;
 using MongoDB.Driver;
+using System.Threading;
 
 namespace FluentCMS.Repositories.MongoDB;
 
@@ -9,10 +10,15 @@ public class PageRepository : GenericRepository<Page>, IPageRepository
     {
     }
 
-    public Task<Page> GetByPath(string path)
+    public async Task<Page> GetByPath(string path, CancellationToken cancellationToken = default)
     {
-        // TODO: implement here
-        return Task.FromResult<Page>(null);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var filter = Builders<Page>.Filter.Eq(x => x.Path, path);
+
+        var findResult = await Collection.FindAsync(filter, null, cancellationToken);
+
+        return findResult.SingleOrDefault(cancellationToken);
     }
 
     public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
@@ -24,10 +30,5 @@ public class PageRepository : GenericRepository<Page>, IPageRepository
         var findResult = await Collection.FindAsync(filter, null, cancellationToken);
 
         return findResult.ToEnumerable(cancellationToken);
-    }
-
-    public Task<IEnumerable<Page>> GetBySiteIdAndParentId(Guid siteId, Guid? parentId = null)
-    {
-        throw new NotImplementedException();
     }
 }
