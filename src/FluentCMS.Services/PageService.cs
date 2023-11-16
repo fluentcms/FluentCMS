@@ -58,10 +58,10 @@ public class PageService : BaseService<Page>, IPageService
 
         // Build Url based on parent
         var fullUrl = BuildFullPath(page, pages, cachedUrls);
-
+        var fullPaths = pages.Select(x => BuildFullPath(x, pages, cachedUrls));
         // Check if url is unique
-        if (pages.Any(x => BuildFullPath(x, pages, cachedUrls).Equals(fullUrl)))
-            throw new AppException(ExceptionCodes.PageUrlNotUnique);
+        if (fullPaths.Any(x=>x.Equals(fullUrl)))
+            throw new AppException(ExceptionCodes.PagePathMustBeUnique);
 
     }
 
@@ -76,6 +76,7 @@ public class PageService : BaseService<Page>, IPageService
             if (cachedUrls.ContainsKey(parentId.Value))
             {
                 parents.Add(cachedUrls[parentId.Value]);
+                parentId = null;
                 continue;
             }
             var parent = pages.Single(x => x.Id == parentId);
