@@ -1,10 +1,15 @@
 ﻿using MongoDB.Driver;
 
-namespace FluentCMS.Repositories.MongoDb;
+namespace FluentCMS.Repositories.MongoDB;
 
-public class MongoDbContext : IMongoDBContext
+public interface IMongoDBContext
 {
-    public MongoDbContext(MongoDbOptions<MongoDbContext> options)
+    IMongoDatabase Database { get; }
+}
+
+public class MongoDBContext : IMongoDBContext
+{
+    public MongoDBContext(MongoDBOptions<MongoDBContext> options)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(options.ConnectionString);

@@ -1,7 +1,7 @@
 ﻿using FluentCMS.Entities;
 using System.Security.Claims;
 
-namespace FluentCMS.Repositories.Abstractions;
+namespace FluentCMS.Repositories;
 
 public interface IUserRepository : IGenericRepository<User>, IQueryableRepository<User>
 {

@@ -1,10 +1,9 @@
 ﻿using FluentCMS.Entities;
-using FluentCMS.Repositories.Abstractions;
 using MongoDB.Driver;
 
-namespace FluentCMS.Repositories.MongoDb;
+namespace FluentCMS.Repositories.MongoDB;
 
-public class MongoDbSiteRepository(IMongoDBContext mongoDbContext) : MongoDbGenericRepository<Site>(mongoDbContext), ISiteRepository
+public class SiteRepository(IMongoDBContext mongoDbContext) : GenericRepository<Site>(mongoDbContext), ISiteRepository
 {
     public async Task<bool> CheckUrls(IList<string> urls, CancellationToken cancellationToken = default)
     {

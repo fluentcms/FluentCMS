@@ -1,6 +1,6 @@
 ﻿using FluentCMS.Entities;
-using FluentCMS.Repositories.Abstractions;
-using FluentCMS.Repositories.MongoDb;
+using FluentCMS.Repositories;
+using FluentCMS.Repositories.MongoDB;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
@@ -25,7 +25,7 @@ public abstract class Base_MongoDb_Repository_Tests<T> : IDisposable
         });
         services.AddApplicationServices()
                 .AddMongoDbRepositories("MongoDb");
-        services.AddTransient<IGenericRepository<T>, MongoDbGenericRepository<T>>();
+        services.AddTransient<IGenericRepository<T>, GenericRepository<T>>();
         services.AddSingleton<IConfiguration>(configuration.Build());
         _serviceProvider = services.BuildServiceProvider();
     }

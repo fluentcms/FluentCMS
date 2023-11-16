@@ -82,7 +82,7 @@ services.AddAuthentication(configureOptions =>
 
 var app = builder.Build();
 
-app.Services.SeedDefaultData(@".\SeedData\");
+app.Services.LoadInitialDataFrom(@".\DefaultData\");
 
 if (app.Environment.IsDevelopment())
 {

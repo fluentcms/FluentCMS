@@ -1,19 +1,17 @@
 ﻿using FluentCMS.Entities;
-using FluentCMS.Repositories.Abstractions;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
-namespace FluentCMS.Repositories.MongoDb;
+namespace FluentCMS.Repositories.MongoDB;
 
-public class MongoDbGenericRepository<TEntity> : IGenericRepository<TEntity>
-    where TEntity : IEntity
+public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEntity : IEntity
 {
     protected readonly IMongoCollection<TEntity> Collection;
     protected readonly IMongoCollection<BsonDocument> BsonCollection;
     protected readonly IMongoDatabase MongoDatabase;
     protected readonly IMongoDBContext MongoDbContext;
 
-    public MongoDbGenericRepository(IMongoDBContext mongoDbContext)
+    public GenericRepository(IMongoDBContext mongoDbContext)
     {
         MongoDatabase = mongoDbContext.Database;
         Collection = mongoDbContext.Database.GetCollection<TEntity>(GetCollectionName());

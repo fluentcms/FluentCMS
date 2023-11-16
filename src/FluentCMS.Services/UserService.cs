@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Identity;
-using FluentCMS.Entities;
+﻿using FluentCMS.Entities;
 using FluentCMS.Providers.Identity;
+using Microsoft.AspNetCore.Identity;
 using UserToken = FluentCMS.Providers.Identity.UserToken;
 
 namespace FluentCMS.Services;
