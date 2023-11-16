@@ -34,6 +34,8 @@ services.AddApiDocumentation();
 
 services.AddHttpContextAccessor();
 
+// TODO: Add JWT to request header, accept-language, etc.
+// TODO: Move to somewhere else
 services.AddScoped(sp =>
 {
     var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
@@ -46,7 +48,7 @@ services.AddScoped(sp =>
     };
 });
 
-
+// TODO: Move to somewhere else
 #region Identity
 
 var options = builder.Configuration.GetInstance<JwtOptions>("Jwt");
@@ -79,19 +81,22 @@ services.AddAuthentication(configureOptions =>
 #endregion
 
 var app = builder.Build();
+
+app.Services.SeedDefaultData(@".\SeedData\");
+
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
-    app.Services.SeedDefaultData(@".\SeedData\");
-}
-else
-{
-    app.UseHsts();
-    app.UseHttpsRedirection();
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
 }
 
+app.UseHsts();
+
+app.UseHttpsRedirection();
+
+app.UseExceptionHandler("/Error", createScopeForErrors: true);
+
 app.UseRouting();
+
 app.UseStaticFiles();
 
 app.UseAntiforgery();
@@ -102,14 +107,6 @@ app.UseAuthentication();
 
 app.UseAuthorization();
 
-app.UseEndpoints(endpoints =>
-{
-    _ = endpoints.MapGet("/", (context) =>
-    {
-        context.Response.Redirect("/admin");
-        return Task.CompletedTask;
-    });
-});
 app.MapControllers();
 
 app.MapRazorComponents<App>()

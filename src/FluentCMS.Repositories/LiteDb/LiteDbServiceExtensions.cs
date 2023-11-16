@@ -30,7 +30,6 @@ public static class LiteDbServiceExtensions
     {
         services.AddScoped(typeof(IGenericRepository<>), typeof(LiteDbGenericRepository<>));
 
-        services.AddScoped<IContentTypeRepository, LiteDbContentTypeRepository>();
         services.AddScoped<ISiteRepository, LiteDbSiteRepository>();
         services.AddScoped<IHostRepository, LiteDbHostRepository>();
         services.AddScoped<IPageRepository, LiteDbPageRepository>();
