@@ -1,5 +1,4 @@
 ﻿using FluentCMS.Entities;
-using FluentCMS.Repositories;
 using FluentCMS.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;

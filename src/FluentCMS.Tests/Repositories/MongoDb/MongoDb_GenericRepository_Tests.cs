@@ -1,15 +1,10 @@
 ﻿using FluentCMS.Tests.DummyEntities;
 using Shouldly;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FluentCMS.Tests.Repositories.MongoDb;
 public class MongoDb_GenericRepository_Tests : Base_MongoDb_Repository_Tests<DummyEntity>
 {
-    public MongoDb_GenericRepository_Tests():base()
+    public MongoDb_GenericRepository_Tests() : base()
     {
     }
 
