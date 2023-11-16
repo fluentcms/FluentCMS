@@ -3,11 +3,6 @@ using FluentCMS.Services;
 using FluentCMS.Tests.Helpers.ApplicationContext;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FluentCMS.Tests.Services;
 public partial class HostService_Tests
