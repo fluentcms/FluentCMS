@@ -1,5 +1,6 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories.Abstractions;
+using LiteDB.Queryable;
 
 namespace FluentCMS.Repositories.LiteDb;
 
@@ -11,11 +12,13 @@ internal class LiteDbRoleRepository : LiteDbGenericRepository<Role>, IRoleReposi
 
     public IQueryable<Role> AsQueryable()
     {
-        throw new NotImplementedException();
+        return Collection.AsQueryable();
     }
 
-    public Task<Role?> FindByName(string normalizedRoleName, CancellationToken cancellationToken)
+    public async Task<Role?> FindByName(string normalizedRoleName, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return await Collection.FindOneAsync(x => x.NormalizedName == normalizedRoleName);
     }
 }
