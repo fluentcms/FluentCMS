@@ -19,16 +19,19 @@ public class PageService_Tests
         _serviceProvider = services.BuildServiceProvider();
     }
 
-
     [Fact]
     public async Task Should_CreatePage()
     {
-        var a = _serviceProvider.GetRequiredService<IApplicationContext>();
         var scope = _serviceProvider.CreateScope();
+
+        //Seed Test Site and Host to InMemory Db
+        _ = await SeedDefaultHost(scope);
+        var defaultSite = await SeedDefaultSite(scope);
+
         var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
         var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
         scope.SetupMockApplicationContextForAdminUser();
-        Guid siteId = ApplicationContextDefaults.DefaultSite.Id;
+        Guid siteId = defaultSite.Id;
         var page = new Page() { Title = "test", SiteId = siteId, Path = "/test" };
         await pageService.Create(page);
         var result = await pageRepository.GetById(page.Id);
@@ -38,10 +41,32 @@ public class PageService_Tests
         result.Path.ShouldBe("/test");
         result.Order.ShouldBe(0);
     }
+
+    private static async Task<Host> SeedDefaultHost(IServiceScope scope)
+    {
+        //setup Default Host
+        var hostRepository = scope.ServiceProvider.GetRequiredService<IHostRepository>();
+        var defaultHost = await hostRepository.Create(ApplicationContextDefaults.DefaultHost);
+        return defaultHost!;
+    }
+
+    private static async Task<Site> SeedDefaultSite(IServiceScope scope)
+    {
+        //Setup Default Site
+        var siteRepository = scope.ServiceProvider.GetRequiredService<ISiteRepository>();
+        var defaultSite = await siteRepository.Create(ApplicationContextDefaults.DefaultSite);
+        return defaultSite!;
+    }
+
     [Fact]
     public async Task ShouldNot_CreatePage_NonAdminUser()
     {
         var scope = _serviceProvider.CreateScope();
+
+        //Seed Test Site and Host to InMemory Db
+        _ = await SeedDefaultHost(scope);
+        var defaultSite = await SeedDefaultSite(scope);
+
         var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
         var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
         scope.SetupMockApplicationContextForNonAdminUser();
@@ -54,6 +79,11 @@ public class PageService_Tests
     public async Task Should_UpdatePage()
     {
         var scope = _serviceProvider.CreateScope();
+
+        //Seed Test Site and Host to InMemory Db
+        _ = await SeedDefaultHost(scope);
+        var defaultSite = await SeedDefaultSite(scope);
+
         var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
         var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
         Guid siteId = ApplicationContextDefaults.DefaultSite.Id;
@@ -76,6 +106,11 @@ public class PageService_Tests
     public async Task ShouldNot_UpdatePage_NonAdminUser()
     {
         var scope = _serviceProvider.CreateScope();
+
+        //Seed Test Site and Host to InMemory Db
+        _ = await SeedDefaultHost(scope);
+        var defaultSite = await SeedDefaultSite(scope);
+
         var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
         var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
         Guid siteId = ApplicationContextDefaults.DefaultSite.Id;
@@ -88,6 +123,11 @@ public class PageService_Tests
     public async Task ShouldNot_CreateOrUpdate_DuplicatePath()
     {
         var scope = _serviceProvider.CreateScope();
+
+        //Seed Test Site and Host to InMemory Db
+        _ = await SeedDefaultHost(scope);
+        var defaultSite = await SeedDefaultSite(scope);
+
         var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
         var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
         Guid siteId = ApplicationContextDefaults.DefaultSite.Id;
