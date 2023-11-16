@@ -2,12 +2,11 @@
 using MongoDB.Driver;
 using System.Security.Claims;
 
-namespace FluentCMS.Repositories.MongoDb;
+namespace FluentCMS.Repositories.MongoDB;
 
-public class MongoDbUserRepository : MongoDbGenericRepository<User>, IUserRepository
+public class UserRepository : GenericRepository<User>, IUserRepository
 {
-    // TODO: add index
-    public MongoDbUserRepository(IMongoDBContext mongoDbContext) : base(mongoDbContext)
+    public UserRepository(IMongoDBContext mongoDbContext) : base(mongoDbContext)
     {
     }
 
