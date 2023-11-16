@@ -2,6 +2,6 @@
 
 namespace FluentCMS.Api.Models;
 
-public class RoleDto: Role
+public class RoleDto : Role
 {
 }

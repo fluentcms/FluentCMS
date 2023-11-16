@@ -10,7 +10,6 @@ public class Role : IdentityRole<Guid>, IAuditEntity
     public DateTime LastUpdatedAt { get; set; }
     public Guid SiteId { get; set; }
     public string Description { get; set; } = string.Empty;
-    public List<IdentityRoleClaim<Guid>> Claims { get; set; } = [];
 
     public Role()
     {
@@ -22,6 +21,6 @@ public class Role : IdentityRole<Guid>, IAuditEntity
 
     public override string ToString()
     {
-        return Name ?? string.Empty;
+        return NormalizedName ?? string.Empty;
     }
 }
