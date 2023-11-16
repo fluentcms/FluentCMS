@@ -36,6 +36,12 @@ public class ExceptionCodes
     public const string PageUnableToDelete = "Page.UnableToDelete";
     public const string PagePathMustBeUnique = "Page.PathMustBeUnique";
     public const string PageNotFound = "Page.NotFound";
+    public const string PageParentPageNotFound = "Page.ParentPageNotFound";
+    public const string PageParentMustBeOnTheSameSite = "Page.ParentMustBeOnTheSameSite";
+    public const string PageUrlNotUnique = "Page.UrlNotUnique";
+    public const string PageViewPermissionsAreNotASubsetOfParent = "Page.ViewPermissionsAreNotASubsetOfParent";
+    public const string PageSiteIdCannotBeChanged = "Page.SiteIdCannotBeChanged";
+    public const string PageHasChildren = "Page.PageHasChildren";
 
 
     #endregion
@@ -43,6 +49,7 @@ public class ExceptionCodes
     #region Site
 
     public const string SiteNotFound = "Site.NotFound";
+
 
     #endregion
 }
