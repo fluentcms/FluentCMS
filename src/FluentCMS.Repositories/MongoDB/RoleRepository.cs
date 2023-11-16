@@ -1,12 +1,11 @@
 ﻿using FluentCMS.Entities;
 using MongoDB.Driver;
 
-namespace FluentCMS.Repositories.MongoDb;
+namespace FluentCMS.Repositories.MongoDB;
 
-public class MongoDbRoleRepository : MongoDbGenericRepository<Role>, IRoleRepository
+public class RoleRepository : GenericRepository<Role>, IRoleRepository
 {
-    // TODO: add index
-    public MongoDbRoleRepository(IMongoDBContext mongoDbContext) : base(mongoDbContext)
+    public RoleRepository(IMongoDBContext mongoDbContext) : base(mongoDbContext)
     {
     }
 

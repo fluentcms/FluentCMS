@@ -1,13 +1,13 @@
 ﻿using FluentCMS.Entities;
 using MongoDB.Driver;
 
-namespace FluentCMS.Repositories.MongoDb;
+namespace FluentCMS.Repositories.MongoDB;
 
-public class MongoDbHostRepository : IHostRepository
+public class HostRepository : IHostRepository
 {
     private readonly IMongoCollection<Host> _collection;
 
-    public MongoDbHostRepository(IMongoDBContext mongoDbContext)
+    public HostRepository(IMongoDBContext mongoDbContext)
     {
         _collection = mongoDbContext.Database.GetCollection<Host>(nameof(Host));
     }

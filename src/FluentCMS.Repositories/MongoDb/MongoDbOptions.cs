@@ -1,6 +1,6 @@
-﻿namespace FluentCMS.Repositories.MongoDb;
+﻿namespace FluentCMS.Repositories.MongoDB;
 
-public class MongoDbOptions<TContext>(string connectionString) where TContext : IMongoDBContext
+public class MongoDBOptions<TContext>(string connectionString) where TContext : IMongoDBContext
 {
     public string ConnectionString { get; } = connectionString;
 }
