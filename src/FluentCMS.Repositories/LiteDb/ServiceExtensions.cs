@@ -28,12 +28,12 @@ public static class LiteDbServiceExtensions
 
     private static void ConfigureServices(IServiceCollection services)
     {
-        services.AddScoped(typeof(IGenericRepository<>), typeof(LiteDbGenericRepository<>));
+        services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
-        services.AddScoped<ISiteRepository, LiteDbSiteRepository>();
-        services.AddScoped<IHostRepository, LiteDbHostRepository>();
-        services.AddScoped<IPageRepository, LiteDbPageRepository>();
-        services.AddScoped<IUserRepository, LiteDbUserRepository>();
-        services.AddScoped<IRoleRepository, LiteDbRoleRepository>();
+        services.AddScoped<ISiteRepository, SiteRepository>();
+        services.AddScoped<IHostRepository, HostRepository>();
+        services.AddScoped<IPageRepository, PageRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
     }
 }

@@ -4,9 +4,9 @@ using System.Security.Claims;
 
 namespace FluentCMS.Repositories.LiteDb;
 
-public class LiteDbUserRepository : LiteDbGenericRepository<User>, IUserRepository
+public class UserRepository : GenericRepository<User>, IUserRepository
 {
-    public LiteDbUserRepository(LiteDbContext dbContext) : base(dbContext)
+    public UserRepository(LiteDbContext dbContext) : base(dbContext)
     {
     }
 
