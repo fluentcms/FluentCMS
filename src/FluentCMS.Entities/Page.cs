@@ -7,4 +7,7 @@ public class Page : AuditEntity
     public Guid? ParentId { get; set; }
     public int Order { get; set; }
     public required string Path { get; set; }
+    public IEnumerable<Guid> AdminRoleIds { get; set; } = new List<Guid>();
+    public IEnumerable<Guid> ViewRoleIds { get; set; } = new List<Guid>();
+
 }

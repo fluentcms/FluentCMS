@@ -1,19 +1,64 @@
-﻿//using FluentCMS.Entities;
-//using FluentCMS.Repositories.Abstractions;
+﻿using FluentCMS.Entities;
+using FluentCMS.Repositories.Abstractions;
+using System.Security.Claims;
+using LiteDB.Queryable;
 
-//namespace FluentCMS.Repositories.LiteDb;
+namespace FluentCMS.Repositories.LiteDb;
 
-//public class LiteDbUserRepository : LiteDbGenericRepository<User>, IUserRepository
-//{
-//    public LiteDbUserRepository(LiteDbContext dbContext) : base(dbContext)
-//    {
-//    }
+public class LiteDbUserRepository : LiteDbGenericRepository<User>, IUserRepository
+{
+    public LiteDbUserRepository(LiteDbContext dbContext) : base(dbContext)
+    {
+    }
 
-//    public async Task<User?> GetByUsername(string username, CancellationToken cancellationToken = default)
-//    {
-//        cancellationToken.ThrowIfCancellationRequested();
+    public IQueryable<User> AsQueryable()
+    {
+        return Collection.AsQueryable();
+    }
 
-//        var data = await Collection.FindOneAsync(x => x.Username == username);
-//        return data;
-//    }
-//}
+    public async Task<User?> FindByEmail(string normalizedEmail, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return await Collection.FindOneAsync(x => x.NormalizedEmail == normalizedEmail);
+    }
+
+    public Task<User?> FindByLogin(string loginProvider, string providerKey, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var data = Collection.AsQueryable().FirstOrDefault(x =>
+            x.Logins.Any(x => x.LoginProvider == loginProvider && x.ProviderKey == providerKey));
+        return Task.FromResult(data);
+    }
+
+    public async Task<User?> FindByName(string normalizedUserName, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return await Collection.FindOneAsync(x => x.NormalizedUserName == normalizedUserName);
+    }
+
+    public async Task<User?> GetByUsername(string username, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return await Collection.FindOneAsync(x => x.UserName == username);
+    }
+
+    public async Task<IList<User>> GetUsersForClaim(Claim claim, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var data = await Collection.FindAsync(x => x.Claims.Any(c => c.ClaimType == claim.Type && c.ClaimValue == claim.Value));
+        return data.ToList();
+    }
+
+    public async Task<IList<User>> GetUsersInRole(string roleId, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var data = await Collection.FindAsync(x => x.RoleIds.Any(r => roleId.Equals(r)));
+        return data.ToList();
+    }
+}

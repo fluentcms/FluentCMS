@@ -44,8 +44,7 @@ public static class SeedData
             appContext.Current = new CurrentContext
             {
                 User = superUser,
-                Host = host,
-                Site = site
+                Host = host
             };
 
             // Super Admin creation
@@ -75,14 +74,14 @@ public static class SeedData
         }
     }
 
-    private static JsonSerializerOptions serializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions _serializerOptions = new() { PropertyNameCaseInsensitive = true };
 
     private static T LoadData<T>(string jsonFile)
     {
         try
         {
             var json = File.ReadAllText(jsonFile);
-            var result = JsonSerializer.Deserialize<T>(json, serializerOptions);
+            var result = JsonSerializer.Deserialize<T>(json, _serializerOptions);
 
             return result == null ?
                 throw new Exception($"Unable to load seed data from {jsonFile}") : result;
@@ -93,7 +92,7 @@ public static class SeedData
         }
     }
 
-    private class DefaultUser 
+    private class DefaultUser
     {
         public required string UserName { get; set; }
         public required string Email { get; set; }

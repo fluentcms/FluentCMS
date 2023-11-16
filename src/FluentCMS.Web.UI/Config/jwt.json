@@ -4,6 +4,6 @@
     "Audience": "https://localhost:44352",
     "TokenExpiry": 3600, // seconds
     "RefreshTokenExpiry": 36000, // seconds
-    "Secret": "THIS SHOULD BE A COMPLEX SECRET!"
+    "Secret": "THIS SHOULD BE A LONG COMPLEX SECRET KEY, CHANGE THIS IN PRODUCTION!"
   }
 }

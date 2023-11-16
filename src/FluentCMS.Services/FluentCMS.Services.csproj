@@ -1,22 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\FluentCMS.Providers\FluentCMS.Providers.csproj" />
-    <ProjectReference Include="..\FluentCMS.Repositories\FluentCMS.Repositories.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <ProjectReference Include="..\FluentCMS.Providers\FluentCMS.Providers.csproj" />
+        <ProjectReference Include="..\FluentCMS.Repositories\FluentCMS.Repositories.csproj" />
+        <ProjectReference Include="..\FluentCMS.Shared\FluentCMS.Shared.csproj" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Identity\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.2.0" />
-  </ItemGroup>
+    <ItemGroup>
+        <Folder Include="Identity\" />
+    </ItemGroup>
 
 </Project>

@@ -26,7 +26,7 @@ public class HostController : BaseController
     }
 
     [HttpPatch]
-    public async Task<IApiResult<HostResponse>> Update(UpdateHostRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<HostResponse>> Update(HostUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var host = _mapper.Map<Host>(request);
         var updateHost = await _hostService.Update(host, cancellationToken);

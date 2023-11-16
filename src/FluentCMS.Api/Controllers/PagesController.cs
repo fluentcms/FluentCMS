@@ -1,6 +1,5 @@
 ﻿using AutoMapper;
 using FluentCMS.Api.Models;
-using FluentCMS.Api.Models.Pages;
 using FluentCMS.Entities;
 using FluentCMS.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -22,8 +21,8 @@ public class PagesController : BaseController
     [HttpPost]
     public async Task<IApiPagingResult<PageResponse>> GetAll([FromBody] PageSearchRequest request)
     {
-        var pages = await _pageService.GetBySiteIdAndParentId(request.SiteId, request.ParentId);
-        return new ApiPagingResult<PageResponse>(_mapper.Map<List<PageResponse>>(pages));
+        var pages = (await _pageService.GetBySiteId(request.SiteId));
+        return new ApiPagingResult<PageResponse>(_mapper.Map<List<PageResponse>>(pages.ToList()));
     }
 
     [HttpGet("{id}")]
@@ -31,19 +30,12 @@ public class PagesController : BaseController
     {
         var page = await _pageService.GetById(id);
         var pageResponse = _mapper.Map<PageResponse>(page);
-        // map recursive?
-        await MapChildren(id, pageResponse);
         return new ApiResult<PageResponse>(pageResponse);
     }
 
-    private async Task MapChildren(Guid id, PageResponse pageResponse)
-    {
-        var childrenPage = await _pageService.GetByParentId(id);
-        pageResponse.Children = childrenPage.Select(x => _mapper.Map<PageResponse>(x));
-    }
 
     [HttpPost]
-    public async Task<IApiResult<PageResponse>> Create(CreatePageRequest request)
+    public async Task<IApiResult<PageResponse>> Create(PageCreateRequest request)
     {
         var page = _mapper.Map<Page>(request);
         var newPage = await _pageService.Create(page);
@@ -52,10 +44,10 @@ public class PagesController : BaseController
     }
 
     [HttpPut]
-    public async Task<IApiResult<PageResponse>> Edit(EditPageRequest request)
+    public async Task<IApiResult<PageResponse>> Update(PageUpdateRequest request)
     {
         var page = _mapper.Map<Page>(request);
-        var updatedPage = await _pageService.Edit(page);
+        var updatedPage = await _pageService.Update(page);
         var pageResponse = _mapper.Map<PageResponse>(updatedPage);
         return new ApiResult<PageResponse>(pageResponse);
     }
@@ -63,8 +55,7 @@ public class PagesController : BaseController
     [HttpDelete("{id}")]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
     {
-        var page = await _pageService.GetById(id);
-        await _pageService.Delete(page);
+        await _pageService.Delete(id);
         return new ApiResult<bool>(true);
     }
 }

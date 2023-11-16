@@ -26,7 +26,7 @@ else
                     <td>@role.Name</td>
                     <td>@role.Description</td>
                     <td>
-                        <NavigationButton To="@("/admin/roles/edit/" + role.Id)">Edit</NavigationButton>
+                        <NavigationButton To="@("/admin/roles/update/" + role.Id)">Edit</NavigationButton>
                         <Button @onclick="() => OnDeleteClick(role.Id)">Delete</Button>
                     </td>
                 </tr>
