@@ -1,6 +1,6 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories;
-using FluentCMS.Repositories.Abstractions;
+using FluentCMS.Repositories;
 using FluentCMS.Repositories.LiteDb;
 using FluentCMS.Services;
 using FluentCMS.Tests.Helpers.ApplicationContext;
