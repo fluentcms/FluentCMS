@@ -2,9 +2,9 @@
 
 namespace FluentCMS.Repositories.LiteDb;
 
-public class LiteDbSiteRepository : LiteDbGenericRepository<Site>, ISiteRepository
+public class SiteRepository : GenericRepository<Site>, ISiteRepository
 {
-    public LiteDbSiteRepository(LiteDbContext dbContext) : base(dbContext)
+    public SiteRepository(LiteDbContext dbContext) : base(dbContext)
     {
     }
 

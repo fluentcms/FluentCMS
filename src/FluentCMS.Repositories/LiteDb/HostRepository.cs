@@ -3,10 +3,10 @@ using LiteDB.Async;
 
 namespace FluentCMS.Repositories.LiteDb;
 
-public class LiteDbHostRepository : IHostRepository
+public class HostRepository : IHostRepository
 {
     private readonly LiteDbContext _dbContext;
-    public LiteDbHostRepository(LiteDbContext dbContext)
+    public HostRepository(LiteDbContext dbContext)
     {
         _dbContext = dbContext;
     }

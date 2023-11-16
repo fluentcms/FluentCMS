@@ -2,9 +2,9 @@
 
 namespace FluentCMS.Repositories.LiteDb;
 
-public class LiteDbPageRepository : LiteDbGenericRepository<Page>, IPageRepository
+public class PageRepository : GenericRepository<Page>, IPageRepository
 {
-    public LiteDbPageRepository(LiteDbContext dbContext) : base(dbContext)
+    public PageRepository(LiteDbContext dbContext) : base(dbContext)
     {
     }
 
