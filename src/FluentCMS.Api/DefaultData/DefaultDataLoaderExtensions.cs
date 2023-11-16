@@ -5,12 +5,9 @@ using System.Text.Json;
 
 namespace FluentCMS.Api;
 
-public static class SeedData
+public static class DefaultDataLoaderExtensions
 {
-    // TODO: in production we should delete the folder after seeding
-    // TODO: check if at least one user if initialized
-    // TODO: check this for the file path on deployment
-    public static void SeedDefaultData(this IServiceProvider provider, string dataFolder)
+    public static void LoadInitialDataFrom(this IServiceProvider provider, string dataFolder)
     {
         var scope = provider.CreateScope();
 
@@ -23,52 +20,47 @@ public static class SeedData
 
         if (!hostService.IsInitialized().GetAwaiter().GetResult())
         {
-            var superAdmin = LoadData<DefaultUser>($@"{dataFolder}\superadmin.json");
-            var host = LoadData<Host>($@"{dataFolder}\host.json");
-            var site = LoadData<Site>($@"{dataFolder}\site.json");
-            var admin = LoadData<DefaultUser>($@"{dataFolder}\admin.json");
-            var adminRole = LoadData<Role>($@"{dataFolder}\adminrole.json");
+            var defaultData = LoadData<DefaultData>($@"{dataFolder}\default.json");
 
             var superUser = new User
             {
-                UserName = superAdmin.UserName,
-                Email = superAdmin.Email
+                UserName = defaultData.SuperAdmin.UserName,
+                Email = defaultData.SuperAdmin.Email
             };
 
             var adminUser = new User
             {
-                UserName = admin.UserName,
-                Email = admin.Email
+                UserName = defaultData.Admin.UserName,
+                Email = defaultData.Admin.Email
             };
 
             appContext.Current = new CurrentContext
             {
                 User = superUser,
-                Host = host
+                Host = defaultData.Host
             };
 
             // Super Admin creation
-            userService.Create(superUser, superAdmin.Password).GetAwaiter().GetResult();
-            
+            userService.Create(superUser, defaultData.SuperAdmin.Password).GetAwaiter().GetResult();
+
             // Admin Role creation
-            roleService.Create(adminRole).GetAwaiter().GetResult();
+            roleService.Create(defaultData.AdminRole).GetAwaiter().GetResult();
 
             // Admin creation
-            adminUser.RoleIds = [adminRole.Id];
-            userService.Create(adminUser, admin.Password).GetAwaiter().GetResult();
+            adminUser.RoleIds = [defaultData.AdminRole.Id];
+            userService.Create(adminUser, defaultData.Admin.Password).GetAwaiter().GetResult();
 
             // Host creation
-            hostService.Create(host).GetAwaiter().GetResult();
+            hostService.Create(defaultData.Host).GetAwaiter().GetResult();
 
             // Site creation            
-            site.AdminRoleIds = [adminRole.Id];
-            siteService.Create(site).GetAwaiter().GetResult();
+            defaultData.Site.AdminRoleIds = [defaultData.AdminRole.Id];
+            siteService.Create(defaultData.Site).GetAwaiter().GetResult();
 
             // Pages creation: adding a few default pages
-            var pages = LoadData<List<Page>>($@"{dataFolder}\pages.json");
-            foreach (var page in pages)
+            foreach (var page in defaultData.Pages)
             {
-                page.SiteId = site.Id;
+                page.SiteId = defaultData.Site.Id;
                 pageService.Create(page).GetAwaiter().GetResult();
             }
         }
@@ -91,12 +83,4 @@ public static class SeedData
             throw new Exception($"Unable to load seed data from {jsonFile}");
         }
     }
-
-    private class DefaultUser
-    {
-        public required string UserName { get; set; }
-        public required string Email { get; set; }
-        public required string Password { get; set; }
-    }
-
 }
