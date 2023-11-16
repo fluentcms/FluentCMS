@@ -38,7 +38,6 @@ public class ExceptionCodes
     public const string PageNotFound = "Page.NotFound";
     public const string PageParentPageNotFound = "Page.ParentPageNotFound";
     public const string PageParentMustBeOnTheSameSite = "Page.ParentMustBeOnTheSameSite";
-    public const string PageUrlNotUnique = "Page.UrlNotUnique";
     public const string PageViewPermissionsAreNotASubsetOfParent = "Page.ViewPermissionsAreNotASubsetOfParent";
     public const string PageSiteIdCannotBeChanged = "Page.SiteIdCannotBeChanged";
     public const string PageHasChildren = "Page.PageHasChildren";
