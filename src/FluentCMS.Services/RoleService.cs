@@ -23,6 +23,7 @@ public class RoleService(RoleManager<Role> roleManager, IApplicationContext appC
 
     public async Task<Role> GetById(Guid siteId, Guid id, CancellationToken cancellationToken = default)
     {
+        // permission will be checked inside GetAll
         var siteRoles = await GetAll(siteId, cancellationToken);
 
         var role = siteRoles.SingleOrDefault(role => role.Id.Equals(id));
