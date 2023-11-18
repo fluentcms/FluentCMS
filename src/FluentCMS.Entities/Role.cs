@@ -4,13 +4,13 @@ namespace FluentCMS.Entities;
 
 public class Role : IdentityRole<Guid>, IAuditEntity
 {
-    public string CreatedBy { get; set; } = string.Empty;
+    public string CreatedBy { get; set; } = default!;
     public DateTime CreatedAt { get; set; }
-    public string LastUpdatedBy { get; set; } = string.Empty;
+    public string LastUpdatedBy { get; set; } = default!;
     public DateTime LastUpdatedAt { get; set; }
+
     public Guid SiteId { get; set; }
-    public string Description { get; set; } = string.Empty;
-    public List<IdentityRoleClaim<Guid>> Claims { get; set; } = [];
+    public string? Description { get; set; }
 
     public Role()
     {
@@ -22,6 +22,6 @@ public class Role : IdentityRole<Guid>, IAuditEntity
 
     public override string ToString()
     {
-        return Name ?? string.Empty;
+        return NormalizedName ?? string.Empty;
     }
 }

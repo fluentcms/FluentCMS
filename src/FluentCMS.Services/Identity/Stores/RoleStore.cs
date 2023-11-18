@@ -1,21 +1,14 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories;
 using Microsoft.AspNetCore.Identity;
-using System.Security.Claims;
 
 namespace FluentCMS.Services.Identity.Stores;
 
-public class RoleStore : IRoleClaimStore<Role>, IQueryableRoleStore<Role>
+public class RoleStore(IRoleRepository repository) : IQueryableRoleStore<Role>
 {
-
-    private readonly IRoleRepository _repository;
+    private readonly IRoleRepository _repository = repository;
 
     public IQueryable<Role> Roles => _repository.AsQueryable();
-
-    public RoleStore(IRoleRepository repository)
-    {
-        _repository = repository;
-    }
 
     public async Task<IdentityResult> CreateAsync(Role role, CancellationToken cancellationToken)
     {
@@ -38,7 +31,9 @@ public class RoleStore : IRoleClaimStore<Role>, IQueryableRoleStore<Role>
     public async Task<IdentityResult> DeleteAsync(Role role, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
         await _repository.Delete(role.Id, cancellationToken);
+
         return IdentityResult.Success;
     }
 
@@ -83,42 +78,6 @@ public class RoleStore : IRoleClaimStore<Role>, IQueryableRoleStore<Role>
         cancellationToken.ThrowIfCancellationRequested();
 
         return _repository.FindByName(normalizedRoleName, cancellationToken);
-    }
-
-    public async Task<IList<Claim>> GetClaimsAsync(Role role, CancellationToken cancellationToken = default)
-    {
-        if (role.Claims is null)
-            return await Task.FromResult(new List<Claim>());
-
-        return role.Claims.Select(e => new Claim(e.ClaimType ?? string.Empty, e.ClaimValue ?? string.Empty)).ToList();
-    }
-
-    public Task AddClaimAsync(Role role, Claim claim, CancellationToken cancellationToken = default)
-    {
-        if (role.Claims is null)
-            role.Claims = new List<IdentityRoleClaim<Guid>>();
-
-        var currentClaim = role.Claims.FirstOrDefault(c => c.ClaimType == claim.Type && c.ClaimValue == claim.Value);
-
-        if (currentClaim == null)
-        {
-            var identityRoleClaim = new IdentityRoleClaim<Guid>()
-            {
-                ClaimType = claim.Type,
-                ClaimValue = claim.Value,
-                RoleId = role.Id,
-                Id = 0
-            };
-
-            role.Claims.Add(identityRoleClaim);
-        }
-        return Task.CompletedTask;
-    }
-
-    public Task RemoveClaimAsync(Role role, Claim claim, CancellationToken cancellationToken = default)
-    {
-        role.Claims.RemoveAll(x => x.ClaimType == claim.Type && x.ClaimValue == claim.Value);
-        return Task.CompletedTask;
     }
 
     protected virtual void Dispose(bool disposing)

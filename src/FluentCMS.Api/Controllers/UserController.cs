@@ -13,44 +13,30 @@ public class UserController(IMapper mapper, IUserService userService, IRoleServi
     [HttpGet]
     public async Task<IApiPagingResult<UserDto>> GetAll(CancellationToken cancellationToken = default)
     {
-        var users = await userService.GetAll(cancellationToken);
-        var result = mapper.Map<IEnumerable<UserDto>>(users);
-        return new ApiPagingResult<UserDto>(result);
+        throw new NotImplementedException();
     }
 
     [HttpPost]
     public async Task<IApiResult<RoleDto>> Create(RoleCreateRequest request, CancellationToken cancellationToken = default)
     {
-        var role = mapper.Map<Role>(request);
-        var newRole = await _roleService.Create(role, cancellationToken);
-        var result = mapper.Map<RoleDto>(newRole);
-        return new ApiResult<RoleDto>(result);
+        throw new NotImplementedException();
     }
 
     [HttpGet("{id}")]
     public async Task<IApiResult<RoleDto>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        var role = await _roleService.GetById(id, cancellationToken);
-        var result = mapper.Map<RoleDto>(role);
-        return new ApiResult<RoleDto>(result);
+        throw new NotImplementedException();
     }
-
-
 
     [HttpPut]
     public async Task<IApiResult<RoleDto>> Update(RoleUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        var role = mapper.Map<Role>(request);
-        var editedRole = await _roleService.Update(role, cancellationToken);
-        var result = mapper.Map<RoleDto>(editedRole);
-        return new ApiResult<RoleDto>(result);
+        throw new NotImplementedException();
     }
 
     [HttpDelete("{id}")]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        var role = await _roleService.GetById(id, cancellationToken);
-        await _roleService.Delete(role, cancellationToken);
-        return new ApiResult<bool>(true);
+        throw new NotImplementedException();
     }
 }

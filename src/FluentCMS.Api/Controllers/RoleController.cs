@@ -9,44 +9,43 @@ namespace FluentCMS.Api.Controllers;
 public class RoleController(IMapper mapper, IRoleService roleService) : BaseController
 {
     [HttpGet]
-    public async Task<IApiPagingResult<RoleDto>> GetAll([FromQuery] Guid siteId, CancellationToken cancellationToken = default)
+    public async Task<RolesResponse> GetAll(SiteIdRequest request, CancellationToken cancellationToken = default)
     {
-        var roles = await roleService.GetAll(siteId, cancellationToken);
+        var roles = await roleService.GetAll(request.SiteId, cancellationToken);
         var result = mapper.Map<IEnumerable<RoleDto>>(roles);
-        return new ApiPagingResult<RoleDto>(result);
+        return new RolesResponse(result);
     }
 
-    [HttpGet("{id}")]
-    public async Task<IApiResult<RoleDto>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    [HttpGet]
+    public async Task<RoleResponse> GetById(IdRequest request, CancellationToken cancellationToken = default)
     {
-        var role = await roleService.GetById(id, cancellationToken);
+        var role = await roleService.GetById(request.SiteId, request.Id, cancellationToken);
         var result = mapper.Map<RoleDto>(role);
-        return new ApiResult<RoleDto>(result);
+        return new RoleResponse(result);
     }
 
     [HttpPost]
-    public async Task<IApiResult<RoleDto>> Create(RoleCreateRequest request, CancellationToken cancellationToken = default)
+    public async Task<RoleResponse> Create(RoleCreateRequest request, CancellationToken cancellationToken = default)
     {
         var role = mapper.Map<Role>(request);
         var newRole = await roleService.Create(role, cancellationToken);
         var result = mapper.Map<RoleDto>(newRole);
-        return new ApiResult<RoleDto>(result);
+        return new RoleResponse(result);
     }
 
     [HttpPut]
-    public async Task<IApiResult<RoleDto>> Update(RoleUpdateRequest request, CancellationToken cancellationToken = default)
+    public async Task<RoleResponse> Update(RoleUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var role = mapper.Map<Role>(request);
         var editedRole = await roleService.Update(role, cancellationToken);
         var result = mapper.Map<RoleDto>(editedRole);
-        return new ApiResult<RoleDto>(result);
+        return new RoleResponse(result);
     }
 
-    [HttpDelete("{id}")]
-    public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    [HttpDelete]
+    public async Task<BooleanResponse> Delete(IdRequest request, CancellationToken cancellationToken = default)
     {
-        var role = await roleService.GetById(id, cancellationToken);
-        await roleService.Delete(role, cancellationToken);
-        return new ApiResult<bool>(true);
+        await roleService.Delete(request.SiteId, request.Id, cancellationToken);
+        return new BooleanResponse(true);
     }
 }

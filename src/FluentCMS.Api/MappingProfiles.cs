@@ -46,5 +46,7 @@ public class MappingProfiles : Profile
         CreateMap<Role, RoleDto>();
         CreateMap<RoleCreateRequest, Role>();
         CreateMap<RoleUpdateRequest, Role>();
+
+        CreateMap<RoleUpdateRequest, Role>();
     }
 }

@@ -49,6 +49,12 @@ public class ExceptionCodes
 
     public const string SiteNotFound = "Site.NotFound";
 
+    #endregion
+
+    #region Role
+
+    public const string RoleNotFound = "Role.NotFound";
+    public const string RoleNameMustBeUnique = "Role.NameMustBeUnique";
 
     #endregion
 }

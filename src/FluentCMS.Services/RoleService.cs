@@ -7,48 +7,57 @@ namespace FluentCMS.Services;
 public interface IRoleService
 {
     Task<IEnumerable<Role>> GetAll(Guid siteId, CancellationToken cancellationToken = default);
-    Task<Role> GetById(Guid id, CancellationToken cancellationToken = default);
+    Task<Role> GetById(Guid siteId, Guid id, CancellationToken cancellationToken = default);
     Task<Role> Create(Role role, CancellationToken cancellationToken = default);
     Task<Role> Update(Role role, CancellationToken cancellationToken = default);
-    Task Delete(Role role, CancellationToken cancellationToken = default);
+    Task Delete(Guid siteId, Guid id, CancellationToken cancellationToken = default);
 }
 
-
-public class RoleService : BaseService<Role>, IRoleService
+public class RoleService(RoleManager<Role> roleManager, IApplicationContext appContext, ISiteRepository siteRepository) : BaseService<Role>(appContext), IRoleService
 {
-    protected readonly RoleManager<Role> RoleManager;
-    private readonly ISiteRepository _siteRepository;
-
-    public RoleService(RoleManager<Role> roleManager, IApplicationContext appContext, ISiteRepository siteRepository) : base(appContext)
+    private async Task<Site> GetSite(Guid siteId, CancellationToken cancellationToken = default)
     {
-        RoleManager = roleManager;
-        _siteRepository = siteRepository;
+        return await siteRepository.GetById(siteId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.SiteNotFound);
     }
 
-    public Task<Role> GetById(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Role> GetById(Guid siteId, Guid id, CancellationToken cancellationToken = default)
     {
-        var roles = RoleManager.Roles.AsEnumerable().Single(r => r.Id.Equals(id));
+        // permission will be checked inside GetAll
+        var siteRoles = await GetAll(siteId, cancellationToken);
 
-        return Task.FromResult(roles);
+        var role = siteRoles.SingleOrDefault(role => role.Id.Equals(id));
+
+        return role ?? throw new AppException(ExceptionCodes.RoleNotFound);
     }
 
-    public Task<IEnumerable<Role>> GetAll(Guid siteId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Role>> GetAll(Guid siteId, CancellationToken cancellationToken = default)
     {
-        var roles = RoleManager.Roles.Where(role => role.SiteId.Equals(siteId)).AsEnumerable();
+        var site = await GetSite(siteId, cancellationToken);
 
-        return Task.FromResult(roles);
+        // check if current user has admin access to the site
+        if (!Current.IsInRole(site.AdminRoleIds))
+            throw new AppPermissionException();
+
+        return roleManager.Roles.Where(role => role.SiteId.Equals(siteId)).AsEnumerable();
     }
 
     public async Task<Role> Create(Role role, CancellationToken cancellationToken)
     {
-        //var site = await _siteRepository.GetById(role.SiteId, cancellationToken);
+        var site = await GetSite(role.SiteId, cancellationToken);
 
-        //if (!Current.IsInRole(site?.AdminRoleIds ?? []))
-        //    throw new Exception("Only admin can create a role.");
+        // check if current user has admin access to the site
+        if (!Current.IsInRole(site.AdminRoleIds))
+            throw new AppPermissionException();
+
+        // check if role name is unique
+        var siteRoles = await GetAll(site.Id, cancellationToken);
+        if (siteRoles.Any(r => r.Name == role.Name))
+            throw new AppException(ExceptionCodes.RoleNameMustBeUnique);
 
         PrepareForCreate(role);
 
-        var idResult = await RoleManager.CreateAsync(role);
+        var idResult = await roleManager.CreateAsync(role);
 
         idResult.ThrowIfInvalid();
 
@@ -57,31 +66,32 @@ public class RoleService : BaseService<Role>, IRoleService
 
     public async Task<Role> Update(Role role, CancellationToken cancellationToken)
     {
-        //var site = await _siteRepository.GetById(role.SiteId, cancellationToken);
+        var site = await GetSite(role.SiteId, cancellationToken);
 
-        //if (role.SiteId != site.Id)
-        //    throw new Exception("Role must be updated for the current site.");
+        // check if current user has admin access to the site
+        if (!Current.IsInRole(site.AdminRoleIds))
+            throw new AppPermissionException();
 
-        //if (!Current.IsInRole(site.AdminRoleIds))
-        //    throw new Exception("Only admin can update a role.");
+        // check if role name is unique
+        var siteRoles = await GetAll(site.Id, cancellationToken);
+        if (siteRoles.Any(r => r.Name == role.Name && r.Id != role.Id))
+            throw new AppException(ExceptionCodes.RoleNameMustBeUnique);
 
         PrepareForUpdate(role);
 
-        var idResult = await RoleManager.UpdateAsync(role);
+        var idResult = await roleManager.UpdateAsync(role);
 
         idResult.ThrowIfInvalid();
 
         return role;
     }
 
-    public async Task Delete(Role role, CancellationToken cancellationToken = default)
+    public async Task Delete(Guid siteId, Guid id, CancellationToken cancellationToken = default)
     {
-        //var site = await _siteRepository.GetById(role.SiteId, cancellationToken);
+        // permission will be checked inside GetById
+        var role = await GetById(siteId, id, cancellationToken);
 
-        //if (!Current.IsInRole(site.AdminRoleIds))
-        //    throw new Exception("Only admin can update a role.");
-
-        var idResult = await RoleManager.DeleteAsync(role);
+        var idResult = await roleManager.DeleteAsync(role);
 
         idResult.ThrowIfInvalid();
     }
