@@ -55,8 +55,6 @@ public class RoleService(RoleManager<Role> roleManager, IApplicationContext appC
         if (siteRoles.Any(r => r.Name == role.Name))
             throw new AppException(ExceptionCodes.RoleNameMustBeUnique);
 
-        PrepareForCreate(role);
-
         var idResult = await roleManager.CreateAsync(role);
 
         idResult.ThrowIfInvalid();
@@ -76,8 +74,6 @@ public class RoleService(RoleManager<Role> roleManager, IApplicationContext appC
         var siteRoles = await GetAll(site.Id, cancellationToken);
         if (siteRoles.Any(r => r.Name == role.Name && r.Id != role.Id))
             throw new AppException(ExceptionCodes.RoleNameMustBeUnique);
-
-        PrepareForUpdate(role);
 
         var idResult = await roleManager.UpdateAsync(role);
 

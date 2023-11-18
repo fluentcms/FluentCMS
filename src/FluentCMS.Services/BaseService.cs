@@ -19,16 +19,4 @@ public abstract class BaseService<TEntity> : BaseService where TEntity : IAuditE
     public BaseService(IApplicationContext appContext) : base(appContext)
     {
     }
-
-    public void PrepareForCreate(TEntity entity)
-    {
-        entity.CreatedBy = Current.UserName;
-        entity.LastUpdatedBy = Current.UserName;
-    }
-
-    public void PrepareForUpdate(TEntity entity)
-    {
-        entity.LastUpdatedBy = Current.UserName;
-    }
-
 }

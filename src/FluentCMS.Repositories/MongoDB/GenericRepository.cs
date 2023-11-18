@@ -10,13 +10,15 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEnt
     protected readonly IMongoCollection<BsonDocument> BsonCollection;
     protected readonly IMongoDatabase MongoDatabase;
     protected readonly IMongoDBContext MongoDbContext;
+    protected readonly IApplicationContext AppContext;
 
-    public GenericRepository(IMongoDBContext mongoDbContext)
+    public GenericRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext)
     {
         MongoDatabase = mongoDbContext.Database;
         Collection = mongoDbContext.Database.GetCollection<TEntity>(GetCollectionName());
         BsonCollection = mongoDbContext.Database.GetCollection<BsonDocument>(GetCollectionName());
         MongoDbContext = mongoDbContext;
+        AppContext = applicationContext;
     }
 
     protected virtual string GetCollectionName()
@@ -64,7 +66,9 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEnt
         if (entity is IAuditEntity audit)
         {
             audit.CreatedAt = DateTime.UtcNow;
-            //audit.LastUpdatedAt = DateTime.UtcNow;
+            audit.CreatedAt = DateTime.UtcNow;
+            audit.LastUpdatedAt = DateTime.UtcNow;
+            audit.LastUpdatedBy = AppContext.Current.UserName;
         }
 
         await Collection.InsertOneAsync(entity, null, cancellationToken);
@@ -83,7 +87,9 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEnt
             foreach (var audit in entities.Cast<IAuditEntity>())
             {
                 audit.CreatedAt = DateTime.UtcNow;
-                //audit.LastUpdatedAt = DateTime.UtcNow;
+                audit.CreatedAt = DateTime.UtcNow;
+                audit.LastUpdatedAt = DateTime.UtcNow;
+                audit.LastUpdatedBy = AppContext.Current.UserName;
             }
 
         await Collection.InsertManyAsync(entities, null, cancellationToken);
@@ -96,7 +102,10 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEnt
         cancellationToken.ThrowIfCancellationRequested();
 
         if (entity is IAuditEntity audit)
+        {
             audit.LastUpdatedAt = DateTime.UtcNow;
+            audit.LastUpdatedBy = AppContext.Current.UserName;
+        }            
 
         var idFilter = Builders<TEntity>.Filter.Eq(x => x.Id, entity.Id);
 

@@ -5,7 +5,7 @@ namespace FluentCMS.Repositories.LiteDb;
 
 internal class RoleRepository : GenericRepository<Role>, IRoleRepository
 {
-    public RoleRepository(LiteDbContext dbContext) : base(dbContext)
+    public RoleRepository(LiteDbContext dbContext, IApplicationContext applicationContext) : base(dbContext, applicationContext)
     {
     }
 

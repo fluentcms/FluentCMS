@@ -8,15 +8,17 @@ namespace FluentCMS.Repositories.LiteDb;
 public class GenericRepository<TEntity> : IGenericRepository<TEntity>
     where TEntity : IEntity
 {
-    protected ILiteCollectionAsync<TEntity> Collection { get; }
-    protected ILiteCollectionAsync<BsonDocument> BsonCollection { get; }
-    protected LiteDbContext DbContext { get; private set; }
+    protected readonly ILiteCollectionAsync<TEntity> Collection;
+    protected readonly ILiteCollectionAsync<BsonDocument> BsonCollection;
+    protected readonly LiteDbContext DbContext;
+    protected readonly IApplicationContext AppContext;
 
-    public GenericRepository(LiteDbContext dbContext)
+    public GenericRepository(LiteDbContext dbContext, IApplicationContext applicationContext)
     {
         DbContext = dbContext;
         Collection = dbContext.Database.GetCollection<TEntity>(GetCollectionName());
         BsonCollection = dbContext.Database.GetCollection<BsonDocument>(GetCollectionName());
+        AppContext = applicationContext;
     }
 
     protected virtual string GetCollectionName()
@@ -33,7 +35,9 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity>
         if (entity is IAuditEntity audit)
         {
             audit.CreatedAt = DateTime.UtcNow;
+            audit.CreatedAt = DateTime.UtcNow;
             audit.LastUpdatedAt = DateTime.UtcNow;
+            audit.LastUpdatedBy = AppContext.Current.UserName;
         }
 
         await Collection.InsertAsync(entity);
@@ -52,7 +56,9 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity>
             foreach (var audit in entities.Cast<IAuditEntity>())
             {
                 audit.CreatedAt = DateTime.UtcNow;
+                audit.CreatedAt = DateTime.UtcNow;
                 audit.LastUpdatedAt = DateTime.UtcNow;
+                audit.LastUpdatedBy = AppContext.Current.UserName;
             }
 
         await Collection.InsertBulkAsync(entities);
@@ -64,7 +70,10 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity>
         cancellationToken.ThrowIfCancellationRequested();
 
         if (entity is IAuditEntity audit)
+        {
             audit.LastUpdatedAt = DateTime.UtcNow;
+            audit.LastUpdatedBy = AppContext.Current.UserName;
+        }
 
         return await Collection.UpdateAsync(entity) ? entity : default;
     }

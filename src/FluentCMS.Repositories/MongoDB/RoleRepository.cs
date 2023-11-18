@@ -5,7 +5,7 @@ namespace FluentCMS.Repositories.MongoDB;
 
 public class RoleRepository : GenericRepository<Role>, IRoleRepository
 {
-    public RoleRepository(IMongoDBContext mongoDbContext) : base(mongoDbContext)
+    public RoleRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext) : base(mongoDbContext, applicationContext)
     {
     }
 

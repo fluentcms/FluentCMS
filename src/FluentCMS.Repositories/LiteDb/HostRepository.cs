@@ -6,9 +6,12 @@ namespace FluentCMS.Repositories.LiteDb;
 public class HostRepository : IHostRepository
 {
     private readonly LiteDbContext _dbContext;
-    public HostRepository(LiteDbContext dbContext)
+    private readonly IApplicationContext _applicationContext;
+
+    public HostRepository(LiteDbContext dbContext, IApplicationContext applicationContext)
     {
         _dbContext = dbContext;
+        _applicationContext = applicationContext;
     }
 
     private ILiteCollectionAsync<Host> Collection => _dbContext.Database.GetCollection<Host>(typeof(Host).Name);
@@ -19,7 +22,9 @@ public class HostRepository : IHostRepository
 
         host.Id = Guid.NewGuid();
         host.CreatedAt = DateTime.UtcNow;
+        host.CreatedBy = _applicationContext.Current.UserName;
         host.LastUpdatedAt = DateTime.UtcNow;
+        host.LastUpdatedBy = _applicationContext.Current.UserName;
 
         await Collection.InsertAsync(host);
         return host;
@@ -38,6 +43,8 @@ public class HostRepository : IHostRepository
         cancellationToken.ThrowIfCancellationRequested();
 
         host.LastUpdatedAt = DateTime.UtcNow;
+        host.LastUpdatedBy = _applicationContext.Current.UserName;
+
         return await Collection.UpdateAsync(host) ? host : default;
     }
 }
