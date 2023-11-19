@@ -1,0 +1,12 @@
+<div class=@("f-button-group" + (NoWrap ? " f-button-group-no-wrap" : ""))>
+    @ChildContent
+</div>
+
+@code {
+        [Parameter]
+    public bool NoWrap {get; set;} = false;
+
+
+    [Parameter]
+    public RenderFragment ChildContent {get; set;}
+}

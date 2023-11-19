@@ -1,0 +1,11 @@
+$prefix-tabs: $prefix + 'tabs';
+
+.#{$prefix-tabs} {
+    @apply text-sm font-medium text-center text-gray-500 border-b border-gray-200;
+
+    .#{$prefix-theme-dark} & {
+        @apply text-gray-400 border-gray-700;
+    }
+}
+
+// TODO

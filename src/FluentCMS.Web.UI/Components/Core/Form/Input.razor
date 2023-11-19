@@ -1,0 +1,15 @@
+<input class="f-input" type="@Type" id="@Id" placeholder="@Placeholder" required=@Required>
+
+@code {
+    [Parameter]
+    public string Type {get; set;} = "text";
+
+    [Parameter]
+    public string Id {get; set;}
+
+    [Parameter]
+    public string Placeholder {get; set;}
+
+    [Parameter]
+    public bool Required {get; set;} = false;
+}

@@ -1,0 +1,17 @@
+<div class="f-card">
+    @if (Title != String.Empty) {
+        <CardHeader Title="@Title" />
+    }
+
+    @ChildContent
+   
+</div>
+
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent {get; set;}
+
+    [Parameter]
+    public string Title {get; set;} = String.Empty;
+}

@@ -1,4 +1,13 @@
-﻿<ul class="nav flex-column">
+﻿<Sidebar>
+   <SidebarItem Title="Dashboard" Href="/" Match="NavLinkMatch.All"/>
+   <SidebarItem Title="Counter" Href="/admin/counter"/>
+   <SidebarItem Title="Manage Sites" Href="/admin/sites"/>
+   <SidebarItem Title="Manage Users" Href="/admin/users"/>
+   <SidebarItem Title="Manage Roles" Href="/admin/roles"/>
+   <SidebarItem Title="Swagger Documentation" Href="/doc" target="_blank"/>
+</Sidebar>
+
+@* <ul class="nav flex-column">
     <li class="nav-item">
         <NavLink class="nav-link d-flex align-items-center gap-2" href="/" Match="NavLinkMatch.All">
             Dashboard
@@ -33,4 +42,4 @@
 
 @code {
 
-}
+} *@

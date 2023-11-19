@@ -1,0 +1,20 @@
+<FormField Id=@Id Label=@Label>
+    <Input Type=@Type Placeholder=@Placeholder Id=@Id Required=@Required/>
+</FormField>
+
+@code {
+    [Parameter]
+    public string Placeholder {get; set;} = "";
+
+    [Parameter]
+    public string Id {get; set;} = "f-" + Guid.NewGuid().ToString();
+
+    [Parameter]
+    public string Type {get; set;}
+
+    [Parameter]
+    public string Label {get; set;} = "";
+
+    [Parameter]
+    public bool Required {get; set;} = false;
+}

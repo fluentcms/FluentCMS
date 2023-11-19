@@ -1,0 +1,45 @@
+// <div class="f-layout">
+//     <div class="f-layout-sidebar">
+//         <NavMenu />
+//     </div>
+
+//     <main class="f-layout-content-wrapper">
+//         <div class="f-layout-content-header">
+//             <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+//         </div>
+
+//         <article class="f-layout-content">
+//             @Body
+//         </article>
+//     </main>
+// </div>
+
+$prefix-layout: $prefix + 'layout';
+$prefix-content: $prefix + 'content';
+
+
+// .#{$prefix-layout} {
+//     @apply;
+    
+// }
+
+.#{$prefix-content} {
+    @apply h-screen ml-0 mt-16 text-gray-900 bg-gray-50;
+
+
+    @screen sm {
+        @apply ml-64;
+    }
+
+    .#{$prefix-theme-dark} & {
+        @apply text-gray-200 bg-gray-800;
+    }
+
+    // &-wrapper {
+    //     @apply;
+    // }
+    // &-header {
+    //     @apply;
+
+    // }
+}

@@ -1,56 +1,27 @@
-﻿// Default prefix for component's CSS classes
+﻿
+// Default prefix for component's CSS classes
 $prefix: 'f-';
+$prefix-theme-dark: $prefix + 'theme-dark';
 
-// bootstrap main SCSS file
-@import "../lib/bootstrap/scss/bootstrap";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-// Custom Components
-@import './components/badge';
+/* #region COMPONENTS */
+@import './components/button';
+@import './components/card';
+@import './components/dropdown';
+@import './components/page';
+@import './components/layout';
+@import './components/form';
+@import './components/input';
+@import './components/table';
+@import './components/tabs';
 
-nav.navbar {
-    background: linear-gradient($primary, $white)
-}
 
-/*
- * Sidebar
- */
 
-@media (min-width: 768px) {
-    .sidebar .offcanvas-lg {
-        position: -webkit-sticky;
-        position: sticky;
-        top: 48px;
-    }
+@import './components/sidebar';
 
-    .navbar-search {
-        display: block;
-    }
-}
 
-.sidebar .nav-link {
-    font-size: .875rem;
-    font-weight: 500;
-}
 
-.sidebar .nav-link.active {
-    color: #2470dc;
-}
-
-.sidebar-heading {
-    font-size: .75rem;
-}
-
-/*
- * Navbar
- */
-
-.navbar-brand {
-    padding-top: .75rem;
-    padding-bottom: .75rem;
-    background-color: rgba(0, 0, 0, .25);
-    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .25);
-}
-
-.navbar .form-control {
-    padding: .75rem 1rem;
-}
+/* #endregion COMPONENTS */

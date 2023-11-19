@@ -1,0 +1,17 @@
+<div class="f-form-field">
+    @if(Label != String.Empty) {
+        <Label For="@Id">@Label</Label>
+    }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent {get; set;}
+
+    [Parameter]
+    public string Label {get; set;} = String.Empty;
+
+    [Parameter]
+    public string Id {get; set;}
+}

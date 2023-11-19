@@ -1,0 +1,30 @@
+$prefix-dropdown: $prefix + 'dropdown';
+
+.#{$prefix-dropdown} {
+    @apply z-10 bg-white divide-y divide-gray-100 rounded-lg shadow w-44;
+    
+
+    &-item {
+        @apply block px-4 py-2; 
+    }
+
+    &-menu {
+        @apply py-2 text-sm text-gray-700;
+    }
+
+    &-item:hover {
+        @apply bg-gray-100;
+    }
+
+    .#{$prefix-theme-dark} & {
+        @apply bg-gray-700;
+    }
+
+    .#{$prefix-theme-dark} &-item:hover {
+        @apply bg-gray-600 text-white;
+    }
+
+    .#{$prefix-theme-dark} &-menu {
+        @apply text-gray-200;
+    }
+}

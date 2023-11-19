@@ -1,0 +1,42 @@
+$prefix-sidebar: $prefix + 'sidebar';
+$prefix-sidebar-item: $prefix + 'sidebar-item';
+
+.#{$prefix-sidebar} {
+    @apply fixed top-0 left-0 z-40 w-64 pt-16 h-screen transition-transform;
+
+    @screen sm {
+        @apply translate-x-0;
+    }
+
+    & li {
+        list-style-type: none;
+    }
+
+    &-body {
+        @apply h-full px-3 py-4 overflow-y-auto bg-white border-r border-gray-200;
+    }
+
+    .#{$prefix-theme-dark} &-body {
+        @apply bg-gray-800 border-gray-700;
+    }
+
+}
+
+.#{$prefix-sidebar-item} {
+    @apply flex items-center p-2 text-gray-900 rounded-lg;
+
+    &:hover {
+        @apply bg-gray-100;
+    }
+    .#{$prefix-theme-dark} & {
+        @apply text-white;
+    }
+
+    .#{$prefix-theme-dark} &:hover {
+        @apply bg-gray-700;
+    }    
+
+    &-text {
+        @apply flex-1 ml-3 whitespace-nowrap;
+    }
+}

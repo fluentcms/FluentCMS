@@ -1,0 +1,21 @@
+{
+  "name": "fluentcms.web.ui",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "tailwind:watch": "tailwindcss -i wwwroot/css/app.css -o wwwroot/css/app.min.css --watch",
+    "sass:watch": "sass wwwroot/css/app.scss:wwwroot/css/app.css --watch",
+    "watch": "conc \"npm run tailwind:watch\" \"npm run sass:watch\"",
+    "dev": "conc \"npm run watch\" \"dotnet watch\""
+  },
+  "devDependencies": {
+    "conc": "^0.0.3",
+    "flowbite": "^2.1.1",
+    "sass": "^1.69.5",
+    "tailwindcss": "^3.3.5"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
