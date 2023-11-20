@@ -4,33 +4,23 @@
 @inject HttpClient _httpClient
 @inject NavigationManager _navigationManager
 
-<h3>Site Update</h3>
-<EditForm Model="Site" OnValidSubmit="ValidSubmit">
-    <div class="mb-3">
-        <label class="form-label">Name</label>
-        <InputText type="text" class="form-control" required @bind-Value="Site.Name" name="name" />
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Description</label>
-        <textarea class="form-control" @bind="Site.Description" name="description" rows="3"></textarea>
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Role</label>
-        @* <select class="form-select" required @bind="Site.RoleId" name="roleId">
-        @foreach (var role in Roles)
-        {
-        <option value="@role.Id">@role.Name</option>
-        }
-        </select> *@
-    </div>
-    @* Urls *@
-    <div class="mb-3">
-        <label class="form-label">Urls (Comma Separated Urls)</label>
-        <InputText class="form-control" required @bind-Value="Urls" name="url" rows="3"></InputText>
-    </div>
+<EditPage Title="Site Update" Model="Site" OnValidSubmit="ValidSubmit">
+    <Content>
 
-    <Button Type="submit" Color="Colors.Primary">Save</Button>
-</EditForm>
+    <FormInput Label="Name" @bind-Value="Site.Name" Name="name"/>
+    <FormTextarea Rows="3" Label="Description" @bind-Value="Site.Description" Name="description"/>
+    
+    <FormField Label="Role">
+        @* TODO *@
+    </FormField>
+    <FormInput Label="Urls (Comma Separated Urls)" Required @bind-Value="Urls" Name="url" />
+
+    </Content>
+
+    <FooterActions>
+        <Button Type="submit" Color="primary">Save</Button>
+    </FooterActions>
+</EditPage>
 
 @code {
     [Parameter]

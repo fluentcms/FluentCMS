@@ -21,8 +21,7 @@
                    @attributes="addRequiredAttribute(Id == null)"
                    @bind-Value="data.Password" />
     </div>
-    <div>
-        <Label Class="form-label">Roles:</Label>
+    <FormField Label="Roles:">
         @if (roles == null)
         {
             <span>Loading user roles...</span>
@@ -43,9 +42,9 @@
                 </div>
             }
         }
-    </div>
+    </FormField>
 
-    <Button Type="submit" Color="Colors.Primary">Save</Button>
+    <Button Type="submit" Color="primary">Save</Button>
     @if (errors.Any())
     {
         <p>Errors:</p>

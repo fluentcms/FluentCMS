@@ -1,8 +1,16 @@
 <!-- Dropdown menu -->
-
+<div id="@Id" class="f-dropdown hidden">
+    <ul class="f-dropdown-menu" aria-labelledby="@Id">
+        @ChildContent
+    </ul>
+</div>
 
 
 @code {
   [Parameter]
   public RenderFragment ChildContent {get; set;}
+
+  [Parameter]
+    public string Id { get; set; }
+
 }

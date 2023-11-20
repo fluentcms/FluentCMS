@@ -1,7 +1,7 @@
-$prefix-input: $prefix + 'input';
+$prefix-textarea: $prefix + 'textarea';
 
-.#{$prefix-input} {
-    @apply transition-colors bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5;
+.#{$prefix-textarea} {
+    @apply transition-colors block p-2.5 w-full text-sm text-gray-900 bg-white rounded-lg border border-gray-300;
 
     &:focus {
         @apply ring-blue-500 border-blue-500 ;

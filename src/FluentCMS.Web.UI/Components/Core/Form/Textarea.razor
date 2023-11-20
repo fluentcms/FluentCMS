@@ -1,8 +1,8 @@
-<input class="f-input" type="@Type" id="@Id" placeholder="@Placeholder" required=@Required @attributes=@RestProps @bind-value="@Value">
+<textarea class="f-textarea" id="@Id" rows="@Rows" placeholder="@Placeholder" required=@Required @attributes=@RestProps @bind="@Value" />
 
 @code {
     [Parameter]
-    public string Type {get; set;} = "text";
+    public string Rows {get; set;} = "5";
 
     [Parameter]
     public string Id {get; set;}
@@ -14,8 +14,9 @@
     public bool Required {get; set;} = false;
 
     [Parameter]
-    public string Value {get; set;}
+    public string Value {get; set;} 
 
+    
     [Parameter(CaptureUnmatchedValues =true)]
     public Dictionary<string, object> RestProps {get; set;}
 }

@@ -6,6 +6,9 @@
     </PageHeader>
 
 
+<EditForm Model="@Model" OnValidSubmit="(e) => OnValidSubmit.InvokeAsync(e)">
+
+</EditForm>
     <Card>
         <CardBody>
             @Content
@@ -29,7 +32,14 @@
     public RenderFragment HeaderActions {get; set;}
     [Parameter]
     public RenderFragment Content {get; set;}
+
     [Parameter]
     public RenderFragment FooterActions {get; set;}
 
+    [Parameter]
+    public string Model {get; set;}
+
+
+    [Parameter]
+    public EventCallback<EditContext> OnValidSubmit {get; set;}
 }
