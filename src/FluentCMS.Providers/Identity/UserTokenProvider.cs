@@ -81,11 +81,16 @@ public class JwtUserTokenProvider : IUserTokenProvider
             new(JwtRegisteredClaimNames.Iat, DateTime.Now.ToLongDateString()),
             new(JwtRegisteredClaimNames.Sub, userId),
             new(ClaimTypes.NameIdentifier, userId),
-            new(ClaimTypes.Name, user.UserName)
+            new(ClaimTypes.Name, user.UserName?? string.Empty)
         };
-        if (!string.IsNullOrWhiteSpace(user.NormalizedEmail)) result.Add(new Claim(ClaimTypes.Email, user.NormalizedEmail));
-        if (!string.IsNullOrWhiteSpace(user.PhoneNumber)) result.Add(new Claim(ClaimTypes.Email, user.PhoneNumber));
+        if (!string.IsNullOrWhiteSpace(user.NormalizedEmail))
+            result.Add(new Claim(ClaimTypes.Email, user.NormalizedEmail));
+
+        if (!string.IsNullOrWhiteSpace(user.PhoneNumber))
+            result.Add(new Claim(ClaimTypes.Email, user.PhoneNumber));
+
         result.AddRange(user.RoleIds.Select(userRole => new Claim(ClaimTypes.Role, userRole.ToString())));
+
         return result;
     }
 
