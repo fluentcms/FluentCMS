@@ -29,13 +29,12 @@
     <Error Condition="'$(ErrorCode)' != '0'" Text="You must install NPM to build this project" />
   </Target>
 
-  <Target Name="NpmInstall" BeforeTargets="BuildCSS" Inputs="package.json" Outputs="$(NpmLastInstall)">
+  <Target Name="NpmInstall" BeforeTargets="BuildCSS" Inputs="package.json" Outputs="node_modules/.install-stamp">
     <Exec Command="npm install" />
-    <Touch Files="$(NpmLastInstall)" AlwaysCreate="true" />
+	<Touch Files="node_modules/.install-stamp" AlwaysCreate="true" />
   </Target>
 
-  <Target Name="BuildCSS" BeforeTargets="Compile">
-    <Exec Command="npm run build" Condition=" '$(Configuration)' == 'Debug' " />
-    <Exec Command="npm run build" Condition=" '$(Configuration)' == 'Release' " />
-  </Target>
+	<Target Name="NpmRunBuild" DependsOnTargets="NpmInstall" BeforeTargets="BeforeBuild">
+		<Exec Command="npm run build" />
+	</Target>
 </Project>
