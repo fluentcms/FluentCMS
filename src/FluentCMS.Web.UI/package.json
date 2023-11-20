@@ -5,8 +5,12 @@
   "main": "index.js",
   "scripts": {
     "tailwind:watch": "tailwindcss -i wwwroot/css/app.css -o wwwroot/css/app.min.css --watch",
+    "tailwind": "tailwindcss -i wwwroot/css/app.css -o wwwroot/css/app.min.css --minify",
     "sass:watch": "sass wwwroot/css/app.scss:wwwroot/css/app.css --watch",
+    "sass": "sass wwwroot/css/app.scss:wwwroot/css/app.css",
     "watch": "conc \"npm run tailwind:watch\" \"npm run sass:watch\"",
+    "build": "npm run sass && npm run tailwind",
+
     "dev": "conc \"npm run watch\" \"dotnet watch\""
   },
   "devDependencies": {
