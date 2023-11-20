@@ -1,0 +1,12 @@
+<aside id="default-sidebar" aria-label="Sidebar" class="f-sidebar -translate-x-full">
+    <div class="f-sidebar-body">
+        @ChildContent
+        
+    </div>
+
+</aside>
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent {get; set;}
+}

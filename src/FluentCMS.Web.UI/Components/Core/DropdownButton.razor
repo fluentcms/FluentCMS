@@ -1,0 +1,22 @@
+
+<Button id="dropdownDefaultButton" data-dropdown-toggle="dropdown">
+    @Text 
+
+  <svg class="f-button-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"/>
+  </svg>
+</Button>
+
+<div id="dropdown" class="f-dropdown hidden">
+    <ul class="f-dropdown-menu" aria-labelledby="dropdownDefaultButton">
+      @ChildContent
+    </ul>
+</div>
+
+@code {
+    [Parameter]
+  public string Text {get; set;}
+
+  [Parameter]
+  public RenderFragment ChildContent {get; set;}
+}

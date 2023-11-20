@@ -1,0 +1,11 @@
+<th class=@("f-table-cell" + (SmallWidth ? " f-table-cell-small" : ""))>
+    @ChildContent
+</th>
+@code {
+
+    [Parameter]
+    public bool SmallWidth { get; set; }
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+}

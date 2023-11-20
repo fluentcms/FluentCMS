@@ -1,0 +1,13 @@
+$prefix-label: $prefix + 'label';
+$prefix-form-field: $prefix + 'form-field';
+
+.#{$prefix-form-field} {
+    @apply mb-6;
+}
+
+.#{$prefix-label} {
+    @apply block mb-2 text-sm font-medium text-gray-900;
+    .#{$prefix-theme-dark} & {
+        @apply text-white;
+    }
+}

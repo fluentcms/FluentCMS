@@ -1,0 +1,10 @@
+<label for=@For class="f-label">@ChildContent</label>
+
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent {get; set;}
+
+    [Parameter]
+    public string For {get; set;} = String.Empty;
+}

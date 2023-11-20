@@ -1,0 +1,24 @@
+
+<div class="f-table-parent">
+    <table class="f-table">
+        <thead class="f-table-head">
+            <tr class="f-table-head-row">
+                @TableHead
+            </tr>
+        </thead>
+        <tbody class="f-table-body">
+            @TableBody
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment TableHead {get; set;}
+
+
+    [Parameter]
+    public RenderFragment TableBody {get; set;}
+
+}
+

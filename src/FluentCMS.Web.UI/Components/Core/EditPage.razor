@@ -1,0 +1,35 @@
+<Page>
+    <PageHeader Title=@Title>
+        <PageActions>
+            @HeaderActions
+        </PageActions>
+    </PageHeader>
+
+
+    <Card>
+        <CardBody>
+            @Content
+        </CardBody>
+
+        <CardFooter>
+            <ButtonGroup>
+                @FooterActions
+            </ButtonGroup>
+
+        </CardFooter>
+
+    </Card>
+</Page>
+
+@code {
+    [Parameter]
+    public string Title {get; set;}
+
+    [Parameter]
+    public RenderFragment HeaderActions {get; set;}
+    [Parameter]
+    public RenderFragment Content {get; set;}
+    [Parameter]
+    public RenderFragment FooterActions {get; set;}
+
+}

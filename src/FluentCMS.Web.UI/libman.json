@@ -5,8 +5,8 @@
   "defaultProvider": "unpkg",
   "libraries": [
     {
-      "library": "bootstrap@5.3.2",
-      "destination": "wwwroot/lib/bootstrap/"
+        "library": "flowbite@2.0.0",
+        "destination": "wwwroot/lib/flowbite/"
     }
   ]
 }

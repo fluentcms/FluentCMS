@@ -1,0 +1,18 @@
+<div class="f-page-header">
+    <h2 class="f-page-title">@Title</h2>
+    <div class="f-page-actions">
+        <ButtonGroup>
+            @PageActions
+        </ButtonGroup>
+    </div>
+</div>
+
+
+@code {
+
+    [Parameter]
+    public string Title { get; set; } = String.Empty;
+    
+    [Parameter]
+    public RenderFragment PageActions { get; set; }
+}

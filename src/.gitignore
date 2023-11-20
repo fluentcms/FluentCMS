@@ -8,6 +8,8 @@ lib/
 
 # Compiled css
 /FluentCMS.Web.UI/wwwroot/css/*.css
+/FluentCMS.Web.UI/wwwroot/css/*.css.map
+
 
 # User-specific files
 *.rsuser
