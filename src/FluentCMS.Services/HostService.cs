@@ -30,8 +30,6 @@ public class HostService : BaseService<Host>, IHostService
         if (await IsInitialized(cancellationToken))
             throw new AppException(ExceptionCodes.HostAlreadyInitialized);
 
-        PrepareForCreate(host);
-
         return await _hostRepository.Create(host, cancellationToken) ??
             throw new AppException(ExceptionCodes.HostUnableToCreate);
     }
@@ -54,8 +52,6 @@ public class HostService : BaseService<Host>, IHostService
 
         // setting id from old host to the updated one
         host.Id = oldHost.Id;
-
-        PrepareForUpdate(host);
 
         return await _hostRepository.Update(host, cancellationToken)
             ?? throw new AppException(ExceptionCodes.HostUnableToUpdate);

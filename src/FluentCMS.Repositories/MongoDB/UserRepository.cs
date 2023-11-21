@@ -6,7 +6,7 @@ namespace FluentCMS.Repositories.MongoDB;
 
 public class UserRepository : GenericRepository<User>, IUserRepository
 {
-    public UserRepository(IMongoDBContext mongoDbContext) : base(mongoDbContext)
+    public UserRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext) : base(mongoDbContext, applicationContext)
     {
     }
 
