@@ -36,8 +36,7 @@ public static class DefaultDataLoaderExtensions
 
             appContext.Current = new CurrentContext
             {
-                User = superUser,
-                Host = defaultData.Host
+                UserName = superUser.UserName
             };
 
             // Default users creation

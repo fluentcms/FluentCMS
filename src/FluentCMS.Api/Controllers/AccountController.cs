@@ -22,7 +22,7 @@ public class AccountController(IMapper mapper, IUserService userService) : BaseC
     public async Task<IApiResult<UserAuthenticateDto>> Authenticate(UserAuthenticateRequest request, CancellationToken cancellationToken = default)
     {
         var user = await userService.Authenticate(request.Username, request.Password, cancellationToken);
-        var userToken = await userService.GetToken(user, cancellationToken);
+        var userToken = await userService.GetToken(user, false, cancellationToken);
         return new ApiResult<UserAuthenticateDto>(new UserAuthenticateDto
         {
             Token = userToken.AccessToken,

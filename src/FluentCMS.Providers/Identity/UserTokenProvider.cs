@@ -10,7 +10,7 @@ namespace FluentCMS.Providers.Identity;
 
 public interface IUserTokenProvider
 {
-    Task<UserToken> Generate(User user);
+    Task<UserToken> Generate(User user, bool isSuperAdmin);
     Task<Guid> Validate(string accessToken);
     Task<Guid> ValidateExpiredToken(string accessToken);
 }
@@ -24,11 +24,11 @@ public class JwtUserTokenProvider : IUserTokenProvider
         _options = options.Value;
     }
 
-    public virtual async Task<UserToken> Generate(User user)
+    public virtual async Task<UserToken> Generate(User user, bool isSuperAdmin)
     {
         return await Task.Run(() =>
         {
-            var token = GenerateToken(user);
+            var token = GenerateToken(user, isSuperAdmin);
             var refreshToken = GenerateRefreshToken(user);
             return new UserToken
             {
@@ -47,11 +47,11 @@ public class JwtUserTokenProvider : IUserTokenProvider
         return Convert.ToBase64String(randomNumber);
     }
 
-    private UserToken GenerateToken(User user)
+    private UserToken GenerateToken(User user, bool isSuperAdmin)
     {
         var jwtTokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.UTF8.GetBytes(_options.Secret);
-        var claims = GetJwtClaims(user);
+        var claims = GetJwtClaims(user, isSuperAdmin);
 
         var tokenDescriptor = new SecurityTokenDescriptor
         {
@@ -72,7 +72,7 @@ public class JwtUserTokenProvider : IUserTokenProvider
         };
     }
 
-    private List<Claim> GetJwtClaims(User user)
+    private List<Claim> GetJwtClaims(User user, bool isSuperAdmin)
     {
         var userId = user.Id.ToString();
         var result = new List<Claim>
