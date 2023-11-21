@@ -17,7 +17,9 @@
     "conc": "^0.0.3",
     "flowbite": "^2.1.1",
     "sass": "^1.69.5",
-    "tailwindcss": "^3.3.5"
+    "tailwindcss": "^3.3.5",
+    "gulp": "^4.0.2",
+    "gulp-run": "^1.7.1"
   },
   "dependencies": {
     "concurrently": "^8.2.2"
