@@ -1,6 +1,5 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories;
-using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Services;
 
@@ -13,8 +12,10 @@ public interface IRoleService
     Task Delete(Guid siteId, Guid id, CancellationToken cancellationToken = default);
 }
 
-public class RoleService(RoleManager<Role> roleManager, IApplicationContext appContext, ISiteRepository siteRepository) : BaseService<Role>(appContext), IRoleService
+public class RoleService(IApplicationContext appContext, IRoleRepository roleRepository, ISiteRepository siteRepository) : BaseService<Role>(appContext), IRoleService
 {
+    private readonly IRoleRepository _roleRepository = roleRepository;
+
     private async Task<Site> GetSite(Guid siteId, CancellationToken cancellationToken = default)
     {
         return await siteRepository.GetById(siteId, cancellationToken) ??
@@ -39,7 +40,7 @@ public class RoleService(RoleManager<Role> roleManager, IApplicationContext appC
         if (!Current.IsInRole(site.AdminRoleIds))
             throw new AppPermissionException();
 
-        return roleManager.Roles.Where(role => role.SiteId.Equals(siteId)).AsEnumerable();
+        return await _roleRepository.GetAll(siteId, cancellationToken);
     }
 
     public async Task<Role> Create(Role role, CancellationToken cancellationToken)
@@ -52,14 +53,11 @@ public class RoleService(RoleManager<Role> roleManager, IApplicationContext appC
 
         // check if role name is unique
         var siteRoles = await GetAll(site.Id, cancellationToken);
-        if (siteRoles.Any(r => r.Name == role.Name))
+        if (siteRoles.Any(r => r.Name.ToLower() == role.Name.ToLower()))
             throw new AppException(ExceptionCodes.RoleNameMustBeUnique);
 
-        var idResult = await roleManager.CreateAsync(role);
-
-        idResult.ThrowIfInvalid();
-
-        return role;
+        return await _roleRepository.Create(role, cancellationToken) ??
+            throw new AppException(ExceptionCodes.RoleUnableToCreate);
     }
 
     public async Task<Role> Update(Role role, CancellationToken cancellationToken)
@@ -72,23 +70,22 @@ public class RoleService(RoleManager<Role> roleManager, IApplicationContext appC
 
         // check if role name is unique
         var siteRoles = await GetAll(site.Id, cancellationToken);
-        if (siteRoles.Any(r => r.Name == role.Name && r.Id != role.Id))
+        if (siteRoles.Any(r => r.Name.ToLower() == role.Name.ToLower() && r.Id != role.Id))
             throw new AppException(ExceptionCodes.RoleNameMustBeUnique);
 
-        var idResult = await roleManager.UpdateAsync(role);
-
-        idResult.ThrowIfInvalid();
-
-        return role;
+        return await _roleRepository.Update(role, cancellationToken) ??
+            throw new AppException(ExceptionCodes.RoleUnableToUpdate);
     }
 
     public async Task Delete(Guid siteId, Guid id, CancellationToken cancellationToken = default)
     {
         // permission will be checked inside GetById
         var role = await GetById(siteId, id, cancellationToken);
+        if (role == null)
+            throw new AppPermissionException();
 
-        var idResult = await roleManager.DeleteAsync(role);
-
-        idResult.ThrowIfInvalid();
+        var deletedRole = await _roleRepository.Delete(id, cancellationToken);
+        if (deletedRole == null)
+            throw new AppException(ExceptionCodes.RoleUnableToDelete);
     }
 }

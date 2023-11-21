@@ -53,6 +53,10 @@ public class ExceptionCodes
 
     #region Role
 
+
+    public const string RoleUnableToCreate = "Role.UnableToCreated";
+    public const string RoleUnableToUpdate = "Role.UnableToUpdate";
+    public const string RoleUnableToDelete = "Role.UnableToDelete";
     public const string RoleNotFound = "Role.NotFound";
     public const string RoleNameMustBeUnique = "Role.NameMustBeUnique";
 
