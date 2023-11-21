@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerUI;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -19,12 +21,20 @@ public static class SwaggerServiceExtensions
         {
             c.OrderActionsBy(x => x.RelativePath);
             c.SwaggerDoc("v1", new OpenApiInfo { Title = applicationName, Version = version });
+
+            c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+            {
+                In = ParameterLocation.Header,
+                Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+                Name = "Authorization",
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT"
+            });
+
         });
 
-        //services.AddSwaggerGenNewtonsoftSupport();
-
         return services;
-
     }
 
     public static IApplicationBuilder UseApiDocumentation(this IApplicationBuilder app, string routePrefix = "doc")
@@ -39,6 +49,7 @@ public static class SwaggerServiceExtensions
             c.DisplayRequestDuration();
             c.SwaggerEndpoint("/swagger/v1/swagger.json", _applicationName + ", Version " + _applicationVersion);
             c.RoutePrefix = routePrefix;
+            c.DocExpansion(DocExpansion.None);
         });
 
         return app;

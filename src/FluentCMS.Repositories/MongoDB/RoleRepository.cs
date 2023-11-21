@@ -5,23 +5,18 @@ namespace FluentCMS.Repositories.MongoDB;
 
 public class RoleRepository : GenericRepository<Role>, IRoleRepository
 {
-    public RoleRepository(IMongoDBContext mongoDbContext) : base(mongoDbContext)
+    public RoleRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext) : base(mongoDbContext, applicationContext)
     {
     }
 
-    public IQueryable<Role> AsQueryable()
-    {
-        return Collection.AsQueryable();
-    }
-
-    public async Task<Role?> FindByName(string normalizedRoleName, CancellationToken cancellationToken)
+    public async Task<IEnumerable<Role>> GetAll(Guid siteId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var filter = Builders<Role>.Filter.Eq(x => x.NormalizedName, normalizedRoleName);
+        var siteIdFilter = Builders<Role>.Filter.Eq(x => x.SiteId, siteId);
 
-        var findResult = await Collection.FindAsync(filter, null, cancellationToken);
+        var roles = await Collection.FindAsync(siteIdFilter, null, cancellationToken);
 
-        return await findResult.SingleOrDefaultAsync(cancellationToken);
+        return roles.ToEnumerable(cancellationToken);
     }
 }

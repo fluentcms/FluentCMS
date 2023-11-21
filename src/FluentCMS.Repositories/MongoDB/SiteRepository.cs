@@ -3,7 +3,7 @@ using MongoDB.Driver;
 
 namespace FluentCMS.Repositories.MongoDB;
 
-public class SiteRepository(IMongoDBContext mongoDbContext) : GenericRepository<Site>(mongoDbContext), ISiteRepository
+public class SiteRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext) : GenericRepository<Site>(mongoDbContext, applicationContext), ISiteRepository
 {
     public async Task<bool> CheckUrls(IList<string> urls, CancellationToken cancellationToken = default)
     {

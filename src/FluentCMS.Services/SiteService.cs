@@ -65,8 +65,6 @@ public class SiteService : BaseService<Site>, ISiteService
         if (await _siteRepository.CheckUrls(site.Urls, cancellationToken))
             throw new ApplicationException("Site URLs must be unique");
 
-        PrepareForCreate(site);
-
         var newSite = await _siteRepository.Create(site, cancellationToken);
         return newSite ?? throw new ApplicationException("Site not created");
     }
@@ -83,8 +81,6 @@ public class SiteService : BaseService<Site>, ISiteService
         //// check if the site URLs are unique in all sites
         //if (await _siteRepository.CheckUrls(site.Urls, cancellationToken))
         //    throw new ApplicationException("Site URLs must be unique");
-
-        PrepareForUpdate(site);
 
         var updateSite = await _siteRepository.Update(site, cancellationToken);
 

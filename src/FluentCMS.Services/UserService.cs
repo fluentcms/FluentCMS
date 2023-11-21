@@ -12,7 +12,7 @@ public interface IUserService
     Task<User> Update(User user, CancellationToken cancellationToken = default);
     Task<User> Create(User user, string password, CancellationToken cancellationToken = default);
     Task<User> Authenticate(string username, string password, CancellationToken cancellationToken = default);
-    Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default);
+    Task<UserToken> GetToken(User user, bool isSuperAdmin, CancellationToken cancellationToken = default);
     Task ChangePassword(User user, string newPassword, CancellationToken cancellationToken = default);
     Task<User> ChangePassword(Guid id, string oldPassword, string newPassword, CancellationToken cancellationToken = default);
     Task<User?> GetByUsername(string username);
@@ -39,10 +39,10 @@ public class UserService : IUserService
         return await GetById(user.Id, cancellationToken);
     }
 
-    public async Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default)
+    public async Task<UserToken> GetToken(User user, bool isSuperAdmin, CancellationToken cancellationToken = default)
     {
         // Generate token
-        var userToken = await _userTokenProvider.Generate(user);
+        var userToken = await _userTokenProvider.Generate(user, isSuperAdmin);
 
         if (userToken is null || string.IsNullOrEmpty(userToken.AccessToken))
             throw new AppException(ExceptionCodes.UserTokenGenerationFailed);

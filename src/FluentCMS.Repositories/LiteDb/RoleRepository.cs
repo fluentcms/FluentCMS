@@ -1,23 +1,19 @@
 ﻿using FluentCMS.Entities;
-using LiteDB.Queryable;
 
 namespace FluentCMS.Repositories.LiteDb;
 
 internal class RoleRepository : GenericRepository<Role>, IRoleRepository
 {
-    public RoleRepository(LiteDbContext dbContext) : base(dbContext)
+    public RoleRepository(LiteDbContext dbContext, IApplicationContext applicationContext) : base(dbContext, applicationContext)
     {
     }
 
-    public IQueryable<Role> AsQueryable()
-    {
-        return Collection.AsQueryable();
-    }
-
-    public async Task<Role?> FindByName(string normalizedRoleName, CancellationToken cancellationToken)
+    public async Task<IEnumerable<Role>> GetAll(Guid siteId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        return await Collection.FindOneAsync(x => x.NormalizedName == normalizedRoleName);
+        var roles = await Collection.FindAsync(x => x.SiteId == siteId);
+
+        return roles;
     }
 }

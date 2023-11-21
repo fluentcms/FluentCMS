@@ -1,6 +1,4 @@
-﻿using FluentCMS.Entities;
-
-namespace FluentCMS;
+﻿namespace FluentCMS;
 
 public interface IApplicationContext
 {
@@ -9,12 +7,10 @@ public interface IApplicationContext
 
 public interface ICurrentContext
 {
-    public User? User { get; set; }
-    public List<Guid> RoleIds { get; set; }
-    public Host Host { get; set; }
-    public string UserName { get; }
+    public IEnumerable<Guid> RoleIds { get; set; }
+    public string UserName { get; set; }
     public bool IsAuthenticated { get; }
-    public bool IsSuperAdmin { get; }
+    public bool IsSuperAdmin { get; set; }
     public bool IsInRole(Guid roleId);
     public bool IsInRole(IEnumerable<Guid> roleIds);
 }

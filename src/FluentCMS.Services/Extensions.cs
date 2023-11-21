@@ -29,11 +29,6 @@ public static class Extensions
             .AddUserManager<UserManager<User>>()
             .AddDefaultTokenProviders();
 
-        builder
-            .AddRoles<Role>()
-            .AddRoleStore<RoleStore>()
-            .AddRoleManager<RoleManager<Role>>();
-
         return builder;
     }
 

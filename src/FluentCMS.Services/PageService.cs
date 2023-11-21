@@ -44,9 +44,6 @@ public class PageService : BaseService<Page>, IPageService
         // fetch list of all pages
         ValidateUrl(page, pages);
 
-        // prepare entity for db
-        PrepareForCreate(page);
-
         return await _pageRepository.Create(page, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageUnableToCreate);
     }
@@ -185,9 +182,6 @@ public class PageService : BaseService<Page>, IPageService
         }
 
         ValidateUrl(page, pages);
-
-        // prepare entity for db
-        PrepareForUpdate(page);
 
         return await _pageRepository.Update(page, cancellationToken)
             ?? throw new AppException(ExceptionCodes.PageUnableToUpdate);

@@ -6,7 +6,7 @@ namespace FluentCMS.Repositories.LiteDb;
 
 public class UserRepository : GenericRepository<User>, IUserRepository
 {
-    public UserRepository(LiteDbContext dbContext) : base(dbContext)
+    public UserRepository(LiteDbContext dbContext, IApplicationContext applicationContext) : base(dbContext, applicationContext)
     {
     }
 
