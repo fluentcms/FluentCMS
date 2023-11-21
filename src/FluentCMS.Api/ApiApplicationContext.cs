@@ -32,6 +32,9 @@ public class CurrentContext : ICurrentContext
     
     public bool IsInRole(Guid roleId)
     {
+        if (IsSuperAdmin)
+            return true;
+
         if (RoleIds == null || !RoleIds.Any())
             return false;
 
