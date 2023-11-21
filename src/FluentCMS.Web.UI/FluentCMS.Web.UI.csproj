@@ -38,4 +38,8 @@
     <Exec Command="npm run build" Condition=" '$(Configuration)' == 'Debug' " />
     <Exec Command="npm run build" Condition=" '$(Configuration)' == 'Release' " />
   </Target>
+
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="npm install" />
+  </Target>
 </Project>
