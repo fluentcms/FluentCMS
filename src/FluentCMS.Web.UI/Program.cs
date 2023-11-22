@@ -35,7 +35,7 @@ services.AddApiDocumentation();
 services.AddHttpContextAccessor();
 
 // TODO: Add JWT to request header, accept-language, etc.
-// TODO: Move to somewhere else
+// TODO: Move to somewhere else (Shared project maybe?)
 services.AddScoped(sp =>
 {
     var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
