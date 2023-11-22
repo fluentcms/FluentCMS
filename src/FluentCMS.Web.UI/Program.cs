@@ -1,9 +1,6 @@
 using FluentCMS.Api;
 using FluentCMS;
 using FluentCMS.Web.UI;
-using FluentCMS.Providers.Identity;
-using System.Text;
-using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
