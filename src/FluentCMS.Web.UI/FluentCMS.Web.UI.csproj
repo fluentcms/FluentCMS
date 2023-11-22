@@ -22,19 +22,4 @@
     <ProjectReference Include="..\FluentCMS.Api\FluentCMS.Api.csproj" />
   </ItemGroup>
 
-  <Target Name="CheckForNpm" BeforeTargets="NpmInstall">
-    <Exec Command="npm -v" ContinueOnError="true">
-      <Output TaskParameter="ExitCode" PropertyName="ErrorCode" />
-    </Exec>
-    <Error Condition="'$(ErrorCode)' != '0'" Text="You must install NPM to build this project" />
-  </Target>
-
-  <Target Name="NpmInstall" BeforeTargets="BuildCSS" Inputs="package.json" Outputs="node_modules/.install-stamp">
-    <Exec Command="npm install" />
-	<Touch Files="node_modules/.install-stamp" AlwaysCreate="true" />
-  </Target>
-
-	<Target Name="NpmRunBuild" DependsOnTargets="NpmInstall" BeforeTargets="BeforeBuild">
-		<Exec Command="npm run build" />
-	</Target>
 </Project>
