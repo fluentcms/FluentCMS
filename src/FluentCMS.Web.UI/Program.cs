@@ -82,10 +82,11 @@ services.AddAuthentication(configureOptions =>
 
 var app = builder.Build();
 
-app.Services.LoadInitialDataFrom(@".\DefaultData\");
-
 if (app.Environment.IsDevelopment())
 {
+    app.Services.ResetMongoDb();
+    app.Services.LoadInitialDataFrom(@".\DefaultData\");
+
     app.UseDeveloperExceptionPage();
 }
 

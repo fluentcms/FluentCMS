@@ -1,12 +1,26 @@
 ﻿using FluentCMS.Entities;
+using FluentCMS.Repositories.MongoDB;
 using FluentCMS.Services;
 using Microsoft.Extensions.DependencyInjection;
+using MongoDB.Driver;
 using System.Text.Json;
 
 namespace FluentCMS.Api;
 
 public static class DefaultDataLoaderExtensions
 {
+    public static void ResetMongoDb(this IServiceProvider provider)
+    {
+        var scope = provider.CreateScope();
+
+        var mongoDb = scope.ServiceProvider.GetRequiredService<IMongoDBContext>();
+
+        foreach (var collectionName in mongoDb.Database.ListCollectionNames().ToList())
+        {
+            mongoDb.Database.DropCollection(collectionName);
+        }
+    }
+
     public static void LoadInitialDataFrom(this IServiceProvider provider, string dataFolder)
     {
         var scope = provider.CreateScope();

@@ -1,5 +1,6 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Providers.Identity;
+using FluentCMS.Repositories;
 using Microsoft.AspNetCore.Identity;
 using UserToken = FluentCMS.Providers.Identity.UserToken;
 
@@ -12,7 +13,7 @@ public interface IUserService
     Task<User> Update(User user, CancellationToken cancellationToken = default);
     Task<User> Create(User user, string password, CancellationToken cancellationToken = default);
     Task<User> Authenticate(string username, string password, CancellationToken cancellationToken = default);
-    Task<UserToken> GetToken(User user, bool isSuperAdmin, CancellationToken cancellationToken = default);
+    Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default);
     Task ChangePassword(User user, string newPassword, CancellationToken cancellationToken = default);
     Task<User> ChangePassword(Guid id, string oldPassword, string newPassword, CancellationToken cancellationToken = default);
     Task<User?> GetByUsername(string username);
@@ -25,11 +26,15 @@ public class UserService : IUserService
 
     private readonly UserManager<User> _userManager;
     private readonly IUserTokenProvider _userTokenProvider;
+    private readonly IHostRepository _hostRepository;
+    private readonly IApplicationContext _applicationContext;
 
-    public UserService(UserManager<User> userManager, IUserTokenProvider userTokenProvider)
+    public UserService(UserManager<User> userManager, IUserTokenProvider userTokenProvider, IHostRepository hostRepository, IApplicationContext applicationContext)
     {
         _userManager = userManager;
         _userTokenProvider = userTokenProvider;
+        _hostRepository = hostRepository;
+        _applicationContext = applicationContext;
     }
 
     public async Task<User> Create(User user, string password, CancellationToken cancellationToken = default)
@@ -39,8 +44,19 @@ public class UserService : IUserService
         return await GetById(user.Id, cancellationToken);
     }
 
-    public async Task<UserToken> GetToken(User user, bool isSuperAdmin, CancellationToken cancellationToken = default)
+    public async Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default)
     {
+        var isSuperAdmin = false;
+
+        // check if user is superadmin
+        if (!string.IsNullOrEmpty(user.UserName))
+        {
+            var host = await _hostRepository.Get(cancellationToken) ??
+                throw new AppException(ExceptionCodes.HostNotFound);
+
+            isSuperAdmin = host.SuperUsers.Contains(user.UserName);
+        }
+
         // Generate token
         var userToken = await _userTokenProvider.Generate(user, isSuperAdmin);
 
@@ -124,7 +140,7 @@ public class UserService : IUserService
 
         // Update user properties related to password changing
         user.LastPasswordChangedAt = DateTime.Now;
-        //user.LastPasswordChangedBy = AppContext.UserName;
+        user.LastPasswordChangedBy = _applicationContext.Current.UserName;
         await _userManager.UpdateAsync(user);
 
         return user;
