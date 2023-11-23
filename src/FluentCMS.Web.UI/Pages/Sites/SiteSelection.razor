@@ -2,24 +2,25 @@
 @page "/site-selection"
 @using Microsoft.AspNetCore.WebUtilities
 
-<h3>SiteSelection</h3>
+<Page>
+	<PageHeader Title="Site Selection">
+		<PageActions>
+			<NavigationButton To="/admin/sites/create" color="primary">Add Site</NavigationButton>
+		</PageActions>
+	</PageHeader>
 
-@* Flex 1 Rows, Md 3 Rows *@
-<div>
-    @* Card *@
-    @foreach (var site in Response.Data ?? [])
-    {
-        <NavLink href="@(QueryHelpers.AddQueryString("/","site-id",site.Id.ToString("D")))">
-            <Card Title="@site.Name">
-                <CardBody>@site.Description</CardBody>
-            </Card>
-        </NavLink>
-    })
-</div>
-@* Pagination *@
-<div>
-    @foreach (var page in Enumerable.Range(0, Response.TotalPages))
-    {
-        <Button @onclick="()=>GoToPage(page)">@(page + 1)</Button>
-    }
-</div>
+	<div class="f-site-card-list">
+    	@foreach (var site in Response.Data ?? [])
+    	{
+        	<SiteCard Name=@site.Name Description=@site.Description Id=@site.Id/>
+    	}
+	</div>
+
+	@* Pagination *@
+	<div class="f-site-card-pagination">
+    	@foreach (var page in Enumerable.Range(0, Response.TotalPages))
+    	{
+        	<Button @onclick="()=>GoToPage(page)">@(page + 1)</Button>
+    	}
+	</div>
+</Page>

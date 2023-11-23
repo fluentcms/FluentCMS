@@ -19,7 +19,7 @@ $prefix-content: $prefix + 'content';
 }
 
 .#{$prefix-content} {
-    @apply h-screen ml-0 mt-16 text-gray-900 bg-gray-50;
+    @apply h-screen ml-0 text-gray-900 bg-gray-50;
 
 
     @screen sm {

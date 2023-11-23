@@ -1,0 +1,21 @@
+@using Microsoft.AspNetCore.WebUtilities
+
+<NavLink href="@(QueryHelpers.AddQueryString("/", "site-id", Id.ToString("D")))">
+    <Card Width="md">
+        <CardBody>
+            <CardTitle>@Name</CardTitle>
+            <p class="f-site-card-description">@Description</p>
+        </CardBody>
+    </Card>
+</NavLink>
+
+@code {
+    [Parameter]
+    public string Name { get; set; }
+
+    [Parameter]
+    public string Description { get; set; }
+
+    [Parameter]
+    public Guid Id { get; set; }
+}
