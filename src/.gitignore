@@ -7,7 +7,6 @@
 lib/
 
 # Compiled css
-/FluentCMS.Web.UI/wwwroot/css/*.css
 /FluentCMS.Web.UI/wwwroot/css/*.css.map
 
 
