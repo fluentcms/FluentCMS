@@ -1,0 +1,20 @@
+@page "/login"
+@layout CenterLayout
+
+<a href="https://flowbite-admin-dashboard.vercel.app/" class="f-logo">
+    <img src="https://flowbite-admin-dashboard.vercel.app/images/logo.svg" class="f-logo-image" alt="FluentCMSLogo">
+    <span class="f-logo-text">Flowbite</span>
+</a>
+
+<Card Width="xl">
+    <CardBody>
+        <CardTitle>Login</CardTitle>
+        <EditForm model="TODO_LoginRequest" class="f-login-form">
+            <FormInput label="Your Email"/>
+            <FormInput label="Your Password" type="password"/>
+            <FormCheckbox text="Remember me"/>
+
+            <Button size="lg" color="primary">Login to your account</Button>
+        </EditForm>
+    </CardBody>
+</Card>

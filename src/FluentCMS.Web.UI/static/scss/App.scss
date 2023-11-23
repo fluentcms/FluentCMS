@@ -7,21 +7,34 @@ $prefix-theme-dark: $prefix + 'theme-dark';
 @tailwind components;
 @tailwind utilities;
 
+body {
+    @apply bg-gray-50;
+}
+
+body.#{$prefix-theme-dark} {
+    @apply bg-gray-800;
+}
+
+
 /* #region COMPONENTS */
 @import './components/button';
 @import './components/card';
+@import './components/checkbox';
 @import './components/dropdown';
+@import './components/form-check';
 @import './components/page';
 @import './components/layout';
 @import './components/form';
 @import './components/input';
 @import './components/table';
 @import './components/tabs';
-
-
-
+@import './components/logo';
 @import './components/sidebar';
 
-
-
 /* #endregion COMPONENTS */
+
+//#region
+
+@import "./pages/login";
+
+//#endregion
