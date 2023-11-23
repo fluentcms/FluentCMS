@@ -1,0 +1,25 @@
+﻿@layout EmptyLayout
+@page "/site-selection"
+@using Microsoft.AspNetCore.WebUtilities
+
+<h3>SiteSelection</h3>
+
+@* Flex 1 Rows, Md 3 Rows *@
+<div>
+    @* Card *@
+    @foreach (var site in Response.Data ?? [])
+    {
+        <NavLink href="@(QueryHelpers.AddQueryString("/","site-id",site.Id.ToString("D")))">
+            <Card Title="@site.Name">
+                <CardBody>@site.Description</CardBody>
+            </Card>
+        </NavLink>
+    })
+</div>
+@* Pagination *@
+<div>
+    @foreach (var page in Enumerable.Range(0, Response.TotalPages))
+    {
+        <Button @onclick="()=>GoToPage(page)">@(page + 1)</Button>
+    }
+</div>
