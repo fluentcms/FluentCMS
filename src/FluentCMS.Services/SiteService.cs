@@ -1,5 +1,6 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Services;
 
@@ -17,11 +18,15 @@ public interface ISiteService
 
 public class SiteService : BaseService<Site>, ISiteService
 {
+    public const string AdminPolicy = "AdminPolicy";
+    
     private readonly ISiteRepository _siteRepository;
+    private readonly IAuthorizationService _authorizationService;
 
-    public SiteService(ISiteRepository repository, IApplicationContext appContext) : base(appContext)
+    public SiteService(ISiteRepository repository, IApplicationContext appContext, IAuthorizationService authorizationService) : base(appContext)
     {
         _siteRepository = repository;
+        _authorizationService = authorizationService;
     }
 
     public async Task<IEnumerable<Site>> GetAll(CancellationToken cancellationToken = default)
@@ -37,7 +42,7 @@ public class SiteService : BaseService<Site>, ISiteService
 
         // filter sites based on the user roles
         sites = sites.Where(x => Current.IsInRole(x.AdminRoleIds));
-
+        await _authorizationService.AuthorizeAsync(Current.User, sites, "AdminPolicy");
         return sites;
     }
 
