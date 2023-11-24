@@ -1,5 +1,4 @@
 ﻿using FluentCMS.Entities;
-using FluentCMS.Repositories.Abstractions;
 using MongoDB.Driver;
 
 namespace FluentCMS.Repositories.MongoDB;

@@ -1,5 +1,4 @@
 ﻿using FluentCMS.Repositories;
-using FluentCMS.Repositories.Abstractions;
 using FluentCMS.Repositories.MongoDB;
 using Microsoft.Extensions.Configuration;
 using MongoDB.Bson;

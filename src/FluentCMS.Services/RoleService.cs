@@ -12,14 +12,23 @@ public interface IRoleService
     Task Delete(Guid siteId, Guid id, CancellationToken cancellationToken = default);
 }
 
-public class RoleService(IApplicationContext appContext, IRoleRepository roleRepository, ISiteRepository siteRepository) : BaseService<Role>(appContext), IRoleService
+public class RoleService(
+    IRoleRepository roleRepository,
+    IAuthorizationProvider authorizationProvider,
+    SitePolicies sitePolicies,
+    ISiteRepository siteRepository) : IRoleService
 {
-    private readonly IRoleRepository _roleRepository = roleRepository;
 
     private async Task<Site> GetSite(Guid siteId, CancellationToken cancellationToken = default)
     {
-        return await siteRepository.GetById(siteId, cancellationToken) ??
+        var site = await siteRepository.GetById(siteId, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
+
+        // check if current user has admin access to the site
+        if (!authorizationProvider.Authorize(site, sitePolicies.Admin))
+            throw new AppPermissionException();
+
+        return site;
     }
 
     public async Task<Role> GetById(Guid siteId, Guid id, CancellationToken cancellationToken = default)
@@ -34,58 +43,47 @@ public class RoleService(IApplicationContext appContext, IRoleRepository roleRep
 
     public async Task<IEnumerable<Role>> GetAll(Guid siteId, CancellationToken cancellationToken = default)
     {
-        var site = await GetSite(siteId, cancellationToken);
+        // permission will be checked inside GetSite
+        await GetSite(siteId, cancellationToken);
 
-        // check if current user has admin access to the site
-        if (!Current.IsInRole(site.AdminRoleIds))
-            throw new AppPermissionException();
-
-        return await _roleRepository.GetAll(siteId, cancellationToken);
+        return await roleRepository.GetAll(siteId, cancellationToken);
     }
 
     public async Task<Role> Create(Role role, CancellationToken cancellationToken)
     {
+        // permission will be checked inside GetSite
         var site = await GetSite(role.SiteId, cancellationToken);
-
-        // check if current user has admin access to the site
-        if (!Current.IsInRole(site.AdminRoleIds))
-            throw new AppPermissionException();
 
         // check if role name is unique
         var siteRoles = await GetAll(site.Id, cancellationToken);
-        if (siteRoles.Any(r => r.Name.ToLower() == role.Name.ToLower()))
+        if (siteRoles.Any(r => r.Name.Equals(role.Name, StringComparison.CurrentCultureIgnoreCase)))
             throw new AppException(ExceptionCodes.RoleNameMustBeUnique);
 
-        return await _roleRepository.Create(role, cancellationToken) ??
+        return await roleRepository.Create(role, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleUnableToCreate);
     }
 
     public async Task<Role> Update(Role role, CancellationToken cancellationToken)
     {
+        // permission will be checked inside GetSite
         var site = await GetSite(role.SiteId, cancellationToken);
-
-        // check if current user has admin access to the site
-        if (!Current.IsInRole(site.AdminRoleIds))
-            throw new AppPermissionException();
 
         // check if role name is unique
         var siteRoles = await GetAll(site.Id, cancellationToken);
-        if (siteRoles.Any(r => r.Name.ToLower() == role.Name.ToLower() && r.Id != role.Id))
+        if (siteRoles.Any(r => r.Name.Equals(role.Name, StringComparison.CurrentCultureIgnoreCase) && r.Id != role.Id))
             throw new AppException(ExceptionCodes.RoleNameMustBeUnique);
 
-        return await _roleRepository.Update(role, cancellationToken) ??
+        return await roleRepository.Update(role, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleUnableToUpdate);
     }
 
     public async Task Delete(Guid siteId, Guid id, CancellationToken cancellationToken = default)
     {
         // permission will be checked inside GetById
-        var role = await GetById(siteId, id, cancellationToken);
-        if (role == null)
+        _ = await GetById(siteId, id, cancellationToken) ??
             throw new AppPermissionException();
 
-        var deletedRole = await _roleRepository.Delete(id, cancellationToken);
-        if (deletedRole == null)
+        _ = await roleRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleUnableToDelete);
     }
 }

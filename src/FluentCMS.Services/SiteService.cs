@@ -1,6 +1,5 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories;
-using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Services;
 
@@ -11,96 +10,91 @@ public interface ISiteService
     Task<Site> GetByUrl(string url, CancellationToken cancellationToken = default);
     Task<Site> Create(Site site, CancellationToken cancellationToken = default);
     Task<Site> Update(Site site, CancellationToken cancellationToken = default);
-    // TODO: argument should be Guid id instead of Site site
-    // TODO: it should returns Task<Site> instead of Task
     Task Delete(Site site, CancellationToken cancellationToken = default);
 }
 
-public class SiteService : BaseService<Site>, ISiteService
+public class SiteService(
+    ISiteRepository siteRepository,
+    SitePolicies sitePolicies,
+    IAuthorizationProvider authorizationProvider) : ISiteService
 {
-    public const string AdminPolicy = "AdminPolicy";
-    
-    private readonly ISiteRepository _siteRepository;
-    private readonly IAuthorizationService _authorizationService;
-
-    public SiteService(ISiteRepository repository, IApplicationContext appContext, IAuthorizationService authorizationService) : base(appContext)
-    {
-        _siteRepository = repository;
-        _authorizationService = authorizationService;
-    }
 
     public async Task<IEnumerable<Site>> GetAll(CancellationToken cancellationToken = default)
     {
-        if (!Current.IsAuthenticated)
-            throw new ApplicationException("You are not authenticated.");
+        var sites = await siteRepository.GetAll(cancellationToken);
 
-        var sites = await _siteRepository.GetAll(cancellationToken);
-
-        // Checking if the user is super admin
-        if (Current.IsSuperAdmin)
-            return sites;
-
-        // filter sites based on the user roles
-        sites = sites.Where(x => Current.IsInRole(x.AdminRoleIds));
-        await _authorizationService.AuthorizeAsync(Current.User, sites, "AdminPolicy");
-        return sites;
+        // only return sites that the user has access to edit
+        return sites.Where(x => authorizationProvider.Authorize(x, sitePolicies.Editor));
     }
 
     public async Task<Site> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _siteRepository.GetById(id, cancellationToken) ??
-            throw new ApplicationException("Requested site does not exists.");
+        // There is no need to check for permissions here
+        return await siteRepository.GetById(id, cancellationToken) ??
+            throw new AppException(ExceptionCodes.SiteNotFound);
     }
 
     public async Task<Site> GetByUrl(string url, CancellationToken cancellationToken = default)
     {
-        return await _siteRepository.GetByUrl(url, cancellationToken) ??
-            throw new ApplicationException("Requested site does not exists.");
+        // There is no need to check for permissions here
+        return await siteRepository.GetByUrl(url, cancellationToken) ??
+            throw new AppException(ExceptionCodes.SiteNotFound);
     }
 
     public async Task<Site> Create(Site site, CancellationToken cancellationToken = default)
     {
-        if (!Current.IsSuperAdmin)
-            throw new ApplicationException("Only super admin can create a site.");
+        // only super admin can create a site
+        if (!authorizationProvider.Authorize(site, sitePolicies.SuperAdmin))
+            throw new AppPermissionException();
 
         // normalizing the site URLs to lowercase
         site.Urls = site.Urls.Select(x => x.ToLower()).ToList();
 
-        // check if the site URLs are unique in all sites
-        if (await _siteRepository.CheckUrls(site.Urls, cancellationToken))
-            throw new ApplicationException("Site URLs must be unique");
+        // check if site url are unique
+        var allSites = await siteRepository.GetAll(cancellationToken);
+        if (allSites.Any(x => x.Urls.Any(y => site.Urls.Contains(y))))
+            throw new AppException(ExceptionCodes.SiteUrlMustBeUnique);
 
-        var newSite = await _siteRepository.Create(site, cancellationToken);
-        return newSite ?? throw new ApplicationException("Site not created");
+        // create the site or throw an exception if it fails
+        var newSite = await siteRepository.Create(site, cancellationToken) ??
+            throw new AppException(ExceptionCodes.SiteUnableToCreate);
+
+        // add admin permission to the site for the admin role
+        await authorizationProvider.Create(newSite, Policies.SITE_ADMIN, cancellationToken);
+
+        // add edit permission to the site for the edit role
+        await authorizationProvider.Create(newSite, Policies.SITE_EDITOR, cancellationToken);
+
+        return newSite;
     }
 
     public async Task<Site> Update(Site site, CancellationToken cancellationToken = default)
     {
         // Checking if the user has access to update the site
-        if (!Current.IsSuperAdmin || !Current.IsInRole(site.AdminRoleIds))
-            throw new ApplicationException("Only super admin or admin can update a site.");
+        if (!authorizationProvider.Authorize(site, sitePolicies.Editor))
+            throw new AppPermissionException();
 
         // normalizing the site URLs to lowercase
         site.Urls = site.Urls.Select(x => x.ToLower()).ToList();
 
-        //// check if the site URLs are unique in all sites
-        //if (await _siteRepository.CheckUrls(site.Urls, cancellationToken))
-        //    throw new ApplicationException("Site URLs must be unique");
+        // check if site url is unique
+        var allSites = await siteRepository.GetAll(cancellationToken);
+        if (allSites.Any(x => x.Id != site.Id && x.Urls.Any(y => site.Urls.Contains(y))))
+            throw new AppException(ExceptionCodes.SiteUrlMustBeUnique);
 
-        var updateSite = await _siteRepository.Update(site, cancellationToken);
+        var updateSite = await siteRepository.Update(site, cancellationToken);
 
-        return updateSite ?? throw new ApplicationException("Site not updated");
+        return updateSite ?? throw new AppException(ExceptionCodes.SiteUnableToUpdate);
     }
 
     public async Task Delete(Site site, CancellationToken cancellationToken = default)
     {
-        // Checking if the user is super user
-        if (!Current.IsSuperAdmin)
-            throw new ApplicationException("Only super admin can delete a site.");
+        // only super admin can delete a site
+        if (!authorizationProvider.Authorize(site, sitePolicies.SuperAdmin))
+            throw new AppPermissionException();
 
-        // TODO: all pages should be deleted either by cascade or manually
-
-        var deletedSite = await _siteRepository.Delete(site.Id, cancellationToken);
-        if (deletedSite is null) throw new ApplicationException("Site not deleted.");
+        _ = await siteRepository.Delete(site.Id, cancellationToken) ??
+            throw new AppException(ExceptionCodes.SiteUnableToDelete);
     }
+
 }

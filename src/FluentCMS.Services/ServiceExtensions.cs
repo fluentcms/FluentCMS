@@ -5,10 +5,13 @@ using Microsoft.AspNetCore.Identity;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
-public static class Extensions
+public static class ServiceExtensions
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        services.AddPolicies();
+        services.AddScoped<IAuthorizationProvider, AuthorizationProvider>();
+
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<ISiteService, SiteService>();
