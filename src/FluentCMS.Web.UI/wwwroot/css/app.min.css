@@ -1066,10 +1066,6 @@ input[type="range"]::-ms-fill-lower {
   margin-bottom: 0.75rem;
 }
 
-.me-0 {
-  margin-inline-end: 0px;
-}
-
 .me-2 {
   margin-inline-end: 0.5rem;
 }
@@ -1241,6 +1237,10 @@ input[type="range"]::-ms-fill-lower {
 
 .grid-cols-7 {
   grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.flex-col {
+  flex-direction: column;
 }
 
 .flex-wrap {
@@ -1415,10 +1415,6 @@ input[type="range"]::-ms-fill-lower {
   background-color: rgb(255 255 255 / var(--tw-bg-opacity));
 }
 
-.p-0 {
-  padding: 0px;
-}
-
 .p-2 {
   padding: 0.5rem;
 }
@@ -1482,6 +1478,11 @@ input[type="range"]::-ms-fill-lower {
   text-align: center;
 }
 
+.text-2xl {
+  font-size: 1.5rem;
+  line-height: 2rem;
+}
+
 .text-base {
   font-size: 1rem;
   line-height: 1.5rem;
@@ -1502,9 +1503,8 @@ input[type="range"]::-ms-fill-lower {
   line-height: 1rem;
 }
 
-.text-2xl {
-  font-size: 1.5rem;
-  line-height: 2rem;
+.font-bold {
+  font-weight: 700;
 }
 
 .font-medium {
@@ -1517,10 +1517,6 @@ input[type="range"]::-ms-fill-lower {
 
 .font-semibold {
   font-weight: 600;
-}
-
-.font-bold {
-  font-weight: 700;
 }
 
 .leading-6 {
@@ -2041,6 +2037,7 @@ body.f-theme-dark {
 
 .f-content {
   margin-left: 0px;
+  margin-top: 4rem;
   height: 100vh;
   --tw-bg-opacity: 1;
   background-color: rgb(249 250 251 / var(--tw-bg-opacity));
@@ -2322,49 +2319,6 @@ body.f-theme-dark {
 
 .f-login-form {
   margin-top: 2rem;
-}
-
-.f-site-card-list {
-  display: grid;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: 1rem;
-}
-
-@media (min-width: 640px) {
-  .f-site-card-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 768px) {
-  .f-site-card-list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1024px) {
-  .f-site-card-list {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-.f-site-card-pagination {
-  margin-top: 2rem;
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.f-site-card-description {
-  margin-bottom: 0.75rem;
-  font-weight: 400;
-  --tw-text-opacity: 1;
-  color: rgb(55 65 81 / var(--tw-text-opacity));
-}
-
-.f-theme-dark .f-site-card-description {
-  --tw-text-opacity: 1;
-  color: rgb(156 163 175 / var(--tw-text-opacity));
 }
 
 .hover\:border-gray-300:hover {
