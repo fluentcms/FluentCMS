@@ -15,10 +15,10 @@ $alert-types: (
 );
 
 .#{$prefix-alert} {
-    @apply flex items-center p-4 text-sm rounded-lg;
+    @apply flex items-center p-4 text-sm rounded-lg w-full;
 
     &-container {
-        @apply fixed bottom-4 right-4 flex gap-4 min-w-xs max-w-md;
+        @apply fixed bottom-4 right-4 flex gap-4 w-full max-w-md;
     }
 
     .#{$prefix-theme-dark} & {
