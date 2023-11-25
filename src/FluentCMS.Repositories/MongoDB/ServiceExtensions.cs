@@ -43,6 +43,7 @@ public static class MongoDbServiceExtensions
         services.AddScoped<IHostRepository, HostRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IPermissionRepository, PermissionRepository>();
 
         return services;
     }

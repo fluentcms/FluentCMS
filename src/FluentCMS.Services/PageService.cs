@@ -1,6 +1,5 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories;
-using System.Collections.Immutable;
 
 namespace FluentCMS.Services;
 
@@ -13,39 +12,44 @@ public interface IPageService
     Task Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class PageService : BaseService<Page>, IPageService
+public class PageService(
+    IPageRepository pageRepository,
+    ISiteRepository siteRepository,
+    SitePolicies sitePolicies,
+    IAuthorizationProvider authorizationProvider) : IPageService
 {
-    private readonly IPageRepository _pageRepository;
-    private readonly ISiteRepository _siteRepository;
-
-    public PageService(IApplicationContext applicationContext, IPageRepository pageRepository, ISiteRepository siteRepository) : base(applicationContext)
-    {
-        _pageRepository = pageRepository;
-        _siteRepository = siteRepository;
-    }
 
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
     {
         // Check if site id exists
-        var site = (await _siteRepository.GetById(page.SiteId, cancellationToken)) ??
+        var site = (await siteRepository.GetById(page.SiteId, cancellationToken)) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
 
-        // check if user is siteAdmin or superAdmin
-        if (!Current.IsInRole(site.AdminRoleIds))
+        // check if user is site admin 
+        if (!authorizationProvider.Authorize(site, sitePolicies.Admin))
             throw new AppPermissionException();
 
-        // Fetch pages beforehand to avoid multiple db calls
-        var pages = (await _pageRepository.GetAll(cancellationToken)).ToList();
-
-        //If Parent Id is assigned
+        // If Parent Id is assigned
         if (page.ParentId != null)
+        {
+            // Fetch pages beforehand to avoid multiple db calls
+            var pages = (await pageRepository.GetAll(cancellationToken)).ToList();
             ValidateParentPage(page, pages);
+        }
 
-        // fetch list of all pages
-        ValidateUrl(page, pages);
+        //// fetch list of all pages
+        //ValidateUrl(page, pages);
 
-        return await _pageRepository.Create(page, cancellationToken) ??
+        var newPage = await pageRepository.Create(page, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageUnableToCreate);
+
+        // add admin permission to the page 
+        await authorizationProvider.Create(newPage, Policies.PAGE_ADMIN, cancellationToken);
+
+        // add edit permission to the page
+        await authorizationProvider.Create(newPage, Policies.PAGE_EDITOR, cancellationToken);
+
+        return newPage;
     }
 
     private static void ValidateUrl(Page page, List<Page> pages)
@@ -57,7 +61,7 @@ public class PageService : BaseService<Page>, IPageService
         var fullUrl = BuildFullPath(page, pages, cachedUrls);
         var fullPaths = pages.Select(x => BuildFullPath(x, pages, cachedUrls));
         // Check if url is unique
-        if (fullPaths.Any(x=>x.Equals(fullUrl)))
+        if (fullPaths.Any(x => x.Equals(fullUrl)))
             throw new AppException(ExceptionCodes.PagePathMustBeUnique);
 
     }
@@ -98,18 +102,18 @@ public class PageService : BaseService<Page>, IPageService
             throw new AppException(ExceptionCodes.PageParentMustBeOnTheSameSite);
 
         // if page viewRoles are a subset of parent view roles
-        if (!page.ViewRoleIds.ToImmutableHashSet().IsSubsetOf(parent.ViewRoleIds))
-            throw new AppException(ExceptionCodes.PageViewPermissionsAreNotASubsetOfParent);
+        //if (!page.ViewRoleIds.ToImmutableHashSet().IsSubsetOf(parent.ViewRoleIds))
+        //    throw new AppException(ExceptionCodes.PageViewPermissionsAreNotASubsetOfParent);
     }
 
     public async Task Delete(Guid id, CancellationToken cancellationToken = default)
     {
         //fetch original page from db
-        var originalPage = await _pageRepository.GetById(id, cancellationToken) ??
+        var originalPage = await pageRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
 
         // fetch site
-        var site = (await _siteRepository.GetById(originalPage.SiteId, cancellationToken)) ??
+        var site = (await siteRepository.GetById(originalPage.SiteId, cancellationToken)) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
 
         // check if user is siteAdmin, superAdmin or PageAdmin
@@ -117,21 +121,21 @@ public class PageService : BaseService<Page>, IPageService
             throw new AppPermissionException();
 
         // check that it does not have any children
-        var pages = (await _pageRepository.GetAll(cancellationToken)).ToList();
+        var pages = (await pageRepository.GetAll(cancellationToken)).ToList();
         if (pages.Any(x => x.ParentId == id && x.SiteId == originalPage.SiteId))
             throw new AppException(ExceptionCodes.PageHasChildren);
 
-        await _pageRepository.Delete(id, cancellationToken);
+        await pageRepository.Delete(id, cancellationToken);
     }
 
     public async Task<Page> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         //fetch page from db
-        var page = await _pageRepository.GetById(id, cancellationToken) ??
+        var page = await pageRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
 
         // fetch site
-        var site = (await _siteRepository.GetById(page.SiteId, cancellationToken)) ??
+        var site = (await siteRepository.GetById(page.SiteId, cancellationToken)) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
 
         // check current user has permission to view page or is site admin or page admin
@@ -141,11 +145,11 @@ public class PageService : BaseService<Page>, IPageService
     public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
     {
         //fetch site from db
-        var site = await _siteRepository.GetById(siteId, cancellationToken) ??
+        var site = await siteRepository.GetById(siteId, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
 
         // fetch pages from db
-        var pages = await _pageRepository.GetBySiteId(siteId, cancellationToken);
+        var pages = await pageRepository.GetBySiteId(siteId, cancellationToken);
 
         // if current user is page viewer or page admin or site admin
         return pages.Where(page => HasViewPermission(site, page));
@@ -154,11 +158,11 @@ public class PageService : BaseService<Page>, IPageService
     public async Task<Page> Update(Page page, CancellationToken cancellationToken = default)
     {
         //fetch original page from db
-        var originalPage = await _pageRepository.GetById(page.Id, cancellationToken) ??
+        var originalPage = await pageRepository.GetById(page.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
 
         // Check if site id exists
-        var site = (await _siteRepository.GetById(page.SiteId, cancellationToken)) ??
+        var site = (await siteRepository.GetById(page.SiteId, cancellationToken)) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
 
         // check if user is siteAdmin or superAdmin or pageAdmin
@@ -170,7 +174,7 @@ public class PageService : BaseService<Page>, IPageService
             throw new AppException(ExceptionCodes.PageSiteIdCannotBeChanged);
 
         // fetch list of all pages
-        var pages = (await _pageRepository.GetAll(cancellationToken)).ToList();
+        var pages = (await pageRepository.GetAll(cancellationToken)).ToList();
 
         //If Parent Id is changed validate again
         if (page.ParentId != originalPage.ParentId)
@@ -183,17 +187,18 @@ public class PageService : BaseService<Page>, IPageService
 
         ValidateUrl(page, pages);
 
-        return await _pageRepository.Update(page, cancellationToken)
+        return await pageRepository.Update(page, cancellationToken)
             ?? throw new AppException(ExceptionCodes.PageUnableToUpdate);
     }
 
     private bool HasAdminPermission(Site site, Page page)
     {
-        return Current.IsInRole(site.AdminRoleIds) || Current.IsInRole(page.AdminRoleIds);
+        return true; // Current.IsInRole(site.AdminRoleIds) || Current.IsInRole(page.AdminRoleIds);
     }
 
     private bool HasViewPermission(Site site, Page page)
     {
-        return HasAdminPermission(site, page) || Current.IsInRole(page.ViewRoleIds);
+        return true;// HasAdminPermission(site, page) || Current.IsInRole(page.ViewRoleIds);
     }
+
 }
