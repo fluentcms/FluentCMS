@@ -13,8 +13,4 @@
         <ProjectReference Include="..\FluentCMS.Shared\FluentCMS.Shared.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-        <Folder Include="Identity\" />
-    </ItemGroup>
-
 </Project>

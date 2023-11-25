@@ -2,5 +2,5 @@
 
 public class HostUpdateRequest
 {
-    public List<Guid> SuperUserIds { get; set; } = [];
+    public List<string> SuperUsers { get; set; } = [];
 }

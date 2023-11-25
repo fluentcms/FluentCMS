@@ -31,23 +31,4 @@ public class CurrentContext : ICurrentContext
     public string UserName { get; set; } = string.Empty;
     public bool IsSuperAdmin { get; set; }
     public bool IsAuthenticated => !string.IsNullOrEmpty(UserName);
-    
-    public bool IsInRole(Guid roleId)
-    {
-        if (IsSuperAdmin)
-            return true;
-
-        if (RoleIds == null || !RoleIds.Any())
-            return false;
-
-        return RoleIds.Any(x => x == roleId);
-    }
-
-    public bool IsInRole(IEnumerable<Guid> roleIds)
-    {
-        if (IsSuperAdmin)
-            return true;
-
-        return roleIds.Any(IsInRole);
-    }
 }

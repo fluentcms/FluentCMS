@@ -48,6 +48,10 @@ public class ExceptionCodes
     #region Site
 
     public const string SiteNotFound = "Site.NotFound";
+    public const string SiteUrlMustBeUnique = "Site.UrlMustBeUnique";
+    public const string SiteUnableToCreate = "Site.UnableToCreated";
+    public const string SiteUnableToUpdate = "Site.UnableToUpdate";
+    public const string SiteUnableToDelete = "Site.UnableToDelete";
 
     #endregion
 
@@ -59,6 +63,12 @@ public class ExceptionCodes
     public const string RoleUnableToDelete = "Role.UnableToDelete";
     public const string RoleNotFound = "Role.NotFound";
     public const string RoleNameMustBeUnique = "Role.NameMustBeUnique";
+
+    #endregion
+
+    #region Permission
+
+    public const string PermissionUnableToCreate = "Permission.UnableToCreated";
 
     #endregion
 }
