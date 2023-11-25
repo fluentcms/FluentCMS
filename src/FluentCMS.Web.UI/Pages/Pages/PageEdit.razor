@@ -52,7 +52,7 @@
         }
         try
         {
-            var response = (await _httpClient.GetFromJsonAsync<ApiResult<PageResponse>>($"pages/getById/{Id.Value}"))!;
+            var response = (await _httpClient.GetFromJsonAsync<ApiResult<PageResponse>>($"page/getById/{Id.Value}"))!;
             if (response.Data != null)
             {
                 Page = new()
@@ -80,7 +80,7 @@
             var createCommand = Page;
             try
             {
-                await _httpClient.PostAsJsonAsync($"pages/create", createCommand);
+                await _httpClient.PostAsJsonAsync($"page/create", createCommand);
                 _navigationManager.NavigateTo($"/admin/pages/{SiteId}");
             }
             catch (Exception)
@@ -103,7 +103,7 @@
                 };
             try
             {
-                await _httpClient.PutAsJsonAsync($"pages/update", updateCommand);
+                await _httpClient.PutAsJsonAsync($"page/update", updateCommand);
                 _navigationManager.NavigateTo($"/admin/pages/{updateCommand.SiteId}");
             }
             catch (Exception)
