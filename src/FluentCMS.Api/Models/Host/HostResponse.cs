@@ -10,5 +10,5 @@ public class HostResponse
     public string LastUpdatedBy { get; set; } = string.Empty; // UserName
     public DateTime LastUpdatedAt { get; set; }
 
-    public List<Guid> SuperUserIds { get; set; } = [];
+    public List<string> SuperUsers { get; set; } = [];
 }
