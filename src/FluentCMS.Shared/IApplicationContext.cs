@@ -11,6 +11,4 @@ public interface ICurrentContext
     public string UserName { get; set; }
     public bool IsAuthenticated { get; }
     public bool IsSuperAdmin { get; set; }
-    public bool IsInRole(Guid roleId);
-    public bool IsInRole(IEnumerable<Guid> roleIds);
 }
