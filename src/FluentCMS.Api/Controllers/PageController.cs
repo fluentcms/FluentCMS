@@ -6,12 +6,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Api.Controllers;
 
-public class PagesController : BaseController
+public class PageController : BaseController
 {
     private readonly IPageService _pageService;
     private readonly IMapper _mapper;
 
-    public PagesController(IPageService pageService, IMapper mapper)
+    public PageController(IPageService pageService, IMapper mapper)
     {
         _pageService = pageService;
         _mapper = mapper;
