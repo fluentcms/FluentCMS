@@ -2,12 +2,14 @@ using Amazon.Runtime.Internal.Endpoints.StandardLibrary;
 using FluentCMS.Api.Models;
 using FluentCMS.Services.Models;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 
 namespace FluentCMS.Web.UI.Pages.Auth;
 public partial class LoginPage
 {
     [Inject] HttpClient HttpClient { get; set; }
     [Inject] NavigationManager NavigationManager { get; set; }
+    [Inject] ProtectedLocalStorage ProtectedLocalStorage { get; set; }
     public bool Remember { get; set; }
     public UserAuthenticateRequest UserAuthenticateRequest { get; set; } = new()
     {
@@ -27,8 +29,14 @@ public partial class LoginPage
         var response = await HttpClient.PostAsJsonAsync<UserAuthenticateRequest>("/api/Account/Authenticate", UserAuthenticateRequest);
         if (response.IsSuccessStatusCode)
         {
-            var userAuthenticationResult = response.Content.ReadFromJsonAsync<UserAuthenticateDto>();
+            var userAuthenticationResult = await response.Content.ReadFromJsonAsync<ApiResult<UserAuthenticateDto>>();
             // persist auth data
+            if (userAuthenticationResult?.Data != null)
+            {
+                await ProtectedLocalStorage.SetAsync("access-token", userAuthenticationResult.Data.Token);
+                await ProtectedLocalStorage.SetAsync("user-id", userAuthenticationResult.Data.UserId);
+                await ProtectedLocalStorage.SetAsync("role-ids", userAuthenticationResult.Data.RoleIds);
+            }
             NavigationManager.NavigateTo("/");
         }
     }
