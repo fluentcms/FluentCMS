@@ -18,9 +18,12 @@
                 <InputText class="f-input" @bind-Value="UserAuthenticateRequest.Password" type="password"></InputText>
             </FormField>
             <FormField>
-                <Checkbox @bind-Value="Remember" Text="Remember me" />
+                <div class="flex items-center">
+                    <InputCheckbox class="f-checkbox" @bind-Value="Remember" />
+                    <FormCheckText>Remember me</FormCheckText>
+                </div>
             </FormField>
-            
+
 
             <Button size="lg" color="primary" Type="submit">Login to your account</Button>
         </EditForm>
