@@ -29,6 +29,8 @@ public static class DefaultDataLoaderExtensions
         var siteService = scope.ServiceProvider.GetRequiredService<ISiteService>();
         var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+        var pluginDefinitionService = scope.ServiceProvider.GetRequiredService<IPluginDefinitionService>();
+        var pluginService = scope.ServiceProvider.GetRequiredService<IPluginService>();
         var appContext = scope.ServiceProvider.GetRequiredService<IApplicationContext>();
 
         if (!hostService.IsInitialized().GetAwaiter().GetResult())
@@ -55,12 +57,36 @@ public static class DefaultDataLoaderExtensions
 
             // Site creation            
             siteService.Create(defaultData.Site).GetAwaiter().GetResult();
-                        
+
+            // Plugin definition creation
+            foreach (var pluginDefinition in defaultData.PluginDefinitions)
+            {
+                pluginDefinition.SiteId = defaultData.Site.Id;
+                pluginDefinitionService.Create(pluginDefinition).GetAwaiter().GetResult();
+            }
+
             // Pages creation: adding a few default pages
             foreach (var page in defaultData.Pages)
             {
                 page.SiteId = defaultData.Site.Id;
                 pageService.Create(page).GetAwaiter().GetResult();
+            }
+
+            // Plugins creation: adding a few default plugins to pages
+            foreach (var page in defaultData.Pages)
+            {
+                var order = 0;
+                foreach (var pluginDef in defaultData.PluginDefinitions)
+                {
+                    var plugin = new Plugin
+                    {
+                        DefinitionId = pluginDef.Id,
+                        PageId = defaultData.Pages[0].Id,
+                        Order = order++,
+                        Section = "Main"
+                    };
+                    pluginService.Create(plugin).GetAwaiter().GetResult();
+                }
             }
         }
     }

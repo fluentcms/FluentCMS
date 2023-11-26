@@ -7,19 +7,30 @@
         "Password": "Passw0rd!",
         "Email": "superadmin@example.com"
     },
-    "Admin": {
-        "Username": "admin",
-        "Password": "Passw0rd!",
-        "Email": "admin@example.com"
-    },
+    "PluginDefinitions": [
+        {
+            "Name": "Counter",
+            "Description": "Counter plugin",
+            "ViewType": "View",
+            "EditType": "Edit"
+        },
+        {
+            "Name": "HelloWorld",
+            "Description": "Hello World plugin",
+            "ViewType": "View",
+            "EditType": "Edit"
+        },
+        {
+            "Name": "TextHtml",
+            "Description": "Text/Html plugin",
+            "ViewType": "View",
+            "EditType": "Edit"
+        }
+    ],
     "Site": {
         "Name": "My First Site",
         "Description": "This is my first site",
         "Urls": [ "http://www.myfirstsite.com" ]
-    },
-    "AdminRole": {
-        "Name": "Administrators",
-        "Description": "Administrator roles for the site"
     },
     "Pages": [
         {

@@ -8,6 +8,7 @@ public class DefaultData
     public required DefaultUser SuperAdmin { get; set; }
     public required Site Site { get; set; }
     public required List<Page> Pages { get; set; }
+    public required List<PluginDefinition> PluginDefinitions { get; set; }
 
     public class DefaultUser
     {
