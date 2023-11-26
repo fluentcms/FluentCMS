@@ -1,7 +1,9 @@
 ﻿@page "/"
 @using System.Text.Json
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 @inject ProtectedLocalStorage ProtectedLocalStorage
+@inject AuthenticationStateProvider AuthenticationStateProvider; 
 <PageTitle>Home</PageTitle>
 
 <Label>This is label</Label>
@@ -12,8 +14,13 @@
 <Badge Color="Colors.Danger">Danger</Badge> *@
 
 <h5>User Data:</h5>
-<pre>
-    @JsonSerializer.Serialize(new{AccessToken,UserId,RoleIds}, new JsonSerializerOptions{WriteIndented = true})
-</pre>
+
+<AuthorizeView>
+    <Authorized>
+        <pre>
+            @JsonSerializer.Serialize(new { AccessToken, UserId, RoleIds }, new JsonSerializerOptions { WriteIndented = true })
+        </pre>
+    </Authorized>
+</AuthorizeView>
 
 

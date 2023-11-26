@@ -8,8 +8,10 @@ public partial class Home
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await base.OnAfterRenderAsync(firstRender);
+        
         if (firstRender)
         {
+            var a = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             AccessToken = (await ProtectedLocalStorage.GetAsync<string>("access-token")).Value;
             UserId = (await ProtectedLocalStorage.GetAsync<Guid>("user-id")).Value;
             RoleIds = (await ProtectedLocalStorage.GetAsync<Guid[]>("role-ids")).Value;
