@@ -1,4 +1,10 @@
 ﻿@page "/"
+@using System.Text.Json
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject IHttpContextAccessor HttpContextAccessor
+@inject AuthenticationStateProvider AuthenticationStateProvider; 
+@using System.Text.Json
 
 <PageTitle>Home</PageTitle>
 
@@ -8,3 +14,23 @@
 <Button Disabled="@false">Disabled="false"</Button>
 @* <Badge>Default</Badge>
 <Badge Color="Colors.Danger">Danger</Badge> *@
+
+<h5>User Data:</h5>
+
+<AuthorizeView>
+    <Authorized>
+        <pre>
+            @JsonSerializer.Serialize(new { AccessToken, UserId, RoleIds }, new JsonSerializerOptions { WriteIndented = true })
+        </pre>
+    </Authorized>
+</AuthorizeView>
+
+
+
+
+<Icon Name="star"/>
+<pre>
+    @JsonSerializer.Serialize(new { SiteId }, new JsonSerializerOptions{
+            WriteIndented = true
+        });
+</pre>
