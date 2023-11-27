@@ -18,12 +18,4 @@
         	<SiteCard Name=@site.Name Description=@site.Description Id=@site.Id/>
     	}
 	</div>
-
-	@* Pagination *@
-	<div class="f-site-card-pagination">
-    	@foreach (var page in Enumerable.Range(0, Response.TotalPages))
-    	{
-        	<Button @onclick="()=>GoToPage(page)">@(page + 1)</Button>
-    	}
-	</div>
 </Page>
