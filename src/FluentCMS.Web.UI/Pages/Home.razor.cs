@@ -35,6 +35,5 @@ public partial class Home
 
             StateHasChanged();
         }
-
     }
 }

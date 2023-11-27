@@ -1,0 +1,21 @@
+﻿@layout EmptyLayout
+@page "/site-selection"
+@using Microsoft.AspNetCore.WebUtilities
+
+<Page>
+	<PageHeader Title="Site Selection">
+		<PageActions>
+			<NavigationButton To="/admin/sites/create" color="primary">
+				<Icon Name="plus"/>
+				Add Site
+			</NavigationButton>
+		</PageActions>
+	</PageHeader>
+
+	<div class="f-site-card-list">
+    	@foreach (var site in Response.Data ?? [])
+    	{
+        	<SiteCard Name=@site.Name Description=@site.Description Id=@site.Id/>
+    	}
+	</div>
+</Page>

@@ -17,6 +17,7 @@ body.#{$prefix-theme-dark} {
 
 
 /* #region COMPONENTS */
+@import './components/alert';
 @import './components/button';
 @import './components/card';
 @import './components/checkbox';
@@ -26,6 +27,7 @@ body.#{$prefix-theme-dark} {
 @import './components/layout';
 @import './components/form';
 @import './components/input';
+@import './components/icon';
 @import './components/table';
 @import './components/tabs';
 @import './components/logo';
@@ -36,5 +38,6 @@ body.#{$prefix-theme-dark} {
 //#region
 
 @import "./pages/login";
+@import "./pages/sites";
 
 //#endregion

@@ -1,0 +1,21 @@
+<textarea class="f-textarea" id="@Id" rows="@Rows" placeholder="@Placeholder" required=@Required @attributes=@RestProps @bind="@Value" />
+
+@code {
+    [Parameter]
+    public string Rows {get; set;} = "5";
+
+    [Parameter]
+    public string Id {get; set;}
+
+    [Parameter]
+    public string Placeholder {get; set;}
+
+    [Parameter]
+    public bool Required {get; set;} = false;
+
+    [Parameter]
+    public string Value {get; set;}
+
+    [Parameter(CaptureUnmatchedValues =true)]
+    public Dictionary<string, object> RestProps {get; set;}
+}

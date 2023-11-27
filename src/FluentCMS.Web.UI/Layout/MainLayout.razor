@@ -2,16 +2,16 @@
 
 <div class="f-layout">
     <Navigations />
+    <Navbar/>
     <main class="f-content">
-        <header class="navbar sticky-top bg-dark flex-md-nowrap p-0 shadow" data-bs-theme="dark">
-            <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6 text-white" href="#">FluentCMS</a>
-        </header>
         @Body
     </main>
 </div>
 
-<div id="blazor-error-ui">
-    An unhandled error has occurred.
-    <a href="" class="reload">Reload</a>
-    <a class="dismiss">🗙</a>
-</div>
+
+<AlertContainer>
+    <Alert id="blazor-error-ui" Dismissible>
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+    </Alert>
+</AlertContainer>

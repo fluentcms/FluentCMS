@@ -51,4 +51,17 @@ public class ApiPagingResult<TData> : ApiResult<IEnumerable<TData>>, IApiPagingR
         HasPrevious = false;
         HasNext = false;
     }
+    public ApiPagingResult(IEnumerable<TData> data, int pageIndex, int pageSize, int totalCount)
+    {
+        Data = data;
+        PageNumber = pageIndex;
+        PageSize = pageSize;
+        TotalCount = totalCount;
+        int totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+        TotalPages = totalPages;
+        HasPrevious = pageIndex > 0;
+        HasNext = pageIndex < totalPages - 1;
+    }
+
+    public static readonly ApiPagingResult<TData> Empty = new ApiPagingResult<TData>(new List<TData>());
 }
