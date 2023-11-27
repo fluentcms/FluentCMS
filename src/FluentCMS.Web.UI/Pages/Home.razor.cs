@@ -17,8 +17,8 @@ public partial class Home
     {
         base.OnInitialized();
         AccessToken = HttpContextAccessor.HttpContext!.Request.Cookies["access-token"];
-        UserId = JsonSerializer.Deserialize<Guid>(HttpContextAccessor.HttpContext!.Request.Cookies["user-id"]);
-        RoleIds = JsonSerializer.Deserialize<Guid[]?>(HttpContextAccessor.HttpContext!.Request.Cookies["role-ids"]);
+        UserId = JsonSerializer.Deserialize<Guid?>(HttpContextAccessor.HttpContext!.Request.Cookies["user-id"]??"null");
+        RoleIds = JsonSerializer.Deserialize<Guid[]?>(HttpContextAccessor.HttpContext!.Request.Cookies["role-ids"]?? "null");
     }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
