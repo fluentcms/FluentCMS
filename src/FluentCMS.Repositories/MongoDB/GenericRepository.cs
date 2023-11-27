@@ -66,7 +66,7 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEnt
         if (entity is IAuditEntity audit)
         {
             audit.CreatedAt = DateTime.UtcNow;
-            audit.CreatedAt = DateTime.UtcNow;
+            audit.CreatedBy = AppContext.Current.UserName;
             audit.LastUpdatedAt = DateTime.UtcNow;
             audit.LastUpdatedBy = AppContext.Current.UserName;
         }
@@ -87,7 +87,7 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEnt
             foreach (var audit in entities.Cast<IAuditEntity>())
             {
                 audit.CreatedAt = DateTime.UtcNow;
-                audit.CreatedAt = DateTime.UtcNow;
+                audit.CreatedBy = AppContext.Current.UserName;
                 audit.LastUpdatedAt = DateTime.UtcNow;
                 audit.LastUpdatedBy = AppContext.Current.UserName;
             }
@@ -105,7 +105,7 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEnt
         {
             audit.LastUpdatedAt = DateTime.UtcNow;
             audit.LastUpdatedBy = AppContext.Current.UserName;
-        }            
+        }
 
         var idFilter = Builders<TEntity>.Filter.Eq(x => x.Id, entity.Id);
 

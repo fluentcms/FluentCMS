@@ -1,6 +1,7 @@
 using FluentCMS.Api;
 using FluentCMS;
 using FluentCMS.Web.UI;
+using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +32,7 @@ services.AddApiDocumentation();
 
 services.AddHttpContextAccessor();
 
+services.AddScoped<AuthenticationStateProvider, FluentAuthenticationStateProvider>();
 // TODO: Add JWT to request header, accept-language, etc.
 // TODO: Move to somewhere else (Shared project maybe?)
 services.AddScoped(sp =>

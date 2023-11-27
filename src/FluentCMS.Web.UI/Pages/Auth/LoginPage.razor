@@ -1,4 +1,5 @@
 @page "/login"
+@using System.Text.Json
 @layout CenterLayout
 
 <a href="https://flowbite-admin-dashboard.vercel.app/" class="f-logo">
@@ -9,12 +10,23 @@
 <Card Width="xl">
     <CardBody>
         <CardTitle>Login</CardTitle>
-        <EditForm model="TODO_LoginRequest" class="f-login-form">
-            <FormInput label="Your Email"/>
-            <FormInput label="Your Password" type="password"/>
-            <FormCheckbox text="Remember me"/>
+        <EditForm Model="UserAuthenticateRequest" class="f-login-form" OnValidSubmit="Submit">
+            <FormField Label="Your Username">
+                <InputText Type="text" class="f-input" @bind-Value="UserAuthenticateRequest.Username"></InputText>
+            </FormField>
+            <FormField Label="Your Password">
+                <InputText class="f-input" @bind-Value="UserAuthenticateRequest.Password" type="password"></InputText>
+            </FormField>
+            <FormField>
+                <div class="flex items-center">
+                    <InputCheckbox class="f-checkbox" @bind-Value="Remember" />
+                    <FormCheckText>Remember me</FormCheckText>
+                </div>
+            </FormField>
 
-            <Button size="lg" color="primary">Login to your account</Button>
+
+            <Button size="lg" color="primary" Type="submit">Login to your account</Button>
         </EditForm>
     </CardBody>
 </Card>
+
