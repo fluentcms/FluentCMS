@@ -31,6 +31,7 @@ public static class DefaultDataLoaderExtensions
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
         var pluginDefinitionService = scope.ServiceProvider.GetRequiredService<IPluginDefinitionService>();
         var pluginService = scope.ServiceProvider.GetRequiredService<IPluginService>();
+        var layoutService = scope.ServiceProvider.GetRequiredService<ILayoutService>();
         var appContext = scope.ServiceProvider.GetRequiredService<IApplicationContext>();
 
         if (!hostService.IsInitialized().GetAwaiter().GetResult())
@@ -88,6 +89,16 @@ public static class DefaultDataLoaderExtensions
                     pluginService.Create(plugin).GetAwaiter().GetResult();
                 }
             }
+
+
+            // Layouts creation: adding a few default layouts
+            defaultData.Layouts = GetLayouts(dataFolder).ToList();
+            foreach (var layout in defaultData.Layouts)
+            {
+                layout.SiteId = defaultData.Site.Id;
+                layoutService.Create(layout).GetAwaiter().GetResult();
+            }
+
         }
     }
 
@@ -106,6 +117,19 @@ public static class DefaultDataLoaderExtensions
         catch (Exception)
         {
             throw new Exception($"Unable to load seed data from {jsonFile}");
+        }
+    }
+
+    private static IEnumerable<Layout> GetLayouts(string dataFolder)
+    {
+        foreach (var file in Directory.GetFiles(dataFolder, "*.html"))
+        {
+            var layout = new Layout
+            {
+                Name = Path.GetFileNameWithoutExtension(file),
+                Content = File.ReadAllText(file)
+            };
+            yield return layout;
         }
     }
 }

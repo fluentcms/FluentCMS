@@ -9,6 +9,7 @@ public class DefaultData
     public required Site Site { get; set; }
     public required List<Page> Pages { get; set; }
     public required List<PluginDefinition> PluginDefinitions { get; set; }
+    public List<Layout> Layouts { get; set; } = [];
 
     public class DefaultUser
     {

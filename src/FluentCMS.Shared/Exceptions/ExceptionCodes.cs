@@ -89,4 +89,13 @@ public class ExceptionCodes
     public const string PluginDefinitionNotFound = "PluginDefinition.NotFound";
 
     #endregion
+
+    #region Layout
+
+    public const string LayoutUnableToCreate = "Layout.UnableToCreated";
+    public const string LayoutUnableToUpdate = "Layout.UnableToUpdate";
+    public const string LayoutUnableToDelete = "Layout.UnableToDelete";
+    public const string LayoutNotFound = "Layout.NotFound";
+
+    #endregion
 }

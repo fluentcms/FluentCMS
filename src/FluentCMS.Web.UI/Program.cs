@@ -61,8 +61,6 @@ app.UseHsts();
 
 app.UseHttpsRedirection();
 
-app.UseExceptionHandler("/Error", createScopeForErrors: true);
-
 app.UseRouting();
 
 app.UseStaticFiles();

@@ -19,6 +19,7 @@ public static class ServiceExtensions
         services.AddScoped<IHostService, HostService>();
         services.AddScoped<IPluginService, PluginService>();
         services.AddScoped<IPluginDefinitionService, PluginDefinitionService>();
+        services.AddScoped<ILayoutService, LayoutService>();
 
         services.AddIdentity();
 

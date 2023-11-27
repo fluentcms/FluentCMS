@@ -1,10 +1,6 @@
-﻿@page "/"
+﻿@page "/{*pageRoute}"
 
-<PageTitle>Home</PageTitle>
-
-<Label>This is label</Label>
-<Button>Submit</Button>
-<Button Disabled="@true">Disabled="true"</Button>
-<Button Disabled="@false">Disabled="false"</Button>
-@* <Badge>Default</Badge>
-<Badge Color="Colors.Danger">Danger</Badge> *@
+@code {
+    [Parameter]
+    public string? PageRoute { get; set; }
+}
