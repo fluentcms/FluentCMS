@@ -23,7 +23,7 @@ public partial class SiteSelection
         try
         {
             //curl - X 'GET' \
-            //  'https://localhost:7164/api/Site/GetAll?PageIndex=0&PageSize=15' \
+            //  'https://localhost:7164/api/Site/GetAll' \
             //  -H 'accept: application/json'
 
             Response = (await HttpClient.GetFromJsonAsync<ApiPagingResult<SiteResponse>>($"Site/GetAll"))!;
