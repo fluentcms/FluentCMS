@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 using System.Text.Json;
 
 namespace FluentCMS.Web.UI.Pages.Auth;
-public partial class LoginPage:ComponentBase
+public partial class LoginPage
 {
     [Inject] HttpClient HttpClient { get; set; }
     [Inject] NavigationManager NavigationManager { get; set; }
@@ -39,9 +39,6 @@ public partial class LoginPage:ComponentBase
             // persist auth data
             if (userAuthenticationResult?.Data != null)
             {
-                //await ProtectedLocalStorage.SetAsync("access-token", userAuthenticationResult.Data.Token);
-                //await ProtectedLocalStorage.SetAsync("user-id", userAuthenticationResult.Data.UserId);
-                //await ProtectedLocalStorage.SetAsync("role-ids", userAuthenticationResult.Data.RoleIds);
                 HttpContextAccessor.HttpContext!.Response.Cookies.Append("access-token", userAuthenticationResult.Data.Token);
                 HttpContextAccessor.HttpContext!.Response.Cookies.Append("user-id", JsonSerializer.Serialize(userAuthenticationResult.Data.UserId));
                 HttpContextAccessor.HttpContext!.Response.Cookies.Append("role-ids", JsonSerializer.Serialize(userAuthenticationResult.Data.RoleIds));
@@ -50,12 +47,12 @@ public partial class LoginPage:ComponentBase
         }
     }
 
-}
+    }
 
 public class NonPrerenderedServerMode : InteractiveServerRenderMode
 {
     public NonPrerenderedServerMode():base(false)
     {
         
-    }
+}
 }

@@ -35,6 +35,7 @@ services.AddApiDocumentation();
 services.AddHttpContextAccessor();
 
 services.AddScoped<AuthenticationStateProvider, FluentAuthenticationStateProvider>();
+
 // TODO: Add accept-language to request header, etc.
 // TODO: Move to somewhere else (Shared project maybe?)
 services.AddScoped(sp =>
