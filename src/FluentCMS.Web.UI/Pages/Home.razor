@@ -62,7 +62,7 @@
 
            // ignore comments before trying to parse
            var commentRegex = new Regex("<!--.*-->");
-           Layout = commentRegex.Replace(Layout,"");
+           _layout = commentRegex.Replace(_layout, "");
 
            // attribute to find tags with
            var matcherAttributeName = "fluentcms";
