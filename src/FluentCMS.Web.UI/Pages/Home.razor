@@ -4,27 +4,25 @@
 @inject HttpClient http
 @inject NavigationManager Navigator
 
-<PageTitle>@Page?.Title</PageTitle>
-
-@dynamicComponent()
+<CascadingValue Value="@Route">
+    <CascadingValue Value="@Site">
+        <CascadingValue Value="@Page">
+            @dynamicComponent()
+        </CascadingValue>
+    </CascadingValue>
+</CascadingValue>
 
 @code {
     [Parameter]
     public string? Route { get; set; }
 
+    [Parameter]
     public SiteResponse? Site { get; set; }
+
+    [Parameter]
     public PageResponse? Page { get; set; }
-    public string Layout { get; set; } = string.Empty;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await base.OnInitializedAsync();
-    }
-
-    public override async Task SetParametersAsync(ParameterView parameters)
-    {
-        await base.SetParametersAsync(parameters);
-    }
+    private string _layout = string.Empty;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -52,7 +50,7 @@
         if (Page is null)
             return;
 
-        Layout = Page.Layout?.Content ?? Site.Layout.Content;
+        _layout = Page.Layout?.Content ?? Site.Layout.Content;
     }
 
     RenderFragment dynamicComponent() => builder =>
@@ -69,19 +67,19 @@
            // TODO: check that tag is not commented
            var tagFinderRegex = new Regex($"<(?<TagName>\\w+)[^/>]*{matcherAttributeName}[^/>]*/>", RegexOptions.IgnoreCase);
 
-           var tagMatches = tagFinderRegex.Matches(Layout);
+           var tagMatches = tagFinderRegex.Matches(_layout);
 
            // ignore if no tags found
            if (tagMatches.Count() == 0)
            {
-               builder.AddMarkupContent(index, Layout);
+               builder.AddMarkupContent(index, _layout);
                return;
            }
 
            foreach (Match tag in tagMatches)
            {
                // add markup until beginning of tag-match
-               builder.AddMarkupContent(index++, Layout.Substring(startIndex, tag.Index - startIndex));
+               builder.AddMarkupContent(index++, _layout.Substring(startIndex, tag.Index - startIndex));
 
                // get Type from tag name
                var type = GetType(tag.Groups["TagName"].Value);
@@ -99,9 +97,6 @@
                    foreach (var parameter in parameters)
                        builder.AddComponentParameter(parameterIndex++, parameter.Key, parameter.Value);
 
-                   //add page parameter if the component has a page parameter that is Type of PageResponse
-                   builder.AddComponentParameter(parameterIndex++, "page", Page);
-
                    //close component
                    builder.CloseComponent();
                    startIndex = tag.Index + tag.Length;
@@ -110,7 +105,7 @@
                }
            }
 
-           builder.AddMarkupContent(index, Layout.Substring(lastIndex + lastLength));
+           builder.AddMarkupContent(index, _layout.Substring(lastIndex + lastLength));
            index++;
        };
 
