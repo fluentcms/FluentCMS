@@ -24,7 +24,7 @@
     public override async Task SetParametersAsync(ParameterView parameters)
     {
         await base.SetParametersAsync(parameters);
-       
+
     }
 
     protected override async Task OnParametersSetAsync()
@@ -55,30 +55,73 @@
 
         Layout = Page.Layout?.Content ?? Site.Layout.Content;
     }
-
+    private Dictionary<string, string> ParseParameters(string layout)
+    {
+        var parameterParserRegex = new Regex("(\\s(?<name>\\w+)=\\\"?(?<value>\\w+)\\\"?)+");
+        return new Dictionary<string, string>(parameterParserRegex.Matches(layout).Select(x => new KeyValuePair<string, string>(x.Groups["name"].Value, x.Groups["value"].Value)));
+    }
     RenderFragment dynamicComponent() => builder =>
        {
-           var mcol = Regex.Matches(Layout, @"\[\[.*?]]").ToDictionary(x => x.ToString(), x => x.Index);
-
            var index = 0;
            var startIndex = 0;
            var lastIndex = 0;
            var lastLength = 0;
-           foreach (var key in mcol.Keys)
+
+           // attribute to find tags with
+           var matcherAttributeName = "fluentcms";
+
+           // find any tag that has our attribute
+           // TODO: check that tag is not commented
+           var tagFinderRegex = new Regex($"<(?<TagName>\\w+)[^/>]*{matcherAttributeName}[^/>]*/>", RegexOptions.IgnoreCase);
+
+           var tagMatches = tagFinderRegex.Matches(Layout);
+
+           // ignore if no tags found
+           if (tagMatches.Count() == 0)
+               return;
+
+           foreach (Match tag in tagMatches)
            {
-               builder.AddMarkupContent(index, Layout.Substring(startIndex, mcol[key] - startIndex));
-               startIndex = mcol[key] + key.Length;
-               index++;
-               var name = key.Replace("[[", "").Replace("]]", "").Split(" ")[1];
-               builder.OpenComponent<Section>(index);
-               name = name.Replace("name=", string.Empty).Replace("\"", string.Empty);
-               builder.AddComponentParameter(0, "name", name);
-               builder.AddComponentParameter(1, "page", Page);
+               // add markup until beginning of tag-match
+               builder.AddMarkupContent(index++, Layout.Substring(startIndex, tag.Index - startIndex));
+               // get Type from tag name
+               // Type tagType = Type.GetType(tag.Groups["TagName"].Value);
+               Type tagType = tag.Groups["TagName"].Value.ToLower() switch
+               {
+                   "section" => typeof(Section),
+                   "sidebar" => typeof(Sidebar),
+                   _ => null
+               };
+
+               // open component tag
+               builder.OpenComponent(index++, tagType);
+
+               //parse parameters with regex
+               var parameters = ParseParameters(tag.Value);
+
+               //add parameters
+               var parameterIndex = 0;
+               foreach (var parameter in parameters)
+               {
+                   builder.AddComponentParameter(parameterIndex++, parameter.Key, parameter.Value);
+               }
+
+               //add page parameter if the component has a page parameter that is Type of PageResponse
+               if (tagType.GetProperty("Page") is var property &&
+                   property != null &&
+                   property.PropertyType == typeof(PageResponse))
+               {
+
+                   builder.AddComponentParameter(parameterIndex++, "page", Page);
+               }
+
+               //close component
                builder.CloseComponent();
-               index++;
-               lastIndex = mcol[key];
-               lastLength = key.Length;
+               startIndex = tag.Index + tag.Length;
+               lastIndex = tag.Index;
+               lastLength = tag.Length;
            }
+
            builder.AddMarkupContent(index, Layout.Substring(lastIndex + lastLength));
            index++;
        };
