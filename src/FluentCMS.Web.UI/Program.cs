@@ -61,11 +61,9 @@ app.UseHsts();
 
 app.UseHttpsRedirection();
 
-app.UseExceptionHandler("/Error", createScopeForErrors: true);
+app.UseStaticFiles();
 
 app.UseRouting();
-
-app.UseStaticFiles();
 
 app.UseAntiforgery();
 

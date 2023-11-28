@@ -7,4 +7,5 @@ public class Page : AuditEntity, IAuthorizeEntity
     public Guid? ParentId { get; set; }
     public int Order { get; set; }
     public required string Path { get; set; }
+    public Guid? LayoutId { get; set; } = null;
 }

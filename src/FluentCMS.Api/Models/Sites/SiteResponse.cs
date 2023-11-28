@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Api.Models;
+﻿using FluentCMS.Entities;
+
+namespace FluentCMS.Api.Models;
 
 public class SiteResponse
 {
@@ -11,4 +13,5 @@ public class SiteResponse
     public string Description { get; set; } = string.Empty;
     public List<string> Urls { get; set; } = [];
     public IEnumerable<PageResponse> Pages { get; set; } = [];
+    public Layout Layout { get; set; } = default!;
 }

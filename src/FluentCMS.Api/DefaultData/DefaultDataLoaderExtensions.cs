@@ -29,6 +29,9 @@ public static class DefaultDataLoaderExtensions
         var siteService = scope.ServiceProvider.GetRequiredService<ISiteService>();
         var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+        var pluginDefinitionService = scope.ServiceProvider.GetRequiredService<IPluginDefinitionService>();
+        var pluginService = scope.ServiceProvider.GetRequiredService<IPluginService>();
+        var layoutService = scope.ServiceProvider.GetRequiredService<ILayoutService>();
         var appContext = scope.ServiceProvider.GetRequiredService<IApplicationContext>();
 
         if (!hostService.IsInitialized().GetAwaiter().GetResult())
@@ -53,14 +56,44 @@ public static class DefaultDataLoaderExtensions
             // Host creation
             hostService.Create(defaultData.Host).GetAwaiter().GetResult();
 
-            // Site creation            
-            siteService.Create(defaultData.Site).GetAwaiter().GetResult();
-                        
+            // Site creation
+            defaultData.Layouts = GetLayouts(dataFolder).ToList();
+            var defaultLayout = defaultData.Layouts[0];
+            siteService.Create(defaultData.Site, defaultLayout).GetAwaiter().GetResult();
+
+            // Updating site layout
+            defaultData.Site.DefaultLayoutId = defaultData.Layouts[0].Id;
+            siteService.Update(defaultData.Site).GetAwaiter().GetResult();
+
+            // Plugin definition creation
+            foreach (var pluginDefinition in defaultData.PluginDefinitions)
+            {
+                pluginDefinition.SiteId = defaultData.Site.Id;
+                pluginDefinitionService.Create(pluginDefinition).GetAwaiter().GetResult();
+            }
+
             // Pages creation: adding a few default pages
             foreach (var page in defaultData.Pages)
             {
                 page.SiteId = defaultData.Site.Id;
                 pageService.Create(page).GetAwaiter().GetResult();
+            }
+
+            // Plugins creation: adding a few default plugins to pages
+            foreach (var page in defaultData.Pages)
+            {
+                var order = 0;
+                foreach (var pluginDef in defaultData.PluginDefinitions)
+                {
+                    var plugin = new Plugin
+                    {
+                        DefinitionId = pluginDef.Id,
+                        PageId = page.Id,
+                        Order = order++,
+                        Section = "main"
+                    };
+                    pluginService.Create(plugin).GetAwaiter().GetResult();
+                }
             }
         }
     }
@@ -80,6 +113,19 @@ public static class DefaultDataLoaderExtensions
         catch (Exception)
         {
             throw new Exception($"Unable to load seed data from {jsonFile}");
+        }
+    }
+
+    private static IEnumerable<Layout> GetLayouts(string dataFolder)
+    {
+        foreach (var file in Directory.GetFiles(dataFolder, "*.html"))
+        {
+            var layout = new Layout
+            {
+                Name = Path.GetFileNameWithoutExtension(file),
+                Content = File.ReadAllText(file)
+            };
+            yield return layout;
         }
     }
 }
