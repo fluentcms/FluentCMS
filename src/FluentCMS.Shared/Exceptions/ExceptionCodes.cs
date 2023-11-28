@@ -71,4 +71,31 @@ public class ExceptionCodes
     public const string PermissionUnableToCreate = "Permission.UnableToCreated";
 
     #endregion
+
+    #region Plugin
+
+    public const string PluginUnableToCreate = "Plugin.UnableToCreated";
+    public const string PluginUnableToUpdate = "Plugin.UnableToUpdate";
+    public const string PluginUnableToDelete = "Plugin.UnableToDelete";
+    public const string PluginNotFound = "Plugin.NotFound";
+
+    #endregion
+
+    #region PluginDefinition
+
+    public const string PluginDefinitionUnableToCreate = "PluginDefinition.UnableToCreated";
+    public const string PluginDefinitionUnableToUpdate = "PluginDefinition.UnableToUpdate";
+    public const string PluginDefinitionUnableToDelete = "PluginDefinition.UnableToDelete";
+    public const string PluginDefinitionNotFound = "PluginDefinition.NotFound";
+
+    #endregion
+
+    #region Layout
+
+    public const string LayoutUnableToCreate = "Layout.UnableToCreated";
+    public const string LayoutUnableToUpdate = "Layout.UnableToUpdate";
+    public const string LayoutUnableToDelete = "Layout.UnableToDelete";
+    public const string LayoutNotFound = "Layout.NotFound";
+
+    #endregion
 }

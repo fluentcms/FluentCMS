@@ -7,6 +7,7 @@ public interface IPageService
 {
     Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     Task<Page> GetById(Guid id, CancellationToken cancellationToken = default);
+    Task<Page> GetByPath(Guid siteId, string path, CancellationToken cancellationToken = default);
     Task<Page> Create(Page page, CancellationToken cancellationToken = default);
     Task<Page> Update(Page page, CancellationToken cancellationToken = default);
     Task Delete(Guid id, CancellationToken cancellationToken = default);
@@ -191,6 +192,14 @@ public class PageService(
             ?? throw new AppException(ExceptionCodes.PageUnableToUpdate);
     }
 
+    public async Task<Page> GetByPath(Guid siteId, string path, CancellationToken cancellationToken = default)
+    {
+        var page = await pageRepository.GetByPath(siteId, path, cancellationToken) ??
+            throw new AppException(ExceptionCodes.PageNotFound);
+
+        return page;
+    }
+
     private bool HasAdminPermission(Site site, Page page)
     {
         return true; // Current.IsInRole(site.AdminRoleIds) || Current.IsInRole(page.AdminRoleIds);
@@ -200,5 +209,4 @@ public class PageService(
     {
         return true;// HasAdminPermission(site, page) || Current.IsInRole(page.ViewRoleIds);
     }
-
 }

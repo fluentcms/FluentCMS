@@ -54,7 +54,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.Services.ResetMongoDb();
-    app.Services.LoadInitialDataFrom(@".\DefaultData\");
+    app.Services.LoadInitialDataFrom(@"./DefaultData/");
 
     app.UseDeveloperExceptionPage();
 }
@@ -63,11 +63,9 @@ app.UseHsts();
 
 app.UseHttpsRedirection();
 
-app.UseExceptionHandler("/Error", createScopeForErrors: true);
+app.UseStaticFiles();
 
 app.UseRouting();
-
-app.UseStaticFiles();
 
 app.UseAntiforgery();
 

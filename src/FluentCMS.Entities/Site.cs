@@ -6,4 +6,5 @@ public class Site : AuditEntity, IAuthorizeEntity
     public string? Description { get; set; }
     public List<string> Urls { get; set; } = [];
     public Guid SiteId { get; set; }
+    public Guid DefaultLayoutId { get; set; }
 }

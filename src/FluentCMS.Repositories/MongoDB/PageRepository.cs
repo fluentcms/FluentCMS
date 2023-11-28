@@ -3,17 +3,19 @@ using MongoDB.Driver;
 
 namespace FluentCMS.Repositories.MongoDB;
 
-public class PageRepository : GenericRepository<Page>, IPageRepository
+public class PageRepository(
+    IMongoDBContext mongoDbContext,
+    IApplicationContext applicationContext) :
+    GenericRepository<Page>(mongoDbContext, applicationContext),
+    IPageRepository
 {
-    public PageRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext) : base(mongoDbContext, applicationContext)
-    {
-    }
 
-    public async Task<Page> GetByPath(string path, CancellationToken cancellationToken = default)
+    public async Task<Page> GetByPath(Guid siteId, string path, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var filter = Builders<Page>.Filter.Eq(x => x.Path, path);
+        filter &= Builders<Page>.Filter.Eq(x => x.SiteId, siteId);
 
         var findResult = await Collection.FindAsync(filter, null, cancellationToken);
 

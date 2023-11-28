@@ -6,22 +6,21 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Api.Controllers;
 
-public class PageController : BaseController
+public class PageController(
+    IPageService pageService,
+    IPluginService pluginService,
+    IPluginDefinitionService pluginDefinitionService,
+    IMapper mapper) : BaseController
 {
-    private readonly IPageService _pageService;
-    private readonly IMapper _mapper;
 
-    public PageController(IPageService pageService, IMapper mapper)
-    {
-        _pageService = pageService;
-        _mapper = mapper;
-    }
+    private readonly IPageService _pageService = pageService;
+    private readonly IMapper _mapper = mapper;
 
     // GetBy Site and ParentId
     [HttpPost]
     public async Task<IApiPagingResult<PageResponse>> GetAll([FromBody] PageSearchRequest request)
     {
-        var pages = (await _pageService.GetBySiteId(request.SiteId));
+        var pages = await _pageService.GetBySiteId(request.SiteId);
         return new ApiPagingResult<PageResponse>(_mapper.Map<List<PageResponse>>(pages.ToList()));
     }
 
@@ -33,6 +32,28 @@ public class PageController : BaseController
         return new ApiResult<PageResponse>(pageResponse);
     }
 
+    [HttpGet]
+    public async Task<IApiResult<PageResponse>> GetByPath([FromQuery] Guid siteId, [FromQuery] string? path, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(path))
+            path = "/";
+
+        if (!path.StartsWith("/"))
+            path = "/" + path;
+
+        var page = await _pageService.GetByPath(siteId, path, cancellationToken);
+        var pageResponse = _mapper.Map<PageResponse>(page);
+        var pagePlugins = await pluginService.GetByPageId(page.Id, cancellationToken);
+        var pluginDefinitions = await pluginDefinitionService.GetAll(cancellationToken);
+        pageResponse.Plugins = pagePlugins.Select(p => new PluginResponse
+        {
+            Id = p.Id,
+            Definition = pluginDefinitions.Single(d => d.Id == p.DefinitionId),
+            Order = p.Order,
+            Section = p.Section
+        }).ToList();
+        return new ApiResult<PageResponse>(pageResponse);
+    }
 
     [HttpPost]
     public async Task<IApiResult<PageResponse>> Create(PageCreateRequest request)

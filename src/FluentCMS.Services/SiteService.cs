@@ -8,13 +8,14 @@ public interface ISiteService
     Task<IEnumerable<Site>> GetAll(CancellationToken cancellationToken = default);
     Task<Site> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<Site> GetByUrl(string url, CancellationToken cancellationToken = default);
-    Task<Site> Create(Site site, CancellationToken cancellationToken = default);
+    Task<Site> Create(Site site, Layout? defaultLayout, CancellationToken cancellationToken = default);
     Task<Site> Update(Site site, CancellationToken cancellationToken = default);
     Task Delete(Site site, CancellationToken cancellationToken = default);
 }
 
 public class SiteService(
     ISiteRepository siteRepository,
+    ILayoutRepository layoutRepository,
     SitePolicies sitePolicies,
     IAuthorizationProvider authorizationProvider) : ISiteService
 {
@@ -41,7 +42,7 @@ public class SiteService(
             throw new AppException(ExceptionCodes.SiteNotFound);
     }
 
-    public async Task<Site> Create(Site site, CancellationToken cancellationToken = default)
+    public async Task<Site> Create(Site site, Layout defaultLayout, CancellationToken cancellationToken = default)
     {
         // only super admin can create a site
         if (!authorizationProvider.Authorize(site, sitePolicies.SuperAdmin))
@@ -64,6 +65,18 @@ public class SiteService(
 
         // add edit permission to the site for the edit role
         await authorizationProvider.Create(newSite, Policies.SITE_EDITOR, cancellationToken);
+
+        if (defaultLayout != null)
+        {
+            // add default layout to the site
+            defaultLayout.SiteId = newSite.Id;
+            await layoutRepository.Create(defaultLayout, cancellationToken);
+
+            // updating site with the default layout
+            newSite.DefaultLayoutId = defaultLayout.Id;
+            newSite = await siteRepository.Update(newSite, cancellationToken) ??
+                throw new AppException(ExceptionCodes.SiteUnableToUpdate);
+        }
 
         return newSite;
     }
