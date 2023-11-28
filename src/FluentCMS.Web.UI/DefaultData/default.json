@@ -11,26 +11,26 @@
         {
             "Name": "Counter",
             "Description": "Counter plugin",
-            "ViewType": "View",
-            "EditType": "Edit"
+            "ViewType": "CounterView",
+            "EditType": "CounterEdit"
         },
         {
             "Name": "HelloWorld",
             "Description": "Hello World plugin",
-            "ViewType": "View",
-            "EditType": "Edit"
+            "ViewType": "HelloWorldView",
+            "EditType": "HelloWorldEdit"
         },
         {
             "Name": "TextHtml",
             "Description": "Text/Html plugin",
-            "ViewType": "View",
-            "EditType": "Edit"
+            "ViewType": "TextHtmlView",
+            "EditType": "TextHtmlEdit"
         }
     ],
     "Site": {
         "Name": "My First Site",
         "Description": "This is my first site",
-        "Urls": [ "http://www.myfirstsite.com" ]
+        "Urls": [ "https://localhost:7164" ]
     },
     "Pages": [
         {

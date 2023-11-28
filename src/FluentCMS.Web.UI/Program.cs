@@ -61,9 +61,9 @@ app.UseHsts();
 
 app.UseHttpsRedirection();
 
-app.UseRouting();
-
 app.UseStaticFiles();
+
+app.UseRouting();
 
 app.UseAntiforgery();
 

@@ -1,23 +1,22 @@
-﻿<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <base href="/" />
-    <title>FluentCMS</title>
-    <link rel="stylesheet" href="/css/app.min.css">
-</head>
-<body>
-    <div class="f-layout">
-        <main class="f-content">
-            <header class="navbar sticky-top bg-dark flex-md-nowrap p-0 shadow" data-bs-theme="dark">
-                <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6 text-white" href="#">FluentCMS</a>
-            </header>
-            <Section dynamic name="content"></Section>
-        </main>
-    </div>
-
-    <script src="_framework/blazor.web.js"></script>
-    <script src="/lib/js/flowbite.min.js"></script>
-</body>
-</html>
+﻿<div class="f-layout">
+    <aside id="default-sidebar" aria-label="Sidebar" class="f-sidebar -translate-x-full">
+        <div class="f-sidebar-body">
+            <a href="/" class="f-sidebar-item">
+                <span class="f-sidebar-item-text">Home</span>
+            </a>
+            <a href="/about-me" class="f-sidebar-item">
+                <span class="f-sidebar-item-text">About Me</span>
+            </a>
+            <a href="/contact" class="f-sidebar-item">
+                <span class="f-sidebar-item-text">Contact Me</span>
+            </a>
+        </div>
+    </aside>
+    <main class="f-content">
+        <header class="navbar sticky-top bg-dark flex-md-nowrap p-0 shadow" data-bs-theme="dark">
+            <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6 text-white" href="#">FluentCMS</a>
+        </header>
+        [[Section name="main"]]
+    </main>
+</div>
+<script src="/lib/js/flowbite.min.js"></script>

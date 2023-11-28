@@ -1,8 +1,8 @@
-﻿<h1>Counter</h1>
+﻿@rendermode InteractiveServer
+<h1>Counter</h1>
 
 <p role="status">Current count: @currentCount</p>
-
-<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+<Counter @onclick="IncrementCount">Click me</Counter>
 
 @code {
     private int currentCount = 0;

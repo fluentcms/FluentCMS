@@ -1,6 +1,22 @@
-﻿<h3>Section @Name</h3>
+﻿@using FluentCMS.Entities
+@using System.Linq
+
+@foreach (var plugin in Page.Plugins.Where(x => x.Section.ToLower() == Name.ToLower()).OrderBy(x => x.Order))
+{
+    <DynamicComponent Type=@GetType(plugin) />
+}
 
 @code {
     [Parameter]
     public string Name { get; set; } = string.Empty;
+
+    [Parameter]
+    public PageResponse Page { get; set; } = default!;
+
+    Type? GetType(PluginResponse plugin)
+    {
+        var assembly = typeof(Section).Assembly;
+        var typeInfo = assembly.DefinedTypes.FirstOrDefault(x => x.Name == plugin.Definition.ViewType);
+        return typeInfo?.AsType();
+    }
 }

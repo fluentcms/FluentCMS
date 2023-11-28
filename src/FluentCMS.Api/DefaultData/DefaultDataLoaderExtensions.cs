@@ -56,8 +56,14 @@ public static class DefaultDataLoaderExtensions
             // Host creation
             hostService.Create(defaultData.Host).GetAwaiter().GetResult();
 
-            // Site creation            
-            siteService.Create(defaultData.Site).GetAwaiter().GetResult();
+            // Site creation
+            defaultData.Layouts = GetLayouts(dataFolder).ToList();
+            var defaultLayout = defaultData.Layouts[0];
+            siteService.Create(defaultData.Site, defaultLayout).GetAwaiter().GetResult();
+
+            // Updating site layout
+            defaultData.Site.DefaultLayoutId = defaultData.Layouts[0].Id;
+            siteService.Update(defaultData.Site).GetAwaiter().GetResult();
 
             // Plugin definition creation
             foreach (var pluginDefinition in defaultData.PluginDefinitions)
@@ -82,23 +88,13 @@ public static class DefaultDataLoaderExtensions
                     var plugin = new Plugin
                     {
                         DefinitionId = pluginDef.Id,
-                        PageId = defaultData.Pages[0].Id,
+                        PageId = page.Id,
                         Order = order++,
-                        Section = "Main"
+                        Section = "main"
                     };
                     pluginService.Create(plugin).GetAwaiter().GetResult();
                 }
             }
-
-
-            // Layouts creation: adding a few default layouts
-            defaultData.Layouts = GetLayouts(dataFolder).ToList();
-            foreach (var layout in defaultData.Layouts)
-            {
-                layout.SiteId = defaultData.Site.Id;
-                layoutService.Create(layout).GetAwaiter().GetResult();
-            }
-
         }
     }
 
