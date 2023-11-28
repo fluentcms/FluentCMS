@@ -24,7 +24,6 @@
     public override async Task SetParametersAsync(ParameterView parameters)
     {
         await base.SetParametersAsync(parameters);
-
     }
 
     protected override async Task OnParametersSetAsync()
@@ -55,11 +54,7 @@
 
         Layout = Page.Layout?.Content ?? Site.Layout.Content;
     }
-    private Dictionary<string, string> ParseParameters(string layout)
-    {
-        var parameterParserRegex = new Regex("(\\s(?<name>\\w+)=\\\"?(?<value>\\w+)\\\"?)+");
-        return new Dictionary<string, string>(parameterParserRegex.Matches(layout).Select(x => new KeyValuePair<string, string>(x.Groups["name"].Value, x.Groups["value"].Value)));
-    }
+
     RenderFragment dynamicComponent() => builder =>
        {
            var index = 0;
@@ -78,51 +73,57 @@
 
            // ignore if no tags found
            if (tagMatches.Count() == 0)
+           {
+               builder.AddMarkupContent(index, Layout);
                return;
+           }
 
            foreach (Match tag in tagMatches)
            {
                // add markup until beginning of tag-match
                builder.AddMarkupContent(index++, Layout.Substring(startIndex, tag.Index - startIndex));
+
                // get Type from tag name
-               // Type tagType = Type.GetType(tag.Groups["TagName"].Value);
-               Type tagType = tag.Groups["TagName"].Value.ToLower() switch
+               var type = GetType(tag.Groups["TagName"].Value);
+
+               if (type != null)
                {
-                   "section" => typeof(Section),
-                   "sidebar" => typeof(Sidebar),
-                   _ => null
-               };
+                   // open component tag
+                   builder.OpenComponent(index++, type);
 
-               // open component tag
-               builder.OpenComponent(index++, tagType);
+                   //parse attributes with regex
+                   var parameters = ParseAttributes(tag.Value);
 
-               //parse parameters with regex
-               var parameters = ParseParameters(tag.Value);
+                   //add parameters
+                   var parameterIndex = 0;
+                   foreach (var parameter in parameters)
+                       builder.AddComponentParameter(parameterIndex++, parameter.Key, parameter.Value);
 
-               //add parameters
-               var parameterIndex = 0;
-               foreach (var parameter in parameters)
-               {
-                   builder.AddComponentParameter(parameterIndex++, parameter.Key, parameter.Value);
-               }
-
-               //add page parameter if the component has a page parameter that is Type of PageResponse
-               if (tagType.GetProperty("Page") is var property &&
-                   property != null &&
-                   property.PropertyType == typeof(PageResponse))
-               {
-
+                   //add page parameter if the component has a page parameter that is Type of PageResponse
                    builder.AddComponentParameter(parameterIndex++, "page", Page);
-               }
 
-               //close component
-               builder.CloseComponent();
-               startIndex = tag.Index + tag.Length;
-               lastIndex = tag.Index;
-               lastLength = tag.Length;
+                   //close component
+                   builder.CloseComponent();
+                   startIndex = tag.Index + tag.Length;
+                   lastIndex = tag.Index;
+                   lastLength = tag.Length;
+               }
            }
 
            builder.AddMarkupContent(index, Layout.Substring(lastIndex + lastLength));
            index++;
        };
+
+    private Type? GetType(string typeName)
+    {
+        var assembly = typeof(Section).Assembly;
+        var typeInfo = assembly.DefinedTypes.FirstOrDefault(x => x.Name == typeName);
+        return typeInfo?.AsType();
+    }
+
+    private Dictionary<string, string> ParseAttributes(string layout)
+    {
+        var parameterParserRegex = new Regex("(\\s(?<name>\\w+)=\\\"?(?<value>\\w+)\\\"?)+");
+        return new Dictionary<string, string>(parameterParserRegex.Matches(layout).Select(x => new KeyValuePair<string, string>(x.Groups["name"].Value, x.Groups["value"].Value)));
+    }
 }
