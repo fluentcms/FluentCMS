@@ -4,7 +4,7 @@ namespace Microsoft.Extensions.Configuration;
 
 public static class ConfigurationExtensions
 {
-    public static IConfigurationBuilder AddConfig(this IConfigurationBuilder configBuilder, IHostEnvironment env, string configFolder = "\\Config\\")
+    public static IConfigurationBuilder AddConfig(this IConfigurationBuilder configBuilder, IHostEnvironment env, string configFolder = "/Config/")
     {
         var folderName = env.ContentRootPath + configFolder;
 

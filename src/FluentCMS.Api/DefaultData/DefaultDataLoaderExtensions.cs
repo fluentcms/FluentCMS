@@ -36,7 +36,7 @@ public static class DefaultDataLoaderExtensions
 
         if (!hostService.IsInitialized().GetAwaiter().GetResult())
         {
-            var defaultData = LoadData<DefaultData>($@"{dataFolder}\default.json");
+            var defaultData = LoadData<DefaultData>($@"{dataFolder}/default.json");
 
             var superUser = new User
             {
