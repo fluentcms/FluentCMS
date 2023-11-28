@@ -67,6 +67,10 @@
            var lastIndex = 0;
            var lastLength = 0;
 
+           // ignore comments before trying to parse
+           var commentRegex = new Regex("<!--.*-->");
+           Layout = commentRegex.Replace(Layout,"");
+
            // attribute to find tags with
            var matcherAttributeName = "fluentcms";
 
