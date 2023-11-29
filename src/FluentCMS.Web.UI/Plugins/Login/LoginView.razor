@@ -1,0 +1,31 @@
+﻿<div class="flex justify-center">
+    <Card>
+        <CardBody>
+            <CardTitle>Login</CardTitle>
+            <EditForm Model="UserAuthenticateRequest" class="f-login-form" OnValidSubmit="Submit">
+                <FormField Label="Your Username">
+                    <InputText Type="text" class="f-input" @bind-Value="UserAuthenticateRequest.Username"></InputText>
+                </FormField>
+                <FormField Label="Your Password">
+                    <InputText class="f-input" @bind-Value="UserAuthenticateRequest.Password" type="password"></InputText>
+                </FormField>
+                <FormField>
+                    <div class="flex items-center">
+                        <InputCheckbox class="f-checkbox" @bind-Value="Remember" />
+                        <Label>Remember me</Label>
+                    </div>
+                </FormField>
+                <Button size="lg" color="primary" Type="submit">Login to your account</Button>
+            </EditForm>
+        </CardBody>
+    </Card>
+</div>
+
+@code {
+    public UserAuthenticateRequest UserAuthenticateRequest { get; set; } = new() { Username = "", Password = "" };
+    public bool Remember { get; set; }
+    public async Task Submit()
+    {
+        throw new NotImplementedException();
+    }
+}

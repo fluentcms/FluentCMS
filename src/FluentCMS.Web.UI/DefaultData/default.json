@@ -25,6 +25,12 @@
             "Description": "Text/Html plugin",
             "ViewType": "TextHtmlView",
             "EditType": "TextHtmlEdit"
+        },
+        {
+            "Name": "Login",
+            "Description": "Text/Html plugin",
+            "ViewType": "LoginView",
+            "EditType": "LoginView" 
         }
     ],
     "Site": {
@@ -50,6 +56,12 @@
             "Description": "This is contact me page",
             "Path": "/contact",
             "Order": 2
+        },
+        {
+            "Title": "Login",
+            "Description": "This is login page",
+            "Path": "/auth/login",
+            "Order": 999
         }
     ]
 }
