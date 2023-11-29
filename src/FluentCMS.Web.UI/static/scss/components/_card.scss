@@ -5,7 +5,8 @@ $prefix-card: $prefix + 'card';
     // max-w-sm
 
     &-title {
-        @apply text-xl font-medium text-gray-900;   
+        @apply text-2xl font-bold text-gray-900;
+        // TODO: Sometimes card title should be: text-xl font-medium
     }
 
     &-header {
@@ -23,13 +24,22 @@ $prefix-card: $prefix + 'card';
         }
     }
 
+    $widths: ("sm", "md", "lg", "xl");
+
+    @each $width in $widths {
+
+        &-width-#{$width} {
+            @apply w-full max-w-#{$width};
+        }
+    }
+
     .#{$prefix-theme-dark} & {
         @apply bg-gray-700/20 border-gray-700;
     }
 
     .#{$prefix-theme-dark} &-header {
         @apply border-gray-700 bg-gray-800;
-    } 
+    }
     .#{$prefix-theme-dark} &-footer {
         @apply border-gray-700 bg-gray-700/50;
     }
