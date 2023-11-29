@@ -13,6 +13,10 @@
     }
 </HeadContent>
 
+<div>
+    AppState: @AppState?.Site?.Name
+</div>
+
 <CascadingValue Value="@Route" Name="Route">
     <CascadingValue Value="@Site" Name="Site">
         <CascadingValue Value="@Page" Name="Page">
@@ -25,6 +29,9 @@
 @code {
     [Parameter]
     public string? Route { get; set; }
+
+    [CascadingParameter]
+    public AppState? AppState { get; set; }
 
     private SiteResponse? Site { get; set; }
     private PageResponse? Page { get; set; }
@@ -81,7 +88,7 @@
            // ignore if no tags found
            if (tagMatches.Count() == 0)
            {
-               builder.AddMarkupContent(index, _layout);
+               builder.AddMarkupContent(index++, _layout);
                return;
            }
 
