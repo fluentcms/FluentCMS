@@ -82,6 +82,19 @@ public static class DefaultDataLoaderExtensions
             // Plugins creation: adding a few default plugins to pages
             foreach (var page in defaultData.Pages)
             {
+                if(page.Path == "/auth/login")
+                {
+                    var pluginDef = defaultData.PluginDefinitions.Single(x => x.Name == "Login");
+                    var plugin = new Plugin
+                    {
+                        DefinitionId = pluginDef.Id,
+                        PageId = page.Id,
+                        Order = 0,
+                        Section = "main"
+                    };
+                    pluginService.Create(plugin).GetAwaiter().GetResult();
+                    return;
+                }
                 var order = 0;
                 foreach (var pluginDef in defaultData.PluginDefinitions)
                 {
