@@ -1,10 +1,15 @@
 ﻿<!doctype html>
 <html lang="en">
 <head>
-    <HeadOutlet />
+    <HeadOutlet @rendermode="@InteractiveServer" />
 </head>
 <body>
-    <Routes />
+    <Routes @rendermode="@InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
 </body>
 </html>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+}

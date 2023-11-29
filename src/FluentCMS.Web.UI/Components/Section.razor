@@ -1,15 +1,15 @@
 ﻿@using FluentCMS.Entities
 @using System.Linq
 
-@if (@Page != null)
+@foreach (var plugin in Page.Plugins.Where(x => x.Section.ToLower() == Name.ToLower()).OrderBy(x => x.Order))
 {
-    @foreach (var plugin in Page.Plugins.Where(x => x.Section.ToLower() == Name.ToLower()).OrderBy(x => x.Order))
-    {
-        <CascadingValue Value="@plugin" Name="Plugin">
-            <DynamicComponent Type=@GetType(plugin) />
-        </CascadingValue>
-    }
+    <div> bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb</div>
+    <FluentCMS.Web.UI.Plugins.HelloWorld.HelloWorldView />
+  @*   <CascadingValue Value="@plugin" Name="Plugin">
+        <DynamicComponent Type=@GetType(plugin) />
+    </CascadingValue> *@
 }
+
 
 @code {
     [Parameter]
@@ -24,4 +24,8 @@
         var typeInfo = assembly.DefinedTypes.FirstOrDefault(x => x.Name == plugin.Definition.ViewType);
         return typeInfo?.AsType();
     }
+    // protected override void OnInitialized()
+    // {
+
+    // }
 }

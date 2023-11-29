@@ -1,7 +1,4 @@
-﻿@rendermode InteractiveServer
-@inject PersistentComponentState ApplicationState
-
-<hr />
+﻿<hr />
 <h1>Counter</h1>
 @Plugin?.Id
 <h1>Counter</h1>
@@ -14,39 +11,6 @@
 
     [CascadingParameter(Name = "Plugin")]
     public PluginResponse? Plugin { get; set; } = default!;
-
-    private PersistingComponentStateSubscription persistingSubscription;
-
-    private Task PersistPlugins()
-    {
-        ApplicationState.PersistAsJson("{TOKEN}", Plugin);
-        return Task.CompletedTask;
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        persistingSubscription = ApplicationState.RegisterOnPersisting(PersistPlugins);
-
-        if (!ApplicationState.TryTakeFromJson<PluginResponse>("{TOKEN}", out var restored))
-        {
-            Plugin = restored;
-        }
-        await base.OnInitializedAsync();
-    }
-
-    public CounterView()
-    {
-
-    }
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-    }
-
-    protected override void OnParametersSet()
-    {
-        base.OnParametersSet();
-    }
 
     private void IncrementCount()
     {

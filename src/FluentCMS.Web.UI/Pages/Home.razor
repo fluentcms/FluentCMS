@@ -1,7 +1,6 @@
 ﻿@page "/{*Route:nonfile}"
 @using System.Text.RegularExpressions
 @using System.Web
-@using FluentCMS.Entities
 @inject HttpClient http
 @inject NavigationManager Navigator
 
@@ -26,12 +25,17 @@
     [Parameter]
     public string? Route { get; set; }
 
+    [Parameter]
     public SiteResponse? Site { get; set; }
+
+    [Parameter]
     public PageResponse? Page { get; set; }
+
+    [Parameter]
     public Layout? Layout { get; set; }
     private string _layout = string.Empty;
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         var host = Navigator.BaseUri;
         if (host.EndsWith("/"))
@@ -42,9 +46,6 @@
 
         if (Site is null)
             return;
-
-        if (Route is null)
-            Route = string.Empty;
 
         var query = HttpUtility.ParseQueryString(string.Empty);
         query["siteId"] = Site.Id.ToString();
@@ -58,7 +59,6 @@
         Layout = Page.Layout ?? Site.Layout;
         _layout = Layout.Content;
 
-        await base.OnInitializedAsync();
     }
 
     RenderFragment dynamicComponent() => builder =>
