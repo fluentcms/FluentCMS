@@ -3,19 +3,13 @@
 
 @foreach (var plugin in Page.Plugins.Where(x => x.Section.ToLower() == Name.ToLower()).OrderBy(x => x.Order))
 {
-    <div> bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb</div>
-    <FluentCMS.Web.UI.Plugins.HelloWorld.HelloWorldView />
-  @*   <CascadingValue Value="@plugin" Name="Plugin">
-        <DynamicComponent Type=@GetType(plugin) />
-    </CascadingValue> *@
+    <DynamicComponent Type=@GetType(plugin) />
 }
-
-
 @code {
     [Parameter]
     public string Name { get; set; } = string.Empty;
 
-    [CascadingParameter]
+    [CascadingParameter(Name ="Page")]
     public PageResponse? Page { get; set; } = default!;
 
     private Type? GetType(PluginResponse plugin)
@@ -24,8 +18,4 @@
         var typeInfo = assembly.DefinedTypes.FirstOrDefault(x => x.Name == plugin.Definition.ViewType);
         return typeInfo?.AsType();
     }
-    // protected override void OnInitialized()
-    // {
-
-    // }
 }

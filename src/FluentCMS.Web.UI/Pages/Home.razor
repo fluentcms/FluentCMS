@@ -13,9 +13,10 @@
     }
 </HeadContent>
 
-<CascadingValue Value="@Route">
-    <CascadingValue Value="@Site">
-        <CascadingValue Value="@Page">
+<CascadingValue Value="@Route" Name="Route">
+    <CascadingValue Value="@Site" Name="Site">
+        <CascadingValue Value="@Page" Name="Page">
+            @* <Section Name="main" /> *@
             @dynamicComponent()
         </CascadingValue>
     </CascadingValue>
@@ -25,14 +26,10 @@
     [Parameter]
     public string? Route { get; set; }
 
-    [Parameter]
-    public SiteResponse? Site { get; set; }
+    private SiteResponse? Site { get; set; }
+    private PageResponse? Page { get; set; }
+    private Layout? Layout { get; set; }
 
-    [Parameter]
-    public PageResponse? Page { get; set; }
-
-    [Parameter]
-    public Layout? Layout { get; set; }
     private string _layout = string.Empty;
 
     protected override void OnInitialized()
