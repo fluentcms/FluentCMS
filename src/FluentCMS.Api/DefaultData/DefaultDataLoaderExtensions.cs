@@ -116,13 +116,17 @@ public static class DefaultDataLoaderExtensions
 
     private static IEnumerable<Layout> GetLayouts(string dataFolder)
     {
-        foreach (var file in Directory.GetFiles(dataFolder, "*.html"))
+        foreach (var file in Directory.GetFiles(dataFolder, "*.html").Where(x=> !x.Contains(".header.html")))
         {
             var layout = new Layout
             {
                 Name = Path.GetFileNameWithoutExtension(file),
                 Content = File.ReadAllText(file)
             };
+            var headerFile = Path.ChangeExtension(file, ".header.html");
+            if (File.Exists(headerFile))
+                layout.Head = File.ReadAllText(headerFile);
+
             yield return layout;
         }
     }
