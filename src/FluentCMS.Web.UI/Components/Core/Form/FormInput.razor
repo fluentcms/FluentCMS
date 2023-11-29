@@ -1,5 +1,5 @@
 <FormField Id=@Id Label=@Label>
-    <Input Type=@Type Placeholder=@Placeholder Id=@Id Required=@Required/>
+    <Input Type=@Type Placeholder=@Placeholder Id=@Id Required=@Required Name=@Name @attributes=@RestProps @bind-Value=@Value/>
 </FormField>
 
 @code {
@@ -16,5 +16,14 @@
     public string Label {get; set;} = "";
 
     [Parameter]
+    public string Name {get; set;} = "";
+
+    [Parameter]
     public bool Required {get; set;} = false;
+
+    [Parameter]
+    public string Value {get; set;}
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object> RestProps {get; set;}
 }

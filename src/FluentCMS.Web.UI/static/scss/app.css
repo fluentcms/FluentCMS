@@ -10,8 +10,129 @@ body.f-theme-dark {
 }
 
 /* #region COMPONENTS */
+.f-alert {
+  @apply flex items-center p-4 text-sm rounded-lg w-full;
+}
+.f-alert-container {
+  @apply fixed bottom-4 right-4 flex gap-4 w-full max-w-md;
+}
+.f-theme-dark .f-alert {
+  @apply bg-gray-800;
+}
+.f-alert-close {
+  @apply ms-auto -mx-1.5 -my-1.5 p-1.5 inline-flex items-center justify-center h-8 w-8 rounded-lg;
+}
+.f-alert-icon {
+  @apply me-2;
+}
+.f-alert-type-info {
+  @apply text-blue-800 bg-blue-100;
+}
+.f-alert-type-info .f-theme-dark {
+  @apply text-blue-400;
+}
+.f-alert-type-info .f-alert-close {
+  @apply bg-blue-100 text-blue-500 hover:bg-blue-200;
+}
+.f-alert-type-info .f-alert-close:hover {
+  @apply ring-2 ring-blue-200;
+}
+.f-alert-type-info .f-alert-close:focus {
+  @apply ring-2 ring-blue-400;
+}
+.f-theme-dark .f-alert-type-info .f-alert-close {
+  @apply bg-gray-800 text-blue-400;
+}
+.f-theme-dark .f-alert-type-info .f-alert-close:hover {
+  @apply bg-gray-700;
+}
+.f-alert-type-danger {
+  @apply text-red-800 bg-red-100;
+}
+.f-alert-type-danger .f-theme-dark {
+  @apply text-red-400;
+}
+.f-alert-type-danger .f-alert-close {
+  @apply bg-red-100 text-red-500 hover:bg-red-200;
+}
+.f-alert-type-danger .f-alert-close:hover {
+  @apply ring-2 ring-red-200;
+}
+.f-alert-type-danger .f-alert-close:focus {
+  @apply ring-2 ring-red-400;
+}
+.f-theme-dark .f-alert-type-danger .f-alert-close {
+  @apply bg-gray-800 text-red-400;
+}
+.f-theme-dark .f-alert-type-danger .f-alert-close:hover {
+  @apply bg-gray-700;
+}
+.f-alert-type-warning {
+  @apply text-yellow-800 bg-yellow-100;
+}
+.f-alert-type-warning .f-theme-dark {
+  @apply text-yellow-400;
+}
+.f-alert-type-warning .f-alert-close {
+  @apply bg-yellow-100 text-yellow-500 hover:bg-yellow-200;
+}
+.f-alert-type-warning .f-alert-close:hover {
+  @apply ring-2 ring-yellow-200;
+}
+.f-alert-type-warning .f-alert-close:focus {
+  @apply ring-2 ring-yellow-400;
+}
+.f-theme-dark .f-alert-type-warning .f-alert-close {
+  @apply bg-gray-800 text-yellow-400;
+}
+.f-theme-dark .f-alert-type-warning .f-alert-close:hover {
+  @apply bg-gray-700;
+}
+.f-alert-type-success {
+  @apply text-green-800 bg-green-100;
+}
+.f-alert-type-success .f-theme-dark {
+  @apply text-green-400;
+}
+.f-alert-type-success .f-alert-close {
+  @apply bg-green-100 text-green-500 hover:bg-green-200;
+}
+.f-alert-type-success .f-alert-close:hover {
+  @apply ring-2 ring-green-200;
+}
+.f-alert-type-success .f-alert-close:focus {
+  @apply ring-2 ring-green-400;
+}
+.f-theme-dark .f-alert-type-success .f-alert-close {
+  @apply bg-gray-800 text-green-400;
+}
+.f-theme-dark .f-alert-type-success .f-alert-close:hover {
+  @apply bg-gray-700;
+}
+.f-alert-type-default {
+  @apply text-gray-800 bg-gray-100;
+}
+.f-alert-type-default .f-theme-dark {
+  @apply text-gray-400;
+}
+.f-alert-type-default .f-alert-close {
+  @apply bg-gray-100 text-gray-500 hover:bg-gray-200;
+}
+.f-alert-type-default .f-alert-close:hover {
+  @apply ring-2 ring-gray-200;
+}
+.f-alert-type-default .f-alert-close:focus {
+  @apply ring-2 ring-gray-400;
+}
+.f-theme-dark .f-alert-type-default .f-alert-close {
+  @apply bg-gray-800 text-gray-400;
+}
+.f-theme-dark .f-alert-type-default .f-alert-close:hover {
+  @apply bg-gray-700;
+}
+
 .f-button {
-  @apply font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center;
+  @apply font-medium rounded-lg text-sm px-5 py-2.5 gap-2 text-center inline-flex items-center;
 }
 .f-button-size-lg {
   @apply py-3;
@@ -207,7 +328,7 @@ body.f-theme-dark {
 }
 
 .f-content {
-  @apply h-screen ml-0 mt-16 text-gray-900 bg-gray-50;
+  @apply h-screen ml-0 text-gray-900 bg-gray-50;
 }
 @screen sm {
   .f-content {
@@ -240,6 +361,58 @@ body.f-theme-dark {
 }
 .f-theme-dark .f-input:focus {
   @apply ring-blue-500 border-blue-500;
+}
+
+.f-icon {
+  --f-icon-size: 1rem;
+  width: var(--f-icon-size);
+  height: var(--f-icon-size);
+  display: inline-block;
+}
+.f-icon-size-xs {
+  --f-icon-size: 0.75rem;
+}
+.f-icon-size-sm {
+  --f-icon-size: 0.875rem;
+}
+.f-icon-size-md {
+  --f-icon-size: 1rem;
+}
+.f-icon-size-lg {
+  --f-icon-size: 1.25rem;
+}
+.f-icon-size-xl {
+  --f-icon-size: 1.5rem;
+}
+.f-icon-size-1x {
+  --f-icon-size: 1rem;
+}
+.f-icon-size-2x {
+  --f-icon-size: 2rem;
+}
+.f-icon-size-3x {
+  --f-icon-size: 3rem;
+}
+.f-icon-size-4x {
+  --f-icon-size: 4rem;
+}
+.f-icon-size-5x {
+  --f-icon-size: 5rem;
+}
+.f-icon-size-6x {
+  --f-icon-size: 6rem;
+}
+.f-icon-size-7x {
+  --f-icon-size: 7rem;
+}
+.f-icon-size-8x {
+  --f-icon-size: 8rem;
+}
+.f-icon-size-9x {
+  --f-icon-size: 9rem;
+}
+.f-icon * {
+  stroke-width: 1.5px;
 }
 
 .f-table-parent {
@@ -335,6 +508,36 @@ body.f-theme-dark {
 /* #endregion COMPONENTS */
 .f-login-form {
   @apply mt-8;
+}
+
+.f-site-card-list {
+  @apply grid grid-cols-1 gap-4;
+}
+@screen sm {
+  .f-site-card-list {
+    @apply grid-cols-2;
+  }
+}
+@screen md {
+  .f-site-card-list {
+    @apply grid-cols-3;
+  }
+}
+@screen lg {
+  .f-site-card-list {
+    @apply grid-cols-4;
+  }
+}
+
+.f-site-card-pagination {
+  @apply mt-8 flex justify-center gap-2;
+}
+
+.f-site-card-description {
+  @apply mb-3 font-normal text-gray-700;
+}
+.f-theme-dark .f-site-card-description {
+  @apply text-gray-400;
 }
 
 /*# sourceMappingURL=app.css.map */
