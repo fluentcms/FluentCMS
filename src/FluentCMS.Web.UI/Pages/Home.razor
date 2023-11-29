@@ -4,6 +4,8 @@
 @inject HttpClient http
 @inject NavigationManager Navigator
 
+<PageTitle>@Page?.Title</PageTitle>
+
 <CascadingValue Value="@Route">
     <CascadingValue Value="@Site">
         <CascadingValue Value="@Page">
@@ -16,18 +18,12 @@
     [Parameter]
     public string? Route { get; set; }
 
-    [Parameter]
     public SiteResponse? Site { get; set; }
-
-    [Parameter]
     public PageResponse? Page { get; set; }
-
     private string _layout = string.Empty;
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnInitializedAsync()
     {
-        await base.OnParametersSetAsync();
-
         var host = Navigator.BaseUri;
         if (host.EndsWith("/"))
             host = host.Substring(0, host.Length - 1);
@@ -51,6 +47,8 @@
             return;
 
         _layout = Page.Layout?.Content ?? Site.Layout.Content;
+
+        await base.OnInitializedAsync();
     }
 
     RenderFragment dynamicComponent() => builder =>

@@ -5,7 +5,9 @@
 {
     @foreach (var plugin in Page.Plugins.Where(x => x.Section.ToLower() == Name.ToLower()).OrderBy(x => x.Order))
     {
-        <DynamicComponent Type=@GetType(plugin) />
+        <CascadingValue Value="@plugin" Name="Plugin">
+            <DynamicComponent Type=@GetType(plugin) />
+        </CascadingValue>
     }
 }
 
