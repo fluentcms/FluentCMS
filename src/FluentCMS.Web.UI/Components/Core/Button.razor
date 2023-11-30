@@ -1,10 +1,10 @@
 @if (Href != String.Empty) {
-<a class="f-button f-button-color-@Color" disabled=@Disabled href=@Href type="@Type" @attributes="RestProps">
+<a class="f-button f-button-color-@Color f-button-size-@Size" disabled=@Disabled href=@Href type="@Type" @attributes="RestProps">
     @ChildContent
 </a>
 
 } else {
-<button class="f-button f-button-color-@Color" disabled=@Disabled type="@Type" @attributes="RestProps">
+<button class="f-button f-button-color-@Color f-button-size-@Size" disabled=@Disabled type="@Type" @attributes="RestProps">
     @ChildContent
 </button>
 
@@ -30,6 +30,9 @@
 
     [Parameter]
     public string Type { get; set; } = "button";
+
+    [Parameter]
+    public string Size { get; set; } = "md";
 
     // [Parameter]
     // public EventCallback OnClick { get; set; }

@@ -6,19 +6,19 @@
     </PageHeader>
 
 
-    <Card>
-        <CardBody>
-            @Content
-        </CardBody>
+    <EditForm Model="@Model" OnValidSubmit="(e) => OnValidSubmit.InvokeAsync(e)">
+        <Card>
+            <CardBody>
+                @Content
+            </CardBody>
 
-        <CardFooter>
-            <ButtonGroup>
-                @FooterActions
-            </ButtonGroup>
-
-        </CardFooter>
-
-    </Card>
+            <CardFooter>
+                <ButtonGroup>
+                    @FooterActions
+                </ButtonGroup>
+            </CardFooter>
+        </Card>
+    </EditForm>
 </Page>
 
 @code {
@@ -27,9 +27,16 @@
 
     [Parameter]
     public RenderFragment HeaderActions {get; set;}
+
     [Parameter]
     public RenderFragment Content {get; set;}
+
     [Parameter]
     public RenderFragment FooterActions {get; set;}
 
+    [Parameter]
+    public string Model {get; set;}
+
+    [Parameter]
+    public EventCallback<EditContext> OnValidSubmit {get; set;}
 }

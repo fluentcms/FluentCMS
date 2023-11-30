@@ -1,4 +1,4 @@
-<input class="f-input" type="@Type" id="@Id" placeholder="@Placeholder" required=@Required>
+<input class="f-input" type="@Type" id="@Id" name="@Name" placeholder="@Placeholder" required=@Required>
 
 @code {
     [Parameter]
@@ -8,8 +8,14 @@
     public string Id {get; set;}
 
     [Parameter]
+    public string Name {get; set;} = "";
+
+    [Parameter]
     public string Placeholder {get; set;}
 
     [Parameter]
     public bool Required {get; set;} = false;
+
+    [Parameter]
+    public string Value {get; set;} = "";
 }
