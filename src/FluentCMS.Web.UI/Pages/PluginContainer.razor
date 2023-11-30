@@ -1,0 +1,13 @@
+﻿<div class="f-plugin-container">
+    @((MarkupString)$"<!-- Begin Plugin: {@Plugin.Definition.Name} -->")
+    @ChildContent
+    @((MarkupString)$"<!-- End Plugin: {@Plugin.Definition.Name} -->")
+</div>
+
+@code {
+    [CascadingParameter(Name = "Plugin")]
+    public PluginResponse Plugin { get; set; } = default!;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}
