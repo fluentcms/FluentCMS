@@ -1,4 +1,12 @@
 ﻿@inherits LayoutComponentBase
+<HeadContent>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <base href="/" />
+    <link rel="stylesheet" href="/css/app.min.css">
+    <link rel="icon" type="image/png" href="favicon.png" />
+</HeadContent>
+
 <div class="f-layout">
     <aside id="default-sidebar" aria-label="Sidebar" class="f-sidebar -translate-x-full">
         <div class="f-sidebar-body">
@@ -42,7 +50,7 @@
         <header class="navbar sticky-top bg-dark flex-md-nowrap p-0 shadow" data-bs-theme="dark">
             <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6 text-white" href="#">FluentCMS</a>
         </header>
-@Body
+        @Body
     </main>
 </div>
 <script src="/js/flowbite.min.js"></script>
