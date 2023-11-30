@@ -1,18 +1,23 @@
 ﻿@using FluentCMS.Entities
 @using System.Linq
 
-@((MarkupString)$"<!-- Begin Section: {@Name} -->")
-@if (AppState?.Page?.Plugins != null)
-{
-    @foreach (var plugin in AppState.Page.Plugins.Where(x => x.Section.ToLower() == Name.ToLower()).OrderBy(x => x.Order))
+<div class="f-section f-section-@Name">
+    @((MarkupString)$"<!-- Begin Section: {@Name} -->")
+    @if (AppState?.Page?.Plugins != null)
     {
-        @((MarkupString)$"<!-- Begin Plugin: {@plugin.Definition.Name} -->")
-        <CascadingValue Value="@plugin" Name="Plugin">
-            <DynamicComponent Type=@GetType(plugin) />
-        </CascadingValue>
-        @((MarkupString)$"<!-- End Plugin: {@plugin.Definition.Name} -->")
+        @foreach (var plugin in AppState.Page.Plugins.Where(x => x.Section.ToLower() == Name.ToLower()).OrderBy(x => x.Order))
+        {
+            @((MarkupString)$"<!-- Begin PluginContainer: {@plugin.Definition.Name} -->")
+            <CascadingValue Value="@plugin" Name="Plugin">
+                <PluginContainer>
+                    <DynamicComponent Type=@GetType(plugin) />
+                </PluginContainer>
+            </CascadingValue>
+            @((MarkupString)$"<!-- End PluginContainer: {@plugin.Definition.Name} -->")
+        }
     }
-}
+</div>
+
 @((MarkupString)$"<!-- End Section: {@Name} -->")
 
 @code {
