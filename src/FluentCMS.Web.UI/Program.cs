@@ -1,6 +1,7 @@
 using FluentCMS.Api;
 using FluentCMS;
 using FluentCMS.Web.UI;
+using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,7 +32,9 @@ services.AddApiDocumentation();
 
 services.AddHttpContextAccessor();
 
-// TODO: Add JWT to request header, accept-language, etc.
+services.AddScoped<AuthenticationStateProvider, FluentCmsAuthenticationStateProvider>();
+
+// TODO: Add to request header, accept-language, etc.
 // TODO: Move to somewhere else (Shared project maybe?)
 services.AddScoped(sp =>
 {
@@ -39,10 +42,22 @@ services.AddScoped(sp =>
     var request = httpContextAccessor?.HttpContext?.Request;
     var domain = string.Format("{0}://{1}/api/", request?.Scheme, request?.Host.Value);
 
-    return new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
+    //fetch AccessToken from cookies
+    var accessToken = httpContextAccessor?.HttpContext?.Request.Cookies["access-token"];
+
+    var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
     {
         BaseAddress = new Uri(domain),
     };
+
+    // if access-token in cookies
+    if (!string.IsNullOrEmpty(accessToken))
+    {
+        // set access-token
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+    }
+
+    return client;
 });
 
 services.AddJwtAuthentication(builder.Configuration);
