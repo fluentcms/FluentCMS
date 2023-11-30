@@ -1,4 +1,5 @@
-<Page>
+@inherits Page
+<Page Class="@Class" @attributes=@RestProps>
     <PageHeader Title=@Title>
         <PageActions>
             @HeaderActions
@@ -23,13 +24,13 @@
 
 @code {
     [Parameter]
-    public string Title {get; set;}
+    public string Title { get; set; }
 
     [Parameter]
-    public RenderFragment HeaderActions {get; set;}
+    public RenderFragment HeaderActions { get; set; }
     [Parameter]
-    public RenderFragment Content {get; set;}
+    public RenderFragment Content { get; set; }
     [Parameter]
-    public RenderFragment FooterActions {get; set;}
+    public RenderFragment FooterActions { get; set; }
 
 }

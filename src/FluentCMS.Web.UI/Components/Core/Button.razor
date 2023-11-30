@@ -1,28 +1,27 @@
-@if (Href != String.Empty) {
-<a class="f-button f-button-color-@Color" disabled=@Disabled href=@Href type="@Type" @attributes="RestProps">
-    @ChildContent
-</a>
+@inherits BaseComponent
 
-} else {
-<button class="f-button f-button-color-@Color" disabled=@Disabled type="@Type" @attributes="RestProps">
-    @ChildContent
-</button>
+@if (Href != String.Empty)
+{
 
+    <a class="f-button f-button-color-@Color @Class" disabled=@Disabled href=@Href type="@Type" @attributes="RestProps">
+        @ChildContent
+    </a>
+
+}
+else
+{
+    <button class="f-button f-button-color-@Color" disabled=@Disabled type="@Type" @attributes="RestProps">
+        @ChildContent
+    </button>
 }
 
 @code {
 
     [Parameter]
-    public string Color {get; set;} = "default";
+    public string Color { get; set; } = "default";
 
     [Parameter]
-    public string Href {get; set;} = "";
-
-    [Parameter]
-    public RenderFragment ChildContent {get; set;}
-
-    [Parameter(CaptureUnmatchedValues = true)]
-    public IDictionary<string, object>? RestProps { get; set; }
+    public string Href { get; set; } = "";
 
     [Parameter]
     public bool Disabled { get; set; } = false;

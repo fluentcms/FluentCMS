@@ -1,15 +1,18 @@
-<input class="f-input" type="@Type" id="@Id" placeholder="@Placeholder" required=@Required>
+@inherits BaseComponent
+
+<input class="f-input @Class" type="@Type" id="@Id" placeholder="@Placeholder" required=@Required
+    @attributes=@RestProps>
 
 @code {
     [Parameter]
-    public string Type {get; set;} = "text";
+    public string Type { get; set; } = "text";
 
     [Parameter]
-    public string Id {get; set;}
+    public string Id { get; set; }
 
     [Parameter]
-    public string Placeholder {get; set;}
+    public string Placeholder { get; set; }
 
     [Parameter]
-    public bool Required {get; set;} = false;
+    public bool Required { get; set; } = false;
 }

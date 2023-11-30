@@ -1,9 +1,5 @@
-<div class="f-card-footer">
+@inherits BaseComponent
+
+<div class="f-card-footer @Class" @attributes=@RestProps>
     @ChildContent
 </div>
-
-
-@code {
-    [Parameter]
-    public RenderFragment ChildContent { get; set; }
-}

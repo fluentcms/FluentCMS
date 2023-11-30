@@ -1,12 +1,10 @@
-<div class=@("f-button-group" + (NoWrap ? " f-button-group-no-wrap" : ""))>
+@inherits BaseComponent
+
+<div class=@("f-button-group" + (NoWrap ? " f-button-group-no-wrap" : "") + Class) @attributes="RestProps">
     @ChildContent
 </div>
 
 @code {
         [Parameter]
     public bool NoWrap {get; set;} = false;
-
-
-    [Parameter]
-    public RenderFragment ChildContent {get; set;}
 }

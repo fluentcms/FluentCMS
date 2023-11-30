@@ -1,13 +1,18 @@
-<Page>
+@inherits Page
+
+<Page Class="@Class" @attributes=@RestProps>
     <PageHeader Title=@Title>
         <PageActions>
             @HeaderActions
         </PageActions>
     </PageHeader>
 
-    @if (@ChildContent != null) {
+    @if (@ChildContent != null)
+    {
         @ChildContent
-    } else {
+    }
+    else
+    {
         <Card>
             <Table>
                 <TableHead>
@@ -33,8 +38,4 @@
     public RenderFragment TableBody { get; set; }
     [Parameter]
     public RenderFragment TableHead { get; set; }
-
-    [Parameter]
-    public RenderFragment ChildContent { get; set; }
-
 }

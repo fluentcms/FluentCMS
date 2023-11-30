@@ -1,4 +1,6 @@
-<div class="f-card">
+@inherits BaseComponent
+
+<div class="f-card @Class" @attributes=@RestProps>
     @if (Title != String.Empty) {
         <CardHeader Title="@Title" />
     }
@@ -9,9 +11,6 @@
 
 
 @code {
-    [Parameter]
-    public RenderFragment ChildContent {get; set;}
-
     [Parameter]
     public string Title {get; set;} = String.Empty;
 }

@@ -1,9 +1,5 @@
-<article class="f-page">
+@inherits BaseComponent
+
+<article class="f-page @Class" @attributes=@RestProps>
     @ChildContent
 </article>
-
-
-@code {
-    [Parameter]
-    public RenderFragment ChildContent { get; set; }
-}

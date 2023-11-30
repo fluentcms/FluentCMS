@@ -1,5 +1,8 @@
-<div class="f-form-field">
-    @if(Label != String.Empty) {
+@inherits BaseComponent
+
+<div class="f-form-field @Class" @attributes=@RestProps>
+    @if (Label != String.Empty)
+    {
         <Label For="@Id">@Label</Label>
     }
     @ChildContent
@@ -7,11 +10,8 @@
 
 @code {
     [Parameter]
-    public RenderFragment ChildContent {get; set;}
+    public string Label { get; set; } = String.Empty;
 
     [Parameter]
-    public string Label {get; set;} = String.Empty;
-
-    [Parameter]
-    public string Id {get; set;}
+    public string Id { get; set; }
 }

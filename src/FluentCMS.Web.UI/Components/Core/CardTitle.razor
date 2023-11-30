@@ -1,10 +1,5 @@
-  <h5 class="f-card-title">
-    @ChildContent
-        </h5>
+@inherits BaseComponent
 
-
-@code {
-    [Parameter]
-    public RenderFragment ChildContent {get; set;}
-
-}
+<h5 class="f-card-header @Class" @attributes=@RestProps>
+	@ChildContent
+</h5>
