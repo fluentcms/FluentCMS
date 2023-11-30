@@ -1,0 +1,33 @@
+<div class="f-alert f-alert-type-@Type" id="@Id" role="alert">
+    <Icon Class="f-alert-icon" Pack="carbon" Name="information-filled" />
+    <div>
+        @ChildContent
+    </div>
+
+    @if (Dismissible)
+    {
+        <button type="button" class="f-alert-close" data-dismiss-target="#@Id" aria-label="Close">
+            <span class="sr-only">Close</span>
+            <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" />
+            </svg>
+        </button>
+    }
+
+</div>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = "alert-" + Guid.NewGuid().ToString();
+
+    [Parameter]
+    public string Type { get; set; } = "default";
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public bool Dismissible { get; set; } = false;
+
+}

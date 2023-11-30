@@ -1,10 +1,9 @@
-<div class="f-card">
+<div class="@($"f-card f-card-width-{Width}")">
     @if (Title != String.Empty) {
         <CardHeader Title="@Title" />
     }
 
     @ChildContent
-   
 </div>
 
 
@@ -14,4 +13,12 @@
 
     [Parameter]
     public string Title {get; set;} = String.Empty;
+
+    [Parameter]
+    public string Width {get; set;} = String.Empty;
+
+    [Parameter]
+    public string Class {get; set;} = String.Empty;
+
+
 }
