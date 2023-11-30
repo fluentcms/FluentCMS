@@ -15,13 +15,13 @@ public static class UIServiceExtensions
         services.AddRazorComponents()
             .AddInteractiveServerComponents();
 
-        services.AddCascadingValue(sp =>
-        {
-            var navigation = sp.GetRequiredService<NavigationManager>();
-            var http = sp.GetRequiredService<HttpClient>();
-            var appState = new AppState(http, navigation);
-            return appState;
-        });
+        //services.AddCascadingValue(sp =>
+        //{
+        //    var navigation = sp.GetRequiredService<NavigationManager>();
+        //    var http = sp.GetRequiredService<HttpClient>();
+        //    var appState = new AppState(http, navigation);
+        //    return appState;
+        //});
 
         //services.AddScoped<AppState>();
 

@@ -8,16 +8,14 @@
 </Router>
 
 @code {
-    [CascadingParameter]
     private AppState? AppState { get; set; }
 
     private async Task OnNavigateAsync(NavigationContext args)
     {
-        if (AppState != null)
-        {
-            await AppState.OnNavigateAsync(args.Path);
-            StateHasChanged();
-        }
+        // if (AppState != null)
+        // {
+        //     await AppState.OnNavigateAsync(args.Path);
+        // }
         
     }
 }

@@ -16,6 +16,11 @@ public class AppState
     public Uri? Uri { get; set; }
     public string Host { get; set; }
 
+    public AppState()
+    {
+        
+    }
+
     public AppState(HttpClient http, NavigationManager navigation)
     {
         Host = navigation.BaseUri;
