@@ -55,16 +55,6 @@
         return base.OnParametersSetAsync();
     }
 
-    protected override Task OnAfterRenderAsync(bool firstRender)
-    {
-        return base.OnAfterRenderAsync(firstRender);
-    }
-
-    protected override bool ShouldRender()
-    {
-        return base.ShouldRender();
-    }
-
     RenderFragment dynamicComponent() => builder =>
        {
            var _type = GetType("Section");
@@ -81,11 +71,7 @@
            var startIndex = 0;
            var lastIndex = 0;
            var lastLength = 0;
-           var _layout = AppState?.Layout?.Content ?? string.Empty;
-
-           // ignore comments before trying to parse
-           var commentRegex = new Regex("<!--.*-->");
-           _layout = commentRegex.Replace(_layout, "");
+           var _body = AppState?.Layout?.Body ?? string.Empty;
 
            // attribute to find tags with
            var matcherAttributeName = "fluentcms";
@@ -93,19 +79,19 @@
            // find any tag that has our attribute
            var tagFinderRegex = new Regex($"<(?<TagName>\\w+)[^/>]*{matcherAttributeName}[^/>]*/>", RegexOptions.IgnoreCase);
 
-           var tagMatches = tagFinderRegex.Matches(_layout);
+           var tagMatches = tagFinderRegex.Matches(_body);
 
            // ignore if no tags found
            if (tagMatches.Count() == 0)
            {
-               builder.AddMarkupContent(0, _layout);
+               builder.AddMarkupContent(0, _body);
                return;
            }
 
            foreach (Match tag in tagMatches)
            {
                // add markup until beginning of tag-match
-               builder.AddMarkupContent(index++, _layout.Substring(startIndex, tag.Index - startIndex));
+               builder.AddMarkupContent(index++, _body.Substring(startIndex, tag.Index - startIndex));
 
                // get Type from tag name
                var type = GetType(tag.Groups["TagName"].Value);
@@ -130,7 +116,7 @@
                }
            }
 
-           builder.AddMarkupContent(index, _layout.Substring(lastIndex + lastLength));
+           builder.AddMarkupContent(index, _body.Substring(lastIndex + lastLength));
            index++;
        };
 
