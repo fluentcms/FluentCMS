@@ -1,6 +1,8 @@
-﻿<Router AppAssembly="@typeof(Program).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" />
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-    </Found>
-</Router>
+﻿<Microsoft.AspNetCore.Components.Authorization.CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(Program).Assembly">
+        <Found Context="routeData">
+            <Microsoft.AspNetCore.Components.Authorization.AuthorizeRouteView RouteData="@routeData" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+    </Router>
+</Microsoft.AspNetCore.Components.Authorization.CascadingAuthenticationState>
