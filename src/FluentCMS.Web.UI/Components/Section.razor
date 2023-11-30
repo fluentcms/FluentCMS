@@ -1,16 +1,21 @@
 ﻿@using FluentCMS.Entities
 @using System.Linq
-Section name: @Name, Page: @Page?.Title
-@foreach (var plugin in Page.Plugins.Where(x => x.Section.ToLower() == Name.ToLower()).OrderBy(x => x.Order))
+
+@if (AppState?.Page?.Plugins != null)
 {
-    <DynamicComponent Type=@GetType(plugin) />
+    @foreach (var plugin in AppState.Page.Plugins.Where(x => x.Section.ToLower() == Name.ToLower()).OrderBy(x => x.Order))
+    {
+        <CascadingValue Value="@plugin" Name="Plugin">
+            <DynamicComponent Type=@GetType(plugin) />
+        </CascadingValue>
+    }
 }
 @code {
     [Parameter]
     public string Name { get; set; } = string.Empty;
 
-    [CascadingParameter(Name ="Page")]
-    public PageResponse? Page { get; set; } = default!;
+    [CascadingParameter]
+    public AppState? AppState { get; set; }
 
     private Type? GetType(PluginResponse plugin)
     {

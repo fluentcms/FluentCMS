@@ -1,6 +1,23 @@
-﻿<Router AppAssembly="@typeof(Program).Assembly">
+﻿@using System.Web
+
+<Router AppAssembly="@typeof(Program).Assembly" OnNavigateAsync="@OnNavigateAsync">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(Pages.MainLayout)" />
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
 </Router>
+
+@code {
+    [CascadingParameter]
+    private AppState? AppState { get; set; }
+
+    private async Task OnNavigateAsync(NavigationContext args)
+    {
+        if (AppState != null)
+        {
+            await AppState.OnNavigateAsync(args.Path);
+            StateHasChanged();
+        }
+        
+    }
+}

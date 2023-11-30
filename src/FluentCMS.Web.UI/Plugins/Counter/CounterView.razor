@@ -7,8 +7,8 @@
 @code {
     private int currentCount = 0;
 
-    [Parameter]
-    public PluginResponse? Plugin { get; set; } = default!;
+    [CascadingParameter(Name="Plugin")]
+    public PluginResponse Plugin { get; set; } = default!;
 
     private void IncrementCount()
     {
