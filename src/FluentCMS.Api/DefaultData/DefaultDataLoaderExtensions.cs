@@ -93,7 +93,20 @@ public static class DefaultDataLoaderExtensions
                         Section = "main"
                     };
                     pluginService.Create(plugin).GetAwaiter().GetResult();
-                    return;
+                    continue;
+                }
+                if (page.Path == "/profile")
+                {
+                    var pluginDef = defaultData.PluginDefinitions.Single(x => x.Name == "UserProfile");
+                    var plugin = new Plugin
+                    {
+                        DefinitionId = pluginDef.Id,
+                        PageId = page.Id,
+                        Order = 0,
+                        Section = "main"
+                    };
+                    pluginService.Create(plugin).GetAwaiter().GetResult();
+                    continue;
                 }
                 var order = 0;
                 foreach (var pluginDef in defaultData.PluginDefinitions)
