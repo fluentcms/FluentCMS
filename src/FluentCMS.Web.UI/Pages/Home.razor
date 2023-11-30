@@ -4,6 +4,24 @@
 @inject HttpClient http
 @inject NavigationManager Navigator
 
+@* class="hadi f-base-component f-card f-card-color-primary" *@
+<Card CssClass="hadi">
+    <CardHeader>Test</CardHeader>
+    <CardBody>
+        Body
+    </CardBody>
+</Card>
+
+2-way binding support
+<FormInput Label="Name" Placeholder="Enter your name" />
+
+<Button Color="primary" Href="https://google.com">
+    @* Add icon here *@
+    Google
+</Button>
+
+
+
 <CascadingValue Value="@Route">
     <CascadingValue Value="@Site">
         <CascadingValue Value="@Page">

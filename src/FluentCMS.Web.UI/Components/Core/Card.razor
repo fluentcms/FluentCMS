@@ -1,16 +1,21 @@
 @inherits BaseComponent
-
-<div class="f-card @Class" @attributes=@RestProps>
-    @if (Title != String.Empty) {
+@* class="f-base-component f-card f-card-color-primary" *@
+<div @attributes=@Attributes>
+    @if (Title != String.Empty)
+    {
         <CardHeader Title="@Title" />
     }
 
     @ChildContent
-   
+
 </div>
 
 
 @code {
     [Parameter]
-    public string Title {get; set;} = String.Empty;
+    public string Title { get; set; } = String.Empty;
+
+    [Parameter]
+    [CssProperty]
+    public string Color { get; set; } = "primary";
 }

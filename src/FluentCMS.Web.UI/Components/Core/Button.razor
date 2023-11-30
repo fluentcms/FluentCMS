@@ -18,19 +18,44 @@ else
 @code {
 
     [Parameter]
+    [CssProperty]
     public string Color { get; set; } = "default";
 
     [Parameter]
     public string Href { get; set; } = "";
 
     [Parameter]
+    [CssProperty]
     public bool Disabled { get; set; } = false;
 
+    [Parameter]
+    [CssProperty]
+    public bool Loading { get; set; } = false;
 
     [Parameter]
     public string Type { get; set; } = "button";
 
-    // [Parameter]
-    // public EventCallback OnClick { get; set; }
+    private async Task onClick()
+    {
+        if (Disabled)
+            return;
+
+        Loading = true;
+        try
+        {
+            await OnClick.InvokeAsync();
+        }
+        catch (Exception)
+        {
+            throw;
+        }
+        finally
+        {
+            Loading = false;
+        }
+    }
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
 
 }
