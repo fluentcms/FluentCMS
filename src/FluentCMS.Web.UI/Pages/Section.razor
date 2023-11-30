@@ -1,0 +1,31 @@
+﻿@using FluentCMS.Entities
+@using System.Linq
+
+@((MarkupString)$"<!-- Begin Section: {@Name} -->")
+@if (AppState?.Page?.Plugins != null)
+{
+    @foreach (var plugin in AppState.Page.Plugins.Where(x => x.Section.ToLower() == Name.ToLower()).OrderBy(x => x.Order))
+    {
+        @((MarkupString)$"<!-- Begin Plugin: {@plugin.Definition.Name} -->")
+        <CascadingValue Value="@plugin" Name="Plugin">
+            <DynamicComponent Type=@GetType(plugin) />
+        </CascadingValue>
+        @((MarkupString)$"<!-- End Plugin: {@plugin.Definition.Name} -->")
+    }
+}
+@((MarkupString)$"<!-- End Section: {@Name} -->")
+
+@code {
+    [Parameter]
+    public string Name { get; set; } = string.Empty;
+
+    [CascadingParameter]
+    public AppState? AppState { get; set; }
+
+    private Type? GetType(PluginResponse plugin)
+    {
+        var assembly = typeof(Section).Assembly;
+        var typeInfo = assembly.DefinedTypes.FirstOrDefault(x => x.Name == plugin.Definition.ViewType);
+        return typeInfo?.AsType();
+    }
+}

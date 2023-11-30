@@ -1,5 +1,9 @@
-﻿<h3>HelloWorld Plugin</h3>
+﻿<div style="background-color:lightblue;">
+    <h1>TextHtml Plugin id: @Plugin?.Id</h1>
+    <p>TextHtml will be here</p>
+</div>
 
 @code {
-
+    [CascadingParameter(Name = "Plugin")]
+    public PluginResponse? Plugin { get; set; }
 }

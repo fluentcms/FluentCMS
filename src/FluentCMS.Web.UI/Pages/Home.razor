@@ -4,61 +4,84 @@
 @inject HttpClient http
 @inject NavigationManager Navigator
 
-<CascadingValue Value="@Route">
-    <CascadingValue Value="@Site">
-        <CascadingValue Value="@Page">
-            @dynamicComponent()
-        </CascadingValue>
-    </CascadingValue>
+<PageTitle>@AppState?.Page?.Title</PageTitle>
+
+<HeadContent>
+    @((MarkupString)$"<!-- Begin {@AppState?.Page?.Title} Page Header -->")
+    @if (AppState?.Layout != null)
+    {
+        @((MarkupString)AppState.Layout.Head)
+    }
+    @((MarkupString)$"<!-- End {@AppState?.Page?.Title} Page Header -->")
+</HeadContent>
+
+@((MarkupString)$"<!-- Begin {@AppState?.Page?.Title} Page Content -->")
+<CascadingValue Value="@AppState">
+    @dynamicComponent()
 </CascadingValue>
+@((MarkupString)$"<!-- End {@AppState?.Page?.Title} Page Content -->")
 
 @code {
+
     [Parameter]
     public string? Route { get; set; }
 
-    [Parameter]
-    public SiteResponse? Site { get; set; }
+    private AppState? AppState { get; set; }
 
-    [Parameter]
-    public PageResponse? Page { get; set; }
-
-    private string _layout = string.Empty;
-
-    protected override async Task OnParametersSetAsync()
+    protected override Task OnParametersSetAsync()
     {
-        await base.OnParametersSetAsync();
+        if (AppState == null)
+            AppState = new AppState();
 
-        var host = Navigator.BaseUri;
-        if (host.EndsWith("/"))
-            host = host.Substring(0, host.Length - 1);
+        AppState.Host = Navigator.BaseUri.EndsWith("/") ? Navigator.BaseUri.Remove(Navigator.BaseUri.Length - 1) : Navigator.BaseUri;
+        AppState.Uri = new Uri(Navigator.Uri);
 
-        var siteResult = http.GetFromJsonAsync<ApiResult<SiteResponse>>($"Site/GetByUrl?url={host}").GetAwaiter().GetResult();
-        Site = siteResult?.Data;
+        var siteResult = http.GetFromJsonAsync<ApiResult<SiteResponse>>($"Site/GetByUrl?url={AppState.Host}").GetAwaiter().GetResult();
+        AppState.Site = siteResult?.Data;
+        AppState.Layout = AppState.Site?.Layout;
 
-        if (Site is null)
-            return;
+        if (AppState.Site != null)
+        {
+            var query = HttpUtility.ParseQueryString(string.Empty);
+            query["siteId"] = AppState.Site.Id.ToString();
+            query["path"] = AppState.Uri.LocalPath;
 
-        if (Route is null)
-            Route = string.Empty;
+            var pageResult = http.GetFromJsonAsync<ApiResult<PageResponse>>($"Page/GetByPath?{query}").GetAwaiter().GetResult();
+            AppState.Page = pageResult?.Data;
+            if (AppState.Page != null && AppState.Page.Layout != null)
+                AppState.Layout = AppState.Page.Layout;
+        }
 
-        var query = HttpUtility.ParseQueryString(string.Empty);
-        query["siteId"] = Site.Id.ToString();
-        query["path"] = Route;
+        return base.OnParametersSetAsync();
+    }
 
-        var pageResult = http.GetFromJsonAsync<ApiResult<PageResponse>>($"Page/GetByPath?{query.ToString()}").GetAwaiter().GetResult();
-        Page = pageResult?.Data;
-        if (Page is null)
-            return;
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        return base.OnAfterRenderAsync(firstRender);
+    }
 
-        _layout = Page.Layout?.Content ?? Site.Layout.Content;
+    protected override bool ShouldRender()
+    {
+        return base.ShouldRender();
     }
 
     RenderFragment dynamicComponent() => builder =>
        {
+           var _type = GetType("Section");
+           if (_type == null)
+               return;
+
+           builder.OpenComponent(1, _type);
+           builder.AddComponentParameter(2, "Name", "main");
+           builder.CloseComponent();
+
+           return;
+
            var index = 0;
            var startIndex = 0;
            var lastIndex = 0;
            var lastLength = 0;
+           var _layout = AppState?.Layout?.Content ?? string.Empty;
 
            // ignore comments before trying to parse
            var commentRegex = new Regex("<!--.*-->");
@@ -68,7 +91,6 @@
            var matcherAttributeName = "fluentcms";
 
            // find any tag that has our attribute
-           // TODO: check that tag is not commented
            var tagFinderRegex = new Regex($"<(?<TagName>\\w+)[^/>]*{matcherAttributeName}[^/>]*/>", RegexOptions.IgnoreCase);
 
            var tagMatches = tagFinderRegex.Matches(_layout);
@@ -76,7 +98,7 @@
            // ignore if no tags found
            if (tagMatches.Count() == 0)
            {
-               builder.AddMarkupContent(index, _layout);
+               builder.AddMarkupContent(0, _layout);
                return;
            }
 
@@ -97,9 +119,8 @@
                    var parameters = ParseAttributes(tag.Value);
 
                    //add parameters
-                   var parameterIndex = 0;
                    foreach (var parameter in parameters)
-                       builder.AddComponentParameter(parameterIndex++, parameter.Key, parameter.Value);
+                       builder.AddComponentParameter(index++, parameter.Key, parameter.Value);
 
                    //close component
                    builder.CloseComponent();

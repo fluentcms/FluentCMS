@@ -80,20 +80,18 @@ public static class DefaultDataLoaderExtensions
             }
 
             // Plugins creation: adding a few default plugins to pages
-            foreach (var page in defaultData.Pages)
+            var order = 0;
+            var _page = defaultData.Pages[0];
+            foreach (var pluginDef in defaultData.PluginDefinitions)
             {
-                var order = 0;
-                foreach (var pluginDef in defaultData.PluginDefinitions)
+                var plugin = new Plugin
                 {
-                    var plugin = new Plugin
-                    {
-                        DefinitionId = pluginDef.Id,
-                        PageId = page.Id,
-                        Order = order++,
-                        Section = "main"
-                    };
-                    pluginService.Create(plugin).GetAwaiter().GetResult();
-                }
+                    DefinitionId = pluginDef.Id,
+                    PageId = _page.Id,
+                    Order = order++,
+                    Section = "main"
+                };
+                pluginService.Create(plugin).GetAwaiter().GetResult();
             }
         }
     }
@@ -118,13 +116,17 @@ public static class DefaultDataLoaderExtensions
 
     private static IEnumerable<Layout> GetLayouts(string dataFolder)
     {
-        foreach (var file in Directory.GetFiles(dataFolder, "*.html"))
+        foreach (var file in Directory.GetFiles(dataFolder, "*.html").Where(x=> !x.Contains(".header.html")))
         {
             var layout = new Layout
             {
                 Name = Path.GetFileNameWithoutExtension(file),
                 Content = File.ReadAllText(file)
             };
+            var headerFile = Path.ChangeExtension(file, ".header.html");
+            if (File.Exists(headerFile))
+                layout.Head = File.ReadAllText(headerFile);
+
             yield return layout;
         }
     }
