@@ -3,82 +3,36 @@
 @using System.Web
 @inject HttpClient http
 @inject NavigationManager Navigator
-@implements IDisposable
-
 
 <PageTitle>@AppState?.Page?.Title</PageTitle>
 
 <HeadContent>
-    @if (!string.IsNullOrEmpty(AppState?.Layout?.Head))
+    @((MarkupString)$"<!-- Begin {@AppState?.Page?.Title} Page Header -->")
+    @if (AppState?.Layout != null)
     {
         @((MarkupString)AppState.Layout.Head)
     }
+    @((MarkupString)$"<!-- End {@AppState?.Page?.Title} Page Header -->")
 </HeadContent>
 
-<h1>Route: @Route, Navigator: @Navigator.Uri</h1>
-<p role="status">Current count: @currentCount</p>
-<Counter @onclick="IncrementCount">Click me</Counter>
-
-
+@((MarkupString)$"<!-- Begin {@AppState?.Page?.Title} Page Content -->")
 <CascadingValue Value="@AppState">
-@* <Section Name="main" /> *@
-@dynamicComponent()
+    @dynamicComponent()
 </CascadingValue>
+@((MarkupString)$"<!-- End {@AppState?.Page?.Title} Page Content -->")
 
 @code {
-
-    private int currentCount = 0;
-
-    private void IncrementCount()
-    {
-        currentCount++;
-    }
 
     [Parameter]
     public string? Route { get; set; }
 
-    public AppState? AppState { get; set; }
-
-    private string _layout = string.Empty;
-
-    void OnLocationChanged(object sender, LocationChangedEventArgs args)
-    {
-        // StateHasChanged();
-    }
-
-    public void Dispose()
-    {
-        Navigator.LocationChanged -= OnLocationChanged;
-    }
-    protected override Task OnInitializedAsync()
-    {
-        Navigator.LocationChanged += OnLocationChanged;
-        AppState = new AppState
-            {
-                Host = Navigator.BaseUri.EndsWith("/") ? Navigator.BaseUri.Remove(Navigator.BaseUri.Length - 1) : Navigator.BaseUri,
-                Uri = new Uri(Navigator.Uri),
-            };
-
-        // var siteResult = http.GetFromJsonAsync<ApiResult<SiteResponse>>($"Site/GetByUrl?url={AppState.Host}").GetAwaiter().GetResult();
-        // AppState.Site = siteResult?.Data;
-        // AppState.Layout = AppState.Site?.Layout;
-
-        // if (AppState.Site != null)
-        // {
-        //     var query = HttpUtility.ParseQueryString(string.Empty);
-        //     query["siteId"] = AppState.Site.Id.ToString();
-        //     query["path"] = AppState.Uri.LocalPath;
-
-        //     var pageResult = http.GetFromJsonAsync<ApiResult<PageResponse>>($"Page/GetByPath?{query}").GetAwaiter().GetResult();
-        //     AppState.Page = pageResult?.Data;
-        //     if (AppState.Page != null && AppState.Page.Layout != null)
-        //         AppState.Layout = AppState.Page.Layout;
-        // }
-        return base.OnInitializedAsync();
-    }
+    private AppState? AppState { get; set; }
 
     protected override Task OnParametersSetAsync()
     {
+        if (AppState == null)
+            AppState = new AppState();
+
         AppState.Host = Navigator.BaseUri.EndsWith("/") ? Navigator.BaseUri.Remove(Navigator.BaseUri.Length - 1) : Navigator.BaseUri;
         AppState.Uri = new Uri(Navigator.Uri);
 
@@ -119,7 +73,6 @@
 
            builder.OpenComponent(1, _type);
            builder.AddComponentParameter(2, "Name", "main");
-           // builder.AddComponentParameter(3, "AppState", AppState);
            builder.CloseComponent();
 
            return;
@@ -128,6 +81,7 @@
            var startIndex = 0;
            var lastIndex = 0;
            var lastLength = 0;
+           var _layout = AppState?.Layout?.Content ?? string.Empty;
 
            // ignore comments before trying to parse
            var commentRegex = new Regex("<!--.*-->");

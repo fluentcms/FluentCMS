@@ -1,15 +1,14 @@
-﻿<h1>Counter</h1>
-<h1>Plugin id: @Plugin?.Id</h1>
-<hr />
-<p role="status">Current count: @currentCount</p>
-<Counter @onclick="IncrementCount">Click me</Counter>
+﻿<div style="background-color:lightpink;">
+    <h1>Counter Plugin id: @Plugin?.Id</h1>
+    <Button @onclick="IncrementCount">Click me</Button>
+    <p role="status">Current count: @currentCount</p>
+</div>
 
 @code {
-    private int currentCount = 0;
-
-    [CascadingParameter(Name="Plugin")]
+    [CascadingParameter(Name = "Plugin")]
     public PluginResponse Plugin { get; set; } = default!;
 
+    private int currentCount = 0;
     private void IncrementCount()
     {
         currentCount++;
