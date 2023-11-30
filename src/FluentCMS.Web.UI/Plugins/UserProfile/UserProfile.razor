@@ -1,0 +1,43 @@
+﻿@inject IHttpContextAccessor HttpContextAccessor
+<Card>
+    <CardHeader>
+        <CardTitle>Profile</CardTitle>
+    </CardHeader>
+    <CardBody>
+        <Microsoft.AspNetCore.Components.Authorization.AuthorizeView>
+            <NotAuthorized>
+                <div>
+                    Please login first!
+                    <Button Color="primary" Href="/auth/login">Login</Button>
+                </div>
+            </NotAuthorized>
+            <Authorized>
+                @* Iterate Through Claims and Display Them *@
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in context.User.Claims)
+                        {
+                            <tr>
+                                <td>@item.Type</td>
+                                <td>@item.Value</td>
+                            </tr>
+                        }
+                    </tbody>
+
+                </table>
+            </Authorized>
+        </Microsoft.AspNetCore.Components.Authorization.AuthorizeView>
+    </CardBody>
+    <CardFooter>
+
+    </CardFooter>
+</Card>
+
+@code {
+}
