@@ -30,7 +30,13 @@
             "Name": "Login",
             "Description": "Text/Html plugin",
             "ViewType": "LoginView",
-            "EditType": "LoginView" 
+            "EditType": "LoginView"
+        },
+        {
+            "Name": "UserProfile",
+            "Description": "Text/Html plugin",
+            "ViewType": "UserProfile",
+            "EditType": "UserProfile"
         }
     ],
     "Site": {
@@ -56,6 +62,12 @@
             "Description": "This is contact me page",
             "Path": "/contact",
             "Order": 2
+        },
+        {
+            "Title": "Profile",
+            "Description": "This is profile page",
+            "Path": "/profile",
+            "Order": 998
         },
         {
             "Title": "Login",
