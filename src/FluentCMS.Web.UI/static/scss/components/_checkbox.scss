@@ -1,0 +1,18 @@
+$prefix-checkbox: $prefix + 'checkbox';
+
+.#{$prefix-checkbox} {
+    @apply w-4 h-4 border-gray-300 rounded bg-gray-50;
+    border-radius: 4px !important;
+
+    &:focus {
+        @apply ring-4 ring-blue-300;
+    }
+
+    .#{$prefix-theme-dark} & {
+        @apply ring-offset-gray-800 bg-gray-700 border-gray-600;
+
+        &:focus {
+            @apply ring-blue-600;
+        }
+    }
+}

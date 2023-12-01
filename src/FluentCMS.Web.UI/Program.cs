@@ -19,11 +19,10 @@ services.AddSmtpEmailProvider();
 services.AddAuthentication();
 services.AddAuthorization();
 
-// Add services to the container.
-services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+services.AddUIServices();
 
 services.AddScoped<IApplicationContext, ApiApplicationContext>();
+
 services.AddControllers();
 services.AddRequestValidation();
 services.AddMappingProfiles();

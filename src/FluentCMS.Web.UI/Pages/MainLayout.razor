@@ -1,0 +1,56 @@
+﻿@inherits LayoutComponentBase
+<HeadContent>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <base href="/" />
+    <link rel="stylesheet" href="/css/app.min.css">
+    <link rel="icon" type="image/png" href="favicon.png" />
+</HeadContent>
+
+<div class="f-layout">
+    <aside id="default-sidebar" aria-label="Sidebar" class="f-sidebar -translate-x-full">
+        <div class="f-sidebar-body">
+            <NavLink href="/" class="f-sidebar-item">
+                <span class="f-sidebar-item-text">Home</span>
+            </NavLink>
+            <NavLink href="/about-me" class="f-sidebar-item">
+                <span class="f-sidebar-item-text">About Me</span>
+            </NavLink>
+            <NavLink href="/contact" class="f-sidebar-item">
+                <span class="f-sidebar-item-text">Contact Me</span>
+            </NavLink>
+            <NavLink href="/contact?id=1&me=you" class="f-sidebar-item">
+                <span class="f-sidebar-item-text">Contact with query</span>
+            </NavLink>
+            <NavLink href="/kitchen-sink" class="f-sidebar-item">
+                <span class="f-sidebar-item-text">Kitchen Sink</span>
+            </NavLink>
+            <NavLink href="/doc" class="f-sidebar-item" target="_blank">
+                <span class="f-sidebar-item-text">Api Doc</span>
+            </NavLink>
+            <hr />
+            <a href="/" class="f-sidebar-item">
+                <span class="f-sidebar-item-text">Home</span>
+            </a>
+            <a href="/about-me" class="f-sidebar-item">
+                <span class="f-sidebar-item-text">About Me</span>
+            </a>
+            <a href="/contact" class="f-sidebar-item">
+                <span class="f-sidebar-item-text">Contact Me</span>
+            </a>
+            <a href="/kitchen-sink" class="f-sidebar-item">
+                <span class="f-sidebar-item-text">Kitchen Sink</span>
+            </a>
+            <a href="/doc" class="f-sidebar-item" target="_blank">
+                <span class="f-sidebar-item-text">Api Doc</span>
+            </a>
+        </div>
+    </aside>
+    <main class="f-content">
+        <header class="navbar sticky-top bg-dark flex-md-nowrap p-0 shadow" data-bs-theme="dark">
+            <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6 text-white" href="#">FluentCMS</a>
+        </header>
+        @Body
+    </main>
+</div>
+<script src="/js/flowbite.min.js"></script>
