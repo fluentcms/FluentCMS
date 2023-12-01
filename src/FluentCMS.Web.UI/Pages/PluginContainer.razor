@@ -1,13 +1,24 @@
 ﻿<div class="f-plugin-container">
-    @((MarkupString)$"<!-- Begin Plugin: {@Plugin.Definition.Name} -->")
-    @ChildContent
-    @((MarkupString)$"<!-- End Plugin: {@Plugin.Definition.Name} -->")
+    @if (string.IsNullOrEmpty(AppState?.ViewMode))
+    {
+        <div class="f-plugin-container-header">
+            <a href="@EditUrl">Edit</a>
+        </div>
+    }
+    <div class="f-plugin">
+        @ChildContent
+    </div>
 </div>
 
 @code {
     [CascadingParameter(Name = "Plugin")]
     public PluginResponse Plugin { get; set; } = default!;
 
+    [CascadingParameter]
+    public AppState AppState { get; set; } = default!;
+
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    private string? EditUrl => $"{AppState?.Page?.Path}?pluginId={Plugin.Id}&viewMode=edit";
 }

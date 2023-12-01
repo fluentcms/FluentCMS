@@ -2,23 +2,18 @@
 @using System.Linq
 
 <div class="f-section f-section-@Name">
-    @((MarkupString)$"<!-- Begin Section: {@Name} -->")
     @if (AppState?.Page?.Plugins != null)
     {
-        @foreach (var plugin in AppState.Page.Plugins.Where(x => x.Section.ToLower() == Name.ToLower()).OrderBy(x => x.Order))
+        @foreach (var plugin in GetPlugins())
         {
-            @((MarkupString)$"<!-- Begin PluginContainer: {@plugin.Definition.Name} -->")
             <CascadingValue Value="@plugin" Name="Plugin">
                 <PluginContainer>
                     <DynamicComponent Type=@GetType(plugin) />
                 </PluginContainer>
             </CascadingValue>
-            @((MarkupString)$"<!-- End PluginContainer: {@plugin.Definition.Name} -->")
         }
     }
 </div>
-
-@((MarkupString)$"<!-- End Section: {@Name} -->")
 
 @code {
     [Parameter]
@@ -30,7 +25,23 @@
     private Type? GetType(PluginResponse plugin)
     {
         var assembly = typeof(Section).Assembly;
-        var typeInfo = assembly.DefinedTypes.FirstOrDefault(x => x.Name == plugin.Definition.ViewType);
-        return typeInfo?.AsType();
+
+        if (AppState?.ViewMode?.ToLower() == "edit")
+            return assembly.DefinedTypes.FirstOrDefault(x => x.Name == plugin.Definition.EditType);
+
+        return assembly.DefinedTypes.FirstOrDefault(x => x.Name == plugin.Definition.ViewType);
+    }
+
+    private IEnumerable<PluginResponse> GetPlugins()
+    {
+        if (AppState?.Page?.Plugins == null)
+            return Enumerable.Empty<PluginResponse>();
+
+        var result = AppState.Page.Plugins.Where(x =>
+            x.Section.ToLower() == Name.ToLower());
+
+        result = result.Where(x => AppState?.PluginId == null || x.Id == AppState?.PluginId);
+
+        return result.OrderBy(x => x.Order);
     }
 }
