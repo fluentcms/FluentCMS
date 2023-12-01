@@ -1,10 +1,10 @@
 ﻿<div class="f-plugin-container">
-    <div class="f-plugin-container-header">
-        @if (string.IsNullOrEmpty(AppState?.ViewMode))
-        {
+    @if (string.IsNullOrEmpty(AppState?.ViewMode))
+    {
+        <div class="f-plugin-container-header">
             <a href="@EditUrl">Edit</a>
-        }
-    </div>
+        </div>
+    }
     <div class="f-plugin">
         @ChildContent
     </div>
