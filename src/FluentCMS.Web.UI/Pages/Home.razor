@@ -26,6 +26,12 @@
     [Parameter]
     public string? Route { get; set; }
 
+    [SupplyParameterFromQuery]
+    public Guid? PluginId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? ViewMode { get; set; }
+
     private AppState? AppState { get; set; }
 
     protected override Task OnParametersSetAsync()
@@ -51,6 +57,9 @@
             if (AppState.Page != null && AppState.Page.Layout != null)
                 AppState.Layout = AppState.Page.Layout;
         }
+
+        AppState.PluginId = PluginId;
+        AppState.ViewMode = ViewMode;
 
         return base.OnParametersSetAsync();
     }
