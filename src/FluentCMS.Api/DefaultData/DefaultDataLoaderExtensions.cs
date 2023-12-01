@@ -80,33 +80,18 @@ public static class DefaultDataLoaderExtensions
             }
 
             // Plugins creation: adding a few default plugins to pages
-            foreach (var page in defaultData.Pages)
+            var order = 0;
+            var _page = defaultData.Pages[0];
+            foreach (var pluginDef in defaultData.PluginDefinitions)
             {
-                if(page.Path == "/auth/login")
+                var plugin = new Plugin
                 {
-                    var pluginDef = defaultData.PluginDefinitions.Single(x => x.Name == "Login");
-                    var plugin = new Plugin
-                    {
-                        DefinitionId = pluginDef.Id,
-                        PageId = page.Id,
-                        Order = 0,
-                        Section = "main"
-                    };
-                    pluginService.Create(plugin).GetAwaiter().GetResult();
-                    return;
-                }
-                var order = 0;
-                foreach (var pluginDef in defaultData.PluginDefinitions)
-                {
-                    var plugin = new Plugin
-                    {
-                        DefinitionId = pluginDef.Id,
-                        PageId = page.Id,
-                        Order = order++,
-                        Section = "main"
-                    };
-                    pluginService.Create(plugin).GetAwaiter().GetResult();
-                }
+                    DefinitionId = pluginDef.Id,
+                    PageId = _page.Id,
+                    Order = order++,
+                    Section = "main"
+                };
+                pluginService.Create(plugin).GetAwaiter().GetResult();
             }
         }
     }
@@ -131,13 +116,21 @@ public static class DefaultDataLoaderExtensions
 
     private static IEnumerable<Layout> GetLayouts(string dataFolder)
     {
-        foreach (var file in Directory.GetFiles(dataFolder, "*.html"))
+        foreach (var file in Directory.GetFiles(dataFolder, "*.html").Where(x=> !x.Contains(".head.html") && !x.Contains(".body.html")))
         {
             var layout = new Layout
             {
-                Name = Path.GetFileNameWithoutExtension(file),
-                Content = File.ReadAllText(file)
+                Name = Path.GetFileNameWithoutExtension(file)
             };
+
+            var bodyFile = Path.ChangeExtension(file, ".body.html");
+            if (File.Exists(bodyFile))
+                layout.Body = File.ReadAllText(bodyFile);
+
+            var headerFile = Path.ChangeExtension(file, ".head.html");
+            if (File.Exists(headerFile))
+                layout.Head = File.ReadAllText(headerFile);
+
             yield return layout;
         }
     }
