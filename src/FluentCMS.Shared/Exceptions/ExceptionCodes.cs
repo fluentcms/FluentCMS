@@ -98,4 +98,11 @@ public class ExceptionCodes
     public const string LayoutNotFound = "Layout.NotFound";
 
     #endregion
+
+    #region Content
+    public const string ContentUnableToCreate = "Content.UnableToCreated";
+    public const string ContentUnableToUpdate = "Content.UnableToUpdate";
+    public const string ContentUnableToDelete = "Content.UnableToDelete";
+    public const string ContentNotFound = "Content.NotFound";
+    #endregion
 }

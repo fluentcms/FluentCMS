@@ -1,4 +1,6 @@
 ﻿using FluentCMS.Repositories;
+using FluentCMS.Repositories.Abstractions;
+using FluentCMS.Repositories.MongoDb;
 using FluentCMS.Repositories.MongoDB;
 using Microsoft.Extensions.Configuration;
 using MongoDB.Bson;
@@ -47,6 +49,7 @@ public static class MongoDbServiceExtensions
         services.AddScoped<IPluginDefinitionRepository, PluginDefinitionRepository>();
         services.AddScoped<IPluginRepository, PluginRepository>();
         services.AddScoped<ILayoutRepository, LayoutRepository>();
+        services.AddScoped<IContentRepository, ContentRepository>();
 
         return services;
     }

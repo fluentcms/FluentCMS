@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Entities;
 
-public class Content : Dictionary<string, object?>, IAuditEntity
+public class Content : Dictionary<string, object?>, IAuditEntity, IAuthorizeEntity
 {
     public Guid Id { get; set; } = default!;
     public string CreatedBy { get; set; } = string.Empty; // UserName
@@ -8,6 +8,7 @@ public class Content : Dictionary<string, object?>, IAuditEntity
     public string LastUpdatedBy { get; set; } = string.Empty; // UserName
     public DateTime LastUpdatedAt { get; set; }
     public Guid TypeId { get; set; }
+    public Guid SiteId { get; set; }
 
 }
 

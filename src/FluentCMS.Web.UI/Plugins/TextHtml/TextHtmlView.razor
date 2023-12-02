@@ -54,6 +54,8 @@
         result = await response.Content.ReadFromJsonAsync<ApiResult<Content>>();
         resultJson = await responseDict.Content.ReadFromJsonAsync<ApiResult<Dictionary<string, object>>>();
 
+        // var x = await http.GetFromJsonAsync<ApiResult<Content>>("content/get/" + content.Id);
+
         await base.OnInitializedAsync();
     }
 

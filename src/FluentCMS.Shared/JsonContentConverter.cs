@@ -32,56 +32,38 @@ public class JsonContentConverter() : JsonConverter<Content>
 
             string? key = reader.GetString() ?? throw new JsonException();
 
-            // Check for Id property
-            if (key == "id")
-            {
-                reader.Read();
-                content.Id = reader.GetGuid();
-                continue;
-            }
-
-            // check for _t property
-            if (key == "_t")
-            {
-                reader.Read();
-                content.TypeId = reader.GetGuid();
-                continue;
-            }
-
-            // check for CreatedBy property
-            if (key.ToLower() == "createdby")
-            {
-                reader.Read();
-                content.CreatedBy = reader.GetString() ?? string.Empty;
-                continue;
-            }
-
-            // check for LastUpdateBy property
-            if (key.ToLower() == "lastupdateby")
-            {
-                reader.Read();
-                content.LastUpdatedBy = reader.GetString() ?? string.Empty;
-                continue;
-            }
-
-            // check for CreatedBy property
-            if (key.ToLower() == "createdat")
-            {
-                reader.Read();
-                content.CreatedAt = reader.GetDateTime();
-                continue;
-            }
-
-            // check for LastUpdateBy property
-            if (key.ToLower() == "lastupdatedat")
-            {
-                reader.Read();
-                content.LastUpdatedAt = reader.GetDateTime();
-                continue;
-            }
-
             // Get the value.
             reader.Read();
+
+            switch (key.ToLower())
+            {
+                case "id":
+                    content.Id = reader.GetGuid();
+                    continue;
+
+                case "_t":
+                    content.TypeId = reader.GetGuid();
+                    continue;
+
+                case "createdby":
+                    content.CreatedBy = reader.GetString() ?? string.Empty;
+                    continue;
+
+                case "lastupdatedby":
+                    content.LastUpdatedBy = reader.GetString() ?? string.Empty;
+                    continue;
+
+                case "createdat":
+                    content.CreatedAt = reader.GetDateTime();
+                    continue;
+
+                case "lastupdatedat":
+                    content.LastUpdatedAt = reader.GetDateTime();
+                    continue;
+                    
+                default:
+                    break;
+            }
 
             // Add to dictionary.
             content.Add(key, ExtractValue(ref reader, options));
