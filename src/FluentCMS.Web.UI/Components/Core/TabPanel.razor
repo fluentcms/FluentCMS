@@ -1,0 +1,15 @@
+
+<div class="f-tab-panel @(Active ? "f-tab-panel-active": "")" id="panel-@Id" role="tabpanel" aria-labelledby="tab-@Id">        
+    @ChildContent
+</div>
+
+    @code {
+        [Parameter, EditorRequired]
+        public RenderFragment ChildContent {get; set;} = default!;
+
+        [Parameter]
+        public string Id {get; set;}
+
+        [Parameter]
+        public bool Active {get; set;} = false;
+    }

@@ -1,14 +1,18 @@
-<li class="me-2">
+<li class="me-2" role="presentation">
+    @* Should use <a> *@
     @if (Active) {
-        <a href="#" class="inline-block p-4 text-blue-600 border-b-2 border-blue-600 rounded-t-lg active dark:text-blue-500 dark:border-blue-500" aria-current="page">@ChildContent</a>
+        <span class="f-tab-item f-tab-item-active" aria-current="page" id="tab-@Id" data-tabs-target="#panel-@Id" type="button" role="tab" aria-controls="panel-@Id" aria-selected="true">@ChildContent</span>
     }else if(Disabled) {
-        <a class="inline-block p-4 text-gray-400 rounded-t-lg cursor-not-allowed dark:text-gray-500">@ChildContent</a>
+        <span class="f-tab-item f-tab-item-disabled" id="tab-@Id" data-tabs-target="#panel-@Id" type="button" role="tab" aria-controls="panel-@Id" aria-selected="false">@ChildContent</span>
     } else {
-        <a href="#" class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300">@ChildContent</a>
+        <span class="f-tab-item" id="tab-@Id" data-tabs-target="#panel-@Id" type="button" role="tab" aria-controls="panel-@Id" aria-selected="false">@ChildContent</span>
     }
 </li>
 
 @code {
+    [Parameter]
+    public string Id {get; set; }
+
     [Parameter]
     public bool Active {get; set; } = false;
 
