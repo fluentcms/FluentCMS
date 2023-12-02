@@ -1,0 +1,46 @@
+$prefix-navbar: $prefix + 'navbar';
+
+.#{$prefix-navbar} {
+    @apply px-3 py-3 h-16 lg:px-5 lg:pl-3;
+
+    &-wrapper {
+        @apply fixed z-30 w-full bg-white border-b border-gray-200;
+
+        .#{$prefix-theme-dark} & {
+            @apply bg-gray-800 border-gray-700;
+        }
+    }
+
+    &-inner {
+        @apply flex items-center justify-between;
+    }
+
+    &-button {
+        @apply p-2 text-gray-600 rounded cursor-pointer ;
+
+        @screen lg {
+            @apply hidden;
+        }
+
+        &:hover {
+            @apply text-gray-900 bg-gray-100;
+        }
+
+        &:focus {
+            @apply ring-2 bg-gray-100 ring-gray-100;
+        }
+
+        .#{$prefix-theme-dark} & {
+            @apply text-gray-400;
+        }
+        
+        .#{$prefix-theme-dark} &:focus {
+            @apply bg-gray-700 ring-gray-700;
+        }
+
+        .#{$prefix-theme-dark} &:hover {
+            @apply bg-gray-700 text-white;
+        }
+        
+    }
+}

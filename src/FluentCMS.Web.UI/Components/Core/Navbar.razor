@@ -1,0 +1,22 @@
+﻿<nav class="f-navbar-wrapper">
+    <div class="f-navbar">
+        <div class="f-navbar-inner">
+
+            <div class="flex items-center justify-start">
+                @LeftContent
+            </div>
+
+            <div class="flex items-center">
+                @RightContent
+            </div>
+        </div>
+    </div>
+</nav>
+
+@code {
+    [Parameter]
+    public RenderFragment LeftContent { get; set; }
+
+    [Parameter]
+    public RenderFragment RightContent { get; set; }
+}

@@ -1,0 +1,19 @@
+<button id="dropdown-button-id" data-dropdown-toggle="dropdownAvatar-todo" class="f-dropdown-button" type="button">
+    <span class="sr-only">Open dropdown</span>
+    @Target
+</button>
+
+<DropdownMenu Id="dropdownAvatar-todo">
+    @MenuContent
+</DropdownMenu>
+
+@code {
+    [Parameter]
+    public RenderFragment Target { get; set; }
+
+    [Parameter]
+    public RenderFragment MenuContent { get; set; }
+
+    [Parameter]
+    public RenderFragment MenuHeaderContent { get; set; }
+}

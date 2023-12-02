@@ -46,11 +46,37 @@
             </a>
         </div>
     </aside>
+    <Navbar>
+        <LeftContent>
+            <button id="toggleSidebarMobile" aria-expanded="true" aria-controls="default-sidebar"
+                class="f-navbar-button">
+                <Icon id="toggleSidebarMobileHamburger" Size="xl" Name="menu-2" />
+                <Icon id="toggleSidebarMobileClose" Class="hidden" Size="xl" Name="x" />
+            </button>
+
+            <a href="https://flowbite-admin-dashboard.vercel.app/" class="flex ml-2 md:mr-24">
+                @* <img src="https://flowbite-admin-dashboard.vercel.app/images/logo.svg" class="h-8 mr-3"
+                    alt="FlowBite Logo" /> *@
+                <span class="f-logo-text">FluentCMS</span>
+            </a>
+        </LeftContent>
+        <RightContent>
+            <Dropdown>
+                <Target>
+                    <img class="f-avatar" src="https://flowbite.com/docs/images/people/profile-picture-5.jpg" />
+                </Target>
+                <MenuContent>
+                    <DropdownItem>Profile</DropdownItem>
+                    <DropdownItem>Settings</DropdownItem>
+                    <DropdownItem>My Sites</DropdownItem>
+                    <DropdownItem>Logout</DropdownItem>
+                </MenuContent>
+            </Dropdown>
+        </RightContent>
+    </Navbar>
     <main class="f-content">
-        <header class="navbar sticky-top bg-dark flex-md-nowrap p-0 shadow" data-bs-theme="dark">
-            <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6 text-white" href="#">FluentCMS</a>
-        </header>
         @Body
     </main>
 </div>
 <script src="/js/flowbite.min.js"></script>
+<script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>

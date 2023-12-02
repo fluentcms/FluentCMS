@@ -1,8 +1,35 @@
 $prefix-dropdown: $prefix + 'dropdown';
 
+
+
 .#{$prefix-dropdown} {
     @apply z-10 bg-white divide-y divide-gray-100 rounded-lg shadow w-44;
+
+    &-header {
+        @apply px-4 py-3 text-sm text-gray-900 ;
+
+        .#{$prefix-theme-dark} & {
+            @apply text-white;
+        }
+        
+    }
     
+    &-button {
+
+        @apply flex text-sm bg-gray-800 rounded-full;
+
+        &:focus {
+            @apply ring-4 ring-gray-300;
+        }
+
+        .#{$prefix-theme-dark} &:focus {
+            @apply ring-gray-600;
+        }
+
+        @screen md {
+            @apply me-0;
+        }
+    }
 
     &-item {
         @apply block px-4 py-2; 

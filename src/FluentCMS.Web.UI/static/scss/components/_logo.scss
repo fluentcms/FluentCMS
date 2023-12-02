@@ -3,6 +3,14 @@ $prefix-logo: $prefix + 'logo';
 .#{$prefix-logo} {
     @apply flex items-center justify-center mb-8 text-2xl font-semibold;
 
+    &-text {
+        @apply self-center text-xl font-semibold sm:text-2xl whitespace-nowrap;
+
+        .#{$prefix-theme-dark} & {
+            @apply text-white;
+        }
+    }
+
     @screen lg {
         @apply mb-10;
     }

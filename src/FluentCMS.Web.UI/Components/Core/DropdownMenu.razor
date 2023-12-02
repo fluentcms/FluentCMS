@@ -1,4 +1,8 @@
 <div id="@Id" class="f-dropdown hidden">
+    
+    <div class="f-dropdown-menu-header">
+        @DropdownHeader  
+    </div>
     <ul class="f-dropdown-menu" aria-labelledby="@Id">
         @ChildContent
     </ul>
@@ -6,10 +10,13 @@
 
 
 @code {
-  [Parameter]
-  public RenderFragment ChildContent {get; set;}
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
 
-  [Parameter]
+    [Parameter]
+    public RenderFragment DropdownHeader { get; set; }
+
+    [Parameter]
     public string Id { get; set; }
 
 }

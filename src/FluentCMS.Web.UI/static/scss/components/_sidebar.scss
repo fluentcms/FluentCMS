@@ -2,7 +2,7 @@ $prefix-sidebar: $prefix + 'sidebar';
 $prefix-sidebar-item: $prefix + 'sidebar-item';
 
 .#{$prefix-sidebar} {
-    @apply fixed top-0 left-0 z-40 w-64 pt-16 h-screen transition-transform;
+    @apply fixed top-0 left-0 z-20 flex-col flex-shrink-0 w-64 h-full pt-12 font-normal duration-75 transition-all;
 
     @screen sm {
         @apply translate-x-0;

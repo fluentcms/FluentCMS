@@ -1,0 +1,5 @@
+$prefix-avatar: $prefix + 'avatar';
+
+.#{$prefix-avatar} {
+    @apply w-8 h-8 rounded-full;
+}
