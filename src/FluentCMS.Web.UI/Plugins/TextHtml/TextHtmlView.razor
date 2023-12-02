@@ -17,22 +17,37 @@
     public PluginResponse? Plugin { get; set; }
     private ApiResult<Content>? result;
     private ApiResult<Dictionary<string, object>>? resultJson;
+
     protected override async Task OnInitializedAsync()
     {
-        var content = new Content
-            {
-                Id = Guid.NewGuid(),
-                LastUpdatedAt = DateTime.Now,
-                CreatedAt = DateTime.Now,
-                CreatedBy = "admin",
-                LastUpdatedBy = "admin",
-                TypeId = Guid.NewGuid(),
-                ["Title"] = "Hello World",
-                ["Body"] = "This is a test",
-                ["Number"] = 123
-            };
+        await base.OnInitializedAsync();
+    }
 
-        var contentDict = new Dictionary<string, object>
+    public static Task<HttpResponseMessage> PostJsonAsync(HttpClient httpClient, string url, object body)
+    {
+        var bodyJson = JsonSerializer.Serialize(body);
+        var stringContent = new StringContent(bodyJson, Encoding.UTF8, "application/json");
+        return httpClient.PostAsync(url, stringContent);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var content = new Content
+                {
+                    Id = Guid.NewGuid(),
+                    LastUpdatedAt = DateTime.Now,
+                    CreatedAt = DateTime.Now,
+                    CreatedBy = "admin",
+                    LastUpdatedBy = "admin",
+                    TypeId = Guid.NewGuid(),
+                    ["Title"] = "Hello World",
+                    ["Body"] = "This is a test",
+                    ["Number"] = 123
+                };
+
+            var contentDict = new Dictionary<string, object>
         {
             { "Id", Guid.NewGuid() },
             { "LastUpdatedAt", DateTime.Now },
@@ -45,25 +60,21 @@
             { "Number", 123 }
         };
 
-        var serializerOptions = new JsonSerializerOptions();
-        serializerOptions.Converters.Add(new JsonContentConverter());
+            var serializerOptions = new JsonSerializerOptions();
+            serializerOptions.Converters.Add(new JsonContentConverter());
 
-        var response = await http.PostAsJsonAsync("content/create", content, serializerOptions);
-        var responseDict = await http.PostAsJsonAsync("content/createdic", contentDict);
+            var response = await http.PostAsJsonAsync("content/create", content, serializerOptions);
+            // var responseDict = await http.PostAsJsonAsync("content/createdic", contentDict);
 
-        result = await response.Content.ReadFromJsonAsync<ApiResult<Content>>();
-        resultJson = await responseDict.Content.ReadFromJsonAsync<ApiResult<Dictionary<string, object>>>();
+            result = await response.Content.ReadFromJsonAsync<ApiResult<Content>>();
+            // resultJson = await responseDict.Content.ReadFromJsonAsync<ApiResult<Dictionary<string, object>>>();
 
-        // var x = await http.GetFromJsonAsync<ApiResult<Content>>("content/get/" + content.Id);
+            // var x = await http.GetFromJsonAsync<ApiResult<Content>>("content/get/" + content.Id);
 
-        await base.OnInitializedAsync();
-    }
 
-    public static Task<HttpResponseMessage> PostJsonAsync(HttpClient httpClient, string url, object body)
-    {
-        var bodyJson = JsonSerializer.Serialize(body);
-        var stringContent = new StringContent(bodyJson, Encoding.UTF8, "application/json");
-        return httpClient.PostAsync(url, stringContent);
+            Console.WriteLine("First Render");
+        }
+        await base.OnAfterRenderAsync(firstRender);
     }
 
 }
