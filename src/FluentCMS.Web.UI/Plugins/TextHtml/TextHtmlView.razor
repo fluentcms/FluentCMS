@@ -1,9 +1,67 @@
-﻿<div style="background-color:lightblue;">
-    <h1>TextHtml Plugin id: @Plugin?.Id</h1>
-    <p>TextHtml will be here</p>
+﻿@using System.Text.Json
+@using System.Text
+@using FluentCMS.Api.Controllers
+@inject HttpClient http
+
+<div style="background-color:lightblue;">
+    <pre>
+        @(JsonSerializer.Serialize(result, new JsonSerializerOptions() { WriteIndented = true }))
+    </pre>
+    <pre>
+        @(JsonSerializer.Serialize(resultJson, new JsonSerializerOptions() { WriteIndented = true }))
+    </pre>
 </div>
 
 @code {
     [CascadingParameter(Name = "Plugin")]
     public PluginResponse? Plugin { get; set; }
+    private ApiResult<Content>? result;
+    private ApiResult<Dictionary<string, object>>? resultJson;
+    protected override async Task OnInitializedAsync()
+    {
+        var content = new Content
+            {
+                Id = Guid.NewGuid(),
+                LastUpdatedAt = DateTime.Now,
+                CreatedAt = DateTime.Now,
+                CreatedBy = "admin",
+                LastUpdatedBy = "admin",
+                TypeId = Guid.NewGuid(),
+                ["Title"] = "Hello World",
+                ["Body"] = "This is a test",
+                ["Number"] = 123
+            };
+
+        var contentDict = new Dictionary<string, object>
+        {
+            { "Id", Guid.NewGuid() },
+            { "LastUpdatedAt", DateTime.Now },
+            { "CreatedAt", DateTime.Now },
+            { "CreatedBy", "admin" },
+            { "LastUpdatedBy", "admin" },
+            { "TypeId", Guid.NewGuid() },
+            { "Title", "Hello World" },
+            { "Body", "This is a test" },
+            { "Number", 123 }
+        };
+
+        var serializerOptions = new JsonSerializerOptions();
+        serializerOptions.Converters.Add(new JsonContentConverter());
+
+        var response = await http.PostAsJsonAsync("content/create", content, serializerOptions);
+        var responseDict = await http.PostAsJsonAsync("content/createdic", contentDict);
+
+        result = await response.Content.ReadFromJsonAsync<ApiResult<Content>>();
+        resultJson = await responseDict.Content.ReadFromJsonAsync<ApiResult<Dictionary<string, object>>>();
+
+        await base.OnInitializedAsync();
+    }
+
+    public static Task<HttpResponseMessage> PostJsonAsync(HttpClient httpClient, string url, object body)
+    {
+        var bodyJson = JsonSerializer.Serialize(body);
+        var stringContent = new StringContent(bodyJson, Encoding.UTF8, "application/json");
+        return httpClient.PostAsync(url, stringContent);
+    }
+
 }
