@@ -1,17 +1,15 @@
 ﻿using FluentCMS.Entities;
-using FluentCMS.Repositories.Abstractions;
-using FluentCMS.Repositories.MongoDB;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Reflection;
 
-namespace FluentCMS.Repositories.MongoDb;
+namespace FluentCMS.Repositories.MongoDB;
 
 public class ContentRepository(
     IMongoDBContext mongoDbContext,
-    IApplicationContext applicationContext) :
-    GenericRepository<Content>(mongoDbContext, applicationContext), IContentRepository
+    IApplicationContext applicationContext) : IContentRepository
 {
+    #region Private Fields
 
     private static BsonDocument ConvertToBsonDocument(Dictionary<string, object?> dictionary)
     {
@@ -20,14 +18,12 @@ public class ContentRepository(
         foreach (var item in dictionary)
         {
             var key = item.Key;
-            var value = item.Value;
+
             if (item.Key.Equals("id", StringComparison.CurrentCultureIgnoreCase))
-            {
                 key = "_id";
-                value = Guid.NewGuid();
-            }
-            document[key] = ConvertToBsonValue(value);
-        }       
+
+            document[key] = ConvertToBsonValue(item.Value);
+        }
 
         return document;
     }
@@ -46,24 +42,38 @@ public class ContentRepository(
         return BsonValue.Create(value);
     }
 
-    public override async Task<Content?> Create(Content entity, CancellationToken cancellationToken = default)
+
+    // we need to convert the bson document to a content object
+    private static Content ConvertBsonDocumentToContent(BsonDocument document)
     {
-        var dict = ConvertContentToDictionary(entity);
-        var document = ConvertToBsonDocument(dict);
-        var collection = MongoDatabase.GetCollection<BsonDocument>(entity.Type);
-
-        try
+        var content = new Content();
+        foreach (var item in document)
         {
-            await collection.InsertOneAsync(document, cancellationToken: cancellationToken);
+            var key = item.Name;
+            var value = item.Value;
+            if (item.Name.Equals("_id", StringComparison.CurrentCultureIgnoreCase))
+            {
+                key = "Id";
+            }
+            content[key] = ConvertBsonValueToContentValue(value);
         }
-        catch (Exception ex)
-        {
-            
-            throw;
-        }
-        
-        return entity;
 
+        return content;
+    }
+
+    // we need to convert the bson value to a content value
+    private static object? ConvertBsonValueToContentValue(BsonValue value)
+    {
+        // Handle null values explicitly
+        if (value == null)
+            return null;
+
+        // Handle nested dictionaries recursively
+        if (value is BsonDocument nestedDocument)
+            return ConvertBsonDocumentToContent(nestedDocument);
+
+        // Handle other types
+        return value.AsString;
     }
 
     private static Dictionary<string, object?> ConvertContentToDictionary(Content content)
@@ -86,4 +96,61 @@ public class ContentRepository(
         return result;
     }
 
+    #endregion
+
+    private IMongoCollection<Dictionary<string, object?>> GetCollection(string contentType)
+    {
+        return mongoDbContext.Database.GetCollection<Dictionary<string, object?>>(contentType);
+    }
+
+    public async Task<Content?> Create(Content entity, CancellationToken cancellationToken = default)
+    {
+        // setting base properties
+        entity.Id = Guid.NewGuid();
+        entity.CreatedAt = DateTime.UtcNow;
+        entity.LastUpdatedAt = DateTime.UtcNow;
+        entity.CreatedBy = applicationContext.Current.UserName;
+        entity.LastUpdatedBy = applicationContext.Current.UserName;
+
+        var dict = ConvertContentToDictionary(entity);
+        if (dict.TryGetValue("Id", out object? value))
+        {
+            dict["_id"] = value;
+            dict.Remove("Id");
+        }
+
+        var collection = GetCollection(entity.Type);
+        await collection.InsertOneAsync(dict, cancellationToken: cancellationToken);
+
+        return await GetById(entity.Type, entity.Id, cancellationToken);
+    }
+
+    public async Task<Content?> GetById(string contentType, Guid id, CancellationToken cancellationToken = default)
+    {
+        var collection = GetCollection(contentType);
+        var filter = Builders<Dictionary<string, object?>>.Filter.Eq("_id", id);
+        var inserted = await collection.FindAsync(filter, cancellationToken: cancellationToken);
+        var dict = await inserted.FirstAsync(cancellationToken);
+        if (dict.TryGetValue("_id", out object? value))
+        {
+            dict["Id"] = value;
+            dict.Remove("_id");
+        }
+        return Content.FromDictionary(dict);
+    }
+
+    public Task<Content?> Update(Content content, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Content?> Delete(string contentType, Guid id, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<IEnumerable<Content>> GetAll(string contentType, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
 }

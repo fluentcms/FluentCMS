@@ -24,7 +24,7 @@ services.AddScoped<IApplicationContext, ApiApplicationContext>();
 
 services.AddControllers().AddJsonOptions(options =>
 {
-    //options.JsonSerializerOptions.Converters.Add(new JsonContentConverter());
+    options.JsonSerializerOptions.Converters.Add(new JsonContentConverter());
     options.JsonSerializerOptions.Converters.Add(new DictionaryStringObjectJsonConverter());
 });
 

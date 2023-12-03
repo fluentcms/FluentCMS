@@ -7,19 +7,29 @@
     <pre>
         @(JsonSerializer.Serialize(result, new JsonSerializerOptions() { WriteIndented = true }))
     </pre>
-    <pre>
-        @(JsonSerializer.Serialize(resultJson, new JsonSerializerOptions() { WriteIndented = true }))
-    </pre>
 </div>
 
 @code {
     [CascadingParameter(Name = "Plugin")]
     public PluginResponse? Plugin { get; set; }
     private ApiResult<Content>? result;
-    private ApiResult<Dictionary<string, object?>> resultJson;
 
     protected override async Task OnInitializedAsync()
     {
+        var content = new Dictionary<string, object?>
+        {
+            { "Title", "Hello World" },
+            { "Body", "This is a test" },
+            { "Number", 123 },
+            // {"NullValue", null }
+        };
+        var serializerOptions = new JsonSerializerOptions();
+        serializerOptions.Converters.Add(new JsonContentConverter());
+
+        var response = await http.PostAsJsonAsync("content/TextHtml/create", content, serializerOptions);
+
+        result = await response.Content.ReadFromJsonAsync<ApiResult<Content>>();
+
         await base.OnInitializedAsync();
     }
 
@@ -28,49 +38,6 @@
         var bodyJson = JsonSerializer.Serialize(body);
         var stringContent = new StringContent(bodyJson, Encoding.UTF8, "application/json");
         return httpClient.PostAsync(url, stringContent);
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            var content = new Content
-                {
-                    Id = Guid.NewGuid(),
-                    LastUpdatedAt = DateTime.Now,
-                    CreatedAt = DateTime.Now,
-                    CreatedBy = "admin",
-                    LastUpdatedBy = "admin",
-                    Type = "Blog",
-                    ["Title"] = "Hello World",
-                    ["Body"] = "This is a test",
-                    ["Number"] = 123
-                };
-
-            var contentDict = new Dictionary<string, object?>
-        {
-            { "Type", "Blog" },
-            { "Title", "Hello World" },
-            { "Body", "This is a test" },
-            { "Number", 123 },
-            // {"NullValue", null }
-        };
-
-            var serializerOptions = new JsonSerializerOptions();
-            serializerOptions.Converters.Add(new JsonContentConverter());
-
-            // var response = await http.PostAsJsonAsync("content/create", content, serializerOptions);
-            var responseDict = await http.PostAsJsonAsync("content/createdic", contentDict);
-
-            // result = await response.Content.ReadFromJsonAsync<ApiResult<Content>>();
-            resultJson = await responseDict.Content.ReadFromJsonAsync<ApiResult<Dictionary<string, object?>>>();
-
-            // var x = await http.GetFromJsonAsync<ApiResult<Content>>("content/get/" + content.Id);
-
-
-            Console.WriteLine("First Render");
-        }
-        await base.OnAfterRenderAsync(firstRender);
     }
 
 }

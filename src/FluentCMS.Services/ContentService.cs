@@ -1,14 +1,15 @@
 ﻿using FluentCMS.Entities;
-using FluentCMS.Repositories.Abstractions;
+using FluentCMS.Repositories;
+using System.Net.Mime;
 
 namespace FluentCMS.Services;
 
 public interface IContentService
 {
     Task<Content> Create(Content content, CancellationToken cancellationToken = default);
-    Task Delete(Guid id, CancellationToken cancellationToken = default);
-    Task<IEnumerable<Content>> GetAll(CancellationToken cancellationToken = default);
-    Task<Content> GetById(Guid id, CancellationToken cancellationToken = default);
+    Task Delete(string contentType, Guid id, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Content>> GetAll(string contentType, CancellationToken cancellationToken = default);
+    Task<Content> GetById(string contentType, Guid id, CancellationToken cancellationToken = default);
     Task<Content> Update(Content content, CancellationToken cancellationToken = default);
 }
 
@@ -22,20 +23,20 @@ public class ContentService(IContentRepository contentRepository) : IContentServ
         return newContent;
     }
 
-    public async Task Delete(Guid id, CancellationToken cancellationToken = default)
+    public async Task Delete(string contentType, Guid id, CancellationToken cancellationToken = default)
     {
-        _ = await contentRepository.Delete(id, cancellationToken) ??
+        _ = await contentRepository.Delete(contentType, id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentUnableToDelete);
     }
 
-    public async Task<IEnumerable<Content>> GetAll(CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Content>> GetAll(string contentType, CancellationToken cancellationToken = default)
     {
-        return await contentRepository.GetAll(cancellationToken);
+        return await contentRepository.GetAll(contentType, cancellationToken);
     }
 
-    public async Task<Content> GetById(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Content> GetById(string contentType, Guid id, CancellationToken cancellationToken = default)
     {
-        return await contentRepository.GetById(id, cancellationToken) ??
+        return await contentRepository.GetById(contentType, id, cancellationToken) ??
              throw new AppException(ExceptionCodes.ContentNotFound);
     }
 

@@ -5,36 +5,31 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Api.Controllers;
 
-public class ContentController(IContentService contentService) : BaseController
+[ApiController]
+[Route("api/[controller]/{contentType}/[action]")]
+[Produces("application/json")]
+public class ContentController(IContentService contentService)
 {
     [HttpPost]
-    public async Task<IApiResult<Content>> Create(Content request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<Content>> Create([FromRoute] string contentType, Content content, CancellationToken cancellationToken = default)
     {
-        var content = await contentService.Create(request, cancellationToken);
-        return new ApiResult<Content>(content);
-    }
-
-
-    [HttpPost]
-    public async Task<IApiResult<Dictionary<string, object?>>> CreateDic(Dictionary<string, object?> request, CancellationToken cancellationToken = default)
-    {
-        // we should convert the dictionary to a content object
-        var content = Content.FromDictionary(request);
+        content.Type = contentType;
         var newContent = await contentService.Create(content, cancellationToken);
-        return new ApiResult<Dictionary<string, object?>>(newContent);
+        return new ApiResult<Content>(newContent);
     }
 
     [HttpPut]
-    public async Task<IApiResult<Content>> Update(Content request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<Content>> Update([FromRoute] string contentType, Content content, CancellationToken cancellationToken = default)
     {
-        var content = await contentService.Update(request, cancellationToken);
-        return new ApiResult<Content>(content);
+        content.Type = contentType;
+        var updatedContent = await contentService.Update(content, cancellationToken);
+        return new ApiResult<Content>(updatedContent);
     }
 
     [HttpDelete]
-    public async Task<BooleanResponse> Delete(IdRequest request, CancellationToken cancellationToken = default)
+    public async Task<BooleanResponse> Delete([FromRoute] string contentType, IdRequest request, CancellationToken cancellationToken = default)
     {
-        await contentService.Delete(request.Id, cancellationToken);
+        await contentService.Delete(contentType, request.Id, cancellationToken);
         return new BooleanResponse(true);
     }
 }

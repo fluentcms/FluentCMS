@@ -41,7 +41,11 @@ public class JsonContentConverter() : JsonConverter<Content>
                     content.Id = reader.GetGuid();
                     continue;
 
-                case "_t":
+                case "siteid":
+                    content.SiteId = reader.GetGuid();
+                    continue;
+
+                case "type":
                     content.Type = reader.GetString() ?? string.Empty;
                     continue;
 
@@ -76,31 +80,34 @@ public class JsonContentConverter() : JsonConverter<Content>
     {
         writer.WriteStartObject();
 
-        writer.WritePropertyName("id");
+        writer.WritePropertyName("Id");
         writer.WriteStringValue(content.Id);
 
-        writer.WritePropertyName("_t");
+        writer.WritePropertyName("SiteId");
+        writer.WriteStringValue(content.SiteId);
+
+        writer.WritePropertyName("Type");
         writer.WriteStringValue(content.Type);
 
-        writer.WritePropertyName("createdAt");
+        writer.WritePropertyName("CreatedAt");
         writer.WriteStringValue(content.CreatedAt);
 
-        writer.WritePropertyName("createdBy");
+        writer.WritePropertyName("CreatedBy");
         writer.WriteStringValue(content.CreatedBy);
 
-        writer.WritePropertyName("lastUpdatedAt");
+        writer.WritePropertyName("LastUpdatedAt");
         writer.WriteStringValue(content.LastUpdatedAt);
 
-        writer.WritePropertyName("lastUpdatedBy");
+        writer.WritePropertyName("LastUpdatedBy");
         writer.WriteStringValue(content.LastUpdatedBy);
 
 
         foreach ((string key, object value) in content)
         {
             var propertyName = key.ToString();
-            writer.WritePropertyName
-                (options.PropertyNamingPolicy?.ConvertName(propertyName) ?? propertyName);
-
+            writer.WritePropertyName(propertyName);
+                //(options.PropertyNamingPolicy?.ConvertName(propertyName) ?? propertyName);
+            
             stringConv.Write(writer, value.ToString(), options);
         }
 
