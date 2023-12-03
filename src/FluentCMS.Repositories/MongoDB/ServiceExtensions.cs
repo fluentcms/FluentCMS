@@ -1,5 +1,4 @@
-﻿using FluentCMS.Entities;
-using FluentCMS.Repositories;
+﻿using FluentCMS.Repositories;
 using FluentCMS.Repositories.Abstractions;
 using FluentCMS.Repositories.MongoDb;
 using FluentCMS.Repositories.MongoDB;
@@ -25,21 +24,6 @@ public static class MongoDbServiceExtensions
 
         // TODO: if we remove this line, Id queries will not work
         BsonDefaults.GuidRepresentation = GuidRepresentation.Standard;
-
-        //BsonSerializer.RegisterSerializer(new ContentSerializer());
-
-        //BsonClassMap.RegisterClassMap<Content>(cm =>
-        //{
-        //    cm.AutoMap();
-        //    cm.MapProperty(c => c.Id);
-        //    cm.MapProperty(c => c.CreatedBy);
-        //    cm.MapProperty(c => c.CreatedAt);
-        //    cm.MapProperty(c => c.LastUpdatedBy);
-        //    cm.MapProperty(c => c.LastUpdatedAt);
-        //    cm.MapProperty(c => c.TypeId);
-        //    cm.MapProperty(c => c.SiteId);
-        //    cm.MapCreator(c => new Content());
-        //});
 
         services.AddSingleton(provider =>
         {
