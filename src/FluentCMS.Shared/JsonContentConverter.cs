@@ -6,8 +6,9 @@ namespace FluentCMS;
 
 public class JsonContentConverter() : JsonConverter<Content>
 {
-    private readonly static JsonConverter<string> stringConv =
-        (JsonConverter<string>)JsonSerializerOptions.Default.GetConverter(typeof(string));
+    private readonly static JsonConverter<Dictionary<string, object?>> _dictConvertor =
+    (JsonConverter<Dictionary<string, object?>>)JsonSerializerOptions.Default.GetConverter(typeof(Dictionary<string, object?>)) ??
+        throw new InvalidOperationException("No converter found for Dictionary<string, object?>.");
 
     public override bool CanConvert(Type typeToConvert)
     {
@@ -64,7 +65,7 @@ public class JsonContentConverter() : JsonConverter<Content>
                 case "lastupdatedat":
                     content.LastUpdatedAt = reader.GetDateTime();
                     continue;
-                    
+
                 default:
                     break;
             }
@@ -78,40 +79,21 @@ public class JsonContentConverter() : JsonConverter<Content>
 
     public override void Write(Utf8JsonWriter writer, Content content, JsonSerializerOptions options)
     {
-        writer.WriteStartObject();
-
-        writer.WritePropertyName("Id");
-        writer.WriteStringValue(content.Id);
-
-        writer.WritePropertyName("SiteId");
-        writer.WriteStringValue(content.SiteId);
-
-        writer.WritePropertyName("Type");
-        writer.WriteStringValue(content.Type);
-
-        writer.WritePropertyName("CreatedAt");
-        writer.WriteStringValue(content.CreatedAt);
-
-        writer.WritePropertyName("CreatedBy");
-        writer.WriteStringValue(content.CreatedBy);
-
-        writer.WritePropertyName("LastUpdatedAt");
-        writer.WriteStringValue(content.LastUpdatedAt);
-
-        writer.WritePropertyName("LastUpdatedBy");
-        writer.WriteStringValue(content.LastUpdatedBy);
-
-
-        foreach ((string key, object value) in content)
+        var dict = new Dictionary<string, object?>
         {
-            var propertyName = key.ToString();
-            writer.WritePropertyName(propertyName);
-                //(options.PropertyNamingPolicy?.ConvertName(propertyName) ?? propertyName);
-            
-            stringConv.Write(writer, value.ToString(), options);
-        }
+            { "Id", content.Id },
+            { "SiteId", content.SiteId },
+            { "Type", content.Type },
+            { "CreatedAt", content.CreatedAt },
+            { "CreatedBy", content.CreatedBy },
+            { "LastUpdatedAt", content.LastUpdatedAt },
+            { "LastUpdatedBy", content.LastUpdatedBy }
+        };
 
-        writer.WriteEndObject();
+        foreach (var item in content)
+            dict.Add(item.Key, item.Value);
+
+        _dictConvertor.Write(writer, dict, options);
     }
 
     private object? ExtractValue(ref Utf8JsonReader reader, JsonSerializerOptions options)
@@ -149,5 +131,4 @@ public class JsonContentConverter() : JsonConverter<Content>
                 throw new JsonException($"'{reader.TokenType}' is not supported");
         }
     }
-
 }

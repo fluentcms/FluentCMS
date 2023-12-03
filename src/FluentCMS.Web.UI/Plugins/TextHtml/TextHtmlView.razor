@@ -12,19 +12,37 @@
 @code {
     [CascadingParameter(Name = "Plugin")]
     public PluginResponse? Plugin { get; set; }
+
+    [CascadingParameter]
+    public AppState AppState { get; set; } = default!;
+
     private ApiResult<Content>? result;
 
     protected override async Task OnInitializedAsync()
     {
-        var content = new Dictionary<string, object?>
+        var content = new Content
         {
-            { "Title", "Hello World" },
-            { "Body", "This is a test" },
-            { "Number", 123 },
-            // {"NullValue", null }
+            { "SiteId", AppState?.Site?.Id },
+            { "Int", 123 },
+            { "Boolean", true},
+            { "DateTime", DateTime.Now},
+            { "Decimal", 123.45},
+            { "Double", 123.45},
+            { "Float", 123.45},
+            { "Long", 123},
+            { "Short", 123},
+            { "String", "Hello World"},
+            { "TimeSpan", TimeSpan.FromDays(1)},
+            { "Uri", new Uri("https://www.google.com")},
+            { "Version", new Version(1,2,3,4)},
+            { "Array", new string[] { "Hello", "World" } },
+            { "List", new List<string> { "Hello", "World" } },
+            // { "Dictionary", new Dictionary<string, object?> { { "Hello", "World" } } },
+            // { "Object", new { Hello = "World" } },
+            { "NullValue", null }
         };
+
         var serializerOptions = new JsonSerializerOptions();
-        serializerOptions.Converters.Add(new JsonContentConverter());
 
         var response = await http.PostAsJsonAsync("content/TextHtml/create", content, serializerOptions);
 

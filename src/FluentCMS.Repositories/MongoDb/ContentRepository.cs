@@ -120,6 +120,7 @@ public class ContentRepository(
         }
 
         var collection = GetCollection(entity.Type);
+
         await collection.InsertOneAsync(dict, cancellationToken: cancellationToken);
 
         return await GetById(entity.Type, entity.Id, cancellationToken);
