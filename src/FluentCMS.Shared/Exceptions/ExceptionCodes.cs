@@ -104,5 +104,7 @@ public class ExceptionCodes
     public const string ContentUnableToUpdate = "Content.UnableToUpdate";
     public const string ContentUnableToDelete = "Content.UnableToDelete";
     public const string ContentNotFound = "Content.NotFound";
+    public const string ContentTypeMismatch = "Content.TypeMismatch";
+    public const string ContentSiteIdMismatch = "Content.SiteIdMismatch";
     #endregion
 }
