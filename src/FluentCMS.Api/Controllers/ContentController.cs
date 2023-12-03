@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using FluentCMS.Api.Models;
+﻿using FluentCMS.Api.Models;
 using FluentCMS.Entities;
 using FluentCMS.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -15,11 +14,14 @@ public class ContentController(IContentService contentService) : BaseController
         return new ApiResult<Content>(content);
     }
 
+
     [HttpPost]
-    public async Task<IApiResult<Dictionary<string, object>>> CreateDic(Dictionary<string, object> content, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<Dictionary<string, object?>>> CreateDic(Dictionary<string, object?> request, CancellationToken cancellationToken = default)
     {
-        await Task.CompletedTask;
-        return new ApiResult<Dictionary<string, object>>(content);
+        // we should convert the dictionary to a content object
+        var content = Content.FromDictionary(request);
+        var newContent = await contentService.Create(content, cancellationToken);
+        return new ApiResult<Dictionary<string, object?>>(newContent);
     }
 
     [HttpPut]

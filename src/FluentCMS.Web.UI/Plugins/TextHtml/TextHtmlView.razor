@@ -16,7 +16,7 @@
     [CascadingParameter(Name = "Plugin")]
     public PluginResponse? Plugin { get; set; }
     private ApiResult<Content>? result;
-    private ApiResult<Dictionary<string, object>>? resultJson;
+    private ApiResult<Dictionary<string, object?>> resultJson;
 
     protected override async Task OnInitializedAsync()
     {
@@ -41,33 +41,29 @@
                     CreatedAt = DateTime.Now,
                     CreatedBy = "admin",
                     LastUpdatedBy = "admin",
-                    TypeId = Guid.NewGuid(),
+                    Type = "Blog",
                     ["Title"] = "Hello World",
                     ["Body"] = "This is a test",
                     ["Number"] = 123
                 };
 
-            var contentDict = new Dictionary<string, object>
+            var contentDict = new Dictionary<string, object?>
         {
-            { "Id", Guid.NewGuid() },
-            { "LastUpdatedAt", DateTime.Now },
-            { "CreatedAt", DateTime.Now },
-            { "CreatedBy", "admin" },
-            { "LastUpdatedBy", "admin" },
-            { "TypeId", Guid.NewGuid() },
+            { "Type", "Blog" },
             { "Title", "Hello World" },
             { "Body", "This is a test" },
-            { "Number", 123 }
+            { "Number", 123 },
+            // {"NullValue", null }
         };
 
             var serializerOptions = new JsonSerializerOptions();
             serializerOptions.Converters.Add(new JsonContentConverter());
 
-            var response = await http.PostAsJsonAsync("content/create", content, serializerOptions);
-            // var responseDict = await http.PostAsJsonAsync("content/createdic", contentDict);
+            // var response = await http.PostAsJsonAsync("content/create", content, serializerOptions);
+            var responseDict = await http.PostAsJsonAsync("content/createdic", contentDict);
 
-            result = await response.Content.ReadFromJsonAsync<ApiResult<Content>>();
-            // resultJson = await responseDict.Content.ReadFromJsonAsync<ApiResult<Dictionary<string, object>>>();
+            // result = await response.Content.ReadFromJsonAsync<ApiResult<Content>>();
+            resultJson = await responseDict.Content.ReadFromJsonAsync<ApiResult<Dictionary<string, object?>>>();
 
             // var x = await http.GetFromJsonAsync<ApiResult<Content>>("content/get/" + content.Id);
 

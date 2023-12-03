@@ -42,7 +42,7 @@ public class JsonContentConverter() : JsonConverter<Content>
                     continue;
 
                 case "_t":
-                    content.TypeId = reader.GetGuid();
+                    content.Type = reader.GetString() ?? string.Empty;
                     continue;
 
                 case "createdby":
@@ -80,7 +80,7 @@ public class JsonContentConverter() : JsonConverter<Content>
         writer.WriteStringValue(content.Id);
 
         writer.WritePropertyName("_t");
-        writer.WriteStringValue(content.TypeId);
+        writer.WriteStringValue(content.Type);
 
         writer.WritePropertyName("createdAt");
         writer.WriteStringValue(content.CreatedAt);
