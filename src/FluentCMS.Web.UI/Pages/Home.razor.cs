@@ -68,7 +68,6 @@ public partial class Home
     {
         foreach (var child in children)
         {
-            Console.WriteLine(child.Name.ToString());
             // render Inner Content
             if(child.NodeType == HtmlNodeType.Text)
             {
