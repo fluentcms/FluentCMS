@@ -30,7 +30,7 @@
     "Site": {
         "Name": "My First Site",
         "Description": "This is my first site",
-        "Urls": [ "https://localhost:7164" ]
+        "Urls": [ "http://localhost:5120" ]
     },
     "Pages": [
         {
