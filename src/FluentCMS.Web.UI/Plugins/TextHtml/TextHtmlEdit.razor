@@ -1,5 +1,45 @@
-﻿<h3>Edit</h3>
+﻿@using System.Text.Json
+@using System.Text
+@inject HttpClient http
+
+<EditForm OnSubmit=@FormSubmitted @Model="textHtmlContent">
+    <div class="form-group">
+        <label for="textHtmlContent">Content</label>
+        <textarea class="form-control" id="textHtmlContent" rows="3" @bind=@textHtmlContent></textarea>
+
+    </div>
+    <input type="submit" value="Submit" class="btn btn-primary" />
+    <a href="@AppState?.Page?.Path">Go Back</a>
+</EditForm>
 
 @code {
+    [CascadingParameter(Name = "Plugin")]
+    public PluginResponse? Plugin { get; set; }
 
+    [CascadingParameter]
+    public AppState? AppState { get; set; }
+
+    private string textHtmlContent = string.Empty;
+
+    private async Task FormSubmitted()
+    {
+
+        var pluginContent = new PluginContent{
+            { "SiteId", AppState?.Site?.Id },
+            { "PluginId", Plugin?.Id },
+            { "Content", textHtmlContent }
+        };
+
+        // var serializerOptions = new JsonSerializerOptions();
+        // var response = await http.PostAsJsonAsync("PluginContent/TextHtml/Create", pluginContent, serializerOptions);
+        // var pluginContentResult = await response.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
+        // textHtmlContent = pluginContentResult?.Data?["Content"]?.ToString() ?? string.Empty;
+    }
+
+    public static Task<HttpResponseMessage> PostJsonAsync(HttpClient httpClient, string url, object body)
+    {
+        var bodyJson = JsonSerializer.Serialize(body);
+        var stringContent = new StringContent(bodyJson, Encoding.UTF8, "application/json");
+        return httpClient.PostAsync(url, stringContent);
+    }
 }
