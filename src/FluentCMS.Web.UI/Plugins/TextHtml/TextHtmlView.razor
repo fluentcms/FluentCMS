@@ -17,16 +17,16 @@
 
     private string textHtmlContent = string.Empty;
 
-    protected override async Task OnParametersSetAsync()
+    override protected async Task OnInitializedAsync()
     {
-        // var query = HttpUtility.ParseQueryString(string.Empty);
-        // query["siteId"] = AppState.Site.Id.ToString();
-        // query["pluginId"] = Plugin.Id.ToString();
+        var query = HttpUtility.ParseQueryString(string.Empty);
+        query["siteId"] = AppState?.Site?.Id.ToString();
+        query["pluginId"] = Plugin?.Id.ToString();
 
         // var resContent = await http.GetFromJsonAsync<ApiPagingResult<PluginContent>>($"PluginContent/TextHtml/GetByPluginId?{query}");
         // var pluginContent = resContent?.Data?.FirstOrDefault();
         // textHtmlContent = pluginContent?["Content"]?.ToString() ?? string.Empty;
 
-        await base.OnParametersSetAsync();
+        await base.OnInitializedAsync();
     }
 }

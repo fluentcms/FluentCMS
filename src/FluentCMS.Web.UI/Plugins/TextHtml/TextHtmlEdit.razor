@@ -2,15 +2,10 @@
 @using System.Text
 @inject HttpClient http
 
-<EditForm OnSubmit=@FormSubmitted @Model="textHtmlContent">
-    <div class="form-group">
-        <label for="textHtmlContent">Content</label>
-        <textarea class="form-control" id="textHtmlContent" rows="3" @bind=@textHtmlContent></textarea>
-
-    </div>
-    <input type="submit" value="Submit" class="btn btn-primary" />
-    <a href="@AppState?.Page?.Path">Go Back</a>
-</EditForm>
+<textarea id="textHtmlContent" rows="5" placeholder="Enter you TextHtml content here" @bind=textHtmlContent></textarea>
+<br />
+<Button @onclick="OnUpdate">Update</Button>
+<a href="@AppState?.Page?.Path">Go Back</a>
 
 @code {
     [CascadingParameter(Name = "Plugin")]
@@ -19,21 +14,25 @@
     [CascadingParameter]
     public AppState? AppState { get; set; }
 
+    private PluginContent PluginContent = new();
     private string textHtmlContent = string.Empty;
 
-    private async Task FormSubmitted()
+    protected override Task OnInitializedAsync()
     {
-
-        var pluginContent = new PluginContent{
+        PluginContent = new PluginContent{
             { "SiteId", AppState?.Site?.Id },
-            { "PluginId", Plugin?.Id },
-            { "Content", textHtmlContent }
+            { "PluginId", Plugin?.Id }
         };
+        return base.OnInitializedAsync();
+    }
 
-        // var serializerOptions = new JsonSerializerOptions();
-        // var response = await http.PostAsJsonAsync("PluginContent/TextHtml/Create", pluginContent, serializerOptions);
-        // var pluginContentResult = await response.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
-        // textHtmlContent = pluginContentResult?.Data?["Content"]?.ToString() ?? string.Empty;
+    private async Task OnUpdate()
+    {
+        PluginContent["Content"] = textHtmlContent;
+        var serializerOptions = new JsonSerializerOptions();
+        var response = await http.PostAsJsonAsync("PluginContent/TextHtml/Create", PluginContent, serializerOptions);
+        var pluginContentResult = await response.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
+        textHtmlContent = pluginContentResult?.Data?["Content"]?.ToString() ?? string.Empty;
     }
 
     public static Task<HttpResponseMessage> PostJsonAsync(HttpClient httpClient, string url, object body)

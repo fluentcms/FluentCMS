@@ -15,12 +15,13 @@ public class PluginContentRepository(
 
         var dictionaries = await GetCollection(contentType).FindAsync(filter, null, cancellationToken);
 
-        return await Task.FromResult(dictionaries.ToEnumerable(cancellationToken: cancellationToken).Select(dict =>
+        var pluginContents = new List<PluginContent>();
+        foreach (var dict in await dictionaries.ToListAsync(cancellationToken))
         {
             ReverseMongoDBId(dict);
-            return dict.ToContent<PluginContent>();
-        }));
-
+            pluginContents.Add(dict.ToContent<PluginContent>());
+        }
+        return pluginContents;
     }
 
     protected static FilterDefinition<Dictionary<string, object?>> GetPluginIdFilter(Guid pluginId)
