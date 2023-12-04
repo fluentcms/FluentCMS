@@ -1,6 +1,7 @@
 ﻿@page "/{*Route:nonfile}"
 @using System.Text.RegularExpressions
 @using System.Web
+@using HtmlAgilityPack
 @inject HttpClient http
 @inject NavigationManager Navigator
 
@@ -17,128 +18,9 @@
 
 @((MarkupString)$"<!-- Begin {@AppState?.Page?.Title} Page Content -->")
 <CascadingValue Value="@AppState">
-    @dynamicComponent()
+    @* @dynamicComponent() *@
+    <Section Name="main" />
 </CascadingValue>
 @((MarkupString)$"<!-- End {@AppState?.Page?.Title} Page Content -->")
 
-@code {
 
-    [Parameter]
-    public string? Route { get; set; }
-
-    [SupplyParameterFromQuery]
-    public Guid? PluginId { get; set; }
-
-    [SupplyParameterFromQuery]
-    public string? ViewMode { get; set; }
-
-    private AppState? AppState { get; set; }
-
-    protected override Task OnParametersSetAsync()
-    {
-        if (AppState == null)
-            AppState = new AppState();
-
-        AppState.Host = Navigator.BaseUri.EndsWith("/") ? Navigator.BaseUri.Remove(Navigator.BaseUri.Length - 1) : Navigator.BaseUri;
-        AppState.Uri = new Uri(Navigator.Uri);
-
-        var siteResult = http.GetFromJsonAsync<ApiResult<SiteResponse>>($"Site/GetByUrl?url={AppState.Host}").GetAwaiter().GetResult();
-        AppState.Site = siteResult?.Data;
-        AppState.Layout = AppState.Site?.Layout;
-
-        if (AppState.Site != null)
-        {
-            var query = HttpUtility.ParseQueryString(string.Empty);
-            query["siteId"] = AppState.Site.Id.ToString();
-            query["path"] = AppState.Uri.LocalPath;
-
-            var pageResult = http.GetFromJsonAsync<ApiResult<PageResponse>>($"Page/GetByPath?{query}").GetAwaiter().GetResult();
-            AppState.Page = pageResult?.Data;
-            if (AppState.Page != null && AppState.Page.Layout != null)
-                AppState.Layout = AppState.Page.Layout;
-        }
-
-        AppState.PluginId = PluginId;
-        AppState.ViewMode = ViewMode;
-
-        return base.OnParametersSetAsync();
-    }
-
-    RenderFragment dynamicComponent() => builder =>
-       {
-           var _type = GetType("Section");
-           if (_type == null)
-               return;
-
-           builder.OpenComponent(1, _type);
-           builder.AddComponentParameter(2, "Name", "main");
-           builder.CloseComponent();
-
-           return;
-
-           var index = 0;
-           var startIndex = 0;
-           var lastIndex = 0;
-           var lastLength = 0;
-           var _body = AppState?.Layout?.Body ?? string.Empty;
-
-           // attribute to find tags with
-           var matcherAttributeName = "fluentcms";
-
-           // find any tag that has our attribute
-           var tagFinderRegex = new Regex($"<(?<TagName>\\w+)[^/>]*{matcherAttributeName}[^/>]*/>", RegexOptions.IgnoreCase);
-
-           var tagMatches = tagFinderRegex.Matches(_body);
-
-           // ignore if no tags found
-           if (tagMatches.Count() == 0)
-           {
-               builder.AddMarkupContent(0, _body);
-               return;
-           }
-
-           foreach (Match tag in tagMatches)
-           {
-               // add markup until beginning of tag-match
-               builder.AddMarkupContent(index++, _body.Substring(startIndex, tag.Index - startIndex));
-
-               // get Type from tag name
-               var type = GetType(tag.Groups["TagName"].Value);
-
-               if (type != null)
-               {
-                   // open component tag
-                   builder.OpenComponent(index++, type);
-
-                   //parse attributes with regex
-                   var parameters = ParseAttributes(tag.Value);
-
-                   //add parameters
-                   foreach (var parameter in parameters)
-                       builder.AddComponentParameter(index++, parameter.Key, parameter.Value);
-
-                   //close component
-                   builder.CloseComponent();
-                   startIndex = tag.Index + tag.Length;
-                   lastIndex = tag.Index;
-                   lastLength = tag.Length;
-               }
-           }
-
-           builder.AddMarkupContent(index, _body.Substring(lastIndex + lastLength));
-           index++;
-       };
-
-    private Type? GetType(string typeName)
-    {
-        var assembly = typeof(Section).Assembly;
-        var typeInfo = assembly.DefinedTypes.FirstOrDefault(x => x.Name == typeName);
-        return typeInfo?.AsType();
-    }
-
-    private Dictionary<string, string> ParseAttributes(string layout)
-    {
-        var parameterParserRegex = new Regex("(\\s(?<name>\\w+)=\\\"?(?<value>\\w+)\\\"?)+");
-        return new Dictionary<string, string>(parameterParserRegex.Matches(layout).Select(x => new KeyValuePair<string, string>(x.Groups["name"].Value, x.Groups["value"].Value)));
-    }
-}
