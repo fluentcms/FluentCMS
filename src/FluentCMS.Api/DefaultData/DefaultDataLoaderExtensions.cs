@@ -93,6 +93,19 @@ public static class DefaultDataLoaderExtensions
                 };
                 pluginService.Create(plugin).GetAwaiter().GetResult();
             }
+
+            var loginPage = defaultData.Pages.FirstOrDefault(x => x.Path == "/login");
+            var loginPluginDefId = defaultData.PluginDefinitions.FirstOrDefault(x => x.Name == "Login")?.Id;
+            if (loginPage != null && loginPluginDefId.HasValue)
+            {
+                var loginPlugin = new Plugin
+                {
+                    DefinitionId = loginPluginDefId.Value,
+                    PageId = loginPage.Id,
+                    Section = "main"
+                };
+                pluginService.Create(loginPlugin).GetAwaiter().GetResult();
+            }
         }
     }
 

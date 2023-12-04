@@ -28,7 +28,7 @@
         },
         {
             "Name": "Login",
-            "Description": "Text/Html plugin",
+            "Description": "Login Plugin",
             "ViewType": "LoginView",
             "EditType": "LoginView" 
         }
@@ -60,7 +60,7 @@
         {
             "Title": "Login",
             "Description": "This is login page",
-            "Path": "/auth/login",
+            "Path": "/login",
             "Order": 999
         }
     ]

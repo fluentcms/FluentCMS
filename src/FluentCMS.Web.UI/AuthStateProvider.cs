@@ -2,17 +2,16 @@
 using FluentCMS.Services.Models;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.IdentityModel.JsonWebTokens;
-using Microsoft.VisualBasic;
 using System.Security.Claims;
 
 namespace FluentCMS.Web.UI;
 
-public class FluentCmsAuthenticationStateProvider : AuthenticationStateProvider
+public class AuthStateProvider : AuthenticationStateProvider
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly HttpClient _httpClient;
 
-    public FluentCmsAuthenticationStateProvider(IHttpContextAccessor httpContextAccessor, HttpClient httpClient)
+    public AuthStateProvider(IHttpContextAccessor httpContextAccessor, HttpClient httpClient)
     {
         _httpContextAccessor = httpContextAccessor;
         _httpClient = httpClient;

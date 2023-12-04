@@ -2,7 +2,9 @@
 @inject NavigationManager NavigationManager
 @inject HttpClient HttpClient;
 @inject IHttpContextAccessor HttpContextAccessor;
-@inject FluentCmsAuthenticationStateProvider FluentCmsAuthenticationStateProvider;
+@inject AuthStateProvider AuthStateProvider;
+@using System.Security.Claims
+
 <div class="flex justify-center">
     <Card>
         <CardBody>
@@ -24,16 +26,33 @@
             </EditForm>
         </CardBody>
     </Card>
+
+    @if (user != null)
+    {
+        <h1>ClaimsPrincipal Data</h1>
+        <button @onclick="GetClaimsPrincipalData">Get ClaimsPrincipal Data</button>
+        <p>@authMessage</p>
+        @if (claims.Count() > 0)
+        {
+            <ul>
+                @foreach (var claim in claims)
+                {
+                    <li>@claim.Type: @claim.Value</li>
+                }
+            </ul>
+        }
+    })
+
 </div>
 
 @code {
     [SupplyParameterFromForm]
-    public UserAuthenticateRequest UserAuthenticateRequest { get; set; } = new() { Username = "", Password = "" };
+    public UserAuthenticateRequest UserAuthenticateRequest { get; set; } = new() { Username = "superadmin", Password = "Passw0rd!" };
     public bool Remember { get; set; }
     public List<Error> Errors = [];
     public async Task Submit()
     {
-        var result = await FluentCmsAuthenticationStateProvider.Authenticate(UserAuthenticateRequest);
+        var result = await AuthStateProvider.Authenticate(UserAuthenticateRequest);
         if (!result.result)
         {
             Errors = result.errors; // TODO: Show errors
@@ -43,4 +62,26 @@
         //Navigate to home
         NavigationManager.NavigateTo("/");
     }
+
+    private string? authMessage;
+    private ClaimsPrincipal? user;
+    private IEnumerable<Claim> claims = Enumerable.Empty<Claim>();
+
+    private async Task GetClaimsPrincipalData()
+    {
+        var authState = await AuthStateProvider
+            .GetAuthenticationStateAsync();
+        user = authState.User;
+
+        if (user.Identity is not null && user.Identity.IsAuthenticated)
+        {
+            authMessage = $"{user.Identity.Name} is authenticated.";
+            claims = user.Claims;
+        }
+        else
+        {
+            authMessage = "The user is NOT authenticated.";
+        }
+    }
+
 }
