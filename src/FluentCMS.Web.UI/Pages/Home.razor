@@ -18,7 +18,8 @@
 
 @((MarkupString)$"<!-- Begin {@AppState?.Page?.Title} Page Content -->")
 <CascadingValue Value="@AppState">
-    @dynamicComponent()
+    @* @dynamicComponent() *@
+    <Section Name="main" />
 </CascadingValue>
 @((MarkupString)$"<!-- End {@AppState?.Page?.Title} Page Content -->")
 
