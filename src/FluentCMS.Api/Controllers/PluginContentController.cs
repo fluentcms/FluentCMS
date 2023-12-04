@@ -33,7 +33,7 @@ public class PluginContentController(IPluginContentService pluginContentService)
         return new BooleanResponse(true);
     }
 
-    [HttpGet("{siteId}, {pluginId}")]
+    [HttpGet("{siteId}/{pluginId}")]
     public async Task<IApiPagingResult<PluginContent>> GetByPluginId([FromRoute] string contentType, Guid siteId, Guid pluginId, CancellationToken cancellationToken = default)
     {
         var contents = await pluginContentService.GetByPluginId(siteId, contentType, pluginId, cancellationToken);
