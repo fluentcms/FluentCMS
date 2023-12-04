@@ -7,6 +7,11 @@
     <pre>
         @(JsonSerializer.Serialize(result, new JsonSerializerOptions() { WriteIndented = true }))
     </pre>
+    <pre>
+        @((MarkupString)(resultPlugin?.Data?["Content"]?.ToString() ?? string.Empty))
+    <hr />
+        @(JsonSerializer.Serialize(resultPlugin, new JsonSerializerOptions() { WriteIndented = true }))
+    </pre>
 </div>
 
 @code {
@@ -17,6 +22,7 @@
     public AppState AppState { get; set; } = default!;
 
     private ApiResult<Content>? result;
+    private ApiResult<PluginContent>? resultPlugin;
 
     protected override async Task OnInitializedAsync()
     {
@@ -42,11 +48,25 @@
             { "NullValue", null }
         };
 
+        var pluginContent = new PluginContent
+        {
+            { "SiteId", AppState?.Site?.Id },
+            { "PluginId", Plugin?.Id },
+            {
+                "Content",@"
+                <div>
+                    <h1>Hello World</h1>
+                </div>"
+            }
+        };
+
         var serializerOptions = new JsonSerializerOptions();
 
-        var response = await http.PostAsJsonAsync("content/TextHtml/create", content, serializerOptions);
-
+        var response = await http.PostAsJsonAsync("Content/Dummy/Create", content, serializerOptions);
         result = await response.Content.ReadFromJsonAsync<ApiResult<Content>>();
+
+        var pluginResponse = await http.PostAsJsonAsync("PluginContent/TextHtml/Create", pluginContent, serializerOptions);
+        resultPlugin = await pluginResponse.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
 
         await base.OnInitializedAsync();
     }

@@ -3,12 +3,14 @@ using MongoDB.Driver;
 
 namespace FluentCMS.Repositories.MongoDB;
 
-public class ContentRepository(
+public class ContentRepository<TContent>(
     IMongoDBContext mongoDbContext,
-    IApplicationContext applicationContext) : IContentRepository
+    IApplicationContext applicationContext) :
+    IContentRepository<TContent>
+    where TContent : Content, new()
 {
 
-    public async Task<Content?> Create(Content content, CancellationToken cancellationToken = default)
+    public async Task<TContent?> Create(TContent content, CancellationToken cancellationToken = default)
     {
         // setting base properties
         content.Id = Guid.NewGuid();
@@ -18,32 +20,38 @@ public class ContentRepository(
         content.LastUpdatedBy = applicationContext.Current.UserName;
 
         var dict = content.ToDictionary();
+
         MakeMongoDBId(dict);
 
         var collection = GetCollection(content.Type);
 
         await collection.InsertOneAsync(dict, cancellationToken: cancellationToken);
 
-        return await GetById(content.Type, content.Id, cancellationToken);
+        return await GetById(content.SiteId, content.Type, content.Id, cancellationToken);
     }
 
-    public async Task<Content?> GetById(string contentType, Guid id, CancellationToken cancellationToken = default)
+    public async Task<TContent?> GetById(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default)
     {
         var collection = GetCollection(contentType);
-        var filter = Builders<Dictionary<string, object?>>.Filter.Eq("_id", id);
+
+        var filter = GetIdFilter(id);
+
         var inserted = await collection.FindAsync(filter, cancellationToken: cancellationToken);
+
         var dict = await inserted.FirstAsync(cancellationToken);
+
         ReverseMongoDBId(dict);
-        return dict.ToContent();
+
+        return dict.ToContent<TContent>();
     }
 
-    public async Task<Content?> Update(Content content, CancellationToken cancellationToken = default)
+    public async Task<TContent?> Update(TContent content, CancellationToken cancellationToken = default)
     {
         // setting base properties
         content.LastUpdatedAt = DateTime.UtcNow;
         content.LastUpdatedBy = applicationContext.Current.UserName;
 
-        var existing = await GetById(content.Type, content.Id, cancellationToken) ??
+        var existing = await GetById(content.SiteId, content.Type, content.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentNotFound);
 
         if (existing.Type != content.Type)
@@ -53,53 +61,60 @@ public class ContentRepository(
             throw new AppException(ExceptionCodes.ContentSiteIdMismatch);
 
         var dict = content.ToDictionary();
+
         MakeMongoDBId(dict);
 
         var collection = GetCollection(content.Type);
 
-        var filter = Builders<Dictionary<string, object?>>.Filter.Eq("_id", content.Id);
+        var filter = GetIdFilter(content.Id);
 
         var updatedDict = await collection.FindOneAndReplaceAsync(filter, dict, null, cancellationToken);
 
         ReverseMongoDBId(updatedDict);
 
-        return updatedDict.ToContent();
+        return updatedDict.ToContent<TContent>();
     }
 
-    public async Task<Content?> Delete(string contentType, Guid id, CancellationToken cancellationToken = default)
+    public async Task<TContent?> Delete(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default)
     {
         var collection = GetCollection(contentType);
-        var filter = Builders<Dictionary<string, object?>>.Filter.Eq("_id", id);
+
+        var filter = GetSiteIdFilter(siteId, id);
+
         var options = new FindOneAndDeleteOptions<Dictionary<string, object?>>();
+
         var deleted = await collection.FindOneAndDeleteAsync(filter, options, cancellationToken);
 
         if (deleted == null)
             return default;
 
         ReverseMongoDBId(deleted);
-        return deleted.ToContent();
+        return deleted.ToContent<TContent>();
     }
 
-    public Task<IEnumerable<Content>> GetAll(string contentType, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<TContent>> GetAll(Guid siteId, string contentType, CancellationToken cancellationToken = default)
     {
         var collection = GetCollection(contentType);
         var filter = Builders<Dictionary<string, object?>>.Filter.Empty;
-        var dictionaries = collection.FindAsync(filter, cancellationToken: cancellationToken);
-        return Task.FromResult(dictionaries.Result.ToEnumerable(cancellationToken: cancellationToken).Select(dict =>
+        var dictionaries = await collection.FindAsync(filter, cancellationToken: cancellationToken);
+        return await Task.FromResult(dictionaries.ToEnumerable(cancellationToken: cancellationToken).Select(dict =>
         {
             ReverseMongoDBId(dict);
-            return dict.ToContent();
+            return dict.ToContent<TContent>();
         }));
     }
 
     #region Private Methods
 
-    private IMongoCollection<Dictionary<string, object?>> GetCollection(string contentType)
+    protected IMongoCollection<Dictionary<string, object?>> GetCollection(string contentType)
     {
+        if (string.IsNullOrWhiteSpace(contentType))
+            throw new ArgumentNullException(nameof(contentType));
+
         return mongoDbContext.Database.GetCollection<Dictionary<string, object?>>(contentType);
     }
 
-    private static void ReverseMongoDBId(Dictionary<string, object?> dict)
+    protected static void ReverseMongoDBId(Dictionary<string, object?> dict)
     {
         if (dict.TryGetValue("_id", out object? value))
         {
@@ -108,13 +123,34 @@ public class ContentRepository(
         }
     }
 
-    private static void MakeMongoDBId(Dictionary<string, object?> dict)
+    protected static void MakeMongoDBId(Dictionary<string, object?> dict)
     {
         if (dict.TryGetValue("Id", out object? value))
         {
             dict["_id"] = value;
             dict.Remove("Id");
         }
+    }
+
+    protected static FilterDefinition<Dictionary<string, object?>> GetSiteIdFilter(Guid siteId, Guid contentId)
+    {
+        var filter = GetIdFilter(contentId);
+        filter &= GetSiteIdFilter(siteId);
+        return filter;
+    }
+
+    protected static FilterDefinition<Dictionary<string, object?>> GetSiteIdFilter(Guid siteId)
+    {
+        var builder = Builders<Dictionary<string, object?>>.Filter;
+        var filter = builder.Eq("SiteId", siteId);
+        return filter;
+    }
+
+    protected static FilterDefinition<Dictionary<string, object?>> GetIdFilter(Guid id)
+    {
+        var builder = Builders<Dictionary<string, object?>>.Filter;
+        var filter = builder.Eq("_id", id);
+        return filter;
     }
 
     #endregion

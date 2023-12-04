@@ -4,9 +4,10 @@ namespace FluentCMS.Entities;
 
 public static class Helpers
 {
-    public static Content ToContent(this Dictionary<string, object?> dict)
+    // TODO: refactor the below method and implement using reflection
+    public static TContent ToContent<TContent>(this Dictionary<string, object?> dict) where TContent : Content, new()
     {
-        var content = new Content();
+        var content = new TContent();
 
         // Iterate over the dictionary and map each key-value pair to the corresponding property
         foreach (var kvp in dict)
@@ -43,7 +44,7 @@ public static class Helpers
         return content;
     }
 
-    public static Dictionary<string, object?> ToDictionary(this Content content)
+    public static Dictionary<string, object?> ToDictionary<TContent>(this TContent content) where TContent : Content
     {
         var result = new Dictionary<string, object?>();
 

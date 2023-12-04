@@ -3,18 +3,21 @@ using FluentCMS.Repositories;
 
 namespace FluentCMS.Services;
 
-public interface IContentService
+public interface IContentService<TContent> where TContent : Content
 {
-    Task<Content> Create(Content content, CancellationToken cancellationToken = default);
-    Task Delete(string contentType, Guid id, CancellationToken cancellationToken = default);
-    Task<IEnumerable<Content>> GetAll(string contentType, CancellationToken cancellationToken = default);
-    Task<Content> GetById(string contentType, Guid id, CancellationToken cancellationToken = default);
-    Task<Content> Update(Content content, CancellationToken cancellationToken = default);
+    Task<TContent> Create(TContent content, CancellationToken cancellationToken = default);
+    Task Delete(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default);
+    Task<IEnumerable<TContent>> GetAll(Guid siteId, string contentType, CancellationToken cancellationToken = default);
+    Task<TContent> GetById(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default);
+    Task<TContent> Update(TContent content, CancellationToken cancellationToken = default);
 }
 
-public class ContentService(IContentRepository contentRepository) : IContentService
+public class ContentService<TContent>(
+    IContentRepository<TContent> contentRepository) :
+    IContentService<TContent>
+    where TContent : Content, new()
 {
-    public async Task<Content> Create(Content content, CancellationToken cancellationToken = default)
+    public async Task<TContent> Create(TContent content, CancellationToken cancellationToken = default)
     {
         var newContent = await contentRepository.Create(content, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentUnableToCreate);
@@ -22,24 +25,24 @@ public class ContentService(IContentRepository contentRepository) : IContentServ
         return newContent;
     }
 
-    public async Task Delete(string contentType, Guid id, CancellationToken cancellationToken = default)
+    public async Task Delete(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default)
     {
-        _ = await contentRepository.Delete(contentType, id, cancellationToken) ??
+        _ = await contentRepository.Delete(siteId, contentType, id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentUnableToDelete);
     }
 
-    public async Task<IEnumerable<Content>> GetAll(string contentType, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<TContent>> GetAll(Guid siteId, string contentType, CancellationToken cancellationToken = default)
     {
-        return await contentRepository.GetAll(contentType, cancellationToken);
+        return await contentRepository.GetAll(siteId, contentType, cancellationToken);
     }
 
-    public async Task<Content> GetById(string contentType, Guid id, CancellationToken cancellationToken = default)
+    public async Task<TContent> GetById(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default)
     {
-        return await contentRepository.GetById(contentType, id, cancellationToken) ??
+        return await contentRepository.GetById(siteId, contentType, id, cancellationToken) ??
              throw new AppException(ExceptionCodes.ContentNotFound);
     }
 
-    public async Task<Content> Update(Content content, CancellationToken cancellationToken = default)
+    public async Task<TContent> Update(TContent content, CancellationToken cancellationToken = default)
     {
         var updatedContent = await contentRepository.Update(content, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentUnableToUpdate);

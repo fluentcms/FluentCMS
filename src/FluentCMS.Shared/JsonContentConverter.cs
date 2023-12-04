@@ -4,23 +4,23 @@ using System.Text.Json;
 
 namespace FluentCMS;
 
-public class JsonContentConverter() : JsonConverter<Content>
+public class JsonContentConverter<TContent>() : JsonConverter<TContent> where TContent : Content, new()
 {
-    private readonly static JsonConverter<Dictionary<string, object?>> _dictConvertor =
+    protected readonly static JsonConverter<Dictionary<string, object?>> _dictConvertor =
     (JsonConverter<Dictionary<string, object?>>)JsonSerializerOptions.Default.GetConverter(typeof(Dictionary<string, object?>)) ??
         throw new InvalidOperationException("No converter found for Dictionary<string, object?>.");
 
     public override bool CanConvert(Type typeToConvert)
     {
-        return typeToConvert == typeof(Content);
+        return typeToConvert == typeof(TContent);
     }
 
-    public override Content? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override TContent? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType != JsonTokenType.StartObject)
             throw new JsonException();
 
-        var content = new Content();
+        var content = new TContent();
 
         while (reader.Read())
         {
@@ -77,22 +77,9 @@ public class JsonContentConverter() : JsonConverter<Content>
         throw new JsonException();
     }
 
-    public override void Write(Utf8JsonWriter writer, Content content, JsonSerializerOptions options)
+    public override void Write(Utf8JsonWriter writer, TContent content, JsonSerializerOptions options)
     {
-        var dict = new Dictionary<string, object?>
-        {
-            { "Id", content.Id },
-            { "SiteId", content.SiteId },
-            { "Type", content.Type },
-            { "CreatedAt", content.CreatedAt },
-            { "CreatedBy", content.CreatedBy },
-            { "LastUpdatedAt", content.LastUpdatedAt },
-            { "LastUpdatedBy", content.LastUpdatedBy }
-        };
-
-        foreach (var item in content)
-            dict.Add(item.Key, item.Value);
-
+        var dict = content.ToDictionary();
         _dictConvertor.Write(writer, dict, options);
     }
 

@@ -8,7 +8,7 @@ namespace FluentCMS.Api.Controllers;
 [ApiController]
 [Route("api/[controller]/{contentType}/[action]")]
 [Produces("application/json")]
-public class ContentController(IContentService contentService)
+public class ContentController(IContentService<Content> contentService)
 {
     [HttpPost]
     public async Task<IApiResult<Content>> Create([FromRoute] string contentType, Content content, CancellationToken cancellationToken = default)
@@ -29,7 +29,7 @@ public class ContentController(IContentService contentService)
     [HttpDelete]
     public async Task<BooleanResponse> Delete([FromRoute] string contentType, IdRequest request, CancellationToken cancellationToken = default)
     {
-        await contentService.Delete(contentType, request.Id, cancellationToken);
+        await contentService.Delete(request.SiteId, contentType, request.Id, cancellationToken);
         return new BooleanResponse(true);
     }
 }
