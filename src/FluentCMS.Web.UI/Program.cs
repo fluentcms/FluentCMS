@@ -33,6 +33,9 @@ services.AddHttpContextAccessor();
 
 services.AddScoped<AuthenticationStateProvider, FluentCmsAuthenticationStateProvider>();
 
+// Register FluentCmsAuthenticationStateProvider as scoped service
+services.AddScoped<FluentCmsAuthenticationStateProvider>();
+
 // TODO: Add to request header, accept-language, etc.
 // TODO: Move to somewhere else (Shared project maybe?)
 services.AddScoped(sp =>
