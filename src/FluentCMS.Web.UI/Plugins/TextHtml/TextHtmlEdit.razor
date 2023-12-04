@@ -1,38 +1,83 @@
 ﻿@using System.Text.Json
 @using System.Text
 @inject HttpClient http
+@inject NavigationManager NavigationManager
 
-<textarea id="textHtmlContent" rows="5" placeholder="Enter you TextHtml content here" @bind=textHtmlContent></textarea>
-<br />
-<Button @onclick="OnUpdate">Update</Button>
-<a href="@AppState?.Page?.Path">Go Back</a>
+@if(PluginContent != null)
+{
+    <textarea id="textHtmlContent" rows="5" placeholder="Enter you TextHtml content here" @bind=textHtmlContent></textarea>
+    <br />
+    <Button @onclick="OnUpdate">Update</Button>
+    <a href="@BackLink">Go Back</a>
+}
+else
+{
+    <span>Loading...</span>
+}
 
 @code {
+    public string BackLink => AppState?.Page?.Path;
     [CascadingParameter(Name = "Plugin")]
     public PluginResponse? Plugin { get; set; }
 
     [CascadingParameter]
     public AppState? AppState { get; set; }
 
-    private PluginContent PluginContent = new();
-    private string textHtmlContent = string.Empty;
-
-    protected override Task OnInitializedAsync()
+    private PluginContent? PluginContent = null;
+    private string textHtmlContent
     {
+        get
+        {
+            return PluginContent?["Content"]?.ToString() ?? "";
+        }
+        set
+        {
+            if (PluginContent != null)
+            {
+                PluginContent["Content"] = value;
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var resContent = await http.GetFromJsonAsync<ApiPagingResult<PluginContent>>($"PluginContent/TextHtml/GetByPluginId/{AppState?.Site?.Id:D}/{Plugin?.Id:D}");
+
         PluginContent = new PluginContent{
+            { "Id", (resContent?.Data?.FirstOrDefault()?["Id"])??null },
             { "SiteId", AppState?.Site?.Id },
-            { "PluginId", Plugin?.Id }
+            { "PluginId", Plugin?.Id },
+            { "Content", (resContent?.Data?.FirstOrDefault()?["Content"])??"" }
         };
-        return base.OnInitializedAsync();
+
+
+        await base.OnInitializedAsync();
     }
 
     private async Task OnUpdate()
     {
-        PluginContent["Content"] = textHtmlContent;
         var serializerOptions = new JsonSerializerOptions();
-        var response = await http.PostAsJsonAsync("PluginContent/TextHtml/Create", PluginContent, serializerOptions);
-        var pluginContentResult = await response.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
-        textHtmlContent = pluginContentResult?.Data?["Content"]?.ToString() ?? string.Empty;
+        var isCreating = PluginContent?["Id"] == null;
+        if (isCreating)
+        {
+            var response = await http.PostAsJsonAsync($"PluginContent/TextHtml/Create", PluginContent, serializerOptions);
+            var pluginContentResult = await response.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
+            if (!(pluginContentResult?.Errors.Any() ?? true))
+            {
+                NavigationManager.NavigateTo(BackLink);
+            }
+        }
+        else
+        {
+            var response = await http.PutAsJsonAsync($"PluginContent/TextHtml/Update", PluginContent, serializerOptions);
+            var pluginContentResult = await response.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
+            if (!(pluginContentResult?.Errors.Any() ?? true))
+            {
+                NavigationManager.NavigateTo(BackLink);
+            }
+        }
+        
+
     }
 
     public static Task<HttpResponseMessage> PostJsonAsync(HttpClient httpClient, string url, object body)

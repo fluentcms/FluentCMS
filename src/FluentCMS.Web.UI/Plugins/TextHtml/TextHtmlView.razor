@@ -15,17 +15,14 @@
     [CascadingParameter]
     public AppState AppState { get; set; } = default!;
 
-    private string textHtmlContent = string.Empty;
+    private string textHtmlContent => PluginContent?["Content"]?.ToString()??"";
+    public PluginContent? PluginContent { get; set; }
 
     override protected async Task OnInitializedAsync()
     {
-        var query = HttpUtility.ParseQueryString(string.Empty);
-        query["siteId"] = AppState?.Site?.Id.ToString();
-        query["pluginId"] = Plugin?.Id.ToString();
 
-        // var resContent = await http.GetFromJsonAsync<ApiPagingResult<PluginContent>>($"PluginContent/TextHtml/GetByPluginId?{query}");
-        // var pluginContent = resContent?.Data?.FirstOrDefault();
-        // textHtmlContent = pluginContent?["Content"]?.ToString() ?? string.Empty;
+        var resContent = await http.GetFromJsonAsync<ApiPagingResult<PluginContent>>($"PluginContent/TextHtml/GetByPluginId/{AppState?.Site?.Id:D}/{Plugin?.Id:D}");
+        PluginContent = resContent?.Data?.FirstOrDefault();
 
         await base.OnInitializedAsync();
     }
