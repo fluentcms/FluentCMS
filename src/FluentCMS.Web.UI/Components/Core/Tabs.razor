@@ -1,24 +1,39 @@
+<CascadingValue Value="this">
 
+    <div class="f-tabs">
 
-<div class="f-tabs">
-    <ul class="f-tab-list">
-        @TabList
-    </ul>
+        <ul class="f-tab-list">
+            @foreach (int index in Enumerable.Range(0, TabItems.Count))
+            {
+                <TabItem Active=@(index == ActiveTabIndex) Index="@index">@TabItems[index]</TabItem>
+            }
+        </ul>
 
-    <div class="f-tab-content">
-        @TabContent
+        <div class="f-tab-content">
+            @ChildContent
+        </div>
     </div>
-
-</div>
+</CascadingValue>
 
 @code {
-        
+    private List<string> TabItems = new List<string>();
+    public int ActiveTabIndex { get; set; } = 0;
+
+
     [Parameter]
-    public RenderFragment TabList {get; set; }
+    public RenderFragment ChildContent { get; set; }
 
-    [Parameter]
-    public RenderFragment TabContent {get; set; }
+    public void ActiveTab(int index)
+    {
+        ActiveTabIndex = index;
+        StateHasChanged();
+    }
 
-
-    private string ActiveTabId {get; set} =  null;
+    public int AddTab(string name)
+    {
+        TabItems.Add(name);
+       
+        StateHasChanged();
+        return TabItems.Count - 1;
+    }
 }

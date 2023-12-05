@@ -30,22 +30,22 @@ $prefix-tab: $prefix + "tab";
 }
 
 .#{$prefix-tab}-list {
-    @apply flex flex-wrap -mb-px;
+    @apply flex flex-wrap -mb-px text-sm font-medium text-center text-gray-500 border-b border-gray-200;
+
+    .#{$prefix-theme-dark} & {
+        @apply text-gray-400 border-gray-700;
+    }
 }
 
 .#{$prefix-tab}-panel {
     @apply hidden p-4 rounded-lg bg-gray-50;
 
+    &-active {
+        @apply block;
+    }
+
     .#{$prefix-theme-dark} & {
         @apply bg-gray-800;
-    }
-}
-
-.#{$prefix-tabs} {
-    @apply text-sm font-medium text-center text-gray-500 border-b border-gray-200;
-
-    .#{$prefix-theme-dark} & {
-        @apply text-gray-400 border-gray-700;
     }
 }
 

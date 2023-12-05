@@ -42,23 +42,23 @@
         <div class="py-4 flex flex-col gap-4">
 
             <Tabs>
-                <TabList>
-                    <TabItem Id="general">General</TabItem>
-                    <TabItem Active Id="permissions">Permissions</TabItem>
-                    <TabItem Disabled Id="seo">SEO</TabItem>
-                </TabList>
+                @* <TabList>
+                    <TabItem Name="General">General</TabItem>
+                    <TabItem Name="Permissions">Permissions</TabItem>
+                    <TabItem Disabled Name="seo">SEO</TabItem>
+                </TabList> *@
 
-                <TabContent>
-                    <TabPanel Id="general">
+                @* <TabContent> *@
+                    <TabPanel Name="General">
                         General Tab
                     </TabPanel>
-                    <TabPanel Active Id="permissions">
+                    <TabPanel Active Name="Permissions">
                         Permissions Tab
                     </TabPanel>
-                    <TabPanel Id="seo">
+                    <TabPanel Name="seo">
                         SEO Tab
                     </TabPanel>
-                </TabContent>
+                @* </TabContent> *@
             </Tabs>
         </div>
     </div>
