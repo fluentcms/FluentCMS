@@ -5,10 +5,14 @@
 
 @if(PluginContent != null)
 {
-    <textarea id="textHtmlContent" rows="5" placeholder="Enter you TextHtml content here" @bind=textHtmlContent></textarea>
-    <br />
-    <Button @onclick="OnUpdate">Update</Button>
-    <a href="@BackLink">Go Back</a>
+    <EditForm EditContext="EditContext" OnValidSubmit="OnSubmit">
+        <FormField Label="Html Content:">
+            <Textarea id="textHtmlContent" Required rows="5" placeholder="Enter you TextHtml content here" @bind-Value='textHtmlContent'></Textarea>
+        </FormField>
+        <br />
+        <Button Type="submit">Update</Button>
+        <NavLink href="@BackLink">Go Back</NavLink>
+    </EditForm>
 }
 else
 {
@@ -17,6 +21,8 @@ else
 
 @code {
     public string BackLink => AppState?.Page?.Path;
+    public EditContext? EditContext => new EditContext(PluginContent.FirstOrDefault());
+
     [CascadingParameter(Name = "Plugin")]
     public PluginResponse? Plugin { get; set; }
 
@@ -54,7 +60,7 @@ else
         await base.OnInitializedAsync();
     }
 
-    private async Task OnUpdate()
+    private async Task OnSubmit()
     {
         var serializerOptions = new JsonSerializerOptions();
         var isCreating = PluginContent?["Id"] == null;
