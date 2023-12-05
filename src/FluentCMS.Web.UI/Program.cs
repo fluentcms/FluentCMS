@@ -59,6 +59,60 @@ services.AddScoped(sp =>
     return client;
 });
 
+// Register NSwag Generated Clients
+#region NSwag
+//FluentCMS.Web.UI.AccountClient
+services.AddScoped(sp =>
+{
+    var httpClient = sp.GetRequiredService<HttpClient>();
+    var baseUrl = httpClient.BaseAddress?.ToString();
+    return new AccountClient(baseUrl, httpClient);
+});
+//FluentCMS.Web.UI.HostClient
+services.AddScoped(sp =>
+{
+    var httpClient = sp.GetRequiredService<HttpClient>();
+    var baseUrl = httpClient.BaseAddress?.ToString();
+    return new HostClient(baseUrl, httpClient);
+});
+//FluentCMS.Web.UI.PageClient
+services.AddScoped(sp =>
+{
+    var httpClient = sp.GetRequiredService<HttpClient>();
+    var baseUrl = httpClient.BaseAddress?.ToString();
+    return new PageClient(baseUrl, httpClient);
+});
+//FluentCMS.Web.UI.PluginClient
+services.AddScoped(sp =>
+{
+    var httpClient = sp.GetRequiredService<HttpClient>();
+    var baseUrl = httpClient.BaseAddress?.ToString();
+    return new PluginClient(baseUrl, httpClient);
+});
+//FluentCMS.Web.UI.RoleClient
+services.AddScoped(sp =>
+{
+    var httpClient = sp.GetRequiredService<HttpClient>();
+    var baseUrl = httpClient.BaseAddress?.ToString();
+    return new RoleClient(baseUrl, httpClient);
+});
+//FluentCMS.Web.UI.SiteClient
+services.AddScoped(sp =>
+{
+    var httpClient = sp.GetRequiredService<HttpClient>();
+    var baseUrl = httpClient.BaseAddress?.ToString();
+    return new SiteClient(baseUrl, httpClient);
+});
+//FluentCMS.Web.UI.UserClient
+services.AddScoped(sp =>
+{
+    var httpClient = sp.GetRequiredService<HttpClient>();
+    var baseUrl = httpClient.BaseAddress?.ToString();
+    return new UserClient(baseUrl, httpClient);
+});
+#endregion
+
+
 services.AddJwtAuthentication(builder.Configuration);
 
 var app = builder.Build();
