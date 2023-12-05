@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Services.Models;
+﻿namespace FluentCMS.Api.Models;
 
 public class UserAuthenticateDto
 {
