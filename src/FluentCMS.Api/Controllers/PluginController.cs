@@ -6,17 +6,19 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Api.Controllers;
 
+[ApiController]
+[Route("api/[controller]")]
 public class PluginController(IPluginService pluginService, IMapper mapper) : BaseController
 {
 
-    [HttpGet("{pageId}")]
+    [HttpGet("[action]/{pageId}")]
     public async Task<IApiPagingResult<Plugin>> GetByPageId([FromRoute] Guid pageId, CancellationToken cancellationToken = default)
     {
         var plugins = await pluginService.GetByPageId(pageId, cancellationToken);
         return new ApiPagingResult<Plugin>(plugins);
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("[action]/{id}")]
     public async Task<IApiResult<Plugin>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var plugin = await pluginService.GetById(id, cancellationToken);
