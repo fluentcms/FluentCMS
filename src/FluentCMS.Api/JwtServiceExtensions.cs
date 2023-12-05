@@ -19,6 +19,7 @@ public static class JwtServiceExtensions
             configureOptions.DefaultScheme = defaultScheme;
             configureOptions.DefaultChallengeScheme = defaultScheme;
         })
+            .AddCookie(cfg => cfg.SlidingExpiration = true)
             .AddJwtBearer(jwt =>
             {
                 var key = Encoding.UTF8.GetBytes(options.Secret);

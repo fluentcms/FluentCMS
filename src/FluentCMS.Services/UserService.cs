@@ -38,7 +38,7 @@ public class UserService(
     {
         var isSuperAdmin = false;
 
-        // check if user is superadmin
+        // check if user is super admin
         if (!string.IsNullOrEmpty(user.UserName))
         {
             var host = await hostRepository.Get(cancellationToken) ??

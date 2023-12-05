@@ -3,12 +3,19 @@ using FluentCMS.Api.Models;
 using FluentCMS.Entities;
 using FluentCMS.Services;
 using FluentCMS.Services.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace FluentCMS.Api.Controllers;
 
-public class AccountController(IMapper mapper, IUserService userService) : BaseController
+public class AccountController(
+    IMapper mapper,
+    IUserService userService,
+    IHttpContextAccessor httpContextAccessor,
+    IApplicationContext applicationContext) : BaseController
 {
+
     [HttpPost]
     public async Task<IApiResult<UserDto>> Register(UserRegisterRequest request, CancellationToken cancellationToken = default)
     {
@@ -36,6 +43,17 @@ public class AccountController(IMapper mapper, IUserService userService) : BaseC
     {
         await userService.ChangePassword(request.UserId, request.OldPassword, request.NewPassword, cancellationToken);
         return new ApiResult<bool>(true);
+    }
+
+    [HttpGet]
+    public async Task<IApiPagingResult<Claim>> GetClaims(CancellationToken cancellationToken = default)
+    {
+        if (applicationContext.Current.IsAuthenticated)
+        {
+            var claims = httpContextAccessor?.HttpContext?.User?.Claims ?? [];
+            return new ApiPagingResult<Claim>(claims);
+        }
+        return await Task.FromResult(new ApiPagingResult<Claim>(new List<Claim>()));
     }
 
 }

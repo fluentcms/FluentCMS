@@ -2,8 +2,9 @@
 @inject NavigationManager NavigationManager
 @inject HttpClient HttpClient;
 @inject IHttpContextAccessor HttpContextAccessor;
-@inject AuthStateProvider AuthStateProvider;
+@inject AuthenticationStateProvider AuthStateProvider;
 @using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 
 <div class="flex justify-center">
     <Card>
