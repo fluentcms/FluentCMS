@@ -1,19 +1,25 @@
 <li class="me-2" role="presentation">
     @* Should use <a> *@
     @if (Active) {
-        <span class="f-tab-item f-tab-item-active" aria-current="page" id="tab-@Id" data-tabs-target="#panel-@Id" type="button" role="tab" aria-controls="panel-@Id" aria-selected="true">@ChildContent</span>
+        <span class="f-tab-item f-tab-item-active" aria-current="page" id="tab-@Id" @onclick="() => ActivateTab($\"#panel-{Id}\")" type="button" role="tab" aria-controls="panel-@Id" aria-selected="true">@ChildContent</span>
     }else if(Disabled) {
-        <span class="f-tab-item f-tab-item-disabled" id="tab-@Id" data-tabs-target="#panel-@Id" type="button" role="tab" aria-controls="panel-@Id" aria-selected="false">@ChildContent</span>
+        <span class="f-tab-item f-tab-item-disabled" id="tab-@Id" @onclick="() => ActivateTab($\"#panel-{Id}\")" type="button" role="tab" aria-controls="panel-@Id" aria-selected="false">@ChildContent</span>
     } else {
-        <span class="f-tab-item" id="tab-@Id" data-tabs-target="#panel-@Id" type="button" role="tab" aria-controls="panel-@Id" aria-selected="false">@ChildContent</span>
+        <span class="f-tab-item" id="tab-@Id" @onclick="() => ActivateTab($\"#panel-{Id}\")" type="button" role="tab" aria-controls="panel-@Id" aria-selected="false">@ChildContent</span>
     }
 </li>
 
 @code {
+
+    private void ActivateTab(string id) {
+        
+    }
+
     [Parameter]
     public string Id {get; set; }
 
     [Parameter]
+    
     public bool Active {get; set; } = false;
 
     [Parameter]

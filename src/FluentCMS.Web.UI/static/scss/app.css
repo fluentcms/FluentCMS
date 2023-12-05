@@ -131,6 +131,10 @@ body.f-theme-dark {
   @apply bg-gray-700;
 }
 
+.f-avatar {
+  @apply w-8 h-8 rounded-full;
+}
+
 .f-button {
   @apply font-medium rounded-lg text-sm px-5 py-2.5 gap-2 text-center inline-flex items-center;
 }
@@ -273,6 +277,26 @@ body.f-theme-dark {
 .f-dropdown {
   @apply z-10 bg-white divide-y divide-gray-100 rounded-lg shadow w-44;
 }
+.f-dropdown-header {
+  @apply px-4 py-3 text-sm text-gray-900;
+}
+.f-theme-dark .f-dropdown-header {
+  @apply text-white;
+}
+.f-dropdown-button {
+  @apply flex text-sm bg-gray-800 rounded-full;
+}
+.f-dropdown-button:focus {
+  @apply ring-4 ring-gray-300;
+}
+.f-theme-dark .f-dropdown-button:focus {
+  @apply ring-gray-600;
+}
+@screen md {
+  .f-dropdown-button {
+    @apply me-0;
+  }
+}
 .f-dropdown-item {
   @apply block px-4 py-2;
 }
@@ -328,7 +352,7 @@ body.f-theme-dark {
 }
 
 .f-content {
-  @apply h-screen ml-0 text-gray-900 bg-gray-50;
+  @apply h-screen ml-0 pt-16 text-gray-900 bg-gray-50;
 }
 @screen sm {
   .f-content {
@@ -415,6 +439,42 @@ body.f-theme-dark {
   stroke-width: 1.5px;
 }
 
+.f-navbar {
+  @apply px-3 py-3 h-16 lg:px-5 lg:pl-3;
+}
+.f-navbar-wrapper {
+  @apply fixed z-30 w-full bg-white border-b border-gray-200;
+}
+.f-theme-dark .f-navbar-wrapper {
+  @apply bg-gray-800 border-gray-700;
+}
+.f-navbar-inner {
+  @apply flex items-center justify-between;
+}
+.f-navbar-button {
+  @apply p-2 text-gray-600 rounded cursor-pointer;
+}
+@screen lg {
+  .f-navbar-button {
+    @apply hidden;
+  }
+}
+.f-navbar-button:hover {
+  @apply text-gray-900 bg-gray-100;
+}
+.f-navbar-button:focus {
+  @apply ring-2 bg-gray-100 ring-gray-100;
+}
+.f-theme-dark .f-navbar-button {
+  @apply text-gray-400;
+}
+.f-theme-dark .f-navbar-button:focus {
+  @apply bg-gray-700 ring-gray-700;
+}
+.f-theme-dark .f-navbar-button:hover {
+  @apply bg-gray-700 text-white;
+}
+
 .f-table-parent {
   @apply relative overflow-x-auto shadow-md;
 }
@@ -492,6 +552,12 @@ body.f-theme-dark {
 .f-logo {
   @apply flex items-center justify-center mb-8 text-2xl font-semibold;
 }
+.f-logo-text {
+  @apply self-center text-xl font-semibold sm:text-2xl whitespace-nowrap text-white;
+}
+.f-theme-dark .f-logo-text {
+  @apply text-white;
+}
 @screen lg {
   .f-logo {
     @apply mb-10;
@@ -505,7 +571,7 @@ body.f-theme-dark {
 }
 
 .f-sidebar {
-  @apply fixed top-0 left-0 z-40 w-64 pt-16 h-screen transition-transform;
+  @apply fixed top-0 left-0 z-20 flex-col flex-shrink-0 w-64 h-full pt-12 font-normal duration-75 transition-all;
 }
 @screen sm {
   .f-sidebar {
