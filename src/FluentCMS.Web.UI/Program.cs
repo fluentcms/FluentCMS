@@ -1,6 +1,7 @@
 using FluentCMS.Api;
 using FluentCMS;
 using FluentCMS.Web.UI;
+using FluentCMS.Entities;
 using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,8 +24,15 @@ services.AddUIServices();
 
 services.AddScoped<IApplicationContext, ApiApplicationContext>();
 
-services.AddControllers();
+services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new JsonContentConverter<Content>());
+    options.JsonSerializerOptions.Converters.Add(new JsonContentConverter<PluginContent>());
+    //options.JsonSerializerOptions.Converters.Add(new DictionaryStringObjectJsonConverter());
+});
+
 services.AddRequestValidation();
+
 services.AddMappingProfiles();
 
 services.AddApiDocumentation();
