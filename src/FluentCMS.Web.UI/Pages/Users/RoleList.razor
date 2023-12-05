@@ -1,5 +1,5 @@
 ﻿@page "/admin/roles"
-@inject HttpClient httpClient
+@inject RoleClient RoleClient
 
 <h3>Roles</h3>
 <p>List of all roles.</p>
@@ -36,13 +36,15 @@ else
 }
 
 @code {
-    private IEnumerable<RoleDto>? roles;
+
+    private IEnumerable<UI.RoleDto>? roles;
 
     private async Task LoadRoles()
     {
         try
         {
-            var response = await httpClient.GetFromJsonAsync<ApiPagingResult<RoleDto>>("roles/getAll");
+            // TODO: mission SiteId
+            var response = await RoleClient.GetAllAsync(new UI.SiteIdRequest{});
             if (response != null)
             {
                 roles = response!.Data;
@@ -63,7 +65,8 @@ else
     {
         try
         {
-            var response = await httpClient.DeleteFromJsonAsync<ApiResult<bool>>("roles/delete/" + id);
+            //TODO: Missing SiteId
+            var response = await RoleClient.DeleteAsync(new UI.IdRequest { Id = id });
             if (response != null)
             {
                 await LoadRoles();

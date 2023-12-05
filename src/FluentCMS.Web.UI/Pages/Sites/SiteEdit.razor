@@ -75,7 +75,7 @@
         //Create
         if (Id == null)
         {
-            var createCommand = new SiteCreateRequest()
+            var createCommand = new UI.SiteCreateRequest()
                 {
                     Name = Site.Name,
                     Description = Site.Description,
@@ -96,7 +96,7 @@
         //Edit
         else
         {
-            var updateCommand = new SiteUpdateRequest
+            var updateCommand = new UI.SiteUpdateRequest
                 {
                     Id = Id.Value,
                     Name = Site.Name,

@@ -2,7 +2,7 @@
 @page "/admin/pages/create/{SiteId:guid}"
 @page "/admin/pages/create/{SiteId:guid}/{ParentId:guid}"
 @using FluentCMS.Api.Models
-@inject HttpClient _httpClient
+@inject PageClient PageClient
 @inject NavigationManager _navigationManager
 
 <h3>Page Update</h3>
@@ -35,7 +35,7 @@
     public Guid SiteId { get; set; }
     [Parameter]
     public Guid? ParentId { get; set; }
-    public PageCreateRequest Page { get; set; } = new();
+    public UI.PageCreateRequest Page { get; set; } = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -52,7 +52,7 @@
         }
         try
         {
-            var response = (await _httpClient.GetFromJsonAsync<ApiResult<PageResponse>>($"page/getById/{Id.Value}"))!;
+            var response = await PageClient.GetByIdAsync(Id.Value);
             if (response.Data != null)
             {
                 Page = new()
@@ -80,7 +80,7 @@
             var createCommand = Page;
             try
             {
-                await _httpClient.PostAsJsonAsync($"page/create", createCommand);
+                await PageClient.CreateAsync(createCommand);
                 _navigationManager.NavigateTo($"/admin/pages/{SiteId}");
             }
             catch (Exception)
@@ -91,7 +91,7 @@
         //Edit
         else
         {
-            var updateCommand = new PageUpdateRequest
+            var updateCommand = new UI.PageUpdateRequest
                 {
                     Id = Id ?? throw new Exception("Impossible state"),
                     Title = Page.Title,
@@ -103,7 +103,7 @@
                 };
             try
             {
-                await _httpClient.PutAsJsonAsync($"page/update", updateCommand);
+                await PageClient.UpdateAsync(updateCommand);
                 _navigationManager.NavigateTo($"/admin/pages/{updateCommand.SiteId}");
             }
             catch (Exception)

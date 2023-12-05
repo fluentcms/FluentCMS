@@ -1,6 +1,7 @@
 ﻿@page "/admin/users/create"
 @page "/admin/users/update/{Id:guid}"
-@inject HttpClient _httpClient
+@inject UserClient UserClient
+@inject RoleClient RoleClient
 @inject NavigationManager _navigationManager
 @inject ILogger<UserEdit> _logger
 
@@ -32,11 +33,11 @@
             foreach (var r in roles)
             {
                 <div class="form-check">
-                    <input class="form-check-input"
+@*                     <input class="form-check-input"
                            type="checkbox"
                            id="@("chkRole-" + r.Name)"
                            @onchange="e => onRoleCheckboxChanged((bool)e.Value!, r.Id)"
-                           @attributes="addCheckedAttribute(data.RoleIds.Any(x => x == r.Id))">
+                           @attributes="addCheckedAttribute(data.RoleIds.Any(x => x == r.Id))"> *@
                     <label class="form-check-label" for="@("chkRole-" + r.Name)">
                         @r.Name <span class="fw-light">(@r.Description)</span>
                     </label>
@@ -62,13 +63,14 @@
     [Parameter]
     public Guid? Id { get; set; }
 
-    private IEnumerable<RoleDto>? roles;
-    private UserCreateRequest data = new();
+    private IEnumerable<UI.RoleDto>? roles;
+    private UI.UserRegisterRequest data = new();
     private List<string> errors = new();
 
     protected override async Task OnInitializedAsync()
     {
-        var getRolesResponse = await _httpClient.GetFromJsonAsync<ApiPagingResult<RoleDto>>("roles/getAll");
+        // TODO: Missing Site Id
+        var getRolesResponse = await RoleClient.GetAllAsync(new () { });
         if (getRolesResponse != null)
         {
             roles = getRolesResponse!.Data;
@@ -83,12 +85,10 @@
         {
             try
             {
-                var response = await _httpClient.GetFromJsonAsync<ApiResult<UserDto>>($"users/getById/{Id.Value}");
+                var response = await UserClient.GetByIdAsync(Id.Value);
                 if (response != null)
                 {
-                    data.Email = response.Data!.Email;
-                    data.Username = response.Data!.Username;
-                    data.RoleIds = response.Data.RoleIds.ToList();
+
                 }
             }
             catch (Exception)
@@ -107,20 +107,21 @@
             if (Id.HasValue == false)
             {
                 //Create
-                response = await _httpClient.PostAsJsonAsync("users/create", data);
+                // TODO: Fix Missing DTO
+                // response = await UserClient.CreateAsync(data);
             }
             else
             {
                 //Edit
-                response = await _httpClient.PutAsJsonAsync("users/update",
-                    new Api.Models.UserUpdateRequest
-                        {
-                            Id = Id.Value,
-                            Email = data.Email,
-                            RoleIds = data.RoleIds,
-                        });
+                // response = await _httpClient.PutAsJsonAsync("users/update",
+                //     new Api.Models.UserUpdateRequest
+                //         {
+                //             Id = Id.Value,
+                //             Email = data.Email,
+                //             RoleIds = data.RoleIds,
+                //         });
             }
-            await handleCreateOrEditResponse(response);
+            // await handleCreateOrEditResponse(response);
         }
         catch (Exception ex)
         {
@@ -157,14 +158,14 @@
 
     private void onRoleCheckboxChanged(bool isChecked, Guid roleId)
     {
-        if (isChecked)
-        {
-            if (data.RoleIds.Any(x => x == roleId) == false)
-                data.RoleIds.Add(roleId);
-        }
-        else
-        {
-            data.RoleIds.Remove(roleId);
-        }
+        // if (isChecked)
+        // {
+        //     if (data.RoleIds.Any(x => x == roleId) == false)
+        //         data.RoleIds.Add(roleId);
+        // }
+        // else
+        // {
+        //     data.RoleIds.Remove(roleId);
+        // }
     }
 }

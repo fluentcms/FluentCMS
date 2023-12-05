@@ -1,8 +1,6 @@
 ﻿@page "/admin/pages/{SiteId:guid}"
 @page "/admin/pages/{SiteId:guid}/{ParentId:guid}"
-@using FluentCMS.Api.Models
-@using Api.Models
-@inject HttpClient _httpClient
+@inject PageClient _pageClient
 @inject NavigationManager _navigationManager
 @inject IJSRuntime _jsRuntime;
 
@@ -46,17 +44,14 @@ else
     public Guid SiteId { get; set; }
     [Parameter]
     public Guid? ParentId { get; set; }
-    private IEnumerable<PageResponse>? pages;
+    private IEnumerable<UI.PageResponse>? pages;
 
     public async Task Fetch()
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync<PageSearchRequest>($"pages/GetAll/", new PageSearchRequest
-                {
-                    SiteId = SiteId
-                });
-            pages = (await response.Content.ReadFromJsonAsync<ApiResult<IEnumerable<PageResponse>>>())?.Data;
+            var response = await _pageClient.GetAllAsync(new UI.PageSearchRequest { SiteId = SiteId });
+            pages = response?.Data;
         }
         catch (Exception ex)
         {
@@ -77,7 +72,7 @@ else
         {
             try
             {
-                await _httpClient.DeleteAsync("pages/Delete/" + id);
+                await _pageClient.DeleteAsync(id);
                 await Fetch();
                 StateHasChanged();
             }

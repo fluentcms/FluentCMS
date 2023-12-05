@@ -22,7 +22,7 @@
     [CascadingParameter]
     public AppState? AppState { get; set; }
 
-    private Type? GetType(PluginResponse plugin)
+    private Type? GetType(UI.PluginResponse plugin)
     {
         var assembly = typeof(Section).Assembly;
 
@@ -32,10 +32,10 @@
         return assembly.DefinedTypes.FirstOrDefault(x => x.Name == plugin.Definition.ViewType);
     }
 
-    private IEnumerable<PluginResponse> GetPlugins()
+    private IEnumerable<UI.PluginResponse> GetPlugins()
     {
         if (AppState?.Page?.Plugins == null)
-            return Enumerable.Empty<PluginResponse>();
+            return Enumerable.Empty<UI.PluginResponse>();
 
         var result = AppState.Page.Plugins.Where(x =>
             x.Section.ToLower() == Name.ToLower());

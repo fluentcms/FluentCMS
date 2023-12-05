@@ -1,5 +1,5 @@
 ﻿@page "/admin/users"
-@inject HttpClient httpClient
+@inject UserClient UserClient
 
 <h3>Users</h3>
 <p>List of all users.</p>
@@ -36,13 +36,13 @@ else
 }
 
 @code {
-    private IEnumerable<UserDto>? users;
+    private IEnumerable<UI.UserDto>? users;
 
     private async Task LoadUsers()
     {
         try
         {
-            var response = await httpClient.GetFromJsonAsync<ApiPagingResult<UserDto>>("users/getAll");
+            var response = await UserClient.GetAllAsync();
             if (response != null)
             {
                 users = response.Data;
@@ -63,7 +63,7 @@ else
     {
         try
         {
-            var response = await httpClient.DeleteFromJsonAsync<ApiResult<bool>>("users/delete/" + id);
+            var response = await UserClient.DeleteAsync(id);
             if (response != null)
             {
                 await LoadUsers();
