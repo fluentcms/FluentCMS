@@ -20,15 +20,14 @@ public partial class Home
     public string? ViewMode { get; set; }
 
     private AppState? AppState { get; set; }
-    protected override Task OnParametersSetAsync()
+    protected override async Task OnParametersSetAsync()
     {
         if (AppState == null)
             AppState = new AppState();
 
         AppState.Host = Navigator.BaseUri.EndsWith("/") ? Navigator.BaseUri.Remove(Navigator.BaseUri.Length - 1) : Navigator.BaseUri;
         AppState.Uri = new Uri(Navigator.Uri);
-
-        var siteResult = http.GetFromJsonAsync<ApiResult<SiteResponse>>($"Site/GetByUrl?url={AppState.Host}").GetAwaiter().GetResult();
+        var siteResult = await SiteClient.GetByUrlAsync(AppState.Host);
         AppState.Site = siteResult?.Data;
         AppState.Layout = AppState.Site?.Layout;
 
@@ -38,7 +37,7 @@ public partial class Home
             query["siteId"] = AppState.Site.Id.ToString();
             query["path"] = AppState.Uri.LocalPath;
 
-            var pageResult = http.GetFromJsonAsync<ApiResult<PageResponse>>($"Page/GetByPath?{query}").GetAwaiter().GetResult();
+            var pageResult = await PageClient.GetByPathAsync(AppState.Site.Id, AppState.Uri.LocalPath);
             AppState.Page = pageResult?.Data;
             if (AppState.Page != null && AppState.Page.Layout != null)
                 AppState.Layout = AppState.Page.Layout;
@@ -47,7 +46,7 @@ public partial class Home
         AppState.PluginId = PluginId;
         AppState.ViewMode = ViewMode;
 
-        return base.OnParametersSetAsync();
+        await base.OnParametersSetAsync();
     }
 
     RenderFragment dynamicComponent() => builder =>
