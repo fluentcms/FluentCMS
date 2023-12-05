@@ -3,7 +3,7 @@ $prefix-content: $prefix + 'content';
 
 
 .#{$prefix-layout}-center {
-    @apply flex flex-col items-center justify-center px-6 pt-8 mx-auto bg-gray-50;
+    @apply px-6 pt-8 mx-auto bg-gray-50;
     @screen md {
         @apply h-screen mt-0;
     }
