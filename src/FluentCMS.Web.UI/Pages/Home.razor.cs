@@ -20,7 +20,6 @@ public partial class Home
     public string? ViewMode { get; set; }
 
     private AppState? AppState { get; set; }
-
     protected override Task OnParametersSetAsync()
     {
         if (AppState == null)
