@@ -1,6 +1,5 @@
-﻿@using FluentCMS.Services.Models
-@inject NavigationManager NavigationManager
-@inject HttpClient HttpClient;
+﻿@inject NavigationManager NavigationManager
+@inject AccountClient AccountClient;
 @inject IHttpContextAccessor HttpContextAccessor;
 <div class="flex justify-center">
     <Card>
@@ -27,24 +26,20 @@
 
 @code {
     [SupplyParameterFromForm]
-    public UserAuthenticateRequest UserAuthenticateRequest { get; set; } = new() { Username = "", Password = "" };
+    public UI.UserAuthenticateRequest UserAuthenticateRequest { get; set; } = new() { Username = "", Password = "" };
     public bool Remember { get; set; }
     public async Task Submit()
     {
         // TODO: NSwag generated Clients are Causing AntiForgeryToken related Errors
         // var authResult = await Client.AuthenticateAsync(UserAuthenticateRequest);
-        var result = await HttpClient.PostAsJsonAsync("/api/Account/Authenticate", UserAuthenticateRequest);
-        if (!result.IsSuccessStatusCode)
-        {
-            // TODO: Add error handling
-        }
-        var authResult = await result.Content.ReadFromJsonAsync<ApiResult<UserAuthenticateDto>>();
-        if (authResult!.Errors.Any())
+        var result = await AccountClient.AuthenticateAsync(UserAuthenticateRequest);
+        
+        if (result!.Errors.Any())
         {
             // TODO: Add error handling
             return;
         }
-        HttpContextAccessor.HttpContext!.Response.Cookies.Append("access-token", authResult.Data!.Token, new CookieOptions
+        HttpContextAccessor.HttpContext!.Response.Cookies.Append("access-token", result.Data!.Token, new CookieOptions
         {
             // TODO: Add Expiration to result
         });
