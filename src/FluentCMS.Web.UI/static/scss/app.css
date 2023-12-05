@@ -553,7 +553,7 @@ body.f-theme-dark {
   @apply flex items-center justify-center mb-8 text-2xl font-semibold;
 }
 .f-logo-text {
-  @apply self-center text-xl font-semibold sm:text-2xl whitespace-nowrap text-white;
+  @apply self-center text-xl font-semibold sm:text-2xl whitespace-nowrap;
 }
 .f-theme-dark .f-logo-text {
   @apply text-white;
