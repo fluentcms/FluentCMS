@@ -80,42 +80,42 @@ services.AddScoped(sp =>
 services.AddScoped(sp =>
 {
     var httpClient = sp.GetRequiredService<HttpClient>();
-    var baseUrl = httpClient.BaseAddress?.ToString();
+    var baseUrl = httpClient.BaseAddress?.ToString().Replace("/api","");
     return new HostClient(baseUrl, httpClient);
 });
 //FluentCMS.Web.UI.PageClient
 services.AddScoped(sp =>
 {
     var httpClient = sp.GetRequiredService<HttpClient>();
-    var baseUrl = httpClient.BaseAddress?.ToString();
+    var baseUrl = httpClient.BaseAddress?.ToString().Replace("/api", "");
     return new PageClient(baseUrl, httpClient);
 });
 //FluentCMS.Web.UI.PluginClient
 services.AddScoped(sp =>
 {
     var httpClient = sp.GetRequiredService<HttpClient>();
-    var baseUrl = httpClient.BaseAddress?.ToString();
+    var baseUrl = httpClient.BaseAddress?.ToString().Replace("/api", "");
     return new PluginClient(baseUrl, httpClient);
 });
 //FluentCMS.Web.UI.RoleClient
 services.AddScoped(sp =>
 {
     var httpClient = sp.GetRequiredService<HttpClient>();
-    var baseUrl = httpClient.BaseAddress?.ToString();
+    var baseUrl = httpClient.BaseAddress?.ToString().Replace("/api", "");
     return new RoleClient(baseUrl, httpClient);
 });
 //FluentCMS.Web.UI.SiteClient
 services.AddScoped(sp =>
 {
     var httpClient = sp.GetRequiredService<HttpClient>();
-    var baseUrl = httpClient.BaseAddress?.ToString();
+    var baseUrl = httpClient.BaseAddress?.ToString().Replace("/api", "");
     return new SiteClient(baseUrl, httpClient);
 });
 //FluentCMS.Web.UI.UserClient
 services.AddScoped(sp =>
 {
     var httpClient = sp.GetRequiredService<HttpClient>();
-    var baseUrl = httpClient.BaseAddress?.ToString();
+    var baseUrl = httpClient.BaseAddress?.ToString().Replace("/api", "");
     return new UserClient(baseUrl, httpClient);
 });
 #endregion
