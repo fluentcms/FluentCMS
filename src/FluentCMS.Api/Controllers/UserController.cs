@@ -17,19 +17,19 @@ public class UserController(IMapper mapper, IUserService userService, IRoleServi
     }
 
     [HttpPost]
-    public async Task<IApiResult<RoleDto>> Create(RoleCreateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<UserDto>> Create(UserCreateRequest request, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 
     [HttpGet("{id}")]
-    public async Task<IApiResult<RoleDto>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<UserDto>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 
     [HttpPut]
-    public async Task<IApiResult<RoleDto>> Update(RoleUpdateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<UserDto>> Update(UserUpdateRequest request, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
