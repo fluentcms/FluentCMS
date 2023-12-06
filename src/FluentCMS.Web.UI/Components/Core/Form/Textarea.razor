@@ -1,21 +1,26 @@
-<textarea class="f-textarea" id="@Id" rows="@Rows" placeholder="@Placeholder" required=@Required @attributes=@RestProps @bind="@Value" />
+@inherits InputBase<string?>
+<textarea class="f-textarea" id="@Id" rows="@Rows" placeholder="@Placeholder" required=@Required @attributes="AdditionalAttributes" @bind="CurrentValue" />
 
 @code {
     [Parameter]
-    public string Rows {get; set;} = "5";
+    public string Rows { get; set; } = "5";
 
     [Parameter]
-    public string Id {get; set;}
+    public string Id { get; set; }
 
     [Parameter]
-    public string Placeholder {get; set;}
+    public string Placeholder { get; set; }
 
     [Parameter]
-    public bool Required {get; set;} = false;
+    public bool Required { get; set; } = false;
 
-    [Parameter]
-    public string Value {get; set;}
+    protected override bool TryParseValueFromString(string value, out string result, out string validationErrorMessage)
+    {
+        result = value;
+        validationErrorMessage = null;
+        return true;
+    }
 
-    [Parameter(CaptureUnmatchedValues =true)]
-    public Dictionary<string, object> RestProps {get; set;}
+    // [Parameter(CaptureUnmatchedValues = true)]
+    // public Dictionary<string, object> RestProps { get; set; }
 }

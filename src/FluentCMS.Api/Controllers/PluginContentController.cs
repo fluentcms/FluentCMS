@@ -32,4 +32,12 @@ public class PluginContentController(IPluginContentService pluginContentService)
         await pluginContentService.Delete(request.SiteId, contentType, request.Id, cancellationToken);
         return new BooleanResponse(true);
     }
+
+    [HttpGet("{siteId}/{pluginId}")]
+    public async Task<IApiPagingResult<PluginContent>> GetByPluginId([FromRoute] string contentType, Guid siteId, Guid pluginId, CancellationToken cancellationToken = default)
+    {
+        var contents = await pluginContentService.GetByPluginId(siteId, contentType, pluginId, cancellationToken);
+        return new ApiPagingResult<PluginContent>(contents);
+    }
+
 }
