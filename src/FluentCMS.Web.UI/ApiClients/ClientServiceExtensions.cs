@@ -8,7 +8,6 @@ public static class ClientServiceExtensions
     public static IServiceCollection AddApiClients(this IServiceCollection services)
     {
         services.AddHttpClient();
-        services.AddScoped<ApiHelper>();
         var assembly = Assembly.GetExecutingAssembly();
         var baseType = typeof(BaseClient);
         

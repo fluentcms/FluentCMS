@@ -8,7 +8,7 @@ public class BasePage : ComponentBase, IDisposable
     [Inject]
     protected IServiceProvider ServiceProvider { get; set; } = default!;
 
-    protected CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
+    protected CancellationTokenSource CancellationTokenSource = new();
     protected CancellationToken CancellationToken => CancellationTokenSource.Token;
 
     protected TApiClient GetClient<TApiClient>() where TApiClient : BaseClient
