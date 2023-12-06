@@ -1,11 +1,11 @@
-using FluentCMS.Api.Models;
+using FluentCMS.Web.UI.ApiClients;
 using HtmlAgilityPack;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using System.Text.RegularExpressions;
-using System.Web;
 
 namespace FluentCMS.Web.UI.Pages;
+
 public partial class Home
 {
     public const string ATTRIBUTE = "FluentCMS";
@@ -21,34 +21,26 @@ public partial class Home
 
     private AppState? AppState { get; set; }
 
-    protected override Task OnParametersSetAsync()
+    protected override async Task OnParametersSetAsync()
     {
         if (AppState == null)
             AppState = new AppState();
 
         AppState.Host = Navigator.BaseUri.EndsWith("/") ? Navigator.BaseUri.Remove(Navigator.BaseUri.Length - 1) : Navigator.BaseUri;
         AppState.Uri = new Uri(Navigator.Uri);
-
-        var siteResult = http.GetFromJsonAsync<ApiResult<SiteResponse>>($"Site/GetByUrl?url={AppState.Host}").GetAwaiter().GetResult();
-        AppState.Site = siteResult?.Data;
+        AppState.Site = await GetClient<SiteClient>().GetByUrl(AppState.Host, CancellationToken);
         AppState.Layout = AppState.Site?.Layout;
 
         if (AppState.Site != null)
-        {
-            var query = HttpUtility.ParseQueryString(string.Empty);
-            query["siteId"] = AppState.Site.Id.ToString();
-            query["path"] = AppState.Uri.LocalPath;
+            AppState.Page = await GetClient<PageClient>().GetByPath(AppState.Site.Id, AppState.Uri.LocalPath, CancellationToken);
 
-            var pageResult = http.GetFromJsonAsync<ApiResult<PageResponse>>($"Page/GetByPath?{query}").GetAwaiter().GetResult();
-            AppState.Page = pageResult?.Data;
-            if (AppState.Page != null && AppState.Page.Layout != null)
-                AppState.Layout = AppState.Page.Layout;
-        }
+        if (AppState.Page != null && AppState.Page.Layout != null)
+            AppState.Layout = AppState.Page.Layout;
 
         AppState.PluginId = PluginId;
         AppState.ViewMode = ViewMode;
 
-        return base.OnParametersSetAsync();
+        await base.OnParametersSetAsync();
     }
 
     RenderFragment dynamicComponent() => builder =>
@@ -69,9 +61,9 @@ public partial class Home
         foreach (var child in children)
         {
             // render Inner Content
-            if(child.NodeType == HtmlNodeType.Text)
+            if (child.NodeType == HtmlNodeType.Text)
             {
-                builder.AddContent(0,child.InnerHtml);
+                builder.AddContent(0, child.InnerHtml);
                 continue;
             }
             var isDynamicNode = child.Attributes.Any(x => x.Name.Equals(ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase));
@@ -121,7 +113,7 @@ public partial class Home
     {
 
         // traverse through the document
-       return doc.ChildNodes.Where(n => n.NodeType == HtmlNodeType.Element);
+        return doc.ChildNodes.Where(n => n.NodeType == HtmlNodeType.Element);
     }
 
     private static Type? GetType(string typeName)
