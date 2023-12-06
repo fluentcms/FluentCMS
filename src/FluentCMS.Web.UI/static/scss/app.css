@@ -316,7 +316,7 @@ body.f-theme-dark {
 }
 
 .f-layout-center {
-  @apply flex flex-col items-center justify-center px-6 pt-8 mx-auto bg-gray-50;
+  @apply px-6 pt-8 mx-auto bg-gray-50;
 }
 @screen md {
   .f-layout-center {
