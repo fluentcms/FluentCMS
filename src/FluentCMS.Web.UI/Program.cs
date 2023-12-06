@@ -60,7 +60,6 @@ if (app.Environment.IsDevelopment())
 {
     app.Services.ResetMongoDb();
     app.Services.LoadInitialDataFrom(@"./DefaultData/");
-
     app.UseDeveloperExceptionPage();
 }
 

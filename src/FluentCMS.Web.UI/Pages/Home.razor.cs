@@ -21,7 +21,7 @@ public partial class Home
 
     private AppState? AppState { get; set; }
 
-    protected override Task OnParametersSetAsync()
+    protected override async Task OnParametersSetAsync()
     {
         if (AppState == null)
             AppState = new AppState();
@@ -29,7 +29,7 @@ public partial class Home
         AppState.Host = Navigator.BaseUri.EndsWith("/") ? Navigator.BaseUri.Remove(Navigator.BaseUri.Length - 1) : Navigator.BaseUri;
         AppState.Uri = new Uri(Navigator.Uri);
 
-        var siteResult = http.GetFromJsonAsync<ApiResult<SiteResponse>>($"Site/GetByUrl?url={AppState.Host}").GetAwaiter().GetResult();
+        var siteResult = await http.GetFromJsonAsync<ApiResult<SiteResponse>>($"Site/GetByUrl?url={AppState.Host}");
         AppState.Site = siteResult?.Data;
         AppState.Layout = AppState.Site?.Layout;
 
@@ -39,7 +39,7 @@ public partial class Home
             query["siteId"] = AppState.Site.Id.ToString();
             query["path"] = AppState.Uri.LocalPath;
 
-            var pageResult = http.GetFromJsonAsync<ApiResult<PageResponse>>($"Page/GetByPath?{query}").GetAwaiter().GetResult();
+            var pageResult = await http.GetFromJsonAsync<ApiResult<PageResponse>>($"Page/GetByPath?{query}");
             AppState.Page = pageResult?.Data;
             if (AppState.Page != null && AppState.Page.Layout != null)
                 AppState.Layout = AppState.Page.Layout;
@@ -48,7 +48,7 @@ public partial class Home
         AppState.PluginId = PluginId;
         AppState.ViewMode = ViewMode;
 
-        return base.OnParametersSetAsync();
+        await base.OnParametersSetAsync();
     }
 
     RenderFragment dynamicComponent() => builder =>
@@ -69,9 +69,9 @@ public partial class Home
         foreach (var child in children)
         {
             // render Inner Content
-            if(child.NodeType == HtmlNodeType.Text)
+            if (child.NodeType == HtmlNodeType.Text)
             {
-                builder.AddContent(0,child.InnerHtml);
+                builder.AddContent(0, child.InnerHtml);
                 continue;
             }
             var isDynamicNode = child.Attributes.Any(x => x.Name.Equals(ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase));
@@ -121,7 +121,7 @@ public partial class Home
     {
 
         // traverse through the document
-       return doc.ChildNodes.Where(n => n.NodeType == HtmlNodeType.Element);
+        return doc.ChildNodes.Where(n => n.NodeType == HtmlNodeType.Element);
     }
 
     private static Type? GetType(string typeName)
