@@ -30,8 +30,6 @@ services.AddControllers().AddJsonOptions(options =>
     //options.JsonSerializerOptions.Converters.Add(new DictionaryStringObjectJsonConverter());
 });
 
-services.AddRequestValidation();
-
 services.AddMappingProfiles();
 
 services.AddApiDocumentation();

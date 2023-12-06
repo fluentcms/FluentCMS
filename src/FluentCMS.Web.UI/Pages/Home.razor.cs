@@ -1,11 +1,11 @@
-using FluentCMS.Api.Models;
+using FluentCMS.Web.UI.ApiClients;
 using HtmlAgilityPack;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using System.Text.RegularExpressions;
-using System.Web;
 
 namespace FluentCMS.Web.UI.Pages;
+
 public partial class Home
 {
     public const string ATTRIBUTE = "FluentCMS";
@@ -28,22 +28,14 @@ public partial class Home
 
         AppState.Host = Navigator.BaseUri.EndsWith("/") ? Navigator.BaseUri.Remove(Navigator.BaseUri.Length - 1) : Navigator.BaseUri;
         AppState.Uri = new Uri(Navigator.Uri);
-
-        var siteResult = await http.GetFromJsonAsync<ApiResult<SiteResponse>>($"Site/GetByUrl?url={AppState.Host}");
-        AppState.Site = siteResult?.Data;
+        AppState.Site = await GetClient<SiteClient>().GetByUrl(AppState.Host, CancellationToken);
         AppState.Layout = AppState.Site?.Layout;
 
         if (AppState.Site != null)
-        {
-            var query = HttpUtility.ParseQueryString(string.Empty);
-            query["siteId"] = AppState.Site.Id.ToString();
-            query["path"] = AppState.Uri.LocalPath;
+            AppState.Page = await GetClient<PageClient>().GetByPath(AppState.Site.Id, AppState.Uri.LocalPath, CancellationToken);
 
-            var pageResult = await http.GetFromJsonAsync<ApiResult<PageResponse>>($"Page/GetByPath?{query}");
-            AppState.Page = pageResult?.Data;
-            if (AppState.Page != null && AppState.Page.Layout != null)
-                AppState.Layout = AppState.Page.Layout;
-        }
+        if (AppState.Page != null && AppState.Page.Layout != null)
+            AppState.Layout = AppState.Page.Layout;
 
         AppState.PluginId = PluginId;
         AppState.ViewMode = ViewMode;
