@@ -1,0 +1,25 @@
+﻿
+<div class="f-tab-panel @(Index == Parent.ActiveTabIndex ? "f-tab-panel-active": "")" role="tabpanel" aria-labelledby="tab-@Index">
+    @ChildContent
+</div>
+
+@code {
+    private int Index = 0;
+
+    [CascadingParameter]
+    public Tabs Parent { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    [Parameter]
+    public string Name { get; set; }
+
+    [Parameter]
+    public bool Active { get; set; } = false;
+
+    protected override void OnInitialized()
+    {
+        Index = Parent.AddTab(Name);
+    }
+}
