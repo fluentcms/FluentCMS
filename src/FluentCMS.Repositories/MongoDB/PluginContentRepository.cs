@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Entities;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace FluentCMS.Repositories.MongoDB;
@@ -11,16 +12,19 @@ public class PluginContentRepository(
 {
     public async Task<IEnumerable<PluginContent>> GetByPluginId(Guid siteId, string contentType, Guid pluginId, CancellationToken cancellationToken = default)
     {
-        var filter = GetSiteIdFilter(siteId) & GetPluginIdFilter(pluginId);
+        var bsonCollection = mongoDbContext.Database.GetCollection<BsonDocument>(contentType);
+        var bsonFilter = Builders<BsonDocument>.Filter.Empty;
+        var bsonDocs = await bsonCollection.FindAsync(bsonFilter, null, cancellationToken);
+        var bsonDicts = await bsonDocs.ToListAsync(cancellationToken);
 
-        var dictionaries = await GetCollection(contentType).FindAsync(filter, null, cancellationToken);
-
-        return await Task.FromResult(dictionaries.ToEnumerable(cancellationToken: cancellationToken).Select(dict =>
+        var pluginContents = new List<PluginContent>();
+        foreach (var doc in bsonDicts)
         {
+            var dict = doc.ToDictionary();
             ReverseMongoDBId(dict);
-            return dict.ToContent<PluginContent>();
-        }));
-
+            pluginContents.Add(dict.ToContent<PluginContent>());
+        }
+        return pluginContents;
     }
 
     protected static FilterDefinition<Dictionary<string, object?>> GetPluginIdFilter(Guid pluginId)

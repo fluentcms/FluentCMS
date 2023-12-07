@@ -1,17 +1,11 @@
 ﻿@using System.Text.Json
 @using System.Text
 @using FluentCMS.Api.Controllers
+@using System.Web
 @inject HttpClient http
 
 <div style="background-color:lightblue;">
-    <pre>
-        @(JsonSerializer.Serialize(result, new JsonSerializerOptions() { WriteIndented = true }))
-    </pre>
-    <pre>
-        @((MarkupString)(resultPlugin?.Data?["Content"]?.ToString() ?? string.Empty))
-    <hr />
-        @(JsonSerializer.Serialize(resultPlugin, new JsonSerializerOptions() { WriteIndented = true }))
-    </pre>
+    @((MarkupString)textHtmlContent)
 </div>
 
 @code {
@@ -21,61 +15,15 @@
     [CascadingParameter]
     public AppState AppState { get; set; } = default!;
 
-    private ApiResult<Content>? result;
-    private ApiResult<PluginContent>? resultPlugin;
+    private string textHtmlContent => PluginContent?["Content"]?.ToString()??"";
+    public PluginContent? PluginContent { get; set; }
 
-    protected override async Task OnInitializedAsync()
+    override protected async Task OnInitializedAsync()
     {
-        var content = new Content
-        {
-            { "SiteId", AppState?.Site?.Id },
-            { "Int", 123 },
-            { "Boolean", true},
-            { "DateTime", DateTime.Now},
-            { "Decimal", 123.45},
-            { "Double", 123.45},
-            { "Float", 123.45},
-            { "Long", 123},
-            { "Short", 123},
-            { "String", "Hello World"},
-            { "TimeSpan", TimeSpan.FromDays(1)},
-            { "Uri", new Uri("https://www.google.com")},
-            { "Version", new Version(1,2,3,4)},
-            { "Array", new string[] { "Hello", "World" } },
-            { "List", new List<string> { "Hello", "World" } },
-            // { "Dictionary", new Dictionary<string, object?> { { "Hello", "World" } } },
-            // { "Object", new { Hello = "World" } },
-            { "NullValue", null }
-        };
 
-        var pluginContent = new PluginContent
-        {
-            { "SiteId", AppState?.Site?.Id },
-            { "PluginId", Plugin?.Id },
-            {
-                "Content",@"
-                <div>
-                    <h1>Hello World</h1>
-                </div>"
-            }
-        };
-
-        var serializerOptions = new JsonSerializerOptions();
-
-        var response = await http.PostAsJsonAsync("Content/Dummy/Create", content, serializerOptions);
-        result = await response.Content.ReadFromJsonAsync<ApiResult<Content>>();
-
-        var pluginResponse = await http.PostAsJsonAsync("PluginContent/TextHtml/Create", pluginContent, serializerOptions);
-        resultPlugin = await pluginResponse.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
+        var resContent = await http.GetFromJsonAsync<ApiPagingResult<PluginContent>>($"PluginContent/TextHtml/GetByPluginId/{AppState?.Site?.Id:D}/{Plugin?.Id:D}");
+        PluginContent = resContent?.Data?.FirstOrDefault();
 
         await base.OnInitializedAsync();
     }
-
-    public static Task<HttpResponseMessage> PostJsonAsync(HttpClient httpClient, string url, object body)
-    {
-        var bodyJson = JsonSerializer.Serialize(body);
-        var stringContent = new StringContent(bodyJson, Encoding.UTF8, "application/json");
-        return httpClient.PostAsync(url, stringContent);
-    }
-
 }

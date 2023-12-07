@@ -30,8 +30,6 @@ services.AddControllers().AddJsonOptions(options =>
     //options.JsonSerializerOptions.Converters.Add(new DictionaryStringObjectJsonConverter());
 });
 
-services.AddRequestValidation();
-
 services.AddMappingProfiles();
 
 services.AddApiDocumentation();
@@ -60,7 +58,6 @@ if (app.Environment.IsDevelopment())
 {
     app.Services.ResetMongoDb();
     app.Services.LoadInitialDataFrom(@"./DefaultData/");
-
     app.UseDeveloperExceptionPage();
 }
 
