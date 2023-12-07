@@ -7,6 +7,14 @@
         "Password": "Passw0rd!",
         "Email": "superadmin@example.com"
     },
+    "Layouts": [
+        {
+            "Name": "PanelLayout"
+        },
+        {
+            "Name": "AuthLayout"
+        }
+    ],
     "PluginDefinitions": [
         {
             "Name": "Counter",
@@ -30,26 +38,74 @@
     "Site": {
         "Name": "My First Site",
         "Description": "This is my first site",
-        "Urls": [ "https://localhost:7164" ]
+        "Urls": [ "https://localhost:7164" ],
+        "Layout": "PanelLayout"
     },
     "Pages": [
         {
             "Title": "Home",
-            "Description": "This is my home page",
             "Path": "/",
-            "Order": 0
+            "Order": 0,
+            "Layout":  null,
+            "Plugins": [
+                {
+                    "DefName": "HelloWorld",
+                    "Section": "Main",
+                    "Order": 0
+                }
+            ]
         },
         {
-            "Title": "About me",
-            "Description": "This is about me page",
-            "Path": "/about-me",
-            "Order": 1
+            "Title": "Login",
+            "Path": "/login",
+            "Order": 1000,
+            "Layout": "AuthLayout",
+            "Plugins": [
+                {
+                    "DefName": "HelloWorld",
+                    "Section": "Main",
+                    "Order": 0
+                }
+            ]
         },
         {
-            "Title": "Contact me",
-            "Description": "This is contact me page",
-            "Path": "/contact",
-            "Order": 2
+            "Title": "Register",
+            "Path": "/register",
+            "Order": 1001,
+            "Layout": "AuthLayout",
+            "Plugins": [
+                {
+                    "DefName": "HelloWorld",
+                    "Section": "Main",
+                    "Order": 0
+                }
+            ]
+        },
+        {
+            "Title": "Reset Password",
+            "Path": "/reset-password",
+            "Order": 1002,
+            "Layout": "AuthLayout",
+            "Plugins": [
+                {
+                    "DefName": "HelloWorld",
+                    "Section": "Main",
+                    "Order": 0
+                }
+            ]
+        },
+        {
+            "Title": "Forgot Password",
+            "Path": "/gorgot-password",
+            "Order": 1003,
+            "Layout": "AuthLayout",
+            "Plugins": [
+                {
+                    "DefName": "HelloWorld",
+                    "Section": "Main",
+                    "Order": 0
+                }
+            ]
         }
     ]
 }
