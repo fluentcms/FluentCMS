@@ -1,0 +1,24 @@
+﻿@page "/KitchenSink"
+@rendermode RenderMode.InteractiveServer
+@using System.Text.Json
+<h3>KitchenSink</h3>
+
+<EditForm Model="Model" OnValidSubmit="Submit" FormName="form">
+    <Input @bind-Value="Model.Name" Disabled="false"></Input>
+    <button type="submit">Submit</button>
+</EditForm>
+<pre>
+    @JsonSerializer.Serialize(Model)
+</pre>
+
+@code {
+    public DummyModel Model { get; set; } = new() { Name = "Parsa"};
+    public class DummyModel
+    {
+        public string Name { get; set; }
+    }
+    public void Submit()
+    {
+        Console.WriteLine(Model.Name);
+    }
+}
