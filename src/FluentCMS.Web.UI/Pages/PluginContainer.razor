@@ -1,5 +1,5 @@
 ﻿<div class="f-plugin-container">
-    @if (string.IsNullOrEmpty(AppState?.ViewMode))
+    @if (string.IsNullOrEmpty(AppState?.ViewMode) && !string.IsNullOrEmpty(Plugin.Definition.EditType))
     {
         <div class="f-plugin-container-header">
             <a href="@EditUrl">Edit</a>

@@ -64,8 +64,9 @@ public class DefaultData
         foreach (var page in Pages)
         {
             var _page = page.GetPage(_site.Id);
-            _page.LayoutId = string.IsNullOrEmpty(page.Layout) ? GetLayout(Site.Layout).Id : GetLayout(page.Layout).Id;
-            pages.Add(page.GetPage(_site.Id));
+            if (!string.IsNullOrEmpty(page.Layout))
+                _page.LayoutId = GetLayout(page.Layout).Id;
+            pages.Add(_page);
         }
 
         return pages;
