@@ -10,19 +10,13 @@
 <PageTitle>@AppState?.Page?.Title</PageTitle>
 
 <HeadContent>
-    @((MarkupString)$"<!-- Begin {@AppState?.Page?.Title} Page Header -->")
     @if (AppState?.Layout != null)
     {
         @((MarkupString)AppState.Layout.Head)
     }
-    @((MarkupString)$"<!-- End {@AppState?.Page?.Title} Page Header -->")
 </HeadContent>
 
-@((MarkupString)$"<!-- Begin {@AppState?.Page?.Title} Page Content -->")
 <CascadingValue Value="@AppState">
     @* @dynamicComponent() *@
     <Section Name="main" />
 </CascadingValue>
-@((MarkupString)$"<!-- End {@AppState?.Page?.Title} Page Content -->")
-
-
