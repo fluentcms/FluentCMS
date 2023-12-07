@@ -1,0 +1,35 @@
+<label class="f-form-check-wrapper">
+    <input name=@Name type="radio" class="f-radio" @disabled=@Disabled @attributes=@RestProps>
+    <span class="f-form-check-text">
+        @if (ChildContent != null)
+        {
+            @ChildContent
+        }
+        else
+        {
+            @Text
+        }
+    </span>
+</label>
+
+@code {
+
+    [Parameter]
+    public string Name { get; set; } = default!;
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    [Parameter]
+    public string Text { get; set; } = "";
+
+    [Parameter]
+    public bool Checked { get; set; } = false;
+
+    [Parameter]
+    public bool Disabled { get; set; } = false;
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object> RestProps { get; set; }
+
+}

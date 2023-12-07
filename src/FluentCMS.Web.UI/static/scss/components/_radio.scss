@@ -1,0 +1,17 @@
+$prefix-radio: $prefix + "radio";
+
+.#{$prefix-radio} {
+    @apply w-4 h-4 text-blue-600 bg-gray-100 border-gray-300;
+
+    &:focus {
+        @apply ring-blue-500 ring-2;
+    }
+
+    .#{$prefix-theme-dark} & {
+        @apply ring-offset-gray-800 bg-gray-700 border-gray-600;
+
+        &:focus {
+            @apply ring-blue-600;
+        }
+    }
+}

@@ -29,11 +29,34 @@
     <div class="py-8">
         <h2 class="font-bold text-2xl">Checkbox</h2>
         <div class="py-4 flex flex-col gap-4">
-            <Checkbox>Child Content</Checkbox>
-            <Checkbox Text="Text" />
-            <Checkbox Checked Text="Checked"></Checkbox>
-            <Checkbox Checked Disbled Text="Checked Disaled"></Checkbox>
-            <Checkbox Disabled Text="Disaled"></Checkbox>
+            <Checkbox Value="first">First</Checkbox>
+            <Checkbox Value="second" Text="Second" />
+            <Checkbox Checked Value="third" Text="Third"></Checkbox>
+            <Checkbox Disabled Value="fourth" Text="Fourth"></Checkbox>
+        </div>
+        <div>
+            Checkbox Value: <span class="font-bold">@CheckboxValue</span>
+        </div>
+    </div>
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Radio</h2>
+        <div class="py-4 flex flex-col gap-4">
+            <Radio Name="group-1">Child Content</Radio>
+            <Radio Name="group-1" Text="Text" />
+            <Radio Name="group-1" Checked Text="Checked"></Radio>
+            <Radio Name="group-1" Checked Disbled Text="Checked Disabled"></Radio>
+            <Radio Name="group-1" Disabled Text="Disabled"></Radio>
+        </div>
+        <div class="py-4 flex flex-col gap-4">
+            <Radio Name="group-2">Child Content</Radio>
+            <Radio Name="group-2" Text="Text" />
+            <Radio Name="group-2" Checked Text="Checked"></Radio>
+            <Radio Name="group-2" Checked Disbled Text="Checked Disabled"></Radio>
+            <Radio Name="group-2" Disabled Text="Disabled"></Radio>
         </div>
     </div>
 </Page>
+
+@code {
+    private string CheckboxValue;
+}

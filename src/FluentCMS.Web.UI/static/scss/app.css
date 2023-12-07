@@ -292,8 +292,8 @@ body.f-theme-dark {
   @apply text-gray-200;
 }
 
-.f-form-check {
-  @apply ml-3 text-sm;
+.f-form-check-wrapper {
+  @apply flex items-center gap-3;
 }
 .f-form-check-text {
   @apply font-medium text-gray-900;
@@ -413,6 +413,19 @@ body.f-theme-dark {
 }
 .f-icon * {
   stroke-width: 1.5px;
+}
+
+.f-radio {
+  @apply w-4 h-4 text-blue-600 bg-gray-100 border-gray-300;
+}
+.f-radio:focus {
+  @apply ring-blue-500 ring-2;
+}
+.f-theme-dark .f-radio {
+  @apply ring-offset-gray-800 bg-gray-700 border-gray-600;
+}
+.f-theme-dark .f-radio:focus {
+  @apply ring-blue-600;
 }
 
 .f-table-parent {
