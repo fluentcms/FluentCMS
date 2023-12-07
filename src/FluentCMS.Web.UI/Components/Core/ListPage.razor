@@ -1,6 +1,6 @@
 @inherits Page
 
-<Page Class="@Class" @attributes=@RestProps>
+<Page Class=@GetClasses() @attributes="@AdditionalAttributes">
     <PageHeader Title=@Title>
         <PageActions>
             @HeaderActions

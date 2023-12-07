@@ -1,5 +1,5 @@
 @inherits BaseComponent
 
-<tr class="f-table-row @Class" @attributes=@RestProps>
+<tr class=@GetClasses() @attributes="@AdditionalAttributes">
     @ChildContent
 </tr>

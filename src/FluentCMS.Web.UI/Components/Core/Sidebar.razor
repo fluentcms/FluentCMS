@@ -1,8 +1,13 @@
 @inherits BaseComponent
 
-<aside id="default-sidebar" aria-label="Sidebar" class="f-sidebar -translate-x-full @Class" @attributes=@RestProps>
+<aside id="default-sidebar" aria-label="Sidebar" class=@GetClasses() @attributes="@AdditionalAttributes">
     <div class="f-sidebar-body">
         @ChildContent
 
     </div>
 </aside>
+
+@code {
+    [Parameter]
+    public string Class {get; set;} = "-translate-x-full";
+}

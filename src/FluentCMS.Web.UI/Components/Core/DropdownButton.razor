@@ -7,7 +7,7 @@
 	</svg>
 </Button>
 
-<div id="dropdown" class="f-dropdown hidden @Class" @attributes="@RestProps">
+<div id="dropdown" class=@GetClasses() @attributes="@AdditionalAttributes">
 	<ul class="f-dropdown-menu" aria-labelledby="dropdownDefaultButton">
 		@ChildContent
 	</ul>
@@ -17,4 +17,6 @@
 	[Parameter]
 	public string Text { get; set; }
 
+	[Parameter]
+	public string Class {get; set;} = "hidden";
 }

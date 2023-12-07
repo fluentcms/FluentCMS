@@ -3,14 +3,14 @@
 @if (Href != String.Empty)
 {
 
-    <a class="f-button f-button-color-@Color @Class" disabled=@Disabled href=@Href type="@Type" @attributes="RestProps">
+    <a class=@GetClasses() disabled=@Disabled href=@Href type="@Type" @attributes="AdditionalAttributes">
         @ChildContent
     </a>
 
 }
 else
 {
-    <button class="f-button f-button-color-@Color" disabled=@Disabled type="@Type" @attributes="RestProps">
+    <button class=@GetClasses() @disabled=@Disabled type="@Type" @attributes="AdditionalAttributes">
         @ChildContent
     </button>
 }

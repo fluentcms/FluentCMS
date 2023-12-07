@@ -1,11 +1,12 @@
 @inherits BaseComponent
 
-<th class=@("f-table-cell" + (SmallWidth ? " f-table-cell-small" : "") + Class) @attributes=@RestProps>
+<th class=@GetClasses() @attributes="@AdditionalAttributes">
     @ChildContent
 </th>
 
 @code {
 
     [Parameter]
+    [CssProperty]
     public bool SmallWidth { get; set; }
 }

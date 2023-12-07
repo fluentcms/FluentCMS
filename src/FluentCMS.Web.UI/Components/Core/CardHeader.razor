@@ -1,6 +1,6 @@
 @inherits BaseComponent
 
-<div class="f-card-header @Class" @attributes=@RestProps>
+<div class=@GetClasses() @attributes="@AdditionalAttributes">
     @if (Title != String.Empty)
     {
         <h5 class="f-card-title">

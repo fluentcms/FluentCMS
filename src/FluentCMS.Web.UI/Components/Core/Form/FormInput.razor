@@ -1,7 +1,7 @@
 @inherits Input
 
-<FormField Class="@Class" Id=@Id Label=@Label>
-    <Input Type=@Type Placeholder=@Placeholder Id=@Id Required=@Required @attributes=@RestProps />
+<FormField Class=@GetClasses() Id=@Id Label=@Label>
+    <Input Type=@Type Placeholder=@Placeholder Id=@Id Required=@Required @attributes="@AdditionalAttributes" />
 </FormField>
 
 @code {

@@ -2,7 +2,7 @@
 
 @* TODO: Remove ChildContent prop *@
 
-<div class="f-page-header @Class" @attributes=@RestProps>
+<div class=@GetClasses() @attributes="@AdditionalAttributes">
     <h2 class="f-page-title">@Title</h2>
     <div class="f-page-actions">
         <ButtonGroup>

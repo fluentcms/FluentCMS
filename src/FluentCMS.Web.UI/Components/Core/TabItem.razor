@@ -1,6 +1,6 @@
 @inherits BaseComponent
 
-<li class="me-2 @Class" @attributes=@RestProps>
+<li class="me-2 @GetClasses()" @attributes="@AdditionalAttributes">
     @if (Active)
     {
         <a href="#"

@@ -1,6 +1,6 @@
 @inherits BaseComponent
 @* class="f-base-component f-card f-card-color-primary" *@
-<div @attributes=@Attributes>
+<div class=@GetClasses() @attributes=@AdditionalAttributes>
     @if (Title != String.Empty)
     {
         <CardHeader Title="@Title" />

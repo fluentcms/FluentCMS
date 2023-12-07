@@ -1,6 +1,6 @@
 @inherits BaseComponent
 
-<div class="f-form-field @Class" @attributes=@RestProps>
+<div class=@GetClasses() @attributes="@AdditionalAttributes">
     @if (Label != String.Empty)
     {
         <Label For="@Id">@Label</Label>

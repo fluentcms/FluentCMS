@@ -1,10 +1,12 @@
 @inherits BaseComponent
 
-<div class=@("f-button-group" + (NoWrap ? " f-button-group-no-wrap" : "") + Class) @attributes="RestProps">
+<div class=@GetClasses() @attributes="AdditionalAttributes">
     @ChildContent
 </div>
 
 @code {
-        [Parameter]
+
+    [Parameter]
+    [CssProperty]
     public bool NoWrap {get; set;} = false;
 }

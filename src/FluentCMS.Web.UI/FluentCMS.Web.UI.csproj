@@ -10,4 +10,8 @@
     <ProjectReference Include="..\FluentCMS.Api\FluentCMS.Api.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="CaseExtensions" Version="1.1.0" />
+  </ItemGroup>
+
 </Project>
