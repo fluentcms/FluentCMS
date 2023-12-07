@@ -11,4 +11,6 @@ public class AppState
     public string? Route { get; set; }
     public Uri? Uri { get; set; }
     public string Host { get; set; } = default!;
+    public string? ViewMode { get; set; } = default!;
+    public Guid? PluginId { get; set; }
 }

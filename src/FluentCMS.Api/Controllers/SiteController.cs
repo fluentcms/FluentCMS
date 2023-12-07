@@ -14,7 +14,7 @@ public class SiteController(
 {
 
     [HttpGet]
-    public async Task<IApiPagingResult<SiteResponse>> GetAll([FromQuery] SiteSearchRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<SiteResponse>> GetAll(CancellationToken cancellationToken = default)
     {
         var sites = await siteService.GetAll(cancellationToken);
         var siteResponses = mapper.Map<List<SiteResponse>>(sites);
@@ -66,8 +66,8 @@ public class SiteController(
         return new ApiResult<SiteResponse>(siteResponse);
     }
 
-    [HttpDelete("{id}")]
-    public async Task<IApiResult> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    [HttpDelete]
+    public async Task<IApiResult> Delete([FromQuery] Guid id, CancellationToken cancellationToken = default)
     {
         // TODO: we should avoid calling GetById twice, first one is in the service, te other one in here
         var site = await siteService.GetById(id);

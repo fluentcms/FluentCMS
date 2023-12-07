@@ -1,5 +1,95 @@
-﻿<h3>Edit</h3>
+﻿@using System.Text.Json
+@using System.Text
+@inject HttpClient http
+@inject NavigationManager NavigationManager
+
+@if(PluginContent != null)
+{
+    <EditForm EditContext="EditContext" OnValidSubmit="OnSubmit">
+        <FormField Label="Html Content:">
+            <Textarea id="textHtmlContent" Required rows="5" placeholder="Enter you TextHtml content here" @bind-Value='textHtmlContent'></Textarea>
+        </FormField>
+        <br />
+        <Button Type="submit">Update</Button>
+        <NavLink href="@BackLink">Go Back</NavLink>
+    </EditForm>
+}
+else
+{
+    <span>Loading...</span>
+}
 
 @code {
+    public string BackLink => AppState?.Page?.Path;
+    public EditContext? EditContext => new EditContext(PluginContent.FirstOrDefault());
 
+    [CascadingParameter(Name = "Plugin")]
+    public PluginResponse? Plugin { get; set; }
+
+    [CascadingParameter]
+    public AppState? AppState { get; set; }
+
+    private PluginContent? PluginContent = null;
+    private string textHtmlContent
+    {
+        get
+        {
+            return PluginContent?["Content"]?.ToString() ?? "";
+        }
+        set
+        {
+            if (PluginContent != null)
+            {
+                PluginContent["Content"] = value;
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var resContent = await http.GetFromJsonAsync<ApiPagingResult<PluginContent>>($"PluginContent/TextHtml/GetByPluginId/{AppState?.Site?.Id:D}/{Plugin?.Id:D}");
+
+        PluginContent = new PluginContent{
+            { "Id", (resContent?.Data?.FirstOrDefault()?["Id"])??null },
+            { "SiteId", AppState?.Site?.Id },
+            { "PluginId", Plugin?.Id },
+            { "Content", (resContent?.Data?.FirstOrDefault()?["Content"])??"" }
+        };
+
+
+        await base.OnInitializedAsync();
+    }
+
+    private async Task OnSubmit()
+    {
+        var serializerOptions = new JsonSerializerOptions();
+        var isCreating = PluginContent?["Id"] == null;
+        if (isCreating)
+        {
+            var response = await http.PostAsJsonAsync($"PluginContent/TextHtml/Create", PluginContent, serializerOptions);
+            var pluginContentResult = await response.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
+            if (!(pluginContentResult?.Errors.Any() ?? true))
+            {
+                NavigationManager.NavigateTo(BackLink);
+            }
+        }
+        else
+        {
+            var response = await http.PutAsJsonAsync($"PluginContent/TextHtml/Update", PluginContent, serializerOptions);
+            var pluginContentResult = await response.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
+            if (!(pluginContentResult?.Errors.Any() ?? true))
+            {
+                NavigationManager.NavigateTo(BackLink);
+            }
+        }
+        
+
+    }
+
+    public static Task<HttpResponseMessage> PostJsonAsync(HttpClient httpClient, string url, object body)
+    {
+        var bodyJson = JsonSerializer.Serialize(body);
+        var stringContent = new StringContent(bodyJson, Encoding.UTF8, "application/json");
+        return httpClient.PostAsync(url, stringContent);
+    }
 }
