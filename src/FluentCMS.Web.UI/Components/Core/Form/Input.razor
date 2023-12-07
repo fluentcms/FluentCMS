@@ -1,18 +1,10 @@
-@inherits BaseComponent
+@inherits InputBaseComponent<string>
 
-<input class="f-input @Class" type="@Type" id="@Id" placeholder="@Placeholder" required=@Required
-    @attributes=@RestProps>
+<input name="@ValueExpression.Name" class="@this.GetClasses()"  
+    @attributes="AdditionalAttributes"
+    @bind-value="CurrentValue"
+>
 
 @code {
-    [Parameter]
-    public string Type { get; set; } = "text";
-
-    [Parameter]
-    public string Id { get; set; }
-
-    [Parameter]
-    public string Placeholder { get; set; }
-
-    [Parameter]
-    public bool Required { get; set; } = false;
+    
 }
