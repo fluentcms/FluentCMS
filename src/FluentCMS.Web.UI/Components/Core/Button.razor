@@ -1,5 +1,4 @@
 @inherits BaseComponent
-
 @if (Href != String.Empty)
 {
 
@@ -10,6 +9,7 @@
 }
 else
 {
+    
     <button class=@GetClasses() @disabled=@Disabled type="@Type" @attributes="AdditionalAttributes">
         @ChildContent
     </button>
