@@ -39,20 +39,20 @@
         {
             "Name": "Counter",
             "Description": "Counter plugin",
-            "ViewType": "CounterView",
-            "EditType": "CounterEdit"
+            "ViewType": "CounterViewPlugin",
+            "EditType": "CounterEditPlugin"
         },
         {
             "Name": "HelloWorld",
             "Description": "Hello World plugin",
-            "ViewType": "HelloWorldView",
-            "EditType": "HelloWorldEdit"
+            "ViewType": "HelloWorldViewPlugin",
+            "EditType": "HelloWorldEditPlugin"
         },
         {
             "Name": "TextHtml",
             "Description": "Text/Html plugin",
-            "ViewType": "TextHtmlView",
-            "EditType": "TextHtmlEdit"
+            "ViewType": "TextHtmlViewPlugin",
+            "EditType": "TextHtmlEditPlugin"
         }
     ],
     "Site": {
