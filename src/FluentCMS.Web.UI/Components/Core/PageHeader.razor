@@ -3,8 +3,8 @@
 @* TODO: Remove ChildContent prop *@
 
 <div class=@GetClasses() @attributes="@AdditionalAttributes">
-    <h2 class="f-page-title">@Title</h2>
-    <div class="f-page-actions">
+    <h2 class=@ClassName("PageTitle")>@Title</h2>
+    <div class=@ClassName("PageActions")>
         <ButtonGroup>
             @PageActions
         </ButtonGroup>

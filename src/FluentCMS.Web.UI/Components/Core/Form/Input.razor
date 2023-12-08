@@ -1,26 +1,23 @@
 @inherits InputBaseComponent<string?>
 
-<input class="@this.GetClasses()" type="@Type" id="@Id" name="@Name" placeholder="@Placeholder" @disabled=@Disabled @required=@Required  
-    @attributes="AdditionalAttributes"
-    @bind="CurrentValue">
+<input class="@this.GetClasses()" id="@Id" name="@Name" placeholder="@Placeholder" @disabled=@Disabled
+    @required=@Required @attributes="AdditionalAttributes" @bind="CurrentValue">
 
 @code {
-    
+
     [Parameter]
     public bool Disabled { get; set; }
 
     [Parameter]
-    public string Id {get; set;}
+    public string Id { get; set; }
 
     [Parameter]
-    public string Name {get; set;} = "";
+    public string Name { get; set; } = "";
 
     [Parameter]
-    public string Placeholder {get; set;}
+    public string Placeholder { get; set; }
 
     [Parameter]
-    public bool Required {get; set;} = false;
+    public bool Required { get; set; } = false;
 
-    [Parameter]
-    public string Value {get; set;} = "";
 }

@@ -35,18 +35,18 @@ public abstract class BaseComponent : ComponentBase
         }
 
         // get properties
-        var properties = GetType().GetProperties().Where(p=>p.CustomAttributes.Any(x=>x.AttributeType == typeof(CssPropertyAttribute)));
+        var properties = GetType().GetProperties().Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CssPropertyAttribute)));
         foreach (var property in properties)
         {
             if (property.GetValue(this, null) is var value)
             {
-                if(value == null)
+                if (value == null)
                 {
                     continue;
                 }
                 // get value Type
                 var valueType = value.GetType();
-                if(valueType == typeof(bool))
+                if (valueType == typeof(bool))
                 {
                     // check if value is true
                     if ((bool)value)
@@ -59,17 +59,21 @@ public abstract class BaseComponent : ComponentBase
                     // add class
                     classes.Add(string.Join(UISettings.Seperator, [UISettings.Prefix, GetComponentName(), property.Name.FromPascalCaseToKebabCase(), value.ToString()]));
                 }
-                
+
             }
         }
 
         // clean up backticks for generic types
         classes = classes.Select(c => c.Replace("`1", "")).ToList();
 
-        return string.Join(" ",classes);
+        return string.Join(" ", classes);
     }
 
 
+    public string ClassName(string Name)
+    {
+        return string.Join(UISettings.Seperator, [UISettings.Prefix, Name.FromPascalCaseToKebabCase()]);
+    }
 }
 
 
