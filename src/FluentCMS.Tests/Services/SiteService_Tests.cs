@@ -65,7 +65,7 @@ public class SiteService_Tests
         var scope = _serviceProvider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<ISiteService>();
         scope.SetupMockApplicationContextForSuperUser();
-        
+
         Site site = new Site
         {
             Name = "test site",
@@ -73,7 +73,7 @@ public class SiteService_Tests
             Urls = ["test.com"],
             AdminRoleIds = new List<Guid>() { ApplicationContextDefaults.Admins.TestAdminRole.Id }
         };
-        
+
         var editSite = await service.Create(site);
         var dbSite = await service.GetById(editSite.Id);
         var updatedSite = await service.Update(new Site

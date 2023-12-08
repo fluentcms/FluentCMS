@@ -23,9 +23,7 @@ public partial class Home
 
     protected override async Task OnParametersSetAsync()
     {
-        if (AppState == null)
-            AppState = new AppState();
-
+        AppState ??= new AppState();
         AppState.Host = Navigator.BaseUri.EndsWith("/") ? Navigator.BaseUri.Remove(Navigator.BaseUri.Length - 1) : Navigator.BaseUri;
         AppState.Uri = new Uri(Navigator.Uri);
         AppState.Site = await GetClient<SiteClient>().GetByUrl(AppState.Host, CancellationToken);
