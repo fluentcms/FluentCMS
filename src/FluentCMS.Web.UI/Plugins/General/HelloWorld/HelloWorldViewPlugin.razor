@@ -1,0 +1,9 @@
+﻿<div style="background-color:lightgoldenrodyellow;">
+    <h1>HelloWorld Plugin id: @Plugin?.Id</h1>
+    <i><b>Hello World!</b></i>
+</div>
+
+@code {
+    [CascadingParameter(Name = "Plugin")]
+    public PluginResponse? Plugin { get; set; }
+}

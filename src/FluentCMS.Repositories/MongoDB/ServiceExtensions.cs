@@ -47,6 +47,8 @@ public static class MongoDbServiceExtensions
         services.AddScoped<IPluginDefinitionRepository, PluginDefinitionRepository>();
         services.AddScoped<IPluginRepository, PluginRepository>();
         services.AddScoped<ILayoutRepository, LayoutRepository>();
+        services.AddScoped(typeof(IContentRepository<>), typeof(ContentRepository<>));
+        services.AddScoped<IPluginContentRepository, PluginContentRepository>();
 
         return services;
     }

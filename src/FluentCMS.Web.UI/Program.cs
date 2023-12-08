@@ -1,5 +1,6 @@
-using FluentCMS.Api;
 using FluentCMS;
+using FluentCMS.Api;
+using FluentCMS.Entities;
 using FluentCMS.Web.UI;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,13 +19,17 @@ services.AddSmtpEmailProvider();
 services.AddAuthentication();
 services.AddAuthorization();
 
-// Add services to the container.
-services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+services.AddUIServices();
 
 services.AddScoped<IApplicationContext, ApiApplicationContext>();
-services.AddControllers();
-services.AddRequestValidation();
+
+services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new JsonContentConverter<Content>());
+    options.JsonSerializerOptions.Converters.Add(new JsonContentConverter<PluginContent>());
+    //options.JsonSerializerOptions.Converters.Add(new DictionaryStringObjectJsonConverter());
+});
+
 services.AddMappingProfiles();
 
 services.AddApiDocumentation();
@@ -53,7 +58,6 @@ if (app.Environment.IsDevelopment())
 {
     app.Services.ResetMongoDb();
     app.Services.LoadInitialDataFrom(@"./DefaultData/");
-
     app.UseDeveloperExceptionPage();
 }
 

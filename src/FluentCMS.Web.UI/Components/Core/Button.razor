@@ -2,14 +2,14 @@
 @if (Href != String.Empty)
 {
 
-    <a class=@GetClasses() disabled=@Disabled href=@Href type="@Type" @attributes="AdditionalAttributes">
+    <a class=@GetClasses() @disabled=@Disabled href=@Href type="@Type" @attributes="AdditionalAttributes">
         @ChildContent
     </a>
 
 }
 else
 {
-    
+
     <button class=@GetClasses() @disabled=@Disabled type="@Type" @attributes="AdditionalAttributes">
         @ChildContent
     </button>
@@ -35,27 +35,8 @@ else
     [Parameter]
     public string Type { get; set; } = "button";
 
-    private async Task onClick()
-    {
-        if (Disabled)
-            return;
-
-        Loading = true;
-        try
-        {
-            await OnClick.InvokeAsync();
-        }
-        catch (Exception)
-        {
-            throw;
-        }
-        finally
-        {
-            Loading = false;
-        }
-    }
+    [Parameter] public string Size { get; set; } = "md";
 
     [Parameter]
     public EventCallback OnClick { get; set; }
-
 }

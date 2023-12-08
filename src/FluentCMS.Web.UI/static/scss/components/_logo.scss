@@ -1,0 +1,17 @@
+$prefix-logo: $prefix + 'logo';
+
+.#{$prefix-logo} {
+    @apply flex items-center justify-center mb-8 text-2xl font-semibold;
+
+    @screen lg {
+        @apply mb-10;
+    }
+
+    &-image {
+        @apply mr-4 h-11;
+    }
+
+    .#{$prefix-theme-dark} & {
+        @apply text-white;
+    }
+}

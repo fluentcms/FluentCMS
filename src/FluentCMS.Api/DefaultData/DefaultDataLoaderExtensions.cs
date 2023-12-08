@@ -57,42 +57,49 @@ public static class DefaultDataLoaderExtensions
             hostService.Create(defaultData.Host).GetAwaiter().GetResult();
 
             // Site creation
-            defaultData.Layouts = GetLayouts(dataFolder).ToList();
-            var defaultLayout = defaultData.Layouts[0];
-            siteService.Create(defaultData.Site, defaultLayout).GetAwaiter().GetResult();
+            defaultData.SetLayouts(GetLayouts(dataFolder));
+            var panelLayout = defaultData.GetLayout("PanelLayout");
 
-            // Updating site layout
-            defaultData.Site.DefaultLayoutId = defaultData.Layouts[0].Id;
-            siteService.Update(defaultData.Site).GetAwaiter().GetResult();
+            var site = siteService.Create(defaultData.Site.GetSite(), panelLayout).GetAwaiter().GetResult();
+
+            defaultData.SetSite(site);
+
+            // there is no need to create the default layout, it is created by the site creation
+            var authLayout = defaultData.GetLayout("AuthLayout");
+            layoutService.Create(authLayout).GetAwaiter().GetResult();
 
             // Plugin definition creation
             foreach (var pluginDefinition in defaultData.PluginDefinitions)
             {
-                pluginDefinition.SiteId = defaultData.Site.Id;
+                pluginDefinition.SiteId = site.Id;
                 pluginDefinitionService.Create(pluginDefinition).GetAwaiter().GetResult();
             }
 
             // Pages creation: adding a few default pages
-            foreach (var page in defaultData.Pages)
+            var _pages = new List<Page>();
+            foreach (var page in defaultData.GetPages())
             {
-                page.SiteId = defaultData.Site.Id;
+                _pages.Add(page);
                 pageService.Create(page).GetAwaiter().GetResult();
             }
 
             // Plugins creation: adding a few default plugins to pages
-            foreach (var page in defaultData.Pages)
+            var _plugins = new List<Plugin>();
+            for (int i = 0; i < _pages.Count; i++)
             {
-                var order = 0;
-                foreach (var pluginDef in defaultData.PluginDefinitions)
+                var _page = _pages[i];
+                var defaultPage = defaultData.Pages[i];
+                foreach (var defaultPlugin in defaultPage.Plugins)
                 {
-                    var plugin = new Plugin
+                    var _plugin = new Plugin
                     {
-                        DefinitionId = pluginDef.Id,
-                        PageId = page.Id,
-                        Order = order++,
-                        Section = "main"
+                        Order = defaultPlugin.Order,
+                        PageId = _page.Id,
+                        Section = defaultPlugin.Section,
+                        DefinitionId = defaultData.PluginDefinitions.Single(x => x.Name == defaultPlugin.DefName).Id
                     };
-                    pluginService.Create(plugin).GetAwaiter().GetResult();
+                    _plugins.Add(_plugin);
+                    pluginService.Create(_plugin).GetAwaiter().GetResult();
                 }
             }
         }
@@ -118,13 +125,21 @@ public static class DefaultDataLoaderExtensions
 
     private static IEnumerable<Layout> GetLayouts(string dataFolder)
     {
-        foreach (var file in Directory.GetFiles(dataFolder, "*.html"))
+        foreach (var file in Directory.GetFiles(dataFolder, "*.html").Where(x => !x.Contains(".head.html") && !x.Contains(".body.html")))
         {
             var layout = new Layout
             {
-                Name = Path.GetFileNameWithoutExtension(file),
-                Content = File.ReadAllText(file)
+                Name = Path.GetFileNameWithoutExtension(file)
             };
+
+            var bodyFile = Path.ChangeExtension(file, ".body.html");
+            if (File.Exists(bodyFile))
+                layout.Body = File.ReadAllText(bodyFile);
+
+            var headerFile = Path.ChangeExtension(file, ".head.html");
+            if (File.Exists(headerFile))
+                layout.Head = File.ReadAllText(headerFile);
+
             yield return layout;
         }
     }

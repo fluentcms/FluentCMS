@@ -1,7 +1,7 @@
 @inherits Input
 
 <FormField Class=@GetClasses() Id=@Id Label=@Label>
-    <Input Type=@Type Placeholder=@Placeholder Id=@Id Required=@Required @attributes="@AdditionalAttributes" />
+    <Input Type=@Type Placeholder=@Placeholder Id=@Id Required=@Required @attributes="@AdditionalAttributes" @bind-Value=@Value/>
 </FormField>
 
 @code {
@@ -19,4 +19,9 @@
 
     [Parameter]
     public bool Required { get; set; } = false;
+
+    public string Name {get; set;} = "";
+
+    [Parameter]
+    public string Value {get; set;}
 }

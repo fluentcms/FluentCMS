@@ -9,5 +9,5 @@ public class DummyEntity : IEntity
     public Guid Id { get; set; }
     public string DummyField { get; set; } = string.Empty;
 
-    public DummyEntity(){}
+    public DummyEntity() { }
 }

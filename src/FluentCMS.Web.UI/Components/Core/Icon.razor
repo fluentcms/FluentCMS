@@ -1,0 +1,21 @@
+<span class="f-icon f-icon-size-@Size @Class" @attributes=@RestProps>
+    <iconify-icon icon=@($"{Pack}:{Name}") width="100%" height="100%" />
+</span>
+
+@code {
+    [Parameter]
+    public string Name {get; set;} = "";
+
+    [Parameter]
+    public string Pack {get; set;} = "tabler";
+
+    [Parameter]
+    public string Class {get; set;} = "";
+
+    [Parameter]
+    public string Size {get; set;} = "md";
+
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object> RestProps {get; set;}
+}

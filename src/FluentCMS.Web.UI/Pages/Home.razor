@@ -1,146 +1,15 @@
 ﻿@page "/{*Route:nonfile}"
-@using System.Text.RegularExpressions
-@using System.Web
-@inject HttpClient http
-@inject NavigationManager Navigator
+@inherits BasePage
 
-@* class="hadi f-base-component f-card f-card-color-primary" *@
-<Card CssClass="hadi">
-    <CardHeader>Test</CardHeader>
-    <CardBody>
-        Body
-    </CardBody>
-</Card>
+<PageTitle>@AppState?.Page?.Title</PageTitle>
 
-2-way binding support
-<FormInput Label="Name" Placeholder="Enter your name" />
+<HeadContent>
+    @if (AppState?.Layout != null)
+    {
+        @((MarkupString)AppState.Layout.Head)
+    }
+</HeadContent>
 
-<Button Color="primary" Href="https://google.com">
-    @* Add icon here *@
-    Google
-</Button>
-
-
-
-<CascadingValue Value="@Route">
-    <CascadingValue Value="@Site">
-        <CascadingValue Value="@Page">
-            @dynamicComponent()
-        </CascadingValue>
-    </CascadingValue>
+<CascadingValue Value="@AppState">
+    @dynamicComponent()
 </CascadingValue>
-
-@code {
-    [Parameter]
-    public string? Route { get; set; }
-
-    [Parameter]
-    public SiteResponse? Site { get; set; }
-
-    [Parameter]
-    public PageResponse? Page { get; set; }
-
-    private string _layout = string.Empty;
-
-    protected override async Task OnParametersSetAsync()
-    {
-        await base.OnParametersSetAsync();
-
-        var host = Navigator.BaseUri;
-        if (host.EndsWith("/"))
-            host = host.Substring(0, host.Length - 1);
-
-        var siteResult = http.GetFromJsonAsync<ApiResult<SiteResponse>>($"Site/GetByUrl?url={host}").GetAwaiter().GetResult();
-        Site = siteResult?.Data;
-
-        if (Site is null)
-            return;
-
-        if (Route is null)
-            Route = string.Empty;
-
-        var query = HttpUtility.ParseQueryString(string.Empty);
-        query["siteId"] = Site.Id.ToString();
-        query["path"] = Route;
-
-        var pageResult = http.GetFromJsonAsync<ApiResult<PageResponse>>($"Page/GetByPath?{query.ToString()}").GetAwaiter().GetResult();
-        Page = pageResult?.Data;
-        if (Page is null)
-            return;
-
-        _layout = Page.Layout?.Content ?? Site.Layout.Content;
-    }
-
-    RenderFragment dynamicComponent() => builder =>
-       {
-           var index = 0;
-           var startIndex = 0;
-           var lastIndex = 0;
-           var lastLength = 0;
-
-           // ignore comments before trying to parse
-           var commentRegex = new Regex("<!--.*-->");
-           _layout = commentRegex.Replace(_layout, "");
-
-           // attribute to find tags with
-           var matcherAttributeName = "fluentcms";
-
-           // find any tag that has our attribute
-           // TODO: check that tag is not commented
-           var tagFinderRegex = new Regex($"<(?<TagName>\\w+)[^/>]*{matcherAttributeName}[^/>]*/>", RegexOptions.IgnoreCase);
-
-           var tagMatches = tagFinderRegex.Matches(_layout);
-
-           // ignore if no tags found
-           if (tagMatches.Count() == 0)
-           {
-               builder.AddMarkupContent(index, _layout);
-               return;
-           }
-
-           foreach (Match tag in tagMatches)
-           {
-               // add markup until beginning of tag-match
-               builder.AddMarkupContent(index++, _layout.Substring(startIndex, tag.Index - startIndex));
-
-               // get Type from tag name
-               var type = GetType(tag.Groups["TagName"].Value);
-
-               if (type != null)
-               {
-                   // open component tag
-                   builder.OpenComponent(index++, type);
-
-                   //parse attributes with regex
-                   var parameters = ParseAttributes(tag.Value);
-
-                   //add parameters
-                   var parameterIndex = 0;
-                   foreach (var parameter in parameters)
-                       builder.AddComponentParameter(parameterIndex++, parameter.Key, parameter.Value);
-
-                   //close component
-                   builder.CloseComponent();
-                   startIndex = tag.Index + tag.Length;
-                   lastIndex = tag.Index;
-                   lastLength = tag.Length;
-               }
-           }
-
-           builder.AddMarkupContent(index, _layout.Substring(lastIndex + lastLength));
-           index++;
-       };
-
-    private Type? GetType(string typeName)
-    {
-        var assembly = typeof(Section).Assembly;
-        var typeInfo = assembly.DefinedTypes.FirstOrDefault(x => x.Name == typeName);
-        return typeInfo?.AsType();
-    }
-
-    private Dictionary<string, string> ParseAttributes(string layout)
-    {
-        var parameterParserRegex = new Regex("(\\s(?<name>\\w+)=\\\"?(?<value>\\w+)\\\"?)+");
-        return new Dictionary<string, string>(parameterParserRegex.Matches(layout).Select(x => new KeyValuePair<string, string>(x.Groups["name"].Value, x.Groups["value"].Value)));
-    }
-}

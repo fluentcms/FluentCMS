@@ -2,13 +2,19 @@ $prefix-layout: $prefix + 'layout';
 $prefix-content: $prefix + 'content';
 
 
-// .#{$prefix-layout} {
-//     @apply;
-    
-// }
+.#{$prefix-layout}-center {
+    @apply px-6 pt-8 mx-auto bg-gray-50;
+    @screen md {
+        @apply h-screen mt-0;
+    }
+
+    .#{$prefix-theme-dark} & {
+        @apply bg-gray-900;
+    }
+}
 
 .#{$prefix-content} {
-    @apply h-screen ml-0 mt-16 text-gray-900 bg-gray-50;
+    @apply h-screen ml-0 text-gray-900 bg-gray-50;
 
 
     @screen sm {

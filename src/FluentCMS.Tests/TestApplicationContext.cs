@@ -1,5 +1,4 @@
-﻿using FluentCMS.Entities;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Tests;
 public static class TestApplicationContextExtensions
