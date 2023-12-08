@@ -4,7 +4,7 @@
     @* todo set property name from model to name field *@
 <input class="@this.GetClasses()"  
     @attributes="AdditionalAttributes"
-    @bind-value="CurrentValue"
+    @bind="CurrentValue"
 >
 
 @code {
@@ -14,10 +14,4 @@
     [CssProperty]
     [Parameter]
     public bool Disabled { get; set; }
-    protected override bool TryParseValueFromString(string value, out string result,  out string validationErrorMessage)
-    {
-        result = value;
-        validationErrorMessage = null;
-        return true;
-    }
 }
