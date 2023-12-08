@@ -1,8 +1,41 @@
 ﻿@using System.Web
+<a href="/">home</a>
 
-<Router AppAssembly="@typeof(Program).Assembly">
+<a href="/asd">asd</a>
+
+
+@* <CascadingValue Value="@AppState">
+    <Section Name="Main" />
+</CascadingValue> *@
+
+@* <Router AppAssembly="@typeof(Program).Assembly">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" />
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
-</Router>
+</Router> *@
+@code
+{
+
+    [Inject]
+    public Services.AppStateService? AppStateService { get; set; }
+
+    public AppState AppState => AppStateService?.AppState ?? new();
+
+    protected override void OnInitialized()
+    {
+        // base.OnInitialized();
+    }
+    // protected override async Task OnInitializedAsync()
+    // {
+    //     await base.OnInitializedAsync();
+    // }
+    protected override void OnParametersSet()
+    {
+        // base.OnParametersSet();
+    }
+    // protected override async Task OnParametersSetAsync()
+    // {
+    //     await base.OnParametersSetAsync();
+    // }
+}

@@ -34,7 +34,12 @@ public class BasePage : ComponentBase, IDisposable
         return (TApiClient)ServiceProvider.GetRequiredService(typeof(TApiClient));
     }
 
-    protected override async Task OnParametersSetAsync()
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
     {
         AppState ??= new AppState();
         AppState.Host = Navigator.BaseUri.EndsWith("/") ? Navigator.BaseUri.Remove(Navigator.BaseUri.Length - 1) : Navigator.BaseUri;
@@ -51,8 +56,35 @@ public class BasePage : ComponentBase, IDisposable
         AppState.PluginId = PluginId;
         AppState.ViewMode = ViewMode;
 
+        await base.OnInitializedAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        //    AppState ??= new AppState();
+        //    AppState.Host = Navigator.BaseUri.EndsWith("/") ? Navigator.BaseUri.Remove(Navigator.BaseUri.Length - 1) : Navigator.BaseUri;
+        //    AppState.Uri = new Uri(Navigator.Uri);
+        //    AppState.Site = await GetClient<SiteClient>().GetByUrl(AppState.Host, CancellationToken);
+        //    AppState.Layout = AppState.Site?.Layout;
+
+        //    if (AppState.Site != null)
+        //        AppState.Page = await GetClient<PageClient>().GetByPath(AppState.Site.Id, AppState.Uri.LocalPath, CancellationToken);
+
+        //    if (AppState.Page != null && AppState.Page.Layout != null)
+        //        AppState.Layout = AppState.Page.Layout;
+
+        //    AppState.PluginId = PluginId;
+        //    AppState.ViewMode = ViewMode;
+
         await base.OnParametersSetAsync();
     }
+
+
 
     protected RenderFragment dynamicComponent() => builder =>
     {
@@ -64,7 +96,6 @@ public class BasePage : ComponentBase, IDisposable
         var children = GetChildren(doc.DocumentNode);
         // add children to the dom
         AddChildrenToDom(builder, children);
-
     };
 
     private void AddChildrenToDom(RenderTreeBuilder builder, IEnumerable<HtmlNode> children)
@@ -122,7 +153,6 @@ public class BasePage : ComponentBase, IDisposable
 
     private static IEnumerable<HtmlNode> GetChildren(HtmlNode doc)
     {
-
         // traverse through the document
         return doc.ChildNodes.Where(n => n.NodeType == HtmlNodeType.Element);
     }

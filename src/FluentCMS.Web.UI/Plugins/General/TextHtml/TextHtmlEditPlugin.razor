@@ -2,71 +2,43 @@
 @using System.Text
 @inject HttpClient http
 @inject NavigationManager NavigationManager
-
-@if(PluginContent != null)
-{
-    <EditForm EditContext="EditContext" OnValidSubmit="OnSubmit">
-        <FormField Label="Html Content:">
-            <Textarea id="textHtmlContent" Required rows="5" placeholder="Enter you TextHtml content here" @bind-Value='textHtmlContent'></Textarea>
-        </FormField>
-        <br />
-        <Button Type="submit">Update</Button>
-        <NavLink href="@BackLink">Go Back</NavLink>
-    </EditForm>
-}
-else
-{
-    <span>Loading...</span>
-}
+@inherits BasePluginComponent
+@inject PluginContentClient pluginContentClient
+This is edit module
+<EditForm Model=@Model OnSubmit=@Submit>
+    <FormField Label="Text/Html Content">
+        <Textarea name="Content" @bind-Value="textHtmlContent" Required rows="5" placeholder="Enter you Text/Html content here"></Textarea>
+    </FormField>
+    <br />
+    <Button Type="submit">Update</Button>
+    <NavLink href="@BackLink">Go Back</NavLink>
+</EditForm>
 
 @code {
     public string BackLink => AppState?.Page?.Path;
-    public EditContext? EditContext => new EditContext(PluginContent.FirstOrDefault());
 
-    [CascadingParameter(Name = "Plugin")]
-    public PluginResponse? Plugin { get; set; }
+    public PluginContent? Model;
 
-    [CascadingParameter]
-    public AppState? AppState { get; set; }
-
-    private PluginContent? PluginContent = null;
-    private string textHtmlContent
+    public string? textHtmlContent
     {
-        get
-        {
-            return PluginContent?["Content"]?.ToString() ?? "";
-        }
-        set
-        {
-            if (PluginContent != null)
-            {
-                PluginContent["Content"] = value;
-            }
-        }
+        get;// => Model?["Content"]?.ToString() ?? "";
+        set; //=> Model!["Content"] = value;
     }
 
     protected override async Task OnInitializedAsync()
     {
-        var resContent = await http.GetFromJsonAsync<ApiPagingResult<PluginContent>>($"PluginContent/TextHtml/GetByPluginId/{AppState?.Site?.Id:D}/{Plugin?.Id:D}");
-
-        PluginContent = new PluginContent{
-            { "Id", (resContent?.Data?.FirstOrDefault()?["Id"])??null },
-            { "SiteId", AppState?.Site?.Id },
-            { "PluginId", Plugin?.Id },
-            { "Content", (resContent?.Data?.FirstOrDefault()?["Content"])??"" }
-        };
-
-
+        var response = await pluginContentClient.GetByPluginId("TextHtml", AppState.Site.Id, Plugin.Id);
+        Model = response.Data.FirstOrDefault() ?? new();
         await base.OnInitializedAsync();
     }
 
-    private async Task OnSubmit()
+    private async Task Submit()
     {
         var serializerOptions = new JsonSerializerOptions();
-        var isCreating = PluginContent?["Id"] == null;
+        var isCreating = Model?.Id == null;
         if (isCreating)
         {
-            var response = await http.PostAsJsonAsync($"PluginContent/TextHtml/Create", PluginContent, serializerOptions);
+            var response = await http.PostAsJsonAsync($"PluginContent/TextHtml/Create", Model, serializerOptions);
             var pluginContentResult = await response.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
             if (!(pluginContentResult?.Errors.Any() ?? true))
             {
@@ -75,14 +47,14 @@ else
         }
         else
         {
-            var response = await http.PutAsJsonAsync($"PluginContent/TextHtml/Update", PluginContent, serializerOptions);
+            var response = await http.PutAsJsonAsync($"PluginContent/TextHtml/Update", Model, serializerOptions);
             var pluginContentResult = await response.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
             if (!(pluginContentResult?.Errors.Any() ?? true))
             {
                 NavigationManager.NavigateTo(BackLink);
             }
         }
-        
+
 
     }
 

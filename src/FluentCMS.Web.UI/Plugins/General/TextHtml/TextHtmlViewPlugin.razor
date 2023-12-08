@@ -2,28 +2,28 @@
 @using System.Text
 @using FluentCMS.Api.Controllers
 @using System.Web
-@inject HttpClient http
+@inherits BasePluginComponent
+@inject PluginContentClient pluginContentClient
 
 <div style="background-color:lightblue;">
-    @((MarkupString)textHtmlContent)
+    Static content
+    @GetContent()
 </div>
 
 @code {
-    [CascadingParameter(Name = "Plugin")]
-    public PluginResponse? Plugin { get; set; }
-
-    [CascadingParameter]
-    public AppState AppState { get; set; } = default!;
-
-    private string textHtmlContent => PluginContent?["Content"]?.ToString()??"";
+    private string textHtmlContent => PluginContent?["Content"]?.ToString() ?? "";
     public PluginContent? PluginContent { get; set; }
 
-    override protected async Task OnInitializedAsync()
+    private MarkupString GetContent()
     {
+        var contentString = PluginContent?["Content"]?.ToString() ?? "";
+        return (MarkupString)contentString;
+    }
 
-        var resContent = await http.GetFromJsonAsync<ApiPagingResult<PluginContent>>($"PluginContent/TextHtml/GetByPluginId/{AppState?.Site?.Id:D}/{Plugin?.Id:D}");
-        PluginContent = resContent?.Data?.FirstOrDefault();
-
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await pluginContentClient.GetByPluginId("TextHtml", AppState.Site.Id, Plugin.Id);
+        PluginContent = response.Data.FirstOrDefault();
         await base.OnInitializedAsync();
     }
 }

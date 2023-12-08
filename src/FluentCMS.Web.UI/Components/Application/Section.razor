@@ -1,10 +1,7 @@
-﻿@using FluentCMS.Entities
-@using System.Linq
-
-<div class="f-section f-section-@Name">
+﻿<div class="f-section f-section-@Name">
     @if (AppState?.Page?.Plugins != null)
     {
-        @foreach (var plugin in GetPlugins())
+        @foreach (var plugin in Plugins)
         {
             <CascadingValue Value="@plugin" Name="Plugin">
                 <PluginContainer>
@@ -14,34 +11,3 @@
         }
     }
 </div>
-
-@code {
-    [Parameter]
-    public string Name { get; set; } = string.Empty;
-
-    [CascadingParameter]
-    public AppState? AppState { get; set; }
-
-    private Type? GetType(PluginResponse plugin)
-    {
-        var assembly = typeof(Section).Assembly;
-
-        if (AppState?.ViewMode?.ToLower() == "edit")
-            return assembly.DefinedTypes.FirstOrDefault(x => x.Name == plugin.Definition.EditType);
-
-        return assembly.DefinedTypes.FirstOrDefault(x => x.Name == plugin.Definition.ViewType);
-    }
-
-    private IEnumerable<PluginResponse> GetPlugins()
-    {
-        if (AppState?.Page?.Plugins == null)
-            return Enumerable.Empty<PluginResponse>();
-
-        var result = AppState.Page.Plugins.Where(x =>
-            x.Section.ToLower() == Name.ToLower());
-
-        result = result.Where(x => AppState?.PluginId == null || x.Id == AppState?.PluginId);
-
-        return result.OrderBy(x => x.Order);
-    }
-}
