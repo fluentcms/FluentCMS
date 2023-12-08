@@ -5,14 +5,23 @@
 
 <EditForm Model="Model" OnValidSubmit="Submit" FormName="form">
     <Input @bind-Value="Model.Name" Disabled="false"></Input>
-    <button type="submit">Submit</button>
+    <Button OnClick="Submit">Submit</Button>
 </EditForm>
 <pre>
     @JsonSerializer.Serialize(Model)
 </pre>
 
+<Card>
+    <CardHeader>
+        <CardTitle>@Model.Name</CardTitle>
+    </CardHeader>
+    <CardBody>
+        <p>Nulla diam ipsum takimata ut diam dolore consetetur sit illum facilisi lorem gubergren dolor exerci dolore est duo ipsum sanctus</p>
+    </CardBody>
+</Card>
+
 @code {
-    public DummyModel Model { get; set; } = new() { Name = "Parsa"};
+    public DummyModel Model { get; set; } = new() { Name = "Parsa" };
     public class DummyModel
     {
         public string Name { get; set; }
