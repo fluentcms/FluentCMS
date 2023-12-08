@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Net.Mail;
 using System.Net;
+using System.Net.Mail;
 using System.Text;
 
 namespace FluentCMS.Providers.Email;

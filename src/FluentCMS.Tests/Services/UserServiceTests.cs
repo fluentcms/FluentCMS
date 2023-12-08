@@ -3,7 +3,7 @@ using FluentCMS.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
-    
+
 namespace FluentCMS.Tests.Services;
 public class UserServiceTests
 {
@@ -25,7 +25,7 @@ public class UserServiceTests
             new ("JWT:TokenExpiry","3600"),
             new ("JWT:RefreshTokenExpiry","36000"),
             new ("JWT:Secret","THIS SHOULD BE A LONG COMPLEX SECRET KEY, CHANGE THIS IN PRODUCTION!"),
-        }) ;
+        });
         var configuration = configurationBuilder.Build();
         var services = new ServiceCollection();
         services
