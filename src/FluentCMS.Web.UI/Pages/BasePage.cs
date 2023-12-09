@@ -1,5 +1,4 @@
-﻿using FluentCMS.Web.UI.ApiClients;
-using FluentCMS.Web.UI.Components.Application;
+﻿using FluentCMS.Web.UI.Components.Application;
 using HtmlAgilityPack;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -12,14 +11,7 @@ public class BasePage : ComponentBase, IDisposable
     public const string ATTRIBUTE = "FluentCMS";
     protected CancellationTokenSource CancellationTokenSource = new();
     protected CancellationToken CancellationToken => CancellationTokenSource.Token;
-    public AppState? AppState { get; set; }
-
-    [Inject]
-    protected IServiceProvider ServiceProvider { get; set; } = default!;
-
-    [Inject]
-    protected NavigationManager Navigator { get; set; } = default!;
-
+        
     [Parameter]
     public string? Route { get; set; }
 
@@ -29,62 +21,8 @@ public class BasePage : ComponentBase, IDisposable
     [SupplyParameterFromQuery]
     public string? ViewMode { get; set; }
 
-    protected TApiClient GetClient<TApiClient>() where TApiClient : BaseClient
-    {
-        return (TApiClient)ServiceProvider.GetRequiredService(typeof(TApiClient));
-    }
-
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        AppState ??= new AppState();
-        AppState.Host = Navigator.BaseUri.EndsWith("/") ? Navigator.BaseUri.Remove(Navigator.BaseUri.Length - 1) : Navigator.BaseUri;
-        AppState.Uri = new Uri(Navigator.Uri);
-        AppState.Site = await GetClient<SiteClient>().GetByUrl(AppState.Host, CancellationToken);
-        AppState.Layout = AppState.Site?.Layout;
-
-        if (AppState.Site != null)
-            AppState.Page = await GetClient<PageClient>().GetByPath(AppState.Site.Id, AppState.Uri.LocalPath, CancellationToken);
-
-        if (AppState.Page != null && AppState.Page.Layout != null)
-            AppState.Layout = AppState.Page.Layout;
-
-        AppState.PluginId = PluginId;
-        AppState.ViewMode = ViewMode;
-
-        await base.OnInitializedAsync();
-    }
-
-    protected override void OnParametersSet()
-    {
-        base.OnParametersSet();
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        //    AppState ??= new AppState();
-        //    AppState.Host = Navigator.BaseUri.EndsWith("/") ? Navigator.BaseUri.Remove(Navigator.BaseUri.Length - 1) : Navigator.BaseUri;
-        //    AppState.Uri = new Uri(Navigator.Uri);
-        //    AppState.Site = await GetClient<SiteClient>().GetByUrl(AppState.Host, CancellationToken);
-        //    AppState.Layout = AppState.Site?.Layout;
-
-        //    if (AppState.Site != null)
-        //        AppState.Page = await GetClient<PageClient>().GetByPath(AppState.Site.Id, AppState.Uri.LocalPath, CancellationToken);
-
-        //    if (AppState.Page != null && AppState.Page.Layout != null)
-        //        AppState.Layout = AppState.Page.Layout;
-
-        //    AppState.PluginId = PluginId;
-        //    AppState.ViewMode = ViewMode;
-
-        await base.OnParametersSetAsync();
-    }
-
-
+    [CascadingParameter]
+    public AppState? AppState { get; set; }
 
     protected RenderFragment dynamicComponent() => builder =>
     {

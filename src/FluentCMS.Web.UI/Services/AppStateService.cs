@@ -1,42 +1,45 @@
-﻿using FluentCMS.Api.Models;
-using FluentCMS.Entities;
-using FluentCMS.Web.UI.ApiClients;
+﻿using FluentCMS.Web.UI.ApiClients;
 using Microsoft.AspNetCore.Components;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Web;
 
-namespace FluentCMS.Web.UI.Services;
+namespace FluentCMS.Web.UI;
 
-public class AppStateService
+public class AppStateService(
+    NavigationManager navigator,
+    SiteClient siteClient,
+    PageClient pageClient)
 {
-    public AppState AppState { get; set; } = new();
-
-    public AppStateService(IHttpClientFactory httpClientFactory, NavigationManager Navigator, SiteClient siteClient, PageClient pageClient)
+    public async Task<AppState> GetAppState(CancellationToken cancellationToken = default)
     {
-        var HttpClient = httpClientFactory.CreateClient("XXXX");
-        // TODO: Move this to configuration
-        HttpClient.BaseAddress = new Uri("https://localhost:7164/api/");
-        HttpClient.DefaultRequestHeaders.Accept.Clear();
-        HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        var url = Navigator.BaseUri.EndsWith("/") ? Navigator.BaseUri.Remove(Navigator.BaseUri.Length - 1) : Navigator.BaseUri;
-        var query = HttpUtility.ParseQueryString(string.Empty);
-        query["url"] = url;
-        var x = HttpClient.GetFromJsonAsync<ApiResult<SiteResponse>>("Site/GetByUrl?" + query).GetAwaiter().GetResult();
+        var appState = new AppState
+        {
+            Host = navigator.BaseUri.Remove(navigator.BaseUri.Length - 1),
+            Uri = new Uri(navigator.Uri)
+        };
 
-        AppState ??= new AppState();
-        AppState.Host = Navigator.BaseUri.EndsWith("/") ? Navigator.BaseUri.Remove(Navigator.BaseUri.Length - 1) : Navigator.BaseUri;
-        AppState.Uri = new Uri(Navigator.Uri);
-        AppState.Site = x.Data; // siteClient.GetByUrl(AppState.Host).GetAwaiter().GetResult();
-        AppState.Layout = AppState.Site?.Layout;
+        appState.Site = await siteClient.GetByUrl(appState.Host, cancellationToken);
+        appState.Layout = appState.Site?.Layout;
 
-        //if (AppState.Site != null)
-        //    AppState.Page = pageClient.GetByPath(AppState.Site.Id, AppState.Uri.LocalPath).GetAwaiter().GetResult(); ;
+        if (appState.Site != null)
+        {
+            var query = HttpUtility.ParseQueryString(string.Empty);
+            query["siteId"] = appState.Site.Id.ToString();
+            query["path"] = appState.Uri.LocalPath;
+            appState.Page = await pageClient.GetByPath(appState.Site.Id, appState.Uri.LocalPath, cancellationToken);
+        }
 
-        //if (AppState.Page != null && AppState.Page.Layout != null)
-        //    AppState.Layout = AppState.Page.Layout;
+        if (appState.Page != null && appState.Page.Layout != null)
+            appState.Layout = appState.Page.Layout;
 
-        //AppState.PluginId = PluginId;
-        //AppState.ViewMode = ViewMode;
+        var queryStrs = HttpUtility.ParseQueryString(appState.Uri.Query);
+
+        if (queryStrs["PluginId"] != null && Guid.TryParse(queryStrs["PluginId"], out var pluginId))
+            if (pluginId != Guid.Empty)
+                appState.PluginId = pluginId;
+
+        if (!string.IsNullOrEmpty(queryStrs["ViewMode"]))
+            appState.ViewMode = queryStrs["ViewMode"];
+
+        return appState;
     }
 }

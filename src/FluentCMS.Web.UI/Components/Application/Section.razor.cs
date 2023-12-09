@@ -11,30 +11,6 @@ public partial class Section
     [CascadingParameter]
     public AppState? AppState { get; set; }
 
-    public List<PluginResponse> Plugins { get; set; } = [];
-
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        Plugins = GetPlugins();
-        await base.OnInitializedAsync();
-    }
-
-    protected override void OnParametersSet()
-    {
-        base.OnParametersSet();
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        Plugins = GetPlugins();
-        await base.OnParametersSetAsync();
-    }
-
     private Type? GetType(PluginResponse plugin)
     {
         var assembly = typeof(Section).Assembly;

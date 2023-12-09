@@ -22,8 +22,12 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var response = await pluginContentClient.GetByPluginId("TextHtml", AppState.Site.Id, Plugin.Id);
-        PluginContent = response.Data.FirstOrDefault();
-        await base.OnInitializedAsync();
+        if (AppState?.Site != null)
+        {
+            var response = await pluginContentClient.GetByPluginId("TextHtml", AppState.Site.Id, Plugin.Id);
+            PluginContent = response.Data.FirstOrDefault();
+        };
+        
+        // await base.OnInitializedAsync();
     }
 }

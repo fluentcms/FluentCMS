@@ -1,7 +1,7 @@
 ﻿<div class="f-section f-section-@Name">
     @if (AppState?.Page?.Plugins != null)
     {
-        @foreach (var plugin in Plugins)
+        @foreach (var plugin in GetPlugins())
         {
             <CascadingValue Value="@plugin" Name="Plugin">
                 <PluginContainer>

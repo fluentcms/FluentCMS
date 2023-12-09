@@ -1,32 +1,10 @@
-﻿<!doctype html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-    <HeadOutlet @rendermode="@InteractiveServer" />
+    <HeadOutlet />
 </head>
 <body>
-    <Routes @rendermode="@InteractiveServer" />
+    <Routes />
     <script src="_framework/blazor.web.js"></script>
 </body>
 </html>
-@code
-{
-    [Inject]
-    public Services.AppStateService? AppStateService { get; set; }
-
-    protected override void OnInitialized()
-    {
-        // base.OnInitialized();
-    }
-    // protected override async Task OnInitializedAsync()
-    // {
-    //     await base.OnInitializedAsync();
-    // }
-    protected override void OnParametersSet()
-    {
-        // base.OnParametersSet();
-    }
-    // protected override async Task OnParametersSetAsync()
-    // {
-    //     await base.OnParametersSetAsync();
-    // }
-}

@@ -1,41 +1,20 @@
-﻿@using System.Web
-<a href="/">home</a>
-
-<a href="/asd">asd</a>
-
-
-@* <CascadingValue Value="@AppState">
-    <Section Name="Main" />
-</CascadingValue> *@
-
-@* <Router AppAssembly="@typeof(Program).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" />
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-    </Found>
-</Router> *@
+﻿<CascadingValue Value="@AppState">
+    <Router AppAssembly="@typeof(Program).Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="@routeData" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+    </Router>
+</CascadingValue>
 @code
 {
+    public AppState? AppState { get; set; }
 
     [Inject]
-    public Services.AppStateService? AppStateService { get; set; }
+    public AppStateService AppStateService { get; set; } = default!;
 
-    public AppState AppState => AppStateService?.AppState ?? new();
-
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        // base.OnInitialized();
+        AppState = await AppStateService.GetAppState();
     }
-    // protected override async Task OnInitializedAsync()
-    // {
-    //     await base.OnInitializedAsync();
-    // }
-    protected override void OnParametersSet()
-    {
-        // base.OnParametersSet();
-    }
-    // protected override async Task OnParametersSetAsync()
-    // {
-    //     await base.OnParametersSetAsync();
-    // }
 }
