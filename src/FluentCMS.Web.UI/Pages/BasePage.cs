@@ -11,15 +11,9 @@ public class BasePage : ComponentBase, IDisposable
     public const string ATTRIBUTE = "FluentCMS";
     protected CancellationTokenSource CancellationTokenSource = new();
     protected CancellationToken CancellationToken => CancellationTokenSource.Token;
-        
+
     [Parameter]
     public string? Route { get; set; }
-
-    [SupplyParameterFromQuery]
-    public Guid? PluginId { get; set; }
-
-    [SupplyParameterFromQuery]
-    public string? ViewMode { get; set; }
 
     [CascadingParameter]
     public AppState? AppState { get; set; }
