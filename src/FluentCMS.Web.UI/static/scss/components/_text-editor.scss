@@ -1,0 +1,48 @@
+$prefix-text-editor: $prefix + "text-editor";
+
+.#{$prefix-text-editor} {
+    &-wrapper {
+        @apply block h-96 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300;
+        &:focus {
+            @apply ring-blue-500 border-blue-500;
+        }
+        .#{$prefix-theme-dark} & {
+            @apply bg-gray-700 border-gray-600 placeholder-gray-400 text-white;
+    
+            &:focus {
+                @apply ring-blue-500 border-blue-500;
+            }
+            
+            & .ql-snow.ql-toolbar {
+                @apply border-gray-600;
+            }
+            
+            & .ql-stroke {
+                @apply stroke-white;
+            }
+            & .ql-picker {
+                @apply stroke-white text-white;
+            }
+            & .ql-fill {
+                @apply fill-white;
+            }
+            .ql-snow.ql-toolbar button:hover, .ql-snow .ql-toolbar button:hover, .ql-snow.ql-toolbar button:focus, .ql-snow .ql-toolbar button:focus, .ql-snow.ql-toolbar button.ql-active, .ql-snow .ql-toolbar button.ql-active, .ql-snow.ql-toolbar .ql-picker-label:hover, .ql-snow .ql-toolbar .ql-picker-label:hover, .ql-snow.ql-toolbar .ql-picker-label.ql-active, .ql-snow .ql-toolbar .ql-picker-label.ql-active, .ql-snow.ql-toolbar .ql-picker-item:hover, .ql-snow .ql-toolbar .ql-picker-item:hover, .ql-snow.ql-toolbar .ql-picker-item.ql-selected, .ql-snow .ql-toolbar .ql-picker-item.ql-selected {
+                @apply text-blue-500;
+            }
+            .ql-picker-options {
+                @apply bg-gray-700 text-white;
+
+            }
+        }
+    }
+
+    &-wrapper .ql-snow.ql-toolbar {
+        border-top: none;
+        border-left: none;
+        border-right: none;
+        @apply border-b border-gray-300;
+    }
+    &-wrapper .ql-snow.ql-container {
+        @apply border-none;
+    }
+}

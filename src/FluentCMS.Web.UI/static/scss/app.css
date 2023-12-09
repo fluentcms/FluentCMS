@@ -471,6 +471,46 @@ body.f-theme-dark {
   @apply text-white;
 }
 
+.f-text-editor-wrapper {
+  @apply block h-96 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300;
+}
+.f-text-editor-wrapper:focus {
+  @apply ring-blue-500 border-blue-500;
+}
+.f-theme-dark .f-text-editor-wrapper {
+  @apply bg-gray-700 border-gray-600 placeholder-gray-400 text-white;
+}
+.f-theme-dark .f-text-editor-wrapper:focus {
+  @apply ring-blue-500 border-blue-500;
+}
+.f-theme-dark .f-text-editor-wrapper .ql-snow.ql-toolbar {
+  @apply border-gray-600;
+}
+.f-theme-dark .f-text-editor-wrapper .ql-stroke {
+  @apply stroke-white;
+}
+.f-theme-dark .f-text-editor-wrapper .ql-picker {
+  @apply stroke-white text-white;
+}
+.f-theme-dark .f-text-editor-wrapper .ql-fill {
+  @apply fill-white;
+}
+.f-theme-dark .f-text-editor-wrapper .ql-snow.ql-toolbar button:hover, .f-theme-dark .f-text-editor-wrapper .ql-snow .ql-toolbar button:hover, .f-theme-dark .f-text-editor-wrapper .ql-snow.ql-toolbar button:focus, .f-theme-dark .f-text-editor-wrapper .ql-snow .ql-toolbar button:focus, .f-theme-dark .f-text-editor-wrapper .ql-snow.ql-toolbar button.ql-active, .f-theme-dark .f-text-editor-wrapper .ql-snow .ql-toolbar button.ql-active, .f-theme-dark .f-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-label:hover, .f-theme-dark .f-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-label:hover, .f-theme-dark .f-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-label.ql-active, .f-theme-dark .f-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-label.ql-active, .f-theme-dark .f-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-item:hover, .f-theme-dark .f-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-item:hover, .f-theme-dark .f-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-item.ql-selected, .f-theme-dark .f-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-item.ql-selected {
+  @apply text-blue-500;
+}
+.f-theme-dark .f-text-editor-wrapper .ql-picker-options {
+  @apply bg-gray-700 text-white;
+}
+.f-text-editor-wrapper .ql-snow.ql-toolbar {
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  @apply border-b border-gray-300;
+}
+.f-text-editor-wrapper .ql-snow.ql-container {
+  @apply border-none;
+}
+
 .f-sidebar {
   @apply fixed top-0 left-0 z-40 w-64 pt-16 h-screen transition-transform;
 }
