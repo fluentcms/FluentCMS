@@ -1,6 +1,6 @@
 @inherits BaseComponent
 <label class="f-form-check-wrapper">
-    <input name=@Name type="radio" class=@GetClasses() @disabled=@Disabled @attributes="@AdditionalAttributes">
+    <input name=@Name type="radio" class=@GetClasses() disabled=@(Disabled) @attributes="@AdditionalAttributes">
     <span class="f-form-check-text">
         @if (ChildContent != null)
         {
