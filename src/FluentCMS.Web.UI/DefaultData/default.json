@@ -77,6 +77,11 @@
                     "DefName": "HelloWorld",
                     "Section": "Main",
                     "Order": 1
+                },
+                {
+                    "DefName": "Counter",
+                    "Section": "Main",
+                    "Order": 2
                 }
             ]
         },

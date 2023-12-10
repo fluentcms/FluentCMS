@@ -1,67 +1,53 @@
 ﻿@using System.Text.Json
 @using System.Text
-@inject HttpClient http
-@inject NavigationManager NavigationManager
 @inherits BasePluginComponent
 @inject PluginContentClient pluginContentClient
-This is edit module
-<EditForm Model=@Model OnSubmit=@Submit>
-    <FormField Label="Text/Html Content">
-        <Textarea name="Content" @bind-Value="textHtmlContent" Required rows="5" placeholder="Enter you Text/Html content here"></Textarea>
-    </FormField>
-    <br />
-    <Button Type="submit">Update</Button>
-    <NavLink href="@BackLink">Go Back</NavLink>
-</EditForm>
+@rendermode InteractiveServer
+
+<InputTextArea @bind-Value="Content" Required rows="5" placeholder="Enter you Text/Html content here"></InputTextArea>
+<br />
+<Button Type="submit" @onclick="Submit">Update</Button>
 
 @code {
-    public string BackLink => AppState?.Page?.Path;
+    public string? Content { get; set; }
 
-    public PluginContent? Model;
-
-    public string? textHtmlContent
+    override protected void OnInitialized()
     {
-        get;// => Model?["Content"]?.ToString() ?? "";
-        set; //=> Model!["Content"] = value;
+        Content = "test";
     }
 
     protected override async Task OnInitializedAsync()
     {
-        var response = await pluginContentClient.GetByPluginId("TextHtml", AppState.Site.Id, Plugin.Id);
-        Model = response.Data.FirstOrDefault() ?? new();
-        await base.OnInitializedAsync();
+        // var response = await pluginContentClient.GetByPluginId("TextHtml", AppState.Site.Id, Plugin.Id);
+        // var pluginContent = response?.Data?.FirstOrDefault() ??
+        //     new PluginContent { PluginId = Plugin.Id, SiteId = AppState.Site.Id };
+        // Content = pluginContent["Content"];
+        Content = "test121212";
+        await Task.CompletedTask;
     }
 
     private async Task Submit()
     {
+        var x = Content;
         var serializerOptions = new JsonSerializerOptions();
-        var isCreating = Model?.Id == null;
-        if (isCreating)
-        {
-            var response = await http.PostAsJsonAsync($"PluginContent/TextHtml/Create", Model, serializerOptions);
-            var pluginContentResult = await response.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
-            if (!(pluginContentResult?.Errors.Any() ?? true))
-            {
-                NavigationManager.NavigateTo(BackLink);
-            }
-        }
-        else
-        {
-            var response = await http.PutAsJsonAsync($"PluginContent/TextHtml/Update", Model, serializerOptions);
-            var pluginContentResult = await response.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
-            if (!(pluginContentResult?.Errors.Any() ?? true))
-            {
-                NavigationManager.NavigateTo(BackLink);
-            }
-        }
-
-
+        await Task.CompletedTask;
+        // var isCreating = Model?.Id == null;
+        // if (isCreating)
+        // {
+        //     var response = await http.PostAsJsonAsync($"PluginContent/TextHtml/Create", Model, serializerOptions);
+        //     var pluginContentResult = await response.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
+        // }
+        // else
+        // {
+        //     var response = await http.PutAsJsonAsync($"PluginContent/TextHtml/Update", Model, serializerOptions);
+        //     var pluginContentResult = await response.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
+        // }
     }
 
-    public static Task<HttpResponseMessage> PostJsonAsync(HttpClient httpClient, string url, object body)
-    {
-        var bodyJson = JsonSerializer.Serialize(body);
-        var stringContent = new StringContent(bodyJson, Encoding.UTF8, "application/json");
-        return httpClient.PostAsync(url, stringContent);
-    }
+    // public static Task<HttpResponseMessage> PostJsonAsync(HttpClient httpClient, string url, object body)
+    // {
+    //     var bodyJson = JsonSerializer.Serialize(body);
+    //     var stringContent = new StringContent(bodyJson, Encoding.UTF8, "application/json");
+    //     return httpClient.PostAsync(url, stringContent);
+    // }
 }

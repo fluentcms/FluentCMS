@@ -5,10 +5,7 @@
 @inherits BasePluginComponent
 @inject PluginContentClient pluginContentClient
 
-<div style="background-color:lightblue;">
-    Static content
-    @GetContent()
-</div>
+@GetContent()
 
 @code {
     private string textHtmlContent => PluginContent?["Content"]?.ToString() ?? "";
@@ -25,9 +22,7 @@
         if (AppState?.Site != null)
         {
             var response = await pluginContentClient.GetByPluginId("TextHtml", AppState.Site.Id, Plugin.Id);
-            PluginContent = response.Data.FirstOrDefault();
+            PluginContent = response?.Data?.FirstOrDefault();
         };
-        
-        // await base.OnInitializedAsync();
     }
 }
