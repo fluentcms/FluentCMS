@@ -5,8 +5,8 @@
     <script src="/js/quill.min.js"></script>
     <script src="/js/quill.blazor.js"></script>
 
-@* Remove below lines *@
-     <meta charset="utf-8">
+    @* Remove below lines *@
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <base href="/" />
     <link rel="stylesheet" href="/css/app.min.css">
@@ -14,9 +14,9 @@
 </HeadContent>
 
 <div class="f-text-editor-wrapper">
-<div class="f-text-editor" @ref="Element">
-    @* *@
-</div>
+    <div class="f-text-editor" @ref="Element">
+        @* *@
+    </div>
 </div>
 
 @code {
@@ -35,14 +35,19 @@
         if (firstRender)
         {
             await JSRuntime.InvokeAsync<string>(
-            "QuillFunctions.createQuill", Element, new QuillOptions() { Placeholder = Placeholder, ReadOnly = Readonly});
+            "QuillFunctions.createQuill", DotNetObjectReference.Create(this), Element, new QuillOptions() { Placeholder = Placeholder, ReadOnly = Readonly });
+        }
     }
-    }
+
+    [JSInvokable]
+    public async Task OnTextChanged(string text) {
+        await ValueChanged.InvokeAsync(text);
+    } 
 
     async Task GetEditorContent()
     {
-    Value = await JSRuntime.InvokeAsync<string>(
-    "QuillFunctions.getQuillContent", Element);
+        Value = await JSRuntime.InvokeAsync<string>(
+        "QuillFunctions.getQuillContent", Element);
     }
 
     [Parameter]

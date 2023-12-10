@@ -9,6 +9,34 @@ body.f-theme-dark {
   @apply bg-gray-800;
 }
 
+.f-theme-dark h1, .f-theme-dark h2, .f-theme-dark h3, .f-theme-dark h4, .f-theme-dark h5, .f-theme-dark h6 {
+  @apply text-white;
+}
+
+h1 {
+  @apply text-5xl font-extrabold;
+}
+
+h2 {
+  @apply text-4xl font-bold;
+}
+
+h3 {
+  @apply text-3xl font-bold;
+}
+
+h4 {
+  @apply text-2xl font-bold;
+}
+
+h5 {
+  @apply text-xl font-bold;
+}
+
+h6 {
+  @apply text-lg font-bold;
+}
+
 /* #region COMPONENTS */
 .f-alert {
   @apply flex items-center p-4 text-sm rounded-lg w-full;

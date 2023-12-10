@@ -16,6 +16,7 @@ body.#{$prefix-theme-dark} {
 }
 
 
+@import './headings';
 /* #region COMPONENTS */
 @import './components/alert';
 @import './components/button';
