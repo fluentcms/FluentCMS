@@ -1,5 +1,5 @@
 ﻿<div class="f-plugin-container">
-    @if (string.IsNullOrEmpty(AppState?.ViewMode) && !string.IsNullOrEmpty(Plugin.Definition.EditType))
+    @if (ShouldRenderEdit())
     {
         <div class="f-plugin-container-header">
             <a href="@EditUrl">Edit</a>
@@ -9,16 +9,3 @@
         @ChildContent
     </div>
 </div>
-
-@code {
-    [CascadingParameter(Name = "Plugin")]
-    public PluginResponse Plugin { get; set; } = default!;
-
-    [CascadingParameter]
-    public AppState AppState { get; set; } = default!;
-
-    [Parameter]
-    public RenderFragment? ChildContent { get; set; }
-
-    private string? EditUrl => $"{AppState?.Page?.Path}?pluginId={Plugin.Id}&viewMode=edit";
-}

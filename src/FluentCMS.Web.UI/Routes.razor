@@ -1,8 +1,20 @@
-﻿@using System.Web
+﻿<CascadingValue Value="@AppState">
+    <Router AppAssembly="@typeof(Program).Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="@routeData" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+    </Router>
+</CascadingValue>
+@code
+{
+    public AppState? AppState { get; set; }
 
-<Router AppAssembly="@typeof(Program).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" />
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-    </Found>
-</Router>
+    [Inject]
+    public AppStateService AppStateService { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState = await AppStateService.GetAppState();
+    }
+}

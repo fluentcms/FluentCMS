@@ -2,14 +2,10 @@
 @inherits BasePage
 
 <PageTitle>@AppState?.Page?.Title</PageTitle>
-
 <HeadContent>
     @if (AppState?.Layout != null)
     {
         @((MarkupString)AppState.Layout.Head)
     }
 </HeadContent>
-
-<CascadingValue Value="@AppState">
-    @dynamicComponent()
-</CascadingValue>
+@dynamicComponent()
