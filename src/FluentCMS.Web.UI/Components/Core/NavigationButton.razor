@@ -1,9 +1,12 @@
 @inherits Button
-<Button Href="@To" @attributes="@AdditionalAttributes">
-    @ChildContent
-</Button>
-
+@{
+    base.BuildRenderTree(__builder);
+}
 @code {
     [Parameter]
     public string To { get; set; } = "#";
+
+    protected override void OnInitialized()
+    {
+    }
 }

@@ -1,13 +1,13 @@
 @inherits BaseComponent
 @if (Href != String.Empty)
 {
-    <a class=@GetClasses() disabled=@(Disabled) href=@Href type="@Type" @attributes="AdditionalAttributes">
+    <a class=@this.GetClasses() disabled=@Disabled href=@Href @attributes="AdditionalAttributes">
         @ChildContent
     </a>
 }
 else
 {
-    <button class=@GetClasses() disabled=@(Disabled) type="@Type" @attributes="AdditionalAttributes">
+    <button class=@this.GetClasses() disabled=@Disabled type="@Type" @attributes="AdditionalAttributes">
         @ChildContent
     </button>
 }
@@ -16,10 +16,10 @@ else
 
     [Parameter]
     [CssProperty]
-    public string Color { get; set; } = "default";
+    public ColorEnum Color { get; set; } = ColorEnum.Default;
 
     [Parameter]
-    public string Href { get; set; } = "";
+    public string? Href { get; set; }
 
     [Parameter]
     [CssProperty]
@@ -30,9 +30,10 @@ else
     public bool Loading { get; set; } = false;
 
     [Parameter]
-    public string Type { get; set; } = "button";
+    public ButtonTypeEnum Type { get; set; } = ButtonTypeEnum.Button;
 
-    [Parameter] public string Size { get; set; } = "md";
+    [Parameter]
+    public ButtonSizeEnum Size { get; set; } = ButtonSizeEnum.Medium;
 
     [Parameter]
     public EventCallback OnClick { get; set; }
