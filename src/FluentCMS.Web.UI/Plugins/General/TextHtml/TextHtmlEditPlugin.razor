@@ -4,31 +4,37 @@
 @inject PluginContentClient pluginContentClient
 @rendermode InteractiveServer
 
-<InputTextArea @bind-Value="Content" Required rows="5" placeholder="Enter you Text/Html content here"></InputTextArea>
-<br />
-<Button Type="submit" @onclick="Submit">Update</Button>
+<EditForm Model="Model" OnValidSubmit="Submit">
+    <InputTextArea @bind-Value="Model.Content" Required rows="5" placeholder="Enter you Text/Html content here"></InputTextArea>
+<pre>
+        @JsonSerializer.Serialize(Model);
+</pre>
+    <br />
+    <Button Type="submit">Update</Button>
+</EditForm>
 
 @code {
-    public string? Content { get; set; }
+    [MemoryCachedValue]
+    public TextHtmlModel Model { get; set; } = new();
 
     override protected void OnInitialized()
     {
-        Content = "test";
+
     }
 
-    protected override async Task OnInitializedAsync()
+    public override async Task OnPreRendering()
     {
         // var response = await pluginContentClient.GetByPluginId("TextHtml", AppState.Site.Id, Plugin.Id);
         // var pluginContent = response?.Data?.FirstOrDefault() ??
         //     new PluginContent { PluginId = Plugin.Id, SiteId = AppState.Site.Id };
         // Content = pluginContent["Content"];
-        Content = "test121212";
+        Model.Content = "test121212";
         await Task.CompletedTask;
     }
 
     private async Task Submit()
     {
-        var x = Content;
+        var x = Model.Content;
         var serializerOptions = new JsonSerializerOptions();
         await Task.CompletedTask;
         // var isCreating = Model?.Id == null;
@@ -50,4 +56,9 @@
     //     var stringContent = new StringContent(bodyJson, Encoding.UTF8, "application/json");
     //     return httpClient.PostAsync(url, stringContent);
     // }
+
+    public class TextHtmlModel
+    {
+        public string Content { get; set; }
+    }
 }
