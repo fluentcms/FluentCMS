@@ -46,8 +46,6 @@ public abstract class BaseClient
 
         if (_methodName.StartsWith("get", StringComparison.CurrentCultureIgnoreCase))
         {
-            var x = await HttpClient.GetAsync($"{GetEndpointUrl()}?{query}", cancellationToken);
-            var y = x.Content.ReadFromJsonAsync<T>(cancellationToken);
             T? response = await HttpClient.GetFromJsonAsync<T>($"{GetEndpointUrl()}?{query}", cancellationToken);
             return response ?? throw new AppApiClientException();
         }

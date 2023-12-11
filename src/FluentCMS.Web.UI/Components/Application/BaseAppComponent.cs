@@ -4,6 +4,6 @@ namespace FluentCMS.Web.UI.Components.Application;
 
 public class BaseAppComponent : ComponentBase
 {
-    [CascadingParameter]
+    [Inject]
     public AppState AppState { get; set; } = default!;
 }

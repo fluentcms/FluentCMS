@@ -1,8 +1,4 @@
-﻿@using System.Text.Json
-@using System.Text
-@using FluentCMS.Api.Controllers
-@using System.Web
-@inherits BasePluginComponent
+﻿@inherits BasePluginComponent
 @inject PluginContentClient pluginContentClient
 
 @GetContent()
@@ -19,7 +15,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (AppState?.Site != null)
+        if (AppState.Site != null)
         {
             var response = await pluginContentClient.GetByPluginId("TextHtml", AppState.Site.Id, Plugin.Id);
             PluginContent = response?.Data?.FirstOrDefault();

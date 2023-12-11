@@ -1,12 +1,11 @@
-﻿using FluentCMS.Web.UI.Components.Application;
-using HtmlAgilityPack;
+﻿using HtmlAgilityPack;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using System.Text.RegularExpressions;
 
-namespace FluentCMS.Web.UI.Pages;
+namespace FluentCMS.Web.UI.Components.Application;
 
-public class BasePage : ComponentBase, IDisposable
+public class BasePage : BaseAppComponent, IDisposable
 {
     public const string ATTRIBUTE = "FluentCMS";
     protected CancellationTokenSource CancellationTokenSource = new();
@@ -15,20 +14,17 @@ public class BasePage : ComponentBase, IDisposable
     [Parameter]
     public string? Route { get; set; }
 
-    [CascadingParameter]
-    public AppState? AppState { get; set; }
-
     protected RenderFragment dynamicComponent() => builder =>
-    {
+{
 
-        var _body = AppState?.Layout?.Body ?? string.Empty;
+    var _body = AppState.Layout?.Body ?? string.Empty;
 
-        var doc = new HtmlDocument();
-        doc.LoadHtml(_body);
-        var children = GetChildren(doc.DocumentNode);
-        // add children to the dom
-        AddChildrenToDom(builder, children);
-    };
+    var doc = new HtmlDocument();
+    doc.LoadHtml(_body);
+    var children = GetChildren(doc.DocumentNode);
+    // add children to the dom
+    AddChildrenToDom(builder, children);
+};
 
     private void AddChildrenToDom(RenderTreeBuilder builder, IEnumerable<HtmlNode> children)
     {
