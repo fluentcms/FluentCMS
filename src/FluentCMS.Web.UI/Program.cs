@@ -40,6 +40,8 @@ services.AddHttpContextAccessor();
 
 services.AddJwtAuthentication(builder.Configuration);
 
+services.AddMemoryCache();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
