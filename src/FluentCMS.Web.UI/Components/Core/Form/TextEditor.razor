@@ -1,3 +1,4 @@
+@inherits BaseComponent
 @inject IJSRuntime JSRuntime
 
 <HeadContent>
@@ -13,9 +14,9 @@
     <link rel="icon" type="image/png" href="favicon.png" />
 </HeadContent>
 
-<div class="f-text-editor-wrapper">
-    <div class="f-text-editor" @ref="Element">
-        @* *@
+<div class=@this.ClassName("TextEditorWrapper")>
+    <div class=@this.GetClasses() @ref="Element" @attributes="AdditionalAttributes">
+        @* @((MarkupString)Value) *@
     </div>
 </div>
 
@@ -27,7 +28,7 @@
     {
         public string Placeholder { get; set; }
         public bool ReadOnly { get; set; }
-
+        @* Add more... *@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -35,30 +36,43 @@
         if (firstRender)
         {
             await JSRuntime.InvokeAsync<string>(
-            "QuillFunctions.createQuill", DotNetObjectReference.Create(this), Element, new QuillOptions() { Placeholder = Placeholder, ReadOnly = Readonly });
+            "QuillFunctions.createQuill", DotNetObjectReference.Create(this), Element, new QuillOptions()
+                {
+                    Placeholder = Placeholder,
+                    ReadOnly = Readonly
+                });
+        }
+        else
+        {
+            if (ShouldUpdate)
+            {
+                await JSRuntime.InvokeVoidAsync("QuillFunctions.setQuillContent", Element, Value);
+            }
+            else
+            {
+                ShouldUpdate = false;
+            }
         }
     }
 
     [JSInvokable]
-    public async Task OnTextChanged(string text) {
-        await ValueChanged.InvokeAsync(text);
-    } 
-
-    async Task GetEditorContent()
+    public async Task OnTextChanged(string text)
     {
-        Value = await JSRuntime.InvokeAsync<string>(
-        "QuillFunctions.getQuillContent", Element);
+        ShouldUpdate = false;
+        await ValueChanged.InvokeAsync(text);
     }
 
     [Parameter]
-    public string Placeholder { get; set; }
+    public string Placeholder { get; set; } = default!;
 
     [Parameter]
     public bool Readonly { get; set; } = false;
 
     [Parameter]
-    public string Value { get; set; }
+    public string Value { get; set; } = default!;
 
     [Parameter]
     public EventCallback<string> ValueChanged { get; set; }
+
+    private bool ShouldUpdate = true;
 }

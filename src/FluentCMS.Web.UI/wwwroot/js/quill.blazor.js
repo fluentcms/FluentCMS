@@ -1,4 +1,12 @@
 (function () {
+    const updateValue = (quill, value) => {
+        console.log(value, quill);
+        if (value !== quill.root.innerHTML) {
+            const delta = quill.clipboard.convert(value);
+            quill.setContents(delta, "silent");
+        }
+    };
+
     window.QuillFunctions = {
         createQuill: function (dotnetHelper, quillElement, quillOptions = {}) {
             var options = {
@@ -30,15 +38,13 @@
             const instance = new Quill(quillElement, options);
 
             instance.on("text-change", function (delta, oldDelta, source) {
-                // Get the HTML content of the editor
                 var htmlContent = instance.root.innerHTML;
 
-                // Call the .NET method using JavaScript Interop
                 dotnetHelper.invokeMethodAsync("OnTextChanged", htmlContent);
             });
         },
-        getQuillContent: function (quillControl) {
-            return JSON.stringify(quillControl.__quill.getContents());
+        setQuillContent: function (quillControl, value) {
+            updateValue(quillControl.__quill, value);
         },
     };
 })();
