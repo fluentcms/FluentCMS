@@ -1,24 +1,16 @@
 ﻿@inherits BasePluginComponent
 @inject PluginContentClient pluginContentClient
 
-@GetContent()
+@((MarkupString)Model.Content)
 
 @code {
-    private string textHtmlContent => PluginContent?["Content"]?.ToString() ?? "";
-    public PluginContent? PluginContent { get; set; }
-
-    private MarkupString GetContent()
-    {
-        var contentString = PluginContent?["Content"]?.ToString() ?? "";
-        return (MarkupString)contentString;
-    }
+    public TextHtmlContent Model { get; set; } = new();
 
     protected override async Task OnInitializedAsync()
     {
-        if (AppState.Site != null)
-        {
-            var response = await pluginContentClient.GetByPluginId("TextHtml", AppState.Site.Id, Plugin.Id);
-            PluginContent = response?.Data?.FirstOrDefault();
-        };
+        var response = await pluginContentClient.GetByPluginId("TextHtml", AppState.Site.Id, Plugin.Id);
+        var pluginContent = response?.Data?.FirstOrDefault() ??
+            new PluginContent { PluginId = Plugin.Id, SiteId = AppState.Site.Id };
+        Model = new TextHtmlContent(pluginContent);
     }
 }

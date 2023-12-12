@@ -40,14 +40,39 @@ public abstract class BaseClient
         }
     }
 
+    protected async Task<T> Call<T>(string contentType, object request, CancellationToken cancellationToken = default)
+    {
+        CaptureCallerMethodSource();
+
+        if (_methodName.StartsWith("create", StringComparison.CurrentCultureIgnoreCase))
+        {
+            var response = await HttpClient.PostAsJsonAsync($"{GetEndpointUrl(contentType)}", request, cancellationToken);
+            return await response.Content.ReadFromJsonAsync<T>(cancellationToken) ?? throw new AppApiClientException();
+        }
+        else if (_methodName.StartsWith("update", StringComparison.CurrentCultureIgnoreCase))
+        {
+            var response = await HttpClient.PatchAsJsonAsync($"{GetEndpointUrl(contentType)}", request, cancellationToken);
+            return await response.Content.ReadFromJsonAsync<T>(cancellationToken) ?? throw new AppApiClientException();
+        }
+        else if (_methodName.StartsWith("delete", StringComparison.CurrentCultureIgnoreCase))
+        {
+            var response = await HttpClient.DeleteAsync($"{GetEndpointUrl(contentType)}", cancellationToken);
+            return await response.Content.ReadFromJsonAsync<T>(cancellationToken) ?? throw new AppApiClientException();
+        }
+        else
+        {
+            throw new Exception($"Unable to determine method type in client class {GetType().Name} method Call");
+        }
+    }
+
     protected async Task<T> Call<T>(NameValueCollection query, CancellationToken cancellationToken = default)
     {
         CaptureCallerMethodSource();
 
         if (_methodName.StartsWith("get", StringComparison.CurrentCultureIgnoreCase))
         {
-            T? response = await HttpClient.GetFromJsonAsync<T>($"{GetEndpointUrl()}?{query}", cancellationToken);
-            return response ?? throw new AppApiClientException();
+            return await HttpClient.GetFromJsonAsync<T>($"{GetEndpointUrl()}?{query}", cancellationToken)
+                ?? throw new AppApiClientException();
         }
         else
         {
@@ -61,8 +86,8 @@ public abstract class BaseClient
 
         if (_methodName.StartsWith("get", StringComparison.CurrentCultureIgnoreCase))
         {
-            T? response = await HttpClient.GetFromJsonAsync<T>($"{GetEndpointUrl(contentType)}?{query}", cancellationToken);
-            return response ?? throw new AppApiClientException();
+            return await HttpClient.GetFromJsonAsync<T>($"{GetEndpointUrl(contentType)}?{query}", cancellationToken)
+                ?? throw new AppApiClientException();
         }
         else
         {

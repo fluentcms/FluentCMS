@@ -5,11 +5,9 @@ using System.Text.RegularExpressions;
 
 namespace FluentCMS.Web.UI.Components.Application;
 
-public class BasePage : BaseAppComponent, IDisposable
+public class BasePage : BaseAppComponent
 {
     public const string ATTRIBUTE = "FluentCMS";
-    protected CancellationTokenSource CancellationTokenSource = new();
-    protected CancellationToken CancellationToken => CancellationTokenSource.Token;
 
     [Parameter]
     public string? Route { get; set; }
@@ -96,11 +94,5 @@ public class BasePage : BaseAppComponent, IDisposable
     {
         var parameterParserRegex = new Regex("(\\s(?<name>\\w+)=\\\"?(?<value>\\w+)\\\"?)+");
         return new Dictionary<string, string>(parameterParserRegex.Matches(layout).Select(x => new KeyValuePair<string, string>(x.Groups["name"].Value, x.Groups["value"].Value)));
-    }
-
-    public void Dispose()
-    {
-        CancellationTokenSource.Cancel();
-        CancellationTokenSource.Dispose();
     }
 }

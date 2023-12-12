@@ -10,7 +10,7 @@ public class ContentRepository<TContent>(
     where TContent : Content, new()
 {
 
-    public async Task<TContent?> Create(TContent content, CancellationToken cancellationToken = default)
+    public virtual async Task<TContent?> Create(TContent content, CancellationToken cancellationToken = default)
     {
         // setting base properties
         content.Id = Guid.NewGuid();
@@ -30,7 +30,7 @@ public class ContentRepository<TContent>(
         return await GetById(content.SiteId, content.Type, content.Id, cancellationToken);
     }
 
-    public async Task<TContent?> GetById(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default)
+    public virtual async Task<TContent?> GetById(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default)
     {
         var collection = GetCollection(contentType);
 
@@ -45,7 +45,7 @@ public class ContentRepository<TContent>(
         return dict.ToContent<TContent>();
     }
 
-    public async Task<TContent?> Update(TContent content, CancellationToken cancellationToken = default)
+    public virtual async Task<TContent?> Update(TContent content, CancellationToken cancellationToken = default)
     {
         // setting base properties
         content.LastUpdatedAt = DateTime.UtcNow;
@@ -75,7 +75,7 @@ public class ContentRepository<TContent>(
         return updatedDict.ToContent<TContent>();
     }
 
-    public async Task<TContent?> Delete(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default)
+    public virtual async Task<TContent?> Delete(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default)
     {
         var collection = GetCollection(contentType);
 
@@ -92,10 +92,10 @@ public class ContentRepository<TContent>(
         return deleted.ToContent<TContent>();
     }
 
-    public async Task<IEnumerable<TContent>> GetAll(Guid siteId, string contentType, CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TContent>> GetAll(Guid siteId, string contentType, CancellationToken cancellationToken = default)
     {
         var collection = GetCollection(contentType);
-        var filter = Builders<Dictionary<string, object?>>.Filter.Empty;
+        var filter = GetSiteIdFilter(siteId);
         var dictionaries = await collection.FindAsync(filter, cancellationToken: cancellationToken);
         return await Task.FromResult(dictionaries.ToEnumerable(cancellationToken: cancellationToken).Select(dict =>
         {

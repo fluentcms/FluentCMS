@@ -27,6 +27,11 @@ public class PluginContentRepository(
         return pluginContents;
     }
 
+    public override Task<PluginContent?> Create(PluginContent content, CancellationToken cancellationToken = default)
+    {
+        return base.Create(content, cancellationToken);
+    }
+
     protected static FilterDefinition<Dictionary<string, object?>> GetPluginIdFilter(Guid pluginId)
     {
         var builder = Builders<Dictionary<string, object?>>.Filter;

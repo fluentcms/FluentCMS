@@ -23,7 +23,7 @@ public class AppStateService
             appState.Site = taskSite.Result;
 
             //appState.Site = siteClient.GetByUrl(appState.Host).Result;
-            appState.Layout = appState.Site?.Layout;
+            appState.Layout = appState.Site.Layout;
 
             if (appState.Site != null)
             {

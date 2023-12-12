@@ -32,4 +32,11 @@ public class ContentController(IContentService<Content> contentService)
         await contentService.Delete(request.SiteId, contentType, request.Id, cancellationToken);
         return new BooleanResponse(true);
     }
+
+    [HttpGet]
+    public async Task<IApiPagingResult<Content>> GetAll([FromRoute] string contentType, [FromQuery] Guid siteId, CancellationToken cancellationToken = default)
+    {
+        var contents = await contentService.GetAll(siteId, contentType, cancellationToken);
+        return new ApiPagingResult<Content>(contents);
+    }
 }
