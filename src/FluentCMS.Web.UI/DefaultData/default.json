@@ -69,9 +69,19 @@
             "Layout":  null,
             "Plugins": [
                 {
-                    "DefName": "HelloWorld",
+                    "DefName": "TextHtml",
                     "Section": "Main",
                     "Order": 0
+                },
+                {
+                    "DefName": "HelloWorld",
+                    "Section": "Main",
+                    "Order": 1
+                },
+                {
+                    "DefName": "Counter",
+                    "Section": "Main",
+                    "Order": 2
                 }
             ]
         },
