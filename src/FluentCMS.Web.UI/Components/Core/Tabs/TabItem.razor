@@ -1,0 +1,21 @@
+@inherits BaseComponent
+
+<li class=@this.GetClasses() role="presentation">
+  <TabItemLink Active=@Active Index="@Index" Disabled=@Disabled>
+    @ChildContent
+  </TabItemLink>
+</li>
+
+@code {
+
+    [Parameter]
+    public int Index { get; set; } = default!;
+
+    [Parameter]
+    [CssProperty]
+    public bool Active { get; set; } = false;
+
+    [Parameter]
+    [CssProperty]
+    public bool Disabled { get; set; } = false;
+}

@@ -65,6 +65,23 @@
             <Checkbox Disabled Text="Disabled"></Checkbox>
         </div>
     </div>
+     <div class="py-8">
+         <h2 class="font-bold text-2xl">Tabs</h2>
+         <div class="py-4 flex flex-col gap-4">
+
+             <Tabs>
+                 <TabPanel Name="General">
+                     General Tab content
+                 </TabPanel>
+                 <TabPanel Active Name="Permissions">
+                     Permissions Tab content
+                 </TabPanel>
+                 <TabPanel Name="seo">
+                     SEO Tab content
+                 </TabPanel>
+             </Tabs>
+         </div>
+     </div>
 </Page>
 
 @code {
