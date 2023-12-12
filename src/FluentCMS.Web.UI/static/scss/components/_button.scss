@@ -93,7 +93,7 @@ $prefix-button: $prefix + "button";
 .#{$prefix-button}-group {
     @apply flex justify-end gap-2;
 
-    &:not(.#{$prefix-button}-group-no-wrap) {
+    &.#{$prefix-button}-group-wrap-true {
         @apply flex-wrap;
     }
 }
