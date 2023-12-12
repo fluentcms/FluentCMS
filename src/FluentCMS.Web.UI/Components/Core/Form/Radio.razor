@@ -1,5 +1,6 @@
+@inherits BaseComponent
 <label class="f-form-check-wrapper">
-    <input name=@Name type="radio" class="f-radio" @disabled=@Disabled @attributes=@RestProps>
+    <input name=@Name type="radio" class=@this.GetClasses() disabled=@(Disabled) @attributes="@AdditionalAttributes">
     <span class="f-form-check-text">
         @if (ChildContent != null)
         {
@@ -16,9 +17,6 @@
 
     [Parameter]
     public string Name { get; set; } = default!;
-
-    [Parameter]
-    public RenderFragment ChildContent { get; set; } = default!;
 
     [Parameter]
     public string Text { get; set; } = "";

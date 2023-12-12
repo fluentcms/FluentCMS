@@ -1,0 +1,11 @@
+<div class="f-plugin-container">
+    @if (ShouldRenderEdit())
+    {
+        <div class="f-plugin-container-header">
+            <a href="@EditUrl">Edit</a>
+        </div>
+    }
+    <div class="f-plugin">
+        @ChildContent
+    </div>
+</div>

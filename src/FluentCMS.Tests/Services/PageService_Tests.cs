@@ -152,11 +152,11 @@ public class PageService_Tests
 
         // setup other site
         var siteRepository = scope.ServiceProvider.GetRequiredService<ISiteRepository>();
-        var otherSite = await siteRepository.Create(new Site() { Id=Guid.NewGuid(), Name="OtherSite" });
+        var otherSite = await siteRepository.Create(new Site() { Id = Guid.NewGuid(), Name = "OtherSite" });
 
         //create parent page
         var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
-        var parentPage = await pageRepository.Create(new Page() { Title="ParentPage",Path = "parent" ,SiteId = otherSite.Id});
+        var parentPage = await pageRepository.Create(new Page() { Title = "ParentPage", Path = "parent", SiteId = otherSite.Id });
 
         // try to create child
         scope.SetupMockApplicationContextForSuperUser();
@@ -180,7 +180,7 @@ public class PageService_Tests
 
         //create parent page
         var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
-        var parentPage = await pageRepository.Create(new Page() {Id = Guid.NewGuid(), Title = "ParentPage", Path = "parent", SiteId = defaultSite.Id });
+        var parentPage = await pageRepository.Create(new Page() { Id = Guid.NewGuid(), Title = "ParentPage", Path = "parent", SiteId = defaultSite.Id });
 
         // create a child
         var childPage = await pageRepository.Create(new Page()
@@ -230,7 +230,7 @@ public class PageService_Tests
         var defaultSite = await SeedDefaultSite(scope);
 
         //roles To Use
-        var roles = Enumerable.Range(0,3).Select(_=>Guid.NewGuid()).ToArray();
+        var roles = Enumerable.Range(0, 3).Select(_ => Guid.NewGuid()).ToArray();
 
         //create parent page
         var pageRepository = scope.ServiceProvider.GetRequiredService<IPageRepository>();
@@ -288,7 +288,7 @@ public class PageService_Tests
         // Try Modification of SiteId
         scope.SetupMockApplicationContextForSuperUser();
         var pageService = scope.ServiceProvider.GetRequiredService<IPageService>();
-        var pageToEdit =new Page()
+        var pageToEdit = new Page()
         {
             Id = page!.Id,
             Title = "ParentPage",

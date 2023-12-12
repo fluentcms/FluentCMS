@@ -1,6 +1,8 @@
+@inherits InputBaseComponent<bool?>
+
 <div class="f-form-check-wrapper">
-    <input id="@Id" type="checkbox" class="f-checkbox" @disabled=@Disabled @required="@Required" @bind=@Checked
-        @attributes=@RestProps>
+    <input id="@Id" type="checkbox" class=@this.GetClasses() disabled=@(Disabled) @required="@Required" @bind=@Checked
+        @attributes="@AdditionalAttributes" />
 
     @if (ChildContent != null)
     {
@@ -27,10 +29,4 @@
 
     [Parameter]
     public string Text { get; set; } = "";
-
-    [Parameter]
-    public RenderFragment ChildContent { get; set; }
-
-    [Parameter(CaptureUnmatchedValues = true)]
-    public Dictionary<string, object> RestProps { get; set; }
 }

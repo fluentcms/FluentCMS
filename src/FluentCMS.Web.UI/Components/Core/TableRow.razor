@@ -1,8 +1,5 @@
-<tr class="f-table-row">
+@inherits BaseComponent
+
+<tr class=@this.GetClasses() @attributes="@AdditionalAttributes">
     @ChildContent
 </tr>
-
-@code {
-    [Parameter]
-    public RenderFragment ChildContent {get; set;}
-}

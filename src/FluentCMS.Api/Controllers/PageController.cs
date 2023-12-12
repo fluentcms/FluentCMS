@@ -10,6 +10,7 @@ public class PageController(
     IPageService pageService,
     IPluginService pluginService,
     IPluginDefinitionService pluginDefinitionService,
+    ILayoutService layoutService,
     IMapper mapper) : BaseController
 {
 
@@ -45,13 +46,21 @@ public class PageController(
         var pageResponse = _mapper.Map<PageResponse>(page);
         var pagePlugins = await pluginService.GetByPageId(page.Id, cancellationToken);
         var pluginDefinitions = await pluginDefinitionService.GetAll(cancellationToken);
+        var layouts = await layoutService.GetAll(siteId, cancellationToken);
+
         pageResponse.Plugins = pagePlugins.Select(p => new PluginResponse
         {
             Id = p.Id,
             Definition = pluginDefinitions.Single(d => d.Id == p.DefinitionId),
             Order = p.Order,
-            Section = p.Section
+            Section = p.Section,
         }).ToList();
+
+        if (page.LayoutId != null)
+        {
+            pageResponse.Layout = layouts.Where(x => x.Id == page.LayoutId.Value).Single();
+        }
+
         return new ApiResult<PageResponse>(pageResponse);
     }
 

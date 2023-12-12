@@ -1,0 +1,18 @@
+@inherits BaseComponent
+
+<div class=@this.GetClasses() @attributes="@AdditionalAttributes">
+    @if (Title != String.Empty)
+    {
+        <CardTitle>
+            @Title
+        </CardTitle>
+    }
+
+    @ChildContent
+</div>
+
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = String.Empty;
+}

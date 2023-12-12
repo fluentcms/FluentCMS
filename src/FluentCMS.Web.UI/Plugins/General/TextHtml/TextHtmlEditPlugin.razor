@@ -1,0 +1,53 @@
+﻿@using System.Text.Json
+@using System.Text
+@inherits BasePluginComponent
+@inject PluginContentClient pluginContentClient
+@rendermode InteractiveServer
+
+<InputTextArea @bind-Value="Content" Required rows="5" placeholder="Enter you Text/Html content here"></InputTextArea>
+<br />
+<Button Type="ButtonTypeEnum.Submit" @onclick="Submit">Update</Button>
+
+@code {
+    public string? Content { get; set; }
+
+    override protected void OnInitialized()
+    {
+        Content = "test";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // var response = await pluginContentClient.GetByPluginId("TextHtml", AppState.Site.Id, Plugin.Id);
+        // var pluginContent = response?.Data?.FirstOrDefault() ??
+        // new PluginContent { PluginId = Plugin.Id, SiteId = AppState.Site.Id };
+        // Content = pluginContent["Content"];
+        Content = "test121212";
+        await Task.CompletedTask;
+    }
+
+    private async Task Submit()
+    {
+        var x = Content;
+        var serializerOptions = new JsonSerializerOptions();
+        await Task.CompletedTask;
+        // var isCreating = Model?.Id == null;
+        // if (isCreating)
+        // {
+        // var response = await http.PostAsJsonAsync($"PluginContent/TextHtml/Create", Model, serializerOptions);
+        // var pluginContentResult = await response.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
+        // }
+        // else
+        // {
+        // var response = await http.PutAsJsonAsync($"PluginContent/TextHtml/Update", Model, serializerOptions);
+        // var pluginContentResult = await response.Content.ReadFromJsonAsync<ApiResult<PluginContent>>();
+        // }
+    }
+
+    // public static Task<HttpResponseMessage> PostJsonAsync(HttpClient httpClient, string url, object body)
+    // {
+    // var bodyJson = JsonSerializer.Serialize(body);
+    // var stringContent = new StringContent(bodyJson, Encoding.UTF8, "application/json");
+    // return httpClient.PostAsync(url, stringContent);
+    // }
+}

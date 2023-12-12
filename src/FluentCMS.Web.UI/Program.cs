@@ -1,7 +1,7 @@
-using FluentCMS.Api;
 using FluentCMS;
-using FluentCMS.Web.UI;
+using FluentCMS.Api;
 using FluentCMS.Entities;
+using FluentCMS.Web.UI;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,9 +14,11 @@ services.AddApplicationServices();
 services.AddMongoDbRepositories("MongoDb");
 
 services.AddJwtTokenProvider(builder.Configuration);
+
 services.AddSmtpEmailProvider();
 
 services.AddAuthentication();
+
 services.AddAuthorization();
 
 services.AddUIServices();
@@ -36,20 +38,6 @@ services.AddApiDocumentation();
 
 services.AddHttpContextAccessor();
 
-// TODO: Add JWT to request header, accept-language, etc.
-// TODO: Move to somewhere else (Shared project maybe?)
-services.AddScoped(sp =>
-{
-    var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-    var request = httpContextAccessor?.HttpContext?.Request;
-    var domain = string.Format("{0}://{1}/api/", request?.Scheme, request?.Host.Value);
-
-    return new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
-    {
-        BaseAddress = new Uri(domain),
-    };
-});
-
 services.AddJwtAuthentication(builder.Configuration);
 
 var app = builder.Build();
@@ -66,8 +54,6 @@ app.UseHsts();
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
-
-app.UseRouting();
 
 app.UseAntiforgery();
 

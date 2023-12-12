@@ -1,0 +1,28 @@
+﻿@using System.Text.Json
+@using System.Text
+@using FluentCMS.Api.Controllers
+@using System.Web
+@inherits BasePluginComponent
+@inject PluginContentClient pluginContentClient
+
+@GetContent()
+
+@code {
+    private string textHtmlContent => PluginContent?["Content"]?.ToString() ?? "";
+    public PluginContent? PluginContent { get; set; }
+
+    private MarkupString GetContent()
+    {
+        var contentString = PluginContent?["Content"]?.ToString() ?? "";
+        return (MarkupString)contentString;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AppState?.Site != null)
+        {
+            var response = await pluginContentClient.GetByPluginId("TextHtml", AppState.Site.Id, Plugin.Id);
+            PluginContent = response?.Data?.FirstOrDefault();
+        };
+    }
+}

@@ -1,6 +1,5 @@
 ﻿using System.Collections.Specialized;
 using System.Diagnostics;
-using System.Net.Http.Headers;
 
 namespace FluentCMS.Web.UI.ApiClients;
 
@@ -13,16 +12,12 @@ public abstract class BaseClient
 
     protected BaseClient(IHttpClientFactory httpClientFactory)
     {
-        HttpClient = httpClientFactory.CreateClient("FluentCMS.Web.UI");
-        // TODO: Move this to configuration
-        HttpClient.BaseAddress = new Uri("https://localhost:7164/api/");
-        HttpClient.DefaultRequestHeaders.Accept.Clear();
-        HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        HttpClient = httpClientFactory.CreateClient("FluentCMS.Web.Api");
     }
 
     protected async Task<T> Call<T>(object request, CancellationToken cancellationToken = default)
     {
-        CaptureExceptionSource();
+        CaptureCallerMethodSource();
 
         if (_methodName.StartsWith("create", StringComparison.CurrentCultureIgnoreCase))
         {
@@ -47,11 +42,28 @@ public abstract class BaseClient
 
     protected async Task<T> Call<T>(NameValueCollection query, CancellationToken cancellationToken = default)
     {
-        CaptureExceptionSource();
+        CaptureCallerMethodSource();
 
         if (_methodName.StartsWith("get", StringComparison.CurrentCultureIgnoreCase))
         {
+            var x = await HttpClient.GetAsync($"{GetEndpointUrl()}?{query}", cancellationToken);
+            var y = x.Content.ReadFromJsonAsync<T>(cancellationToken);
             T? response = await HttpClient.GetFromJsonAsync<T>($"{GetEndpointUrl()}?{query}", cancellationToken);
+            return response ?? throw new AppApiClientException();
+        }
+        else
+        {
+            throw new Exception($"Unable to determine method type in client class {GetType().Name} method Call");
+        }
+    }
+
+    protected async Task<T> Call<T>(string contentType, NameValueCollection query, CancellationToken cancellationToken = default)
+    {
+        CaptureCallerMethodSource();
+
+        if (_methodName.StartsWith("get", StringComparison.CurrentCultureIgnoreCase))
+        {
+            T? response = await HttpClient.GetFromJsonAsync<T>($"{GetEndpointUrl(contentType)}?{query}", cancellationToken);
             return response ?? throw new AppApiClientException();
         }
         else
@@ -62,18 +74,21 @@ public abstract class BaseClient
 
     protected async Task<T> Call<T>(CancellationToken cancellationToken = default)
     {
-        CaptureExceptionSource();
+        CaptureCallerMethodSource();
 
         var response = await HttpClient.GetFromJsonAsync<T>($"{GetEndpointUrl()}", cancellationToken);
         return response ?? throw new AppApiClientException();
     }
 
-    private string GetEndpointUrl()
+    private string GetEndpointUrl(string? contentType = default)
     {
-        return $"{_typeName.Replace("Client", string.Empty)}/{_methodName}";
+        if (string.IsNullOrWhiteSpace(contentType))
+            return $"{_typeName.Replace("Client", string.Empty)}/{_methodName}";
+        else
+            return $"{_typeName.Replace("Client", string.Empty)}/{contentType}/{_methodName}";
     }
 
-    private void CaptureExceptionSource()
+    private void CaptureCallerMethodSource()
     {
         var stackTrace = new StackTrace();
 
