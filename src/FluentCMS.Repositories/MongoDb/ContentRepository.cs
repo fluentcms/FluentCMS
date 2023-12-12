@@ -47,18 +47,20 @@ public class ContentRepository<TContent>(
 
     public virtual async Task<TContent?> Update(TContent content, CancellationToken cancellationToken = default)
     {
-        // setting base properties
-        content.LastUpdatedAt = DateTime.UtcNow;
-        content.LastUpdatedBy = applicationContext.Current.UserName;
-
         var existing = await GetById(content.SiteId, content.Type, content.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentNotFound);
 
-        if (existing.Type != content.Type)
+        if (existing.Type.ToLower() != content.Type.ToLower())
             throw new AppException(ExceptionCodes.ContentTypeMismatch);
 
         if (existing.SiteId != content.SiteId)
             throw new AppException(ExceptionCodes.ContentSiteIdMismatch);
+
+        // setting base properties
+        content.CreatedAt = existing.CreatedAt;
+        content.CreatedBy = existing.CreatedBy;
+        content.LastUpdatedAt = DateTime.UtcNow;
+        content.LastUpdatedBy = applicationContext.Current.UserName;
 
         var dict = content.ToDictionary();
 
@@ -106,12 +108,14 @@ public class ContentRepository<TContent>(
 
     #region Private Methods
 
-    protected IMongoCollection<Dictionary<string, object?>> GetCollection(string contentType)
+    protected virtual IMongoCollection<Dictionary<string, object?>> GetCollection(string contentType)
     {
         if (string.IsNullOrWhiteSpace(contentType))
             throw new ArgumentNullException(nameof(contentType));
 
-        return mongoDbContext.Database.GetCollection<Dictionary<string, object?>>(contentType);
+        var collectionName = $"Content_{contentType.ToLower()}";
+
+        return mongoDbContext.Database.GetCollection<Dictionary<string, object?>>(collectionName);
     }
 
     protected static void ReverseMongoDBId(Dictionary<string, object?> dict)
