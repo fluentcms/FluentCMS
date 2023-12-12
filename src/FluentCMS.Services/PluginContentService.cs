@@ -17,4 +17,9 @@ public class PluginContentService(
     {
         return await contentRepository.GetByPluginId(siteId, contentType, pluginId, cancellationToken);
     }
+
+    public override Task<PluginContent> Create(PluginContent content, CancellationToken cancellationToken = default)
+    {
+        return base.Create(content, cancellationToken);
+    }
 }

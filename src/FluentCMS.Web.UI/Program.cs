@@ -44,8 +44,8 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    app.Services.ResetMongoDb();
-    app.Services.LoadInitialDataFrom(@"./DefaultData/");
+    //app.Services.ResetMongoDb();
+    //app.Services.LoadInitialDataFrom(@"./DefaultData/");
     app.UseDeveloperExceptionPage();
 }
 

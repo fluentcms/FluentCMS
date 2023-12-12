@@ -17,7 +17,7 @@ public class ContentService<TContent>(
     IContentService<TContent>
     where TContent : Content, new()
 {
-    public async Task<TContent> Create(TContent content, CancellationToken cancellationToken = default)
+    public virtual async Task<TContent> Create(TContent content, CancellationToken cancellationToken = default)
     {
         var newContent = await contentRepository.Create(content, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentUnableToCreate);
