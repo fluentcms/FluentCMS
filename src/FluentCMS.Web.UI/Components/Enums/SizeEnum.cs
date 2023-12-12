@@ -1,7 +1,8 @@
 ﻿namespace FluentCMS.Web.UI.Components;
 
-public enum ButtonSizeEnum
+public enum SizeEnum
 {
+    Default,
     Small,
     Medium,
     Large

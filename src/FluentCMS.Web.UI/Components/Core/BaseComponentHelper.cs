@@ -1,8 +1,6 @@
-﻿using FluentCMS.Shared.Extensions;
+﻿namespace FluentCMS.Web.UI.Components.Core;
 
-namespace FluentCMS.Web.UI.Components.Core;
-
-public static class BaseComponentHelplers
+public static class BaseComponentHelper
 {
     public static string ClassName(this BaseComponent baseComponent, string Name)
     {
@@ -22,9 +20,11 @@ public static class BaseComponentHelplers
         {
             if (property.GetValue(baseComponent, null) is var value)
             {
-                if (value == null)
-                    continue;
-                classes.Add(string.Join(UISettings.SEPARATOR, [UISettings.PREFIX, baseComponent.ComponentName, property.Name.FromPascalCaseToKebabCase(), value.ToString().FromPascalCaseToKebabCase()]));
+                if (value != null)
+                {
+                    var propertyValue = value.ToString()?.FromPascalCaseToKebabCase() ?? string.Empty;
+                    classes.Add(string.Join(UISettings.SEPARATOR, [UISettings.PREFIX, baseComponent.ComponentName, property.Name.FromPascalCaseToKebabCase(), propertyValue]));
+                }
             }
         }
 

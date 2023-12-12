@@ -1,21 +1,26 @@
 <span class="f-icon f-icon-size-@Size @Class" @attributes=@RestProps>
-    <iconify-icon icon=@($"{Pack}:{Name}") width="100%" height="100%" />
+    @switch (Name)
+    {
+        case IconNameEnum.Plus:
+            <span>SVG comes here</span>
+            break;
+
+    }
+    @* <iconify-icon icon=@($"{Pack}:{Name}") width="100%" height="100%" /> *@
 </span>
 
 @code {
     [Parameter]
-    public string Name {get; set;} = "";
+    public IconNameEnum Name { get; set; } = IconNameEnum.Default;
 
     [Parameter]
-    public string Pack {get; set;} = "tabler";
+    [CssProperty]
+    public ColorEnum Color { get; set; } = ColorEnum.Default;
 
     [Parameter]
-    public string Class {get; set;} = "";
-
-    [Parameter]
-    public string Size {get; set;} = "md";
-
+    [CssProperty]
+    public SizeEnum Size { get; set; } = SizeEnum.Default;
 
     [Parameter(CaptureUnmatchedValues = true)]
-    public Dictionary<string, object> RestProps {get; set;}
+    public Dictionary<string, object>? RestProps { get; set; }
 }

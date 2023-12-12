@@ -1,21 +1,19 @@
 @inherits BaseComponent
+@if (Show)
+{
+    <div class=@this.GetClasses() role="alert">
+        <AlertIcon />
+        <AlertContent>
+            @ChildContent
+        </AlertContent>
 
-<div class=@this.GetClasses() id="@Id" role="alert">
-    <AlertIcon />
-    <AlertContent>
-        @ChildContent
-    </AlertContent>
-
-    @if (Dismissible)
-    {
-        <AlertClose OnClick="() => OnClose()" />
-    }
-</div>
-
+        @if (Dismissible)
+        {
+            <AlertClose OnClick="() => OnClose()" />
+        }
+    </div>
+}
 @code {
-    [Parameter]
-    public string Id { get; set; } = "alert-" + Guid.NewGuid().ToString();
-
     [Parameter]
     [CssProperty]
     public bool Show { get; set; } = true;
