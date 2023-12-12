@@ -1,8 +1,10 @@
 @inherits BaseComponent
 
 <a href="#" class=@this.GetClasses() id="tab-@Index" @onclick="(e) => Parent.ActiveTab(Index)"
-    @onclick:preventDefault="true" type="button" role="tab" aria-controls="panel-@Index" aria-current=@(Active ? "page"
-    : null) aria-selected=@AriaSelected>@ChildContent</a>
+    @onclick:preventDefault="true" type="button" role="tab" aria-controls="panel-@Index" aria-current=@AriaCurrent
+    aria-selected=@AriaSelected>
+    @ChildContent
+</a>
 
 
 @code {
@@ -22,4 +24,5 @@
     public bool Disabled { get; set; } = false;
 
     private string AriaSelected => Active ? "true" : "false";
+    private string? AriaCurrent => Active ? "page" : null;
 }
