@@ -1,13 +1,13 @@
 ﻿@inherits BaseComponent
 
-<div class="@GetClasses()">
+<div class="@this.GetClasses()">
     @if (string.IsNullOrEmpty(AppState?.ViewMode) && !string.IsNullOrEmpty(Plugin.Definition.EditType))
     {
-        <div class=@ClassName("PluginContainerHeader")>
+        <div class=@this.ClassName("PluginContainerHeader")>
             <a href="@EditUrl">Edit</a>
         </div>
     }
-    <div class=@ClassName("Plugin")>
+    <div class=@this.ClassName("Plugin")>
         @ChildContent
     </div>
 </div>

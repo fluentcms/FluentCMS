@@ -10,7 +10,7 @@
             <Textarea id="textHtmlContent" Required rows="5" placeholder="Enter you TextHtml content here" @bind-Value='textHtmlContent'></Textarea>
         </FormField>
         <br />
-        <Button Type="submit">Update</Button>
+        <Button Type="@ButtonTypeEnum.Submit">Update</Button>
         <NavLink href="@BackLink">Go Back</NavLink>
     </EditForm>
 }

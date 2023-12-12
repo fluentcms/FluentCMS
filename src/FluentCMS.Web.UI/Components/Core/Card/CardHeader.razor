@@ -1,11 +1,11 @@
 @inherits BaseComponent
 
-<div class=@GetClasses() @attributes="@AdditionalAttributes">
+<div class=@this.GetClasses() @attributes="@AdditionalAttributes">
     @if (Title != String.Empty)
     {
-        <h5 class="f-card-title">
+        <CardTitle>
             @Title
-        </h5>
+        </CardTitle>
     }
 
     @ChildContent

@@ -1,6 +1,6 @@
 @inherits BaseComponent
 
-<div class=@GetClasses() @attributes="@AdditionalAttributes">
+<div class=@this.GetClasses() @attributes="@AdditionalAttributes">
     @if (Label != String.Empty)
     {
         <Label For="@Id">@Label</Label>

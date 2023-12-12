@@ -1,5 +1,5 @@
 @inherits BaseComponent
-
+@* TODO: Should clean this and remove flowbite js *@
 <Button id="dropdown-123-button" data-dropdown-toggle="@Id">
   @Text
 
@@ -8,7 +8,7 @@
   </svg>
 </Button>
 
-<div id="dropdown" class=@GetClasses() @attributes="@AdditionalAttributes">
+<div id="dropdown" class=@this.GetClasses() @attributes="@AdditionalAttributes">
   <ul class="f-dropdown-menu" aria-labelledby="dropdownDefaultButton">
     @ChildContent
   </ul>

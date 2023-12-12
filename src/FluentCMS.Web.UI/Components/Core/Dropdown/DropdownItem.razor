@@ -1,7 +1,7 @@
 @inherits BaseComponent;
 
-<li class=@GetClasses() @attributes="@AdditionalAttributes">
-    <a href="@Href" class="f-dropdown-item">
+<li class=@this.GetClasses() @attributes="@AdditionalAttributes">
+    <a href="@Href" class="f-dropdown-item-link">
         @ChildContent
     </a>
 </li>

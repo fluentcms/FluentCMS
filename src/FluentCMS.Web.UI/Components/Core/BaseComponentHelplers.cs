@@ -24,7 +24,7 @@ public static class BaseComponentHelplers
             {
                 if (value == null)
                     continue;
-                classes.Add(string.Join(UISettings.SEPARATOR, [UISettings.PREFIX, baseComponent.ComponentName, property.Name.FromPascalCaseToKebabCase(), value]));
+                classes.Add(string.Join(UISettings.SEPARATOR, [UISettings.PREFIX, baseComponent.ComponentName, property.Name.FromPascalCaseToKebabCase(), value.ToString().FromPascalCaseToKebabCase()]));
             }
         }
 

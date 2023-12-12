@@ -16,15 +16,13 @@
     </div>
     <div class="mb-3">
         <div class="form-check">
-            <input class="form-check-input" type="checkbox"
-                   id="autoAssigned" name="autoAssigned"
-                   @bind-value="data.AutoAssigned"
-                   @attributes="addCheckedAttribute(data.AutoAssigned)">
+            <input class="form-check-input" type="checkbox" id="autoAssigned" name="autoAssigned"
+                @bind-value="data.AutoAssigned" @attributes="addCheckedAttribute(data.AutoAssigned)">
             <label class="form-check-label" for="autoAssigned">AutoAssigned</label>
         </div>
     </div>
 
-    <Button Type="submit" Color="Colors.Primary">Save</Button>
+    <Button Type="@ButtonTypeEnum.Submit" Color="@ColorEnum.Primary">Save</Button>
 </EditForm>
 
 @code {
@@ -93,5 +91,5 @@
     }
 
     private Dictionary<string, object> addCheckedAttribute(bool isChecked) =>
-        new Dictionary<string, object>() { ["checked"] = isChecked };
+    new Dictionary<string, object>() { ["checked"] = isChecked };
 }

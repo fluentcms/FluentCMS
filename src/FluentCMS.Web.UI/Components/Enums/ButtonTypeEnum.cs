@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Web.UI.Components.Core;
+﻿namespace FluentCMS.Web.UI.Components;
 
 public enum ButtonTypeEnum
 {

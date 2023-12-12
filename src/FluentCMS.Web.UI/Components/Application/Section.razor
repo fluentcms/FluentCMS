@@ -3,7 +3,7 @@
 @using System.Linq
 
 @* instead of f-section-@Name we add f-section-name-@Name class using BaseComponent *@
-<div class="@GetClasses() ">
+<div class="@this.GetClasses() ">
     @if (AppState?.Page?.Plugins != null)
     {
         @foreach (var plugin in GetPlugins())
