@@ -20,17 +20,9 @@ $prefix-button: $prefix + "button";
     }
 }
 
-$button-colors: (
-    "primary": "blue",
-    "success": "green",
-    "info": "cyan",
-    "danger": "red",
-    "warning": "yellow",
-    "secondary": "gray",
-);
 
-@each $key, $value in $button-colors {
-    .#{$prefix-button}-color-#{$key} {
+@each $key, $value in $colors {
+    .#{$prefix-button}-color-#{$key}.#{$prefix-button}-outline-false {
         @apply text-white bg-#{$value}-700;
         &:hover {
             @apply bg-#{$value}-800;
@@ -51,6 +43,28 @@ $button-colors: (
             @apply ring-#{$value}-800;
         }
     }
+    .#{$prefix-button}-color-#{$key}.#{$prefix-button}-outline-true {
+        @apply text-#{$value}-700 border border-#{$value}-700;
+        &:hover {
+            @apply text-white bg-#{$value}-800;
+        }
+
+        &:focus {
+            @apply ring-#{$value}-300;
+        }
+
+        .#{$prefix-theme-dark} & {
+            @apply border-#{$value}-500 text-#{$value}-500;
+        }
+
+        .#{$prefix-theme-dark} &:hover {
+            @apply text-white bg-#{$value}-500;
+        }
+        .#{$prefix-theme-dark} &:focus {
+            @apply ring-#{$value}-800;
+        }
+    }
+    
 }
 
 .#{$prefix-button}-color-default {

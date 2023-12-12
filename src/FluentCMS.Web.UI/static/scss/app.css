@@ -147,117 +147,231 @@ body.f-theme-dark {
   @apply opacity-50;
 }
 
-.f-button-color-primary {
+.f-button-color-primary.f-button-outline-false {
   @apply text-white bg-blue-700;
 }
-.f-button-color-primary:hover {
+.f-button-color-primary.f-button-outline-false:hover {
   @apply bg-blue-800;
 }
-.f-button-color-primary:focus {
+.f-button-color-primary.f-button-outline-false:focus {
   @apply ring-blue-300;
 }
-.f-theme-dark .f-button-color-primary {
+.f-theme-dark .f-button-color-primary.f-button-outline-false {
   @apply bg-blue-600;
 }
-.f-theme-dark .f-button-color-primary:hover {
+.f-theme-dark .f-button-color-primary.f-button-outline-false:hover {
   @apply bg-blue-700;
 }
-.f-theme-dark .f-button-color-primary:focus {
+.f-theme-dark .f-button-color-primary.f-button-outline-false:focus {
   @apply ring-blue-800;
 }
 
-.f-button-color-success {
+.f-button-color-primary.f-button-outline-true {
+  @apply text-blue-700 border border-blue-700;
+}
+.f-button-color-primary.f-button-outline-true:hover {
+  @apply text-white bg-blue-800;
+}
+.f-button-color-primary.f-button-outline-true:focus {
+  @apply ring-blue-300;
+}
+.f-theme-dark .f-button-color-primary.f-button-outline-true {
+  @apply border-blue-500 text-blue-500;
+}
+.f-theme-dark .f-button-color-primary.f-button-outline-true:hover {
+  @apply text-white bg-blue-500;
+}
+.f-theme-dark .f-button-color-primary.f-button-outline-true:focus {
+  @apply ring-blue-800;
+}
+
+.f-button-color-success.f-button-outline-false {
   @apply text-white bg-green-700;
 }
-.f-button-color-success:hover {
+.f-button-color-success.f-button-outline-false:hover {
   @apply bg-green-800;
 }
-.f-button-color-success:focus {
+.f-button-color-success.f-button-outline-false:focus {
   @apply ring-green-300;
 }
-.f-theme-dark .f-button-color-success {
+.f-theme-dark .f-button-color-success.f-button-outline-false {
   @apply bg-green-600;
 }
-.f-theme-dark .f-button-color-success:hover {
+.f-theme-dark .f-button-color-success.f-button-outline-false:hover {
   @apply bg-green-700;
 }
-.f-theme-dark .f-button-color-success:focus {
+.f-theme-dark .f-button-color-success.f-button-outline-false:focus {
   @apply ring-green-800;
 }
 
-.f-button-color-info {
+.f-button-color-success.f-button-outline-true {
+  @apply text-green-700 border border-green-700;
+}
+.f-button-color-success.f-button-outline-true:hover {
+  @apply text-white bg-green-800;
+}
+.f-button-color-success.f-button-outline-true:focus {
+  @apply ring-green-300;
+}
+.f-theme-dark .f-button-color-success.f-button-outline-true {
+  @apply border-green-500 text-green-500;
+}
+.f-theme-dark .f-button-color-success.f-button-outline-true:hover {
+  @apply text-white bg-green-500;
+}
+.f-theme-dark .f-button-color-success.f-button-outline-true:focus {
+  @apply ring-green-800;
+}
+
+.f-button-color-info.f-button-outline-false {
   @apply text-white bg-cyan-700;
 }
-.f-button-color-info:hover {
+.f-button-color-info.f-button-outline-false:hover {
   @apply bg-cyan-800;
 }
-.f-button-color-info:focus {
+.f-button-color-info.f-button-outline-false:focus {
   @apply ring-cyan-300;
 }
-.f-theme-dark .f-button-color-info {
+.f-theme-dark .f-button-color-info.f-button-outline-false {
   @apply bg-cyan-600;
 }
-.f-theme-dark .f-button-color-info:hover {
+.f-theme-dark .f-button-color-info.f-button-outline-false:hover {
   @apply bg-cyan-700;
 }
-.f-theme-dark .f-button-color-info:focus {
+.f-theme-dark .f-button-color-info.f-button-outline-false:focus {
   @apply ring-cyan-800;
 }
 
-.f-button-color-danger {
+.f-button-color-info.f-button-outline-true {
+  @apply text-cyan-700 border border-cyan-700;
+}
+.f-button-color-info.f-button-outline-true:hover {
+  @apply text-white bg-cyan-800;
+}
+.f-button-color-info.f-button-outline-true:focus {
+  @apply ring-cyan-300;
+}
+.f-theme-dark .f-button-color-info.f-button-outline-true {
+  @apply border-cyan-500 text-cyan-500;
+}
+.f-theme-dark .f-button-color-info.f-button-outline-true:hover {
+  @apply text-white bg-cyan-500;
+}
+.f-theme-dark .f-button-color-info.f-button-outline-true:focus {
+  @apply ring-cyan-800;
+}
+
+.f-button-color-danger.f-button-outline-false {
   @apply text-white bg-red-700;
 }
-.f-button-color-danger:hover {
+.f-button-color-danger.f-button-outline-false:hover {
   @apply bg-red-800;
 }
-.f-button-color-danger:focus {
+.f-button-color-danger.f-button-outline-false:focus {
   @apply ring-red-300;
 }
-.f-theme-dark .f-button-color-danger {
+.f-theme-dark .f-button-color-danger.f-button-outline-false {
   @apply bg-red-600;
 }
-.f-theme-dark .f-button-color-danger:hover {
+.f-theme-dark .f-button-color-danger.f-button-outline-false:hover {
   @apply bg-red-700;
 }
-.f-theme-dark .f-button-color-danger:focus {
+.f-theme-dark .f-button-color-danger.f-button-outline-false:focus {
   @apply ring-red-800;
 }
 
-.f-button-color-warning {
+.f-button-color-danger.f-button-outline-true {
+  @apply text-red-700 border border-red-700;
+}
+.f-button-color-danger.f-button-outline-true:hover {
+  @apply text-white bg-red-800;
+}
+.f-button-color-danger.f-button-outline-true:focus {
+  @apply ring-red-300;
+}
+.f-theme-dark .f-button-color-danger.f-button-outline-true {
+  @apply border-red-500 text-red-500;
+}
+.f-theme-dark .f-button-color-danger.f-button-outline-true:hover {
+  @apply text-white bg-red-500;
+}
+.f-theme-dark .f-button-color-danger.f-button-outline-true:focus {
+  @apply ring-red-800;
+}
+
+.f-button-color-warning.f-button-outline-false {
   @apply text-white bg-yellow-700;
 }
-.f-button-color-warning:hover {
+.f-button-color-warning.f-button-outline-false:hover {
   @apply bg-yellow-800;
 }
-.f-button-color-warning:focus {
+.f-button-color-warning.f-button-outline-false:focus {
   @apply ring-yellow-300;
 }
-.f-theme-dark .f-button-color-warning {
+.f-theme-dark .f-button-color-warning.f-button-outline-false {
   @apply bg-yellow-600;
 }
-.f-theme-dark .f-button-color-warning:hover {
+.f-theme-dark .f-button-color-warning.f-button-outline-false:hover {
   @apply bg-yellow-700;
 }
-.f-theme-dark .f-button-color-warning:focus {
+.f-theme-dark .f-button-color-warning.f-button-outline-false:focus {
   @apply ring-yellow-800;
 }
 
-.f-button-color-secondary {
+.f-button-color-warning.f-button-outline-true {
+  @apply text-yellow-700 border border-yellow-700;
+}
+.f-button-color-warning.f-button-outline-true:hover {
+  @apply text-white bg-yellow-800;
+}
+.f-button-color-warning.f-button-outline-true:focus {
+  @apply ring-yellow-300;
+}
+.f-theme-dark .f-button-color-warning.f-button-outline-true {
+  @apply border-yellow-500 text-yellow-500;
+}
+.f-theme-dark .f-button-color-warning.f-button-outline-true:hover {
+  @apply text-white bg-yellow-500;
+}
+.f-theme-dark .f-button-color-warning.f-button-outline-true:focus {
+  @apply ring-yellow-800;
+}
+
+.f-button-color-secondary.f-button-outline-false {
   @apply text-white bg-gray-700;
 }
-.f-button-color-secondary:hover {
+.f-button-color-secondary.f-button-outline-false:hover {
   @apply bg-gray-800;
 }
-.f-button-color-secondary:focus {
+.f-button-color-secondary.f-button-outline-false:focus {
   @apply ring-gray-300;
 }
-.f-theme-dark .f-button-color-secondary {
+.f-theme-dark .f-button-color-secondary.f-button-outline-false {
   @apply bg-gray-600;
 }
-.f-theme-dark .f-button-color-secondary:hover {
+.f-theme-dark .f-button-color-secondary.f-button-outline-false:hover {
   @apply bg-gray-700;
 }
-.f-theme-dark .f-button-color-secondary:focus {
+.f-theme-dark .f-button-color-secondary.f-button-outline-false:focus {
+  @apply ring-gray-800;
+}
+
+.f-button-color-secondary.f-button-outline-true {
+  @apply text-gray-700 border border-gray-700;
+}
+.f-button-color-secondary.f-button-outline-true:hover {
+  @apply text-white bg-gray-800;
+}
+.f-button-color-secondary.f-button-outline-true:focus {
+  @apply ring-gray-300;
+}
+.f-theme-dark .f-button-color-secondary.f-button-outline-true {
+  @apply border-gray-500 text-gray-500;
+}
+.f-theme-dark .f-button-color-secondary.f-button-outline-true:hover {
+  @apply text-white bg-gray-500;
+}
+.f-theme-dark .f-button-color-secondary.f-button-outline-true:focus {
   @apply ring-gray-800;
 }
 
@@ -440,52 +554,37 @@ body.f-theme-dark {
 }
 
 .f-icon {
-  --f-icon-size: 1rem;
+  --f-icon-size: 1em;
   width: var(--f-icon-size);
   height: var(--f-icon-size);
   display: inline-block;
 }
-.f-icon-size-xs {
-  --f-icon-size: 0.75rem;
-}
-.f-icon-size-sm {
+.f-icon-size-small {
   --f-icon-size: 0.875rem;
 }
-.f-icon-size-md {
+.f-icon-size-medium {
   --f-icon-size: 1rem;
 }
-.f-icon-size-lg {
+.f-icon-size-large {
   --f-icon-size: 1.25rem;
 }
-.f-icon-size-xl {
-  --f-icon-size: 1.5rem;
+.f-icon-color-primary {
+  @apply text-blue-500;
 }
-.f-icon-size-1x {
-  --f-icon-size: 1rem;
+.f-icon-color-success {
+  @apply text-green-500;
 }
-.f-icon-size-2x {
-  --f-icon-size: 2rem;
+.f-icon-color-info {
+  @apply text-cyan-500;
 }
-.f-icon-size-3x {
-  --f-icon-size: 3rem;
+.f-icon-color-danger {
+  @apply text-red-500;
 }
-.f-icon-size-4x {
-  --f-icon-size: 4rem;
+.f-icon-color-warning {
+  @apply text-yellow-500;
 }
-.f-icon-size-5x {
-  --f-icon-size: 5rem;
-}
-.f-icon-size-6x {
-  --f-icon-size: 6rem;
-}
-.f-icon-size-7x {
-  --f-icon-size: 7rem;
-}
-.f-icon-size-8x {
-  --f-icon-size: 8rem;
-}
-.f-icon-size-9x {
-  --f-icon-size: 9rem;
+.f-icon-color-secondary {
+  @apply text-gray-500;
 }
 .f-icon * {
   stroke-width: 1.5px;

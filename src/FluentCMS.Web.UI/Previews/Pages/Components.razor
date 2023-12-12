@@ -8,20 +8,21 @@
 @* <h3>KitchenSink</h3>
 
 <EditForm Model="Model" OnValidSubmit="Submit" FormName="form">
-    <Input @bind-Value="Model.Name" Disabled="false"></Input>
-    <Button OnClick="Submit">Submit</Button>
+<Input @bind-Value="Model.Name" Disabled="false"></Input>
+<Button OnClick="Submit">Submit</Button>
 </EditForm>
 <pre>
-    @JsonSerializer.Serialize(Model)
+@JsonSerializer.Serialize(Model)
 </pre>
 
 <Card>
-    <CardHeader>
-        <CardTitle>@Model.Name</CardTitle>
-    </CardHeader>
-    <CardBody>
-        <p>Nulla diam ipsum takimata ut diam dolore consetetur sit illum facilisi lorem gubergren dolor exerci dolore est duo ipsum sanctus</p>
-    </CardBody>
+<CardHeader>
+<CardTitle>@Model.Name</CardTitle>
+</CardHeader>
+<CardBody>
+<p>Nulla diam ipsum takimata ut diam dolore consetetur sit illum facilisi lorem gubergren dolor exerci dolore est duo
+ipsum sanctus</p>
+</CardBody>
 </Card> *@
 
 
@@ -44,7 +45,128 @@
             <Button Color=@ColorEnum.Danger>Danger</Button>
 
         </div>
+        <div class="py-4 flex gap-4">
+            <Button>Hello</Button>
+            <Button Outline Color=@ColorEnum.Primary>Primary</Button>
+            <Button Outline Color=@ColorEnum.Secondary>Secondary</Button>
+            <Button Outline Color=@ColorEnum.Success>Success</Button>
+            <Button Outline Color=@ColorEnum.Info>Info</Button>
+            <Button Outline Color=@ColorEnum.Warning>Warning</Button>
+            <Button Outline Color=@ColorEnum.Danger>Danger</Button>
+        </div>
+
+        <div class="py-4 flex gap-4">
+            <Button>
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Hello
+            </Button>
+            <Button Color=@ColorEnum.Primary>
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Primary
+            </Button>
+            <Button Color=@ColorEnum.Secondary>
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Secondary
+            </Button>
+            <Button Color=@ColorEnum.Success>
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Success
+            </Button>
+            <Button Color=@ColorEnum.Info>
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Info
+            </Button>
+            <Button Color=@ColorEnum.Warning>
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Warning
+            </Button>
+            <Button Color=@ColorEnum.Danger>
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Danger
+            </Button>
+        </div>
+        <div class="py-4 flex gap-4">
+            <Button Outline>
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Hello
+            </Button>
+            <Button Outline Color=@ColorEnum.Primary>
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Primary
+            </Button>
+            <Button Outline Color=@ColorEnum.Secondary>
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Secondary
+            </Button>
+            <Button Outline Color=@ColorEnum.Success>
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Success
+            </Button>
+            <Button Outline Color=@ColorEnum.Info>
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Info
+            </Button>
+            <Button Outline Color=@ColorEnum.Warning>
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Warning
+            </Button>
+            <Button Outline Color=@ColorEnum.Danger>
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Danger
+            </Button>
+        </div>
     </div>
+
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Icons</h2>
+        <div class="py-4 flex flex-col gap-4">
+            <Icon Name="IconNameEnum.Plus" />
+            <Icon Name="IconNameEnum.InformationFilled" />
+            <Icon Name="IconNameEnum.Delete" />
+        </div>
+        <div class="py-4 flex flex-col gap-4">
+            <h1 class="text-4xl">
+                <Icon Name="IconNameEnum.InformationFilled" /> Default
+            </h1>
+
+
+            <div>
+                <Icon Size="SizeEnum.Small" Name="IconNameEnum.InformationFilled" /> Small
+            </div>
+
+            <div>
+                <Icon Size="SizeEnum.Medium" Name="IconNameEnum.InformationFilled" /> Medium
+
+            </div>
+            <div>
+                <Icon Size="SizeEnum.Large" Name="IconNameEnum.InformationFilled" /> Large
+            </div>
+        </div>
+        <div class="py-4 flex flex-col gap-4">
+            <h1 class="text-4xl">
+                <Icon Color="ColorEnum.Primary" Name="IconNameEnum.InformationFilled" /> Primary
+            </h1>
+            <h1 class="text-4xl">
+                <Icon Color="ColorEnum.Secondary" Name="IconNameEnum.InformationFilled" /> Secondary
+            </h1>
+            <h1 class="text-4xl">
+                <Icon Color="ColorEnum.Success" Name="IconNameEnum.InformationFilled" /> Success
+            </h1>
+            <h1 class="text-4xl">
+                <Icon Color="ColorEnum.Danger" Name="IconNameEnum.InformationFilled" /> Danger
+            </h1>
+            
+            <h1 class="text-4xl">
+                <Icon Color="ColorEnum.Info" Name="IconNameEnum.InformationFilled" /> Info
+            </h1>
+            
+            <h1 class="text-4xl">
+                <Icon Color="ColorEnum.Warning" Name="IconNameEnum.InformationFilled" /> Warning
+            </h1>
+
+        </div>
+    </div>
+
 
     <div class="py-8">
         <h2 class="font-bold text-2xl">Alerts</h2>

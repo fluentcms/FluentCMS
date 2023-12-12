@@ -1,5 +1,5 @@
 @inherits BaseComponent
-@if (Href != String.Empty)
+@if (!string.IsNullOrEmpty(Href))
 {
     <a class=@this.GetClasses() disabled=@Disabled href=@Href @onclick=OnClick @attributes="AdditionalAttributes">
         @ChildContent
@@ -33,7 +33,12 @@ else
     public ButtonTypeEnum Type { get; set; } = ButtonTypeEnum.Button;
 
     [Parameter]
+    [CssProperty]
     public SizeEnum Size { get; set; } = SizeEnum.Medium;
+
+    [Parameter]
+    [CssProperty]
+    public bool Outline { get; set; } = false;
 
     [Parameter]
     public EventCallback<MouseEventArgs> OnClick { get; set; }

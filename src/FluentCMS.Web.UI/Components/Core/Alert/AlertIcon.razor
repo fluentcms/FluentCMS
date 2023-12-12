@@ -1,3 +1,7 @@
 @inherits BaseComponent
-<Icon Class=@this.GetClasses() Pack="carbon" Name="information-filled" />
+
+<Icon Class="@Classes" Name="IconNameEnum.InformationFilled" />
     
+@code {
+    private string Classes => this.GetClasses() + " " + this.ClassName("Icon");
+}

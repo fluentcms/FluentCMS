@@ -4,5 +4,10 @@ public enum IconNameEnum
 {
     Default,
     Plus,
-    Delete
+    Delete,
+    InformationFilled,
+    Settings,
+    Filter,
+    Search,
+    Edit,
 }

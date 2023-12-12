@@ -3,6 +3,15 @@
 $prefix: 'f-';
 $prefix-theme-dark: $prefix + 'theme-dark';
 
+$colors: (
+    "primary": "blue",
+    "success": "green",
+    "info": "cyan",
+    "danger": "red",
+    "warning": "yellow",
+    "secondary": "gray",
+);
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
