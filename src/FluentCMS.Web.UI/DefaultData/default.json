@@ -7,49 +7,125 @@
         "Password": "Passw0rd!",
         "Email": "superadmin@example.com"
     },
+    "Layouts": [
+        {
+            "Name": "PanelLayout"
+        },
+        {
+            "Name": "AuthLayout"
+        }
+    ],
     "PluginDefinitions": [
+        {
+            "Name": "Login",
+            "Description": "Login Plugin",
+            "ViewType": "LoginViewPlugin"
+        },
+        {
+            "Name": "Forgot Password",
+            "Description": "Forgot Password Plugin",
+            "ViewType": "ForgotPasswordViewPlugin"
+        },
+        {
+            "Name": "Register",
+            "Description": "Register Plugin",
+            "ViewType": "RegisterViewPlugin"
+        },
+        {
+            "Name": "Reset Password",
+            "Description": "Reset Password Plugin",
+            "ViewType": "ResetPasswordViewPlugin"
+        },
         {
             "Name": "Counter",
             "Description": "Counter plugin",
-            "ViewType": "CounterView",
-            "EditType": "CounterEdit"
+            "ViewType": "CounterViewPlugin",
+            "EditType": "CounterEditPlugin"
         },
         {
             "Name": "HelloWorld",
             "Description": "Hello World plugin",
-            "ViewType": "HelloWorldView",
-            "EditType": "HelloWorldEdit"
+            "ViewType": "HelloWorldViewPlugin",
+            "EditType": "HelloWorldEditPlugin"
         },
         {
             "Name": "TextHtml",
             "Description": "Text/Html plugin",
-            "ViewType": "TextHtmlView",
-            "EditType": "TextHtmlEdit"
+            "ViewType": "TextHtmlViewPlugin",
+            "EditType": "TextHtmlEditPlugin"
         }
     ],
     "Site": {
         "Name": "My First Site",
         "Description": "This is my first site",
-        "Urls": [ "https://localhost:7164" ]
+        "Urls": [ "https://localhost:7164" ],
+        "Layout": "PanelLayout"
     },
     "Pages": [
         {
             "Title": "Home",
-            "Description": "This is my home page",
             "Path": "/",
-            "Order": 0
+            "Order": 0,
+            "Layout":  null,
+            "Plugins": [
+                {
+                    "DefName": "HelloWorld",
+                    "Section": "Main",
+                    "Order": 0
+                }
+            ]
         },
         {
-            "Title": "About me",
-            "Description": "This is about me page",
-            "Path": "/about-me",
-            "Order": 1
+            "Title": "Login",
+            "Path": "/login",
+            "Order": 1000,
+            "Layout": "AuthLayout",
+            "Plugins": [
+                {
+                    "DefName": "Login",
+                    "Section": "Main",
+                    "Order": 0
+                }
+            ]
         },
         {
-            "Title": "Contact me",
-            "Description": "This is contact me page",
-            "Path": "/contact",
-            "Order": 2
+            "Title": "Register",
+            "Path": "/register",
+            "Order": 1001,
+            "Layout": "AuthLayout",
+            "Plugins": [
+                {
+                    "DefName": "Register",
+                    "Section": "Main",
+                    "Order": 0
+                }
+            ]
+        },
+        {
+            "Title": "Reset Password",
+            "Path": "/reset-password",
+            "Order": 1002,
+            "Layout": "AuthLayout",
+            "Plugins": [
+                {
+                    "DefName": "Reset Password",
+                    "Section": "Main",
+                    "Order": 0
+                }
+            ]
+        },
+        {
+            "Title": "Forgot Password",
+            "Path": "/forgot-password",
+            "Order": 1003,
+            "Layout": "AuthLayout",
+            "Plugins": [
+                {
+                    "DefName": "Forgot Password",
+                    "Section": "Main",
+                    "Order": 0
+                }
+            ]
         }
     ]
 }

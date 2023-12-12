@@ -1,4 +1,6 @@
-<li class="me-2" role="presentation">
+@inherits BaseComponent
+
+<li class=@this.GetClasses() role="presentation">
     @* Should use <a> *@
 
     @if (Active)
@@ -28,12 +30,10 @@
     public int Index { get; set; } = default!;
 
     [Parameter]
-
+    [CssProperty]
     public bool Active { get; set; } = false;
 
     [Parameter]
+    [CssProperty]
     public bool Disabled { get; set; } = false;
-
-    [Parameter]
-    public RenderFragment ChildContent { get; set; }
 }

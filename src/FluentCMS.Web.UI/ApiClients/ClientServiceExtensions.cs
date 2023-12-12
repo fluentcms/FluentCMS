@@ -10,7 +10,7 @@ public static class ClientServiceExtensions
         services.AddHttpClient();
         var assembly = Assembly.GetExecutingAssembly();
         var baseType = typeof(BaseClient);
-        
+
         var derivedTypes = assembly.GetTypes()
             .Where(t => t.IsClass && !t.IsAbstract && baseType.IsAssignableFrom(t) && t.Namespace == baseType.Namespace);
 

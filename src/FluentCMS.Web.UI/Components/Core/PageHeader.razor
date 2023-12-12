@@ -1,6 +1,10 @@
-<div class="f-page-header">
-    <h2 class="f-page-title">@Title</h2>
-    <div class="f-page-actions">
+@inherits BaseComponent
+
+@* TODO: Remove ChildContent prop *@
+
+<div class=@this.GetClasses() @attributes="@AdditionalAttributes">
+    <h2 class=@this.ClassName("PageTitle")>@Title</h2>
+    <div class=@this.ClassName("PageActions")>
         <ButtonGroup>
             @PageActions
         </ButtonGroup>
@@ -12,7 +16,7 @@
 
     [Parameter]
     public string Title { get; set; } = String.Empty;
-    
+
     [Parameter]
     public RenderFragment PageActions { get; set; }
 }

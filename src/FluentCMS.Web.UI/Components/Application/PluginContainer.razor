@@ -1,0 +1,23 @@
+﻿@inherits BaseComponent
+
+<div class="@this.GetClasses()">
+    @if (string.IsNullOrEmpty(AppState?.ViewMode) && !string.IsNullOrEmpty(Plugin.Definition.EditType))
+    {
+        <div class=@this.ClassName("PluginContainerHeader")>
+            <a href="@EditUrl">Edit</a>
+        </div>
+    }
+    <div class=@this.ClassName("Plugin")>
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [CascadingParameter(Name = "Plugin")]
+    public PluginResponse Plugin { get; set; } = default!;
+
+    [CascadingParameter]
+    public AppState AppState { get; set; } = default!;
+
+    private string? EditUrl => $"{AppState?.Page?.Path}?pluginId={Plugin.Id}&viewMode=edit";
+}

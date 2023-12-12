@@ -32,7 +32,7 @@ else
                     <td>
                         <NavigationButton To="@("/admin/pages/edit/" + p.Id)">Edit</NavigationButton>
                         <NavigationButton To="@($"/admin/pages/{SiteId}/" + p.Id)">Children</NavigationButton>
-                        <Button Color="Colors.Danger" @onclick="@(()=>Delete(p.Id))">Delete</Button>
+                        <Button Color="ColorEnum.Danger" @onclick="@(()=>Delete(p.Id))">Delete</Button>
                     </td>
 
                 </tr>

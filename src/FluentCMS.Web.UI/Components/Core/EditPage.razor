@@ -1,4 +1,6 @@
-<Page>
+@inherits FluentCMS.Web.UI.Components.Core.Page
+
+<Page Class=@this.GetClasses() @attributes="@AdditionalAttributes">
     <PageHeader Title=@Title>
         <PageActions>
             @HeaderActions
@@ -23,20 +25,18 @@
 
 @code {
     [Parameter]
-    public string Title {get; set;}
+    public string Title { get; set; } = "";
 
     [Parameter]
-    public RenderFragment HeaderActions {get; set;}
+    public RenderFragment HeaderActions { get; set; }
+    [Parameter]
+    public RenderFragment Content { get; set; }
+    [Parameter]
+    public RenderFragment FooterActions { get; set; }
 
     [Parameter]
-    public RenderFragment Content {get; set;}
+    public string Model { get; set; }
 
     [Parameter]
-    public RenderFragment FooterActions {get; set;}
-
-    [Parameter]
-    public string Model {get; set;}
-
-    [Parameter]
-    public EventCallback<EditContext> OnValidSubmit {get; set;}
+    public EventCallback<EditContext> OnValidSubmit { get; set; }
 }

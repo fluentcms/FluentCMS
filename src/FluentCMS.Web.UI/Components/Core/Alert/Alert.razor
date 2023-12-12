@@ -1,0 +1,34 @@
+@inherits BaseComponent
+
+<div class=@this.GetClasses() id="@Id" role="alert">
+    <AlertIcon />
+    <AlertContent>
+        @ChildContent
+    </AlertContent>
+
+    @if (Dismissible)
+    {
+        <AlertClose OnClick="() => OnClose()" />
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = "alert-" + Guid.NewGuid().ToString();
+
+    [Parameter]
+    [CssProperty]
+    public bool Show { get; set; } = true;
+
+    [Parameter]
+    [CssProperty]
+    public AlertTypeEnum Type { get; set; } = AlertTypeEnum.Default;
+
+    [Parameter]
+    public bool Dismissible { get; set; } = false;
+
+    private void OnClose()
+    {
+        Show = false;
+    }
+}

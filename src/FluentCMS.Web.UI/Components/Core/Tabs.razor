@@ -1,6 +1,6 @@
 <CascadingValue Value="this">
 
-    <div class="f-tabs">
+    <div class=@this.GetClasses()>
 
         <ul class="f-tab-list">
             @foreach (int index in Enumerable.Range(0, TabItems.Count))
@@ -18,10 +18,6 @@
 @code {
     private List<string> TabItems = new List<string>();
     public int ActiveTabIndex { get; set; } = 0;
-
-
-    [Parameter]
-    public RenderFragment ChildContent { get; set; }
 
     public void ActiveTab(int index)
     {

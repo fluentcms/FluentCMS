@@ -1,15 +1,13 @@
-<Button Href="@To" @attributes=@RestProps>
-    @ChildContent
-</Button>
-
+@inherits Button
+@{
+    base.BuildRenderTree(__builder);
+}
 @code {
     [Parameter]
-    public string To {get; set;} = "#";
+    public string To { get; set; } = "#";
 
-    [Parameter(CaptureUnmatchedValues = true)]
-    public Dictionary<string, object> RestProps {get; set;}
-
-    [Parameter]
-    public RenderFragment ChildContent {get; set;}
+    protected override void OnInitialized()
+    {
+        Href = To;
+    }
 }
-

@@ -1,28 +1,15 @@
 ﻿@page "/{*Route:nonfile}"
-@layout PanelLayout
-@using System.Text.RegularExpressions
-@using System.Web
-@using HtmlAgilityPack
-@inject HttpClient http
-@inject NavigationManager Navigator
 @inherits BasePage
 
 <PageTitle>@AppState?.Page?.Title</PageTitle>
 
 <HeadContent>
-    @((MarkupString)$"<!-- Begin {@AppState?.Page?.Title} Page Header -->")
     @if (AppState?.Layout != null)
     {
         @((MarkupString)AppState.Layout.Head)
     }
-    @((MarkupString)$"<!-- End {@AppState?.Page?.Title} Page Header -->")
 </HeadContent>
 
-@((MarkupString)$"<!-- Begin {@AppState?.Page?.Title} Page Content -->")
 <CascadingValue Value="@AppState">
-    @* @dynamicComponent() *@
-    <Section Name="main" />
+    @dynamicComponent()
 </CascadingValue>
-@((MarkupString)$"<!-- End {@AppState?.Page?.Title} Page Content -->")
-
-
