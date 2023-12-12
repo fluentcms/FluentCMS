@@ -22,6 +22,7 @@
     {
         if (Model.Id == Guid.Empty)
         {
+            var x = Model.ToPluginContent();
             var pluginContent = await pluginContentClient.Create(Model.ToPluginContent(), CancellationToken);
             Model = new TextHtmlContent(pluginContent);
         }
