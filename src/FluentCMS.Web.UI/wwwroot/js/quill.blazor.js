@@ -1,12 +1,4 @@
 (function () {
-    const updateValue = (quill, value) => {
-        console.log(value, quill);
-        if (value !== quill.root.innerHTML) {
-            const delta = quill.clipboard.convert(value);
-            quill.setContents(delta, "silent");
-        }
-    };
-
     window.QuillFunctions = {
         createQuill: function (dotnetHelper, quillElement, quillOptions = {}) {
             var options = {
@@ -33,18 +25,20 @@
                 theme: "snow",
                 ...quillOptions,
             };
-            // set quill at the object we can call
-            // methods on later
+
             const instance = new Quill(quillElement, options);
 
-            instance.on("text-change", function (delta, oldDelta, source) {
+            instance.on("text-change", function () {
                 var htmlContent = instance.root.innerHTML;
 
                 dotnetHelper.invokeMethodAsync("OnTextChanged", htmlContent);
             });
         },
         setQuillContent: function (quillControl, value) {
-            updateValue(quillControl.__quill, value);
+            if (value !== quillControl.__quill.root.innerHTML) {
+                const delta = quillControl.__quill.clipboard.convert(value);
+                quillControl.__quill.setContents(delta, "silent");
+            }
         },
     };
 })();

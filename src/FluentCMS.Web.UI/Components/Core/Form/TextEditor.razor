@@ -16,7 +16,6 @@
 
 <div class=@this.ClassName("TextEditorWrapper")>
     <div class=@this.GetClasses() @ref="Element" @attributes="AdditionalAttributes">
-        @* @((MarkupString)Value) *@
     </div>
 </div>
 
@@ -42,17 +41,11 @@
                     ReadOnly = Readonly
                 });
         }
+
+        if (ShouldUpdate)
+            await JSRuntime.InvokeVoidAsync("QuillFunctions.setQuillContent", Element, Value);
         else
-        {
-            if (ShouldUpdate)
-            {
-                await JSRuntime.InvokeVoidAsync("QuillFunctions.setQuillContent", Element, Value);
-            }
-            else
-            {
-                ShouldUpdate = false;
-            }
-        }
+            ShouldUpdate = false;
     }
 
     [JSInvokable]

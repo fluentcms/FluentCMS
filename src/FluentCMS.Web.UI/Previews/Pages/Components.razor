@@ -8,20 +8,21 @@
 @* <h3>KitchenSink</h3>
 
 <EditForm Model="Model" OnValidSubmit="Submit" FormName="form">
-    <Input @bind-Value="Model.Name" Disabled="false"></Input>
-    <Button OnClick="Submit">Submit</Button>
+<Input @bind-Value="Model.Name" Disabled="false"></Input>
+<Button OnClick="Submit">Submit</Button>
 </EditForm>
 <pre>
-    @JsonSerializer.Serialize(Model)
+@JsonSerializer.Serialize(Model)
 </pre>
 
 <Card>
-    <CardHeader>
-        <CardTitle>@Model.Name</CardTitle>
-    </CardHeader>
-    <CardBody>
-        <p>Nulla diam ipsum takimata ut diam dolore consetetur sit illum facilisi lorem gubergren dolor exerci dolore est duo ipsum sanctus</p>
-    </CardBody>
+<CardHeader>
+<CardTitle>@Model.Name</CardTitle>
+</CardHeader>
+<CardBody>
+<p>Nulla diam ipsum takimata ut diam dolore consetetur sit illum facilisi lorem gubergren dolor exerci dolore est duo
+ipsum sanctus</p>
+</CardBody>
 </Card> *@
 
 
@@ -66,57 +67,36 @@
         </div>
     </div>
 
-     <div class="py-8">
+    <div class="py-8">
         <h2 class="font-bold text-2xl">Editor</h2>
         <div class="py-4 flex flex-col gap-4">
             <div class="flex">
-                <div class="w-1/2">
-
-                    <TextEditor @bind-Value=@EditorHTMLContent Placeholder="Quill text editor 1"/>
+                <div class="w-1/2 pe-1">
+                    <TextEditor @bind-Value=@EditorHTMLContent Placeholder="Quill text editor 1" />
                 </div>
-                <div class="w-1/2">
-
-                    <TextEditor @bind-Value=@EditorHTMLContent Placeholder="Quill text editor 3"/>
+                <div class="w-1/2 ps-1">
+                    <TextEditor @bind-Value=@EditorHTMLContent Placeholder="Quill text editor 3" />
                 </div>
             </div>
 
             <div class="border border-gray-200 p-2 my-4">
                 @((MarkupString)@EditorHTMLContent)
             </div>
-            
+
         </div>
         <h3>Readonly</h3>
         <div class="py-4 flex flex-col gap-4">
-            <TextEditor @bind-Value=@EditorHTMLContent Readonly Placeholder="Quill text editor"/>
+            <TextEditor @bind-Value=@EditorHTMLContent Readonly Placeholder="Quill text editor" />
 
             <div class="border border-gray-200 p-2 my-4">
                 @((MarkupString)@EditorHTMLContent)
             </div>
-            
-        </div>
-         <h3>Readonly</h3>
-        <div class="py-4 flex flex-col gap-4">
-            <TextEditor @bind-Value=@EditorHTMLContent Readonly Placeholder="Quill text editor"/>
-
-            <div class="border border-gray-200 p-2 my-4">
-                @((MarkupString)@EditorHTMLContent)
-            </div>
-            
-        </div>
-         <h3>Readonly</h3>
-        <div class="py-4 flex flex-col gap-4">
-            <TextEditor @bind-Value=@EditorHTMLContent Readonly Placeholder="Quill text editor"/>
-
-            <div class="border border-gray-200 p-2 my-4">
-                @((MarkupString)@EditorHTMLContent)
-            </div>
-            
         </div>
     </div>
 </Page>
 
 @code {
-    private string EditorHTMLContent {get; set;}
+    private string EditorHTMLContent { get; set; } = "Initial Value";
 
     public DummyModel Model { get; set; } = new() { Name = "Parsa" };
     public class DummyModel
