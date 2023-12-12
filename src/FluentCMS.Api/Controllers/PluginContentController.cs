@@ -40,4 +40,18 @@ public class PluginContentController(IPluginContentService pluginContentService)
         return new ApiPagingResult<PluginContent>(contents);
     }
 
+    [HttpGet]
+    public async Task<IApiPagingResult<Content>> GetAll([FromRoute] string contentType, [FromQuery] Guid siteId, CancellationToken cancellationToken = default)
+    {
+        var contents = await pluginContentService.GetAll(siteId, contentType, cancellationToken);
+        return new ApiPagingResult<Content>(contents);
+    }
+
+    [HttpGet]
+    public async Task<IApiResult<Content>> GetById([FromRoute] string contentType, [FromQuery] Guid siteId, [FromQuery] Guid id, CancellationToken cancellationToken = default)
+    {
+        var content = await pluginContentService.GetById(siteId, contentType, id, cancellationToken);
+        return new ApiResult<Content>(content);
+    }
+
 }

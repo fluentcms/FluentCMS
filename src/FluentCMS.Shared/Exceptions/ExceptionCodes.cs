@@ -106,5 +106,6 @@ public class ExceptionCodes
     public const string ContentNotFound = "Content.NotFound";
     public const string ContentTypeMismatch = "Content.TypeMismatch";
     public const string ContentSiteIdMismatch = "Content.SiteIdMismatch";
+    public const string ContentPluginIdMismatch = "Content.ContentPluginIdMismatch";
     #endregion
 }
