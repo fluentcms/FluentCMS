@@ -1,7 +1,9 @@
-﻿@using FluentCMS.Entities
+﻿@inherits BaseComponent
+@using FluentCMS.Entities
 @using System.Linq
 
-<div class="f-section f-section-@Name">
+@* instead of f-section-@Name we add f-section-name-@Name class using BaseComponent *@
+<div class="@this.GetClasses() ">
     @if (AppState?.Page?.Plugins != null)
     {
         @foreach (var plugin in GetPlugins())
@@ -17,6 +19,7 @@
 
 @code {
     [Parameter]
+    [CssProperty]
     public string Name { get; set; } = string.Empty;
 
     [CascadingParameter]

@@ -1,12 +1,13 @@
-<aside id="default-sidebar" aria-label="Sidebar" class="f-sidebar -translate-x-full">
+@inherits BaseComponent
+
+<aside id="default-sidebar" aria-label="Sidebar" class=@this.GetClasses() @attributes="@AdditionalAttributes">
     <div class="f-sidebar-body">
         @ChildContent
-        
-    </div>
 
+    </div>
 </aside>
 
 @code {
     [Parameter]
-    public RenderFragment ChildContent {get; set;}
+    public string Class {get; set;} = "-translate-x-full";
 }

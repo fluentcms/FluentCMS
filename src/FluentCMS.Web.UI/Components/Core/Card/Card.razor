@@ -1,0 +1,27 @@
+@inherits BaseComponent
+
+<div class=@this.GetClasses() @attributes=@AdditionalAttributes>
+    @if (Title != String.Empty)
+    {
+        <CardHeader Title=@Title />
+    }
+
+    @ChildContent
+</div>
+
+
+@code {
+
+    [Parameter]
+    [CssProperty]
+    public string Color { get; set; } = "primary";
+
+    [Parameter]
+    public string Title { get; set; } = String.Empty;
+
+    [Parameter]
+    public string Width { get; set; } = String.Empty;
+
+    [Parameter]
+    public string Class { get; set; } = String.Empty;
+}

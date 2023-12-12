@@ -1,21 +1,28 @@
-<li class="me-2">
-    @if (Active) {
-        <a href="#" class="inline-block p-4 text-blue-600 border-b-2 border-blue-600 rounded-t-lg active dark:text-blue-500 dark:border-blue-500" aria-current="page">@ChildContent</a>
-    }else if(Disabled) {
+@inherits BaseComponent
+
+<li class="me-2 @this.GetClasses()" @attributes="@AdditionalAttributes">
+    @if (Active)
+    {
+        <a href="#"
+            class="inline-block p-4 text-blue-600 border-b-2 border-blue-600 rounded-t-lg active dark:text-blue-500 dark:border-blue-500"
+            aria-current="page">@ChildContent</a>
+    }
+    else if (Disabled)
+    {
         <a class="inline-block p-4 text-gray-400 rounded-t-lg cursor-not-allowed dark:text-gray-500">@ChildContent</a>
-    } else {
-        <a href="#" class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300">@ChildContent</a>
+    }
+    else
+    {
+        <a href="#"
+            class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300">@ChildContent</a>
     }
 </li>
 
 @code {
     [Parameter]
-    public bool Active {get; set; } = false;
+    public bool Active { get; set; } = false;
 
     [Parameter]
-    public bool Disabled {get; set; } = false;
-    
-    [Parameter]
-    public RenderFragment ChildContent {get; set; }
-    
+    public bool Disabled { get; set; } = false;
+
 }

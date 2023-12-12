@@ -1,0 +1,13 @@
+@inherits BaseComponent;
+
+<li class=@this.GetClasses() @attributes="@AdditionalAttributes">
+    <a href="@Href" class="f-dropdown-item-link">
+        @ChildContent
+    </a>
+</li>
+
+
+@code {
+    [Parameter]
+    public string Href { get; set; } = "#";
+}

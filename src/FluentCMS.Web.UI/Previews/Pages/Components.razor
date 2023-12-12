@@ -1,37 +1,80 @@
 @page "/previews/components"
-@layout PanelLayout 
+@rendermode RenderMode.InteractiveServer
+@using System.Text.Json
 
-<PageHeader Title="Components">
-    <PageActions>
-        <NavigationButton To="/">Go Back</NavigationButton>
-    </PageActions>
-</PageHeader>
+@layout PanelLayout
 
-<div class="py-8">
-    <h2 class="font-bold text-2xl">Buttons</h2>
-    <div class="py-4 flex gap-4">
-        <Button>Hello</Button>
-        <Button color="primary">Hello</Button>
+
+@* <h3>KitchenSink</h3>
+
+<EditForm Model="Model" OnValidSubmit="Submit" FormName="form">
+    <Input @bind-Value="Model.Name" Disabled="false"></Input>
+    <Button OnClick="Submit">Submit</Button>
+</EditForm>
+<pre>
+    @JsonSerializer.Serialize(Model)
+</pre>
+
+<Card>
+    <CardHeader>
+        <CardTitle>@Model.Name</CardTitle>
+    </CardHeader>
+    <CardBody>
+        <p>Nulla diam ipsum takimata ut diam dolore consetetur sit illum facilisi lorem gubergren dolor exerci dolore est duo ipsum sanctus</p>
+    </CardBody>
+</Card> *@
+
+
+<Page>
+    <PageHeader Title="Kitchen Sink">
+        <PageActions>
+            <NavigationButton To="/">Go Back</NavigationButton>
+        </PageActions>
+    </PageHeader>
+
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">First Component</h2>
+        <div class="py-4 flex gap-4">
+            <Button>Hello</Button>
+            <Button Color=@ColorEnum.Primary>Primary</Button>
+            <Button Color=@ColorEnum.Secondary>Secondary</Button>
+            <Button Color=@ColorEnum.Success>Success</Button>
+            <Button Color=@ColorEnum.Info>Info</Button>
+            <Button Color=@ColorEnum.Warning>Warning</Button>
+            <Button Color=@ColorEnum.Danger>Danger</Button>
+
+        </div>
     </div>
-</div>
 
-<div class="py-8">
-    <h2 class="font-bold text-2xl">Alerts</h2>
-    <div class="py-4 flex flex-col gap-4">
-        <Alert Type="success"> Change a few things up and try submitting again.</Alert>
-        <Alert Dismissible Type="warning"> Change a few things up and try submitting again.</Alert>
-        <Alert Type="danger"> Change a few things up and try submitting again.</Alert>
-        <Alert Type="info"> Change a few things up and try submitting again.</Alert>
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Alerts</h2>
+        <div class="py-4 flex flex-col gap-4">
+            <Alert Type=@AlertTypeEnum.Success> Change a few things up and try submitting again.</Alert>
+            <Alert Dismissible Type=@AlertTypeEnum.Warning> Change a few things up and try submitting again.</Alert>
+            <Alert Type=@AlertTypeEnum.Danger> Change a few things up and try submitting again.</Alert>
+            <Alert Type=@AlertTypeEnum.Warning> Change a few things up and try submitting again.</Alert>
+        </div>
     </div>
-</div>
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Checkbox</h2>
+        <div class="py-4 flex flex-col gap-4">
+            <Checkbox>Child Content</Checkbox>
+            <Checkbox Text="Text" />
+            <Checkbox Checked Text="Checked"></Checkbox>
+            <Checkbox Checked Disabled Text="Checked Disabled"></Checkbox>
+            <Checkbox Disabled Text="Disabled"></Checkbox>
+        </div>
+    </div>
+</Page>
 
-<div class="py-8">
-    <h2 class="font-bold text-2xl">Checkbox</h2>
-    <div class="py-4 flex flex-col gap-4">
-        <Checkbox>Child Content</Checkbox>
-        <Checkbox Text="Text" />
-        <Checkbox Checked Text="Checked"></Checkbox>
-        <Checkbox Checked Disbled Text="Checked Disaled"></Checkbox>
-        <Checkbox Disabled Text="Disaled"></Checkbox>
-    </div>
-</div>
+@code {
+    public DummyModel Model { get; set; } = new() { Name = "Parsa" };
+    public class DummyModel
+    {
+        public string Name { get; set; }
+    }
+    public void Submit()
+    {
+        Console.WriteLine(Model.Name);
+    }
+}

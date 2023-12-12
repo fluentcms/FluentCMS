@@ -1,6 +1,8 @@
+@inherits BaseComponent
 
+@* TODO: Remove ChildContent *@
 
-<div class="f-tabs">
+<div class=@this.GetClasses() @attributes="@AdditionalAttributes">
     <ul class="flex flex-wrap -mb-px">
         @TabList
     </ul>
@@ -10,11 +12,10 @@
 </div>
 
 @code {
-        
-    [Parameter]
-    public RenderFragment TabList {get; set; }
 
     [Parameter]
-    public RenderFragment TabContent {get; set; }
+    public RenderFragment TabList { get; set; }
 
+    [Parameter]
+    public RenderFragment TabContent { get; set; }
 }

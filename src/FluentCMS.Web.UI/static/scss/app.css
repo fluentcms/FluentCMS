@@ -160,7 +160,7 @@ h6 {
 }
 
 .f-button {
-  @apply font-medium rounded-lg text-sm px-5 py-2.5 gap-2 text-center inline-flex items-center;
+  @apply font-medium rounded-lg cursor-pointer text-sm px-5 py-2.5 gap-2 text-center inline-flex items-center;
 }
 .f-button-size-lg {
   @apply py-3;
@@ -194,6 +194,44 @@ h6 {
   @apply ring-blue-800;
 }
 
+.f-button-color-success {
+  @apply text-white bg-green-700;
+}
+.f-button-color-success:hover {
+  @apply bg-green-800;
+}
+.f-button-color-success:focus {
+  @apply ring-green-300;
+}
+.f-theme-dark .f-button-color-success {
+  @apply bg-green-600;
+}
+.f-theme-dark .f-button-color-success:hover {
+  @apply bg-green-700;
+}
+.f-theme-dark .f-button-color-success:focus {
+  @apply ring-green-800;
+}
+
+.f-button-color-info {
+  @apply text-white bg-cyan-700;
+}
+.f-button-color-info:hover {
+  @apply bg-cyan-800;
+}
+.f-button-color-info:focus {
+  @apply ring-cyan-300;
+}
+.f-theme-dark .f-button-color-info {
+  @apply bg-cyan-600;
+}
+.f-theme-dark .f-button-color-info:hover {
+  @apply bg-cyan-700;
+}
+.f-theme-dark .f-button-color-info:focus {
+  @apply ring-cyan-800;
+}
+
 .f-button-color-danger {
   @apply text-white bg-red-700;
 }
@@ -211,6 +249,44 @@ h6 {
 }
 .f-theme-dark .f-button-color-danger:focus {
   @apply ring-red-800;
+}
+
+.f-button-color-warning {
+  @apply text-white bg-yellow-700;
+}
+.f-button-color-warning:hover {
+  @apply bg-yellow-800;
+}
+.f-button-color-warning:focus {
+  @apply ring-yellow-300;
+}
+.f-theme-dark .f-button-color-warning {
+  @apply bg-yellow-600;
+}
+.f-theme-dark .f-button-color-warning:hover {
+  @apply bg-yellow-700;
+}
+.f-theme-dark .f-button-color-warning:focus {
+  @apply ring-yellow-800;
+}
+
+.f-button-color-secondary {
+  @apply text-white bg-gray-700;
+}
+.f-button-color-secondary:hover {
+  @apply bg-gray-800;
+}
+.f-button-color-secondary:focus {
+  @apply ring-gray-300;
+}
+.f-theme-dark .f-button-color-secondary {
+  @apply bg-gray-600;
+}
+.f-theme-dark .f-button-color-secondary:hover {
+  @apply bg-gray-700;
+}
+.f-theme-dark .f-button-color-secondary:focus {
+  @apply ring-gray-800;
 }
 
 .f-button-color-default {

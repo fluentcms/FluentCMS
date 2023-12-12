@@ -40,7 +40,7 @@ else
                     <td>
                         <NavigationButton To="@("/admin/sites/edit/" + site.Id)">Edit</NavigationButton>
                         <NavigationButton To="@("/admin/pages/" + site.Id)">Pages</NavigationButton>
-                        <Button Color="Colors.Danger" @onclick="@(()=>Delete(site.Id))">Delete</Button>
+                        <Button Color="ColorEnum.Danger" @onclick="@(()=>Delete(site.Id))">Delete</Button>
                     </td>
                 </tr>
             }
@@ -84,7 +84,7 @@ else
             }
             catch (Exception)
             {
-                
+
                 throw;
             }
         }

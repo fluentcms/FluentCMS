@@ -1,11 +1,13 @@
-﻿<div class="f-plugin-container">
+﻿@inherits BaseComponent
+
+<div class="@this.GetClasses()">
     @if (string.IsNullOrEmpty(AppState?.ViewMode) && !string.IsNullOrEmpty(Plugin.Definition.EditType))
     {
-        <div class="f-plugin-container-header">
+        <div class=@this.ClassName("PluginContainerHeader")>
             <a href="@EditUrl">Edit</a>
         </div>
     }
-    <div class="f-plugin">
+    <div class=@this.ClassName("Plugin")>
         @ChildContent
     </div>
 </div>
@@ -16,9 +18,6 @@
 
     [CascadingParameter]
     public AppState AppState { get; set; } = default!;
-
-    [Parameter]
-    public RenderFragment? ChildContent { get; set; }
 
     private string? EditUrl => $"{AppState?.Page?.Path}?pluginId={Plugin.Id}&viewMode=edit";
 }
