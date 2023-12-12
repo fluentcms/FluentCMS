@@ -1,13 +1,13 @@
 @inherits BaseComponent
 @if (Href != String.Empty)
 {
-    <a class=@this.GetClasses() disabled=@Disabled href=@Href @attributes="AdditionalAttributes">
+    <a class=@this.GetClasses() disabled=@Disabled href=@Href @onclick=OnClick @attributes="AdditionalAttributes">
         @ChildContent
     </a>
 }
 else
 {
-    <button class=@this.GetClasses() disabled=@Disabled type="@Type" @attributes="AdditionalAttributes">
+    <button class=@this.GetClasses() disabled=@Disabled type="@Type" @onclick=OnClick @attributes="AdditionalAttributes">
         @ChildContent
     </button>
 }
@@ -36,5 +36,5 @@ else
     public ButtonSizeEnum Size { get; set; } = ButtonSizeEnum.Medium;
 
     [Parameter]
-    public EventCallback OnClick { get; set; }
+    public EventCallback<MouseEventArgs> OnClick { get; set; }
 }
