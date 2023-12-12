@@ -1,19 +1,10 @@
-@inherits BaseComponent;
+@inherits Checkbox;
 
 <FormField Class=@this.GetClasses() Id=@Id Label=@Label>
-    <Checkbox Text=@Text Id=@Id Required=@Required />
+    <Checkbox Text=@Text Id=@Id Required=@Required Disabled=@Disabled @attributes=AdditionalAttributes @bind-Value=@Value @bind-Value:after="() => ValueChanged.InvokeAsync(Value)"/>
 </FormField>
 
 @code {
     [Parameter]
-    public string Id { get; set; } = "f-" + Guid.NewGuid().ToString();
-
-    [Parameter]
-    public string Text { get; set; } = "";
-
-    [Parameter]
     public string Label { get; set; } = "";
-
-    [Parameter]
-    public bool Required { get; set; } = false;
 }

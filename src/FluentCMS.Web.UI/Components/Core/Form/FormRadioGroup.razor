@@ -1,0 +1,20 @@
+@inherits InputBaseComponent<string>;
+
+<FormField Class=@this.GetClasses() Label=@Label>
+    @foreach (var item in Items)
+    {
+        <Radio Name="@Name" Text=@item.Text @attributes=AdditionalAttributes @bind-Value:get=@(item.Key == Value)
+            @bind-Value:set="(value) => ValueChanged.InvokeAsync(item.Key)" />
+    }
+</FormField>
+
+@code {
+    [Parameter]
+    public string Name { get; set; } = Guid.NewGuid().ToString();
+
+    [Parameter]
+    public string Label { get; set; } = "";
+
+    [Parameter]
+    public List<FormListItemType> Items { get; set; } = new();
+}

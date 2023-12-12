@@ -2,14 +2,10 @@ $prefix-form-check: $prefix + 'form-check';
 
 .#{$prefix-form-check} {
     // @apply ml-3 text-sm;
-
-    // ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 for radio
-    &-wrapper {
-        @apply flex items-center gap-3;
-    }
+    @apply flex items-center;
 
     &-text {
-        @apply font-medium text-gray-900;
+        @apply font-medium ps-3 text-gray-900;
     }
 
     .#{$prefix-theme-dark} &-text {

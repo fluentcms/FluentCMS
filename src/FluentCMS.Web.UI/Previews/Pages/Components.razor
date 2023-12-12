@@ -8,20 +8,21 @@
 @* <h3>KitchenSink</h3>
 
 <EditForm Model="Model" OnValidSubmit="Submit" FormName="form">
-    <Input @bind-Value="Model.Name" Disabled="false"></Input>
-    <Button OnClick="Submit">Submit</Button>
+<Input @bind-Value="Model.Name" Disabled="false"></Input>
+<Button OnClick="Submit">Submit</Button>
 </EditForm>
 <pre>
-    @JsonSerializer.Serialize(Model)
+@JsonSerializer.Serialize(Model)
 </pre>
 
 <Card>
-    <CardHeader>
-        <CardTitle>@Model.Name</CardTitle>
-    </CardHeader>
-    <CardBody>
-        <p>Nulla diam ipsum takimata ut diam dolore consetetur sit illum facilisi lorem gubergren dolor exerci dolore est duo ipsum sanctus</p>
-    </CardBody>
+<CardHeader>
+<CardTitle>@Model.Name</CardTitle>
+</CardHeader>
+<CardBody>
+<p>Nulla diam ipsum takimata ut diam dolore consetetur sit illum facilisi lorem gubergren dolor exerci dolore est duo
+ipsum sanctus</p>
+</CardBody>
 </Card> *@
 
 
@@ -55,16 +56,13 @@
             <Alert Type=@AlertTypeEnum.Warning> Change a few things up and try submitting again.</Alert>
         </div>
     </div>
-     <div class="py-8">
+    <div class="py-8">
         <h2 class="font-bold text-2xl">Checkbox</h2>
         <div class="py-4 flex flex-col gap-4">
-            <Checkbox Value="first">First</Checkbox>
-            <Checkbox Value="second" Text="Second" />
-            <Checkbox Checked Value="third" Text="Third"></Checkbox>
-            <Checkbox Disabled Value="fourth" Text="Fourth"></Checkbox>
-        </div>
-        <div>
-            Checkbox Value: <span class="font-bold">@CheckboxValue</span>
+            <Checkbox>First</Checkbox>
+            <Checkbox Text="Second" />
+            <Checkbox Value Text="Third"></Checkbox>
+            <Checkbox Disabled Value Text="Fourth"></Checkbox>
         </div>
     </div>
     <div class="py-8">
@@ -72,21 +70,98 @@
         <div class="py-4 flex flex-col gap-4">
             <Radio Name="group-1">Child Content</Radio>
             <Radio Name="group-1" Text="Text" />
-            <Radio Name="group-1" Checked Text="Checked"></Radio>
-            <Radio Name="group-1" Checked Disbled Text="Checked Disabled"></Radio>
+            <Radio Name="group-1" Value Text="Value"></Radio>
+            <Radio Name="group-1" Value Disabled Text="Value Disabled"></Radio>
             <Radio Name="group-1" Disabled Text="Disabled"></Radio>
         </div>
         <div class="py-4 flex flex-col gap-4">
             <Radio Name="group-2">Child Content</Radio>
             <Radio Name="group-2" Text="Text" />
-            <Radio Name="group-2" Checked Text="Checked"></Radio>
-            <Radio Name="group-2" Checked Disbled Text="Checked Disabled"></Radio>
+            <Radio Name="group-2" Value Text="Value"></Radio>
+            <Radio Name="group-2" Value Disabled Text="Value Disabled"></Radio>
             <Radio Name="group-2" Disabled Text="Disabled"></Radio>
         </div>
     </div>
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Checkbox binding</h2>
+        <div class="py-4 flex flex-col gap-4">
+            <Checkbox @bind-Value=Checkbox1Checked Text="First" />
+            <Checkbox @bind-Value=Checkbox1Checked Text="Second" />
+        </div>
+        <Button OnClick="() => Checkbox1Checked = !Checkbox1Checked">Toggle</Button>
+        <div>@Checkbox1Checked</div>
+    </div>
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Checkbox 2 binding</h2>
+        <div class="py-4 flex flex-col gap-4">
+            <FormCheckbox @bind-Value=Checkbox2Checked Text="First" Label="Form Checkbox" />
+            <FormCheckbox @bind-Value=Checkbox2Checked Text="Second" Label="Form Checkbox" />
+        </div>
+        <Button OnClick="() => Checkbox2Checked = !Checkbox2Checked">Toggle</Button>
+        <div>@Checkbox2Checked</div>
+    </div>
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Radio Group</h2>
+        <div class="flex">
+            <div class="w-1/2 pe-1">
+                <FormRadioGroup Items="@(new List<FormListItemType>
+                     {
+                         new FormListItemType { Text = "HTML", Key = "html" },
+                         new FormListItemType { Text = "JavaScript", Key = "js" }
+                     })" @bind-Value="@RadioGroupValue">
+                </FormRadioGroup>
+            </div>
+            <div class="w-1/2 ps-1">
+                <FormRadioGroup Items="@(new List<FormListItemType>
+                     {
+                         new FormListItemType { Text = "HTML", Key = "html" },
+                         new FormListItemType { Text = "JavaScript", Key = "js" }
+                     })" @bind-Value="@RadioGroupValue">
+                </FormRadioGroup>
+            </div>
+        </div>
+        <div class="py-4 flex flex-col gap-4">
+
+        </div>
+        <Button OnClick="@(() => RadioGroupValue = "js")">Update</Button>
+        <div>@RadioGroupValue</div>
+    </div>
+
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Checkbox Group</h2>
+        <div class="flex">
+            <div class="w-1/2 pe-1">
+                <FormCheckboxGroup Items="@(new List<FormListItemType>
+                     {
+                         new FormListItemType { Text = "HTML", Key = "html" },
+                         new FormListItemType { Text = "JavaScript", Key = "js" }
+                     })" @bind-Value="@CheckboxGroupValue">
+                </FormCheckboxGroup>
+            </div>
+            <div class="w-1/2 ps-1">
+                <FormCheckboxGroup Items="@(new List<FormListItemType>
+                     {
+                         new FormListItemType { Text = "HTML", Key = "html" },
+                         new FormListItemType { Text = "JavaScript", Key = "js" }
+                     })" @bind-Value="@CheckboxGroupValue">
+                </FormCheckboxGroup>
+            </div>
+        </div>
+        <div class="py-4 flex flex-col gap-4">
+
+        </div>
+        <Button OnClick="@(() => CheckboxGroupValue = new List<string> {"js"})">Update</Button>
+        <div>@CheckboxGroupValue.Count</div>
+    </div>
+
 </Page>
 
 @code {
+    public bool Checkbox1Checked { set; get; } = true;
+    public bool Checkbox2Checked { set; get; } = true;
+    public string RadioGroupValue { set; get; } = null;
+    public List<string> CheckboxGroupValue { set; get; } = new();
+
     public DummyModel Model { get; set; } = new() { Name = "Parsa" };
     public class DummyModel
     {

@@ -1,7 +1,9 @@
-@inherits BaseComponent
-<label class="f-form-check-wrapper">
-    <input name=@Name type="radio" class=@this.GetClasses() disabled=@(Disabled) @attributes="@AdditionalAttributes">
-    <span class="f-form-check-text">
+@inherits InputBaseComponent<bool>
+<FormCheck>
+    <input id="@Id" checked=@Value name=@Name type="radio" class=@this.GetClasses() disabled=@(Disabled) @bind="Value" @bind:after="() => ValueChanged.InvokeAsync(true)"
+        @attributes="@AdditionalAttributes">
+
+    <FormCheckText For="@Id">
         @if (ChildContent != null)
         {
             @ChildContent
@@ -9,11 +11,15 @@
         else
         {
             @Text
-        }
-    </span>
-</label>
+        }    
+    </FormCheckText>
+</FormCheck>
+
 
 @code {
+
+    [Parameter]
+    public string Id { get; set; } = "radio-" + Guid.NewGuid().ToString();
 
     [Parameter]
     public string Name { get; set; } = default!;
@@ -22,12 +28,8 @@
     public string Text { get; set; } = "";
 
     [Parameter]
-    public bool Checked { get; set; } = false;
+    public string Key { get; set; } = "";
 
     [Parameter]
     public bool Disabled { get; set; } = false;
-
-    [Parameter(CaptureUnmatchedValues = true)]
-    public Dictionary<string, object> RestProps { get; set; }
-
 }

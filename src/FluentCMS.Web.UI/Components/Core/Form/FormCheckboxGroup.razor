@@ -1,0 +1,36 @@
+@inherits InputBaseComponent<List<string>>;
+
+<FormField Class=@this.GetClasses() Label=@Label>
+    @foreach (var item in Items)
+    {
+        <Checkbox Name="@Name" Text=@item.Text @attributes=AdditionalAttributes @bind-Value:get=@Value.Contains(item.Key)
+            @bind-Value:set="(value) => OnChange(item.Key)" />
+    }
+</FormField>
+
+@code {
+    [Parameter]
+    public string Name { get; set; } = Guid.NewGuid().ToString();
+
+    public List<string> Test;
+
+
+    [Parameter]
+    public string Label { get; set; } = "";
+
+    [Parameter]
+    public List<FormListItemType> Items { get; set; } = new();
+
+    public void OnChange(string key) {
+        
+        if(Value.Contains(key)) {
+            Value.RemoveAll((item) => item == key);
+        } else {
+            Value.Add(key);
+        }
+        
+        ValueChanged.InvokeAsync(Value);
+        
+    }
+}
+

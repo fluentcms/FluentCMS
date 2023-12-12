@@ -1,19 +1,10 @@
-<div class="f-form-check">
-    @* ml-3 text-sm *@
-    @* font-medium text-gray-900 dark:text-white *@
-    
-    <label for="@Id" class="f-form-check-text">
-        @ChildContent
-    </label>
-</div>
+@inherits BaseComponent 
+<label for="@For" class=@this.GetClasses()>
+    @ChildContent
+</label>
 
 
 @code {
     [Parameter]
-    public string Id { get; set; }
-
-    [Parameter]
-    public RenderFragment ChildContent { get; set; }
-
-
+    public string For { get; set; }
 }

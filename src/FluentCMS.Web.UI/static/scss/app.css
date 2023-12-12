@@ -368,11 +368,11 @@ body.f-theme-dark {
   @apply text-gray-200;
 }
 
-.f-form-check-wrapper {
-  @apply flex items-center gap-3;
+.f-form-check {
+  @apply flex items-center;
 }
 .f-form-check-text {
-  @apply font-medium text-gray-900;
+  @apply font-medium ps-3 text-gray-900;
 }
 .f-theme-dark .f-form-check-text {
   @apply text-white;
