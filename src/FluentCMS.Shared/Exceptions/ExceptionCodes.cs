@@ -108,4 +108,16 @@ public class ExceptionCodes
     public const string ContentSiteIdMismatch = "Content.SiteIdMismatch";
     public const string ContentPluginIdMismatch = "Content.ContentPluginIdMismatch";
     #endregion
+
+    #region ContentType
+
+    public const string ContentTypeUnableToCreate = "ContentType.UnableToCreated";
+    public const string ContentTypeUnableToUpdate = "ContentType.UnableToUpdate";
+    public const string ContentTypeUnableToDelete = "ContentType.UnableToDelete";
+    public const string ContentTypeNotFound = "ContentType.NotFound";
+    public const string ContentTypeNameCannotBeChanged = "ContentType.NameCannotBeChanged";
+    public const string ContentTypeNameMustBeUnique = "ContentType.NameMustBeUnique";
+    public const string ContentTypeFieldNotFound = "ContentType.FieldNotFound";
+
+    #endregion
 }

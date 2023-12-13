@@ -14,22 +14,19 @@ public class PageController(
     IMapper mapper) : BaseController
 {
 
-    private readonly IPageService _pageService = pageService;
-    private readonly IMapper _mapper = mapper;
-
     // GetBy Site and ParentId
     [HttpPost]
-    public async Task<IApiPagingResult<PageResponse>> GetAll([FromBody] PageSearchRequest request)
+    public async Task<IApiPagingResult<PageResponse>> GetAll([FromBody] PageSearchRequest request, CancellationToken cancellationToken = default)
     {
-        var pages = await _pageService.GetBySiteId(request.SiteId);
-        return new ApiPagingResult<PageResponse>(_mapper.Map<List<PageResponse>>(pages.ToList()));
+        var pages = await pageService.GetBySiteId(request.SiteId, cancellationToken);
+        return new ApiPagingResult<PageResponse>(mapper.Map<List<PageResponse>>(pages.ToList()));
     }
 
     [HttpGet("{id}")]
-    public async Task<IApiResult<PageResponse>> GetById([FromRoute] Guid id)
+    public async Task<IApiResult<PageResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        var page = await _pageService.GetById(id);
-        var pageResponse = _mapper.Map<PageResponse>(page);
+        var page = await pageService.GetById(id, cancellationToken);
+        var pageResponse = mapper.Map<PageResponse>(page);
         return new ApiResult<PageResponse>(pageResponse);
     }
 
@@ -42,8 +39,8 @@ public class PageController(
         if (!path.StartsWith("/"))
             path = "/" + path;
 
-        var page = await _pageService.GetByPath(siteId, path, cancellationToken);
-        var pageResponse = _mapper.Map<PageResponse>(page);
+        var page = await pageService.GetByPath(siteId, path, cancellationToken);
+        var pageResponse = mapper.Map<PageResponse>(page);
         var pagePlugins = await pluginService.GetByPageId(page.Id, cancellationToken);
         var pluginDefinitions = await pluginDefinitionService.GetAll(cancellationToken);
         var layouts = await layoutService.GetAll(siteId, cancellationToken);
@@ -65,27 +62,27 @@ public class PageController(
     }
 
     [HttpPost]
-    public async Task<IApiResult<PageResponse>> Create(PageCreateRequest request)
+    public async Task<IApiResult<PageResponse>> Create(PageCreateRequest request, CancellationToken cancellationToken = default)
     {
-        var page = _mapper.Map<Page>(request);
-        var newPage = await _pageService.Create(page);
-        var pageResponse = _mapper.Map<PageResponse>(newPage);
+        var page = mapper.Map<Page>(request);
+        var newPage = await pageService.Create(page, cancellationToken);
+        var pageResponse = mapper.Map<PageResponse>(newPage);
         return new ApiResult<PageResponse>(pageResponse);
     }
 
     [HttpPut]
-    public async Task<IApiResult<PageResponse>> Update(PageUpdateRequest request)
+    public async Task<IApiResult<PageResponse>> Update(PageUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        var page = _mapper.Map<Page>(request);
-        var updatedPage = await _pageService.Update(page);
-        var pageResponse = _mapper.Map<PageResponse>(updatedPage);
+        var page = mapper.Map<Page>(request);
+        var updatedPage = await pageService.Update(page, cancellationToken);
+        var pageResponse = mapper.Map<PageResponse>(updatedPage);
         return new ApiResult<PageResponse>(pageResponse);
     }
 
     [HttpDelete("{id}")]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
     {
-        await _pageService.Delete(id);
+        await pageService.Delete(id);
         return new ApiResult<bool>(true);
     }
 }
