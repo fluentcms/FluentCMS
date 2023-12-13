@@ -2,7 +2,7 @@
 @using System.Resources;
 
 <span class=@this.GetClasses() @attributes=@AdditionalAttributes>
-    @IconContent
+    @Content
 </span>
 
 @code {
@@ -10,9 +10,9 @@
     public required ResourceManager ResourceManager { get; set; }
 
     [Parameter]
-    public IconDefinition Name { get; set; } = IconDefinition.Default;
+    public IconNameEnum Name { get; set; } = IconNameEnum.Default;
 
-    public MarkupString IconContent { get; set; } = default!;
+    public MarkupString Content { get; set; } = default!;
 
     [Parameter]
     [CssProperty]
@@ -25,6 +25,6 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        IconContent = (MarkupString)(ResourceManager.GetString(Name.IconName) ?? throw new Exception("Invalid Icon Name"));
+        Content = (MarkupString)(ResourceManager.GetString(Name.ToString()) ?? throw new Exception("Invalid Icon Name"));
     }
 }

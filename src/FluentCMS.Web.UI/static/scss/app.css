@@ -414,6 +414,7 @@ body.f-theme-dark {
   width: var(--f-icon-size);
   height: var(--f-icon-size);
   display: inline-block;
+  vertical-align: bottom;
 }
 .f-icon-size-small {
   --f-icon-size: 0.875rem;
