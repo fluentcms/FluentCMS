@@ -1,40 +1,55 @@
-@if (Href != String.Empty) {
-<a class="f-button f-button-color-@Color f-button-size-@Size" disabled=@Disabled href=@Href type="@Type" @attributes="RestProps">
-    @ChildContent
-</a>
-
-} else {
-<button class="f-button f-button-color-@Color f-button-size-@Size" disabled=@Disabled type="@Type" @attributes="RestProps">
-    @ChildContent
-</button>
-
+@inherits BaseComponent
+@if (!string.IsNullOrEmpty(Href))
+{
+    <a class=@this.GetClasses() disabled=@Disabled href=@Href @onclick=OnClick @attributes="AdditionalAttributes">
+        @if (Loading) {
+            <Icon Class=@this.ClassName("ButtonLoading") Name="IconNameEnum.Spinner"/>
+        }
+        @ChildContent
+    </a>
+}
+else
+{
+    <button class=@this.GetClasses() disabled=@Disabled type="@Type.ToString()" @onclick=OnClick @attributes="AdditionalAttributes">
+        @if (Loading) {
+            <Icon Class=@this.ClassName("ButtonLoading") Name="IconNameEnum.Spinner"/>
+        }
+        @ChildContent
+    </button>
 }
 
 @code {
 
     [Parameter]
-    public string Color {get; set;} = "default";
+    [CssProperty]
+    public ColorEnum Color { get; set; } = ColorEnum.Default;
 
     [Parameter]
-    public string Href {get; set;} = "";
+    public string? Href { get; set; }
 
     [Parameter]
-    public RenderFragment ChildContent {get; set;}
-
-    [Parameter(CaptureUnmatchedValues = true)]
-    public IDictionary<string, object>? RestProps { get; set; }
-
-    [Parameter]
+    [CssProperty]
     public bool Disabled { get; set; } = false;
 
+    [Parameter]
+    [CssProperty]
+    public bool Loading { get; set; } = false;
 
     [Parameter]
-    public string Type { get; set; } = "button";
+    public ButtonTypeEnum Type { get; set; } = ButtonTypeEnum.Button;
 
     [Parameter]
-    public string Size { get; set; } = "md";
+    [CssProperty]
+    public SizeEnum Size { get; set; } = SizeEnum.Medium;
 
-    // [Parameter]
-    // public EventCallback OnClick { get; set; }
+    [Parameter]
+    [CssProperty]
+    public bool Outline { get; set; } = false;
 
+    [Parameter]
+    [CssProperty]
+    public bool Ghost { get; set; } = false;
+
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnClick { get; set; }
 }

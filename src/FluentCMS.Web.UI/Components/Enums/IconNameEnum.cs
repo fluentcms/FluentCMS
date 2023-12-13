@@ -9,5 +9,6 @@ public enum IconNameEnum
     Settings,
     Filter,
     Search,
+    Spinner,
     Edit,
 }
