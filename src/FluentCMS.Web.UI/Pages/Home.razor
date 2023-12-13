@@ -1,9 +1,9 @@
 ﻿@page "/{*Route:nonfile}"
 @inherits BasePage
 
-<PageTitle>@AppState?.Page?.Title</PageTitle>
+<PageTitle>@AppState.Page?.Title</PageTitle>
 <HeadContent>
-    @if (AppState?.Layout != null)
+    @if (AppState.Layout != null)
     {
         @((MarkupString)AppState.Layout.Head)
     }

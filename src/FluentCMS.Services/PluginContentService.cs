@@ -13,8 +13,15 @@ public class PluginContentService(
     ContentService<PluginContent>(contentRepository),
     IPluginContentService
 {
+
     public async Task<IEnumerable<PluginContent>> GetByPluginId(Guid siteId, string contentType, Guid pluginId, CancellationToken cancellationToken = default)
     {
         return await contentRepository.GetByPluginId(siteId, contentType, pluginId, cancellationToken);
     }
+
+    public override Task<PluginContent> Create(PluginContent content, CancellationToken cancellationToken = default)
+    {
+        return base.Create(content, cancellationToken);
+    }
+
 }

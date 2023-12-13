@@ -1,12 +1,6 @@
-﻿<h1>Counter Edit</h1>
+﻿@inherits BasePluginComponent
+
+<h1>Counter Edit</h1>
 This is edit for Counter plugin
 <br />
-<a href="@AppState?.Page?.Path">Go Back</a>
-
-@code {
-    [CascadingParameter(Name = "Plugin")]
-    public PluginResponse Plugin { get; set; } = default!;
-
-    [CascadingParameter]
-    public AppState? AppState { get; set; }
-}
+<a href="@AppState.Page?.Path">Go Back</a>
