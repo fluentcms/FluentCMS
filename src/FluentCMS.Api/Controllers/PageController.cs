@@ -16,16 +16,16 @@ public class PageController(
 
     // GetBy Site and ParentId
     [HttpPost]
-    public async Task<IApiPagingResult<PageResponse>> GetAll([FromBody] PageSearchRequest request)
+    public async Task<IApiPagingResult<PageResponse>> GetAll([FromBody] PageSearchRequest request, CancellationToken cancellationToken = default)
     {
-        var pages = await pageService.GetBySiteId(request.SiteId);
+        var pages = await pageService.GetBySiteId(request.SiteId, cancellationToken);
         return new ApiPagingResult<PageResponse>(mapper.Map<List<PageResponse>>(pages.ToList()));
     }
 
     [HttpGet("{id}")]
-    public async Task<IApiResult<PageResponse>> GetById([FromRoute] Guid id)
+    public async Task<IApiResult<PageResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        var page = await pageService.GetById(id);
+        var page = await pageService.GetById(id, cancellationToken);
         var pageResponse = mapper.Map<PageResponse>(page);
         return new ApiResult<PageResponse>(pageResponse);
     }
@@ -62,19 +62,19 @@ public class PageController(
     }
 
     [HttpPost]
-    public async Task<IApiResult<PageResponse>> Create(PageCreateRequest request)
+    public async Task<IApiResult<PageResponse>> Create(PageCreateRequest request, CancellationToken cancellationToken = default)
     {
         var page = mapper.Map<Page>(request);
-        var newPage = await pageService.Create(page);
+        var newPage = await pageService.Create(page, cancellationToken);
         var pageResponse = mapper.Map<PageResponse>(newPage);
         return new ApiResult<PageResponse>(pageResponse);
     }
 
     [HttpPut]
-    public async Task<IApiResult<PageResponse>> Update(PageUpdateRequest request)
+    public async Task<IApiResult<PageResponse>> Update(PageUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var page = mapper.Map<Page>(request);
-        var updatedPage = await pageService.Update(page);
+        var updatedPage = await pageService.Update(page, cancellationToken);
         var pageResponse = mapper.Map<PageResponse>(updatedPage);
         return new ApiResult<PageResponse>(pageResponse);
     }
