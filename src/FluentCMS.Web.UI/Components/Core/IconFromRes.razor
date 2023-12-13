@@ -1,22 +1,5 @@
 ﻿@using System.Resources
-@inject IServiceProvider KeyedServiceProvider;
 
 @IconSvgContent
 
-@code {
-    public ResourceManager? ResourceManager { get; set; } = null;
-    public MarkupString IconSvgContent { get; set; } = default!;
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        ResourceManager = KeyedServiceProvider.GetRequiredKeyedService<ResourceManager>("IconResourceManager");
-        if (ResourceManager != null)
-        {
-            IconSvgContent = (MarkupString)(ResourceManager?.GetString(IconName ?? "home") ?? "");
-        }
 
-
-    }
-    [Parameter]
-    public string? IconName { get; set; }
-}
