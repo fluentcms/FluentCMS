@@ -364,52 +364,38 @@ body.f-theme-dark {
 }
 
 .f-icon {
-  --f-icon-size: 1rem;
+  --f-icon-size: 1em;
   width: var(--f-icon-size);
   height: var(--f-icon-size);
   display: inline-block;
+  vertical-align: bottom;
 }
-.f-icon-size-xs {
-  --f-icon-size: 0.75rem;
-}
-.f-icon-size-sm {
+.f-icon-size-small {
   --f-icon-size: 0.875rem;
 }
-.f-icon-size-md {
+.f-icon-size-medium {
   --f-icon-size: 1rem;
 }
-.f-icon-size-lg {
+.f-icon-size-large {
   --f-icon-size: 1.25rem;
 }
-.f-icon-size-xl {
-  --f-icon-size: 1.5rem;
+.f-icon-color-primary {
+  @apply text-blue-500;
 }
-.f-icon-size-1x {
-  --f-icon-size: 1rem;
+.f-icon-color-success {
+  @apply text-green-500;
 }
-.f-icon-size-2x {
-  --f-icon-size: 2rem;
+.f-icon-color-info {
+  @apply text-cyan-500;
 }
-.f-icon-size-3x {
-  --f-icon-size: 3rem;
+.f-icon-color-danger {
+  @apply text-red-500;
 }
-.f-icon-size-4x {
-  --f-icon-size: 4rem;
+.f-icon-color-warning {
+  @apply text-yellow-500;
 }
-.f-icon-size-5x {
-  --f-icon-size: 5rem;
-}
-.f-icon-size-6x {
-  --f-icon-size: 6rem;
-}
-.f-icon-size-7x {
-  --f-icon-size: 7rem;
-}
-.f-icon-size-8x {
-  --f-icon-size: 8rem;
-}
-.f-icon-size-9x {
-  --f-icon-size: 9rem;
+.f-icon-color-secondary {
+  @apply text-gray-500;
 }
 .f-icon * {
   stroke-width: 1.5px;

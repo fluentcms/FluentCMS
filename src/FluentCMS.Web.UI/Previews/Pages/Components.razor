@@ -1,5 +1,5 @@
 @page "/previews/components"
-@layout PanelLayout 
+@layout PanelLayout
 
 <PageHeader Title="Components">
     <PageActions>
@@ -22,6 +22,55 @@
         <Alert Dismissible Type="warning"> Change a few things up and try submitting again.</Alert>
         <Alert Type="danger"> Change a few things up and try submitting again.</Alert>
         <Alert Type="info"> Change a few things up and try submitting again.</Alert>
+    </div>
+</div>
+
+<div class="py-8">
+    <h2 class="font-bold text-2xl">Icons</h2>
+    <div class="py-4 flex flex-col gap-4">
+        <Icon Name="IconNameEnum.Plus" />
+        <Icon Name="IconNameEnum.InformationFilled" />
+        <Icon Name="IconNameEnum.Delete" />
+    </div>
+    <div class="py-4 flex flex-col gap-4">
+        <h1 class="text-4xl">
+            <Icon Name="IconNameEnum.InformationFilled" /> Default
+        </h1>
+
+
+        <div>
+            <Icon Size="SizeEnum.Small" Name="IconNameEnum.InformationFilled" /> Small
+        </div>
+
+        <div>
+            <Icon Size="SizeEnum.Medium" Name="IconNameEnum.InformationFilled" /> Medium
+        </div>
+        <div>
+            <Icon Size="SizeEnum.Large" Name="IconNameEnum.InformationFilled" /> Large
+        </div>
+    </div>
+    <div class="py-4 flex flex-col gap-4">
+        <h1 class="text-4xl">
+            <Icon Color="ColorEnum.Primary" Name="IconNameEnum.InformationFilled" /> Primary
+        </h1>
+        <h1 class="text-4xl">
+            <Icon Color="ColorEnum.Secondary" Name="IconNameEnum.InformationFilled" /> Secondary
+        </h1>
+        <h1 class="text-4xl">
+            <Icon Color="ColorEnum.Success" Name="IconNameEnum.InformationFilled" /> Success
+        </h1>
+        <h1 class="text-4xl">
+            <Icon Color="ColorEnum.Danger" Name="IconNameEnum.InformationFilled" /> Danger
+        </h1>
+
+        <h1 class="text-4xl">
+            <Icon Color="ColorEnum.Info" Name="IconNameEnum.InformationFilled" /> Info
+        </h1>
+
+        <h1 class="text-4xl">
+            <Icon Color="ColorEnum.Warning" Name="IconNameEnum.InformationFilled" /> Warning
+        </h1>
+
     </div>
 </div>
 
