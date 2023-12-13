@@ -27,6 +27,7 @@ body.#{$prefix-theme-dark} {
 
 /* #region COMPONENTS */
 @import './components/alert';
+@import './components/badge';
 @import './components/button';
 @import './components/card';
 @import './components/checkbox';

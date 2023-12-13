@@ -35,6 +35,10 @@ public static class Helpers
                 case "siteid":
                     content.SiteId = Guid.Parse(kvp.Value?.ToString() ?? Guid.Empty.ToString());
                     break;
+                case "pluginid":
+                    if (content is PluginContent pluginContent)
+                        pluginContent.PluginId = Guid.Parse(kvp.Value?.ToString() ?? Guid.Empty.ToString());
+                    break;
                 default:
                     content.Add(kvp.Key, kvp.Value);
                     break;
@@ -50,6 +54,10 @@ public static class Helpers
 
         // Using reflection to get properties of the Content class
         foreach (PropertyInfo prop in typeof(Content).GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly))
+        {
+            result[prop.Name] = prop.GetValue(content);
+        }
+        foreach (PropertyInfo prop in typeof(TContent).GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly))
         {
             result[prop.Name] = prop.GetValue(content);
         }

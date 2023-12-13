@@ -5,7 +5,7 @@ namespace FluentCMS.Web.UI.Components.Application;
 
 public class BasePluginComponent : BaseAppComponent
 {
-    [CascadingParameter(Name = "Plugin")]
-    public PluginResponse? Plugin { get; set; }
+    [Parameter]
+    public PluginResponse Plugin { get; set; } = default!;
 
 }

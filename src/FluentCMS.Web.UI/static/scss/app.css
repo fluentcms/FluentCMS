@@ -131,6 +131,52 @@ body.f-theme-dark {
   @apply bg-gray-700;
 }
 
+.f-badge {
+  @apply text-xs font-medium px-2.5 py-0.5 rounded;
+}
+.f-badge .f-badge-color-default {
+  @apply bg-gray-100 text-gray-800;
+}
+.f-theme-dark .f-badge .f-badge-color-default {
+  @apply text-gray-300 bg-gray-700;
+}
+.f-badge-color-primary {
+  @apply bg-blue-100 text-blue-800;
+}
+.f-theme-dark .f-badge-color-primary {
+  @apply bg-blue-900 text-blue-300;
+}
+.f-badge-color-success {
+  @apply bg-green-100 text-green-800;
+}
+.f-theme-dark .f-badge-color-success {
+  @apply bg-green-900 text-green-300;
+}
+.f-badge-color-info {
+  @apply bg-cyan-100 text-cyan-800;
+}
+.f-theme-dark .f-badge-color-info {
+  @apply bg-cyan-900 text-cyan-300;
+}
+.f-badge-color-danger {
+  @apply bg-red-100 text-red-800;
+}
+.f-theme-dark .f-badge-color-danger {
+  @apply bg-red-900 text-red-300;
+}
+.f-badge-color-warning {
+  @apply bg-yellow-100 text-yellow-800;
+}
+.f-theme-dark .f-badge-color-warning {
+  @apply bg-yellow-900 text-yellow-300;
+}
+.f-badge-color-secondary {
+  @apply bg-gray-100 text-gray-800;
+}
+.f-theme-dark .f-badge-color-secondary {
+  @apply bg-gray-900 text-gray-300;
+}
+
 .f-button {
   @apply font-medium rounded-lg text-sm px-5 py-2.5 gap-2 text-center inline-flex items-center;
 }
@@ -681,6 +727,7 @@ body.f-theme-dark {
   width: var(--f-icon-size);
   height: var(--f-icon-size);
   display: inline-block;
+  vertical-align: bottom;
 }
 .f-icon-size-small {
   --f-icon-size: 0.875rem;

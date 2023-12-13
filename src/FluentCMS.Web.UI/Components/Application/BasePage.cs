@@ -1,34 +1,28 @@
-﻿using FluentCMS.Web.UI.Components.Application;
-using HtmlAgilityPack;
+﻿using HtmlAgilityPack;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using System.Text.RegularExpressions;
 
-namespace FluentCMS.Web.UI.Pages;
+namespace FluentCMS.Web.UI.Components.Application;
 
-public class BasePage : ComponentBase, IDisposable
+public class BasePage : BaseAppComponent
 {
     public const string ATTRIBUTE = "FluentCMS";
-    protected CancellationTokenSource CancellationTokenSource = new();
-    protected CancellationToken CancellationToken => CancellationTokenSource.Token;
 
     [Parameter]
     public string? Route { get; set; }
 
-    [CascadingParameter]
-    public AppState? AppState { get; set; }
-
     protected RenderFragment dynamicComponent() => builder =>
-    {
+{
 
-        var _body = AppState?.Layout?.Body ?? string.Empty;
+    var _body = AppState.Layout?.Body ?? string.Empty;
 
-        var doc = new HtmlDocument();
-        doc.LoadHtml(_body);
-        var children = GetChildren(doc.DocumentNode);
-        // add children to the dom
-        AddChildrenToDom(builder, children);
-    };
+    var doc = new HtmlDocument();
+    doc.LoadHtml(_body);
+    var children = GetChildren(doc.DocumentNode);
+    // add children to the dom
+    AddChildrenToDom(builder, children);
+};
 
     private void AddChildrenToDom(RenderTreeBuilder builder, IEnumerable<HtmlNode> children)
     {
@@ -100,11 +94,5 @@ public class BasePage : ComponentBase, IDisposable
     {
         var parameterParserRegex = new Regex("(\\s(?<name>\\w+)=\\\"?(?<value>\\w+)\\\"?)+");
         return new Dictionary<string, string>(parameterParserRegex.Matches(layout).Select(x => new KeyValuePair<string, string>(x.Groups["name"].Value, x.Groups["value"].Value)));
-    }
-
-    public void Dispose()
-    {
-        CancellationTokenSource.Cancel();
-        CancellationTokenSource.Dispose();
     }
 }

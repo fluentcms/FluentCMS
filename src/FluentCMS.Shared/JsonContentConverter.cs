@@ -66,6 +66,14 @@ public class JsonContentConverter<TContent>() : JsonConverter<TContent> where TC
                     content.LastUpdatedAt = reader.GetDateTime();
                     continue;
 
+                case "pluginid":
+                    if (typeof(TContent) == typeof(PluginContent))
+                    {
+                        ((PluginContent)(object)content).PluginId = reader.GetGuid();
+                        continue;
+                    }
+                    continue;
+
                 default:
                     break;
             }

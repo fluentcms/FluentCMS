@@ -9,19 +9,17 @@ public class PluginContentClient(
     BaseClient(httpClientFactory)
 {
 
-    //public async Task<PluginContent> Create(string contentType, PluginContent content, CancellationToken cancellationToken = default)
-    //{
-    //    content.Type = contentType;
-    //    var newContent = await pluginContentService.Create(content, cancellationToken);
-    //    return new ApiResult<PluginContent>(newContent);
-    //}
+    public async Task<PluginContent> Create(PluginContent content, CancellationToken cancellationToken = default)
+    {
+        var result = await Call<ApiResult<PluginContent>>(content.Type, content, cancellationToken);
+        return result.Data;
+    }
 
-    //public async Task<PluginContent> Update(string contentType, PluginContent content, CancellationToken cancellationToken = default)
-    //{
-    //    content.Type = contentType;
-    //    var updatedContent = await pluginContentService.Update(content, cancellationToken);
-    //    return new ApiResult<PluginContent>(updatedContent);
-    //}
+    public async Task<PluginContent> Update(PluginContent content, CancellationToken cancellationToken = default)
+    {
+        var result = await Call<ApiResult<PluginContent>>(content.Type, content, cancellationToken);
+        return result.Data;
+    }
 
     //public async Task Delete(string contentType, IdRequest request, CancellationToken cancellationToken = default)
     //{

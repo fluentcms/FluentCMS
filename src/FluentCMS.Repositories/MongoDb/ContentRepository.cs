@@ -10,7 +10,7 @@ public class ContentRepository<TContent>(
     where TContent : Content, new()
 {
 
-    public async Task<TContent?> Create(TContent content, CancellationToken cancellationToken = default)
+    public virtual async Task<TContent?> Create(TContent content, CancellationToken cancellationToken = default)
     {
         // setting base properties
         content.Id = Guid.NewGuid();
@@ -30,7 +30,7 @@ public class ContentRepository<TContent>(
         return await GetById(content.SiteId, content.Type, content.Id, cancellationToken);
     }
 
-    public async Task<TContent?> GetById(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default)
+    public virtual async Task<TContent?> GetById(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default)
     {
         var collection = GetCollection(contentType);
 
@@ -45,20 +45,22 @@ public class ContentRepository<TContent>(
         return dict.ToContent<TContent>();
     }
 
-    public async Task<TContent?> Update(TContent content, CancellationToken cancellationToken = default)
+    public virtual async Task<TContent?> Update(TContent content, CancellationToken cancellationToken = default)
     {
-        // setting base properties
-        content.LastUpdatedAt = DateTime.UtcNow;
-        content.LastUpdatedBy = applicationContext.Current.UserName;
-
         var existing = await GetById(content.SiteId, content.Type, content.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentNotFound);
 
-        if (existing.Type != content.Type)
+        if (existing.Type.ToLower() != content.Type.ToLower())
             throw new AppException(ExceptionCodes.ContentTypeMismatch);
 
         if (existing.SiteId != content.SiteId)
             throw new AppException(ExceptionCodes.ContentSiteIdMismatch);
+
+        // setting base properties
+        content.CreatedAt = existing.CreatedAt;
+        content.CreatedBy = existing.CreatedBy;
+        content.LastUpdatedAt = DateTime.UtcNow;
+        content.LastUpdatedBy = applicationContext.Current.UserName;
 
         var dict = content.ToDictionary();
 
@@ -75,7 +77,7 @@ public class ContentRepository<TContent>(
         return updatedDict.ToContent<TContent>();
     }
 
-    public async Task<TContent?> Delete(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default)
+    public virtual async Task<TContent?> Delete(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default)
     {
         var collection = GetCollection(contentType);
 
@@ -92,10 +94,10 @@ public class ContentRepository<TContent>(
         return deleted.ToContent<TContent>();
     }
 
-    public async Task<IEnumerable<TContent>> GetAll(Guid siteId, string contentType, CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TContent>> GetAll(Guid siteId, string contentType, CancellationToken cancellationToken = default)
     {
         var collection = GetCollection(contentType);
-        var filter = Builders<Dictionary<string, object?>>.Filter.Empty;
+        var filter = GetSiteIdFilter(siteId);
         var dictionaries = await collection.FindAsync(filter, cancellationToken: cancellationToken);
         return await Task.FromResult(dictionaries.ToEnumerable(cancellationToken: cancellationToken).Select(dict =>
         {
@@ -106,12 +108,14 @@ public class ContentRepository<TContent>(
 
     #region Private Methods
 
-    protected IMongoCollection<Dictionary<string, object?>> GetCollection(string contentType)
+    protected virtual IMongoCollection<Dictionary<string, object?>> GetCollection(string contentType)
     {
         if (string.IsNullOrWhiteSpace(contentType))
             throw new ArgumentNullException(nameof(contentType));
 
-        return mongoDbContext.Database.GetCollection<Dictionary<string, object?>>(contentType);
+        var collectionName = $"Content_{contentType.ToLower()}";
+
+        return mongoDbContext.Database.GetCollection<Dictionary<string, object?>>(collectionName);
     }
 
     protected static void ReverseMongoDBId(Dictionary<string, object?> dict)

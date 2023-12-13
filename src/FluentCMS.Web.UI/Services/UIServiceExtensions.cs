@@ -9,6 +9,13 @@ public static class UIServiceExtensions
     {
         services.AddScoped<AppStateService>();
 
+        services.AddScoped(sp =>
+        {
+            var stateService = sp.GetRequiredService<AppStateService>();
+            return stateService?.Current ??
+                throw new InvalidOperationException("No current app state.");
+        });
+
         services.AddApiClients();
 
         services.AddHttpClient("FluentCMS.Web.Api", client =>
@@ -25,4 +32,5 @@ public static class UIServiceExtensions
 
         return services;
     }
+
 }
