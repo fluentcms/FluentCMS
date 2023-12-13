@@ -7,93 +7,298 @@
     </PageActions>
 </PageHeader>
 
-<div class="py-8">
-    <h2 class="font-bold text-2xl">Buttons</h2>
-    <div class="py-4 flex gap-4">
-        <Button>Hello</Button>
-        <Button color="primary">Hello</Button>
-    </div>
-</div>
-
-<div class="py-8">
-    <h2 class="font-bold text-2xl">Alerts</h2>
-    <div class="py-4 flex flex-col gap-4">
-        <Alert Type="success"> Change a few things up and try submitting again.</Alert>
-        <Alert Dismissible Type="warning"> Change a few things up and try submitting again.</Alert>
-        <Alert Type="danger"> Change a few things up and try submitting again.</Alert>
-        <Alert Type="info"> Change a few things up and try submitting again.</Alert>
-    </div>
-</div>
-
-<div class="py-8">
-    <h2 class="font-bold text-2xl">Badges</h2>
-    <div class="py-4 flex gap-2">
-        <Badge>Badge Content</Badge>
-        <Badge Color="@ColorEnum.Primary">Primary</Badge>
-        <Badge Color="@ColorEnum.Secondary">Secondary</Badge>
-        <Badge Color="@ColorEnum.Success">Success</Badge>
-        <Badge Color="@ColorEnum.Danger">Danger</Badge>
-        <Badge Color="@ColorEnum.Warning">Warning</Badge>
-        <Badge Color="@ColorEnum.Info">Info</Badge>
-    </div>
-</div>
-
-<div class="py-8">
-    <h2 class="font-bold text-2xl">Icons</h2>
-    <div class="py-4 flex flex-col gap-4">
-        <Icon Name="IconNameEnum.Plus" />
-        <Icon Name="IconNameEnum.InformationFilled" />
-        <Icon Name="IconNameEnum.Delete" />
-    </div>
-    <div class="py-4 flex flex-col gap-4">
-        <h1 class="text-4xl">
-            <Icon Name="IconNameEnum.InformationFilled" /> Default
-        </h1>
-
-
-        <div>
-            <Icon Size="SizeEnum.Small" Name="IconNameEnum.InformationFilled" /> Small
-        </div>
-
-        <div>
-            <Icon Size="SizeEnum.Medium" Name="IconNameEnum.InformationFilled" /> Medium
-        </div>
-        <div>
-            <Icon Size="SizeEnum.Large" Name="IconNameEnum.InformationFilled" /> Large
+<div>
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Buttons</h2>
+        <div class="py-4 flex gap-4">
+            <ButtonGroup>
+                <Button>Hello</Button>
+                <Button Color=@ColorEnum.Primary>Primary</Button>
+                <Button Color=@ColorEnum.Secondary>Secondary</Button>
+                <Button Color=@ColorEnum.Success>Success</Button>
+                <Button Color=@ColorEnum.Info>Info</Button>
+                <Button Color=@ColorEnum.Warning>Warning</Button>
+                <Button Color=@ColorEnum.Danger>Danger</Button>
+            </ButtonGroup>
         </div>
     </div>
-    <div class="py-4 flex flex-col gap-4">
-        <h1 class="text-4xl">
-            <Icon Color="ColorEnum.Primary" Name="IconNameEnum.InformationFilled" /> Primary
-        </h1>
-        <h1 class="text-4xl">
-            <Icon Color="ColorEnum.Secondary" Name="IconNameEnum.InformationFilled" /> Secondary
-        </h1>
-        <h1 class="text-4xl">
-            <Icon Color="ColorEnum.Success" Name="IconNameEnum.InformationFilled" /> Success
-        </h1>
-        <h1 class="text-4xl">
-            <Icon Color="ColorEnum.Danger" Name="IconNameEnum.InformationFilled" /> Danger
-        </h1>
-
-        <h1 class="text-4xl">
-            <Icon Color="ColorEnum.Info" Name="IconNameEnum.InformationFilled" /> Info
-        </h1>
-
-        <h1 class="text-4xl">
-            <Icon Color="ColorEnum.Warning" Name="IconNameEnum.InformationFilled" /> Warning
-        </h1>
-
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Buttons</h2>
+        <div class="py-4 flex gap-4">
+            <Button>Hello</Button>
+            <Button color="primary">Hello</Button>
+        </div>
     </div>
-</div>
 
-<div class="py-8">
-    <h2 class="font-bold text-2xl">Checkbox</h2>
-    <div class="py-4 flex flex-col gap-4">
-        <Checkbox>Child Content</Checkbox>
-        <Checkbox Text="Text" />
-        <Checkbox Checked Text="Checked"></Checkbox>
-        <Checkbox Checked Disbled Text="Checked Disaled"></Checkbox>
-        <Checkbox Disabled Text="Disaled"></Checkbox>
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Alerts</h2>
+        <div class="py-4 flex flex-col gap-4">
+            <Alert Type="success"> Change a few things up and try submitting again.</Alert>
+            <Alert Dismissible Type="warning"> Change a few things up and try submitting again.</Alert>
+            <Alert Type="danger"> Change a few things up and try submitting again.</Alert>
+            <Alert Type="info"> Change a few things up and try submitting again.</Alert>
+        </div>
+    </div>
+
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Badges</h2>
+        <div class="py-4 flex gap-2">
+            <Badge>Badge Content</Badge>
+            <Badge Color="@ColorEnum.Primary">Primary</Badge>
+            <Badge Color="@ColorEnum.Secondary">Secondary</Badge>
+            <Badge Color="@ColorEnum.Success">Success</Badge>
+            <Badge Color="@ColorEnum.Danger">Danger</Badge>
+            <Badge Color="@ColorEnum.Warning">Warning</Badge>
+            <Badge Color="@ColorEnum.Info">Info</Badge>
+        </div>
+    </div>
+
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Icons</h2>
+        <div class="py-4 flex flex-col gap-4">
+            <Icon Name="IconNameEnum.Plus" />
+            <Icon Name="IconNameEnum.InformationFilled" />
+            <Icon Name="IconNameEnum.Delete" />
+        </div>
+        <div class="py-4 flex flex-col gap-4">
+            <h1 class="text-4xl">
+                <Icon Name="IconNameEnum.InformationFilled" /> Default
+            </h1>
+
+
+            <div>
+                <Icon Size="SizeEnum.Small" Name="IconNameEnum.InformationFilled" /> Small
+            </div>
+
+            <div>
+                <Icon Size="SizeEnum.Medium" Name="IconNameEnum.InformationFilled" /> Medium
+            </div>
+            <div>
+                <Icon Size="SizeEnum.Large" Name="IconNameEnum.InformationFilled" /> Large
+            </div>
+        </div>
+        <div class="py-8">
+            <h2 class="font-bold text-2xl">Buttons</h2>
+            <div class="py-4 flex gap-4">
+                <Button>Hello</Button>
+                <Button color="primary">Hello</Button>
+            </div>
+        </div>
+
+        <div class="py-8">
+            <h2 class="font-bold text-2xl">Alerts</h2>
+            <div class="py-4 flex flex-col gap-4">
+                <Alert Type="success"> Change a few things up and try submitting again.</Alert>
+                <Alert Dismissible Type="warning"> Change a few things up and try submitting again.</Alert>
+                <Alert Type="danger"> Change a few things up and try submitting again.</Alert>
+                <Alert Type="info"> Change a few things up and try submitting again.</Alert>
+            </div>
+        </div>
+
+        <div class="py-8">
+            <h2 class="font-bold text-2xl">Icons</h2>
+            <div class="py-4 flex flex-col gap-4">
+                <Icon Name="IconNameEnum.Plus" />
+                <Icon Name="IconNameEnum.InformationFilled" />
+                <Icon Name="IconNameEnum.Delete" />
+            </div>
+            <div class="py-4 flex flex-col gap-4">
+                <h1 class="text-4xl">
+                    <Icon Name="IconNameEnum.InformationFilled" /> Default
+                </h1>
+
+
+                <div>
+                    <Icon Size="SizeEnum.Small" Name="IconNameEnum.InformationFilled" /> Small
+                </div>
+
+                <div>
+                    <Icon Size="SizeEnum.Medium" Name="IconNameEnum.InformationFilled" /> Medium
+                </div>
+                <div class="py-4 flex gap-4">
+                    <ButtonGroup>
+                        <Button>Hello</Button>
+                        <Button Outline Color=@ColorEnum.Primary>Primary</Button>
+                        <Button Outline Color=@ColorEnum.Secondary>Secondary</Button>
+                        <Button Outline Color=@ColorEnum.Success>Success</Button>
+                        <Button Outline Color=@ColorEnum.Info>Info</Button>
+                        <Button Outline Color=@ColorEnum.Warning>Warning</Button>
+                        <Button Outline Color=@ColorEnum.Danger>Danger</Button>
+                    </ButtonGroup>
+                </div>
+                <div class="py-4 flex gap-4">
+                    <ButtonGroup>
+                        <Button Disabled>Hello</Button>
+                        <Button Disabled Color=@ColorEnum.Primary>Primary</Button>
+                        <Button Disabled Color=@ColorEnum.Secondary>Secondary</Button>
+                        <Button Disabled Color=@ColorEnum.Success>Success</Button>
+                        <Button Disabled Color=@ColorEnum.Info>Info</Button>
+                        <Button Disabled Color=@ColorEnum.Warning>Warning</Button>
+                        <Button Disabled Color=@ColorEnum.Danger>Danger</Button>
+                    </ButtonGroup>
+                </div>
+                <div class="py-4 flex gap-4">
+                    <Button>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Hello
+                    </Button>
+                    <Button Color=@ColorEnum.Primary>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Primary
+                    </Button>
+                    <Button Color=@ColorEnum.Secondary>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Secondary
+                    </Button>
+                    <Button Color=@ColorEnum.Success>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Success
+                    </Button>
+                    <Button Color=@ColorEnum.Info>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Info
+                    </Button>
+                    <Button Color=@ColorEnum.Warning>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Warning
+                    </Button>
+                    <Button Color=@ColorEnum.Danger>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Danger
+                    </Button>
+                </div>
+                <div class="py-4 flex gap-4">
+                    <Button Outline>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Hello
+                    </Button>
+                    <Button Outline Color=@ColorEnum.Primary>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Primary
+                    </Button>
+                    <Button Outline Color=@ColorEnum.Secondary>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Secondary
+                    </Button>
+                    <Button Outline Color=@ColorEnum.Success>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Success
+                    </Button>
+                    <Button Outline Color=@ColorEnum.Info>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Info
+                    </Button>
+                    <Button Outline Color=@ColorEnum.Warning>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Warning
+                    </Button>
+                    <Button Outline Color=@ColorEnum.Danger>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Danger
+                    </Button>
+                </div>
+                <div class="py-4 flex gap-4">
+                    <Button Ghost>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Hello
+                    </Button>
+                    <Button Type="ButtonTypeEnum.Submit" Ghost Color=@ColorEnum.Primary>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Primary
+                    </Button>
+                    <Button Ghost Color=@ColorEnum.Secondary>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Secondary
+                    </Button>
+                    <Button Ghost Color=@ColorEnum.Success>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Success
+                    </Button>
+                    <Button Ghost Color=@ColorEnum.Info>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Info
+                    </Button>
+                    <Button Ghost Color=@ColorEnum.Warning>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Warning
+                    </Button>
+                    <Button Ghost Color=@ColorEnum.Danger>
+                        <Icon Name="IconNameEnum.InformationFilled" />
+                        Danger
+                    </Button>
+                </div>
+            </div>
+
+            <div class="py-8">
+                <h2 class="font-bold text-2xl">Alerts</h2>
+                <div class="py-4 flex flex-col gap-4">
+                    <Alert Type="success"> Change a few things up and try submitting again.</Alert>
+                    <Alert Dismissible Type="warning"> Change a few things up and try submitting again.</Alert>
+                    <Alert Type="danger"> Change a few things up and try submitting again.</Alert>
+                    <Alert Type="info"> Change a few things up and try submitting again.</Alert>
+                </div>
+            </div>
+
+            <div class="py-8">
+                <h2 class="font-bold text-2xl">Icons</h2>
+                <div class="py-4 flex flex-col gap-4">
+                    <Icon Name="IconNameEnum.Plus" />
+                    <Icon Name="IconNameEnum.InformationFilled" />
+                    <Icon Name="IconNameEnum.Delete" />
+                </div>
+                <div class="py-4 flex flex-col gap-4">
+                    <h1 class="text-4xl">
+                        <Icon Name="IconNameEnum.InformationFilled" /> Default
+                    </h1>
+
+
+                    <div>
+                        <Icon Size="SizeEnum.Small" Name="IconNameEnum.InformationFilled" /> Small
+                    </div>
+
+                    <div>
+                        <Icon Size="SizeEnum.Medium" Name="IconNameEnum.InformationFilled" /> Medium
+
+                    </div>
+                    <div>
+                        <Icon Size="SizeEnum.Large" Name="IconNameEnum.InformationFilled" /> Large
+                    </div>
+                </div>
+                <div class="py-4 flex flex-col gap-4">
+                    <h1 class="text-4xl">
+                        <Icon Color="ColorEnum.Primary" Name="IconNameEnum.InformationFilled" /> Primary
+                    </h1>
+                    <h1 class="text-4xl">
+                        <Icon Color="ColorEnum.Secondary" Name="IconNameEnum.InformationFilled" /> Secondary
+                    </h1>
+                    <h1 class="text-4xl">
+                        <Icon Color="ColorEnum.Success" Name="IconNameEnum.InformationFilled" /> Success
+                    </h1>
+                    <h1 class="text-4xl">
+                        <Icon Color="ColorEnum.Danger" Name="IconNameEnum.InformationFilled" /> Danger
+                    </h1>
+
+                    <h1 class="text-4xl">
+                        <Icon Color="ColorEnum.Info" Name="IconNameEnum.InformationFilled" /> Info
+                    </h1>
+
+                    <h1 class="text-4xl">
+                        <Icon Color="ColorEnum.Warning" Name="IconNameEnum.InformationFilled" /> Warning
+                    </h1>
+
+                </div>
+            </div>
+
+            <div class="py-8">
+                <h2 class="font-bold text-2xl">Checkbox</h2>
+                <div class="py-4 flex flex-col gap-4">
+                    <Checkbox>Child Content</Checkbox>
+                    <Checkbox Text="Text" />
+                    <Checkbox Checked Text="Checked"></Checkbox>
+                    <Checkbox Checked Disbled Text="Checked Disaled"></Checkbox>
+                    <Checkbox Disabled Text="Disaled"></Checkbox>
+                </div>
+            </div>
+        </div>
     </div>
 </div>

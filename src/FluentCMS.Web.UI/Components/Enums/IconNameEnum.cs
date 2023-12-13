@@ -12,4 +12,6 @@ public enum IconNameEnum
     Search,
     Settings,
     Filter,
+    Spinner,
+    Edit,
 }
