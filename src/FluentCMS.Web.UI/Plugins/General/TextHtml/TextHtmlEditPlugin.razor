@@ -6,7 +6,7 @@
 
 <InputTextArea @bind-Value="Content" Required rows="5" placeholder="Enter you Text/Html content here"></InputTextArea>
 <br />
-<Button Type="submit" @onclick="Submit">Update</Button>
+<Button Type="ButtonTypeEnum.Submit" @onclick="Submit">Update</Button>
 
 @code {
     public string? Content { get; set; }

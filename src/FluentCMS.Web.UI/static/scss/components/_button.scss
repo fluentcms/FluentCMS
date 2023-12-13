@@ -1,96 +1,123 @@
 $prefix-button: $prefix + "button";
 
 .#{$prefix-button} {
-  @apply font-medium rounded-lg text-sm px-5 py-2.5 gap-2 text-center inline-flex items-center;
+    @apply font-medium rounded-lg text-sm px-5 py-2.5 gap-2 text-center inline-flex items-center;
 
     &-size-lg {
         @apply py-3;
     }
 
-  &-icon {
-    @apply w-2.5 h-2.5 ml-2.5;
-  }
+    &-icon {
+        @apply w-2.5 h-2.5 ml-2.5;
+    }
 
-  &:focus {
-    @apply z-10 ring-4 outline-none;
-  }
-
-  &:disabled {
-    @apply opacity-50;
-  }
+    &-loading {
+        @apply inline w-4 h-4 me-3 text-white animate-spin;
+    }
+    &:focus {
+        @apply z-10 outline-none;
+    }
 }
 
-.#{$prefix-button}-color-primary {
-  @apply text-white bg-blue-700;
-  &:hover {
-    @apply bg-blue-800;
-  }
+@each $key, $value in $colors {
+    .#{$prefix-button}-color-#{$key}.#{$prefix-button}-outline-false.#{$prefix-button}-disabled-false.#{$prefix-button}-ghost-false {
+        @apply text-white bg-#{$value}-700;
+        &:hover {
+            @apply bg-#{$value}-800;
+        }
 
-  &:focus {
-    @apply ring-blue-300;
-  }
+        &:focus {
+            @apply ring-4 ring-#{$value}-300;
+        }
 
-  .#{$prefix-theme-dark} & {
-    @apply bg-blue-600;
-  }
+        .#{$prefix-theme-dark} & {
+            @apply bg-#{$value}-600;
+        }
 
-  .#{$prefix-theme-dark} &:hover {
-    @apply bg-blue-700;
-  }
-  .#{$prefix-theme-dark} &:focus {
-    @apply ring-blue-800;
-  }
-}
+        .#{$prefix-theme-dark} &:hover {
+            @apply bg-#{$value}-700;
+        }
+        .#{$prefix-theme-dark} &:focus {
+            @apply ring-#{$value}-800;
+        }
+    }
+    .#{$prefix-button}-color-#{$key}.#{$prefix-button}-disabled-true {
+        @apply text-white bg-#{$value}-400 cursor-not-allowed pointer-events-none;
 
-.#{$prefix-button}-color-danger {
-  @apply text-white bg-red-700;
-  &:hover {
-    @apply bg-red-800;
-  }
+        .#{$prefix-theme-dark} & {
+            @apply bg-#{$value}-500;
+        }
+    }
 
-  &:focus {
-    @apply ring-red-300;
-  }
+    .#{$prefix-button}-color-#{$key}.#{$prefix-button}-outline-true.#{$prefix-button}-ghost-false {
+        @apply text-#{$value}-700 border border-#{$value}-700;
+        &:hover {
+            @apply text-white bg-#{$value}-800;
+        }
 
-  .#{$prefix-theme-dark} & {
-    @apply bg-red-600;
-  }
+        &:focus {
+            @apply ring-4 ring-#{$value}-300;
+        }
 
-  .#{$prefix-theme-dark} &:hover {
-    @apply bg-red-700;
-  }
-  .#{$prefix-theme-dark} &:focus {
-    @apply ring-red-800;
-  }
+        .#{$prefix-theme-dark} & {
+            @apply border-#{$value}-500 text-#{$value}-500;
+        }
+
+        .#{$prefix-theme-dark} &:hover {
+            @apply text-white bg-#{$value}-500;
+        }
+        .#{$prefix-theme-dark} &:focus {
+            @apply ring-#{$value}-800;
+        }
+    }
+    .#{$prefix-button}-color-#{$key}.#{$prefix-button}-ghost-true.#{$prefix-button}-outline-false {
+        @apply text-#{$value}-700;
+
+        &:hover {
+            @apply text-#{$value}-800;
+        }
+
+        .#{$prefix-theme-dark} & {
+            @apply text-#{$value}-500;
+        }
+
+        .#{$prefix-theme-dark} &:hover {
+            @apply text-#{$value}-500;
+        }
+    }
 }
 
 .#{$prefix-button}-color-default {
-  @apply text-gray-900 bg-white border border-gray-200;
+    @apply text-gray-900 bg-white border border-gray-200;
 
-  &:hover {
-    @apply bg-gray-100 text-blue-700;
-  }
+    &.#{$prefix-button}-disabled-true {
+        @apply opacity-50 cursor-not-allowed pointer-events-none;
+    }
+    
+    &:hover {
+        @apply bg-gray-100 text-blue-700;
+    }
 
-  &:focus {
-    @apply ring-gray-200;
-  }
+    &:focus {
+        @apply ring-4 ring-gray-200;
+    }
 
-  .#{$prefix-theme-dark} & {
-    @apply bg-gray-600/10 text-gray-400 border-gray-600;
-  }
+    .#{$prefix-theme-dark} & {
+        @apply bg-gray-600/10 text-gray-400 border-gray-600;
+    }
 
-  .#{$prefix-theme-dark} &:hover {
-    @apply text-white bg-gray-700;
-  }
-  .#{$prefix-theme-dark} &:focus {
-    @apply ring-gray-700;
-  }
+    .#{$prefix-theme-dark} &:hover {
+        @apply text-white bg-gray-700;
+    }
+    .#{$prefix-theme-dark} &:focus {
+        @apply ring-gray-700;
+    }
 }
 
 .#{$prefix-button}-group {
-  @apply flex justify-end gap-2;
+    @apply flex justify-end gap-2;
 
-  &:not(.#{$prefix-button}-group-no-wrap) {
-    @apply flex-wrap;
-  }
+    &.#{$prefix-button}-group-wrap-true {
+        @apply flex-wrap;
+    }
 }
