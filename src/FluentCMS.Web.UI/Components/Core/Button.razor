@@ -1,7 +1,7 @@
 @inherits BaseComponent
 @if (!string.IsNullOrEmpty(Href))
 {
-    <a class=@this.GetClasses() disabled=@Disabled href=@Href @onclick=OnClick @attributes="AdditionalAttributes">
+    <a class=@this.GetClasses() disabled=@Disabled href=@Href @attributes="AdditionalAttributes">
         @if (Loading) {
             <Icon Class=@this.ClassName("ButtonLoading") Name="IconNameEnum.Spinner"/>
         }
