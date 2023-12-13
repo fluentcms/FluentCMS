@@ -1,0 +1,11 @@
+@inherits BaseComponent
+
+<span class="@this.GetClasses()" @attributes=AdditionalAttributes>
+    @ChildContent
+</span>
+
+@code {
+    [Parameter]
+    [CssProperty]
+    public ColorEnum Color { get; set; } = ColorEnum.Default;
+}
