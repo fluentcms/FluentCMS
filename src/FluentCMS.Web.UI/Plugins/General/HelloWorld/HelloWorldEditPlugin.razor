@@ -5,7 +5,7 @@
 @rendermode InteractiveServer
 <InputTextArea @bind-Value="Model.Content" Required rows="5" placeholder="Enter you Text/Html content here"></InputTextArea>
 <br />
-<Button Type="submit" @onclick="Submit">Update</Button>
+<Button @onclick="Submit">Update</Button>
 
 @code {
     public HelloWorldContent Model { get; set; } = new();

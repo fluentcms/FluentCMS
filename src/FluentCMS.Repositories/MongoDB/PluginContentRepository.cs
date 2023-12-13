@@ -33,7 +33,7 @@ public class PluginContentRepository(
     {
         var existing = await GetById(content.SiteId, content.Type, content.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentNotFound);
-        
+
         if (existing.PluginId != content.PluginId)
             throw new AppException(ExceptionCodes.ContentPluginIdMismatch);
 
