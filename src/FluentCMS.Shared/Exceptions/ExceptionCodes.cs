@@ -117,6 +117,7 @@ public class ExceptionCodes
     public const string ContentTypeNotFound = "ContentType.NotFound";
     public const string ContentTypeNameCannotBeChanged = "ContentType.NameCannotBeChanged";
     public const string ContentTypeNameMustBeUnique = "ContentType.NameMustBeUnique";
+    public const string ContentTypeFieldNotFound = "ContentType.FieldNotFound";
 
     #endregion
 }

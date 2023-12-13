@@ -11,6 +11,8 @@ public interface IContentTypeService
     Task<ContentType> GetByName(string name, CancellationToken cancellationToken = default);
     Task<ContentType> Update(ContentType contentType, CancellationToken cancellationToken = default);
     Task Delete(Guid id, CancellationToken cancellationToken = default);
+    Task<ContentType> SetField(Guid contentTypeId, ContentTypeField field, CancellationToken cancellationToken = default);
+    Task<ContentType> RemoveField(Guid contentTypeId, string fieldName, CancellationToken cancellationToken = default);
 }
 
 public class ContentTypeService(IContentTypeRepository contentTypeRepository) : IContentTypeService
@@ -67,11 +69,58 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
     {
         return await contentTypeRepository.GetByName(name.ToLowerInvariant(), cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeNotFound);
-
     }
 
     public Task<IEnumerable<ContentType>> GetAll(CancellationToken cancellationToken = default)
     {
         return contentTypeRepository.GetAll(cancellationToken);
+    }
+
+    public async Task<ContentType> SetField(Guid contentTypeId, ContentTypeField field, CancellationToken cancellationToken = default)
+    {
+        // field name should be normalized
+        field.Name = field.Name.ToLowerInvariant();
+
+        // load the content type
+        var contentType = await contentTypeRepository.GetById(contentTypeId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.ContentTypeNotFound);
+
+        // check the field exists
+        var original = contentType.Fields.FirstOrDefault(f => f.Name == field.Name);
+
+        if (original == null)
+        {
+            // add the field
+            return await contentTypeRepository.AddField(contentTypeId, field, cancellationToken) ??
+                throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);
+        }
+        else
+        {
+            // TODO: convert all content field values
+            // update the field
+            return await contentTypeRepository.UpdateField(contentTypeId, field, cancellationToken) ??
+                throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);
+        }
+
+    }
+
+    public async Task<ContentType> RemoveField(Guid contentTypeId, string fieldName, CancellationToken cancellationToken = default)
+    {
+        // field name should be normalized
+        fieldName = fieldName.ToLowerInvariant();
+
+        // load the content type
+        var contentType = await contentTypeRepository.GetById(contentTypeId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.ContentTypeNotFound);
+
+        // check the field exists
+        var original = contentType.Fields.FirstOrDefault(f => f.Name == fieldName) ??
+            throw new AppException(ExceptionCodes.ContentTypeFieldNotFound);
+
+        // TODO: delete all content field values
+
+        // remove the field
+        return await contentTypeRepository.RemoveField(contentTypeId, fieldName, cancellationToken) ??
+            throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);
     }
 }
