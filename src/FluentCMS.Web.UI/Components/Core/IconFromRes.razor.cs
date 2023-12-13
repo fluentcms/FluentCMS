@@ -6,16 +6,12 @@ namespace FluentCMS.Web.UI.Components.Core;
 public partial class IconFromRes
 {
     [Inject(Key = "FluentCMS.Web.UI.Resources.Icons")]
-    public ResourceManager? ResourceManager { get; set; } = null;
+    public required ResourceManager ResourceManager { get; set; }
     public MarkupString IconSvgContent { get; set; } = default!;
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        if (ResourceManager != null)
-        {
-            IconSvgContent = (MarkupString)(ResourceManager?.GetString(IconDefinition.IconName ?? "") ?? "");
-        }
-
+        IconSvgContent = (MarkupString)(ResourceManager.GetString(IconDefinition.IconName) ?? throw new Exception("Invalid IconDefinition"));
 
     }
     [Parameter]
