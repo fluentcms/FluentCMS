@@ -1,0 +1,7 @@
+@inherits BaseComponent
+
+<thead class=@this.GetClasses()  @attributes=AdditionalAttributes>
+    <tr class=@this.ClassName("TableHeadRow")>
+        @ChildContent
+    </tr>
+</thead>
