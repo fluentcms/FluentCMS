@@ -2,7 +2,7 @@
 @using System.Resources;
 
 <span class=@this.GetClasses() @attributes=@AdditionalAttributes>
-    @IconContent
+    @Content
 </span>
 
 @code {
@@ -12,7 +12,7 @@
     [Parameter]
     public IconDefinition Name { get; set; } = IconDefinition.Default;
 
-    public MarkupString IconContent { get; set; } = default!;
+    public MarkupString Content { get; set; } = default!;
 
     [Parameter]
     [CssProperty]
@@ -25,6 +25,6 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        IconContent = (MarkupString)(ResourceManager.GetString(Name.IconName) ?? throw new Exception("Invalid Icon Name"));
+        Content = (MarkupString)(ResourceManager.GetString(Name.IconName) ?? throw new Exception("Invalid Icon Name"));
     }
 }
