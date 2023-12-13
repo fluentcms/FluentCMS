@@ -10,7 +10,7 @@
     public required ResourceManager ResourceManager { get; set; }
 
     [Parameter]
-    public IconDefinition Name { get; set; } = IconDefinition.Default;
+    public IconNameEnum Name { get; set; } = IconNameEnum.Default;
 
     public MarkupString Content { get; set; } = default!;
 
@@ -25,6 +25,6 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        Content = (MarkupString)(ResourceManager.GetString(Name.IconName) ?? throw new Exception("Invalid Icon Name"));
+        Content = (MarkupString)(ResourceManager.GetString(Name.ToString()) ?? throw new Exception("Invalid Icon Name"));
     }
 }
