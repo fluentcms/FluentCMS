@@ -2,6 +2,9 @@ using FluentCMS;
 using FluentCMS.Api;
 using FluentCMS.Entities;
 using FluentCMS.Web.UI;
+using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
+using System.Resources;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +42,9 @@ services.AddApiDocumentation();
 services.AddHttpContextAccessor();
 
 services.AddJwtAuthentication(builder.Configuration);
+
+// register IconResourceManager
+services.AddKeyedScoped<ResourceManager>("IconResourceManager", (_, _) => new ResourceManager("FluentCMS.Web.UI.Resources.Icons", typeof(Program).Assembly));
 
 var app = builder.Build();
 
