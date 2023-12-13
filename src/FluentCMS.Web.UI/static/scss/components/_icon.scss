@@ -3,40 +3,45 @@
 //
 
 $icon-sizes: (
-	xs: 0.75rem,
-	sm: 0.875rem,
-	md: 1rem,
-	lg: 1.25rem,
-	xl: 1.5rem,
-	1x: 1rem,
-	2x: 2rem,
-	3x: 3rem,
-	4x: 4rem,
-	5x: 5rem,
-	6x: 6rem,
-	7x: 7rem,
-	8x: 8rem,
-	9x: 9rem
+    // xs: 0.75rem,
+    small: 0.875rem,
+    medium: 1rem,
+    large: 1.25rem,
+    // xl: 1.5rem,
+    // 1x: 1rem,
+    // 2x: 2rem,
+    // 3x: 3rem,
+    // 4x: 4rem,
+    // 5x: 5rem,
+    // 6x: 6rem,
+    // 7x: 7rem,
+    // 8x: 8rem,
+    // 9x: 9rem
 );
 
-
-$prefix-icon: $prefix + 'icon';
+$prefix-icon: $prefix + "icon";
 
 .#{$prefix-icon} {
-    --#{$prefix-icon}-size: 1rem;
-    
+    --#{$prefix-icon}-size: 1em;
+
     width: var(--#{$prefix-icon}-size);
     height: var(--#{$prefix-icon}-size);
-    
+
     display: inline-block;
 
-	@each $key, $value in $icon-sizes {
-		&-size-#{$key} {
-			--#{$prefix-icon}-size: #{$value};
-		}
-	}
+    @each $key, $value in $icon-sizes {
+        &-size-#{$key} {
+            --#{$prefix-icon}-size: #{$value};
+        }
+    }
 
-	* {
-		stroke-width: 1.5px;
-	}
+    @each $key, $value in $colors {
+        &-color-#{$key} {
+            @apply text-#{$value}-500;
+        }
+    }
+
+    * {
+        stroke-width: 1.5px;
+    }
 }
