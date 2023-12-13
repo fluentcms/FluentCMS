@@ -1,14 +1,17 @@
-namespace FluentCMS.Web.UI.Components.Core;
+namespace FluentCMS.Web.UI.Resources;
 
+// Enum Class for Icons
 public enum IconNameEnum
 {
+    // home icon
     Default,
-    Plus,
+    Home,
     Delete,
     InformationFilled,
+    Plus,
+    Search,
     Settings,
     Filter,
-    Search,
     Spinner,
     Edit,
 }
