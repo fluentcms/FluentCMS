@@ -2,8 +2,6 @@ using FluentCMS;
 using FluentCMS.Api;
 using FluentCMS.Entities;
 using FluentCMS.Web.UI;
-using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
 using System.Resources;
 
 var builder = WebApplication.CreateBuilder(args);
