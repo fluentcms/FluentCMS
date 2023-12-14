@@ -3,7 +3,7 @@
 <nav class=@this.GetClasses() @attributes=AdditionalAttributes>
     <ul>
         <PaginationItem Size=@Size OnClick=@Previous>
-            @if (Icon)
+            @if (ShowIcons)
             {
 
                 <Icon Name=IconNameEnum.Previous />
@@ -13,14 +13,14 @@
                 <text>Previous</text>
             }
         </PaginationItem>
-        @for (var i = 1; i < Total; i++)
+        @foreach (var page in Enumerable.Range(1,Total))
         {
-            <PaginationItem Size=@Size OnClick="() => GoTo(i)">
-                @i
+            <PaginationItem @key=page Size=@Size OnClick="() => GoTo(page)">
+                @(page)
             </PaginationItem>
         }
         <PaginationItem Size=@Size OnClick=@Next>
-            @if (Icon)
+            @if (ShowIcons)
             {
                 <Icon Name=IconNameEnum.Next />
             }
@@ -37,7 +37,7 @@
     public int Current { get; set; } = 0;
 
     [Parameter]
-    public bool Icon { get; set; } = false;
+    public bool ShowIcons { get; set; } = false;
 
     [Parameter]
     [CssProperty]
@@ -47,7 +47,7 @@
     public int Total { get; set; } = 0;
 
     [Parameter]
-    public EventCallback<int> CurrentChange { get; set; }
+    public EventCallback<int> CurrentChanged { get; set; }
 
     public bool CanPrevious()
     {
@@ -65,7 +65,7 @@
 
         Current--;
 
-        this.CurrentChange.InvokeAsync(Current);
+        this.CurrentChanged.InvokeAsync(Current);
     }
 
     public void GoTo(int To)
@@ -74,7 +74,7 @@
 
         Current = To;
 
-        this.CurrentChange.InvokeAsync(Current);
+        this.CurrentChanged.InvokeAsync(Current);
     }
 
     public void Next()
@@ -83,6 +83,6 @@
 
         Current++;
 
-        this.CurrentChange.InvokeAsync(Current);
+        this.CurrentChanged.InvokeAsync(Current);
     }
 }
