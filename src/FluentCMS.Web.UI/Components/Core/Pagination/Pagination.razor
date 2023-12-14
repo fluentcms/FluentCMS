@@ -1,0 +1,88 @@
+@inherits BaseComponent
+
+<nav class=@this.GetClasses() @attributes=AdditionalAttributes>
+    <ul>
+        <PaginationItem Size=@Size OnClick=@Previous>
+            @if (Icon)
+            {
+
+                <Icon Name=IconNameEnum.Previous />
+            }
+            else
+            {
+                <text>Previous</text>
+            }
+        </PaginationItem>
+        @for (var i = 1; i < Total; i++)
+        {
+            <PaginationItem Size=@Size OnClick="() => GoTo(i)">
+                @i
+            </PaginationItem>
+        }
+        <PaginationItem Size=@Size OnClick=@Next>
+            @if (Icon)
+            {
+                <Icon Name=IconNameEnum.Next />
+            }
+            else
+            {
+                <text>Next</text>
+            }
+        </PaginationItem>
+    </ul>
+</nav>
+
+@code {
+    [Parameter]
+    public int Current { get; set; } = 0;
+
+    [Parameter]
+    public bool Icon { get; set; } = false;
+
+    [Parameter]
+    [CssProperty]
+    public SizeEnum Size { get; set; } = SizeEnum.Medium;
+
+    [Parameter]
+    public int Total { get; set; } = 0;
+
+    [Parameter]
+    public EventCallback<int> CurrentChange { get; set; }
+
+    public bool CanPrevious()
+    {
+        return Current > 1;
+    }
+
+    public bool CanNext()
+    {
+        return Current < Total;
+    }
+
+    public void Previous()
+    {
+        if (!this.CanPrevious()) return;
+
+        Current--;
+
+        this.CurrentChange.InvokeAsync(Current);
+    }
+
+    public void GoTo(int To)
+    {
+        if (To == Current) return;
+
+        Current = To;
+
+        this.CurrentChange.InvokeAsync(Current);
+    }
+
+    public void Next()
+    {
+        if (!this.CanNext()) return;
+
+        Current++;
+
+        this.CurrentChange.InvokeAsync(Current);
+    }
+}
