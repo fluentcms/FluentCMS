@@ -1,7 +1,20 @@
 $prefix-pagination: $prefix + "pagination";
+$prefix-pagination-item: $prefix + "pagination-item";
 
 .#{$prefix-pagination} {
     ul {
-        @apply inline-flex -space-x-px text-base h-10
+        @apply inline-flex -space-x-px text-base h-10;
+
+        li:not(:first-child):not(:last-child) button{
+            @apply rounded-none;
+        }
+
+        li:first-child button {
+            @apply ms-0 border-e-0 rounded-e-none;
+        }
+
+        li:last-child button {
+            @apply me-0 rounded-s-none;
+        }
     }
 }
