@@ -1,4 +1,6 @@
-﻿@rendermode InteractiveServer
+﻿@using Blazored.LocalStorage
+@using Microsoft.AspNetCore.Components.Authorization
+@rendermode InteractiveServer
 @inherits BasePluginComponent
 <form class="w-full max-w-md space-y-4 md:space-y-6 xl:max-w-xl" action="#">
     <h1 class="text-xl font-bold text-gray-900 dark:text-white">Welcome back</h1>
@@ -51,6 +53,12 @@
     [Inject]
     public AccountClient AccountClient { get; set; }
 
+    [Inject]
+    public ILocalStorageService LocalStorageService { get; set; }
+
+    [Inject]
+    public AuthenticationStateProvider AuthStateProvider { get; set; }
+
     public UserAuthenticateRequest Model { get; set; } = new()
         { Username = "superadmin", Password = "Passw0rd!" };
 
@@ -63,6 +71,8 @@
             var token = result.Data.Token;
             var userRoleIds = result.Data.RoleIds;
 
+            await LocalStorageService.SetItemAsync<string>("UserToken", token);
+            (AuthStateProvider as CustomAuthProvider).NotifyAuthState();
         }
     }
 

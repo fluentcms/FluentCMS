@@ -1,4 +1,6 @@
-﻿using FluentCMS.Web.UI;
+﻿using Blazored.LocalStorage;
+using FluentCMS.Web.UI;
+using Microsoft.AspNetCore.Components.Authorization;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -6,6 +8,8 @@ public static class UIServiceExtensions
 {
     public static IServiceCollection AddUIServices(this IServiceCollection services)
     {
+        services.AddScoped<AuthenticationStateProvider, CustomAuthProvider>();
+        services.AddBlazoredLocalStorage();
         services.AddScoped<AppStateService>();
 
         services.AddScoped(sp =>
