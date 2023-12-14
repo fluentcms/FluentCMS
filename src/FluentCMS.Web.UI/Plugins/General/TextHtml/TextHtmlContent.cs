@@ -13,13 +13,13 @@ public class TextHtmlContent
     {
     }
 
-    public TextHtmlContent(PluginContent pluginContent)
-    {
-        Id = pluginContent.Id;
-        SiteId = pluginContent.SiteId;
-        PluginId = pluginContent.PluginId;
-        Content = pluginContent.ContainsKey("Content") ? pluginContent["Content"]?.ToString() ?? string.Empty : string.Empty;
-    }
+    //public TextHtmlContent(Dictionary<string, object>)
+    //{
+    //    Id = pluginContent.Id;
+    //    SiteId = pluginContent.SiteId;
+    //    PluginId = pluginContent.PluginId;
+    //    Content = pluginContent.ContainsKey("Content") ? pluginContent["Content"]?.ToString() ?? string.Empty : string.Empty;
+    //}
 
     public PluginContent ToPluginContent()
     {
