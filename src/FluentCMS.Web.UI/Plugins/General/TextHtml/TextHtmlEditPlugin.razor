@@ -1,8 +1,7 @@
-﻿@using System.Text.Json
-@using System.Text
-@inherits BasePluginComponent
+﻿@inherits BasePluginComponent
 @inject PluginContentClient pluginContentClient
 @rendermode InteractiveServer
+
 <InputTextArea @bind-Value="Model.Content" Required rows="5" placeholder="Enter you Text/Html content here"></InputTextArea>
 <br />
 <Button Type="ButtonTypeEnum.Submit" @onclick="Submit">Update</Button>
@@ -21,16 +20,8 @@
     private async Task Submit()
     {
         if (Model.Id == Guid.Empty)
-        {
-            var x = Model.ToPluginContent();
-            var pluginContent = await pluginContentClient.Create(Model.ToPluginContent(), CancellationToken);
-            Model = new TextHtmlContent(pluginContent);
-        }
+            await pluginContentClient.Create(Model.ToPluginContent(), CancellationToken);
         else
-        {
-            var pluginContent = await pluginContentClient.Update(Model.ToPluginContent(), CancellationToken);
-            Model = new TextHtmlContent(pluginContent);
-        }
-
+            await pluginContentClient.Update(Model.ToPluginContent(), CancellationToken);
     }
 }
