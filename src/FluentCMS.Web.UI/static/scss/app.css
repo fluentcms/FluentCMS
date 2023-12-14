@@ -850,6 +850,38 @@ body.f-theme-dark {
   @apply flex-1 ml-3 whitespace-nowrap;
 }
 
+.f-pagination ul {
+  @apply inline-flex -space-x-px text-base h-10;
+}
+.f-pagination ul li:not(:first-child):not(:last-child) button {
+  @apply rounded-none;
+}
+.f-pagination ul li:first-child button {
+  @apply ms-0 border-e-0 rounded-e-none;
+}
+.f-pagination ul li:last-child button {
+  @apply me-0 rounded-s-none;
+}
+
+.f-pagination-item {
+  /*
+      TODO
+      li:first-child a {
+          @apply ms-0 border-e-0 rounded-s-lg
+      }
+
+      li:last-child a {
+          @apply rounded-e-lg
+      }
+  */
+}
+.f-pagination-item button {
+  @apply flex items-center justify-center px-4 h-10 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white;
+}
+.f-pagination-item-active button {
+  @apply text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-700 dark:text-white;
+}
+
 /* #endregion COMPONENTS */
 .f-login-form {
   @apply mt-8;
