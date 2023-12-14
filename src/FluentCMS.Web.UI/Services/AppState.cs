@@ -1,5 +1,4 @@
-﻿using FluentCMS.Api.Models;
-using FluentCMS.Entities;
+﻿using FluentCMS.Web.UI.ApiClients;
 
 namespace FluentCMS.Web.UI;
 

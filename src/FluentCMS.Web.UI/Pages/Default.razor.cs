@@ -1,11 +1,12 @@
-﻿using HtmlAgilityPack;
+﻿using FluentCMS.Web.UI.Components.Application;
+using HtmlAgilityPack;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using System.Text.RegularExpressions;
 
-namespace FluentCMS.Web.UI.Components.Application;
+namespace FluentCMS.Web.UI.Pages;
 
-public class BasePage : BaseAppComponent
+public partial class Default
 {
     public const string ATTRIBUTE = "FluentCMS";
 

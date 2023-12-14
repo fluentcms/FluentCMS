@@ -8,9 +8,13 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var response = await pluginContentClient.GetByPluginId("TextHtml", AppState.Site.Id, Plugin.Id);
+        var response = await pluginContentClient.GetByPluginIdAsync("TextHtml", AppState.Site.Id, Plugin.Id);
         var pluginContent = response?.Data?.FirstOrDefault() ??
-            new PluginContent { PluginId = Plugin.Id, SiteId = AppState.Site.Id };
-        Model = new TextHtmlContent(pluginContent);
+            new Dictionary<string, object>
+            {
+                { "PluginId" , Plugin.Id },
+                { "SiteId" , AppState.Site.Id }
+            };
+        Model = new TextHtmlContent();
     }
 }
