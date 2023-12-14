@@ -1,7 +1,7 @@
 // bg-white border-b dark:bg-gray-900 dark:border-gray-700 // row
 // border-b bg-gray-50 dark:bg-gray-800 dark:border-gray-700 // row-odd
 
-$prefix-table: $prefix + 'table';
+$prefix-table: $prefix + "table";
 
 .#{$prefix-table}-parent {
     @apply relative overflow-x-auto shadow-md;
@@ -11,18 +11,17 @@ $prefix-table: $prefix + 'table';
 }
 
 .#{$prefix-table} {
-    @apply w-full text-sm text-left text-gray-500;
+    @apply rounded shadow border border-gray-200 w-full text-sm text-left text-gray-500;
 
     .#{$prefix-theme-dark} & {
-        @apply text-gray-400;
+        @apply text-gray-400 border-gray-700;
     }
-
 
     &-head {
         @apply text-xs text-gray-700 uppercase bg-gray-50;
 
         &-row {
-            // 
+            //
         }
     }
     .#{$prefix-theme-dark} &-head {
@@ -32,22 +31,27 @@ $prefix-table: $prefix + 'table';
     &-row {
         @apply bg-white border-b;
 
-        .#{$prefix-theme-dark} {
-            @apply bg-gray-900 border-gray-700;
+        .#{$prefix-theme-dark} & {
+            @apply bg-gray-800 border-gray-700;
         }
     }
-    // &-row :nth-child() {
-    //     @apply border-b bg-gray-50;
-    //     .#{$prefix-theme-dark} {
-    //         @apply bg-gray-800 border-gray-700;
-    //     }
-    // }
 
     &-cell {
         @apply px-6 py-3;
+    }
 
-        &-small {
-            @apply w-0;
+    &-foot {
+        .#{$prefix-theme-dark} & {
+            @apply bg-gray-800;
+
+        }
+
+        &-row {
+            @apply font-semibold text-gray-900;
+
+            .#{$prefix-theme-dark} & {
+                @apply text-white;
+            }
         }
     }
 }

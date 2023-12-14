@@ -1,11 +1,5 @@
-<th class=@("f-table-cell" + (SmallWidth ? " f-table-cell-small" : ""))>
+@inherits BaseComponent
+
+<th class=@this.GetClasses() @attributes=@AdditionalAttributes>
     @ChildContent
 </th>
-@code {
-
-    [Parameter]
-    public bool SmallWidth { get; set; }
-
-    [Parameter]
-    public RenderFragment ChildContent { get; set; }
-}
