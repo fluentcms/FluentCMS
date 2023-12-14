@@ -1,5 +1,7 @@
 @page "/previews/components"
 @layout PanelLayout
+@rendermode InteractiveServer
+
 
 <div class="px-4 mx-auto container">
 
@@ -8,7 +10,7 @@
             <NavigationButton To="/">Go Back</NavigationButton>
         </PageActions>
     </PageHeader>
-    
+
     @* #region Alert *@
     <div class="py-8">
         <h2 class="font-bold text-2xl">Alerts</h2>
@@ -35,7 +37,7 @@
         </div>
     </div>
     @* #endregion *@
-       
+
     @* #region Icon *@
     <div class="py-8">
         <h2 class="font-bold text-2xl">Icons</h2>
@@ -88,22 +90,9 @@
     </div>
     @* #endregion *@
 
-    @* #region Checkbox *@
-    <div class="py-8">
-        <h2 class="font-bold text-2xl">Checkbox</h2>
-        <div class="py-4 flex flex-col gap-4">
-            <Checkbox>Child Content</Checkbox>
-            <Checkbox Text="Text" />
-            <Checkbox Checked Text="Checked"></Checkbox>
-            <Checkbox Checked Disbled Text="Checked Disaled"></Checkbox>
-            <Checkbox Disabled Text="Disaled"></Checkbox>
-        </div>
-    </div>
-    @* #endregion *@
-    
     @* #region Buttons *@
     <div class="py-8">
-        <h2 class="font-bold text-2xl">Icons</h2>
+        <h2 class="font-bold text-2xl">Buttons</h2>
         <div class="py-4 flex gap-4">
             <ButtonGroup>
                 <Button>Hello</Button>
@@ -217,14 +206,39 @@
             </Button>
         </div>
     </div>
-    
+
     @* #endregion *@
-    
+
+    @* #region Checkbox *@
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Checkbox</h2>
+        <div class="py-4 flex flex-col gap-4">
+            <Checkbox />
+            <Checkbox Value />
+            <Checkbox Value Disabled />
+            <Checkbox Disabled />
+        </div>
+        <div class="py-4 flex flex-col gap-4">
+            <div class="text-2xl mt-3">Checkbox Binding</div>
+            <Checkbox @bind-Value=@Check1Value />
+            <Checkbox @bind-Value=@Check1Value />
+            @Check1Value
+        </div>
+        <div class="py-4 flex flex-col gap-4">
+            <div class="text-2xl mt-3">Checkbox Binding 2</div>
+            <Checkbox @bind-Value=@Check2Value />
+            <Checkbox @bind-Value=@Check2Value />
+            @Check2Value
+        </div>
+    </div>
+    @* #endregion *@
+
+    @* region Tables *@
     <div class="py-8">
         <h2 class="font-bold text-2xl">Tables</h2>
         <div class="py-4 flex flex-col gap-4">
-          
-              <Table>
+
+            <Table>
                 <TableHead>
                     <TableCell>Id</TableCell>
                     <TableCell>Title</TableCell>
@@ -269,6 +283,10 @@
 </div>
 
 @code {
+
+    private bool Check1Value { get; set; } = true;
+    private bool Check2Value { get; set; } = false;
+
     public class Item
     {
         public string Id;
@@ -279,26 +297,26 @@
     }
 
     private List<Item> data = new List<Item> {
-        new Item {
-            Id= "1",
-            Title = "Apple iMac 28\"",
-            CreatedAt = "Tuesday, December 12, 2023 at 7:35 PM",
-            UpdatedAt = "Tuesday, December 12, 2023 at 7:35 PM",
-            State = "Desktop PC"
-        },
-        new Item {
-            Id= "2",
-            Title = "Apple iMac 29\"",
-            CreatedAt = "Tuesday, December 13, 2023 at 7:35 PM",
-            UpdatedAt = "Tuesday, December 13, 2023 at 7:35 PM",
-            State = "Desktop PC"
-        },
-        new Item {
-            Id= "3",
-            Title = "Apple iMac 27\"",
-            CreatedAt = "Tuesday, December 14, 2023 at 7:35 PM",
-            UpdatedAt = "Tuesday, December 15, 2023 at 7:35 PM",
-            State = "Desktop PC"
-        },
-    };
+new Item {
+Id= "1",
+Title = "Apple iMac 28\"",
+CreatedAt = "Tuesday, December 12, 2023 at 7:35 PM",
+UpdatedAt = "Tuesday, December 12, 2023 at 7:35 PM",
+State = "Desktop PC"
+},
+new Item {
+Id= "2",
+Title = "Apple iMac 29\"",
+CreatedAt = "Tuesday, December 13, 2023 at 7:35 PM",
+UpdatedAt = "Tuesday, December 13, 2023 at 7:35 PM",
+State = "Desktop PC"
+},
+new Item {
+Id= "3",
+Title = "Apple iMac 27\"",
+CreatedAt = "Tuesday, December 14, 2023 at 7:35 PM",
+UpdatedAt = "Tuesday, December 15, 2023 at 7:35 PM",
+State = "Desktop PC"
+},
+};
 }
