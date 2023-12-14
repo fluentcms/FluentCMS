@@ -7,7 +7,7 @@
     </PageActions>
 </PageHeader>
 
-<div>
+<div class="px-4 container mx-auto">
     <div class="py-8">
         <h2 class="font-bold text-2xl">Buttons</h2>
         <div class="py-4 flex gap-4">
@@ -301,34 +301,110 @@
             </div>
         </div>
     </div>
-</div>
-<div class="py-8">
-    <h2 class="font-bold text-2xl">Table</h2>
-    <div class="py-4 flex flex-col gap-4">
-        <Table>
-            <TableHead>
-                <TableCell>Id</TableCell>
-                <TableCell>Name</TableCell>
-                <TableCell>Created At</TableCell>
-                <TableCell>Created By</TableCell>
-                <TableCell>Actions</TableCell>
-            </TableHead>
-            <TableBody>
-                <TableRow>
-                    <TableCell>#1</TableCell>
-                    <TableCell>Book</TableCell>
-                    <TableCell>Hadi</TableCell>
-                    <TableCell>2023-10-20</TableCell>
-                    <TableCell>
-                        <Button>
-                            <Icon Name="IconDefinition.Home"/>
-                        </Button>
-                    </TableCell>
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Table</h2>
+        <div class="py-4 flex flex-col gap-4">
+            <Table>
+                <TableHead>
+                    <TableCell>Id</TableCell>
+                    <TableCell>Title</TableCell>
+                    <TableCell>Created At</TableCell>
+                    <TableCell>Updated At</TableCell>
+                    <TableCell>State</TableCell>
+                    <TableCell SmallWidth></TableCell>
+                </TableHead>
+                <TableBody>
+                    @foreach (var item in data)
+                    {
+                        <TableRow>
+                            <TableCell>#@item.Id</TableCell>
+                            <TableCell>@item.Title</TableCell>
+                            <TableCell>@item.CreatedAt</TableCell>
+                            <TableCell>@item.UpdatedAt</TableCell>
+                            <TableCell>
+                                <Badge Color="ColorEnum.Primary">
+                                    @item.State
+                                </Badge>
+                            </TableCell>
+                            <TableCell>
+                                <ButtonGroup>
+                                    <Button Size="SizeEnum.Small" Color="ColorEnum.Primary">
+                                        <Icon Name="IconNameEnum.Plus" />
+                                        Edit
+                                    </Button>
+                                    <Button Size="SizeEnum.Small" Outline Color="ColorEnum.Secondary">
+                                        <Icon Name="IconNameEnum.Preview" />
+                                        Preview
+                                    </Button>
+                                    <Button Size="SizeEnum.Small" Outline Color="ColorEnum.Danger">
+                                        <Icon Name="IconNameEnum.Delete" />
+                                        Delete
+                                    </Button>
+                                </ButtonGroup>
 
-                </TableRow>
+                            </TableCell>
+                        </TableRow>
+                    }
+                </TableBody>
+                <TableFoot>
+                    <TableCell>Total</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell>12,200</TableCell>
+                </TableFoot>
+            </Table>
 
-            </TableBody>
-        </Table>
-
+            @* <Table2 Rows="@data">
+            <TableColumn Name="Id">#@context.Id</TableColumn>
+            <TableColumn Name="Name">@context.Name</TableColumn>
+            <TableColumn Name="CreatedAt">@context.CreatedAt</TableColumn>
+            <TableColumn Name="CreatedBy">@context.CreatedBy</TableColumn>
+            <TableColumn Name="Actions">
+            <Button Color="ColorEnum.Primary">
+            <Icon Name="IconNameEnum.Plus" />
+            Edit
+            </Button>
+            <Button Outline Color="ColorEnum.Danger">
+            <Icon Name="IconNameEnum.Delete" />
+            Delete
+            </Button>
+            </TableColumn>
+            </Table2> *@
+        </div>
     </div>
 </div>
+
+@code {
+    public class Item
+    {
+        public string Id;
+        public string Title;
+        public string CreatedAt;
+        public string UpdatedAt;
+        public string State;
+    }
+    private List<Item> data = new List<Item> {
+new Item {
+Id= "1",
+Title = "Apple iMac 28\"",
+CreatedAt = "Tuesday, December 12, 2023 at 7:35 PM",
+UpdatedAt = "Tuesday, December 12, 2023 at 7:35 PM",
+State = "Desktop PC"
+},
+new Item {
+Id= "2",
+Title = "Apple iMac 29\"",
+CreatedAt = "Tuesday, December 13, 2023 at 7:35 PM",
+UpdatedAt = "Tuesday, December 13, 2023 at 7:35 PM",
+State = "Desktop PC"
+},
+new Item {
+Id= "3",
+Title = "Apple iMac 27\"",
+CreatedAt = "Tuesday, December 14, 2023 at 7:35 PM",
+UpdatedAt = "Tuesday, December 15, 2023 at 7:35 PM",
+State = "Desktop PC"
+},
+};
+
+}

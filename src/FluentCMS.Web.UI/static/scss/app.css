@@ -180,8 +180,17 @@ body.f-theme-dark {
 .f-button {
   @apply font-medium rounded-lg text-sm px-5 py-2.5 gap-2 text-center inline-flex items-center;
 }
-.f-button-size-lg {
-  @apply py-3;
+.f-button-size-default {
+  @apply px-5 py-2.5 text-sm;
+}
+.f-button-size-medium {
+  @apply px-5 py-2.5 text-sm;
+}
+.f-button-size-small {
+  @apply px-3 py-2 text-xs;
+}
+.f-button-size-large {
+  @apply px-5 py-3 text-base;
 }
 .f-button-icon {
   @apply w-2.5 h-2.5 ml-2.5;
@@ -770,10 +779,10 @@ body.f-theme-dark {
 }
 
 .f-table {
-  @apply w-full text-sm text-left text-gray-500;
+  @apply rounded shadow border border-gray-200 w-full text-sm text-left text-gray-500;
 }
 .f-theme-dark .f-table {
-  @apply text-gray-400;
+  @apply text-gray-400 border-gray-700;
 }
 .f-table-head {
   @apply text-xs text-gray-700 uppercase bg-gray-50;
@@ -784,14 +793,23 @@ body.f-theme-dark {
 .f-table-row {
   @apply bg-white border-b;
 }
-.f-table-row .f-theme-dark {
-  @apply bg-gray-900 border-gray-700;
+.f-theme-dark .f-table-row {
+  @apply bg-gray-800 border-gray-700;
 }
 .f-table-cell {
   @apply px-6 py-3;
 }
-.f-table-cell-small {
+.f-table-cell-small-width-true {
   @apply w-0;
+}
+.f-table-foot {
+  @apply bg-gray-800;
+}
+.f-table-foot-row {
+  @apply font-semibold text-gray-900;
+}
+.f-theme-dark .f-table-foot-row {
+  @apply text-white;
 }
 
 .f-tabs {
