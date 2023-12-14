@@ -799,9 +799,6 @@ body.f-theme-dark {
 .f-table-cell {
   @apply px-6 py-3;
 }
-.f-table-cell-small-width-true {
-  @apply w-0;
-}
 .f-table-foot {
   @apply bg-gray-800;
 }
