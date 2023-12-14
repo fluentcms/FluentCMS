@@ -1,5 +1,7 @@
 @page "/previews/components"
 @layout PanelLayout
+@rendermode InteractiveServer
+
 
 <PageHeader Title="Components">
     <PageActions>
@@ -292,11 +294,22 @@
             <div class="py-8">
                 <h2 class="font-bold text-2xl">Checkbox</h2>
                 <div class="py-4 flex flex-col gap-4">
-                    <Checkbox>Child Content</Checkbox>
-                    <Checkbox Text="Text" />
-                    <Checkbox Checked Text="Checked"></Checkbox>
-                    <Checkbox Checked Disbled Text="Checked Disaled"></Checkbox>
-                    <Checkbox Disabled Text="Disaled"></Checkbox>
+                    <Checkbox />
+                    <Checkbox Value />
+                    <Checkbox Value Disabled />
+                    <Checkbox Disabled />
+                </div>
+                <div class="py-4 flex flex-col gap-4">
+                    <div class="text-2xl mt-3">Checkbox Binding</div>
+                    <Checkbox @bind-Value=@Check1Value />
+                    <Checkbox @bind-Value=@Check1Value />
+                    @Check1Value
+                </div>
+                <div class="py-4 flex flex-col gap-4">
+                    <div class="text-2xl mt-3">Checkbox Binding 2</div>
+                    <Checkbox @bind-Value=@Check2Value />
+                    <Checkbox @bind-Value=@Check2Value />
+                    @Check2Value
                 </div>
             </div>
         </div>
@@ -350,6 +363,10 @@
 </div>
 
 @code {
+
+    private bool Check1Value {get; set;} = true;
+    private bool Check2Value {get; set;} = false;
+
     public class Item
     {
         public string Id;
