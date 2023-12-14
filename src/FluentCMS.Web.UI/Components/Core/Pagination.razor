@@ -1,0 +1,26 @@
+@inherits BaseComponent
+
+<nav class=@this.GetClasses() @attributes=AdditionalAttributes>
+    <ul>
+        <li>
+            <a href="#">Previous</a>
+        </li>
+        @for (var i = 1; i < Total; i++)
+        {
+            <li class=@(i == Current ? "current" : null)>
+                <a href="#">@i</a>
+            </li>
+        }
+        <li>
+            <a href="#">Next</a>
+        </li>
+    </ul>
+</nav>
+
+@code {
+    [Parameter]
+    public int Current { get; set; } = 0;
+
+    [Parameter]
+    public int Total { get; set; } = 0;
+}
