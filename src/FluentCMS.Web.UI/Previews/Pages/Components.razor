@@ -90,6 +90,36 @@
     </div>
     @* #endregion *@
 
+    @* #region Input *@
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Inputs</h2>
+        <div class="py-4 flex flex-col gap-4">
+            Disabled: 
+            <Input Disabled />
+            Placeholder: 
+            <Input Placeholder="This is placeholder" />
+            Required: 
+            <Input Placeholder="(check generated html)" Required />
+            Name: 
+            <Input Placeholder="(check generated html)" Name="first_name" />
+
+            <div class="h-10"></div>
+
+            <Input @bind-Value=@Input1Value/>
+            <Input IconName="IconNameEnum.Plus" @bind-Value=@Input1Value/>
+            @Input1Value
+
+            <div class="h-10"></div>
+            <Input @bind-Value=@Input2Value/>
+            <Input IconName="IconNameEnum.Plus" @bind-Value=@Input2Value/>
+
+            @Input2Value
+
+        </div>
+    </div>
+    @* #endregion *@
+
+
     @* #region Buttons *@
     <div class="py-8">
         <h2 class="font-bold text-2xl">Buttons</h2>
@@ -287,6 +317,9 @@
     private bool Check1Value { get; set; } = true;
     private bool Check2Value { get; set; } = false;
 
+    private string Input1Value {get; set;} = "initial";
+    private string Input2Value {get; set;}
+
     public class Item
     {
         public string Id;
@@ -297,26 +330,26 @@
     }
 
     private List<Item> data = new List<Item> {
-new Item {
-Id= "1",
-Title = "Apple iMac 28\"",
-CreatedAt = "Tuesday, December 12, 2023 at 7:35 PM",
-UpdatedAt = "Tuesday, December 12, 2023 at 7:35 PM",
-State = "Desktop PC"
-},
-new Item {
-Id= "2",
-Title = "Apple iMac 29\"",
-CreatedAt = "Tuesday, December 13, 2023 at 7:35 PM",
-UpdatedAt = "Tuesday, December 13, 2023 at 7:35 PM",
-State = "Desktop PC"
-},
-new Item {
-Id= "3",
-Title = "Apple iMac 27\"",
-CreatedAt = "Tuesday, December 14, 2023 at 7:35 PM",
-UpdatedAt = "Tuesday, December 15, 2023 at 7:35 PM",
-State = "Desktop PC"
-},
-};
+        new Item {
+            Id= "1",
+            Title = "Apple iMac 28\"",
+            CreatedAt = "Tuesday, December 12, 2023 at 7:35 PM",
+            UpdatedAt = "Tuesday, December 12, 2023 at 7:35 PM",
+            State = "Desktop PC"
+        },
+        new Item {
+            Id= "2",
+            Title = "Apple iMac 29\"",
+            CreatedAt = "Tuesday, December 13, 2023 at 7:35 PM",
+            UpdatedAt = "Tuesday, December 13, 2023 at 7:35 PM",
+            State = "Desktop PC"
+        },
+        new Item {
+            Id= "3",
+            Title = "Apple iMac 27\"",
+            CreatedAt = "Tuesday, December 14, 2023 at 7:35 PM",
+            UpdatedAt = "Tuesday, December 15, 2023 at 7:35 PM",
+            State = "Desktop PC"
+        },
+    };
 }
