@@ -71,8 +71,8 @@
             var token = result.Data.Token;
             var userRoleIds = result.Data.RoleIds;
 
-            await LocalStorageService.SetItemAsync<string>("UserToken", token);
-            (AuthStateProvider as CustomAuthProvider).NotifyAuthState();
+            await LocalStorageService.SetItemAsync<string>("jwt-access-token", token);
+            var x = await AuthStateProvider.GetAuthenticationStateAsync();
         }
     }
 

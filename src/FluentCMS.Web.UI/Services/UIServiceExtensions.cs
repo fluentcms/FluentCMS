@@ -8,7 +8,7 @@ public static class UIServiceExtensions
 {
     public static IServiceCollection AddUIServices(this IServiceCollection services)
     {
-        services.AddScoped<AuthenticationStateProvider, CustomAuthProvider>();
+        services.AddScoped<AuthenticationStateProvider, JwtAuthProvider>();
         services.AddBlazoredLocalStorage();
         services.AddScoped<AppStateService>();
 

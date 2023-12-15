@@ -1,4 +1,6 @@
-﻿using FluentCMS.Web.UI.ApiClients;
+﻿using Blazored.LocalStorage;
+using FluentCMS.Web.UI.ApiClients;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Reflection;
 
@@ -27,9 +29,15 @@ public static class ClientServiceExtensions
             services.AddScoped(type, sp =>
             {
                 var clientFactory = sp.GetRequiredService<IHttpClientFactory>();
-                var client = clientFactory.CreateClient("FluentCMS.Web.Api");
+                var httpClient = clientFactory.CreateClient("FluentCMS.Web.Api");
+                var localStorageService = sp.GetRequiredService<ILocalStorageService>();
+                //var jwtToken = localStorageService.GetItemAsync<string?>("jwt-access-token").Result;
+
+                //if (!string.IsNullOrEmpty(jwtToken))
+                //    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwtToken);
+
                 var ctor = type.GetConstructor([typeof(HttpClient)]);
-                var instance = ctor.Invoke(new[] { client });
+                var instance = ctor.Invoke(new[] { httpClient });
                 return instance;
             });
         }

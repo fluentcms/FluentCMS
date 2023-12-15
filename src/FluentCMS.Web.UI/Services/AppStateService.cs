@@ -8,7 +8,9 @@ public class AppStateService
 {
     public AppState Current { get; }
 
-    public AppStateService(NavigationManager navigator, SiteClient siteClient, PageClient pageClient)
+    public AppStateService(NavigationManager navigator,
+        SiteClient siteClient,
+        PageClient pageClient)
     {
         try
         {

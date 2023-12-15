@@ -5,20 +5,15 @@ using System.Text.Json;
 
 namespace FluentCMS.Web.UI;
 
-public class CustomAuthProvider : AuthenticationStateProvider
+public class JwtAuthProvider(ILocalStorageService localStorageService) : AuthenticationStateProvider
 {
-    private readonly ILocalStorageService _localStorageService;
-    public CustomAuthProvider(ILocalStorageService localStorageService)
-    {
-        _localStorageService = localStorageService;
-    }
+
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        var jwtToken = await _localStorageService.GetItemAsync<string>("jwt-access-token");
+        var jwtToken = await localStorageService.GetItemAsync<string?>("jwt-access-token");
         if (string.IsNullOrEmpty(jwtToken))
         {
-            return new AuthenticationState(
-                new ClaimsPrincipal(new ClaimsIdentity()));
+            return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
         }
 
         return new AuthenticationState(new ClaimsPrincipal(
@@ -41,10 +36,5 @@ public class CustomAuthProvider : AuthenticationStateProvider
             case 3: base64 += "="; break;
         }
         return Convert.FromBase64String(base64);
-    }
-
-    public void NotifyAuthState()
-    {
-        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
 }
