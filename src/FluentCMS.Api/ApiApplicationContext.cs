@@ -18,7 +18,7 @@ public class ApiApplicationContext : IApplicationContext
 
         Current = new CurrentContext
         {
-            UserName = username,
+            Username = username,
             RoleIds = roleIds,
             IsSuperAdmin = isSuperAdmin
         };
@@ -28,7 +28,7 @@ public class ApiApplicationContext : IApplicationContext
 public class CurrentContext : ICurrentContext
 {
     public IEnumerable<Guid> RoleIds { get; set; } = [];
-    public string UserName { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
     public bool IsSuperAdmin { get; set; }
-    public bool IsAuthenticated => !string.IsNullOrEmpty(UserName);
+    public bool IsAuthenticated => !string.IsNullOrEmpty(Username);
 }

@@ -1,8 +1,7 @@
 ﻿namespace FluentCMS.Entities;
 
-public class Page : AuditEntity, IAuthorizeEntity
+public class Page : SiteAssociatedEntity
 {
-    public Guid SiteId { get; set; }
     public required string Title { get; set; }
     public Guid? ParentId { get; set; }
     public int Order { get; set; }

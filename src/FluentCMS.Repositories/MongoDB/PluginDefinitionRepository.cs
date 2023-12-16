@@ -5,7 +5,7 @@ namespace FluentCMS.Repositories.MongoDB;
 public class PluginDefinitionRepository(
     IMongoDBContext mongoDbContext,
     IApplicationContext applicationContext) :
-    GenericRepository<PluginDefinition>(mongoDbContext, applicationContext),
+    AuditEntityRepository<PluginDefinition>(mongoDbContext, applicationContext),
     IPluginDefinitionRepository
 {
 

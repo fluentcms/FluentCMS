@@ -6,7 +6,7 @@ namespace FluentCMS.Repositories.MongoDB;
 public class PluginRepository(
     IMongoDBContext mongoDbContext,
     IApplicationContext applicationContext) :
-    GenericRepository<Plugin>(mongoDbContext, applicationContext),
+    SiteAssociatedRepository<Plugin>(mongoDbContext, applicationContext),
     IPluginRepository
 {
     public async Task<IEnumerable<Plugin>> GetByPageId(Guid pageId, CancellationToken cancellationToken = default)

@@ -1,21 +1,48 @@
 ﻿namespace FluentCMS.Entities;
 
+/// <summary>
+/// Represents the base contract for audit entities, extending the basic entity contract.
+/// </summary>
 public interface IAuditEntity : IEntity
 {
-    string CreatedBy { get; set; } // UserName
+    /// <summary>
+    /// Gets or sets the identifier of the user who created the entity.
+    /// </summary>
+    string CreatedBy { get; set; }
+
+    /// <summary>
+    /// Gets or sets the date and time when the entity was created.
+    /// </summary>
     DateTime CreatedAt { get; set; }
 
-    string LastUpdatedBy { get; set; } // UserName
+    /// <summary>
+    /// Gets or sets the identifier of the user who last updated the entity.
+    /// </summary>
+    string LastUpdatedBy { get; set; }
+
+    /// <summary>
+    /// Gets or sets the date and time when the entity was last updated.
+    /// </summary>
     DateTime LastUpdatedAt { get; set; }
 }
 
-public class AuditEntity : IAuditEntity
+/// <summary>
+/// A basic implementation of <see cref="IAuditEntity"/>.
+/// </summary>
+public abstract class AuditEntity : IAuditEntity
 {
-    public Guid Id { get; set; } = default!;
+    /// <inheritdoc/>
+    public Guid Id { get; set; }
 
-    public string CreatedBy { get; set; } = string.Empty; // UserName
+    /// <inheritdoc/>
+    public string CreatedBy { get; set; } = string.Empty;
+
+    /// <inheritdoc/>
     public DateTime CreatedAt { get; set; }
 
-    public string LastUpdatedBy { get; set; } = string.Empty; // UserName
+    /// <inheritdoc/>
+    public string LastUpdatedBy { get; set; } = string.Empty;
+
+    /// <inheritdoc/>
     public DateTime LastUpdatedAt { get; set; }
 }

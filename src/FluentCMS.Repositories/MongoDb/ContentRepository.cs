@@ -16,8 +16,8 @@ public class ContentRepository<TContent>(
         content.Id = Guid.NewGuid();
         content.CreatedAt = DateTime.UtcNow;
         content.LastUpdatedAt = DateTime.UtcNow;
-        content.CreatedBy = applicationContext.Current.UserName;
-        content.LastUpdatedBy = applicationContext.Current.UserName;
+        content.CreatedBy = applicationContext.Current.Username;
+        content.LastUpdatedBy = applicationContext.Current.Username;
 
         var dict = content.ToDictionary();
 
@@ -60,7 +60,7 @@ public class ContentRepository<TContent>(
         content.CreatedAt = existing.CreatedAt;
         content.CreatedBy = existing.CreatedBy;
         content.LastUpdatedAt = DateTime.UtcNow;
-        content.LastUpdatedBy = applicationContext.Current.UserName;
+        content.LastUpdatedBy = applicationContext.Current.Username;
 
         var dict = content.ToDictionary();
 

@@ -36,8 +36,6 @@ public static class MongoDbServiceExtensions
 
         services.AddSingleton<IMongoDBContext, MongoDBContext>();
 
-        services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
-
         services.AddScoped<ISiteRepository, SiteRepository>();
         services.AddScoped<IPageRepository, PageRepository>();
         services.AddScoped<IHostRepository, HostRepository>();

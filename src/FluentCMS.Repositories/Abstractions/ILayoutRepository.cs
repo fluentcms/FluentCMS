@@ -2,7 +2,6 @@
 
 namespace FluentCMS.Repositories;
 
-public interface ILayoutRepository : IGenericRepository<Layout>
+public interface ILayoutRepository : ISiteAssociatedRepository<Layout>
 {
-    Task<IEnumerable<Layout>> GetAll(Guid siteId, CancellationToken cancellationToken = default);
 }

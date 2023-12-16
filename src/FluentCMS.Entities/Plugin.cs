@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Entities;
 
-public class Plugin : AuditEntity
+public class Plugin : SiteAssociatedEntity
 {
     public Guid DefinitionId { get; set; }
     public Guid PageId { get; set; }

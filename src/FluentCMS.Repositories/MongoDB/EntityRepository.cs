@@ -1,10 +1,12 @@
 ﻿using FluentCMS.Entities;
+using Humanizer;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using System.Globalization;
 
 namespace FluentCMS.Repositories.MongoDB;
 
-public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEntity : IEntity
+public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntity : IEntity
 {
     protected readonly IMongoCollection<TEntity> Collection;
     protected readonly IMongoCollection<BsonDocument> BsonCollection;
@@ -12,7 +14,7 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEnt
     protected readonly IMongoDBContext MongoDbContext;
     protected readonly IApplicationContext AppContext;
 
-    public GenericRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext)
+    public EntityRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext)
     {
         MongoDatabase = mongoDbContext.Database;
         Collection = mongoDbContext.Database.GetCollection<TEntity>(GetCollectionName());
@@ -23,7 +25,11 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEnt
 
     protected virtual string GetCollectionName()
     {
-        return typeof(TEntity).Name;
+        var entityType = typeof(TEntity).Name;
+
+        var pluralizedName = entityType.Pluralize();
+
+        return pluralizedName.ToLower(CultureInfo.InvariantCulture);
     }
 
     public virtual async Task<IEnumerable<TEntity>> GetAll(CancellationToken cancellationToken = default)
@@ -63,14 +69,6 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEnt
 
         entity.Id = Guid.NewGuid();
 
-        if (entity is IAuditEntity audit)
-        {
-            audit.CreatedAt = DateTime.UtcNow;
-            audit.CreatedBy = AppContext.Current.UserName;
-            audit.LastUpdatedAt = DateTime.UtcNow;
-            audit.LastUpdatedBy = AppContext.Current.UserName;
-        }
-
         await Collection.InsertOneAsync(entity, null, cancellationToken);
 
         return entity;
@@ -83,15 +81,6 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEnt
         foreach (var entity in entities)
             entity.Id = Guid.NewGuid();
 
-        if (typeof(TEntity) is IAuditEntity)
-            foreach (var audit in entities.Cast<IAuditEntity>())
-            {
-                audit.CreatedAt = DateTime.UtcNow;
-                audit.CreatedBy = AppContext.Current.UserName;
-                audit.LastUpdatedAt = DateTime.UtcNow;
-                audit.LastUpdatedBy = AppContext.Current.UserName;
-            }
-
         await Collection.InsertManyAsync(entities, null, cancellationToken);
 
         return entities;
@@ -100,12 +89,6 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEnt
     public virtual async Task<TEntity?> Update(TEntity entity, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-
-        if (entity is IAuditEntity audit)
-        {
-            audit.LastUpdatedAt = DateTime.UtcNow;
-            audit.LastUpdatedBy = AppContext.Current.UserName;
-        }
 
         var idFilter = Builders<TEntity>.Filter.Eq(x => x.Id, entity.Id);
 
@@ -120,12 +103,78 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEnt
 
         var idFilter = Builders<TEntity>.Filter.Eq(doc => doc.Id, id);
 
-        var options = new FindOneAndDeleteOptions<TEntity>
-        {
-            //Projection = Builders<TEntity>.Projection.Include(doc => doc)
-        };
+        var entity = await Collection.FindOneAndDeleteAsync(idFilter, null, cancellationToken);
 
-        var entity = await Collection.FindOneAndDeleteAsync(idFilter, options, cancellationToken);
         return entity;
+    }
+}
+
+public abstract class AuditEntityRepository<TEntity>(
+    IMongoDBContext mongoDbContext,
+    IApplicationContext applicationContext) :
+    EntityRepository<TEntity>(mongoDbContext, applicationContext),
+    IAuditEntityRepository<TEntity> where TEntity : IAuditEntity
+{
+    public override async Task<TEntity?> Create(TEntity entity, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        entity.CreatedAt = DateTime.UtcNow;
+        entity.CreatedBy = applicationContext.Current.Username;
+        entity.LastUpdatedAt = DateTime.UtcNow;
+        entity.LastUpdatedBy = applicationContext.Current.Username;
+
+        return await base.Create(entity, cancellationToken);
+    }
+
+    public override async Task<TEntity?> Update(TEntity entity, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        entity.LastUpdatedAt = DateTime.UtcNow;
+        entity.LastUpdatedBy = applicationContext.Current.Username;
+
+        return await base.Update(entity, cancellationToken);
+    }
+
+    public override Task<IEnumerable<TEntity>> CreateMany(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
+    {
+        foreach (var entity in entities)
+        {
+            entity.CreatedAt = DateTime.UtcNow;
+            entity.CreatedBy = applicationContext.Current.Username;
+            entity.LastUpdatedAt = DateTime.UtcNow;
+            entity.LastUpdatedBy = applicationContext.Current.Username;
+        }
+        return base.CreateMany(entities, cancellationToken);
+    }
+}
+
+public abstract class SiteAssociatedRepository<TEntity>(
+    IMongoDBContext mongoDbContext,
+    IApplicationContext applicationContext) :
+    AuditEntityRepository<TEntity>(mongoDbContext, applicationContext),
+    ISiteAssociatedRepository<TEntity> where TEntity : ISiteAssociatedEntity
+{
+
+    public async Task<IEnumerable<TEntity>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var filter = Builders<TEntity>.Filter.Eq(x => x.SiteId, siteId);
+        var findResult = await Collection.FindAsync(filter, null, cancellationToken);
+        return await findResult.ToListAsync(cancellationToken);
+
+    }
+
+    public async Task<TEntity?> GetByIdForSite(Guid id, Guid siteId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var idFilter = Builders<TEntity>.Filter.Eq(x => x.Id, id);
+        var siteIdFilter = Builders<TEntity>.Filter.Eq(x => x.SiteId, siteId);
+
+        var findResult = await Collection.FindAsync(Builders<TEntity>.Filter.And(idFilter, siteIdFilter), null, cancellationToken);
+
+        return await findResult.SingleOrDefaultAsync(cancellationToken);
     }
 }

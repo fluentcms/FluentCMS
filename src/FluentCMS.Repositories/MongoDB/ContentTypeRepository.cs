@@ -6,7 +6,7 @@ namespace FluentCMS.Repositories.MongoDB;
 public class ContentTypeRepository(
     IMongoDBContext mongoDbContext,
     IApplicationContext applicationContext) :
-    GenericRepository<ContentType>(mongoDbContext, applicationContext),
+    AuditEntityRepository<ContentType>(mongoDbContext, applicationContext),
     IContentTypeRepository
 {
     public async Task<ContentType?> GetByName(string name, CancellationToken cancellationToken = default)

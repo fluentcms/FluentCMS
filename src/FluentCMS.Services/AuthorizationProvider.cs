@@ -7,7 +7,7 @@ public interface IAuthorizationProvider
 {
     bool Authorize(Site site, IEnumerable<string> policyNames);
     bool IsSuperAdmin();
-    Task<Permission> Create<T>(T entity, string policyName, CancellationToken cancellationToken = default) where T : IAuthorizeEntity;
+    Task<Permission> Create<T>(T entity, string policyName, CancellationToken cancellationToken = default) where T : ISiteAssociatedEntity;
 }
 
 public class AuthorizationProvider(
@@ -52,7 +52,7 @@ public class AuthorizationProvider(
         return false;
     }
 
-    public async Task<Permission> Create<T>(T entity, string policyName, CancellationToken cancellationToken = default) where T : IAuthorizeEntity
+    public async Task<Permission> Create<T>(T entity, string policyName, CancellationToken cancellationToken = default) where T : ISiteAssociatedEntity
     {
         ArgumentNullException.ThrowIfNull(entity);
 

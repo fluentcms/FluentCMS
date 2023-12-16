@@ -46,7 +46,7 @@ public class HostService(
             throw new AppPermissionException();
 
         // super admin can't remove himself from super user list
-        if (!host.SuperUsers.Contains(appContext.Current.UserName))
+        if (!host.SuperUsers.Contains(appContext.Current.Username))
             throw new AppException(ExceptionCodes.HostUnableToRemoveYourself);
 
         return await hostRepository.Update(host, cancellationToken)

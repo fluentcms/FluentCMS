@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Repositories;
 
-public interface IPluginRepository : IGenericRepository<Plugin>
+public interface IPluginRepository : ISiteAssociatedRepository<Plugin>
 {
     Task<IEnumerable<Plugin>> GetByPageId(Guid pageId, CancellationToken cancellationToken = default);
 }

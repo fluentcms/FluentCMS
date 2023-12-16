@@ -1,8 +1,7 @@
 ﻿namespace FluentCMS.Entities;
 
-public class Permission : AuditEntity
+public class Permission : SiteAssociatedEntity
 {
-    public Guid SiteId { get; set; }
     public Guid RoleId { get; set; }
     public Guid EntityId { get; set; }
     public string EntityType { get; set; } = default!;

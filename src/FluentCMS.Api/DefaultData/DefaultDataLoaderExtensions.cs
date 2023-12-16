@@ -40,13 +40,13 @@ public static class DefaultDataLoaderExtensions
 
             var superUser = new User
             {
-                UserName = defaultData.SuperAdmin.UserName,
+                UserName = defaultData.SuperAdmin.Username,
                 Email = defaultData.SuperAdmin.Email
             };
 
             appContext.Current = new CurrentContext
             {
-                UserName = superUser.UserName,
+                Username = superUser.UserName,
                 IsSuperAdmin = true
             };
 
@@ -71,7 +71,6 @@ public static class DefaultDataLoaderExtensions
             // Plugin definition creation
             foreach (var pluginDefinition in defaultData.PluginDefinitions)
             {
-                pluginDefinition.SiteId = site.Id;
                 pluginDefinitionService.Create(pluginDefinition).GetAwaiter().GetResult();
             }
 
