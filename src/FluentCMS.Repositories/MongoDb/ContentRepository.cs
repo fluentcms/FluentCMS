@@ -3,12 +3,16 @@ using MongoDB.Driver;
 
 namespace FluentCMS.Repositories.MongoDB;
 
-public class ContentRepository<TContent>(
-    IMongoDBContext mongoDbContext,
-    IApplicationContext applicationContext) :
-    IContentRepository<TContent>
-    where TContent : Content, new()
+public class ContentRepository<TContent> : IContentRepository<TContent> where TContent : Content, new()
 {
+    protected IMongoDBContext MongoDbContext;
+    protected IApplicationContext ApplicationContext;
+
+    public ContentRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext)
+    {
+        MongoDbContext = mongoDbContext;
+        ApplicationContext = applicationContext;
+    }
 
     public virtual async Task<TContent?> Create(TContent content, CancellationToken cancellationToken = default)
     {
@@ -16,8 +20,8 @@ public class ContentRepository<TContent>(
         content.Id = Guid.NewGuid();
         content.CreatedAt = DateTime.UtcNow;
         content.LastUpdatedAt = DateTime.UtcNow;
-        content.CreatedBy = applicationContext.Current.Username;
-        content.LastUpdatedBy = applicationContext.Current.Username;
+        content.CreatedBy = ApplicationContext.Current.Username;
+        content.LastUpdatedBy = ApplicationContext.Current.Username;
 
         var dict = content.ToDictionary();
 
@@ -60,7 +64,7 @@ public class ContentRepository<TContent>(
         content.CreatedAt = existing.CreatedAt;
         content.CreatedBy = existing.CreatedBy;
         content.LastUpdatedAt = DateTime.UtcNow;
-        content.LastUpdatedBy = applicationContext.Current.Username;
+        content.LastUpdatedBy = ApplicationContext.Current.Username;
 
         var dict = content.ToDictionary();
 
@@ -115,7 +119,7 @@ public class ContentRepository<TContent>(
 
         var collectionName = $"Content_{contentType.ToLower()}";
 
-        return mongoDbContext.Database.GetCollection<Dictionary<string, object?>>(collectionName);
+        return MongoDbContext.Database.GetCollection<Dictionary<string, object?>>(collectionName);
     }
 
     protected static void ReverseMongoDBId(Dictionary<string, object?> dict)
