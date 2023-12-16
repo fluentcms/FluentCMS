@@ -16,9 +16,5 @@
     public bool Disabled { get; set; } = false;
 
     [Parameter]
-    [CssProperty]
-    public SizeEnum Size { get; set; } = SizeEnum.Medium;
-
-    [Parameter]
     public EventCallback<MouseEventArgs> OnClick { get; set; }
 }

@@ -2,7 +2,7 @@
 
 <nav class=@this.GetClasses() @attributes=AdditionalAttributes>
     <ul>
-        <PaginationItem Size=@Size OnClick=@Previous>
+        <PaginationItem Disabled=!this.CanPrevious() OnClick=@Previous>
             @if (ShowIcons)
             {
 
@@ -13,13 +13,13 @@
                 <text>Previous</text>
             }
         </PaginationItem>
-        @foreach (var page in Enumerable.Range(1,Total))
+        @foreach (var page in this.Pages())
         {
-            <PaginationItem @key=page Size=@Size OnClick="() => GoTo(page)">
-                @(page)
+            <PaginationItem Disabled="page == Current" @key=page OnClick="() => GoTo(page)">
+                @(page == 0 ? "..." : page)
             </PaginationItem>
         }
-        <PaginationItem Size=@Size OnClick=@Next>
+        <PaginationItem Disabled=!this.CanNext() OnClick=@Next>
             @if (ShowIcons)
             {
                 <Icon Name=IconNameEnum.Next />
@@ -40,14 +40,66 @@
     public bool ShowIcons { get; set; } = false;
 
     [Parameter]
-    [CssProperty]
-    public SizeEnum Size { get; set; } = SizeEnum.Medium;
-
-    [Parameter]
     public int Total { get; set; } = 0;
 
     [Parameter]
     public EventCallback<int> CurrentChanged { get; set; }
+
+    public IEnumerable<int> Pages()
+    {
+        var BOUNDARY = 1;
+        var SIBLING = 1;
+
+        var min = Math.Min(BOUNDARY, this.Total);
+        var max = Math.Max(this.Total - BOUNDARY + 1, BOUNDARY + 1);
+
+        var startPages = Enumerable.Range(1, min);
+        var endPages = Enumerable.Range(max, this.Total - max + 1);
+
+        var siblingsStart = Math.Max(
+            Math.Min(
+                this.Current - SIBLING,
+                this.Total - BOUNDARY - SIBLING * 2 - 1
+            ),
+            BOUNDARY + 2
+        );
+
+        var siblingsEnd = Math.Min(
+          Math.Max(
+            this.Current + SIBLING,
+            BOUNDARY + SIBLING * 2 + 2
+          ),
+          endPages.Count() > 0 ? endPages.First() - 2 : this.Total - 1
+        );
+
+        var items = Enumerable.Range(0, 0);
+
+        items = items.Concat(startPages);
+
+        if (siblingsStart > BOUNDARY + 2)
+        {
+            items = items.Concat(new[] { 0 });
+        }
+        else if (BOUNDARY + 1 < this.Total - BOUNDARY)
+        {
+            items = items.Concat(new[] { BOUNDARY + 1 });
+        }
+
+        items = items.Concat(Enumerable.Range(siblingsStart, siblingsEnd - siblingsStart + 1));
+
+        if (siblingsEnd < this.Total - BOUNDARY - 1)
+        {
+            items = items.Concat(new[] { 0 });
+        }
+        else if (this.Total - BOUNDARY > BOUNDARY)
+        {
+            items = items.Concat(new[] { this.Total - BOUNDARY });
+        }
+
+        items = items.Concat(endPages);
+
+        return items;
+    }
 
     public bool CanPrevious()
     {
