@@ -9,6 +9,20 @@ public class SiteRepository(
     SiteAssociatedRepository<Site>(mongoDbContext, applicationContext),
     ISiteRepository
 {
+    public override async Task<Site?> Create(Site entity, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var newSite = await base.Create(entity, cancellationToken);
+
+        if (newSite == null)
+            return null;
+
+        newSite.SiteId = newSite.Id;
+
+        return await Update(newSite, cancellationToken);
+    }
+
     public async Task<Site?> GetByUrl(string url, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
