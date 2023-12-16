@@ -8,7 +8,28 @@ namespace Microsoft.Extensions.DependencyInjection;
 
 public static class MongoDbServiceExtensions
 {
+    /// <summary>
+    /// Registers MongoDB repositories and necessary configurations.
+    /// </summary>
+    /// <param name="services">The IServiceCollection to add services to.</param>
+    /// <param name="connectionString">The name of the connection string in the configuration.</param>
+    /// <returns>The IServiceCollection for chaining.</returns>
     public static IServiceCollection AddMongoDbRepositories(this IServiceCollection services, string connectionString)
+    {
+        // Configure BsonSerializers for accurate data representation in MongoDB
+        ConfigureBsonSerializers();
+
+        // Register MongoDB context and options
+        services.AddSingleton(provider => CreateMongoDBOptions(provider, connectionString));
+        services.AddSingleton<IMongoDBContext, MongoDBContext>();
+
+        // Register all repositories using reflection
+        RegisterRepositories(services);
+
+        return services;
+    }
+
+    private static void ConfigureBsonSerializers()
     {
         if (BsonSerializer.LookupSerializer<decimal>() == null)
             BsonSerializer.RegisterSerializer(typeof(decimal), new DecimalSerializer(BsonType.Decimal128));
@@ -19,23 +40,21 @@ public static class MongoDbServiceExtensions
         if (BsonSerializer.LookupSerializer<Guid>() == null)
             BsonSerializer.RegisterSerializer(typeof(Guid), new GuidSerializer(GuidRepresentation.Standard));
 
-        // TODO: if we remove this line, Id queries will not work
+        // Standard GUID representation is set for consistency across the application
         BsonDefaults.GuidRepresentation = GuidRepresentation.Standard;
+    }
 
-        services.AddSingleton(provider =>
-        {
-            var configuration = provider.GetService<IConfiguration>() ?? throw new InvalidOperationException("IConfiguration is not registered.");
+    private static MongoDBOptions<MongoDBContext> CreateMongoDBOptions(IServiceProvider provider, string connectionString)
+    {
+        var configuration = provider.GetService<IConfiguration>() ?? throw new InvalidOperationException("IConfiguration is not registered.");
+        var connString = configuration.GetConnectionString(connectionString);
+        return connString is not null
+            ? new MongoDBOptions<MongoDBContext>(connString)
+            : throw new InvalidOperationException($"Connection string '{connectionString}' not found.");
+    }
 
-            var connString = configuration.GetConnectionString(connectionString);
-
-            return connString is null
-                ? throw new InvalidOperationException($"Connection string '{connectionString}' not found.")
-                : new MongoDBOptions<MongoDBContext>(connString);
-        });
-
-        services.AddSingleton<IMongoDBContext, MongoDBContext>();
-
-        // using reflection to register all repositories
+    private static void RegisterRepositories(IServiceCollection services)
+    {
         var repositoryTypes = typeof(MongoDbServiceExtensions).Assembly.GetTypes()
             .Where(t => t.IsClass && !t.IsAbstract && t.Name.EndsWith("Repository"))
             .ToList();
@@ -47,7 +66,5 @@ public static class MongoDbServiceExtensions
 
             services.AddScoped(interfaceType, repositoryType);
         }
-
-        return services;
     }
 }
