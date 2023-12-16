@@ -54,7 +54,7 @@ public class PluginContentRepository(
 
         var collectionName = $"PluginContent_{contentType.ToLower()}";
 
-        return mongoDbContext.Database.GetCollection<Dictionary<string, object?>>(collectionName);
+        return MongoDbContext.Database.GetCollection<Dictionary<string, object?>>(collectionName);
     }
 
     protected IMongoCollection<BsonDocument> GetBsonCollection(string contentType)
@@ -64,7 +64,7 @@ public class PluginContentRepository(
 
         var collectionName = $"PluginContent_{contentType.ToLower()}";
 
-        return mongoDbContext.Database.GetCollection<BsonDocument>(collectionName);
+        return MongoDbContext.Database.GetCollection<BsonDocument>(collectionName);
     }
 
 }

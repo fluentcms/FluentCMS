@@ -1,6 +1,6 @@
-﻿namespace FluentCMS.Repositories.LiteDb;
+﻿//namespace FluentCMS.Repositories.LiteDb;
 
-public class LiteDbOptions
-{
-    public string? ConnectionString { get; set; }
-}
+//public class LiteDbOptions
+//{
+//    public string? ConnectionString { get; set; }
+//}

@@ -4,12 +4,12 @@ using System.Security.Claims;
 
 namespace FluentCMS.Repositories.MongoDB;
 
-public class UserRepository : GenericRepository<User>, IUserRepository
+public class UserRepository(
+    IMongoDBContext mongoDbContext,
+    IApplicationContext applicationContext) :
+    AuditEntityRepository<User>(mongoDbContext, applicationContext),
+    IUserRepository
 {
-    public UserRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext) : base(mongoDbContext, applicationContext)
-    {
-    }
-
     public IQueryable<User> AsQueryable()
     {
         return Collection.AsQueryable();

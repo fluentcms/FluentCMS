@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Repositories;
 
-public interface IPluginDefinitionRepository : IGenericRepository<PluginDefinition>
+public interface IPluginDefinitionRepository : IAuditEntityRepository<PluginDefinition>
 {
 
 }

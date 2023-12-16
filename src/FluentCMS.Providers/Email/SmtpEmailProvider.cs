@@ -30,7 +30,7 @@ public class SmtpEmailProvider : IEmailProvider
 
         var smtpClient = new SmtpClient(Options.SmtpHost, Options.SmtpPort)
         {
-            Credentials = new NetworkCredential(Options.UserName, Options.Password),
+            Credentials = new NetworkCredential(Options.Username, Options.Password),
             EnableSsl = Options.EnableSsl
         };
         var mailMessage = new MailMessage
@@ -61,7 +61,7 @@ public class SmtpEmailProviderOptions
     public required string MailAddress { get; set; }
     public required string SmtpHost { get; set; }
     public int SmtpPort { get; set; }
-    public required string UserName { get; set; }
+    public required string Username { get; set; }
     public required string Password { get; set; }
     public bool EnableSsl { get; set; }
 }

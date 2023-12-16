@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Api.Models;
 
-public class UserAuthenticateDto
+public class UserLoginResponse
 {
     public Guid UserId { get; set; }
     public List<Guid> RoleIds { get; set; } = [];

@@ -8,7 +8,7 @@ public interface IApplicationContext
 public interface ICurrentContext
 {
     public IEnumerable<Guid> RoleIds { get; set; }
-    public string UserName { get; set; }
+    public string Username { get; set; }
     public bool IsAuthenticated { get; }
     public bool IsSuperAdmin { get; set; }
 }

@@ -3,12 +3,12 @@ using MongoDB.Driver;
 
 namespace FluentCMS.Repositories.MongoDB;
 
-public class PermissionRepository : GenericRepository<Permission>, IPermissionRepository
+public class PermissionRepository(
+    IMongoDBContext mongoDbContext,
+    IApplicationContext applicationContext) :
+    SiteAssociatedRepository<Permission>(mongoDbContext, applicationContext),
+    IPermissionRepository
 {
-    public PermissionRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext) : base(mongoDbContext, applicationContext)
-    {
-    }
-
     public async Task<IEnumerable<Permission>> GetPermissions(Guid siteId, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

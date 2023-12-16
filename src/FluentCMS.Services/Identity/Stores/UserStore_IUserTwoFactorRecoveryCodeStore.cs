@@ -7,7 +7,7 @@ public partial class UserStore : IUserTwoFactorRecoveryCodeStore<User>
 {
     public Task ReplaceCodesAsync(User user, IEnumerable<string> recoveryCodes, CancellationToken cancellationToken)
     {
-        var rcs = recoveryCodes.Select(x => new TwoFactorRecoveryCode { Code = x, Redeemed = false }).ToList();
+        var rcs = recoveryCodes.Select(x => new UserTwoFactorRecoveryCode { Code = x, Redeemed = false }).ToList();
         user.RecoveryCodes.Clear();
         user.RecoveryCodes.AddRange(rcs);
         return Task.CompletedTask;

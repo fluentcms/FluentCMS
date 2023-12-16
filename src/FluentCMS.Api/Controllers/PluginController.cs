@@ -1,12 +1,11 @@
-﻿using AutoMapper;
-using FluentCMS.Api.Models;
+﻿using FluentCMS.Api.Models;
 using FluentCMS.Entities;
 using FluentCMS.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Api.Controllers;
 
-public class PluginController(IPluginService pluginService, IMapper mapper) : BaseController
+public class PluginController(IPluginService pluginService) : BaseController
 {
 
     [HttpGet("{pageId}")]
@@ -30,7 +29,7 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
         return new ApiResult<Plugin>(result);
     }
 
-    [HttpPut("{id}")]
+    [HttpPut]
     public async Task<IApiResult<Plugin>> Put([FromBody] Plugin plugin, CancellationToken cancellationToken = default)
     {
         var result = await pluginService.Update(plugin, cancellationToken);
