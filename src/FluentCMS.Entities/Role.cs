@@ -10,7 +10,7 @@ public class Role : SiteAssociatedEntity
     /// <summary>
     /// Name of the role. This field is required.
     /// </summary>
-    public required string Name { get; set; } 
+    public required string Name { get; set; }
 
     /// <summary>
     /// Optional description for the role. Provides additional context about the role's purpose or use.
