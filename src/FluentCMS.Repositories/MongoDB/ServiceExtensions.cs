@@ -1,5 +1,4 @@
-﻿using FluentCMS.Repositories;
-using FluentCMS.Repositories.MongoDB;
+﻿using FluentCMS.Repositories.MongoDB;
 using Microsoft.Extensions.Configuration;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
@@ -36,18 +35,18 @@ public static class MongoDbServiceExtensions
 
         services.AddSingleton<IMongoDBContext, MongoDBContext>();
 
-        services.AddScoped<ISiteRepository, SiteRepository>();
-        services.AddScoped<IPageRepository, PageRepository>();
-        services.AddScoped<IHostRepository, HostRepository>();
-        services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IRoleRepository, RoleRepository>();
-        services.AddScoped<IPermissionRepository, PermissionRepository>();
-        services.AddScoped<IPluginDefinitionRepository, PluginDefinitionRepository>();
-        services.AddScoped<IPluginRepository, PluginRepository>();
-        services.AddScoped<ILayoutRepository, LayoutRepository>();
-        services.AddScoped<IContentTypeRepository, ContentTypeRepository>();
-        services.AddScoped(typeof(IContentRepository<>), typeof(ContentRepository<>));
-        services.AddScoped<IPluginContentRepository, PluginContentRepository>();
+        // using reflection to register all repositories
+        var repositoryTypes = typeof(MongoDbServiceExtensions).Assembly.GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract && t.Name.EndsWith("Repository"))
+            .ToList();
+
+        foreach (var repositoryType in repositoryTypes)
+        {
+            var interfaceType = repositoryType.GetInterfaces().FirstOrDefault(i => i.Name.EndsWith(repositoryType.Name))
+                ?? throw new InvalidOperationException($"Interface for repository '{repositoryType.Name}' not found.");
+
+            services.AddScoped(interfaceType, repositoryType);
+        }
 
         return services;
     }
