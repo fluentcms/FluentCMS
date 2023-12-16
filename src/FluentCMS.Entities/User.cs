@@ -4,6 +4,8 @@ namespace FluentCMS.Entities;
 
 /// <summary>
 /// Represents a user in the application, extending the ASP.NET Core IdentityUser class.
+/// Inherits from <see cref="IdentityUser{TKey}"/> to leverage ASP.NET Core Identity.
+/// Extends <see cref="IAuditEntity"/> to track audit information.
 /// </summary>
 public class User : IdentityUser<Guid>, IAuditEntity
 {

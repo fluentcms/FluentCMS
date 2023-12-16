@@ -8,7 +8,7 @@ public class UserTwoFactorRecoveryCode
     /// <summary>
     /// Gets or sets the recovery code.
     /// </summary>
-    public string? Code { get; set; }
+    public required string Code { get; set; }
 
     /// <summary>
     /// Gets or sets a value indicating whether the recovery code has been redeemed.

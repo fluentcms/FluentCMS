@@ -28,6 +28,7 @@ public interface IAuditEntity : IEntity
 
 /// <summary>
 /// A basic implementation of <see cref="IAuditEntity"/>.
+/// Inherits from <see cref="Entity"/>.
 /// </summary>
 public abstract class AuditEntity : IAuditEntity
 {
