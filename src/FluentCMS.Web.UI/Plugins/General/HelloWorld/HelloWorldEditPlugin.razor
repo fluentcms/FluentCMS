@@ -1,35 +1,23 @@
-﻿@using System.Text.Json
-@using System.Text
+﻿@rendermode InteractiveServer
 @inherits BasePluginComponent
 @inject ContentClient contentClient
-@rendermode InteractiveServer
+
 <InputTextArea @bind-Value="Model.Content" Required rows="5" placeholder="Enter you Text/Html content here"></InputTextArea>
 <br />
-<Button @onclick="Submit">Update</Button>
+<Button>Update</Button>
 
 @code {
     public HelloWorldContent Model { get; set; } = new();
 
     protected override async Task OnInitializedAsync()
     {
-        var response = await contentClient.GetAll("HelloWorld", AppState.Site.Id);
+        var response = await contentClient.GetAllAsync("HelloWorld", AppState.Site.Id);
         var content = response?.Data?.FirstOrDefault() ??
-            new Content { SiteId = AppState.Site.Id };
-        Model = new HelloWorldContent(content);
-    }
-
-    private async Task Submit()
-    {
-        if (Model.Id == Guid.Empty)
-        {
-            var pluginContent = await contentClient.Create(Model.ToContent(), CancellationToken);
-            Model = new HelloWorldContent(pluginContent);
-        }
-        else
-        {
-            var pluginContent = await contentClient.Update(Model.ToContent(), CancellationToken);
-            Model = new HelloWorldContent(pluginContent);
-        }
-
+             new Dictionary<string, object>
+                            {
+                { "PluginId" , Plugin.Id },
+                { "SiteId" , AppState.Site.Id }
+                            };
+        Model = new HelloWorldContent();
     }
 }

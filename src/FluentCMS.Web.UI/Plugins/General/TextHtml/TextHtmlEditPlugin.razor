@@ -11,17 +11,21 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var response = await pluginContentClient.GetByPluginId("TextHtml", AppState.Site.Id, Plugin.Id);
+        var response = await pluginContentClient.GetByPluginIdAsync("TextHtml", AppState.Site.Id, Plugin.Id);
         var pluginContent = response?.Data?.FirstOrDefault() ??
-            new PluginContent { PluginId = Plugin.Id, SiteId = AppState.Site.Id };
-        Model = new TextHtmlContent(pluginContent);
+            new Dictionary<string, object>
+                    {
+                { "PluginId" , Plugin.Id },
+                { "SiteId" , AppState.Site.Id }
+                    };
+        Model = new TextHtmlContent();
     }
 
     private async Task Submit()
     {
         if (Model.Id == Guid.Empty)
-            await pluginContentClient.Create(Model.ToPluginContent(), CancellationToken);
+            await pluginContentClient.CreateAsync("TextHtml", Model.ToPluginContent(), CancellationToken);
         else
-            await pluginContentClient.Update(Model.ToPluginContent(), CancellationToken);
+            await pluginContentClient.UpdateAsync("TextHtml", Model.ToPluginContent(), CancellationToken);
     }
 }
