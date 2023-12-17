@@ -1,12 +1,7 @@
 using FluentCMS.Api;
 using FluentCMS.Web.UI.ApiClients;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using System.Net.Http.Headers;
-using System.Reflection;
-using static System.Net.WebRequestMethods;
 
 
 namespace FluentCMS.E2eTests;
