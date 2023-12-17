@@ -24,29 +24,53 @@ namespace FluentCMS.Web.UI.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IAccountClient : IApiClient
     {
+        /// <summary>
+        /// Changes the password for a user.
+        /// </summary>
+        /// <param name="body">The user password change request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(UserChangePasswordRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Changes the password for a user.
+        /// </summary>
+        /// <param name="body">The user password change request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(UserChangePasswordRequest? body, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Authenticates a user and provides a token for accessing secured resources.
+        /// </summary>
+        /// <param name="body">The user login request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserLoginResponseIApiResult> LoginAsync(UserLoginRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Authenticates a user and provides a token for accessing secured resources.
+        /// </summary>
+        /// <param name="body">The user login request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserLoginResponseIApiResult> LoginAsync(UserLoginRequest? body, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Registers a new user in the system.
+        /// </summary>
+        /// <param name="body">The user registration request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserDetailResponseIApiResult> RegisterAsync(UserRegisterRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Registers a new user in the system.
+        /// </summary>
+        /// <param name="body">The user registration request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserDetailResponseIApiResult> RegisterAsync(UserRegisterRequest? body, System.Threading.CancellationToken cancellationToken);
@@ -80,6 +104,10 @@ namespace FluentCMS.Web.UI.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
+        /// <summary>
+        /// Changes the password for a user.
+        /// </summary>
+        /// <param name="body">The user password change request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(UserChangePasswordRequest? body)
@@ -88,6 +116,10 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Changes the password for a user.
+        /// </summary>
+        /// <param name="body">The user password change request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(UserChangePasswordRequest? body, System.Threading.CancellationToken cancellationToken)
@@ -158,6 +190,10 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Authenticates a user and provides a token for accessing secured resources.
+        /// </summary>
+        /// <param name="body">The user login request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<UserLoginResponseIApiResult> LoginAsync(UserLoginRequest? body)
@@ -166,6 +202,10 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Authenticates a user and provides a token for accessing secured resources.
+        /// </summary>
+        /// <param name="body">The user login request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<UserLoginResponseIApiResult> LoginAsync(UserLoginRequest? body, System.Threading.CancellationToken cancellationToken)
@@ -236,6 +276,10 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Registers a new user in the system.
+        /// </summary>
+        /// <param name="body">The user registration request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<UserDetailResponseIApiResult> RegisterAsync(UserRegisterRequest? body)
@@ -244,6 +288,10 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Registers a new user in the system.
+        /// </summary>
+        /// <param name="body">The user registration request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiResult> RegisterAsync(UserRegisterRequest? body, System.Threading.CancellationToken cancellationToken)
@@ -1195,7 +1243,7 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="name">The name of the content type.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string? name);
+        System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string name);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -1204,7 +1252,7 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="name">The name of the content type.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string? name, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string name, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Sets a field for a specific content type.
@@ -1482,8 +1530,7 @@ namespace FluentCMS.Web.UI.ApiClients
             {
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
-                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("DELETE");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -1708,7 +1755,7 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="name">The name of the content type.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string? name)
+        public virtual System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string name)
         {
             return GetByNameAsync(name, System.Threading.CancellationToken.None);
         }
@@ -1720,15 +1767,14 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="name">The name of the content type.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string? name, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string name, System.Threading.CancellationToken cancellationToken)
         {
+            if (name == null)
+                throw new System.ArgumentNullException("name");
+
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/ContentType/GetByName?");
-            if (name != null)
-            {
-                urlBuilder_.Append(System.Uri.EscapeDataString("name") + "=").Append(System.Uri.EscapeDataString(ConvertToString(name, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
-            }
-            urlBuilder_.Length--;
+            urlBuilder_.Append("api/ContentType/GetByName/{name}");
+            urlBuilder_.Replace("{name}", System.Uri.EscapeDataString(ConvertToString(name, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -2070,20 +2116,34 @@ namespace FluentCMS.Web.UI.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IHostClient : IApiClient
     {
+        /// <summary>
+        /// Retrieves the current host settings.
+        /// </summary>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<HostIApiResult> GetAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves the current host settings.
+        /// </summary>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<HostIApiResult> GetAsync(System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Updates the host settings.
+        /// </summary>
+        /// <param name="body">The host update request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<HostIApiResult> UpdateAsync(HostUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Updates the host settings.
+        /// </summary>
+        /// <param name="body">The host update request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<HostIApiResult> UpdateAsync(HostUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
@@ -2117,6 +2177,9 @@ namespace FluentCMS.Web.UI.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
+        /// <summary>
+        /// Retrieves the current host settings.
+        /// </summary>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<HostIApiResult> GetAsync()
@@ -2125,6 +2188,9 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves the current host settings.
+        /// </summary>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<HostIApiResult> GetAsync(System.Threading.CancellationToken cancellationToken)
@@ -2191,6 +2257,10 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Updates the host settings.
+        /// </summary>
+        /// <param name="body">The host update request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<HostIApiResult> UpdateAsync(HostUpdateRequest? body)
@@ -2199,6 +2269,10 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Updates the host settings.
+        /// </summary>
+        /// <param name="body">The host update request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<HostIApiResult> UpdateAsync(HostUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
@@ -2372,11 +2446,19 @@ namespace FluentCMS.Web.UI.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IPageClient : IApiClient
     {
+        /// <summary>
+        /// Creates a new page in the FluentCMS system.
+        /// </summary>
+        /// <param name="body">The page creation request data containing the details of the new page.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageResponseIApiResult> CreateAsync(PageCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new page in the FluentCMS system.
+        /// </summary>
+        /// <param name="body">The page creation request data containing the details of the new page.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageResponseIApiResult> CreateAsync(PageCreateRequest? body, System.Threading.CancellationToken cancellationToken);
@@ -2390,32 +2472,64 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves all pages associated with a specific site.
+        /// </summary>
+        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(PageSearchRequest? body);
+        System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(System.Guid siteId);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves all pages associated with a specific site.
+        /// </summary>
+        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(PageSearchRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(System.Guid siteId, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves a specific page by its unique identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the page to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageResponseIApiResult> GetByIdAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific page by its unique identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the page to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves a specific page by its path within a site.
+        /// </summary>
+        /// <remarks>
+        /// This method also applies URL decoding to the 'path' parameter to handle any URL-encoded characters.
+        /// </remarks>
+        /// <param name="siteId">The unique identifier of the site to which the page belongs.</param>
+        /// <param name="path">The URL path of the page to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid? siteId, string? path);
+        System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid siteId, string path);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific page by its path within a site.
+        /// </summary>
+        /// <remarks>
+        /// This method also applies URL decoding to the 'path' parameter to handle any URL-encoded characters.
+        /// </remarks>
+        /// <param name="siteId">The unique identifier of the site to which the page belongs.</param>
+        /// <param name="path">The URL path of the page to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid? siteId, string? path, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid siteId, string path, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -2455,6 +2569,10 @@ namespace FluentCMS.Web.UI.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
+        /// <summary>
+        /// Creates a new page in the FluentCMS system.
+        /// </summary>
+        /// <param name="body">The page creation request data containing the details of the new page.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PageResponseIApiResult> CreateAsync(PageCreateRequest? body)
@@ -2463,6 +2581,10 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new page in the FluentCMS system.
+        /// </summary>
+        /// <param name="body">The page creation request data containing the details of the new page.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PageResponseIApiResult> CreateAsync(PageCreateRequest? body, System.Threading.CancellationToken cancellationToken)
@@ -2611,20 +2733,32 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves all pages associated with a specific site.
+        /// </summary>
+        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(PageSearchRequest? body)
+        public virtual System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(System.Guid siteId)
         {
-            return GetAllAsync(body, System.Threading.CancellationToken.None);
+            return GetAllAsync(siteId, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves all pages associated with a specific site.
+        /// </summary>
+        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(PageSearchRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(System.Guid siteId, System.Threading.CancellationToken cancellationToken)
         {
+            if (siteId == null)
+                throw new System.ArgumentNullException("siteId");
+
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/Page/GetAll");
+            urlBuilder_.Append("api/Page/GetAll/{siteId}");
+            urlBuilder_.Replace("{siteId}", System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -2632,11 +2766,7 @@ namespace FluentCMS.Web.UI.ApiClients
             {
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
-                    var json_ = System.Text.Json.JsonSerializer.Serialize(body, _settings.Value);
-                    var content_ = new System.Net.Http.StringContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
-                    request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -2689,6 +2819,10 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves a specific page by its unique identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the page to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PageResponseIApiResult> GetByIdAsync(System.Guid id)
@@ -2697,6 +2831,10 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific page by its unique identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the page to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PageResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
@@ -2767,29 +2905,44 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves a specific page by its path within a site.
+        /// </summary>
+        /// <remarks>
+        /// This method also applies URL decoding to the 'path' parameter to handle any URL-encoded characters.
+        /// </remarks>
+        /// <param name="siteId">The unique identifier of the site to which the page belongs.</param>
+        /// <param name="path">The URL path of the page to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid? siteId, string? path)
+        public virtual System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid siteId, string path)
         {
             return GetByPathAsync(siteId, path, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific page by its path within a site.
+        /// </summary>
+        /// <remarks>
+        /// This method also applies URL decoding to the 'path' parameter to handle any URL-encoded characters.
+        /// </remarks>
+        /// <param name="siteId">The unique identifier of the site to which the page belongs.</param>
+        /// <param name="path">The URL path of the page to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid? siteId, string? path, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid siteId, string path, System.Threading.CancellationToken cancellationToken)
         {
+            if (siteId == null)
+                throw new System.ArgumentNullException("siteId");
+
+            if (path == null)
+                throw new System.ArgumentNullException("path");
+
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/Page/GetByPath?");
-            if (siteId != null)
-            {
-                urlBuilder_.Append(System.Uri.EscapeDataString("siteId") + "=").Append(System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
-            }
-            if (path != null)
-            {
-                urlBuilder_.Append(System.Uri.EscapeDataString("path") + "=").Append(System.Uri.EscapeDataString(ConvertToString(path, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
-            }
-            urlBuilder_.Length--;
+            urlBuilder_.Append("api/Page/GetByPath/{siteId}/{path}");
+            urlBuilder_.Replace("{siteId}", System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Replace("{path}", System.Uri.EscapeDataString(ConvertToString(path, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -4502,20 +4655,18 @@ namespace FluentCMS.Web.UI.ApiClients
         /// Deletes a specific role from a site.
         /// </summary>
         /// <param name="id">The unique identifier of the role to be deleted.</param>
-        /// <param name="siteId">The unique identifier of the site from which the role is to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Guid siteId);
+        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Deletes a specific role from a site.
         /// </summary>
         /// <param name="id">The unique identifier of the role to be deleted.</param>
-        /// <param name="siteId">The unique identifier of the site from which the role is to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Guid siteId, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Retrieves all roles associated with a specific site.
@@ -4538,20 +4689,18 @@ namespace FluentCMS.Web.UI.ApiClients
         /// Retrieves a specific role by its identifier for a given site.
         /// </summary>
         /// <param name="id">The unique identifier of the role.</param>
-        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleIApiResult> GetByIdAsync(System.Guid id, System.Guid siteId);
+        System.Threading.Tasks.Task<RoleIApiResult> GetByIdAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Retrieves a specific role by its identifier for a given site.
         /// </summary>
         /// <param name="id">The unique identifier of the role.</param>
-        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleIApiResult> GetByIdAsync(System.Guid id, System.Guid siteId, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<RoleIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Updates an existing role.
@@ -4689,12 +4838,11 @@ namespace FluentCMS.Web.UI.ApiClients
         /// Deletes a specific role from a site.
         /// </summary>
         /// <param name="id">The unique identifier of the role to be deleted.</param>
-        /// <param name="siteId">The unique identifier of the site from which the role is to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Guid siteId)
+        public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id)
         {
-            return DeleteAsync(id, siteId, System.Threading.CancellationToken.None);
+            return DeleteAsync(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -4702,21 +4850,16 @@ namespace FluentCMS.Web.UI.ApiClients
         /// Deletes a specific role from a site.
         /// </summary>
         /// <param name="id">The unique identifier of the role to be deleted.</param>
-        /// <param name="siteId">The unique identifier of the site from which the role is to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Guid siteId, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
 
-            if (siteId == null)
-                throw new System.ArgumentNullException("siteId");
-
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/Role/Delete/{siteId}/{id}");
+            urlBuilder_.Append("api/Role/Delete/{id}");
             urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
-            urlBuilder_.Replace("{siteId}", System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -4867,12 +5010,11 @@ namespace FluentCMS.Web.UI.ApiClients
         /// Retrieves a specific role by its identifier for a given site.
         /// </summary>
         /// <param name="id">The unique identifier of the role.</param>
-        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<RoleIApiResult> GetByIdAsync(System.Guid id, System.Guid siteId)
+        public virtual System.Threading.Tasks.Task<RoleIApiResult> GetByIdAsync(System.Guid id)
         {
-            return GetByIdAsync(id, siteId, System.Threading.CancellationToken.None);
+            return GetByIdAsync(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -4880,21 +5022,16 @@ namespace FluentCMS.Web.UI.ApiClients
         /// Retrieves a specific role by its identifier for a given site.
         /// </summary>
         /// <param name="id">The unique identifier of the role.</param>
-        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<RoleIApiResult> GetByIdAsync(System.Guid id, System.Guid siteId, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<RoleIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
 
-            if (siteId == null)
-                throw new System.ArgumentNullException("siteId");
-
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/Role/GetById/{siteId}/{id}");
+            urlBuilder_.Append("api/Role/GetById/{id}");
             urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
-            urlBuilder_.Replace("{siteId}", System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -5144,56 +5281,102 @@ namespace FluentCMS.Web.UI.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface ISiteClient : IApiClient
     {
+        /// <summary>
+        /// Creates a new site entity in the system.
+        /// </summary>
+        /// <param name="body">The site creation request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteResponseIApiResult> CreateAsync(SiteCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new site entity in the system.
+        /// </summary>
+        /// <param name="body">The site creation request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteResponseIApiResult> CreateAsync(SiteCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Deletes a site entity from the system.
+        /// </summary>
+        /// <param name="id">The unique identifier of the site to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<IApiResult> DeleteAsync(System.Guid? id);
+        System.Threading.Tasks.Task<IApiResult> DeleteAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Deletes a site entity from the system.
+        /// </summary>
+        /// <param name="id">The unique identifier of the site to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<IApiResult> DeleteAsync(System.Guid? id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<IApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves all site entities.
+        /// </summary>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteResponseIApiPagingResult> GetAllAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves all site entities.
+        /// </summary>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves a specific site entity by its identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the site to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteResponseIApiResult> GetByIdAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific site entity by its identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the site to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves a specific site entity by its URL.
+        /// </summary>
+        /// <param name="url">The URL of the site to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<SiteResponseIApiResult> GetByUrlAsync(string? url);
+        System.Threading.Tasks.Task<SiteResponseIApiResult> GetByUrlAsync(string url);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific site entity by its URL.
+        /// </summary>
+        /// <param name="url">The URL of the site to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<SiteResponseIApiResult> GetByUrlAsync(string? url, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<SiteResponseIApiResult> GetByUrlAsync(string url, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Updates an existing site entity in the system.
+        /// </summary>
+        /// <param name="body">The site update request data containing the new site details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteResponseIApiResult> UpdateAsync(SiteUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Updates an existing site entity in the system.
+        /// </summary>
+        /// <param name="body">The site update request data containing the new site details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteResponseIApiResult> UpdateAsync(SiteUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
@@ -5227,6 +5410,10 @@ namespace FluentCMS.Web.UI.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
+        /// <summary>
+        /// Creates a new site entity in the system.
+        /// </summary>
+        /// <param name="body">The site creation request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<SiteResponseIApiResult> CreateAsync(SiteCreateRequest? body)
@@ -5235,6 +5422,10 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new site entity in the system.
+        /// </summary>
+        /// <param name="body">The site creation request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<SiteResponseIApiResult> CreateAsync(SiteCreateRequest? body, System.Threading.CancellationToken cancellationToken)
@@ -5305,25 +5496,32 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Deletes a site entity from the system.
+        /// </summary>
+        /// <param name="id">The unique identifier of the site to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<IApiResult> DeleteAsync(System.Guid? id)
+        public virtual System.Threading.Tasks.Task<IApiResult> DeleteAsync(System.Guid id)
         {
             return DeleteAsync(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Deletes a site entity from the system.
+        /// </summary>
+        /// <param name="id">The unique identifier of the site to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<IApiResult> DeleteAsync(System.Guid? id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<IApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
+            if (id == null)
+                throw new System.ArgumentNullException("id");
+
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/Site/Delete?");
-            if (id != null)
-            {
-                urlBuilder_.Append(System.Uri.EscapeDataString("id") + "=").Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
-            }
-            urlBuilder_.Length--;
+            urlBuilder_.Append("api/Site/Delete/{id}");
+            urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -5384,6 +5582,9 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves all site entities.
+        /// </summary>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<SiteResponseIApiPagingResult> GetAllAsync()
@@ -5392,6 +5593,9 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves all site entities.
+        /// </summary>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<SiteResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
@@ -5458,6 +5662,10 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves a specific site entity by its identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the site to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<SiteResponseIApiResult> GetByIdAsync(System.Guid id)
@@ -5466,6 +5674,10 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific site entity by its identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the site to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<SiteResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
@@ -5536,25 +5748,32 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves a specific site entity by its URL.
+        /// </summary>
+        /// <param name="url">The URL of the site to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<SiteResponseIApiResult> GetByUrlAsync(string? url)
+        public virtual System.Threading.Tasks.Task<SiteResponseIApiResult> GetByUrlAsync(string url)
         {
             return GetByUrlAsync(url, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific site entity by its URL.
+        /// </summary>
+        /// <param name="url">The URL of the site to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<SiteResponseIApiResult> GetByUrlAsync(string? url, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<SiteResponseIApiResult> GetByUrlAsync(string url, System.Threading.CancellationToken cancellationToken)
         {
+            if (url == null)
+                throw new System.ArgumentNullException("url");
+
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/Site/GetByUrl?");
-            if (url != null)
-            {
-                urlBuilder_.Append(System.Uri.EscapeDataString("url") + "=").Append(System.Uri.EscapeDataString(ConvertToString(url, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
-            }
-            urlBuilder_.Length--;
+            urlBuilder_.Append("api/Site/GetByUrl/{url}");
+            urlBuilder_.Replace("{url}", System.Uri.EscapeDataString(ConvertToString(url, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -5615,6 +5834,10 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Updates an existing site entity in the system.
+        /// </summary>
+        /// <param name="body">The site update request data containing the new site details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<SiteResponseIApiResult> UpdateAsync(SiteUpdateRequest? body)
@@ -5623,6 +5846,10 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Updates an existing site entity in the system.
+        /// </summary>
+        /// <param name="body">The site update request data containing the new site details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<SiteResponseIApiResult> UpdateAsync(SiteUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
@@ -5640,7 +5867,7 @@ namespace FluentCMS.Web.UI.ApiClients
                     var content_ = new System.Net.Http.StringContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
+                    request_.Method = new System.Net.Http.HttpMethod("PUT");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -6828,29 +7055,51 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a request for creating a new page in the FluentCMS system.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageCreateRequest
     {
+        /// <summary>
+        /// Gets or sets the unique identifier of the site to which the page will belong.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid SiteId { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the unique identifier of the parent page, if any. Null if the page is a top-level page.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("parentId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid? ParentId { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the title of the page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("title")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Title { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the URL path of the page.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("path")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Path { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the order in which the page appears relative to its siblings.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("order")]
 
@@ -6859,39 +7108,69 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a response model for a page entity in the FluentCMS system.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageResponse
     {
+        /// <summary>
+        /// Gets or sets the unique identifier of the page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid Id { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the unique identifier of the parent page, if any.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("parentId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid? ParentId { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the unique identifier of the site to which the page belongs.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid SiteId { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the title of the page.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("title")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Title { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the collection of child pages under this page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("children")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<PageResponse>? Children { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the order in which the page appears relative to its siblings.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("order")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int Order { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the URL path of the page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("path")]
 
@@ -6902,6 +7181,10 @@ namespace FluentCMS.Web.UI.ApiClients
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public Layout Layout { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the collection of plugins associated with the page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("plugins")]
 
@@ -7084,45 +7367,51 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class PageSearchRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("siteId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Guid SiteId { get; set; } = default!;
-
-    }
-
+    /// <summary>
+    /// Represents a request for updating an existing page in the FluentCMS system.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageUpdateRequest
     {
+        /// <summary>
+        /// Gets or sets the unique identifier of the page to be updated.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid Id { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("siteId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Guid SiteId { get; set; } = default!;
+        /// <summary>
+        /// Gets or sets the unique identifier of the parent page, if any. Null if the page is a top-level page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("parentId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid? ParentId { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the title of the page.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("title")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Title { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the URL path of the page.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("path")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Path { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the order in which the page appears relative to its siblings.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("order")]
 
@@ -7789,9 +8078,15 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a response model for a plugin entity in the FluentCMS system.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginResponse
     {
+        /// <summary>
+        /// Gets or sets the unique identifier of the plugin.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
 
@@ -7803,10 +8098,18 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public PluginDefinition Definition { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the order in which the plugin appears relative to others in the same section.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("order")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int Order { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the section of the page where the plugin is located.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("section")]
 
@@ -8439,29 +8742,51 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a request to update an existing site in the FluentCMS system.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SiteUpdateRequest
     {
+        /// <summary>
+        /// Gets or sets the unique identifier of the site to be updated.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid Id { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the name of the site.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("name")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Name { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the description of the site.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Description { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the unique identifier of the role associated with the site.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("roleId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid RoleId { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the list of URLs associated with the site.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("urls")]
 

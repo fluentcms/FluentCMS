@@ -7,8 +7,15 @@ using System.Text.Json;
 
 namespace FluentCMS.Api;
 
+/// <summary>
+/// Extension methods for initializing and resetting the MongoDB database and loading default data for the FluentCMS application.
+/// </summary>
 public static class DefaultDataLoaderExtensions
 {
+    /// <summary>
+    /// Resets the MongoDB database, dropping all collections.
+    /// </summary>
+    /// <param name="provider">The service provider used to access MongoDB context.</param>
     public static void ResetMongoDb(this IServiceProvider provider)
     {
         var scope = provider.CreateScope();
@@ -21,6 +28,14 @@ public static class DefaultDataLoaderExtensions
         }
     }
 
+    /// <summary>
+    /// Loads initial data from JSON files located in the specified data folder.
+    /// </summary>
+    /// <param name="provider">The service provider used to access various services.</param>
+    /// <param name="dataFolder">The folder path containing the JSON seed data files.</param>
+    /// <remarks>
+    /// This method initializes the database with predefined data, including users, sites, and layouts.
+    /// </remarks>
     public static void LoadInitialDataFrom(this IServiceProvider provider, string dataFolder)
     {
         var scope = provider.CreateScope();
