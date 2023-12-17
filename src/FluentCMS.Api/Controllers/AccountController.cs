@@ -6,8 +6,18 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Api.Controllers;
 
+/// <summary>
+/// API controller for managing user accounts in the FluentCMS system.
+/// Provides actions for user registration, login, and password changes.
+/// </summary>
 public class AccountController(IMapper mapper, IUserService userService) : BaseController
 {
+    /// <summary>
+    /// Registers a new user in the system.
+    /// </summary>
+    /// <param name="request">The user registration request data.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>The details of the newly created user.</returns>
     [HttpPost]
     public async Task<IApiResult<UserDetailResponse>> Register(UserRegisterRequest request, CancellationToken cancellationToken = default)
     {
@@ -17,6 +27,12 @@ public class AccountController(IMapper mapper, IUserService userService) : BaseC
         return new ApiResult<UserDetailResponse>(result);
     }
 
+    /// <summary>
+    /// Authenticates a user and provides a token for accessing secured resources.
+    /// </summary>
+    /// <param name="request">The user login request data.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>The login response including the user token and role information.</returns>
     [HttpPost]
     public async Task<IApiResult<UserLoginResponse>> Login(UserLoginRequest request, CancellationToken cancellationToken = default)
     {
@@ -30,13 +46,12 @@ public class AccountController(IMapper mapper, IUserService userService) : BaseC
         });
     }
 
-    // TODO: Implement logout
-    //[HttpGet]
-    //public async Task<IApiResult<bool>> Logout(CancellationToken cancellationToken = default)
-    //{
-    //    return new ApiResult<bool>(true);
-    //}
-
+    /// <summary>
+    /// Changes the password for a user.
+    /// </summary>
+    /// <param name="request">The user password change request data.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>A boolean result indicating the success of the password change operation.</returns>
     [HttpPost]
     public async Task<IApiResult<bool>> ChangePassword(UserChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
