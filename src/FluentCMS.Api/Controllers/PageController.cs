@@ -14,11 +14,10 @@ public class PageController(
     IMapper mapper) : BaseController
 {
 
-    // GetBy Site and ParentId
-    [HttpPost]
-    public async Task<IApiPagingResult<PageResponse>> GetAll([FromBody] PageSearchRequest request, CancellationToken cancellationToken = default)
+    [HttpGet("{siteId}")]
+    public async Task<IApiPagingResult<PageResponse>> GetAll([FromRoute] Guid siteId, CancellationToken cancellationToken = default)
     {
-        var pages = await pageService.GetBySiteId(request.SiteId, cancellationToken);
+        var pages = await pageService.GetBySiteId(siteId, cancellationToken);
         return new ApiPagingResult<PageResponse>(mapper.Map<List<PageResponse>>(pages.ToList()));
     }
 
@@ -30,8 +29,8 @@ public class PageController(
         return new ApiResult<PageResponse>(pageResponse);
     }
 
-    [HttpGet]
-    public async Task<IApiResult<PageResponse>> GetByPath([FromQuery] Guid siteId, [FromQuery] string? path, CancellationToken cancellationToken = default)
+    [HttpGet("{siteId}/{path}")]
+    public async Task<IApiResult<PageResponse>> GetByPath([FromRoute] Guid siteId, [FromRoute] string path, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(path))
             path = "/";
