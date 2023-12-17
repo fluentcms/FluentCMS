@@ -1,22 +1,26 @@
-<Button id="dropdown-123-button" data-dropdown-toggle="@Id">
-    @Text
+@inherits Button
 
-  <svg class="f-button-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
-    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"/>
-  </svg>
+<Button OnClick="HandleClick" OnClick:prevent Color=@Color Size="@Size" Outline=@Outline Ghost=@Ghost Loading=@Loading
+    @attributes=AdditionalAttributes>
+    @ChildContent
+
+    <Icon Name="IconNameEnum.ChevronDown" />
 </Button>
 
-<DropdownMenu Id="@Id">
-    @ChildContent
-</DropdownMenu>
 
 @code {
+    [CascadingParameter]
+    public Dropdown Parent { get; set; }
+    
     [Parameter]
-    public string Text {get; set;}
-
-    [Parameter]
-    public RenderFragment ChildContent {get; set;}
+    public string Text { get; set; }
 
     [Parameter]
     public string Id { get; set; } = "dropdown-" + Guid.NewGuid().ToString();
+
+    public void HandleClick()
+    {
+        Parent.Toggle();
+    }
+
 }

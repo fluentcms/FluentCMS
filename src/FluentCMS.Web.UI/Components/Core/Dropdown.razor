@@ -1,0 +1,17 @@
+@inherits BaseComponent
+
+<CascadingValue Value=@this>
+    <div class=@this.GetClasses() @attributes=AdditionalAttributes>
+        @ChildContent
+    </div> 
+</CascadingValue>
+
+@code {
+    [Parameter]
+    public bool IsOpen {get; set;} = false;
+
+    public void Toggle() {
+        IsOpen = !IsOpen;
+        StateHasChanged();
+    }
+}

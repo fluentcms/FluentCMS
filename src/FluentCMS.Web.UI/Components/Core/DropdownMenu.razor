@@ -1,15 +1,30 @@
-<div id="@Id" class="f-dropdown hidden">
-    <ul class="f-dropdown-menu" aria-labelledby="@Id">
-        @ChildContent
-    </ul>
-</div>
+@inherits BaseComponent
 
+@if(Parent.IsOpen) {
+    <div class=@this.GetClasses()>
+        @DropdownMenuHeader
+        @if(ChildContent != null) {
+            <ul class=@this.ClassName("DropdownMenuBody")>
+                @ChildContent
+            </ul>
+        }
+        @DropdownMenuFooter
+    </div>
+}
 
 @code {
-  [Parameter]
-  public RenderFragment ChildContent {get; set;}
+    [CascadingParameter]
+    public Dropdown Parent {get; set;}
 
-  [Parameter]
-    public string Id { get; set; }
+    [Parameter]
+    [CssProperty]
+    public DropdownPlacementEnum Placement {get; set;} = DropdownPlacementEnum.Default;
 
+    [Parameter]
+    public RenderFragment DropdownMenuHeader {get; set;}
+    
+    [Parameter]
+    public RenderFragment DropdownMenuFooter {get; set;}
+    
 }
+

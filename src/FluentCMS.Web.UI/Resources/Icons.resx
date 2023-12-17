@@ -117,6 +117,11 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="ChevronDown" xml:space="preserve">
+    <value>&lt;svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6"&gt;
+    &lt;path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"/&gt;
+  &lt;/svg&gt;</value>
+  </data>
   <data name="Default" xml:space="preserve">
     <value />
   </data>
@@ -185,5 +190,14 @@
   </data>
   <data name="Spinner" xml:space="preserve">
     <value>Spinner</value>
+  </data>
+  <data name="String" xml:space="preserve">
+    <value />
+  </data>
+  <data name="String1" xml:space="preserve">
+    <value />
+  </data>
+  <data name="String2" xml:space="preserve">
+    <value />
   </data>
 </root>
