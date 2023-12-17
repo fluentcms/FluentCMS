@@ -25,7 +25,7 @@ public class LayoutService(ILayoutRepository layoutRepository) : ILayoutService
 
     public async Task<IEnumerable<Layout>> GetAll(Guid siteId, CancellationToken cancellationToken = default)
     {
-        return await layoutRepository.GetAll(siteId, cancellationToken);
+        return await layoutRepository.GetAllForSite(siteId, cancellationToken);
     }
 
     public async Task<Layout> Create(Layout layout, CancellationToken cancellationToken = default)

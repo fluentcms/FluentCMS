@@ -37,7 +37,7 @@ public partial class UserStore : IUserAuthenticationTokenStore<User>
 
     public Task<string?> GetTokenAsync(User user, string loginProvider, string name, CancellationToken cancellationToken)
     {
-        var userTokens = user.Tokens ?? new List<IdentityUserToken<Guid>>();
+        var userTokens = user.Tokens ?? [];
         var token = userTokens.FirstOrDefault(x => x.LoginProvider == loginProvider && x.Name == name);
         return Task.FromResult(token?.Value);
     }

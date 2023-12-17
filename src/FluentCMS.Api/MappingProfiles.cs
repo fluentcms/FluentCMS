@@ -9,7 +9,6 @@ public class MappingProfiles : Profile
     public MappingProfiles()
     {
         // Host
-        CreateMap<Host, HostResponse>();
         CreateMap<HostUpdateRequest, Host>();
 
         // Site
@@ -36,16 +35,8 @@ public class MappingProfiles : Profile
                 return items.ToList();
             }
         });
-        // User
-        //CreateMap<User, UserResponse>()
-        //    .ForMember(x => x.UserRoles, cfg => cfg.MapFrom(y => y.UserRoles.Select(z => z.RoleId.ToString())));
-        //CreateMap<CreateUserRequest, User>()
-        //    .ForMember(x => x.UserRoles, cfg => cfg.Ignore());
-        //CreateMap<EditUserRequest, User>()
-        //    .ForMember(x => x.UserRoles, cfg => cfg.Ignore());
 
-        // Role
-        CreateMap<Role, RoleDto>();
+        // Role mapping
         CreateMap<RoleCreateRequest, Role>();
         CreateMap<RoleUpdateRequest, Role>();
 

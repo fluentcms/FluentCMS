@@ -31,6 +31,12 @@ public static class SwaggerServiceExtensions
                 BearerFormat = "JWT"
             });
 
+            var xmlFilename = $"{typeof(FluentCMS.Api.Controllers.BaseController).Assembly.GetName().Name}.xml";
+            c.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
+
+            var xmlEntityFilename = $"{typeof(FluentCMS.Entities.AuditEntity).Assembly.GetName().Name}.xml";
+            c.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlEntityFilename));
+
         });
 
         return services;
