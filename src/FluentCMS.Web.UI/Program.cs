@@ -79,3 +79,9 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+// we need this for testing, Program.cs is Internal by default! this change will set its access modifier to public! so we can reference this in our e2e Test
+public partial class Program
+{
+    
+}
