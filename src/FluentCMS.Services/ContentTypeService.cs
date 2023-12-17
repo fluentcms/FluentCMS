@@ -23,9 +23,12 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
         contentType.Name = contentType.Name.ToLowerInvariant();
 
         // check type name to be unique
-        _ = await contentTypeRepository.GetByName(contentType.Name, cancellationToken) ??
+        if (await contentTypeRepository.GetByName(contentType.Name, cancellationToken) != null)
+        {
             throw new AppException(ExceptionCodes.ContentTypeNameMustBeUnique);
+        }
 
+        // create the content type
         return await contentTypeRepository.Create(contentType, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeUnableToCreate);
     }
