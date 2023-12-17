@@ -3,7 +3,7 @@ using System.Security.Claims;
 
 namespace FluentCMS.Repositories;
 
-public interface IUserRepository : IGenericRepository<User>, IQueryableRepository<User>
+public interface IUserRepository : IAuditEntityRepository<User>, IQueryableRepository<User>
 {
     Task<IList<User>> GetUsersForClaim(Claim claim, CancellationToken cancellationToken = default);
     Task<User?> FindByEmail(string normalizedEmail, CancellationToken cancellationToken = default);

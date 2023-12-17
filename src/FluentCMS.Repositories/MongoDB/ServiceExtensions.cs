@@ -1,5 +1,4 @@
-﻿using FluentCMS.Repositories;
-using FluentCMS.Repositories.MongoDB;
+﻿using FluentCMS.Repositories.MongoDB;
 using Microsoft.Extensions.Configuration;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
@@ -9,7 +8,28 @@ namespace Microsoft.Extensions.DependencyInjection;
 
 public static class MongoDbServiceExtensions
 {
+    /// <summary>
+    /// Registers MongoDB repositories and necessary configurations.
+    /// </summary>
+    /// <param name="services">The IServiceCollection to add services to.</param>
+    /// <param name="connectionString">The name of the connection string in the configuration.</param>
+    /// <returns>The IServiceCollection for chaining.</returns>
     public static IServiceCollection AddMongoDbRepositories(this IServiceCollection services, string connectionString)
+    {
+        // Configure BsonSerializers for accurate data representation in MongoDB
+        ConfigureBsonSerializers();
+
+        // Register MongoDB context and options
+        services.AddSingleton(provider => CreateMongoDBOptions(provider, connectionString));
+        services.AddSingleton<IMongoDBContext, MongoDBContext>();
+
+        // Register all repositories using reflection
+        RegisterRepositories(services);
+
+        return services;
+    }
+
+    private static void ConfigureBsonSerializers()
     {
         if (BsonSerializer.LookupSerializer<decimal>() == null)
             BsonSerializer.RegisterSerializer(typeof(decimal), new DecimalSerializer(BsonType.Decimal128));
@@ -20,37 +40,31 @@ public static class MongoDbServiceExtensions
         if (BsonSerializer.LookupSerializer<Guid>() == null)
             BsonSerializer.RegisterSerializer(typeof(Guid), new GuidSerializer(GuidRepresentation.Standard));
 
-        // TODO: if we remove this line, Id queries will not work
+        // Standard GUID representation is set for consistency across the application
         BsonDefaults.GuidRepresentation = GuidRepresentation.Standard;
+    }
 
-        services.AddSingleton(provider =>
+    private static MongoDBOptions<MongoDBContext> CreateMongoDBOptions(IServiceProvider provider, string connectionString)
+    {
+        var configuration = provider.GetService<IConfiguration>() ?? throw new InvalidOperationException("IConfiguration is not registered.");
+        var connString = configuration.GetConnectionString(connectionString);
+        return connString is not null
+            ? new MongoDBOptions<MongoDBContext>(connString)
+            : throw new InvalidOperationException($"Connection string '{connectionString}' not found.");
+    }
+
+    private static void RegisterRepositories(IServiceCollection services)
+    {
+        var repositoryTypes = typeof(MongoDbServiceExtensions).Assembly.GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract && t.Name.EndsWith("Repository"))
+            .ToList();
+
+        foreach (var repositoryType in repositoryTypes)
         {
-            var configuration = provider.GetService<IConfiguration>() ?? throw new InvalidOperationException("IConfiguration is not registered.");
+            var interfaceType = repositoryType.GetInterfaces().FirstOrDefault(i => i.Name.EndsWith(repositoryType.Name))
+                ?? throw new InvalidOperationException($"Interface for repository '{repositoryType.Name}' not found.");
 
-            var connString = configuration.GetConnectionString(connectionString);
-
-            return connString is null
-                ? throw new InvalidOperationException($"Connection string '{connectionString}' not found.")
-                : new MongoDBOptions<MongoDBContext>(connString);
-        });
-
-        services.AddSingleton<IMongoDBContext, MongoDBContext>();
-
-        services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
-
-        services.AddScoped<ISiteRepository, SiteRepository>();
-        services.AddScoped<IPageRepository, PageRepository>();
-        services.AddScoped<IHostRepository, HostRepository>();
-        services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IRoleRepository, RoleRepository>();
-        services.AddScoped<IPermissionRepository, PermissionRepository>();
-        services.AddScoped<IPluginDefinitionRepository, PluginDefinitionRepository>();
-        services.AddScoped<IPluginRepository, PluginRepository>();
-        services.AddScoped<ILayoutRepository, LayoutRepository>();
-        services.AddScoped<IContentTypeRepository, ContentTypeRepository>();
-        services.AddScoped(typeof(IContentRepository<>), typeof(ContentRepository<>));
-        services.AddScoped<IPluginContentRepository, PluginContentRepository>();
-
-        return services;
+            services.AddScoped(interfaceType, repositoryType);
+        }
     }
 }

@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Repositories;
 
-public interface IContentTypeRepository : IGenericRepository<ContentType>
+public interface IContentTypeRepository : IAuditEntityRepository<ContentType>
 {
     Task<ContentType?> GetByName(string name, CancellationToken cancellationToken = default);
     Task<ContentType?> AddField(Guid contentTypeId, ContentTypeField field, CancellationToken cancellationToken = default);

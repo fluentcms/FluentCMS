@@ -1,4 +1,4 @@
-﻿using FluentCMS.Api.Models;
+﻿using FluentCMS.Web.UI.ApiClients;
 using Microsoft.AspNetCore.Components;
 
 namespace FluentCMS.Web.UI.Components.Application;

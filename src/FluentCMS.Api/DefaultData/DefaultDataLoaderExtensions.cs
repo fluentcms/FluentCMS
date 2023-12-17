@@ -40,15 +40,12 @@ public static class DefaultDataLoaderExtensions
 
             var superUser = new User
             {
-                UserName = defaultData.SuperAdmin.UserName,
+                UserName = defaultData.SuperAdmin.Username,
                 Email = defaultData.SuperAdmin.Email
             };
 
-            appContext.Current = new CurrentContext
-            {
-                UserName = superUser.UserName,
-                IsSuperAdmin = true
-            };
+            // TODO: This is a hack to get the super admin user into the context.
+            ((ApiApplicationContext)appContext).SetSuperAdmin(superUser.UserName);
 
             // Default users creation
             userService.Create(superUser, defaultData.SuperAdmin.Password).GetAwaiter().GetResult();
@@ -71,7 +68,6 @@ public static class DefaultDataLoaderExtensions
             // Plugin definition creation
             foreach (var pluginDefinition in defaultData.PluginDefinitions)
             {
-                pluginDefinition.SiteId = site.Id;
                 pluginDefinitionService.Create(pluginDefinition).GetAwaiter().GetResult();
             }
 

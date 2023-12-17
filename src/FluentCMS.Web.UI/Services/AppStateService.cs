@@ -18,9 +18,9 @@ public class AppStateService
                 Uri = new Uri(navigator.Uri)
             };
 
-            var taskSite = Task.Run(() => siteClient.GetByUrl(appState.Host));
+            var taskSite = Task.Run(() => siteClient.GetByUrlAsync(appState.Host));
             taskSite.Wait();
-            appState.Site = taskSite.Result;
+            appState.Site = taskSite.Result.Data;
 
             //appState.Site = siteClient.GetByUrl(appState.Host).Result;
             appState.Layout = appState.Site.Layout;
@@ -31,9 +31,9 @@ public class AppStateService
                 query["siteId"] = appState.Site.Id.ToString();
                 query["path"] = appState.Uri.LocalPath;
 
-                var taskPage = Task.Run(() => pageClient.GetByPath(appState.Site.Id, appState.Uri.LocalPath));
+                var taskPage = Task.Run(() => pageClient.GetByPathAsync(appState.Site.Id, appState.Uri.LocalPath));
                 taskPage.Wait();
-                appState.Page = taskPage.Result;
+                appState.Page = taskPage.Result.Data;
 
                 //appState.Page = pageClient.GetByPath(appState.Site.Id, appState.Uri.LocalPath).Result;
             }

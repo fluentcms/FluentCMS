@@ -150,7 +150,7 @@ public class PageService(
             throw new AppException(ExceptionCodes.SiteNotFound);
 
         // fetch pages from db
-        var pages = await pageRepository.GetBySiteId(siteId, cancellationToken);
+        var pages = await pageRepository.GetAllForSite(siteId, cancellationToken);
 
         // if current user is page viewer or page admin or site admin
         return pages.Where(page => HasViewPermission(site, page));

@@ -1,9 +1,12 @@
-$prefix-checkbox: $prefix + 'checkbox';
+$prefix-checkbox: $prefix + "checkbox";
 
 .#{$prefix-checkbox} {
     @apply w-4 h-4 border-gray-300 rounded bg-gray-50;
     border-radius: 4px !important;
 
+    &:disabled {
+        @apply opacity-50;
+    }
     &:focus {
         @apply ring-4 ring-blue-300;
     }

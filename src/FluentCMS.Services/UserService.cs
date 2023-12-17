@@ -8,11 +8,11 @@ namespace FluentCMS.Services;
 
 public interface IUserService
 {
+    Task<User> Login(string username, string password, CancellationToken cancellationToken = default);
     Task<IEnumerable<User>> GetAll(CancellationToken cancellationToken = default);
     Task<User> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<User> Update(User user, CancellationToken cancellationToken = default);
     Task<User> Create(User user, string password, CancellationToken cancellationToken = default);
-    Task<User> Authenticate(string username, string password, CancellationToken cancellationToken = default);
     Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default);
     Task ChangePassword(User user, string newPassword, CancellationToken cancellationToken = default);
     Task<User> ChangePassword(Guid id, string oldPassword, string newPassword, CancellationToken cancellationToken = default);
@@ -61,7 +61,7 @@ public class UserService(
         return userToken;
     }
 
-    public async Task<User> Authenticate(string username, string password, CancellationToken cancellationToken = default)
+    public async Task<User> Login(string username, string password, CancellationToken cancellationToken = default)
     {
         var user = await userManager.FindByNameAsync(username);
 
@@ -71,7 +71,7 @@ public class UserService(
 
         // Update user properties related to login
         user.LastLoginAt = DateTime.Now;
-        user.LoginsCount++;
+        user.LoginCount++;
         await userManager.UpdateAsync(user);
 
         return user;
@@ -130,7 +130,7 @@ public class UserService(
 
         // Update user properties related to password changing
         user.LastPasswordChangedAt = DateTime.Now;
-        user.LastPasswordChangedBy = applicationContext.Current.UserName;
+        user.LastPasswordChangedBy = applicationContext.Username;
         await userManager.UpdateAsync(user);
 
         return user;

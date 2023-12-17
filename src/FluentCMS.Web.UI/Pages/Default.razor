@@ -1,0 +1,11 @@
+﻿@page "/{*Route:nonfile}"
+@inherits BaseAppComponent
+
+<PageTitle>@AppState.Page?.Title</PageTitle>
+<HeadContent>
+    @if (AppState.Layout != null)
+    {
+        @((MarkupString)AppState.Layout.Head)
+    }
+</HeadContent>
+@dynamicComponent()

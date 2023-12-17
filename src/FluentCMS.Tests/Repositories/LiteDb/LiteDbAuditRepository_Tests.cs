@@ -1,4 +1,3 @@
-using FluentCMS.Repositories.LiteDb;
 using FluentCMS.Tests.DummyEntities;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
