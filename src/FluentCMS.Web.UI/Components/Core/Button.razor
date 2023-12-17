@@ -2,19 +2,25 @@
 @if (!string.IsNullOrEmpty(Href))
 {
     <a class=@this.GetClasses() disabled=@Disabled href=@Href @attributes="AdditionalAttributes">
-        @if (Loading) {
-            <Icon Class=@this.ClassName("ButtonLoading") Name="IconNameEnum.Spinner"/>
+        <span>
+            @ChildContent
+        </span>
+        @if (Loading)
+        {
+            <Spinner Color=@this.Color />
         }
-        @ChildContent
     </a>
 }
 else
 {
     <button class=@this.GetClasses() disabled=@Disabled type="@Type.ToString()" @onclick=OnClick @attributes="AdditionalAttributes">
-        @if (Loading) {
-            <Icon Class=@this.ClassName("ButtonLoading") Name="IconNameEnum.Spinner"/>
+        <span>
+            @ChildContent
+        </span>
+        @if (Loading)
+        {
+            <Spinner Color=@this.Color />
         }
-        @ChildContent
     </button>
 }
 
