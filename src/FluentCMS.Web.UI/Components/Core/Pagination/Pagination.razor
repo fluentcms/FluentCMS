@@ -12,10 +12,10 @@
                 <text>Previous</text>
             }
         </PaginationItem>
-        @foreach (var page in this.Pages())
+        @foreach (var Page in this.Pages())
         {
-            <PaginationItem Disabled="page == Current" @key=page OnClick="() => GoTo(page)">
-                @(page == 0 ? "..." : page)
+            <PaginationItem @key=Page Active="Page == Current" OnClick="() => GoTo(Page)">
+                @(Page == 0 ? "..." : Page)
             </PaginationItem>
         }
         <PaginationItem Disabled=!this.CanNext() OnClick=@Next>
@@ -36,7 +36,7 @@
     public int Current { get; set; } = 0;
 
     [Parameter]
-    public bool ShowIcons { get; set; } = false;
+    public bool ShowIcons { get; set; } = true;
 
     [Parameter]
     public int Total { get; set; } = 0;
