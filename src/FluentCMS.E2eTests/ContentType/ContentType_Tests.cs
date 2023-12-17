@@ -42,7 +42,7 @@ public class ContentType_Tests : BaseE2eTest
     }
 
     // DELETE
-    // /api/ContentType/De1ete/{id}
+    // /api/ContentType/Delete/{id}
     [Fact]
     public async Task Should_Delete()
     {
@@ -64,7 +64,7 @@ public class ContentType_Tests : BaseE2eTest
     }
 
     // PUT
-    // /api/ContentType/De1eteFie1d/{id}/{name}
+    // /api/ContentType/DeleteFie1d/{id}/{name}
     [Fact]
     public async Task Should_DeleteField()
     {
