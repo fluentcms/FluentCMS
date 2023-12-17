@@ -57,6 +57,13 @@ public class PluginContentController(IPluginContentService pluginContentService)
         return new ApiResult<PluginContent>(updatedContent);
     }
 
+    /// <summary>
+    /// Deletes a plugin content entity from the system.
+    /// </summary>
+    /// <param name="contentType">The type of content associated with the plugin to be deleted.</param>
+    /// <param name="id">The unique identifier of the plugin content to delete.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>A result indicating the success of the deletion operation.</returns>
     [HttpDelete("{id}")]
     public async Task<ApiResult<bool>> Delete([FromRoute] string contentType, [FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
@@ -64,6 +71,13 @@ public class PluginContentController(IPluginContentService pluginContentService)
         return new ApiResult<bool>(true);
     }
 
+    /// <summary>
+    /// Retrieves plugin content entities associated with a specific plugin ID.
+    /// </summary>
+    /// <param name="contentType">The type of content associated with the plugin.</param>
+    /// <param name="pluginId">The unique identifier of the plugin for which content is to be retrieved.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>A paginated result containing plugin content associated with the specified plugin ID.</returns>
     [HttpGet("{pluginId}")]
     public async Task<IApiPagingResult<PluginContent>> GetByPluginId([FromRoute] string contentType, [FromQuery] Guid pluginId, CancellationToken cancellationToken = default)
     {
@@ -71,6 +85,13 @@ public class PluginContentController(IPluginContentService pluginContentService)
         return new ApiPagingResult<PluginContent>(contents);
     }
 
+    /// <summary>
+    /// Retrieves all plugin content entities of a specified type associated with a given site.
+    /// </summary>
+    /// <param name="contentType">The type of content associated with the plugin.</param>
+    /// <param name="siteId">The unique identifier of the site for which content is to be retrieved.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>A paginated result containing all plugin content entities of the specified type for the given site.</returns>
     [HttpGet("{siteId}")]
     public async Task<IApiPagingResult<Content>> GetAll([FromRoute] string contentType, [FromRoute] Guid siteId, CancellationToken cancellationToken = default)
     {
@@ -78,6 +99,13 @@ public class PluginContentController(IPluginContentService pluginContentService)
         return new ApiPagingResult<Content>(contents);
     }
 
+    /// <summary>
+    /// Retrieves a specific plugin content entity by its identifier.
+    /// </summary>
+    /// <param name="contentType">The type of content associated with the plugin.</param>
+    /// <param name="id">The unique identifier of the content to retrieve.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>The requested plugin content entity.</returns>
     [HttpGet("{id}")]
     public async Task<IApiResult<Content>> GetById([FromRoute] string contentType, [FromRoute] Guid id, CancellationToken cancellationToken = default)
     {

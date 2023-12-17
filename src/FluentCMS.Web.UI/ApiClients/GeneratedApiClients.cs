@@ -3678,59 +3678,119 @@ namespace FluentCMS.Web.UI.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IPluginContentClient : IApiClient
     {
+        /// <summary>
+        /// Creates a new plugin content entity in the system.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="body">The plugin content creation request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PluginContentIApiResult> CreateAsync(string contentType, PluginContent? body);
+        System.Threading.Tasks.Task<PluginContentIApiResult> CreateAsync(string contentType, PluginContentCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new plugin content entity in the system.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="body">The plugin content creation request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PluginContentIApiResult> CreateAsync(string contentType, PluginContent? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PluginContentIApiResult> CreateAsync(string contentType, PluginContentCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Deletes a plugin content entity from the system.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin to be deleted.</param>
+        /// <param name="id">The unique identifier of the plugin content to delete.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanApiResult> DeleteAsync(string contentType, System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Deletes a plugin content entity from the system.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin to be deleted.</param>
+        /// <param name="id">The unique identifier of the plugin content to delete.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanApiResult> DeleteAsync(string contentType, System.Guid id, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves all plugin content entities of a specified type associated with a given site.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="siteId">The unique identifier of the site for which content is to be retrieved.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentIApiPagingResult> GetAllAsync(string contentType, System.Guid siteId);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves all plugin content entities of a specified type associated with a given site.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="siteId">The unique identifier of the site for which content is to be retrieved.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentIApiPagingResult> GetAllAsync(string contentType, System.Guid siteId, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves a specific plugin content entity by its identifier.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="id">The unique identifier of the content to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentIApiResult> GetByIdAsync(string contentType, System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific plugin content entity by its identifier.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="id">The unique identifier of the content to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentIApiResult> GetByIdAsync(string contentType, System.Guid id, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves plugin content entities associated with a specific plugin ID.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="pluginIdQuery">The unique identifier of the plugin for which content is to be retrieved.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PluginContentIApiPagingResult> GetByPluginIdAsync(string contentType, System.Guid? pluginIdQuery, string pluginIdPath);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves plugin content entities associated with a specific plugin ID.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="pluginIdQuery">The unique identifier of the plugin for which content is to be retrieved.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PluginContentIApiPagingResult> GetByPluginIdAsync(string contentType, System.Guid? pluginIdQuery, string pluginIdPath, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Updates an existing plugin content entity in the system.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="body">The plugin content update request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PluginContentIApiResult> UpdateAsync(string contentType, PluginContent? body);
+        System.Threading.Tasks.Task<PluginContentIApiResult> UpdateAsync(string contentType, PluginContentUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Updates an existing plugin content entity in the system.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="body">The plugin content update request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PluginContentIApiResult> UpdateAsync(string contentType, PluginContent? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PluginContentIApiResult> UpdateAsync(string contentType, PluginContentUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
 
     }
 
@@ -3761,17 +3821,27 @@ namespace FluentCMS.Web.UI.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
+        /// <summary>
+        /// Creates a new plugin content entity in the system.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="body">The plugin content creation request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<PluginContentIApiResult> CreateAsync(string contentType, PluginContent? body)
+        public virtual System.Threading.Tasks.Task<PluginContentIApiResult> CreateAsync(string contentType, PluginContentCreateRequest? body)
         {
             return CreateAsync(contentType, body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new plugin content entity in the system.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="body">The plugin content creation request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PluginContentIApiResult> CreateAsync(string contentType, PluginContent? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PluginContentIApiResult> CreateAsync(string contentType, PluginContentCreateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
             if (contentType == null)
                 throw new System.ArgumentNullException("contentType");
@@ -3843,6 +3913,11 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Deletes a plugin content entity from the system.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin to be deleted.</param>
+        /// <param name="id">The unique identifier of the plugin content to delete.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanApiResult> DeleteAsync(string contentType, System.Guid id)
@@ -3851,6 +3926,11 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Deletes a plugin content entity from the system.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin to be deleted.</param>
+        /// <param name="id">The unique identifier of the plugin content to delete.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<BooleanApiResult> DeleteAsync(string contentType, System.Guid id, System.Threading.CancellationToken cancellationToken)
@@ -3925,6 +4005,11 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves all plugin content entities of a specified type associated with a given site.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="siteId">The unique identifier of the site for which content is to be retrieved.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentIApiPagingResult> GetAllAsync(string contentType, System.Guid siteId)
@@ -3933,6 +4018,11 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves all plugin content entities of a specified type associated with a given site.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="siteId">The unique identifier of the site for which content is to be retrieved.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentIApiPagingResult> GetAllAsync(string contentType, System.Guid siteId, System.Threading.CancellationToken cancellationToken)
@@ -4007,6 +4097,11 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves a specific plugin content entity by its identifier.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="id">The unique identifier of the content to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentIApiResult> GetByIdAsync(string contentType, System.Guid id)
@@ -4015,6 +4110,11 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific plugin content entity by its identifier.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="id">The unique identifier of the content to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentIApiResult> GetByIdAsync(string contentType, System.Guid id, System.Threading.CancellationToken cancellationToken)
@@ -4089,6 +4189,11 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves plugin content entities associated with a specific plugin ID.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="pluginIdQuery">The unique identifier of the plugin for which content is to be retrieved.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PluginContentIApiPagingResult> GetByPluginIdAsync(string contentType, System.Guid? pluginIdQuery, string pluginIdPath)
@@ -4097,6 +4202,11 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves plugin content entities associated with a specific plugin ID.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="pluginIdQuery">The unique identifier of the plugin for which content is to be retrieved.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PluginContentIApiPagingResult> GetByPluginIdAsync(string contentType, System.Guid? pluginIdQuery, string pluginIdPath, System.Threading.CancellationToken cancellationToken)
@@ -4176,17 +4286,27 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Updates an existing plugin content entity in the system.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="body">The plugin content update request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<PluginContentIApiResult> UpdateAsync(string contentType, PluginContent? body)
+        public virtual System.Threading.Tasks.Task<PluginContentIApiResult> UpdateAsync(string contentType, PluginContentUpdateRequest? body)
         {
             return UpdateAsync(contentType, body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Updates an existing plugin content entity in the system.
+        /// </summary>
+        /// <param name="contentType">The type of content associated with the plugin.</param>
+        /// <param name="body">The plugin content update request data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PluginContentIApiResult> UpdateAsync(string contentType, PluginContent? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PluginContentIApiResult> UpdateAsync(string contentType, PluginContentUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
             if (contentType == null)
                 throw new System.ArgumentNullException("contentType");
@@ -5858,14 +5978,26 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a request for creating a new content entity in the FluentCMS system.
+    /// <br/>This class serves as a base for content creation requests, providing essential properties required for this operation.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentCreateRequest
     {
+        /// <summary>
+        /// Gets or sets the unique identifier of the site associated with the new content.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid SiteId { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the values associated with the content. 
+        /// <br/>This dictionary holds key-value pairs representing various attributes of the content.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("value")]
 
@@ -6375,19 +6507,35 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a request for updating an existing content entity in the FluentCMS system.
+    /// <br/>This class extends FluentCMS.Api.Models.ContentCreateRequest with an additional property for the content's unique identifier.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentUpdateRequest
     {
+        /// <summary>
+        /// Gets or sets the unique identifier of the site associated with the new content.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid SiteId { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the values associated with the content. 
+        /// <br/>This dictionary holds key-value pairs representing various attributes of the content.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("value")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.IDictionary<string, object?>? Value { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the unique identifier of the content entity to be updated.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
 
@@ -7131,6 +7279,43 @@ namespace FluentCMS.Web.UI.ApiClients
     }
 
     /// <summary>
+    /// Represents a request for creating a new plugin content entity in the FluentCMS system.
+    /// <br/>This class extends FluentCMS.Api.Models.ContentCreateRequest with additional plugin-specific information.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PluginContentCreateRequest
+    {
+        /// <summary>
+        /// Gets or sets the unique identifier of the site associated with the new content.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("siteId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Guid SiteId { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the values associated with the content. 
+        /// <br/>This dictionary holds key-value pairs representing various attributes of the content.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.IDictionary<string, object?>? Value { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the unique identifier of the plugin associated with the new content.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("pluginId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Guid PluginId { get; set; } = default!;
+
+    }
+
+    /// <summary>
     /// Represents a paginated API response with a collection of data.
     /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -7301,6 +7486,52 @@ namespace FluentCMS.Web.UI.ApiClients
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public PluginContent Data { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Represents a request for updating a plugin content entity in the FluentCMS system.
+    /// <br/>This class extends FluentCMS.Api.Models.ContentUpdateRequest with additional plugin-specific information.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PluginContentUpdateRequest
+    {
+        /// <summary>
+        /// Gets or sets the unique identifier of the site associated with the new content.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("siteId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Guid SiteId { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the values associated with the content. 
+        /// <br/>This dictionary holds key-value pairs representing various attributes of the content.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.IDictionary<string, object?>? Value { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the unique identifier of the content entity to be updated.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Guid Id { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the unique identifier of the plugin associated with the content.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("pluginId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Guid PluginId { get; set; } = default!;
 
     }
 
