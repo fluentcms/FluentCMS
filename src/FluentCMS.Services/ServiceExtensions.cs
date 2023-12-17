@@ -23,6 +23,8 @@ public static class ServiceExtensions
         services.AddScoped(typeof(IContentService<>), typeof(ContentService<>));
         services.AddScoped<IPluginContentService, PluginContentService>();
 
+        services.AddScoped<IContentTypeService, ContentTypeService>();
+
         services.AddIdentity();
 
         return services;
