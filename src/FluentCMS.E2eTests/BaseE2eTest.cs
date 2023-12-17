@@ -14,16 +14,18 @@ public abstract class BaseE2eTest<TInterface, TImplementation>
     public HttpClient HttpClient => WebUi.CreateClient();
     public required TInterface Client { get; init; }
 
+
     public BaseE2eTest()
     {
         // build Our WebUi
-        WebUi = new WebApplicationFactory<Program>();
+        WebUi = new WebApplicationFactory();
 
         // setup Client
-        Client = (TInterface)Activator.CreateInstance(typeof(TImplementation), [HttpClient])!;
+        //Client = (TInterface)Activator.CreateInstance(typeof(TImplementation), [HttpClient])!;
 
         using var scope = WebUi.Services.CreateScope();
 
+        Client = scope.ServiceProvider.GetRequiredService<TImplementation>();
         // reset DB
         scope.ServiceProvider.ResetMongoDb();
     }
