@@ -27,10 +27,10 @@ public class ContentController(IContentService<Content> contentService)
     }
 
     [HttpDelete]
-    public async Task<BooleanResponse> Delete([FromRoute] string contentType, IdRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<bool>> Delete([FromRoute] string contentType, [FromQuery] Guid siteId, [FromQuery] Guid id, CancellationToken cancellationToken = default)
     {
-        await contentService.Delete(request.SiteId, contentType, request.Id, cancellationToken);
-        return new BooleanResponse(true);
+        await contentService.Delete(siteId, contentType, id, cancellationToken);
+        return new ApiResult<bool>(true);
     }
 
     [HttpGet]
