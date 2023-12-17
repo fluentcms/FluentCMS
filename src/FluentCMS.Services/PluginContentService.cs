@@ -5,7 +5,7 @@ namespace FluentCMS.Services;
 
 public interface IPluginContentService : IContentService<PluginContent>
 {
-    Task<IEnumerable<PluginContent>> GetByPluginId(Guid siteId, string contentType, Guid pluginId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<PluginContent>> GetByPluginId(string contentType, Guid pluginId, CancellationToken cancellationToken = default);
 }
 
 public class PluginContentService(
@@ -14,9 +14,9 @@ public class PluginContentService(
     IPluginContentService
 {
 
-    public async Task<IEnumerable<PluginContent>> GetByPluginId(Guid siteId, string contentType, Guid pluginId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<PluginContent>> GetByPluginId(string contentType, Guid pluginId, CancellationToken cancellationToken = default)
     {
-        return await contentRepository.GetByPluginId(siteId, contentType, pluginId, cancellationToken);
+        return await contentRepository.GetByPluginId(contentType, pluginId, cancellationToken);
     }
 
     public override Task<PluginContent> Create(PluginContent content, CancellationToken cancellationToken = default)

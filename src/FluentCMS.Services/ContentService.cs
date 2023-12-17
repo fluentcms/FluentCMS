@@ -6,9 +6,9 @@ namespace FluentCMS.Services;
 public interface IContentService<TContent> where TContent : Content
 {
     Task<TContent> Create(TContent content, CancellationToken cancellationToken = default);
-    Task Delete(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default);
-    Task<IEnumerable<TContent>> GetAll(Guid siteId, string contentType, CancellationToken cancellationToken = default);
-    Task<TContent> GetById(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default);
+    Task Delete(string contentType, Guid id, CancellationToken cancellationToken = default);
+    Task<IEnumerable<TContent>> GetAll(string contentType, Guid siteId, CancellationToken cancellationToken = default);
+    Task<TContent> GetById(string contentType, Guid id, CancellationToken cancellationToken = default);
     Task<TContent> Update(TContent content, CancellationToken cancellationToken = default);
 }
 
@@ -25,20 +25,20 @@ public class ContentService<TContent>(
         return newContent;
     }
 
-    public virtual async Task Delete(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default)
+    public virtual async Task Delete(string contentType, Guid id, CancellationToken cancellationToken = default)
     {
-        _ = await contentRepository.Delete(siteId, contentType, id, cancellationToken) ??
+        _ = await contentRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentUnableToDelete);
     }
 
-    public virtual async Task<IEnumerable<TContent>> GetAll(Guid siteId, string contentType, CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TContent>> GetAll(string contentType, Guid siteId, CancellationToken cancellationToken = default)
     {
-        return await contentRepository.GetAll(siteId, contentType, cancellationToken);
+        return await contentRepository.GetAllForSite(contentType, siteId, cancellationToken);
     }
 
-    public virtual async Task<TContent> GetById(Guid siteId, string contentType, Guid id, CancellationToken cancellationToken = default)
+    public virtual async Task<TContent> GetById(string contentType, Guid id, CancellationToken cancellationToken = default)
     {
-        return await contentRepository.GetById(siteId, contentType, id, cancellationToken) ??
+        return await contentRepository.GetById(id, cancellationToken) ??
              throw new AppException(ExceptionCodes.ContentNotFound);
     }
 
