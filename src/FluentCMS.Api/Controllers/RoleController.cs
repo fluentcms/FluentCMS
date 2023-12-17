@@ -28,13 +28,12 @@ public class RoleController(IMapper mapper, IRoleService roleService) : BaseCont
     /// Retrieves a specific role by its identifier for a given site.
     /// </summary>
     /// <param name="id">The unique identifier of the role.</param>
-    /// <param name="siteId">The unique identifier of the site.</param>
     /// <param name="cancellationToken">A token for canceling the request.</param>
     /// <returns>The role details if found, or null.</returns>
-    [HttpGet("{siteId}/{id}")]
-    public async Task<IApiResult<Role>> GetById([FromRoute] Guid id, [FromRoute] Guid siteId, CancellationToken cancellationToken = default)
+    [HttpGet("{id}")]
+    public async Task<IApiResult<Role>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        var role = await roleService.GetById(id, siteId, cancellationToken);
+        var role = await roleService.GetById(id, cancellationToken);
         return new ApiResult<Role>(role);
     }
 
@@ -70,13 +69,12 @@ public class RoleController(IMapper mapper, IRoleService roleService) : BaseCont
     /// Deletes a specific role from a site.
     /// </summary>
     /// <param name="id">The unique identifier of the role to be deleted.</param>
-    /// <param name="siteId">The unique identifier of the site from which the role is to be deleted.</param>
     /// <param name="cancellationToken">A token for canceling the request.</param>
     /// <returns>A boolean value indicating whether the deletion was successful.</returns>
-    [HttpDelete("{siteId}/{id}")]
-    public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, [FromRoute] Guid siteId, CancellationToken cancellationToken = default)
+    [HttpDelete("{id}")]
+    public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        await roleService.Delete(id, siteId, cancellationToken);
+        await roleService.Delete(id, cancellationToken);
         return new ApiResult<bool>(true);
     }
 }
