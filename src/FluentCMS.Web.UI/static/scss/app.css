@@ -619,6 +619,9 @@ body.f-theme-dark {
   @apply w-4 h-4 border-gray-300 rounded bg-gray-50;
   border-radius: 4px !important;
 }
+.f-checkbox:disabled {
+  @apply opacity-50;
+}
 .f-checkbox:focus {
   @apply ring-4 ring-blue-300;
 }
@@ -712,6 +715,12 @@ body.f-theme-dark {
 .f-input {
   @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5;
 }
+.f-input-has-icon-true {
+  @apply ps-10;
+}
+.f-input-icon-wrapper {
+  @apply absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none;
+}
 .f-input:focus {
   @apply ring-blue-500 border-blue-500;
 }
@@ -720,6 +729,9 @@ body.f-theme-dark {
 }
 .f-theme-dark .f-input:focus {
   @apply ring-blue-500 border-blue-500;
+}
+.f-input-group {
+  @apply relative mb-6;
 }
 
 .f-icon {
@@ -854,6 +866,26 @@ body.f-theme-dark {
 }
 .f-sidebar-item-text {
   @apply flex-1 ml-3 whitespace-nowrap;
+}
+
+.f-pagination ul {
+  @apply h-10 text-base inline-flex -space-x-px;
+}
+.f-pagination ul li:not(:first-child):not(:last-child) button {
+  @apply rounded-none;
+}
+.f-pagination ul li:first-child button {
+  @apply ms-0 border-e-0 rounded-e-none;
+}
+.f-pagination ul li:last-child button {
+  @apply me-0 rounded-s-none;
+}
+
+.f-pagination-item button {
+  @apply relative px-4 h-10 flex items-center justify-center leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white;
+}
+.f-pagination-item-active-true button {
+  @apply text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-700 dark:text-white;
 }
 
 /* #endregion COMPONENTS */
