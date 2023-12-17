@@ -9,15 +9,4 @@
 @code {
     public HelloWorldContent Model { get; set; } = new();
 
-    protected override async Task OnInitializedAsync()
-    {
-        var response = await contentClient.GetAllAsync("HelloWorld", AppState.Site.Id);
-        var content = response?.Data?.FirstOrDefault() ??
-             new Dictionary<string, object>
-                            {
-                { "PluginId" , Plugin.Id },
-                { "SiteId" , AppState.Site.Id }
-                            };
-        Model = new HelloWorldContent();
-    }
 }
