@@ -1,7 +1,7 @@
 $prefix-button: $prefix + "button";
 
 .#{$prefix-button} {
-    @apply font-medium rounded-lg text-sm px-5 py-2.5 gap-2 text-center inline-flex items-center;
+    @apply font-medium rounded-lg text-sm px-5 py-2.5 gap-2 text-center inline-flex items-center relative;
 
     &-size-lg {
         @apply py-3;
@@ -11,11 +11,16 @@ $prefix-button: $prefix + "button";
         @apply w-2.5 h-2.5 ml-2.5;
     }
 
-    &-loading {
-        @apply inline w-4 h-4 me-3 text-white animate-spin;
-    }
     &:focus {
         @apply z-10 outline-none;
+    }
+
+    .#{$prefix}spinner {
+        @apply absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 opacity-100;
+    }
+
+    &-loading-true > * {
+        @apply opacity-0;
     }
 }
 
@@ -37,6 +42,7 @@ $prefix-button: $prefix + "button";
         .#{$prefix-theme-dark} &:hover {
             @apply bg-#{$value}-700;
         }
+
         .#{$prefix-theme-dark} &:focus {
             @apply ring-#{$value}-800;
         }
@@ -66,6 +72,7 @@ $prefix-button: $prefix + "button";
         .#{$prefix-theme-dark} &:hover {
             @apply text-white bg-#{$value}-500;
         }
+
         .#{$prefix-theme-dark} &:focus {
             @apply ring-#{$value}-800;
         }
@@ -109,6 +116,7 @@ $prefix-button: $prefix + "button";
     .#{$prefix-theme-dark} &:hover {
         @apply text-white bg-gray-700;
     }
+
     .#{$prefix-theme-dark} &:focus {
         @apply ring-gray-700;
     }
