@@ -153,12 +153,22 @@
     &lt;/path&gt;
     &lt;/svg&gt;</value>
   </data>
+  <data name="Next" xml:space="preserve">
+    <value>&lt;svg width="0.75em" heigth="0.75em" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10"&gt;
+    &lt;path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/&gt;
+  &lt;/svg&gt;</value>
+  </data>
   <data name="Plus" xml:space="preserve">
     <value>&lt;svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none"
     viewBox="0 0 18 18"&gt;
     &lt;path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
     d="M9 1v16M1 9h16" /&gt;
     &lt;/svg&gt;</value>
+  </data>
+  <data name="Previous" xml:space="preserve">
+    <value> &lt;svg  width="0.75em" heigth="0.75em" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10"&gt;
+    &lt;path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 1 1 5l4 4"/&gt;
+  &lt;/svg&gt;</value>
   </data>
   <data name="Search" xml:space="preserve">
     <value>&lt;svg aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"&gt;

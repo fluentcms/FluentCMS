@@ -15,4 +15,6 @@ public enum IconNameEnum
     Spinner,
     Edit,
     ChevronDown,
+    Next,
+    Previous
 }
