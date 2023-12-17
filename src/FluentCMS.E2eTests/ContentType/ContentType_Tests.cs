@@ -1,13 +1,9 @@
-﻿using FluentCMS.Web.UI;
-using System;
-using System.Collections.Generic;
-using FluentCMS.Entities;
+﻿using FluentCMS.Entities;
 using System.Net.Http.Json;
 using FluentCMS.Api.Models;
 using Shouldly;
 using Microsoft.Extensions.DependencyInjection;
 using FluentCMS.Repositories;
-using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FluentCMS.E2eTests.ContentType;
 public class ContentType_Tests : BaseE2eTest
