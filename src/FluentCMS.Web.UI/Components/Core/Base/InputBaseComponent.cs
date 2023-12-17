@@ -10,7 +10,7 @@ public abstract class InputBaseComponent<T> : BaseComponent
         get => CurrentValue;
         set
         {
-            if (!value.Equals(CurrentValue))
+            if (value != null && !value.Equals(CurrentValue))
             {
                 ValueChanged.InvokeAsync(value);
                 CurrentValue = value;
@@ -26,6 +26,9 @@ public abstract class InputBaseComponent<T> : BaseComponent
 
     [Parameter]
     public bool Disabled { get; set; } = false;
+
+    [Parameter]
+    public string Name { get; set; }
 
     // current value to invoke ValueChanged
     protected T? CurrentValue { get; set; }

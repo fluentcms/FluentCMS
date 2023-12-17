@@ -32,20 +32,20 @@ public partial class UserStore : IUserLoginStore<User>
     public Task<User?> FindByLoginAsync(string loginProvider, string providerKey, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return _repository.FindByLogin(loginProvider, providerKey, cancellationToken);
+        return repository.FindByLogin(loginProvider, providerKey, cancellationToken);
     }
 
     public async Task<IdentityResult> CreateAsync(User user, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        await _repository.Create(user, cancellationToken: cancellationToken);
+        await repository.Create(user, cancellationToken: cancellationToken);
         return IdentityResult.Success;
     }
 
     public async Task<IdentityResult> DeleteAsync(User user, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        await _repository.Delete(user.Id, cancellationToken: cancellationToken);
+        await repository.Delete(user.Id, cancellationToken: cancellationToken);
         return IdentityResult.Success;
     }
 
@@ -55,21 +55,21 @@ public partial class UserStore : IUserLoginStore<User>
 
         var id = Guid.Parse(userId);
 
-        return await _repository.GetById(id, cancellationToken);
+        return await repository.GetById(id, cancellationToken);
     }
 
     public Task<User?> FindByNameAsync(string normalizedUserName, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        return _repository.FindByName(normalizedUserName, cancellationToken);
+        return repository.FindByName(normalizedUserName, cancellationToken);
     }
 
     public async Task<IdentityResult> UpdateAsync(User user, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        await _repository.Update(user, cancellationToken: cancellationToken);
+        await repository.Update(user, cancellationToken: cancellationToken);
 
         return IdentityResult.Success;
     }

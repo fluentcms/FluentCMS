@@ -27,10 +27,10 @@ public class PluginContentController(IPluginContentService pluginContentService)
     }
 
     [HttpDelete]
-    public async Task<BooleanResponse> Delete([FromRoute] string contentType, IdRequest request, CancellationToken cancellationToken = default)
+    public async Task<ApiResult<bool>> Delete([FromRoute] string contentType, [FromQuery] Guid siteId, [FromQuery] Guid id, CancellationToken cancellationToken = default)
     {
-        await pluginContentService.Delete(request.SiteId, contentType, request.Id, cancellationToken);
-        return new BooleanResponse(true);
+        await pluginContentService.Delete(siteId, contentType, id, cancellationToken);
+        return new ApiResult<bool>(true);
     }
 
     [HttpGet]

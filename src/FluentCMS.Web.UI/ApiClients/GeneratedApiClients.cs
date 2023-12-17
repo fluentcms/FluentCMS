@@ -26,15 +26,6 @@ namespace FluentCMS.Web.UI.ApiClients
     {
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserAuthenticateDtoIApiResult> AuthenticateAsync(UserAuthenticateRequest? body);
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserAuthenticateDtoIApiResult> AuthenticateAsync(UserAuthenticateRequest? body, System.Threading.CancellationToken cancellationToken);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(UserChangePasswordRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -44,12 +35,21 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserDtoIApiResult> RegisterAsync(UserRegisterRequest? body);
+        System.Threading.Tasks.Task<UserLoginResponseIApiResult> LoginAsync(UserLoginRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserDtoIApiResult> RegisterAsync(UserRegisterRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<UserLoginResponseIApiResult> LoginAsync(UserLoginRequest? body, System.Threading.CancellationToken cancellationToken);
+
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<UserDetailResponseIApiResult> RegisterAsync(UserRegisterRequest? body);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<UserDetailResponseIApiResult> RegisterAsync(UserRegisterRequest? body, System.Threading.CancellationToken cancellationToken);
 
     }
 
@@ -72,91 +72,13 @@ namespace FluentCMS.Web.UI.ApiClients
             return settings;
         }
 
-        protected System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
+        public System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
 
         partial void UpdateJsonSerializerSettings(System.Text.Json.JsonSerializerOptions settings);
 
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, string url);
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<UserAuthenticateDtoIApiResult> AuthenticateAsync(UserAuthenticateRequest? body)
-        {
-            return AuthenticateAsync(body, System.Threading.CancellationToken.None);
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<UserAuthenticateDtoIApiResult> AuthenticateAsync(UserAuthenticateRequest? body, System.Threading.CancellationToken cancellationToken)
-        {
-            var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/Account/Authenticate");
-
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-                    var json_ = System.Text.Json.JsonSerializer.Serialize(body, _settings.Value);
-                    var content_ = new System.Net.Http.StringContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
-                    request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<UserAuthenticateDtoIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiClientException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -238,7 +160,85 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<UserDtoIApiResult> RegisterAsync(UserRegisterRequest? body)
+        public virtual System.Threading.Tasks.Task<UserLoginResponseIApiResult> LoginAsync(UserLoginRequest? body)
+        {
+            return LoginAsync(body, System.Threading.CancellationToken.None);
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<UserLoginResponseIApiResult> LoginAsync(UserLoginRequest? body, System.Threading.CancellationToken cancellationToken)
+        {
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append("api/Account/Login");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    var json_ = System.Text.Json.JsonSerializer.Serialize(body, _settings.Value);
+                    var content_ = new System.Net.Http.StringContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<UserLoginResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiClientException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        public virtual System.Threading.Tasks.Task<UserDetailResponseIApiResult> RegisterAsync(UserRegisterRequest? body)
         {
             return RegisterAsync(body, System.Threading.CancellationToken.None);
         }
@@ -246,7 +246,7 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<UserDtoIApiResult> RegisterAsync(UserRegisterRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiResult> RegisterAsync(UserRegisterRequest? body, System.Threading.CancellationToken cancellationToken)
         {
             var urlBuilder_ = new System.Text.StringBuilder();
             urlBuilder_.Append("api/Account/Register");
@@ -287,7 +287,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<UserDtoIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<UserDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -417,47 +417,101 @@ namespace FluentCMS.Web.UI.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IContentClient : IApiClient
     {
+        /// <summary>
+        /// Creates a new content item of a specified content type.
+        /// </summary>
+        /// <param name="contentType">The type of the content to be created.</param>
+        /// <param name="body">The content data for creation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentIApiResult> CreateAsync(string contentType, System.Collections.Generic.IDictionary<string, object>? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new content item of a specified content type.
+        /// </summary>
+        /// <param name="contentType">The type of the content to be created.</param>
+        /// <param name="body">The content data for creation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentIApiResult> CreateAsync(string contentType, System.Collections.Generic.IDictionary<string, object>? body, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Deletes a specific content item of a given content type.
+        /// </summary>
+        /// <param name="contentType">The type of the content to be deleted.</param>
+        /// <param name="id">The unique identifier of the content to be deleted.</param>
+        /// <param name="siteId">The site ID where the content is located.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanResponse> DeleteAsync(string contentType, IdRequest? body);
+        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string contentType, System.Guid id, System.Guid siteId);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Deletes a specific content item of a given content type.
+        /// </summary>
+        /// <param name="contentType">The type of the content to be deleted.</param>
+        /// <param name="id">The unique identifier of the content to be deleted.</param>
+        /// <param name="siteId">The site ID where the content is located.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanResponse> DeleteAsync(string contentType, IdRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string contentType, System.Guid id, System.Guid siteId, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves all content items of a specific content type associated with a site.
+        /// </summary>
+        /// <param name="contentType">The type of the content to retrieve.</param>
+        /// <param name="siteIdQuery">The site ID to filter the content items.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentIApiPagingResult> GetAllAsync(string contentType, System.Guid? siteId);
+        System.Threading.Tasks.Task<ContentIApiPagingResult> GetAllAsync(string contentType, System.Guid? siteIdQuery, string siteIdPath);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves all content items of a specific content type associated with a site.
+        /// </summary>
+        /// <param name="contentType">The type of the content to retrieve.</param>
+        /// <param name="siteIdQuery">The site ID to filter the content items.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentIApiPagingResult> GetAllAsync(string contentType, System.Guid? siteId, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<ContentIApiPagingResult> GetAllAsync(string contentType, System.Guid? siteIdQuery, string siteIdPath, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves a specific content item of a given content type by its identifier.
+        /// </summary>
+        /// <param name="contentType">The type of the content to retrieve.</param>
+        /// <param name="id">The unique identifier of the content item to retrieve.</param>
+        /// <param name="siteId">The site ID where the content is located.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentIApiResult> GetByIdAsync(string contentType, System.Guid? siteId, System.Guid? id);
+        System.Threading.Tasks.Task<ContentIApiResult> GetByIdAsync(string contentType, System.Guid id, System.Guid siteId);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific content item of a given content type by its identifier.
+        /// </summary>
+        /// <param name="contentType">The type of the content to retrieve.</param>
+        /// <param name="id">The unique identifier of the content item to retrieve.</param>
+        /// <param name="siteId">The site ID where the content is located.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentIApiResult> GetByIdAsync(string contentType, System.Guid? siteId, System.Guid? id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<ContentIApiResult> GetByIdAsync(string contentType, System.Guid id, System.Guid siteId, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Updates an existing content item of a specified content type.
+        /// </summary>
+        /// <param name="contentType">The type of the content to be updated.</param>
+        /// <param name="body">The content data for update.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentIApiResult> UpdateAsync(string contentType, System.Collections.Generic.IDictionary<string, object>? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Updates an existing content item of a specified content type.
+        /// </summary>
+        /// <param name="contentType">The type of the content to be updated.</param>
+        /// <param name="body">The content data for update.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentIApiResult> UpdateAsync(string contentType, System.Collections.Generic.IDictionary<string, object>? body, System.Threading.CancellationToken cancellationToken);
@@ -483,7 +537,7 @@ namespace FluentCMS.Web.UI.ApiClients
             return settings;
         }
 
-        protected System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
+        public System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
 
         partial void UpdateJsonSerializerSettings(System.Text.Json.JsonSerializerOptions settings);
 
@@ -491,6 +545,11 @@ namespace FluentCMS.Web.UI.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
+        /// <summary>
+        /// Creates a new content item of a specified content type.
+        /// </summary>
+        /// <param name="contentType">The type of the content to be created.</param>
+        /// <param name="body">The content data for creation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentIApiResult> CreateAsync(string contentType, System.Collections.Generic.IDictionary<string, object>? body)
@@ -499,6 +558,11 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new content item of a specified content type.
+        /// </summary>
+        /// <param name="contentType">The type of the content to be created.</param>
+        /// <param name="body">The content data for creation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentIApiResult> CreateAsync(string contentType, System.Collections.Generic.IDictionary<string, object>? body, System.Threading.CancellationToken cancellationToken)
@@ -573,24 +637,44 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Deletes a specific content item of a given content type.
+        /// </summary>
+        /// <param name="contentType">The type of the content to be deleted.</param>
+        /// <param name="id">The unique identifier of the content to be deleted.</param>
+        /// <param name="siteId">The site ID where the content is located.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<BooleanResponse> DeleteAsync(string contentType, IdRequest? body)
+        public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string contentType, System.Guid id, System.Guid siteId)
         {
-            return DeleteAsync(contentType, body, System.Threading.CancellationToken.None);
+            return DeleteAsync(contentType, id, siteId, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Deletes a specific content item of a given content type.
+        /// </summary>
+        /// <param name="contentType">The type of the content to be deleted.</param>
+        /// <param name="id">The unique identifier of the content to be deleted.</param>
+        /// <param name="siteId">The site ID where the content is located.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BooleanResponse> DeleteAsync(string contentType, IdRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string contentType, System.Guid id, System.Guid siteId, System.Threading.CancellationToken cancellationToken)
         {
             if (contentType == null)
                 throw new System.ArgumentNullException("contentType");
 
+            if (id == null)
+                throw new System.ArgumentNullException("id");
+
+            if (siteId == null)
+                throw new System.ArgumentNullException("siteId");
+
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/Content/{contentType}/Delete");
+            urlBuilder_.Append("api/Content/{contentType}/Delete/{siteId}/{id}");
             urlBuilder_.Replace("{contentType}", System.Uri.EscapeDataString(ConvertToString(contentType, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Replace("{siteId}", System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -598,10 +682,6 @@ namespace FluentCMS.Web.UI.ApiClients
             {
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
-                    var json_ = System.Text.Json.JsonSerializer.Serialize(body, _settings.Value);
-                    var content_ = new System.Net.Http.StringContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
-                    request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
@@ -628,7 +708,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<BooleanResponse>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<BooleanIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -655,27 +735,41 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves all content items of a specific content type associated with a site.
+        /// </summary>
+        /// <param name="contentType">The type of the content to retrieve.</param>
+        /// <param name="siteIdQuery">The site ID to filter the content items.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentIApiPagingResult> GetAllAsync(string contentType, System.Guid? siteId)
+        public virtual System.Threading.Tasks.Task<ContentIApiPagingResult> GetAllAsync(string contentType, System.Guid? siteIdQuery, string siteIdPath)
         {
-            return GetAllAsync(contentType, siteId, System.Threading.CancellationToken.None);
+            return GetAllAsync(contentType, siteIdQuery, siteIdPath, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves all content items of a specific content type associated with a site.
+        /// </summary>
+        /// <param name="contentType">The type of the content to retrieve.</param>
+        /// <param name="siteIdQuery">The site ID to filter the content items.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentIApiPagingResult> GetAllAsync(string contentType, System.Guid? siteId, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentIApiPagingResult> GetAllAsync(string contentType, System.Guid? siteIdQuery, string siteIdPath, System.Threading.CancellationToken cancellationToken)
         {
             if (contentType == null)
                 throw new System.ArgumentNullException("contentType");
 
+            if (siteIdPath == null)
+                throw new System.ArgumentNullException("siteIdPath");
+
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/Content/{contentType}/GetAll?");
+            urlBuilder_.Append("api/Content/{contentType}/GetAll/{siteId}?");
             urlBuilder_.Replace("{contentType}", System.Uri.EscapeDataString(ConvertToString(contentType, System.Globalization.CultureInfo.InvariantCulture)));
-            if (siteId != null)
+            urlBuilder_.Replace("{siteId}", System.Uri.EscapeDataString(ConvertToString(siteIdPath, System.Globalization.CultureInfo.InvariantCulture)));
+            if (siteIdQuery != null)
             {
-                urlBuilder_.Append(System.Uri.EscapeDataString("siteId") + "=").Append(System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+                urlBuilder_.Append(System.Uri.EscapeDataString("siteId") + "=").Append(System.Uri.EscapeDataString(ConvertToString(siteIdQuery, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
             }
             urlBuilder_.Length--;
 
@@ -738,33 +832,44 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves a specific content item of a given content type by its identifier.
+        /// </summary>
+        /// <param name="contentType">The type of the content to retrieve.</param>
+        /// <param name="id">The unique identifier of the content item to retrieve.</param>
+        /// <param name="siteId">The site ID where the content is located.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentIApiResult> GetByIdAsync(string contentType, System.Guid? siteId, System.Guid? id)
+        public virtual System.Threading.Tasks.Task<ContentIApiResult> GetByIdAsync(string contentType, System.Guid id, System.Guid siteId)
         {
-            return GetByIdAsync(contentType, siteId, id, System.Threading.CancellationToken.None);
+            return GetByIdAsync(contentType, id, siteId, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific content item of a given content type by its identifier.
+        /// </summary>
+        /// <param name="contentType">The type of the content to retrieve.</param>
+        /// <param name="id">The unique identifier of the content item to retrieve.</param>
+        /// <param name="siteId">The site ID where the content is located.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentIApiResult> GetByIdAsync(string contentType, System.Guid? siteId, System.Guid? id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentIApiResult> GetByIdAsync(string contentType, System.Guid id, System.Guid siteId, System.Threading.CancellationToken cancellationToken)
         {
             if (contentType == null)
                 throw new System.ArgumentNullException("contentType");
 
+            if (id == null)
+                throw new System.ArgumentNullException("id");
+
+            if (siteId == null)
+                throw new System.ArgumentNullException("siteId");
+
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/Content/{contentType}/GetById?");
+            urlBuilder_.Append("api/Content/{contentType}/GetById/{siteId}/{id}");
             urlBuilder_.Replace("{contentType}", System.Uri.EscapeDataString(ConvertToString(contentType, System.Globalization.CultureInfo.InvariantCulture)));
-            if (siteId != null)
-            {
-                urlBuilder_.Append(System.Uri.EscapeDataString("siteId") + "=").Append(System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
-            }
-            if (id != null)
-            {
-                urlBuilder_.Append(System.Uri.EscapeDataString("id") + "=").Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
-            }
-            urlBuilder_.Length--;
+            urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Replace("{siteId}", System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -825,6 +930,11 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Updates an existing content item of a specified content type.
+        /// </summary>
+        /// <param name="contentType">The type of the content to be updated.</param>
+        /// <param name="body">The content data for update.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentIApiResult> UpdateAsync(string contentType, System.Collections.Generic.IDictionary<string, object>? body)
@@ -833,6 +943,11 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Updates an existing content item of a specified content type.
+        /// </summary>
+        /// <param name="contentType">The type of the content to be updated.</param>
+        /// <param name="body">The content data for update.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentIApiResult> UpdateAsync(string contentType, System.Collections.Generic.IDictionary<string, object>? body, System.Threading.CancellationToken cancellationToken)
@@ -1010,74 +1125,140 @@ namespace FluentCMS.Web.UI.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IContentTypeClient : IApiClient
     {
+        /// <summary>
+        /// Creates a new content type.
+        /// </summary>
+        /// <param name="body">The content type creation request containing the content type details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeIApiResult> CreateAsync(ContentType? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new content type.
+        /// </summary>
+        /// <param name="body">The content type creation request containing the content type details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeIApiResult> CreateAsync(ContentType? body, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Deletes a specific content type.
+        /// </summary>
+        /// <param name="id">The unique identifier of the content type to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Deletes a specific content type.
+        /// </summary>
+        /// <param name="id">The unique identifier of the content type to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Deletes a field from a specific content type.
+        /// </summary>
+        /// <param name="id">The unique identifier of the content type.</param>
+        /// <param name="name">The name of the field to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeIApiResult> DeleteFieldAsync(System.Guid id, string name);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Deletes a field from a specific content type.
+        /// </summary>
+        /// <param name="id">The unique identifier of the content type.</param>
+        /// <param name="name">The name of the field to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeIApiResult> DeleteFieldAsync(System.Guid id, string name, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves all content types.
+        /// </summary>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeIApiPagingResult> GetAllAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves all content types.
+        /// </summary>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves a specific content type by its identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the content type.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeIApiResult> GetByIdAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific content type by its identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the content type.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves a specific content type by its name.
+        /// </summary>
+        /// <param name="name">The name of the content type.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string? name);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific content type by its name.
+        /// </summary>
+        /// <param name="name">The name of the content type.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string? name, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Sets a field for a specific content type.
+        /// </summary>
+        /// <param name="id">The unique identifier of the content type.</param>
+        /// <param name="body">The content type field setting request.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeIApiResult> SetFieldAsync(System.Guid id, ContentTypeField? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Sets a field for a specific content type.
+        /// </summary>
+        /// <param name="id">The unique identifier of the content type.</param>
+        /// <param name="body">The content type field setting request.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeIApiResult> SetFieldAsync(System.Guid id, ContentTypeField? body, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Updates an existing content type.
+        /// </summary>
+        /// <param name="body">The content type update request containing the updated content type details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeIApiResult> UpdateAsync(ContentType? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Updates an existing content type.
+        /// </summary>
+        /// <param name="body">The content type update request containing the updated content type details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeIApiResult> UpdateAsync(ContentType? body, System.Threading.CancellationToken cancellationToken);
@@ -1103,7 +1284,7 @@ namespace FluentCMS.Web.UI.ApiClients
             return settings;
         }
 
-        protected System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
+        public System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
 
         partial void UpdateJsonSerializerSettings(System.Text.Json.JsonSerializerOptions settings);
 
@@ -1111,6 +1292,10 @@ namespace FluentCMS.Web.UI.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
+        /// <summary>
+        /// Creates a new content type.
+        /// </summary>
+        /// <param name="body">The content type creation request containing the content type details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentTypeIApiResult> CreateAsync(ContentType? body)
@@ -1119,6 +1304,10 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new content type.
+        /// </summary>
+        /// <param name="body">The content type creation request containing the content type details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentTypeIApiResult> CreateAsync(ContentType? body, System.Threading.CancellationToken cancellationToken)
@@ -1189,6 +1378,10 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Deletes a specific content type.
+        /// </summary>
+        /// <param name="id">The unique identifier of the content type to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id)
@@ -1197,6 +1390,10 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Deletes a specific content type.
+        /// </summary>
+        /// <param name="id">The unique identifier of the content type to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
@@ -1267,6 +1464,11 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Deletes a field from a specific content type.
+        /// </summary>
+        /// <param name="id">The unique identifier of the content type.</param>
+        /// <param name="name">The name of the field to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentTypeIApiResult> DeleteFieldAsync(System.Guid id, string name)
@@ -1275,6 +1477,11 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Deletes a field from a specific content type.
+        /// </summary>
+        /// <param name="id">The unique identifier of the content type.</param>
+        /// <param name="name">The name of the field to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentTypeIApiResult> DeleteFieldAsync(System.Guid id, string name, System.Threading.CancellationToken cancellationToken)
@@ -1350,6 +1557,9 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves all content types.
+        /// </summary>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentTypeIApiPagingResult> GetAllAsync()
@@ -1358,6 +1568,9 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves all content types.
+        /// </summary>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentTypeIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
@@ -1424,6 +1637,10 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves a specific content type by its identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the content type.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentTypeIApiResult> GetByIdAsync(System.Guid id)
@@ -1432,6 +1649,10 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific content type by its identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the content type.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentTypeIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
@@ -1502,6 +1723,10 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves a specific content type by its name.
+        /// </summary>
+        /// <param name="name">The name of the content type.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string? name)
@@ -1510,6 +1735,10 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific content type by its name.
+        /// </summary>
+        /// <param name="name">The name of the content type.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string? name, System.Threading.CancellationToken cancellationToken)
@@ -1581,6 +1810,11 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Sets a field for a specific content type.
+        /// </summary>
+        /// <param name="id">The unique identifier of the content type.</param>
+        /// <param name="body">The content type field setting request.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentTypeIApiResult> SetFieldAsync(System.Guid id, ContentTypeField? body)
@@ -1589,6 +1823,11 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Sets a field for a specific content type.
+        /// </summary>
+        /// <param name="id">The unique identifier of the content type.</param>
+        /// <param name="body">The content type field setting request.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentTypeIApiResult> SetFieldAsync(System.Guid id, ContentTypeField? body, System.Threading.CancellationToken cancellationToken)
@@ -1663,6 +1902,10 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Updates an existing content type.
+        /// </summary>
+        /// <param name="body">The content type update request containing the updated content type details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentTypeIApiResult> UpdateAsync(ContentType? body)
@@ -1671,6 +1914,10 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Updates an existing content type.
+        /// </summary>
+        /// <param name="body">The content type update request containing the updated content type details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentTypeIApiResult> UpdateAsync(ContentType? body, System.Threading.CancellationToken cancellationToken)
@@ -1846,21 +2093,21 @@ namespace FluentCMS.Web.UI.ApiClients
     {
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HostResponseIApiResult> GetAsync();
+        System.Threading.Tasks.Task<HostIApiResult> GetAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HostResponseIApiResult> GetAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<HostIApiResult> GetAsync(System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HostResponseIApiResult> UpdateAsync(HostUpdateRequest? body);
+        System.Threading.Tasks.Task<HostIApiResult> UpdateAsync(HostUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HostResponseIApiResult> UpdateAsync(HostUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<HostIApiResult> UpdateAsync(HostUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
 
     }
 
@@ -1883,7 +2130,7 @@ namespace FluentCMS.Web.UI.ApiClients
             return settings;
         }
 
-        protected System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
+        public System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
 
         partial void UpdateJsonSerializerSettings(System.Text.Json.JsonSerializerOptions settings);
 
@@ -1893,7 +2140,7 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<HostResponseIApiResult> GetAsync()
+        public virtual System.Threading.Tasks.Task<HostIApiResult> GetAsync()
         {
             return GetAsync(System.Threading.CancellationToken.None);
         }
@@ -1901,7 +2148,7 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HostResponseIApiResult> GetAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<HostIApiResult> GetAsync(System.Threading.CancellationToken cancellationToken)
         {
             var urlBuilder_ = new System.Text.StringBuilder();
             urlBuilder_.Append("api/Host/Get");
@@ -1938,7 +2185,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<HostResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<HostIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -1967,7 +2214,7 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<HostResponseIApiResult> UpdateAsync(HostUpdateRequest? body)
+        public virtual System.Threading.Tasks.Task<HostIApiResult> UpdateAsync(HostUpdateRequest? body)
         {
             return UpdateAsync(body, System.Threading.CancellationToken.None);
         }
@@ -1975,7 +2222,7 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HostResponseIApiResult> UpdateAsync(HostUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<HostIApiResult> UpdateAsync(HostUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
             var urlBuilder_ = new System.Text.StringBuilder();
             urlBuilder_.Append("api/Host/Update");
@@ -1990,7 +2237,7 @@ namespace FluentCMS.Web.UI.ApiClients
                     var content_ = new System.Net.Http.StringContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
+                    request_.Method = new System.Net.Http.HttpMethod("PUT");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -2016,7 +2263,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<HostResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<HostIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -2221,7 +2468,7 @@ namespace FluentCMS.Web.UI.ApiClients
             return settings;
         }
 
-        protected System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
+        public System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
 
         partial void UpdateJsonSerializerSettings(System.Text.Json.JsonSerializerOptions settings);
 
@@ -2843,12 +3090,12 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PluginIApiResult> PutAsync(string id, Plugin? body);
+        System.Threading.Tasks.Task<PluginIApiResult> PutAsync(Plugin? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PluginIApiResult> PutAsync(string id, Plugin? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PluginIApiResult> PutAsync(Plugin? body, System.Threading.CancellationToken cancellationToken);
 
     }
 
@@ -2871,7 +3118,7 @@ namespace FluentCMS.Web.UI.ApiClients
             return settings;
         }
 
-        protected System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
+        public System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
 
         partial void UpdateJsonSerializerSettings(System.Text.Json.JsonSerializerOptions settings);
 
@@ -3193,22 +3440,18 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<PluginIApiResult> PutAsync(string id, Plugin? body)
+        public virtual System.Threading.Tasks.Task<PluginIApiResult> PutAsync(Plugin? body)
         {
-            return PutAsync(id, body, System.Threading.CancellationToken.None);
+            return PutAsync(body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PluginIApiResult> PutAsync(string id, Plugin? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PluginIApiResult> PutAsync(Plugin? body, System.Threading.CancellationToken cancellationToken)
         {
-            if (id == null)
-                throw new System.ArgumentNullException("id");
-
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/Plugin/Put/{id}");
-            urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Append("api/Plugin/Put");
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -3387,12 +3630,12 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanResponse> DeleteAsync(string contentType, IdRequest? body);
+        System.Threading.Tasks.Task<BooleanApiResult> DeleteAsync(string contentType, System.Guid? siteId, System.Guid? id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanResponse> DeleteAsync(string contentType, IdRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<BooleanApiResult> DeleteAsync(string contentType, System.Guid? siteId, System.Guid? id, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -3451,7 +3694,7 @@ namespace FluentCMS.Web.UI.ApiClients
             return settings;
         }
 
-        protected System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
+        public System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
 
         partial void UpdateJsonSerializerSettings(System.Text.Json.JsonSerializerOptions settings);
 
@@ -3543,22 +3786,31 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<BooleanResponse> DeleteAsync(string contentType, IdRequest? body)
+        public virtual System.Threading.Tasks.Task<BooleanApiResult> DeleteAsync(string contentType, System.Guid? siteId, System.Guid? id)
         {
-            return DeleteAsync(contentType, body, System.Threading.CancellationToken.None);
+            return DeleteAsync(contentType, siteId, id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BooleanResponse> DeleteAsync(string contentType, IdRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<BooleanApiResult> DeleteAsync(string contentType, System.Guid? siteId, System.Guid? id, System.Threading.CancellationToken cancellationToken)
         {
             if (contentType == null)
                 throw new System.ArgumentNullException("contentType");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/PluginContent/{contentType}/Delete");
+            urlBuilder_.Append("api/PluginContent/{contentType}/Delete?");
             urlBuilder_.Replace("{contentType}", System.Uri.EscapeDataString(ConvertToString(contentType, System.Globalization.CultureInfo.InvariantCulture)));
+            if (siteId != null)
+            {
+                urlBuilder_.Append(System.Uri.EscapeDataString("siteId") + "=").Append(System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            }
+            if (id != null)
+            {
+                urlBuilder_.Append(System.Uri.EscapeDataString("id") + "=").Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            }
+            urlBuilder_.Length--;
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -3566,10 +3818,6 @@ namespace FluentCMS.Web.UI.ApiClients
             {
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
-                    var json_ = System.Text.Json.JsonSerializer.Serialize(body, _settings.Value);
-                    var content_ = new System.Net.Http.StringContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
-                    request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
@@ -3596,7 +3844,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<BooleanResponse>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<BooleanApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -4065,50 +4313,94 @@ namespace FluentCMS.Web.UI.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IRoleClient : IApiClient
     {
+        /// <summary>
+        /// Creates a new role in the system.
+        /// </summary>
+        /// <param name="body">The role creation request containing the role details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleResponse> CreateAsync(RoleCreateRequest? body);
+        System.Threading.Tasks.Task<RoleIApiResult> CreateAsync(RoleCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new role in the system.
+        /// </summary>
+        /// <param name="body">The role creation request containing the role details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleResponse> CreateAsync(RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<RoleIApiResult> CreateAsync(RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Deletes a specific role from a site.
+        /// </summary>
+        /// <param name="id">The unique identifier of the role to be deleted.</param>
+        /// <param name="siteId">The unique identifier of the site from which the role is to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanResponse> DeleteAsync(IdRequest? body);
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanResponse> DeleteAsync(IdRequest? body, System.Threading.CancellationToken cancellationToken);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RolesResponse> GetAllAsync(SiteIdRequest? body);
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RolesResponse> GetAllAsync(SiteIdRequest? body, System.Threading.CancellationToken cancellationToken);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleResponse> GetByIdAsync(IdRequest? body);
+        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Guid siteId);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Deletes a specific role from a site.
+        /// </summary>
+        /// <param name="id">The unique identifier of the role to be deleted.</param>
+        /// <param name="siteId">The unique identifier of the site from which the role is to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleResponse> GetByIdAsync(IdRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Guid siteId, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves all roles associated with a specific site.
+        /// </summary>
+        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleResponse> UpdateAsync(RoleUpdateRequest? body);
+        System.Threading.Tasks.Task<RoleIApiPagingResult> GetAllAsync(System.Guid siteId);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves all roles associated with a specific site.
+        /// </summary>
+        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleResponse> UpdateAsync(RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<RoleIApiPagingResult> GetAllAsync(System.Guid siteId, System.Threading.CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Retrieves a specific role by its identifier for a given site.
+        /// </summary>
+        /// <param name="id">The unique identifier of the role.</param>
+        /// <param name="siteId">The unique identifier of the site.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<RoleIApiResult> GetByIdAsync(System.Guid id, System.Guid siteId);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific role by its identifier for a given site.
+        /// </summary>
+        /// <param name="id">The unique identifier of the role.</param>
+        /// <param name="siteId">The unique identifier of the site.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<RoleIApiResult> GetByIdAsync(System.Guid id, System.Guid siteId, System.Threading.CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Updates an existing role.
+        /// </summary>
+        /// <param name="body">The role update request containing the updated role details.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<RoleIApiResult> UpdateAsync(RoleUpdateRequest? body);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Updates an existing role.
+        /// </summary>
+        /// <param name="body">The role update request containing the updated role details.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<RoleIApiResult> UpdateAsync(RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
 
     }
 
@@ -4131,7 +4423,7 @@ namespace FluentCMS.Web.UI.ApiClients
             return settings;
         }
 
-        protected System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
+        public System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
 
         partial void UpdateJsonSerializerSettings(System.Text.Json.JsonSerializerOptions settings);
 
@@ -4139,17 +4431,25 @@ namespace FluentCMS.Web.UI.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
+        /// <summary>
+        /// Creates a new role in the system.
+        /// </summary>
+        /// <param name="body">The role creation request containing the role details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<RoleResponse> CreateAsync(RoleCreateRequest? body)
+        public virtual System.Threading.Tasks.Task<RoleIApiResult> CreateAsync(RoleCreateRequest? body)
         {
             return CreateAsync(body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new role in the system.
+        /// </summary>
+        /// <param name="body">The role creation request containing the role details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<RoleResponse> CreateAsync(RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<RoleIApiResult> CreateAsync(RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
             var urlBuilder_ = new System.Text.StringBuilder();
             urlBuilder_.Append("api/Role/Create");
@@ -4190,7 +4490,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<RoleResponse>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<RoleIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -4217,20 +4517,38 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Deletes a specific role from a site.
+        /// </summary>
+        /// <param name="id">The unique identifier of the role to be deleted.</param>
+        /// <param name="siteId">The unique identifier of the site from which the role is to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<BooleanResponse> DeleteAsync(IdRequest? body)
+        public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Guid siteId)
         {
-            return DeleteAsync(body, System.Threading.CancellationToken.None);
+            return DeleteAsync(id, siteId, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Deletes a specific role from a site.
+        /// </summary>
+        /// <param name="id">The unique identifier of the role to be deleted.</param>
+        /// <param name="siteId">The unique identifier of the site from which the role is to be deleted.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BooleanResponse> DeleteAsync(IdRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Guid siteId, System.Threading.CancellationToken cancellationToken)
         {
+            if (id == null)
+                throw new System.ArgumentNullException("id");
+
+            if (siteId == null)
+                throw new System.ArgumentNullException("siteId");
+
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/Role/Delete");
+            urlBuilder_.Append("api/Role/Delete/{siteId}/{id}");
+            urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Replace("{siteId}", System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -4238,10 +4556,6 @@ namespace FluentCMS.Web.UI.ApiClients
             {
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
-                    var json_ = System.Text.Json.JsonSerializer.Serialize(body, _settings.Value);
-                    var content_ = new System.Net.Http.StringContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
-                    request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
@@ -4268,7 +4582,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<BooleanResponse>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<BooleanIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -4295,20 +4609,32 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves all roles associated with a specific site.
+        /// </summary>
+        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<RolesResponse> GetAllAsync(SiteIdRequest? body)
+        public virtual System.Threading.Tasks.Task<RoleIApiPagingResult> GetAllAsync(System.Guid siteId)
         {
-            return GetAllAsync(body, System.Threading.CancellationToken.None);
+            return GetAllAsync(siteId, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves all roles associated with a specific site.
+        /// </summary>
+        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<RolesResponse> GetAllAsync(SiteIdRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<RoleIApiPagingResult> GetAllAsync(System.Guid siteId, System.Threading.CancellationToken cancellationToken)
         {
+            if (siteId == null)
+                throw new System.ArgumentNullException("siteId");
+
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/Role/GetAll");
+            urlBuilder_.Append("api/Role/GetAll/{siteId}");
+            urlBuilder_.Replace("{siteId}", System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -4316,10 +4642,6 @@ namespace FluentCMS.Web.UI.ApiClients
             {
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
-                    var json_ = System.Text.Json.JsonSerializer.Serialize(body, _settings.Value);
-                    var content_ = new System.Net.Http.StringContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
-                    request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("GET");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
@@ -4346,7 +4668,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<RolesResponse>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<RoleIApiPagingResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -4373,20 +4695,38 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves a specific role by its identifier for a given site.
+        /// </summary>
+        /// <param name="id">The unique identifier of the role.</param>
+        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<RoleResponse> GetByIdAsync(IdRequest? body)
+        public virtual System.Threading.Tasks.Task<RoleIApiResult> GetByIdAsync(System.Guid id, System.Guid siteId)
         {
-            return GetByIdAsync(body, System.Threading.CancellationToken.None);
+            return GetByIdAsync(id, siteId, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific role by its identifier for a given site.
+        /// </summary>
+        /// <param name="id">The unique identifier of the role.</param>
+        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<RoleResponse> GetByIdAsync(IdRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<RoleIApiResult> GetByIdAsync(System.Guid id, System.Guid siteId, System.Threading.CancellationToken cancellationToken)
         {
+            if (id == null)
+                throw new System.ArgumentNullException("id");
+
+            if (siteId == null)
+                throw new System.ArgumentNullException("siteId");
+
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/Role/GetById");
+            urlBuilder_.Append("api/Role/GetById/{siteId}/{id}");
+            urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Replace("{siteId}", System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -4394,10 +4734,6 @@ namespace FluentCMS.Web.UI.ApiClients
             {
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
-                    var json_ = System.Text.Json.JsonSerializer.Serialize(body, _settings.Value);
-                    var content_ = new System.Net.Http.StringContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
-                    request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("GET");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
@@ -4424,7 +4760,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<RoleResponse>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<RoleIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -4451,17 +4787,25 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Updates an existing role.
+        /// </summary>
+        /// <param name="body">The role update request containing the updated role details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<RoleResponse> UpdateAsync(RoleUpdateRequest? body)
+        public virtual System.Threading.Tasks.Task<RoleIApiResult> UpdateAsync(RoleUpdateRequest? body)
         {
             return UpdateAsync(body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Updates an existing role.
+        /// </summary>
+        /// <param name="body">The role update request containing the updated role details.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<RoleResponse> UpdateAsync(RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<RoleIApiResult> UpdateAsync(RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
             var urlBuilder_ = new System.Text.StringBuilder();
             urlBuilder_.Append("api/Role/Update");
@@ -4502,7 +4846,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<RoleResponse>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<RoleIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -4707,7 +5051,7 @@ namespace FluentCMS.Web.UI.ApiClients
             return settings;
         }
 
-        protected System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
+        public System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
 
         partial void UpdateJsonSerializerSettings(System.Text.Json.JsonSerializerOptions settings);
 
@@ -5281,597 +5625,122 @@ namespace FluentCMS.Web.UI.ApiClients
         }
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NSwag", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial interface IUserClient : IApiClient
+    /// <summary>
+    /// A generic implementation of an API response.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class BooleanApiResult
     {
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleDtoIApiResult> CreateAsync(RoleCreateRequest? body);
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
 
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleDtoIApiResult> CreateAsync(RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken);
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id);
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
 
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
 
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserDtoIApiPagingResult> GetAllAsync();
+        [System.Text.Json.Serialization.JsonPropertyName("debug")]
 
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserDtoIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
 
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleDtoIApiResult> GetByIdAsync(System.Guid id);
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
 
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleDtoIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleDtoIApiResult> UpdateAsync(RoleUpdateRequest? body);
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? TraceId { get; set; } = default!;
 
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleDtoIApiResult> UpdateAsync(RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? SessionId { get; set; } = default!;
+
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public double Duration { get; set; } = default!;
+
+        /// <summary>
+        /// The data payload of the API response.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public bool Data { get; set; } = default!;
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NSwag", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UserClient : IUserClient
-    {
-        private System.Net.Http.HttpClient _httpClient;
-        private System.Lazy<System.Text.Json.JsonSerializerOptions> _settings;
-
-        public UserClient(System.Net.Http.HttpClient httpClient)
-        {
-            _httpClient = httpClient;
-            _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
-        }
-
-        private System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
-        {
-            var settings = new System.Text.Json.JsonSerializerOptions();
-            UpdateJsonSerializerSettings(settings);
-            return settings;
-        }
-
-        protected System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
-
-        partial void UpdateJsonSerializerSettings(System.Text.Json.JsonSerializerOptions settings);
-
-        partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, string url);
-        partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
-        partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<RoleDtoIApiResult> CreateAsync(RoleCreateRequest? body)
-        {
-            return CreateAsync(body, System.Threading.CancellationToken.None);
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<RoleDtoIApiResult> CreateAsync(RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken)
-        {
-            var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/User/Create");
-
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-                    var json_ = System.Text.Json.JsonSerializer.Serialize(body, _settings.Value);
-                    var content_ = new System.Net.Http.StringContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
-                    request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<RoleDtoIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiClientException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id)
-        {
-            return DeleteAsync(id, System.Threading.CancellationToken.None);
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
-        {
-            if (id == null)
-                throw new System.ArgumentNullException("id");
-
-            var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/User/Delete/{id}");
-            urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
-
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-                    request_.Method = new System.Net.Http.HttpMethod("DELETE");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<BooleanIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiClientException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<UserDtoIApiPagingResult> GetAllAsync()
-        {
-            return GetAllAsync(System.Threading.CancellationToken.None);
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<UserDtoIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
-        {
-            var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/User/GetAll");
-
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-                    request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<UserDtoIApiPagingResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiClientException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<RoleDtoIApiResult> GetByIdAsync(System.Guid id)
-        {
-            return GetByIdAsync(id, System.Threading.CancellationToken.None);
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<RoleDtoIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
-        {
-            if (id == null)
-                throw new System.ArgumentNullException("id");
-
-            var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/User/GetById/{id}");
-            urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
-
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-                    request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<RoleDtoIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiClientException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<RoleDtoIApiResult> UpdateAsync(RoleUpdateRequest? body)
-        {
-            return UpdateAsync(body, System.Threading.CancellationToken.None);
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<RoleDtoIApiResult> UpdateAsync(RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
-        {
-            var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/User/Update");
-
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-                    var json_ = System.Text.Json.JsonSerializer.Serialize(body, _settings.Value);
-                    var content_ = new System.Net.Http.StringContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
-                    request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<RoleDtoIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiClientException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        protected struct ObjectResponseResult<T>
-        {
-            public ObjectResponseResult(T responseObject, string responseText)
-            {
-                this.Object = responseObject;
-                this.Text = responseText;
-            }
-
-            public T Object { get; }
-
-            public string Text { get; }
-        }
-
-        public bool ReadResponseAsString { get; set; }
-
-        protected virtual async System.Threading.Tasks.Task<ObjectResponseResult<T>> ReadObjectResponseAsync<T>(System.Net.Http.HttpResponseMessage response, System.Collections.Generic.IReadOnlyDictionary<string, System.Collections.Generic.IEnumerable<string>> headers, System.Threading.CancellationToken cancellationToken)
-        {
-            if (response == null || response.Content == null)
-            {
-                return new ObjectResponseResult<T>(default(T)!, string.Empty);
-            }
-
-            if (ReadResponseAsString)
-            {
-                var responseText = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                try
-                {
-                    var typedBody = System.Text.Json.JsonSerializer.Deserialize<T>(responseText, JsonSerializerSettings);
-                    return new ObjectResponseResult<T>(typedBody!, responseText);
-                }
-                catch (System.Text.Json.JsonException exception)
-                {
-                    var message = "Could not deserialize the response body string as " + typeof(T).FullName + ".";
-                    throw new ApiClientException(message, (int)response.StatusCode, responseText, headers, exception);
-                }
-            }
-            else
-            {
-                try
-                {
-                    using (var responseStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-                    {
-                        var typedBody = await System.Text.Json.JsonSerializer.DeserializeAsync<T>(responseStream, JsonSerializerSettings, cancellationToken).ConfigureAwait(false);
-                        return new ObjectResponseResult<T>(typedBody!, string.Empty);
-                    }
-                }
-                catch (System.Text.Json.JsonException exception)
-                {
-                    var message = "Could not deserialize the response body stream as " + typeof(T).FullName + ".";
-                    throw new ApiClientException(message, (int)response.StatusCode, string.Empty, headers, exception);
-                }
-            }
-        }
-
-        private string ConvertToString(object? value, System.Globalization.CultureInfo cultureInfo)
-        {
-            if (value == null)
-            {
-                return "";
-            }
-
-            if (value is System.Enum)
-            {
-                var name = System.Enum.GetName(value.GetType(), value);
-                if (name != null)
-                {
-                    var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
-                    if (field != null)
-                    {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
-                            as System.Runtime.Serialization.EnumMemberAttribute;
-                        if (attribute != null)
-                        {
-                            return attribute.Value != null ? attribute.Value : name;
-                        }
-                    }
-
-                    var converted = System.Convert.ToString(System.Convert.ChangeType(value, System.Enum.GetUnderlyingType(value.GetType()), cultureInfo));
-                    return converted == null ? string.Empty : converted;
-                }
-            }
-            else if (value is bool)
-            {
-                return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
-            }
-            else if (value is byte[])
-            {
-                return System.Convert.ToBase64String((byte[])value);
-            }
-            else if (value.GetType().IsArray)
-            {
-                var array = System.Linq.Enumerable.OfType<object>((System.Array)value);
-                return string.Join(",", System.Linq.Enumerable.Select(array, o => ConvertToString(o, cultureInfo)));
-            }
-
-            var result = System.Convert.ToString(value, cultureInfo);
-            return result == null ? "" : result;
-        }
-    }
-
+    /// <summary>
+    /// Represents a generic API response with a data payload.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class BooleanIApiResult
     {
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
 
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("debug")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? TraceId { get; set; } = default!;
 
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
+
+        /// <summary>
+        /// The data payload of the API response.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("data")]
 
@@ -5880,100 +5749,114 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class BooleanResponse
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public bool Data { get; set; } = default!;
-
-    }
-
+    /// <summary>
+    /// Represents a paginated API response with a collection of data.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentIApiPagingResult
     {
+        /// <summary>
+        /// The size of each page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int PageSize { get; set; } = default!;
 
+        /// <summary>
+        /// The total number of pages.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int TotalPages { get; set; } = default!;
+
+        /// <summary>
+        /// The current page number.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int PageNumber { get; set; } = default!;
 
+        /// <summary>
+        /// The total count of items in all pages.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public long TotalCount { get; set; } = default!;
+
+        /// <summary>
+        /// Indicates whether there is a previous page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasPrevious { get; set; } = default!;
 
+        /// <summary>
+        /// Indicates whether there is a next page.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasNext { get; set; } = default!;
+
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
 
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("debug")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? TraceId { get; set; } = default!;
 
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
+
+        /// <summary>
+        /// The data payload of the API response.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("data")]
 
@@ -5982,34 +5865,60 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a generic API response with a data payload.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentIApiResult
     {
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
 
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("debug")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? TraceId { get; set; } = default!;
 
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
+
+        /// <summary>
+        /// The data payload of the API response.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("data")]
 
@@ -6018,6 +5927,11 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a content type with properties for identification, description,
+    /// <br/>and associated content type fields.
+    /// <br/>Inherits from FluentCMS.Entities.AuditEntity for audit tracking.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentType
     {
@@ -6047,20 +5961,36 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.DateTimeOffset LastUpdatedAt { get; set; } = default!;
 
+        /// <summary>
+        /// Title of the content type.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("title")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Title { get; set; } = default!;
+
+        /// <summary>
+        /// Description of the content type.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Description { get; set; } = default!;
 
+        /// <summary>
+        /// The unique name of the content type. This field won't be updated in the future.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("name")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Name { get; set; } = default!;
+
+        /// <summary>
+        /// List of fields associated with the content type.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("fields")]
 
@@ -6069,44 +5999,79 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a field within a content type, including properties for identification,
+    /// <br/>description, and configuration options like placeholders and default values.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentTypeField
     {
+        /// <summary>
+        /// The unique name of the field. This field won't be updated in the future.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("name")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Name { get; set; } = default!;
 
+        /// <summary>
+        /// Title of the field.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("title")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Title { get; set; } = default!;
+
+        /// <summary>
+        /// Description of the field.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Description { get; set; } = default!;
 
+        /// <summary>
+        /// Label for the field, used in UI forms.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("label")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Label { get; set; } = default!;
+
+        /// <summary>
+        /// Placeholder text for the field, can be null.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("placeholder")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Placeholder { get; set; } = default!;
 
+        /// <summary>
+        /// Hint or help text for the field, can be null.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("hint")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Hint { get; set; } = default!;
 
+        /// <summary>
+        /// Default value of the field, can be null.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("defaultValue")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? DefaultValue { get; set; } = default!;
+
+        /// <summary>
+        /// Indicates whether the field is required.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("isRequired")]
 
@@ -6115,64 +6080,114 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a paginated API response with a collection of data.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentTypeIApiPagingResult
     {
+        /// <summary>
+        /// The size of each page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int PageSize { get; set; } = default!;
 
+        /// <summary>
+        /// The total number of pages.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int TotalPages { get; set; } = default!;
+
+        /// <summary>
+        /// The current page number.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int PageNumber { get; set; } = default!;
 
+        /// <summary>
+        /// The total count of items in all pages.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public long TotalCount { get; set; } = default!;
+
+        /// <summary>
+        /// Indicates whether there is a previous page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasPrevious { get; set; } = default!;
 
+        /// <summary>
+        /// Indicates whether there is a next page.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasNext { get; set; } = default!;
+
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
 
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("debug")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? TraceId { get; set; } = default!;
 
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
+
+        /// <summary>
+        /// The data payload of the API response.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("data")]
 
@@ -6181,29 +6196,51 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a generic API response with a data payload.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentTypeIApiResult
     {
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
 
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("debug")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? TraceId { get; set; } = default!;
 
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
+
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
@@ -6217,19 +6254,33 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents an error detail in API responses.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Error
     {
+        /// <summary>
+        /// Gets or sets the error code.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("code")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Code { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets a brief description of the error.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("description")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Description { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets detailed information about the error, if available.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("details")]
 
@@ -6238,8 +6289,12 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a host entity.
+    /// <br/>Inherits from FluentCMS.Entities.AuditEntity for audit tracking.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class HostResponse
+    public partial class Host
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
@@ -6267,6 +6322,10 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.DateTimeOffset LastUpdatedAt { get; set; } = default!;
 
+        /// <summary>
+        /// List of super users associated with the host.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("superUsers")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
@@ -6274,29 +6333,51 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a generic API response with a data payload.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class HostResponseIApiResult
+    public partial class HostIApiResult
     {
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
 
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("debug")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? TraceId { get; set; } = default!;
 
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
+
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
@@ -6306,13 +6387,19 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("data")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public HostResponse Data { get; set; } = default!;
+        public Host Data { get; set; } = default!;
 
     }
 
+    /// <summary>
+    /// Represents a request to update host settings.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class HostUpdateRequest
     {
+        /// <summary>
+        /// Gets or sets the list of superuser usernames or identifiers.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("superUsers")]
 
@@ -6321,34 +6408,60 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a non-generic API response.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class IApiResult
     {
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
 
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("debug")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? TraceId { get; set; } = default!;
 
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
+
+        /// <summary>
+        /// The data payload of the API response.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("data")]
 
@@ -6357,22 +6470,11 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class IdRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("siteId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Guid SiteId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Guid Id { get; set; } = default!;
-
-    }
-
+    /// <summary>
+    /// Represents a layout entity associated with a site.
+    /// <br/>Inherits from FluentCMS.Entities.SiteAssociatedEntity, linking it with a specific site and its related properties.
+    /// <br/>Contains template parts for rendering, such as body and head sections of a webpage layout.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Layout
     {
@@ -6407,15 +6509,27 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid SiteId { get; set; } = default!;
 
+        /// <summary>
+        /// Name of the layout.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("name")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Name { get; set; } = default!;
 
+        /// <summary>
+        /// Body content of the layout, typically containing HTML or template syntax.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("body")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Body { get; set; } = default!;
+
+        /// <summary>
+        /// Head content of the layout, typically containing HTML or template syntax for the head section.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("head")]
 
@@ -6506,64 +6620,114 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a paginated API response with a collection of data.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageResponseIApiPagingResult
     {
+        /// <summary>
+        /// The size of each page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int PageSize { get; set; } = default!;
 
+        /// <summary>
+        /// The total number of pages.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int TotalPages { get; set; } = default!;
+
+        /// <summary>
+        /// The current page number.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int PageNumber { get; set; } = default!;
 
+        /// <summary>
+        /// The total count of items in all pages.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public long TotalCount { get; set; } = default!;
+
+        /// <summary>
+        /// Indicates whether there is a previous page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasPrevious { get; set; } = default!;
 
+        /// <summary>
+        /// Indicates whether there is a next page.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasNext { get; set; } = default!;
+
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
 
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("debug")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? TraceId { get; set; } = default!;
 
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
+
+        /// <summary>
+        /// The data payload of the API response.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("data")]
 
@@ -6572,29 +6736,51 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a generic API response with a data payload.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageResponseIApiResult
     {
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
 
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("debug")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? TraceId { get; set; } = default!;
 
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
+
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
@@ -6655,161 +6841,13 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a plugin associated with a page on a site.
+    /// <br/>Inherits from FluentCMS.Entities.SiteAssociatedEntity for site association.
+    /// <br/>Includes properties for defining its relationship with pages and its placement.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Plugin
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Guid Id { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("createdBy")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? CreatedBy { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("lastUpdatedBy")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? LastUpdatedBy { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("lastUpdatedAt")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset LastUpdatedAt { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("definitionId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Guid DefinitionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("pageId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Guid PageId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("order")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Order { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("section")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? Section { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class PluginContentIApiPagingResult
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int PageSize { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int TotalPages { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int PageNumber { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public long TotalCount { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public bool HasPrevious { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public bool HasNext { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<System.Collections.Generic.IDictionary<string, object>>? Data { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class PluginContentIApiResult
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.IDictionary<string, object>? Data { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class PluginDefinition
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
@@ -6842,25 +6880,295 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid SiteId { get; set; } = default!;
 
+        /// <summary>
+        /// Identifier of the plugin definition.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("definitionId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Guid DefinitionId { get; set; } = default!;
+
+        /// <summary>
+        /// Identifier of the page where the plugin is placed.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Guid PageId { get; set; } = default!;
+
+        /// <summary>
+        /// Order of the plugin on the page.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("order")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int Order { get; set; } = default!;
+
+        /// <summary>
+        /// The section of the page where the plugin is located.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("section")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? Section { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Represents a paginated API response with a collection of data.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PluginContentIApiPagingResult
+    {
+        /// <summary>
+        /// The size of each page.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int PageSize { get; set; } = default!;
+
+        /// <summary>
+        /// The total number of pages.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int TotalPages { get; set; } = default!;
+
+        /// <summary>
+        /// The current page number.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int PageNumber { get; set; } = default!;
+
+        /// <summary>
+        /// The total count of items in all pages.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public long TotalCount { get; set; } = default!;
+
+        /// <summary>
+        /// Indicates whether there is a previous page.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public bool HasPrevious { get; set; } = default!;
+
+        /// <summary>
+        /// Indicates whether there is a next page.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public bool HasNext { get; set; } = default!;
+
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
+
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("debug")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? TraceId { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? SessionId { get; set; } = default!;
+
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public double Duration { get; set; } = default!;
+
+        /// <summary>
+        /// The data payload of the API response.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<System.Collections.Generic.IDictionary<string, object>>? Data { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Represents a generic API response with a data payload.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PluginContentIApiResult
+    {
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
+
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("debug")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? TraceId { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? SessionId { get; set; } = default!;
+
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public double Duration { get; set; } = default!;
+
+        /// <summary>
+        /// Represents content specifically associated with a plugin.
+        /// <br/>Inherits from FluentCMS.Entities.Content to leverage common content properties and behaviors.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.IDictionary<string, object>? Data { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Represents the definition of a plugin, detailing its characteristics and functionalities.
+    /// <br/>Inherits from FluentCMS.Entities.AuditEntity for audit tracking.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PluginDefinition
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Guid Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("createdBy")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? CreatedBy { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lastUpdatedBy")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? LastUpdatedBy { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lastUpdatedAt")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.DateTimeOffset LastUpdatedAt { get; set; } = default!;
+
+        /// <summary>
+        /// Name of the plugin.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("name")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Name { get; set; } = default!;
+
+        /// <summary>
+        /// Optional description of the plugin.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Description { get; set; } = default!;
 
+        /// <summary>
+        /// Type of the view component associated with the plugin, if applicable.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("viewType")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? ViewType { get; set; } = default!;
 
+        /// <summary>
+        /// Type of the edit component for the plugin's settings, if applicable.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("editType")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? EditType { get; set; } = default!;
+
+        /// <summary>
+        /// Type of the settings component for the plugin, if applicable.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("settingType")]
 
@@ -6869,64 +7177,114 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a paginated API response with a collection of data.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginIApiPagingResult
     {
+        /// <summary>
+        /// The size of each page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int PageSize { get; set; } = default!;
 
+        /// <summary>
+        /// The total number of pages.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int TotalPages { get; set; } = default!;
+
+        /// <summary>
+        /// The current page number.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int PageNumber { get; set; } = default!;
 
+        /// <summary>
+        /// The total count of items in all pages.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public long TotalCount { get; set; } = default!;
+
+        /// <summary>
+        /// Indicates whether there is a previous page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasPrevious { get; set; } = default!;
 
+        /// <summary>
+        /// Indicates whether there is a next page.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasNext { get; set; } = default!;
+
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
 
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("debug")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? TraceId { get; set; } = default!;
 
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
+
+        /// <summary>
+        /// The data payload of the API response.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("data")]
 
@@ -6935,29 +7293,51 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a generic API response with a data payload.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginIApiResult
     {
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
 
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("debug")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? TraceId { get; set; } = default!;
 
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
+
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
@@ -6997,34 +7377,13 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a role within a specific site.
+    /// <br/>Inherits from FluentCMS.Entities.SiteAssociatedEntity to establish a site-based context.
+    /// <br/>Defines roles for user access and permissions management.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class RoleCreateRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("name")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? Name { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("description")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? Description { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("autoAssigned")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public bool AutoAssigned { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("siteId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Guid SiteId { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class RoleDto
+    public partial class Role
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
@@ -7057,10 +7416,18 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid SiteId { get; set; } = default!;
 
+        /// <summary>
+        /// Name of the role. This field is required.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("name")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Name { get; set; } = default!;
+
+        /// <summary>
+        /// Optional description for the role. Provides additional context about the role's purpose or use.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
 
@@ -7069,132 +7436,202 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a request to create a new role.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class RoleDtoIApiResult
+    public partial class RoleCreateRequest
     {
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public RoleDto Data { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class RoleResponse
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public RoleDto Data { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class RoleUpdateRequest
-    {
+        /// <summary>
+        /// Gets or sets the name of the role.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("name")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Name { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the description of the role.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("description")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Description { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("autoAssigned")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public bool AutoAssigned { get; set; } = default!;
+        /// <summary>
+        /// Gets or sets the unique identifier of the site associated with the role.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid SiteId { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Guid Id { get; set; } = default!;
-
     }
 
+    /// <summary>
+    /// Represents a paginated API response with a collection of data.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class RolesResponse
+    public partial class RoleIApiPagingResult
     {
+        /// <summary>
+        /// The size of each page.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int PageSize { get; set; } = default!;
+
+        /// <summary>
+        /// The total number of pages.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int TotalPages { get; set; } = default!;
+
+        /// <summary>
+        /// The current page number.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int PageNumber { get; set; } = default!;
+
+        /// <summary>
+        /// The total count of items in all pages.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public long TotalCount { get; set; } = default!;
+
+        /// <summary>
+        /// Indicates whether there is a previous page.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public bool HasPrevious { get; set; } = default!;
+
+        /// <summary>
+        /// Indicates whether there is a next page.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public bool HasNext { get; set; } = default!;
+
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
 
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("debug")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? TraceId { get; set; } = default!;
 
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
+
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public double Duration { get; set; } = default!;
+
+        /// <summary>
+        /// The data payload of the API response.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<Role>? Data { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Represents a generic API response with a data payload.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RoleIApiResult
+    {
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
+
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("debug")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? TraceId { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? SessionId { get; set; } = default!;
+
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
@@ -7204,37 +7641,51 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("data")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<RoleDto>? Data { get; set; } = default!;
+        public Role Data { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
+    }
 
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int PageSize { get; set; } = default!;
+    /// <summary>
+    /// Represents a request to update an existing role.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RoleUpdateRequest
+    {
+        /// <summary>
+        /// Gets or sets the name of the role.
+        /// </summary>
 
-        [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int TotalPages { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int PageNumber { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public long TotalCount { get; set; } = default!;
+        public string? Name { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
+        /// <summary>
+        /// Gets or sets the description of the role.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public bool HasPrevious { get; set; } = default!;
+        public string? Description { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
+        /// <summary>
+        /// Gets or sets the unique identifier of the site associated with the role.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public bool HasNext { get; set; } = default!;
+        public System.Guid SiteId { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the unique identifier of the role to be updated.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Guid Id { get; set; } = default!;
 
     }
 
@@ -7261,17 +7712,6 @@ namespace FluentCMS.Web.UI.ApiClients
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid RoleId { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class SiteIdRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("siteId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Guid SiteId { get; set; } = default!;
 
     }
 
@@ -7331,64 +7771,114 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a paginated API response with a collection of data.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SiteResponseIApiPagingResult
     {
+        /// <summary>
+        /// The size of each page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int PageSize { get; set; } = default!;
 
+        /// <summary>
+        /// The total number of pages.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int TotalPages { get; set; } = default!;
+
+        /// <summary>
+        /// The current page number.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int PageNumber { get; set; } = default!;
 
+        /// <summary>
+        /// The total count of items in all pages.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public long TotalCount { get; set; } = default!;
+
+        /// <summary>
+        /// Indicates whether there is a previous page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasPrevious { get; set; } = default!;
 
+        /// <summary>
+        /// Indicates whether there is a next page.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasNext { get; set; } = default!;
+
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
 
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("debug")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? TraceId { get; set; } = default!;
 
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
+
+        /// <summary>
+        /// The data payload of the API response.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("data")]
 
@@ -7397,29 +7887,51 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a generic API response with a data payload.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SiteResponseIApiResult
     {
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
 
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("debug")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? TraceId { get; set; } = default!;
 
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
+
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
@@ -7464,92 +7976,33 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UserAuthenticateDto
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("userId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Guid UserId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("roleIds")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<System.Guid>? RoleIds { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("token")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? Token { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UserAuthenticateDtoIApiResult
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public UserAuthenticateDto Data { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UserAuthenticateRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("username")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? Username { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("password")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? Password { get; set; } = default!;
-
-    }
-
+    /// <summary>
+    /// Represents a request for changing a user's password.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserChangePasswordRequest
     {
+        /// <summary>
+        /// Gets or sets the unique identifier of the user whose password is to be changed.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("userId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid UserId { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the current (old) password of the user.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("oldPassword")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? OldPassword { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the new password for the user.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("newPassword")]
 
@@ -7558,105 +8011,259 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents the response details of a user.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UserDto
+    public partial class UserDetailResponse
     {
+        /// <summary>
+        /// Gets or sets the unique identifier of the user.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid Id { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the identifier of the user who created this user record.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("createdBy")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? CreatedBy { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the date and time when the user was created.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.DateTimeOffset CreatedAt { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the identifier of the user who last updated this user record.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("lastUpdatedBy")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? LastUpdatedBy { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the date and time when the user was last updated.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("lastUpdatedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.DateTimeOffset LastUpdatedAt { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the email address of the user.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("email")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Email { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the username of the user.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("username")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Username { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the date and time of the user's last login.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("lastLoginAt")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.DateTimeOffset? LastLoginAt { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the total count of logins by the user.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("loginCount")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int LoginCount { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Represents a generic API response with a data payload.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UserDetailResponseIApiResult
+    {
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
+
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("debug")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? TraceId { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? SessionId { get; set; } = default!;
+
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public double Duration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public UserDetailResponse Data { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Represents a request for user login.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UserLoginRequest
+    {
+        /// <summary>
+        /// Gets or sets the username of the user attempting to log in.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("username")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? Username { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the password of the user attempting to log in.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("password")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? Password { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Represents the response returned after a user login request.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UserLoginResponse
+    {
+        /// <summary>
+        /// Gets or sets the unique identifier of the user.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("userId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Guid UserId { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the list of role identifiers associated with the user.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("roleIds")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<System.Guid>? RoleIds { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the authentication token for the session.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("token")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? Token { get; set; } = default!;
+
     }
 
+    /// <summary>
+    /// Represents a generic API response with a data payload.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UserDtoIApiPagingResult
+    public partial class UserLoginResponseIApiResult
     {
-
-        [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int PageSize { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int TotalPages { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int PageNumber { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public long TotalCount { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public bool HasPrevious { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public bool HasNext { get; set; } = default!;
+        /// <summary>
+        /// A list of errors encountered during the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
 
+        /// <summary>
+        /// A list of debug information, useful for troubleshooting.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("debug")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+
+        /// <summary>
+        /// A unique identifier for the trace associated with the API request.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? TraceId { get; set; } = default!;
 
+        /// <summary>
+        /// A unique identifier for the session in which the API request was made.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
+
+        /// <summary>
+        /// The duration of the API request in milliseconds.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
@@ -7666,59 +8273,37 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("data")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<UserDto>? Data { get; set; } = default!;
+        public UserLoginResponse Data { get; set; } = default!;
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UserDtoIApiResult
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public UserDto Data { get; set; } = default!;
-
-    }
-
+    /// <summary>
+    /// Represents a request for registering a new user.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserRegisterRequest
     {
+        /// <summary>
+        /// Gets or sets the email address of the user being registered.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("email")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Email { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the username for the user being registered.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("username")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Username { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the password for the user being registered.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("password")]
 

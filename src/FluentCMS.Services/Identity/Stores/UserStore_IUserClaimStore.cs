@@ -48,6 +48,6 @@ public partial class UserStore : IUserClaimStore<User>
 
     public async Task<IList<User>> GetUsersForClaimAsync(Claim claim, CancellationToken cancellationToken)
     {
-        return await _repository.GetUsersForClaim(claim, cancellationToken);
+        return await repository.GetUsersForClaim(claim, cancellationToken);
     }
 }

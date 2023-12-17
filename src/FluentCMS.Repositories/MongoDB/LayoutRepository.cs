@@ -1,21 +1,20 @@
 ﻿using FluentCMS.Entities;
-using MongoDB.Driver;
 
 namespace FluentCMS.Repositories.MongoDB;
 
-public class LayoutRepository(
-    IMongoDBContext mongoDbContext,
-    IApplicationContext applicationContext) :
-    GenericRepository<Layout>(mongoDbContext, applicationContext), ILayoutRepository
+/// <summary>
+/// Repository for managing Layout entities in MongoDB.
+/// Extends SiteAssociatedRepository for handling entities associated with a specific site.
+/// </summary>
+public class LayoutRepository : SiteAssociatedRepository<Layout>, ILayoutRepository
 {
-    public async Task<IEnumerable<Layout>> GetAll(Guid siteId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Initializes a new instance of the LayoutRepository class.
+    /// </summary>
+    /// <param name="mongoDbContext">The MongoDB context used to access the database.</param>
+    /// <param name="applicationContext">The application context for the repository.</param>
+    public LayoutRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext)
+        : base(mongoDbContext, applicationContext)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var siteIdFilter = Builders<Layout>.Filter.Eq(x => x.SiteId, siteId);
-
-        var layouts = await Collection.FindAsync(siteIdFilter, null, cancellationToken);
-
-        return layouts.ToEnumerable(cancellationToken);
     }
 }

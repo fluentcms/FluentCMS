@@ -1,0 +1,20 @@
+@inherits BaseComponent
+
+<li class=@this.GetClasses() @attributes=AdditionalAttributes>
+    <Button Disabled=@Disabled OnClick=@OnClick>
+        @ChildContent
+    </Button>
+</li>
+
+@code {
+    [Parameter]
+    [CssProperty]
+    public bool Active { get; set; } = false;
+
+    [Parameter]
+    [CssProperty]
+    public bool Disabled { get; set; } = false;
+
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnClick { get; set; }
+}

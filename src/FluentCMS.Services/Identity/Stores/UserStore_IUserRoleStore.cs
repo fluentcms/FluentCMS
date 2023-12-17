@@ -29,7 +29,7 @@ public partial class UserStore : IUserRoleStore<User>
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        return (await _repository.GetUsersInRole(roleId, cancellationToken)).ToList();
+        return (await repository.GetUsersInRole(roleId, cancellationToken)).ToList();
     }
 
     public Task<IList<string>> GetRolesAsync(User user, CancellationToken cancellationToken)

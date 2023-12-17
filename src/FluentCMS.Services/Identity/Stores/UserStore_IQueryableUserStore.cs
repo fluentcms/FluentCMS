@@ -5,5 +5,5 @@ namespace FluentCMS.Services.Identity.Stores;
 
 public partial class UserStore : IQueryableUserStore<User>
 {
-    public IQueryable<User> Users => _repository.AsQueryable();
+    public IQueryable<User> Users => repository.AsQueryable();
 }

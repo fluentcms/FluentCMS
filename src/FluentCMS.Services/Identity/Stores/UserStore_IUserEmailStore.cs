@@ -19,7 +19,7 @@ public partial class UserStore : IUserEmailStore<User>
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        return await _repository.FindByEmail(normalizedEmail, cancellationToken);
+        return await repository.FindByEmail(normalizedEmail, cancellationToken);
     }
 
     public Task<string?> GetNormalizedEmailAsync(User user, CancellationToken cancellationToken)

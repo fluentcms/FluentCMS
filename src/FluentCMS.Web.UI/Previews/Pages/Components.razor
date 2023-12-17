@@ -90,6 +90,36 @@
     </div>
     @* #endregion *@
 
+    @* #region Input *@
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Inputs</h2>
+        <div class="py-4 flex flex-col gap-4">
+            Disabled:
+            <Input Disabled />
+            Placeholder:
+            <Input Placeholder="This is placeholder" />
+            Required:
+            <Input Placeholder="(check generated html)" Required />
+            Name:
+            <Input Placeholder="(check generated html)" Name="first_name" />
+
+            <div class="h-10"></div>
+
+            <Input @bind-Value=@Input1Value />
+            <Input IconName="IconNameEnum.Plus" @bind-Value=@Input1Value />
+            @Input1Value
+
+            <div class="h-10"></div>
+            <Input @bind-Value=@Input2Value />
+            <Input IconName="IconNameEnum.Plus" @bind-Value=@Input2Value />
+
+            @Input2Value
+
+        </div>
+    </div>
+    @* #endregion *@
+
+
     @* #region Buttons *@
     <div class="py-8">
         <h2 class="font-bold text-2xl">Buttons</h2>
@@ -114,12 +144,6 @@
                 <Button Disabled Color=@ColorEnum.Warning>Warning</Button>
                 <Button Disabled Color=@ColorEnum.Danger>Danger</Button>
             </ButtonGroup>
-        </div>
-        <div class="py-4 flex items-center gap-4">
-                <Button Color=@ColorEnum.Primary>Default</Button>
-                <Button Size="@SizeEnum.Small" Color=@ColorEnum.Primary>Small</Button>
-                <Button Size="@SizeEnum.Medium" Color=@ColorEnum.Primary>Medium</Button>
-                <Button Size="@SizeEnum.Large" Color=@ColorEnum.Primary>Large</Button>
         </div>
         <div class="py-4 flex gap-4">
             <Button>
@@ -153,6 +177,7 @@
         </div>
         <div class="py-4 flex gap-4">
             <Button Outline>
+                >>>>>>> 16053df2113381f5daf62029f0a06c920b861a4e
                 <Icon Name="IconNameEnum.InformationFilled" />
                 Hello
             </Button>
@@ -286,12 +311,42 @@
         </div>
     </div>
     @* #endregion *@
+
+
+    @* #region Spinner *@
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Spinner</h2>
+        <div class="py-4 flex gap-4">
+            <Spinner />
+            <Spinner Color="@ColorEnum.Primary" />
+            <Spinner Color="@ColorEnum.Secondary" />
+            <Spinner Color="@ColorEnum.Success" />
+            <Spinner Color="@ColorEnum.Danger" />
+            <Spinner Color="@ColorEnum.Warning" />
+            <Spinner Color="@ColorEnum.Info" />
+        </div>
+    </div>
+    @* #endregion *@
+
+    @* region Paginations *@
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Pagination</h2>
+        <div class="py-4 flex flex-col gap-4">
+            <Pagination Total="10" Current="5"></Pagination>
+            <Pagination Total="10" Current="5" ShowIcons></Pagination>
+        </div>
+    </div>
+    @* #endregion *@
+
 </div>
 
 @code {
 
     private bool Check1Value { get; set; } = true;
     private bool Check2Value { get; set; } = false;
+
+    private string Input1Value { get; set; } = "initial";
+    private string Input2Value { get; set; }
 
     public class Item
     {
