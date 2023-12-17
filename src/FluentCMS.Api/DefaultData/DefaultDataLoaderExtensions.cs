@@ -44,11 +44,8 @@ public static class DefaultDataLoaderExtensions
                 Email = defaultData.SuperAdmin.Email
             };
 
-            appContext.Current = new CurrentContext
-            {
-                Username = superUser.UserName,
-                IsSuperAdmin = true
-            };
+            // TODO: This is a hack to get the super admin user into the context.
+            ((ApiApplicationContext)appContext).SetSuperAdmin(superUser.UserName);
 
             // Default users creation
             userService.Create(superUser, defaultData.SuperAdmin.Password).GetAwaiter().GetResult();

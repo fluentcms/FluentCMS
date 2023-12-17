@@ -130,7 +130,7 @@ public class UserService(
 
         // Update user properties related to password changing
         user.LastPasswordChangedAt = DateTime.Now;
-        user.LastPasswordChangedBy = applicationContext.Current.Username;
+        user.LastPasswordChangedBy = applicationContext.Username;
         await userManager.UpdateAsync(user);
 
         return user;
