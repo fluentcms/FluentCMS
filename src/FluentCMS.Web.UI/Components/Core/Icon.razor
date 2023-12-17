@@ -25,6 +25,6 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        Content = (MarkupString)(ResourceManager.GetString(Name.ToString()) ?? throw new Exception("Invalid Icon Name"));
+        Content = (MarkupString)(ResourceManager.GetString(Name.ToString()) ?? throw new Exception("Invalid Icon name: \"" + Name.ToString() + "\""));
     }
 }
