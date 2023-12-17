@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using FluentCMS.Api.Filters;
 using FluentCMS.Api.Models;
 using FluentCMS.Entities;
 using FluentCMS.Services;
@@ -30,6 +31,7 @@ public class PageController(
     }
 
     [HttpGet("{siteId}/{path}")]
+    [DecodeQueryParam]
     public async Task<IApiResult<PageResponse>> GetByPath([FromRoute] Guid siteId, [FromRoute] string path, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(path))

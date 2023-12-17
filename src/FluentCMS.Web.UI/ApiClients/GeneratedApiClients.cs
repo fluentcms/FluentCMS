@@ -2466,12 +2466,12 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(PageSearchRequest? body);
+        System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(System.Guid siteId);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(PageSearchRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(System.Guid siteId, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -2484,12 +2484,12 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid? siteId, string? path);
+        System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid siteId, string path);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid? siteId, string? path, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid siteId, string path, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -2687,18 +2687,22 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(PageSearchRequest? body)
+        public virtual System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(System.Guid siteId)
         {
-            return GetAllAsync(body, System.Threading.CancellationToken.None);
+            return GetAllAsync(siteId, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(PageSearchRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(System.Guid siteId, System.Threading.CancellationToken cancellationToken)
         {
+            if (siteId == null)
+                throw new System.ArgumentNullException("siteId");
+
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/Page/GetAll");
+            urlBuilder_.Append("api/Page/GetAll/{siteId}");
+            urlBuilder_.Replace("{siteId}", System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -2706,11 +2710,7 @@ namespace FluentCMS.Web.UI.ApiClients
             {
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
-                    var json_ = System.Text.Json.JsonSerializer.Serialize(body, _settings.Value);
-                    var content_ = new System.Net.Http.StringContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
-                    request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -2843,7 +2843,7 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid? siteId, string? path)
+        public virtual System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid siteId, string path)
         {
             return GetByPathAsync(siteId, path, System.Threading.CancellationToken.None);
         }
@@ -2851,19 +2851,18 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid? siteId, string? path, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid siteId, string path, System.Threading.CancellationToken cancellationToken)
         {
+            if (siteId == null)
+                throw new System.ArgumentNullException("siteId");
+
+            if (path == null)
+                throw new System.ArgumentNullException("path");
+
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/Page/GetByPath?");
-            if (siteId != null)
-            {
-                urlBuilder_.Append(System.Uri.EscapeDataString("siteId") + "=").Append(System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
-            }
-            if (path != null)
-            {
-                urlBuilder_.Append(System.Uri.EscapeDataString("path") + "=").Append(System.Uri.EscapeDataString(ConvertToString(path, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
-            }
-            urlBuilder_.Length--;
+            urlBuilder_.Append("api/Page/GetByPath/{siteId}/{path}");
+            urlBuilder_.Replace("{siteId}", System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Replace("{path}", System.Uri.EscapeDataString(ConvertToString(path, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -6976,29 +6975,51 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a request for creating a new page in the FluentCMS system.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageCreateRequest
     {
+        /// <summary>
+        /// Gets or sets the unique identifier of the site to which the page will belong.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid SiteId { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the unique identifier of the parent page, if any. Null if the page is a top-level page.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("parentId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid? ParentId { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the title of the page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("title")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Title { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the URL path of the page.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("path")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Path { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the order in which the page appears relative to its siblings.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("order")]
 
@@ -7007,39 +7028,69 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a response model for a page entity in the FluentCMS system.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageResponse
     {
+        /// <summary>
+        /// Gets or sets the unique identifier of the page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid Id { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the unique identifier of the parent page, if any.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("parentId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid? ParentId { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the unique identifier of the site to which the page belongs.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid SiteId { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the title of the page.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("title")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Title { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the collection of child pages under this page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("children")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Collections.Generic.ICollection<PageResponse>? Children { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the order in which the page appears relative to its siblings.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("order")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int Order { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the URL path of the page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("path")]
 
@@ -7050,6 +7101,10 @@ namespace FluentCMS.Web.UI.ApiClients
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public Layout Layout { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the collection of plugins associated with the page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("plugins")]
 
@@ -7232,45 +7287,51 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class PageSearchRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("siteId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Guid SiteId { get; set; } = default!;
-
-    }
-
+    /// <summary>
+    /// Represents a request for updating an existing page in the FluentCMS system.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageUpdateRequest
     {
+        /// <summary>
+        /// Gets or sets the unique identifier of the page to be updated.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid Id { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("siteId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Guid SiteId { get; set; } = default!;
+        /// <summary>
+        /// Gets or sets the unique identifier of the parent page, if any. Null if the page is a top-level page.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("parentId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid? ParentId { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the title of the page.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("title")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Title { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the URL path of the page.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("path")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Path { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the order in which the page appears relative to its siblings.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("order")]
 
@@ -7937,9 +7998,15 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a response model for a plugin entity in the FluentCMS system.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginResponse
     {
+        /// <summary>
+        /// Gets or sets the unique identifier of the plugin.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
 
@@ -7951,10 +8018,18 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public PluginDefinition Definition { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the order in which the plugin appears relative to others in the same section.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("order")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int Order { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the section of the page where the plugin is located.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("section")]
 
@@ -8587,29 +8662,51 @@ namespace FluentCMS.Web.UI.ApiClients
 
     }
 
+    /// <summary>
+    /// Represents a request to update an existing site in the FluentCMS system.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SiteUpdateRequest
     {
+        /// <summary>
+        /// Gets or sets the unique identifier of the site to be updated.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid Id { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the name of the site.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("name")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Name { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the description of the site.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Description { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the unique identifier of the role associated with the site.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("roleId")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public System.Guid RoleId { get; set; } = default!;
+
+        /// <summary>
+        /// Gets or sets the list of URLs associated with the site.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("urls")]
 
