@@ -2446,11 +2446,19 @@ namespace FluentCMS.Web.UI.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IPageClient : IApiClient
     {
+        /// <summary>
+        /// Creates a new page in the FluentCMS system.
+        /// </summary>
+        /// <param name="body">The page creation request data containing the details of the new page.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageResponseIApiResult> CreateAsync(PageCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new page in the FluentCMS system.
+        /// </summary>
+        /// <param name="body">The page creation request data containing the details of the new page.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageResponseIApiResult> CreateAsync(PageCreateRequest? body, System.Threading.CancellationToken cancellationToken);
@@ -2464,29 +2472,61 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves all pages associated with a specific site.
+        /// </summary>
+        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(System.Guid siteId);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves all pages associated with a specific site.
+        /// </summary>
+        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(System.Guid siteId, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves a specific page by its unique identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the page to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageResponseIApiResult> GetByIdAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific page by its unique identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the page to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Retrieves a specific page by its path within a site.
+        /// </summary>
+        /// <remarks>
+        /// This method also applies URL decoding to the 'path' parameter to handle any URL-encoded characters.
+        /// </remarks>
+        /// <param name="siteId">The unique identifier of the site to which the page belongs.</param>
+        /// <param name="path">The URL path of the page to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid siteId, string path);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific page by its path within a site.
+        /// </summary>
+        /// <remarks>
+        /// This method also applies URL decoding to the 'path' parameter to handle any URL-encoded characters.
+        /// </remarks>
+        /// <param name="siteId">The unique identifier of the site to which the page belongs.</param>
+        /// <param name="path">The URL path of the page to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid siteId, string path, System.Threading.CancellationToken cancellationToken);
@@ -2529,6 +2569,10 @@ namespace FluentCMS.Web.UI.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
+        /// <summary>
+        /// Creates a new page in the FluentCMS system.
+        /// </summary>
+        /// <param name="body">The page creation request data containing the details of the new page.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PageResponseIApiResult> CreateAsync(PageCreateRequest? body)
@@ -2537,6 +2581,10 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new page in the FluentCMS system.
+        /// </summary>
+        /// <param name="body">The page creation request data containing the details of the new page.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PageResponseIApiResult> CreateAsync(PageCreateRequest? body, System.Threading.CancellationToken cancellationToken)
@@ -2685,6 +2733,10 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves all pages associated with a specific site.
+        /// </summary>
+        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(System.Guid siteId)
@@ -2693,6 +2745,10 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves all pages associated with a specific site.
+        /// </summary>
+        /// <param name="siteId">The unique identifier of the site.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PageResponseIApiPagingResult> GetAllAsync(System.Guid siteId, System.Threading.CancellationToken cancellationToken)
@@ -2763,6 +2819,10 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves a specific page by its unique identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the page to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PageResponseIApiResult> GetByIdAsync(System.Guid id)
@@ -2771,6 +2831,10 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific page by its unique identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the page to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PageResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
@@ -2841,6 +2905,14 @@ namespace FluentCMS.Web.UI.ApiClients
             }
         }
 
+        /// <summary>
+        /// Retrieves a specific page by its path within a site.
+        /// </summary>
+        /// <remarks>
+        /// This method also applies URL decoding to the 'path' parameter to handle any URL-encoded characters.
+        /// </remarks>
+        /// <param name="siteId">The unique identifier of the site to which the page belongs.</param>
+        /// <param name="path">The URL path of the page to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid siteId, string path)
@@ -2849,6 +2921,14 @@ namespace FluentCMS.Web.UI.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Retrieves a specific page by its path within a site.
+        /// </summary>
+        /// <remarks>
+        /// This method also applies URL decoding to the 'path' parameter to handle any URL-encoded characters.
+        /// </remarks>
+        /// <param name="siteId">The unique identifier of the site to which the page belongs.</param>
+        /// <param name="path">The URL path of the page to retrieve.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PageResponseIApiResult> GetByPathAsync(System.Guid siteId, string path, System.Threading.CancellationToken cancellationToken)

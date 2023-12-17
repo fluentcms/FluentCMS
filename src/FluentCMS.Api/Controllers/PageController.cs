@@ -7,6 +7,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Api.Controllers;
 
+/// <summary>
+/// API controller for managing page entities in the FluentCMS system.
+/// Provides actions for retrieving, creating, updating, and deleting pages.
+/// </summary>
 public class PageController(
     IPageService pageService,
     IPluginService pluginService,
@@ -15,6 +19,12 @@ public class PageController(
     IMapper mapper) : BaseController
 {
 
+    /// <summary>
+    /// Retrieves all pages associated with a specific site.
+    /// </summary>
+    /// <param name="siteId">The unique identifier of the site.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>A paginated result containing pages of the specified site.</returns>
     [HttpGet("{siteId}")]
     public async Task<IApiPagingResult<PageResponse>> GetAll([FromRoute] Guid siteId, CancellationToken cancellationToken = default)
     {
@@ -22,6 +32,12 @@ public class PageController(
         return new ApiPagingResult<PageResponse>(mapper.Map<List<PageResponse>>(pages.ToList()));
     }
 
+    /// <summary>
+    /// Retrieves a specific page by its unique identifier.
+    /// </summary>
+    /// <param name="id">The unique identifier of the page to retrieve.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>An API result containing the requested page's data.</returns>
     [HttpGet("{id}")]
     public async Task<IApiResult<PageResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
@@ -30,6 +46,16 @@ public class PageController(
         return new ApiResult<PageResponse>(pageResponse);
     }
 
+    /// <summary>
+    /// Retrieves a specific page by its path within a site.
+    /// </summary>
+    /// <param name="siteId">The unique identifier of the site to which the page belongs.</param>
+    /// <param name="path">The URL path of the page to retrieve.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>An API result containing the requested page's data along with its associated plugins and layout.</returns>
+    /// <remarks>
+    /// This method also applies URL decoding to the 'path' parameter to handle any URL-encoded characters.
+    /// </remarks>
     [HttpGet("{siteId}/{path}")]
     [DecodeQueryParam]
     public async Task<IApiResult<PageResponse>> GetByPath([FromRoute] Guid siteId, [FromRoute] string path, CancellationToken cancellationToken = default)
@@ -62,6 +88,12 @@ public class PageController(
         return new ApiResult<PageResponse>(pageResponse);
     }
 
+    /// <summary>
+    /// Creates a new page in the FluentCMS system.
+    /// </summary>
+    /// <param name="request">The page creation request data containing the details of the new page.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>An API result containing the newly created page's data.</returns>
     [HttpPost]
     public async Task<IApiResult<PageResponse>> Create(PageCreateRequest request, CancellationToken cancellationToken = default)
     {
