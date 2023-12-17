@@ -3,6 +3,14 @@ $prefix-input: $prefix + 'input';
 .#{$prefix-input} {
     @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5;
 
+    &-has-icon-true {
+        @apply ps-10;
+    }
+
+    &-icon-wrapper {
+        @apply absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none;
+    }
+
     &:focus {
         @apply ring-blue-500 border-blue-500 ;
     }
@@ -15,4 +23,7 @@ $prefix-input: $prefix + 'input';
         @apply ring-blue-500 border-blue-500;
     }
 
+    &-group {
+        @apply relative mb-6;
+    }
 }
