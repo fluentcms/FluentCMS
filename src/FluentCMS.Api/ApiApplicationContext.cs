@@ -14,7 +14,7 @@ public class ApiApplicationContext : IApplicationContext
 
         var username = _httpContextAccessor.HttpContext?.User?.Identity?.Name ?? string.Empty;
         var roleIds = _httpContextAccessor.HttpContext?.User?.Claims?.Where(x => x.Type == "role")?.Select(x => Guid.Parse(x.Value)) ?? [];
-        var isSuperAdmin = _httpContextAccessor.HttpContext?.User?.Claims?.Where(x => x.Type == "issuperadmin")?.Select(x => bool.Parse(x.Value)).SingleOrDefault() ?? false;
+        var isSuperAdmin = _httpContextAccessor.HttpContext?.User?.Claims?.Where(x => x.Type == "IsSuperAdmin")?.Select(x => bool.Parse(x.Value)).SingleOrDefault() ?? false;
 
         Current = new CurrentContext
         {
