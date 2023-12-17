@@ -1243,7 +1243,7 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="name">The name of the content type.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string? name);
+        System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string name);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -1252,7 +1252,7 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="name">The name of the content type.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string? name, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string name, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Sets a field for a specific content type.
@@ -1530,8 +1530,7 @@ namespace FluentCMS.Web.UI.ApiClients
             {
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
-                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("DELETE");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -1756,7 +1755,7 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="name">The name of the content type.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string? name)
+        public virtual System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string name)
         {
             return GetByNameAsync(name, System.Threading.CancellationToken.None);
         }
@@ -1768,15 +1767,14 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="name">The name of the content type.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string? name, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentTypeIApiResult> GetByNameAsync(string name, System.Threading.CancellationToken cancellationToken)
         {
+            if (name == null)
+                throw new System.ArgumentNullException("name");
+
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/ContentType/GetByName?");
-            if (name != null)
-            {
-                urlBuilder_.Append(System.Uri.EscapeDataString("name") + "=").Append(System.Uri.EscapeDataString(ConvertToString(name, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
-            }
-            urlBuilder_.Length--;
+            urlBuilder_.Append("api/ContentType/GetByName/{name}");
+            urlBuilder_.Replace("{name}", System.Uri.EscapeDataString(ConvertToString(name, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
