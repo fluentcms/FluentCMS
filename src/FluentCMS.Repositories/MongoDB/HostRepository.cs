@@ -70,7 +70,7 @@ public class HostRepository : IHostRepository
     {
         host.Id = Guid.NewGuid();
         host.CreatedAt = DateTime.UtcNow;
-        host.CreatedBy = _applicationContext.Current.Username;
+        host.CreatedBy = _applicationContext.Username;
         host.LastUpdatedAt = host.CreatedAt;
         host.LastUpdatedBy = host.CreatedBy;
     }
@@ -82,6 +82,6 @@ public class HostRepository : IHostRepository
     private void SetAuditFieldsForUpdate(Host host)
     {
         host.LastUpdatedAt = DateTime.UtcNow;
-        host.LastUpdatedBy = _applicationContext.Current.Username;
+        host.LastUpdatedBy = _applicationContext.Username;
     }
 }

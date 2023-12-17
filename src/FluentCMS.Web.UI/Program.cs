@@ -43,7 +43,7 @@ services.AddHttpContextAccessor();
 services.AddJwtAuthentication(builder.Configuration);
 
 // register IconResourceManager
-services.AddKeyedScoped<ResourceManager>(typeof(Icons).FullName, (_, _) =>
+services.AddKeyedScoped(typeof(Icons).FullName, (_, _) =>
 {
     var iconsType = typeof(Icons);
     return new ResourceManager(iconsType.FullName!, iconsType.Assembly);

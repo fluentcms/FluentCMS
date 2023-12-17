@@ -70,7 +70,7 @@ public abstract class AuditEntityRepository<TEntity> : EntityRepository<TEntity>
     private void SetAuditFieldsForCreate(TEntity entity)
     {
         entity.CreatedAt = DateTime.UtcNow;
-        entity.CreatedBy = AppContext.Current.Username;
+        entity.CreatedBy = AppContext.Username;
         entity.LastUpdatedAt = entity.CreatedAt;
         entity.LastUpdatedBy = entity.CreatedBy;
     }
@@ -82,6 +82,6 @@ public abstract class AuditEntityRepository<TEntity> : EntityRepository<TEntity>
     private void SetAuditFieldsForUpdate(TEntity entity)
     {
         entity.LastUpdatedAt = DateTime.UtcNow;
-        entity.LastUpdatedBy = AppContext.Current.Username;
+        entity.LastUpdatedBy = AppContext.Username;
     }
 }
