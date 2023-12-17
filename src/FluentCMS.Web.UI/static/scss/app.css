@@ -868,6 +868,28 @@ body.f-theme-dark {
   @apply flex-1 ml-3 whitespace-nowrap;
 }
 
+.f-spinner svg {
+  @apply w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-gray-400;
+}
+.f-spinner-color-primary svg {
+  @apply fill-blue-600;
+}
+.f-spinner-color-success svg {
+  @apply fill-green-600;
+}
+.f-spinner-color-info svg {
+  @apply fill-cyan-600;
+}
+.f-spinner-color-danger svg {
+  @apply fill-red-600;
+}
+.f-spinner-color-warning svg {
+  @apply fill-yellow-600;
+}
+.f-spinner-color-secondary svg {
+  @apply fill-gray-600;
+}
+
 .f-pagination ul {
   @apply h-10 text-base inline-flex -space-x-px;
 }
