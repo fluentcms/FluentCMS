@@ -1,5 +1,4 @@
 ﻿@inherits BasePluginComponent
-@inject PluginContentClient pluginContentClient
 @rendermode InteractiveServer
 
 <InputTextArea @bind-Value="Model.Content" Required rows="5" placeholder="Enter you Text/Html content here"></InputTextArea>
@@ -11,21 +10,21 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var response = await pluginContentClient.GetByPluginIdAsync("TextHtml", AppState.Site.Id, Plugin.Id);
-        var pluginContent = response?.Data?.FirstOrDefault() ??
-            new Dictionary<string, object>
-                    {
-                { "PluginId" , Plugin.Id },
-                { "SiteId" , AppState.Site.Id }
-                    };
-        Model = new TextHtmlContent();
+        // var response = await pluginContentClient.GetByPluginIdAsync("TextHtml", AppState.Site.Id, Plugin.Id);
+        // var pluginContent = response?.Data?.FirstOrDefault() ??
+        //     new Dictionary<string, object>
+        //             {
+        //         { "PluginId" , Plugin.Id },
+        //         { "SiteId" , AppState.Site.Id }
+        //             };
+        // Model = new TextHtmlContent();
     }
 
     private async Task Submit()
     {
-        if (Model.Id == Guid.Empty)
-            await pluginContentClient.CreateAsync("TextHtml", Model.ToPluginContent(), CancellationToken);
-        else
-            await pluginContentClient.UpdateAsync("TextHtml", Model.ToPluginContent(), CancellationToken);
+        // if (Model.Id == Guid.Empty)
+        //     await pluginContentClient.CreateAsync("TextHtml", Model.ToPluginContent(), CancellationToken);
+        // else
+        //     await pluginContentClient.UpdateAsync("TextHtml", Model.ToPluginContent(), CancellationToken);
     }
 }

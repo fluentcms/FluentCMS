@@ -41,8 +41,8 @@ public class ContentTypeController(IContentTypeService contentTypeService) : Bas
     /// <param name="name">The name of the content type.</param>
     /// <param name="cancellationToken">A token for canceling the request.</param>
     /// <returns>The content type details if found, or null.</returns>
-    [HttpGet]
-    public async Task<IApiResult<ContentType>> GetByName([FromQuery] string name, CancellationToken cancellationToken = default)
+    [HttpGet("{name}")]
+    public async Task<IApiResult<ContentType>> GetByName([FromRoute] string name, CancellationToken cancellationToken = default)
     {
         var contentType = await contentTypeService.GetByName(name, cancellationToken);
         return new ApiResult<ContentType>(contentType);
@@ -108,7 +108,7 @@ public class ContentTypeController(IContentTypeService contentTypeService) : Bas
     /// <param name="name">The name of the field to be deleted.</param>
     /// <param name="cancellationToken">A token for canceling the request.</param>
     /// <returns>The details of the content type after deleting the field.</returns>
-    [HttpPut("{id}/{name}")]
+    [HttpDelete("{id}/{name}")]
     public async Task<IApiResult<ContentType>> DeleteField([FromRoute] Guid id, [FromRoute] string name, CancellationToken cancellationToken = default)
     {
         var updated = await contentTypeService.RemoveField(id, name, cancellationToken);
