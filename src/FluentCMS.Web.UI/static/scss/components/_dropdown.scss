@@ -11,6 +11,20 @@ $prefix-dropdown: $prefix + 'dropdown';
         }
     }
 
+    &-auto-close-false.#{$prefix-dropdown}-open-false {
+        .#{$prefix-dropdown}-menu {
+            @apply hidden;
+        }
+        // Do not close on focus out
+    }
+
+    &-auto-close-true {
+        // Close after focus out
+        &:not(:focus-within) .#{$prefix-dropdown}-menu {
+            @apply hidden;
+        }
+    }
+
     &-item-link {
         @apply block px-4 py-2; 
     }

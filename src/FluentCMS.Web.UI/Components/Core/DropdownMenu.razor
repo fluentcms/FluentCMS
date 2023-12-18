@@ -1,30 +1,28 @@
 @inherits BaseComponent
 
-@if(Parent.IsOpen) {
-    <div class=@this.GetClasses()>
-        @DropdownMenuHeader
-        @if(ChildContent != null) {
-            <ul class=@this.ClassName("DropdownMenuBody")>
-                @ChildContent
-            </ul>
-        }
-        @DropdownMenuFooter
-    </div>
-}
+<div class=@this.GetClasses()>
+    @DropdownMenuHeader
+    @if (ChildContent != null)
+    {
+        <ul class=@this.ClassName("DropdownMenuBody")>
+            @ChildContent
+        </ul>
+    }
+    @DropdownMenuFooter
+</div>
 
 @code {
     [CascadingParameter]
-    public Dropdown Parent {get; set;}
+    public Dropdown Parent { get; set; }
 
     [Parameter]
     [CssProperty]
-    public DropdownPlacementEnum Placement {get; set;} = DropdownPlacementEnum.Default;
+    public DropdownPlacementEnum Placement { get; set; } = DropdownPlacementEnum.Default;
 
     [Parameter]
-    public RenderFragment DropdownMenuHeader {get; set;}
-    
+    public RenderFragment DropdownMenuHeader { get; set; }
+
     [Parameter]
-    public RenderFragment DropdownMenuFooter {get; set;}
-    
+    public RenderFragment DropdownMenuFooter { get; set; }
+
 }
-

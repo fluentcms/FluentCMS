@@ -95,6 +95,15 @@
         <h2 class="font-bold text-2xl">Dropdown</h2>
         <div class="p-4">
             <ButtonGroup>
+                <Dropdown AutoClose>
+                    <DropdownButton Color="ColorEnum.Primary">AutoClose</DropdownButton>
+                    <DropdownMenu Placement="DropdownPlacementEnum.Bottom">
+                        <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
+                        <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
+                        <DropdownItem Href="/previews/components">Components</DropdownItem>
+                        <DropdownItem OnClick="() => DropdownCounter += 1">Increment (@DropdownCounter)</DropdownItem>
+                    </DropdownMenu>
+                </Dropdown>
                 <Dropdown>
                     <DropdownButton Color="ColorEnum.Danger">Bottom</DropdownButton>
                     <DropdownMenu Placement="DropdownPlacementEnum.Bottom">
