@@ -21,8 +21,6 @@ public class AppStateService
             var taskSite = Task.Run(() => siteClient.GetByUrlAsync(appState.Host));
             taskSite.Wait();
             appState.Site = taskSite.Result.Data;
-
-            //appState.Site = siteClient.GetByUrl(appState.Host).Result;
             appState.Layout = appState.Site.Layout;
 
             if (appState.Site != null)
@@ -34,8 +32,6 @@ public class AppStateService
                 var taskPage = Task.Run(() => pageClient.GetByPathAsync(appState.Site.Id, appState.Uri.LocalPath));
                 taskPage.Wait();
                 appState.Page = taskPage.Result.Data;
-
-                //appState.Page = pageClient.GetByPath(appState.Site.Id, appState.Uri.LocalPath).Result;
             }
 
             if (appState.Page != null && appState.Page.Layout != null)

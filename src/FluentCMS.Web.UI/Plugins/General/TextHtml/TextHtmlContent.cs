@@ -1,6 +1,4 @@
-﻿using FluentCMS.Entities;
-
-namespace FluentCMS.Web.UI.Plugins.General.TextHtml;
+﻿namespace FluentCMS.Web.UI.Plugins.General.TextHtml;
 
 public class TextHtmlContent
 {
@@ -8,29 +6,5 @@ public class TextHtmlContent
     public Guid Id { get; set; }
     public Guid SiteId { get; set; }
     public Guid PluginId { get; set; }
-
-    public TextHtmlContent()
-    {
-    }
-
-    //public TextHtmlContent(Dictionary<string, object>)
-    //{
-    //    Id = pluginContent.Id;
-    //    SiteId = pluginContent.SiteId;
-    //    PluginId = pluginContent.PluginId;
-    //    Content = pluginContent.ContainsKey("Content") ? pluginContent["Content"]?.ToString() ?? string.Empty : string.Empty;
-    //}
-
-    public PluginContent ToPluginContent()
-    {
-        var pluginContent = new PluginContent
-        {
-            Id = Id,
-            SiteId = SiteId,
-            PluginId = PluginId,
-            Type = "TextHtml"
-        };
-        pluginContent.Add("Content", Content);
-        return pluginContent;
-    }
+    public string Type { get; set; } = "TextHtml";
 }

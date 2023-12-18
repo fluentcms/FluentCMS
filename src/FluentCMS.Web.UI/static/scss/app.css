@@ -178,19 +178,31 @@ body.f-theme-dark {
 }
 
 .f-button {
-  @apply font-medium rounded-lg text-sm px-5 py-2.5 gap-2 text-center inline-flex items-center;
+  @apply font-medium rounded-lg gap-2 text-center inline-flex items-center relative;
 }
-.f-button-size-lg {
-  @apply py-3;
+.f-button-size-default {
+  @apply px-5 py-2.5 text-sm;
+}
+.f-button-size-small {
+  @apply px-3 py-2 text-xs;
+}
+.f-button-size-medium {
+  @apply px-5 py-2.5 text-sm;
+}
+.f-button-size-large {
+  @apply px-5 py-3 text-base;
 }
 .f-button-icon {
   @apply w-2.5 h-2.5 ml-2.5;
 }
-.f-button-loading {
-  @apply inline w-4 h-4 me-3 text-white animate-spin;
-}
 .f-button:focus {
   @apply z-10 outline-none;
+}
+.f-button .f-spinner {
+  @apply absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 opacity-100;
+}
+.f-button-loading-true > * {
+  @apply opacity-0;
 }
 
 .f-button-color-primary.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
