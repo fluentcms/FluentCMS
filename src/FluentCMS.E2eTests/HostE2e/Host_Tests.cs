@@ -1,8 +1,4 @@
-using FluentCMS.E2eTests;
 using FluentCMS.Web.UI.ApiClients;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Net.Http.Headers;
 using Shouldly;
 
 namespace FluentCMS.E2eTests.HostE2e;
