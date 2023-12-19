@@ -1,11 +1,13 @@
 using FluentCMS.E2eTests;
 using FluentCMS.Web.UI.ApiClients;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Net.Http.Headers;
 using Shouldly;
 
 namespace FluentCMS.E2eTests.HostE2e;
 
-public class Host_Tests : BaseE2eTest<IHostClient, HostClient>
+public class Host_Tests : AuthorizedBaseE2eTest<IHostClient, HostClient>
 {
 
     // GET
@@ -26,25 +28,17 @@ public class Host_Tests : BaseE2eTest<IHostClient, HostClient>
     [Fact]
     public async Task Should_UpdateHost()
     {
-        // TODO: Login First
+        await Login();
+
         HostUpdateRequest? request = new HostUpdateRequest()
-        { SuperUsers = ["dummySuperUser"] };
+        { SuperUsers = ["superadmin", "dummysuperadmin"] };
         var host = await Client.UpdateAsync(request);
 
         host.ShouldNotBeNull();
         host.Data.ShouldNotBeNull();
         host.Data.Id.ShouldNotBe(default);
         host.Data.SuperUsers.ShouldNotBeNull();
-        host.Data.SuperUsers.Count.ShouldBe(1);
-        host.Data.SuperUsers.ShouldContain("dummySuperUser");
-    }
-    private async Task Login(string userName = "superadmin", string password = "Passw0rd!")
-    {
-        var scope = WebUi.Services.CreateScope();
-        var accountClient = scope.ServiceProvider.GetRequiredService<AccountClient>();
-
-        var resp = await accountClient.LoginAsync(new UserLoginRequest() { Username=userName,Password = password});
-
-        E2eHttpClientFactory<Program>.OverrideToken = resp.Data.Token;
+        host.Data.SuperUsers.Count.ShouldBe(2);
+        host.Data.SuperUsers.ShouldContain("dummySuperUser".ToLower());
     }
 }
