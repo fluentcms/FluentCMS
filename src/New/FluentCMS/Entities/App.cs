@@ -2,8 +2,7 @@
 
 public class App : AppAssociatedEntity
 {
-    public required string Name { get; set; }
+    public string Slug { get; set; } = default!;
+    public string Title { get; set; } = default!;
     public string? Description { get; set; }
-    public List<string> Urls { get; set; } = [];
-    public Guid DefaultLayoutId { get; set; }
 }

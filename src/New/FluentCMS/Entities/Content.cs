@@ -2,6 +2,6 @@
 
 public class Content : AppAssociatedEntity
 {
-    public string Type { get; set; } = default!;
+    public Guid TypeId { get; set; }
     public Dictionary<string, object?> Value { get; set; } = [];
 }

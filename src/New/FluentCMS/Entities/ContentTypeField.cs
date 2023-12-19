@@ -2,7 +2,7 @@
 
 public class ContentTypeField
 {
-    public string Name { get; set; } = default!;
+    public string Slug { get; set; } = default!;
     public string Title { get; set; } = default!;
     public string? Description { get; set; }
     public string Label { get; set; } = default!;
