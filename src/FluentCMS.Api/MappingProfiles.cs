@@ -50,5 +50,8 @@ public class MappingProfiles : Profile
         CreateMap<RoleCreateRequest, Role>();
         CreateMap<RoleUpdateRequest, Role>();
         CreateMap<RoleUpdateRequest, Role>();
+
+        CreateMap<UserRegisterRequest, User>();
+        CreateMap<User, UserDetailResponse>();
     }
 }
