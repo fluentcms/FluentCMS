@@ -119,6 +119,39 @@
     </div>
     @* #endregion *@
 
+    @* #region Select *@
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Selects</h2>
+        <div class="py-4 flex flex-col gap-4">
+            Disabled:
+            <Select Disabled />
+            Placeholder:
+            <Select Placeholder="Choose a country">
+                <Option value="US">United States</Option>
+                <Option value="CA">Canada</Option>
+                <Option value="FR">France</Option>
+                <Option value="DE">Germany</Option>
+            </Select>
+            Required:
+            <Select Required />
+            Name:
+            <Select Name="country" />
+            Icon:
+            <Select Icon=@IconNameEnum.Search />
+
+            <div class="h-10"></div>
+
+            <Select Placeholder="Choose a country" @bind-Value=@Select1Value>
+                <Option value="US">United States</Option>
+                <Option value="CA">Canada</Option>
+                <Option value="FR">France</Option>
+                <Option value="DE">Germany</Option>
+            </Select>
+            @Select1Value
+        </div>
+    </div>
+    @* #endregion *@
+
 
     @* #region Buttons *@
     <div class="py-8">
@@ -347,6 +380,9 @@
 
     private string Input1Value { get; set; } = "initial";
     private string Input2Value { get; set; }
+
+    private string Select1Value { get; set; } = "US";
+    private string Select2Value { get; set; }
 
     public class Item
     {

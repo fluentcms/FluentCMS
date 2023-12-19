@@ -1,0 +1,16 @@
+@inherits BaseComponent
+
+<option class=@this.GetClasses()
+        @attributes=AdditionalAttributes
+        selected=@this.Selected
+        value=@this.Value>
+    @ChildContent
+</option>
+
+@code {
+    [Parameter]
+    public bool Selected { get; set; }
+
+    [Parameter]
+    public string? Value { get; set; }
+}
