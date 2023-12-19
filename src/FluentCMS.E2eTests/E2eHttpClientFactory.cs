@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc.Testing;
+using System.Net.Http.Headers;
 
 namespace FluentCMS.E2eTests;
 
@@ -8,6 +9,17 @@ internal class E2eHttpClientFactory<TStartup> : IHttpClientFactory
     private readonly WebApplicationFactory<TStartup> _appFactory;
 
     public E2eHttpClientFactory(WebApplicationFactory<TStartup> appFactory) => _appFactory = appFactory;
-
-    public HttpClient CreateClient(string name) => _appFactory.CreateClient();
+    public static string? OverrideToken { get; set; }
+    public HttpClient CreateClient(string name)
+    {
+        var client = _appFactory.CreateClient();
+        if (!string.IsNullOrEmpty(OverrideToken))
+        {
+            client
+                .DefaultRequestHeaders
+                .Authorization = new AuthenticationHeaderValue("Bearer",
+                    OverrideToken);
+        }
+        return client;
+    }
 }
