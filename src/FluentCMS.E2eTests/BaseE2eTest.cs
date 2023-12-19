@@ -10,9 +10,17 @@ public abstract class BaseE2eTest<TInterface, TImplementation>
     where TInterface : IApiClient
     where TImplementation : class, TInterface
 {
-    public WebApplicationFactory<Program> WebUi { get; }
+    internal WebApplicationFactory WebUi { get; }
+
     public HttpClient HttpClient => WebUi.CreateClient();
-    public required TInterface Client { get; init; }
+    public TInterface Client
+    {
+        get
+        {
+            using var scope = WebUi.Services.CreateScope();
+            return scope.ServiceProvider.GetRequiredService<TImplementation>();
+        }
+    }
 
 
     public BaseE2eTest()
@@ -20,11 +28,5 @@ public abstract class BaseE2eTest<TInterface, TImplementation>
         // build Our WebUi
         WebUi = new WebApplicationFactory();
 
-        // setup Client
-        //Client = (TInterface)Activator.CreateInstance(typeof(TImplementation), [HttpClient])!;
-
-        using var scope = WebUi.Services.CreateScope();
-
-        Client = scope.ServiceProvider.GetRequiredService<TImplementation>();
     }
 }
