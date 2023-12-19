@@ -32,7 +32,10 @@ public class HostController(IHostService hostService) : BaseController
     [HttpPut]
     public async Task<IApiResult<Host>> Update(HostUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        var host = new Host { SuperUsers = request.SuperUsers };
+        var host = await hostService.Get(cancellationToken);
+
+        host.SuperUsers = request.SuperUsers;
+
         var updateHost = await hostService.Update(host, cancellationToken);
         return new ApiResult<Host>(updateHost);
     }
