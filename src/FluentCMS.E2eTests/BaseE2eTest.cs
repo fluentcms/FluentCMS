@@ -26,7 +26,5 @@ public abstract class BaseE2eTest<TInterface, TImplementation>
         using var scope = WebUi.Services.CreateScope();
 
         Client = scope.ServiceProvider.GetRequiredService<TImplementation>();
-        // reset DB
-        scope.ServiceProvider.ResetMongoDb();
     }
 }
