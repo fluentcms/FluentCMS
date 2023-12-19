@@ -59,7 +59,14 @@ public class HostRepository : IHostRepository
         cancellationToken.ThrowIfCancellationRequested();
         SetAuditFieldsForUpdate(host);
         var idFilter = Builders<Host>.Filter.Eq(x => x.Id, host.Id);
-        return await _collection.FindOneAndReplaceAsync(idFilter, host, null, cancellationToken);
+        return await _collection.FindOneAndReplaceAsync(
+            idFilter,
+            host,
+            new FindOneAndReplaceOptions<Host, Host?>
+            {
+                ReturnDocument = ReturnDocument.After
+            },
+            cancellationToken);
     }
 
     /// <summary>
