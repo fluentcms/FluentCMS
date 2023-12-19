@@ -6,8 +6,8 @@
         <div class=@this.ClassName("InputIconWrapper")>
             <Icon Name="@IconName" />
         </div>
-        <input 
-            type="text" 
+        <input
+            type=@this.Type.ToString().Replace("_", "-")
             id="@Id" 
             disabled=@Disabled 
             name=@Name 
@@ -21,8 +21,8 @@
 }
 else
 {
-    <input 
-        type="text" 
+    <input
+        type=@this.Type.ToString().Replace("_", "-")
         id="@Id" 
         disabled=@Disabled 
         name=@Name 
@@ -48,4 +48,6 @@ else
     [CssProperty]
     public bool HasIcon => IconName != IconNameEnum.Default;
 
+    [Parameter]
+    public InputTypeEnum Type { get; set; } = InputTypeEnum.Text;
 }
