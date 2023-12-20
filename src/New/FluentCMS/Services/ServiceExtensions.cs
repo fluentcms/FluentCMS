@@ -13,7 +13,8 @@ public static class ServiceExtensions
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<ISystemSettingsService, SystemSettingsService>();
-        services.AddScoped(typeof(IContentService<>), typeof(ContentService<>));
+        services.AddScoped<IContentService, ContentService>();
+        services.AddScoped<IContentTypeService, ContentTypeService>();
 
         services.AddIdentity();
 
