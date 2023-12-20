@@ -22,6 +22,8 @@ public class ContentTypeRepository(
 
     public async Task<ContentType?> AddField(Guid contentTypeId, ContentTypeField field, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var contentType = await GetById(contentTypeId, cancellationToken);
 
         if (contentType == null)
@@ -34,6 +36,8 @@ public class ContentTypeRepository(
 
     public async Task<ContentType?> RemoveField(Guid contentTypeId, string fieldSlug, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var contentType = await GetById(contentTypeId, cancellationToken);
 
         if (contentType == null)
@@ -51,6 +55,8 @@ public class ContentTypeRepository(
 
     public async Task<ContentType?> UpdateField(Guid contentTypeId, ContentTypeField field, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var contentType = await GetById(contentTypeId, cancellationToken);
 
         if (contentType == null)

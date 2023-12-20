@@ -3,20 +3,16 @@ using MongoDB.Driver;
 
 namespace FluentCMS.Repositories.MongoDB;
 
-public class ContentRepository<TContent> :
-    AppAssociatedRepository<TContent>,
-    IContentRepository<TContent>
-    where TContent : Content, new()
+public class ContentRepository(
+    IMongoDBContext mongoDbContext,
+    IApplicationContext applicationContext) :
+    AppAssociatedRepository<Content>(mongoDbContext, applicationContext),
+    IContentRepository
 {
-
-    public ContentRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext) : base(mongoDbContext, applicationContext)
-    {
-    }
-
-    public async Task<IEnumerable<TContent>> GetAll(Guid appId, Guid contentTypeId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Content>> GetAll(Guid appId, Guid contentTypeId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var filter = Builders<TContent>.Filter.Eq(x => x.TypeId, contentTypeId);
+        var filter = Builders<Content>.Filter.Eq(x => x.TypeId, contentTypeId);
         var findResult = await Collection.FindAsync(filter, null, cancellationToken);
         return await findResult.ToListAsync(cancellationToken);
     }

@@ -1,4 +1,5 @@
-﻿using FluentCMS.Entities;
+﻿using AutoMapper;
+using FluentCMS.Entities;
 using FluentCMS.Services;
 using FluentCMS.Web.Api.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -6,45 +7,55 @@ using Microsoft.AspNetCore.Mvc;
 namespace FluentCMS.Web.Api.Controllers;
 
 [Route("{appSlug}/api/[controller]/{contentTypeSlug}/[action]")]
-public class ContentController(IContentService<Content> contentService) : BaseController
+public class ContentController(
+    IMapper mapper,
+    IContentService contentService,
+    IContentTypeService contentTypeService,
+    IAppService appService) : BaseController
 {
     [HttpGet]
-    public async Task<IApiPagingResult<Content>> GetAll([FromRoute] string appSlug, [FromRoute] string contentTypeSlug, [FromRoute] Guid siteId, CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<ContentResponse>> GetAll([FromRoute] string appSlug, [FromRoute] string contentTypeSlug, CancellationToken cancellationToken = default)
     {
-        var contents = await contentService.GetAll(contentType, siteId, cancellationToken);
-        return new ApiPagingResult<Content>(contents);
+        var app = await appService.GetBySlug(appSlug, cancellationToken);
+        var contentType = await contentTypeService.GetBySlug(app.Id, contentTypeSlug, cancellationToken);
+        var contents = await contentService.GetAll(app.Id, contentType.Id, cancellationToken);
+        var contentResponses = mapper.Map<List<ContentResponse>>(contents);
+        return OkPaged(contentResponses);
     }
 
     [HttpPost]
-    public async Task<IApiResult<Content>> Create([FromRoute] string appSlug, [FromRoute] string contentTypeSlug, [FromBody] ContentCreateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<ContentResponse>> Create([FromRoute] string appSlug, [FromRoute] string contentTypeSlug, [FromBody] ContentCreateRequest request, CancellationToken cancellationToken = default)
     {
-
+        var content = mapper.Map<Content>(request);
+        var app = await appService.GetBySlug(appSlug, cancellationToken);
+        var contentType = await contentTypeService.GetBySlug(app.Id, contentTypeSlug, cancellationToken);
+        content.TypeId = contentType.Id;
+        content.AppId = app.Id;
         var newContent = await contentService.Create(content, cancellationToken);
-
-        return new ApiResult<Content>(newContent);
+        var response = mapper.Map<ContentResponse>(newContent);
+        return Ok(response);
     }
 
     [HttpPut]
-    public async Task<IApiResult<Content>> Update([FromRoute] string contentType, [FromBody] ContentUpdateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<ContentResponse>> Update([FromRoute] string appSlug, [FromRoute] string contentTypeSlug, [FromBody] ContentUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        var content = new Content
-        {
-            Id = request.Id,
-            SiteId = request.SiteId,
-            Value = request.Value,
-            Type = contentType
-        };
-
-        var updatedContent = await contentService.Update(content, cancellationToken);
-
-        return new ApiResult<Content>(updatedContent);
+        var content = mapper.Map<Content>(request);
+        var app = await appService.GetBySlug(appSlug, cancellationToken);
+        var contentType = await contentTypeService.GetBySlug(app.Id, contentTypeSlug, cancellationToken);
+        content.TypeId = contentType.Id;
+        content.AppId = app.Id;
+        var updated = await contentService.Update(content, cancellationToken);
+        var response = mapper.Map<ContentResponse>(updated);
+        return Ok(response);
     }
 
     [HttpDelete("{id}")]
-    public async Task<IApiResult<bool>> Delete([FromRoute] string contentType, [FromRoute] Guid id, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<bool>> Delete([FromRoute] string appSlug, [FromRoute] string contentTypeSlug, [FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        await contentService.Delete(contentType, id, cancellationToken);
-        return new ApiResult<bool>(true);
+        var app = await appService.GetBySlug(appSlug, cancellationToken);
+        var contentType = await contentTypeService.GetBySlug(app.Id, contentTypeSlug, cancellationToken);
+        await contentService.Delete(app.Id, contentType.Id, id, cancellationToken);
+        return Ok(true);
     }
 
 

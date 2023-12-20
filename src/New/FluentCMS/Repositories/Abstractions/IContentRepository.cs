@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Repositories;
 
-public interface IContentRepository<TContent> : IAppAssociatedRepository<TContent> where TContent : Content, new()
+public interface IContentRepository : IAppAssociatedRepository<Content>
 {
-    Task<IEnumerable<TContent>> GetAll(Guid appId, Guid contentTypeId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Content>> GetAll(Guid appId, Guid contentTypeId, CancellationToken cancellationToken = default);
 }

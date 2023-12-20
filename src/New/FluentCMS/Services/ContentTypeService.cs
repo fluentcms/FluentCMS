@@ -6,6 +6,7 @@ namespace FluentCMS.Services;
 public interface IContentTypeService
 {
     Task<IEnumerable<ContentType>> GetAll(Guid appId, CancellationToken cancellationToken = default);
+    Task<ContentType> GetBySlug(Guid appId, string contentTypeSlug, CancellationToken cancellationToken = default);
     Task<ContentType> Create(ContentType contentType, CancellationToken cancellationToken = default);
     Task<ContentType> Update(ContentType contentType, CancellationToken cancellationToken = default);
     Task<ContentType> Delete(Guid appId, Guid contentTypeId, CancellationToken cancellationToken = default);
@@ -18,6 +19,12 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
     public Task<IEnumerable<ContentType>> GetAll(Guid appId, CancellationToken cancellationToken = default)
     {
         return contentTypeRepository.GetAll(appId, cancellationToken);
+    }
+
+    public async Task<ContentType> GetBySlug(Guid appId, string contentTypeSlug, CancellationToken cancellationToken = default)
+    {
+        return await contentTypeRepository.GetBySlug(appId, contentTypeSlug, cancellationToken) ??
+            throw new AppException(ExceptionCodes.ContentTypeNotFound);
     }
 
     public async Task<ContentType> Create(ContentType contentType, CancellationToken cancellationToken = default)
