@@ -1,30 +1,98 @@
 $prefix-dropdown: $prefix + 'dropdown';
 
 .#{$prefix-dropdown} {
-    @apply z-10 bg-white divide-y divide-gray-100 rounded-lg shadow w-44;
+    @apply relative;
     
 
-    &-item {
+    & > .#{$prefix-button} > .#{$prefix}icon {
+        @apply flex items-center justify-center;
+        & svg {
+            @apply w-2.5 h-2.5;
+        }
+    }
+
+    &-auto-close-false.#{$prefix-dropdown}-open-false {
+        .#{$prefix-dropdown}-menu {
+            @apply hidden;
+        }
+        // Do not close on focus out
+    }
+
+    &-auto-close-true {
+        // Close after focus out
+        &:not(:focus-within) .#{$prefix-dropdown}-menu {
+            @apply hidden;
+        }
+    }
+
+    &-item-link {
         @apply block px-4 py-2; 
     }
 
     &-menu {
-        @apply py-2 text-sm text-gray-700;
+        @apply absolute z-10 bg-white divide-y divide-gray-100 rounded-lg shadow w-44;
+
+        &-placement-top {
+            @apply bottom-full;
+        }
+
+        &-placement-top-end {
+            @apply bottom-full right-0;
+        }
+        
+        &-placement-top-start {
+            @apply bottom-full left-0;
+        }
+
+        &-placement-bottom {
+            @apply top-full;
+        }
+        
+        &-placement-bottom-end {
+            @apply top-full right-0;
+        }
+
+        &-placement-bottom-start {
+            @apply top-full left-0;
+        }
+
+        &-placement-left {
+            @apply right-full top-0;
+        }
+        &-placement-left-start {
+            @apply right-full top-0;
+        }
+        &-placement-left-end {
+            @apply right-full bottom-0;
+        }
+        
+        &-placement-right {
+            @apply left-full top-0;
+        }
+        &-placement-right-start {
+            @apply left-full top-0;
+        }
+        &-placement-right-end {
+            @apply left-full bottom-0;
+        }
+
+        &-body {
+            @apply py-2 text-sm text-gray-700;
+        }
+        .#{$prefix-theme-dark} & {
+            @apply bg-gray-700;
+        }
     }
 
-    &-item:hover {
+    &-item-link:hover {
         @apply bg-gray-100;
     }
 
-    .#{$prefix-theme-dark} & {
-        @apply bg-gray-700;
-    }
-
-    .#{$prefix-theme-dark} &-item:hover {
+    .#{$prefix-theme-dark} &-item-link:hover {
         @apply bg-gray-600 text-white;
     }
 
-    .#{$prefix-theme-dark} &-menu {
+    .#{$prefix-theme-dark} &-menu-body {
         @apply text-gray-200;
     }
 }

@@ -14,6 +14,7 @@ public enum IconNameEnum
     Filter,
     Spinner,
     Edit,
+    ChevronDown,
     Next,
     Previous
 }
