@@ -39,11 +39,12 @@ public class SystemSettingsController(
     }
 
     [HttpPost]
-    public async Task<IApiResult<App>> CreateApp(AppCreateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<AppResponse>> CreateApp(AppCreateRequest request, CancellationToken cancellationToken = default)
     {
         var app = mapper.Map<App>(request);
         var created = await appService.Create(app, cancellationToken);
-        return Ok(created);
+        var response = mapper.Map<AppResponse>(created);
+        return Ok(response);
     }
 
     [HttpDelete("{appId}")]

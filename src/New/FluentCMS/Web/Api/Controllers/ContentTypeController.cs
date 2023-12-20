@@ -13,11 +13,12 @@ public class ContentTypeController(
     AppService appService) : BaseController
 {
     [HttpGet]
-    public async Task<IApiPagingResult<ContentType>> GetAll([FromRoute] string appSlug, CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<ContentTypeResponse>> GetAll([FromRoute] string appSlug, CancellationToken cancellationToken = default)
     {
         var app = await appService.GetBySlug(appSlug, cancellationToken);
         var contentTypes = await contentTypeService.GetAll(app.Id, cancellationToken);
-        return new ApiPagingResult<ContentType>(contentTypes.ToList());
+        var contentTypeResponses = mapper.Map<List<ContentTypeResponse>>(contentTypes);
+        return OkPaged(contentTypeResponses);
     }
 
     [HttpPost]
