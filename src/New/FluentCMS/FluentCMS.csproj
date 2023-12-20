@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FluentCMS.Repositories.MongoDB\FluentCMS.Repositories.MongoDB.csproj" />
+    <ProjectReference Include="..\FluentCMS.Services\FluentCMS.Services.csproj" />
   </ItemGroup>
 
 </Project>
