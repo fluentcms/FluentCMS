@@ -1,12 +1,12 @@
 ﻿using FluentCMS.Entities;
+using FluentCMS.Repositories;
 using Microsoft.AspNetCore.Identity;
-using UserToken = FluentCMS.Providers.Identity.UserToken;
 
 namespace FluentCMS.Services;
 
 public interface IUserService
 {
-    Task<User> Login(string username, string password, CancellationToken cancellationToken = default);
+    Task<User> Authenticate(string username, string password, CancellationToken cancellationToken = default);
     Task<IEnumerable<User>> GetAll(CancellationToken cancellationToken = default);
     Task<User> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<User> Update(User user, CancellationToken cancellationToken = default);
@@ -17,9 +17,9 @@ public interface IUserService
 }
 
 public class UserService(
-    UserManager<User> userManager,
+    ISystemSettingsRepository systemSettingsRepository,
     IUserTokenProvider userTokenProvider,
-    IHostRepository hostRepository,
+    UserManager<User> userManager,
     IApplicationContext applicationContext) : IUserService
 {
     const string LOCAL_LOGIN_PROVIDER = "local";
@@ -36,13 +36,13 @@ public class UserService(
     {
         var isSuperAdmin = false;
 
-        // check if user is superadmin
+        // check if user is super admin
         if (!string.IsNullOrEmpty(user.UserName))
         {
-            var host = await hostRepository.Get(cancellationToken) ??
-                throw new AppException(ExceptionCodes.HostNotFound);
+            var sys = await systemSettingsRepository.Get(cancellationToken) ??
+                throw new AppException(ExceptionCodes.SystemSettingsNotFound);
 
-            isSuperAdmin = host.SuperUsers.Contains(user.UserName);
+            isSuperAdmin = sys.SuperUsers.Contains(user.UserName);
         }
 
         // Generate token
@@ -59,7 +59,7 @@ public class UserService(
         return userToken;
     }
 
-    public async Task<User> Login(string username, string password, CancellationToken cancellationToken = default)
+    public async Task<User> Authenticate(string username, string password, CancellationToken cancellationToken = default)
     {
         var user = await userManager.FindByNameAsync(username);
 
@@ -68,7 +68,7 @@ public class UserService(
             throw new AppException(ExceptionCodes.UserLoginFailed);
 
         // Update user properties related to login
-        user.LastLoginAt = DateTime.Now;
+        user.LoginAt = DateTime.Now;
         user.LoginCount++;
         await userManager.UpdateAsync(user);
 
@@ -105,7 +105,8 @@ public class UserService(
 
     public async Task<IEnumerable<User>> GetAll(CancellationToken cancellationToken = default)
     {
-        // TODO: Check this: ToListAsync() is not working - throws exception! For this reason, the ToList() method is used
+        // TODO: Check this: ToListAsync() is not working - throws exception!
+        // For this reason, the ToList() method is used
         return await Task.Run(() => userManager.Users.ToList(), cancellationToken);
     }
 
@@ -127,8 +128,8 @@ public class UserService(
         idResult.ThrowIfInvalid();
 
         // Update user properties related to password changing
-        user.LastPasswordChangedAt = DateTime.Now;
-        user.LastPasswordChangedBy = applicationContext.Username;
+        user.PasswordChangedAt = DateTime.Now;
+        user.PasswordChangedBy = applicationContext.Username;
         await userManager.UpdateAsync(user);
 
         return user;

@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Entities;
+using FluentCMS.Identity;
 using FluentCMS.Services;
 using Microsoft.AspNetCore.Identity;
 
@@ -8,6 +9,7 @@ public static class ServiceExtensions
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        services.AddScoped<IUserTokenProvider, JwtUserTokenProvider>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<ISystemSettingsService, SystemSettingsService>();

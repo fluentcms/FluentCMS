@@ -6,23 +6,24 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Web.Api.Controllers;
 
+[Route("sys/api/[controller]/[action]")]
 public class AccountController(IMapper mapper, IUserService userService) : BaseController
 {
     [HttpPost]
-    public async Task<IApiResult<UserDetailResponse>> Register(UserRegisterRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<UserDetailResponse>> Register([FromBody] UserRegisterRequest request, CancellationToken cancellationToken = default)
     {
         var user = mapper.Map<User>(request);
         var newUser = await userService.Create(user, request.Password, cancellationToken);
-        var result = mapper.Map<UserDetailResponse>(newUser);
-        return new ApiResult<UserDetailResponse>(result);
+        var response = mapper.Map<UserDetailResponse>(newUser);
+        return Ok(response);
     }
 
     [HttpPost]
-    public async Task<IApiResult<UserLoginResponse>> Login(UserLoginRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<UserLoginResponse>> Authenticate([FromBody] UserLoginRequest request, CancellationToken cancellationToken = default)
     {
-        var user = await userService.Login(request.Username, request.Password, cancellationToken);
+        var user = await userService.Authenticate(request.Username, request.Password, cancellationToken);
         var userToken = await userService.GetToken(user, cancellationToken);
-        return new ApiResult<UserLoginResponse>(new UserLoginResponse
+        return Ok(new UserLoginResponse
         {
             Token = userToken.AccessToken,
             RoleIds = user.RoleIds,
@@ -31,10 +32,10 @@ public class AccountController(IMapper mapper, IUserService userService) : BaseC
     }
 
     [HttpPost]
-    public async Task<IApiResult<bool>> ChangePassword(UserChangePasswordRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<bool>> ChangePassword([FromBody] UserChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
         await userService.ChangePassword(request.UserId, request.OldPassword, request.NewPassword, cancellationToken);
-        return new ApiResult<bool>(true);
+        return Ok(true);
     }
 
 }
