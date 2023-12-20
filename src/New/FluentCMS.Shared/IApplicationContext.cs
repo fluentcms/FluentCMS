@@ -2,7 +2,7 @@
 
 public interface IApplicationContext
 {
-    IEnumerable<string> Roles { get; }
+    IEnumerable<Guid> RoleIds { get; }
     string Username { get; }
     bool IsAuthenticated { get; }
     bool IsSuperAdmin { get; }

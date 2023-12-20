@@ -1,7 +1,5 @@
 var builder = WebApplication.CreateBuilder(args);
 
-
-
 #region Services
 
 var services = builder.Services;
@@ -9,6 +7,12 @@ var services = builder.Services;
 services.AddControllers();
 
 services.AddApiDocumentation();
+
+services.AddMongoDbRepositories("MongoDb");
+
+services.AddApplicationServices();
+
+services.AddApiServices();
 
 #endregion
 
