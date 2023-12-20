@@ -12,7 +12,7 @@ public class AppController(
     IMapper mapper) : BaseController
 {
     [HttpGet]
-    public async Task<IApiResult<AppResponse>> GetBySlug([FromRoute] string appSlug, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<AppResponse>> Get([FromRoute] string appSlug, CancellationToken cancellationToken = default)
     {
         var app = await appService.GetBySlug(appSlug, cancellationToken);
         var appResponse = mapper.Map<AppResponse>(app);
