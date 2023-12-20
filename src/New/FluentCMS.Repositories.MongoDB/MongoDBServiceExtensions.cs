@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Repositories.MongoDB;
+using Microsoft.Extensions.Configuration;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;

@@ -31,7 +31,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS", "New\FluentCMS\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Entities", "New\FluentCMS.Entities\FluentCMS.Entities.csproj", "{02DFB39D-3769-4448-92B6-EE9B3309829D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Repositories.Abstraction", "New\FluentCMS.Repositories.Abstraction\FluentCMS.Repositories.Abstraction.csproj", "{408025EA-5B54-48F9-B4CF-1E3FE391EBDC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Repositories.Abstraction", "New\FluentCMS.Repositories.Abstraction\FluentCMS.Repositories.Abstraction.csproj", "{408025EA-5B54-48F9-B4CF-1E3FE391EBDC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Repositories.MongoDB", "New\FluentCMS.Repositories.MongoDB\FluentCMS.Repositories.MongoDB.csproj", "{200120BE-74F1-4439-A480-63726B39E37B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Shared", "New\FluentCMS.Shared\FluentCMS.Shared.csproj", "{24A5402A-CD01-41D3-BD18-B51C68A014B3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -83,6 +87,14 @@ Global
 		{408025EA-5B54-48F9-B4CF-1E3FE391EBDC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{408025EA-5B54-48F9-B4CF-1E3FE391EBDC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{408025EA-5B54-48F9-B4CF-1E3FE391EBDC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{200120BE-74F1-4439-A480-63726B39E37B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{200120BE-74F1-4439-A480-63726B39E37B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{200120BE-74F1-4439-A480-63726B39E37B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{200120BE-74F1-4439-A480-63726B39E37B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{24A5402A-CD01-41D3-BD18-B51C68A014B3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{24A5402A-CD01-41D3-BD18-B51C68A014B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{24A5402A-CD01-41D3-BD18-B51C68A014B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{24A5402A-CD01-41D3-BD18-B51C68A014B3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -99,6 +111,8 @@ Global
 		{2B2327C2-DD1F-446C-AD24-B19883A7A30D} = {71838D6C-5D35-4A5F-A00A-3E42D6313235}
 		{02DFB39D-3769-4448-92B6-EE9B3309829D} = {71838D6C-5D35-4A5F-A00A-3E42D6313235}
 		{408025EA-5B54-48F9-B4CF-1E3FE391EBDC} = {71838D6C-5D35-4A5F-A00A-3E42D6313235}
+		{200120BE-74F1-4439-A480-63726B39E37B} = {71838D6C-5D35-4A5F-A00A-3E42D6313235}
+		{24A5402A-CD01-41D3-BD18-B51C68A014B3} = {71838D6C-5D35-4A5F-A00A-3E42D6313235}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2E9F4217-7A58-48A4-9850-84CD0CDA31DA}
