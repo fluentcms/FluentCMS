@@ -1,78 +1,46 @@
 @page "/previews/examples"
-@layout PanelLayout 
+@layout PanelLayout
 
 <div class="grid grid-cols-12">
 
-  <div class="col-span-2">
-    <aside class="h-screen transition-transform -translate-x-full border-r border-gray-200 lg:!translate-x-0 dark:border-gray-700" aria-label="Sidenav" id="drawer-navigation">
-      <div class="overflow-y-auto py-5 px-3 h-full">
-        <h4 class="text-gray-900 dark:text-white py-5">
-           Example Pages
-		</h4>  
-        <ul class="space-y-2">
-           <li>
-		     <span class="text-gray-300 dark:text-gray-500 text-xs py-3">
-		      GLOBAL SETTINGS 
-		     </span>
-           </li>
-           <li>
-             <a href="/previews/crud-form" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-               Form
-             </a>
-           </li>
-           <li>
-             <a href="/previews/crud-details" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-               Details
-             </a>
-           </li>
-           <li>
-             <a href="/login" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-               Login
-             </a>
-           </li>
-           <li>
-             <a href="/register" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-               Register
-             </a>
-           </li>
-           <li>
-             <a href="/reset-password" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-               Reset Password
-             </a>
-           </li>
-           <li>
-             <a href="/forgot-password" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-               Forgot Password
-             </a>
-           </li>
-           <li>
-             <a href="/previews/components" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-               Components
-             </a>
-           </li>
-        </ul>
-      </div>
-    </aside>
-  </div>
+    <div class="col-span-2">
+        <Sidebar Secondary aria-label="Sidenav" id="drawer-navigation">
+             <Header>
+                 <h4 class="text-gray-900 dark:text-white py-5">
+                     Example Pages
+                 </h4>
+             </Header>
+             <ChildContent>
+                 <SidebarItem> GLOBAL SETTINGS </SidebarItem>
+                 <SidebarItem href="/previews/crud-form"> Form </SidebarItem>
+                 <SidebarItem href="/previews/crud-details"> Details </SidebarItem>
+                 <SidebarItem href="/login"> Login </SidebarItem>
+                 <SidebarItem href="/register"> Register </SidebarItem>
+                 <SidebarItem href="/reset-password"> Reset Password </SidebarItem>
+                 <SidebarItem href="/forgot-password"> Forgot Password </SidebarItem>
+                 <SidebarItem href="/previews/components"> Components </SidebarItem>
+             </ChildContent>
+         </Sidebar>
+     </div>
 
-  <div class="col-span-10 px-4 pt-20 lg:pt-0">
+     <div class="col-span-10 px-4 pt-20 lg:pt-0">
 
-    <nav class="border-gray-200 px-0 py-2.5 pt-2 text-gray-700">
-		<button type="button" class="py-2.5 hover:text-gray-100 text-center inline-flex items-center me-2 mb-2 dark:text-white">
-		  <svg class="h-4 w-4 mr-2 text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
-		  	<path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 1 1 5l4 4"/>
-		  </svg>
-		  Back 
-		</button>
+         <nav class="border-gray-200 px-0 py-2.5 pt-2 text-gray-700">
+             <button type="button" class="py-2.5 hover:text-gray-100 text-center inline-flex items-center me-2 mb-2 dark:text-white">
+                 <svg class="h-4 w-4 mr-2 text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
+                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 1 1 5l4 4" />
+                 </svg>
+                 Back
+             </button>
 
-		<h1 class="text-3xl text-gray-900 dark:text-gray-300">Page Title</h1>
+             <h1 class="text-3xl text-gray-900 dark:text-gray-300">Page Title</h1>
 
-        <div class="flex flex-col md:flex-row md:items-center
+             <div class="flex flex-col md:flex-row md:items-center
 		md:justify-between space-y-3 md:space-y-0 md:space-x-4 p-4 px-0">
-            <div class="flex-1 flex items-center space-x-2">
-            </div>
-        </div>
-    </nav>
+                 <div class="flex-1 flex items-center space-x-2">
+                 </div>
+             </div>
+         </nav>
 
-  </div>
-</div>
+     </div>
+ </div>

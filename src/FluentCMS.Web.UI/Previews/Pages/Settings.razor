@@ -1,143 +1,59 @@
 @page "/previews/settings"
-@layout PanelLayout 
+@layout PanelLayout
 
 <div class="grid grid-cols-12">
 
-  <div class="col-span-2">
-    <aside class="h-screen transition-transform -translate-x-full border-r border-gray-200 lg:!translate-x-0 dark:border-gray-700" aria-label="Sidenav" id="drawer-navigation">
-      <div class="overflow-y-auto py-5 px-3 h-full">
-        <h4 class="text-gray-900 dark:text-white py-5">
-		    Settings	
-		</h4>  
-        <ul class="space-y-2">
-          <li>
-		    <span class="text-gray-700 dark:text-gray-500 text-xs py-3">
-		     GLOBAL SETTINGS 
-		    </span>
-          </li>
-          <li>
-            <a href="/previews/settings" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-              Overview
-            </a>
-          </li>
-          <li>
-            <a href="/previews/settings" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-              API Tokens
-            </a>
-          </li>
-          <li>
-            <a href="/previews/settings" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-              Documentation 
-            </a>
-          </li>
-          <li>
-            <a href="/previews/settings" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-              Internationalization 
-            </a>
-          </li>
-          <li>
-            <a href="/previews/settings" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-              Media Library
-            </a>
-          </li>
-          <li>
-            <a href="/previews/settings" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-              Review Workflows 
-            </a>
-          </li>
-          <li>
-            <a href="/previews/settings" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-              Single Sign-On 
-            </a>
-          </li>
-          <li>
-            <a href="/previews/settings" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-              Transfer Tokens 
-            </a>
-          </li>
-          <li>
-            <a href="/previews/settings" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-              Webhooks 
-            </a>
-          </li>
-          <li>
-		    <span class="text-gray-700 dark:text-gray-500 text-xs py-3">
-		     ADMINISTRATION SETTINGS 
-		    </span>
-          </li>
-          <li>
-            <a href="/previews/settings" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-               Roles
-            </a>
-          </li>
-          <li>
-            <a href="/previews/settings" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-               Users 
-            </a>
-          </li>
-          <li>
-            <a href="/previews/settings" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-               Audit Logs
-            </a>
-          </li>
-          <li>
-		    <span class="text-gray-300 dark:text-gray-600 text-xs py-3">
-		       EMAIL PLUGIN 
-		    </span>
-          </li>
-          <li>
-            <a href="/previews/settings" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-               Configuration
-            </a>
-          </li>
-          <li>
-		    <span class="text-gray-700 dark:text-gray-500 text-xs py-3">
-		       USERS & PERMISSIONS PLUGIN 
-		    </span>
-          </li>
-          <li>
-            <a href="/previews/settings" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-               Roles 
-            </a>
-          </li>
-          <li>
-            <a href="/previews/settings" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-               Providers 
-            </a>
-          </li>
-          <li>
-            <a href="/previews/settings" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-               Email templates 
-            </a>
-          </li>
-          <li>
-            <a href="/previews/settings" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-               Advances settings 
-            </a>
-          </li>
-        </ul>
-      </div>
-    </aside>
-  </div>
+    <div class="col-span-2"> 
+        <Sidebar Secondary aria-label="Sidenav" id="drawer-navigation">
+             <Header>
+                 <h4 class="text-gray-900 dark:text-white py-5">
+                     Settings
+                 </h4>
+             </Header>
+             <ChildContent>
+                 <SidebarItem> GLOBAL SETTINGS </SidebarItem>
+                 <SidebarItem Href="/previews/settings"> Overview </SidebarItem>
+                 <SidebarItem Href="/previews/settings"> API Tokens </SidebarItem>
+                 <SidebarItem Href="/previews/settings"> Documentation </SidebarItem>
+                 <SidebarItem Href="/previews/settings"> Internationalization </SidebarItem>
+                 <SidebarItem Href="/previews/settings"> Media Library </SidebarItem>
+                 <SidebarItem Href="/previews/settings"> Review Workflows </SidebarItem>
+                 <SidebarItem Href="/previews/settings"> Single Sign-On </SidebarItem>
+                 <SidebarItem Href="/previews/settings"> Transfer Tokens </SidebarItem>
+                 <SidebarItem Href="/previews/settings"> Webhooks </SidebarItem>
+                 <SidebarItem> ADMINISTRATION SETTINGS </SidebarItem>
+                 <SidebarItem Href="/previews/settings"> Roles </SidebarItem>
+                 <SidebarItem Href="/previews/settings"> Users </SidebarItem>
+                 <SidebarItem Href="/previews/settings"> Audit Logs </SidebarItem>
+                 <SidebarItem> EMAIL PLUGIN </SidebarItem>
+                 <SidebarItem Href="/previews/settings"> Configuration </SidebarItem>
+                 <SidebarItem> USERS & PERMISSIONS PLUGIN </SidebarItem>
+                 <SidebarItem Href="/previews/settings"> Roles </SidebarItem>
+                 <SidebarItem Href="/previews/settings"> Providers </SidebarItem>
+                 <SidebarItem Href="/previews/settings"> Email templates </SidebarItem>
+                 <SidebarItem Href="/previews/settings"> Advances settings </SidebarItem>
+             </ChildContent>
+         </Sidebar>
+     </div>
 
-  <div class="col-span-10 px-4 pt-20 lg:pt-0">
+     <div class="col-span-10 px-4 pt-20 lg:pt-0">
 
-    <nav class="border-gray-200 px-0 py-2.5 pt-2 text-gray-700">
-		<button type="button" class="py-2.5 hover:text-gray-100 text-center inline-flex items-center me-2 mb-2 dark:text-white">
-		  <svg class="h-4 w-4 mr-2 text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
-		  	<path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 1 1 5l4 4"/>
-		  </svg>
-		  Back 
-		</button>
+         <nav class="border-gray-200 px-0 py-2.5 pt-2 text-gray-700">
+             <button type="button" class="py-2.5 hover:text-gray-100 text-center inline-flex items-center me-2 mb-2 dark:text-white">
+                 <svg class="h-4 w-4 mr-2 text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
+                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 1 1 5l4 4" />
+                 </svg>
+                 Back
+             </button>
 
-		<h1 class="text-3xl text-gray-900 dark:text-gray-300">Page Title</h1>
+             <h1 class="text-3xl text-gray-900 dark:text-gray-300">Page Title</h1>
 
-        <div class="flex flex-col md:flex-row md:items-center
+             <div class="flex flex-col md:flex-row md:items-center
 		md:justify-between space-y-3 md:space-y-0 md:space-x-4 p-4 px-0">
-            <div class="flex-1 flex items-center space-x-2">
-            </div>
-        </div>
-    </nav>
+                 <div class="flex-1 flex items-center space-x-2">
+                 </div>
+             </div>
+         </nav>
 
-  </div>
-</div>
+     </div>
+ </div>
