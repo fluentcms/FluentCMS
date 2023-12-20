@@ -7,7 +7,7 @@
             <Icon Name="@IconName" />
         </div>
         <input
-            type=@this.Type.ToString().Replace("_", "-")
+            type=@this.Type.ToString().FromPascalCaseToKebabCase()
             id="@Id" 
             disabled=@Disabled 
             name=@Name 
@@ -22,7 +22,7 @@
 else
 {
     <input
-        type=@this.Type.ToString().Replace("_", "-")
+        type=@this.Type.ToString().FromPascalCaseToKebabCase()
         id="@Id" 
         disabled=@Disabled 
         name=@Name 
