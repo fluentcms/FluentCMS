@@ -26,7 +26,7 @@ public class ExceptionCodes
     #region App
 
     public const string AppNotFound = "App.NotFound";
-    public const string AppUrlMustBeUnique = "App.UrlMustBeUnique";
+    public const string AppSlugNotUnique = "App.SlugNotUnique";
     public const string AppUnableToCreate = "App.UnableToCreated";
     public const string AppUnableToUpdate = "App.UnableToUpdate";
     public const string AppUnableToDelete = "App.UnableToDelete";

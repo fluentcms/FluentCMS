@@ -34,12 +34,22 @@ public class AppService(IAppRepository appRepository) : IAppService
 
     public async Task<App> Create(App app, CancellationToken cancellationToken = default)
     {
+        // check if slug is unique
+        var existing = await appRepository.GetBySlug(app.Slug, cancellationToken);
+        if (existing != null)
+            throw new AppException(ExceptionCodes.AppSlugNotUnique);
+
         return await appRepository.Create(app, cancellationToken) ??
             throw new AppException(ExceptionCodes.AppUnableToCreate);
     }
 
     public async Task<App> Update(App app, CancellationToken cancellationToken = default)
     {
+        // check if slug is unique
+        var existing = await appRepository.GetBySlug(app.Slug, cancellationToken);
+        if (existing != null && existing.Id != app.Id)
+            throw new AppException(ExceptionCodes.AppSlugNotUnique);
+
         return await appRepository.Update(app, cancellationToken) ??
             throw new AppException(ExceptionCodes.AppUnableToUpdate);
     }
