@@ -1,0 +1,55 @@
+{
+    "Title": "My First Site",
+    "Description": "This is my first site",
+    "Slug": "my-first-site",
+    "ContentTypes": [
+        {
+            "Name": "Article",
+            "Slug": "article",
+            "Fields": [
+                {
+                    "Name": "Title",
+                    "Slug": "title",
+                    "Type": "string",
+                    "Required": true
+                },
+                {
+                    "Name": "Body",
+                    "Slug": "body",
+                    "Type": "text",
+                    "Required": true
+                }
+            ]
+        },
+        {
+            "Name": "Page",
+            "Slug": "page",
+            "Fields": [
+                {
+                    "Name": "Title",
+                    "Slug": "title",
+                    "Type": "string",
+                    "Required": true
+                },
+                {
+                    "Name": "Body",
+                    "Slug": "body",
+                    "Type": "text",
+                    "Required": true
+                }
+            ]
+        }
+    ],
+    "Contents": [
+        {
+            "ContentType": "article",
+            "Title": "My First Article",
+            "Body": "This is my first article"
+        },
+        {
+            "ContentType": "page",
+            "Title": "About",
+            "Body": "This is the about page"
+        }
+    ]
+}
