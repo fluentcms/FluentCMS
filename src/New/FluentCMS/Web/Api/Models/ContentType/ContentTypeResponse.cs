@@ -2,10 +2,8 @@
 
 namespace FluentCMS.Web.Api.Models;
 
-public class ContentTypeResponse
+public class ContentTypeResponse : BaseAppAssociatedResponse
 {
-    public Guid Id { get; set; }
-    public Guid AppId { get; set; }
     public string Slug { get; set; } = default!;
     public string Title { get; set; } = default!;
     public string? Description { get; set; }

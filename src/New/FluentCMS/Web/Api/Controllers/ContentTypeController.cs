@@ -63,7 +63,7 @@ public class ContentTypeController(
     public async Task<IApiResult<ContentTypeResponse>> DeleteField([FromRoute] string appSlug, [FromRoute] Guid id, [FromRoute] string name, CancellationToken cancellationToken = default)
     {
         var app = await appService.GetBySlug(appSlug, cancellationToken);
-        var updated = await contentTypeService.RemoveField(app.Id, id, name, cancellationToken);
+        var updated = await contentTypeService.DeleteField(app.Id, id, name, cancellationToken);
         var response = mapper.Map<ContentTypeResponse>(updated);
         return Ok(response);
     }

@@ -10,7 +10,7 @@ public interface IContentTypeService
     Task<ContentType> Update(ContentType contentType, CancellationToken cancellationToken = default);
     Task<ContentType> Delete(Guid appId, Guid contentTypeId, CancellationToken cancellationToken = default);
     Task<ContentType> SetField(Guid appId, Guid contentTypeId, ContentTypeField field, CancellationToken cancellationToken = default);
-    Task<ContentType> RemoveField(Guid appId, Guid contentTypeId, string fieldSlug, CancellationToken cancellationToken = default);
+    Task<ContentType> DeleteField(Guid appId, Guid contentTypeId, string fieldSlug, CancellationToken cancellationToken = default);
 }
 
 public class ContentTypeService(IContentTypeRepository contentTypeRepository) : IContentTypeService
@@ -81,7 +81,7 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
 
     }
 
-    public async Task<ContentType> RemoveField(Guid appId, Guid contentTypeId, string fieldSlug, CancellationToken cancellationToken = default)
+    public async Task<ContentType> DeleteField(Guid appId, Guid contentTypeId, string fieldSlug, CancellationToken cancellationToken = default)
     {
         // load the content type
         var contentType = await contentTypeRepository.GetById(contentTypeId, cancellationToken) ??

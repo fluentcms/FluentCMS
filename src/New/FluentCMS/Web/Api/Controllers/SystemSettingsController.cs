@@ -46,11 +46,11 @@ public class SystemSettingsController(
         return Ok(created);
     }
 
-    [HttpDelete("{id}")]
-    public async Task<IApiResult<AppResponse>> DeleteApp([FromRoute] Guid appId, CancellationToken cancellationToken = default)
+    [HttpDelete("{appId}")]
+    public async Task<IApiResult<bool>> DeleteApp([FromRoute] Guid appId, CancellationToken cancellationToken = default)
     {
         var deleted = await appService.Delete(appId, cancellationToken);
         var appResponse = mapper.Map<AppResponse>(deleted);
-        return Ok(appResponse);
+        return Ok(true);
     }
 }

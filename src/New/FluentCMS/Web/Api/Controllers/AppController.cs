@@ -1,7 +1,6 @@
 ﻿using AutoMapper;
 using FluentCMS.Entities;
 using FluentCMS.Services;
-using FluentCMS.Web.Api.Filters;
 using FluentCMS.Web.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,8 +11,7 @@ public class AppController(
     IAppService appService,
     IMapper mapper) : BaseController
 {
-
-    [DecodeQueryParam]
+    [HttpGet]
     public async Task<IApiResult<AppResponse>> GetBySlug([FromRoute] string appSlug, CancellationToken cancellationToken = default)
     {
         var app = await appService.GetBySlug(appSlug, cancellationToken);
