@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-[Route("{appSlug}/api/[controller]/[action]")]
+[Route("app/{appSlug}/api/[controller]/[action]")]
 public class RoleController(
     IMapper mapper,
     IRoleService roleService,
