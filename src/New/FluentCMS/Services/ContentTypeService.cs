@@ -8,10 +8,10 @@ public interface IContentTypeService
     Task<IEnumerable<ContentType>> GetAll(string appSlug, CancellationToken cancellationToken = default);
     Task<ContentType> Create(ContentType contentType, CancellationToken cancellationToken = default);
     Task<ContentType> Update(ContentType contentType, CancellationToken cancellationToken = default);
-    Task<ContentType> Delete(Guid contentTypeId, CancellationToken cancellationToken = default);
-    Task<ContentType> AddField(Guid contentTypeId, ContentTypeField field, CancellationToken cancellationToken = default);
-    Task<ContentType> UpdateField(Guid contentTypeId, ContentTypeField field, CancellationToken cancellationToken = default);
-    Task<ContentType> RemoveField(Guid contentTypeId, string fieldSlug, CancellationToken cancellationToken = default);
+    Task<ContentType> Delete(string appSlug, string contentTypeSlug, CancellationToken cancellationToken = default);
+    Task<ContentType> AddField(string appSlug, string contentTypeSlug, ContentTypeField field, CancellationToken cancellationToken = default);
+    Task<ContentType> UpdateField(string appSlug, string contentTypeSlug, ContentTypeField field, CancellationToken cancellationToken = default);
+    Task<ContentType> RemoveField(string appSlug, string contentTypeSlug, string fieldSlug, CancellationToken cancellationToken = default);
 }
 
 public class ContentTypeService(IContentTypeRepository contentTypeRepository) : IContentTypeService
