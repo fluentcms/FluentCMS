@@ -37,8 +37,11 @@ public class SystemSettingsService(
         // Host should have at least one super user
         CheckSuperUsers(systemSettings);
 
-        _ = await systemSettingsRepository.Get(cancellationToken)
+        var existing = await systemSettingsRepository.Get(cancellationToken)
             ?? throw new AppException(ExceptionCodes.SystemSettingsNotFound);
+
+        // Id should be same
+        systemSettings.Id = existing.Id;
 
         // super admin can't remove himself from super user list
         if (!systemSettings.SuperUsers.Contains(appContext.Username))

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using FluentCMS.Web.Api.Models;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Web.Api.Controllers;
 
@@ -7,5 +8,13 @@ namespace FluentCMS.Web.Api.Controllers;
 [Produces("application/json")]
 public abstract class BaseController
 {
-    // Common properties and methods for all controllers can be defined here.
+    public ApiResult<T> Ok<T>(T item)
+    {
+        return new ApiResult<T>(item);
+    }
+
+    public ApiPagingResult<T> OkPaged<T>(IEnumerable<T> items)
+    {
+        return new ApiPagingResult<T>(items);
+    }
 }

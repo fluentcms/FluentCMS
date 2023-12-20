@@ -1,7 +1,7 @@
 ﻿namespace FluentCMS.Web.Api.Models;
 
-public class RoleCreateRequest
+public class AppUpdateRequest
 {
-    public string Name { get; set; } = default!;
+    public string Title { get; set; } = default!;
     public string? Description { get; set; }
 }

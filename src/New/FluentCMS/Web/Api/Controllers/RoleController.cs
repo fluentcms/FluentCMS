@@ -1,47 +1,53 @@
 ﻿using AutoMapper;
-using FluentCMS.Web.Api.Models;
 using FluentCMS.Entities;
 using FluentCMS.Services;
+using FluentCMS.Web.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class RoleController(IMapper mapper, IRoleService roleService) : BaseController
+[Route("{appSlug}/api/[controller]/[action]")]
+public class RoleController(
+    IMapper mapper,
+    IRoleService roleService,
+    AppService appService) : BaseController
 {
-    [HttpGet("{siteId}")]
-    public async Task<IApiPagingResult<Role>> GetAll([FromRoute] Guid siteId, CancellationToken cancellationToken = default)
+    [HttpGet]
+    public async Task<IApiPagingResult<RoleResponse>> GetAll([FromRoute] string appSlug, CancellationToken cancellationToken = default)
     {
-        var roles = await roleService.GetAll(siteId, cancellationToken);
-        return new ApiPagingResult<Role>(roles);
-    }
-
-    [HttpGet("{id}")]
-    public async Task<IApiResult<Role>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
-    {
-        var role = await roleService.GetById(id, cancellationToken);
-        return new ApiResult<Role>(role);
+        var app = await appService.GetBySlug(appSlug, cancellationToken);
+        var roles = await roleService.GetAll(app.Id, cancellationToken);
+        var roleResponses = mapper.Map<IEnumerable<RoleResponse>>(roles);
+        return OkPaged(roleResponses);
     }
 
     [HttpPost]
-    public async Task<IApiResult<Role>> Create([FromBody] RoleCreateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<RoleResponse>> Create([FromRoute] string appSlug, [FromBody] RoleCreateRequest request, CancellationToken cancellationToken = default)
     {
         var role = mapper.Map<Role>(request);
+        var app = await appService.GetBySlug(appSlug, cancellationToken);
+        role.AppId = app.Id;
         var newRole = await roleService.Create(role, cancellationToken);
-        return new ApiResult<Role>(newRole);
+        var roleResponse = mapper.Map<RoleResponse>(newRole);
+        return Ok(roleResponse);
     }
 
     [HttpPut]
-    public async Task<IApiResult<Role>> Update([FromBody] RoleUpdateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<RoleResponse>> Update([FromRoute] string appSlug, [FromBody] RoleUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var role = mapper.Map<Role>(request);
-        var editedRole = await roleService.Update(role, cancellationToken);
-        return new ApiResult<Role>(editedRole);
+        var app = await appService.GetBySlug(appSlug, cancellationToken);
+        role.AppId = app.Id;
+        var updated = await roleService.Update(role, cancellationToken);
+        var roleResponse = mapper.Map<RoleResponse>(updated);
+        return Ok(roleResponse);
     }
 
     [HttpDelete("{id}")]
-    public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<bool>> Delete([FromRoute] string appSlug, [FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        await roleService.Delete(id, cancellationToken);
-        return new ApiResult<bool>(true);
+        var app = await appService.GetBySlug(appSlug, cancellationToken);
+        await roleService.Delete(app.Id, id, cancellationToken);
+        return Ok(true);
     }
 }

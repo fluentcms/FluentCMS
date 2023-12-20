@@ -41,6 +41,7 @@ public class ExceptionCodes
     public const string RoleUnableToDelete = "Role.UnableToDelete";
     public const string RoleNotFound = "Role.NotFound";
     public const string RoleNameMustBeUnique = "Role.NameMustBeUnique";
+    public const string RoleInvalidAppId = "Role.InvalidAppId";
 
     #endregion
 
@@ -62,6 +63,7 @@ public class ExceptionCodes
     public const string ContentTypeNameCannotBeChanged = "ContentType.NameCannotBeChanged";
     public const string ContentTypeNameMustBeUnique = "ContentType.NameMustBeUnique";
     public const string ContentTypeFieldNotFound = "ContentType.FieldNotFound";
+    public const string ContentTypeInvalidAppId = "ContentType.ContentTypeInvalidAppId";
 
     #endregion
 }

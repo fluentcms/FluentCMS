@@ -9,6 +9,7 @@ public interface IAppService
     Task<App> GetBySlug(string appSlug, CancellationToken cancellationToken = default);
     Task<App> Create(App app, CancellationToken cancellationToken = default);
     Task<App> Update(App app, CancellationToken cancellationToken = default);
+    Task<App> Delete(Guid appId, CancellationToken cancellationToken = default);
 }
 
 public class AppService(IAppRepository appRepository) : IAppService
@@ -17,12 +18,6 @@ public class AppService(IAppRepository appRepository) : IAppService
     public async Task<IEnumerable<App>> GetAll(CancellationToken cancellationToken = default)
     {
         return await appRepository.GetAll(cancellationToken);
-    }
-
-    public async Task<App> GetById(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await appRepository.GetById(id, cancellationToken) ??
-            throw new AppException(ExceptionCodes.AppNotFound);
     }
 
     public async Task<App> GetBySlug(string appSlug, CancellationToken cancellationToken = default)
@@ -52,5 +47,11 @@ public class AppService(IAppRepository appRepository) : IAppService
 
         return await appRepository.Update(app, cancellationToken) ??
             throw new AppException(ExceptionCodes.AppUnableToUpdate);
+    }
+
+    public async Task<App> Delete(Guid appId, CancellationToken cancellationToken = default)
+    {
+        return await appRepository.Delete(appId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.AppUnableToDelete);
     }
 }

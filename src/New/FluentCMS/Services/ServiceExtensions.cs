@@ -1,6 +1,5 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Services;
-using FluentCMS.Services.Identity.Stores;
 using Microsoft.AspNetCore.Identity;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -11,7 +10,7 @@ public static class ServiceExtensions
     {
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleService, RoleService>();
-        services.AddScoped<IHostService, HostService>();
+        services.AddScoped<ISystemSettingsService, SystemSettingsService>();
         services.AddScoped(typeof(IContentService<>), typeof(ContentService<>));
 
         services.AddIdentity();
