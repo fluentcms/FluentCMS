@@ -1,7 +1,11 @@
 $prefix-button: $prefix + "button";
 
 .#{$prefix-button} {
-    @apply font-medium rounded-lg gap-2 text-center inline-flex items-center relative;
+    @apply font-medium rounded-lg relative;
+
+    & > span {
+        @apply items-center gap-2 text-center inline-flex;
+    }
 
     &-size-default {
         @apply px-5 py-2.5 text-sm;
