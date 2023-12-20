@@ -35,6 +35,6 @@ public class Host_Tests : AuthorizedBaseE2eTest<IHostClient, HostClient>
         host.Data.Id.ShouldNotBe(default);
         host.Data.SuperUsers.ShouldNotBeNull();
         host.Data.SuperUsers.Count.ShouldBe(2);
-        host.Data.SuperUsers.ShouldContain("dummySuperUser".ToLower());
+        host.Data.SuperUsers.ShouldContain("dummysuperadmin");
     }
 }
