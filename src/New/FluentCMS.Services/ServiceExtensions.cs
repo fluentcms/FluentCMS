@@ -12,7 +12,7 @@ public static class ServiceExtensions
         services.AddScoped<IUserTokenProvider, JwtUserTokenProvider>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleService, RoleService>();
-        services.AddScoped<ISystemSettingsService, SystemSettingsService>();
+        services.AddScoped<IGlobalSettingsService, GlobalSettingsService>();
         services.AddScoped<IContentService, ContentService>();
         services.AddScoped<IContentTypeService, ContentTypeService>();
 

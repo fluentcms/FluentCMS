@@ -1,0 +1,59 @@
+﻿using FluentCMS.Entities;
+using MongoDB.Driver;
+
+namespace FluentCMS.Repositories.MongoDB;
+
+public class GlobalSettingsRepository : IGlobalSettingsRepository
+{
+    private readonly IMongoCollection<GlobalSettings> _collection;
+    private readonly IAuthContext _authContext;
+
+    public GlobalSettingsRepository(IMongoDBContext mongoDbContext, IAuthContext authContext)
+    {
+        _collection = mongoDbContext.Database.GetCollection<GlobalSettings>("global_settings");
+        _authContext = authContext;
+    }
+
+    public async Task<GlobalSettings?> Get(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return await _collection.Find(Builders<GlobalSettings>.Filter.Empty).SingleOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<GlobalSettings?> Update(GlobalSettings settings, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var existing = await Get(cancellationToken);
+
+        if (existing == null)
+            return await Create(settings, cancellationToken);
+
+        SetAuditableFieldsForUpdate(settings);
+
+        var idFilter = Builders<GlobalSettings>.Filter.Eq(x => x.Id, settings.Id);
+
+        return await _collection.FindOneAndReplaceAsync(idFilter, settings, null, cancellationToken);
+    }
+
+    private async Task<GlobalSettings?> Create(GlobalSettings settings, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        SetAuditableFieldsForCreate(settings);
+        await _collection.InsertOneAsync(settings, null, cancellationToken);
+        return settings;
+    }
+
+    private void SetAuditableFieldsForCreate(GlobalSettings settings)
+    {
+        settings.Id = Guid.NewGuid();
+        settings.CreatedAt = DateTime.UtcNow;
+        settings.CreatedBy = _authContext.Username;
+    }
+
+    private void SetAuditableFieldsForUpdate(GlobalSettings settings)
+    {
+        settings.ModifiedAt = DateTime.UtcNow;
+        settings.ModifiedBy = _authContext.Username;
+    }
+}

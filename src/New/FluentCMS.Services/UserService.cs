@@ -14,10 +14,11 @@ public interface IUserService
     Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default);
     Task ChangePassword(User user, string newPassword, CancellationToken cancellationToken = default);
     Task<User> ChangePassword(Guid id, string oldPassword, string newPassword, CancellationToken cancellationToken = default);
+    Task<bool> Any(CancellationToken cancellationToken = default);
 }
 
 public class UserService(
-    ISystemSettingsRepository systemSettingsRepository,
+    IGlobalSettingsRepository globalSettingsRepository,
     IUserTokenProvider userTokenProvider,
     UserManager<User> userManager,
     IAuthContext authContext) : IUserService
@@ -39,10 +40,10 @@ public class UserService(
         // check if user is super admin
         if (!string.IsNullOrEmpty(user.UserName))
         {
-            var sys = await systemSettingsRepository.Get(cancellationToken) ??
-                throw new AppException(ExceptionCodes.SystemSettingsNotFound);
+            var globalSettings = await globalSettingsRepository.Get(cancellationToken) ??
+                throw new AppException(ExceptionCodes.GlobalSettingsNotFound);
 
-            isSuperAdmin = sys.SuperUsers.Contains(user.UserName);
+            isSuperAdmin = globalSettings.SuperUsers.Contains(user.UserName);
         }
 
         // Generate token
@@ -133,5 +134,10 @@ public class UserService(
         await userManager.UpdateAsync(user);
 
         return user;
+    }
+
+    public Task<bool> Any(CancellationToken cancellationToken = default)
+    {
+        return Task.Run(() => userManager.Users.Any(), cancellationToken);
     }
 }

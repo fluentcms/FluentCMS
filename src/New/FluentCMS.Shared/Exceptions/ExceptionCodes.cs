@@ -2,15 +2,19 @@
 
 public class ExceptionCodes
 {
-    #region SystemSettings
+    #region Setup
+    public const string SetupSettingsNotDefined = "SetupSettings.NotDefined";
+    public const string SetupSettingsSuperAdminNotDefined = "SetupSettings.SuperAdminNotDefined";
+    public const string SetupSettingsAlreadyInitialized = "SetupSettings.AlreadyInitialized";
+    #endregion
 
-    public const string SystemSettingsNotFound = "SystemSettings.NotFound";
-    public const string SystemSettingsAlreadyInitialized = "SystemSettings.AlreadyInitialized";
-    public const string SystemSettingsUnableToCreate = "SystemSettings.UnableToCreate";
-    public const string SystemSettingsUnableToUpdate = "SystemSettings.UnableToUpdate";
-    public const string SystemSettingsUnableToDelete = "SystemSettings.UnableToDelete";
-    public const string SystemSettingsAtLeastOneSuperUser = "SystemSettings.AtLeastOneSuperUser";
-    public const string SystemSettingsUnableToRemoveYourself = "SystemSettings.UnableToRemoveYourself";
+    #region GlobalSettings
+
+    public const string GlobalSettingsUnableToUpdate = "GlobalSettings.UnableToUpdate";
+    public const string GlobalSettingsUnableToInit = "GlobalSettings.UnableToInit";
+    public const string GlobalSettingsAtLeastOneSuperUser = "GlobalSettings.AtLeastOneSuperUser";
+    public const string GlobalSettingsUnableToRemoveYourself = "GlobalSettings.UnableToRemoveYourself";
+    public const string GlobalSettingsNotFound = "GlobalSettings.NotFound";
 
     #endregion
 

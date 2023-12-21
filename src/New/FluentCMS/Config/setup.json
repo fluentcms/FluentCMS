@@ -1,0 +1,9 @@
+{
+    "SetupSettings": {
+        "SuperAdmin": {
+            "Username": "superadmin",
+            "Password": "Passw0rd!",
+            "Email": "admin@example.com"
+        }
+    }
+}
