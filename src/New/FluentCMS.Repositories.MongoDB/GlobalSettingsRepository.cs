@@ -38,7 +38,7 @@ public class GlobalSettingsRepository : IGlobalSettingsRepository
         return await _collection.FindOneAndReplaceAsync(idFilter, settings, null, cancellationToken);
     }
 
-    public async Task Reset(CancellationToken cancellationToken = default)
+    public async Task<bool> Reset(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -46,6 +46,8 @@ public class GlobalSettingsRepository : IGlobalSettingsRepository
 
         foreach (var collectionName in collections.ToEnumerable(cancellationToken))
             await _mongoDbContext.Database.DropCollectionAsync(collectionName, cancellationToken);
+
+        return true;
     }
 
     private async Task<GlobalSettings?> Create(GlobalSettings settings, CancellationToken cancellationToken = default)

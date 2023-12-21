@@ -69,6 +69,11 @@ public class SetupController : BaseController
         return Ok(await _globalSettingsService.Init(settings));
     }
 
+    public async Task<IApiResult<bool>> Reset()
+    {
+        return Ok(await _globalSettingsService.Reset());
+    }
+
     private async Task<bool> InitCondition()
     {
         // Check if there is any user in the system.
