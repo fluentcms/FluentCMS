@@ -8,7 +8,7 @@ public abstract class AppAssociatedRepository<TEntity> :
     IAppAssociatedRepository<TEntity>
     where TEntity : IAppAssociatedEntity
 {
-    public AppAssociatedRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext) : base(mongoDbContext, applicationContext)
+    public AppAssociatedRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
     {
     }
 

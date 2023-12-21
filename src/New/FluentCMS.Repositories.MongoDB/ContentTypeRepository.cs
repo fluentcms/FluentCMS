@@ -5,8 +5,8 @@ namespace FluentCMS.Repositories.MongoDB;
 
 public class ContentTypeRepository(
     IMongoDBContext mongoDbContext,
-    IApplicationContext applicationContext) :
-    AppAssociatedRepository<ContentType>(mongoDbContext, applicationContext),
+    IAuthContext authContext) :
+    AppAssociatedRepository<ContentType>(mongoDbContext, authContext),
     IContentTypeRepository
 {
     public async Task<ContentType?> GetBySlug(Guid appId, string contentTypeSlug, CancellationToken cancellationToken = default)

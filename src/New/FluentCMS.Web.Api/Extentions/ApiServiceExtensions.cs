@@ -14,7 +14,7 @@ public static class ApiServiceExtensions
 
         services.AddHttpContextAccessor();
 
-        services.AddScoped<IApplicationContext, ApiApplicationContext>();
+        services.AddScoped<IAuthContext, AuthContext>();
 
         return services;
     }

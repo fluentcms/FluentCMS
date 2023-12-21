@@ -13,7 +13,7 @@ public interface ISystemSettingsService
 
 public class SystemSettingsService(
     ISystemSettingsRepository systemSettingsRepository,
-    IApplicationContext appContext) : ISystemSettingsService
+    IAuthContext authContext) : ISystemSettingsService
 {
 
     public async Task<SystemSettings> Create(SystemSettings systemSettings, CancellationToken cancellationToken = default)
@@ -44,7 +44,7 @@ public class SystemSettingsService(
         systemSettings.Id = existing.Id;
 
         // super admin can't remove himself from super user list
-        if (!systemSettings.SuperUsers.Contains(appContext.Username))
+        if (!systemSettings.SuperUsers.Contains(authContext.Username))
             throw new AppException(ExceptionCodes.SystemSettingsUnableToRemoveYourself);
 
         return await systemSettingsRepository.Update(systemSettings, cancellationToken)

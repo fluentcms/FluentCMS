@@ -5,8 +5,8 @@ namespace FluentCMS.Repositories.MongoDB;
 
 public class ContentRepository(
     IMongoDBContext mongoDbContext,
-    IApplicationContext applicationContext) :
-    AppAssociatedRepository<Content>(mongoDbContext, applicationContext),
+    IAuthContext authContext) :
+    AppAssociatedRepository<Content>(mongoDbContext, authContext),
     IContentRepository
 {
     public async Task<IEnumerable<Content>> GetAll(Guid appId, Guid contentTypeId, CancellationToken cancellationToken = default)
