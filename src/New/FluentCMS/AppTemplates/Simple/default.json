@@ -8,33 +8,15 @@
             "Slug": "article",
             "Fields": [
                 {
-                    "Name": "Title",
+                    "Title": "Title",
                     "Slug": "title",
                     "Type": "string",
                     "Required": true
                 },
                 {
-                    "Name": "Body",
+                    "Title": "Body",
                     "Slug": "body",
-                    "Type": "text",
-                    "Required": true
-                }
-            ]
-        },
-        {
-            "Name": "Page",
-            "Slug": "page",
-            "Fields": [
-                {
-                    "Name": "Title",
-                    "Slug": "title",
                     "Type": "string",
-                    "Required": true
-                },
-                {
-                    "Name": "Body",
-                    "Slug": "body",
-                    "Type": "text",
                     "Required": true
                 }
             ]

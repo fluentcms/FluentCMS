@@ -28,6 +28,12 @@ public class SystemSettingsRepository : ISystemSettingsRepository
         return await _collection.Find(Builders<SystemSettings>.Filter.Empty).SingleOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<bool> IsInitialized(CancellationToken cancellationToken = default)
+    {
+        var count = await _collection.CountDocumentsAsync(Builders<SystemSettings>.Filter.Empty, null, cancellationToken);
+        return count > 0;
+    }
+
     public async Task<SystemSettings?> Update(SystemSettings systemSettings, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

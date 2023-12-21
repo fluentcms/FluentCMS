@@ -1,0 +1,40 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+</head>
+<body>
+    <form id="setupForm">
+        <input type="text" id="adminUsername" name="adminUsername" placeholder="Admin Username" required>
+        <input type="password" id="adminPassword" name="adminPassword" placeholder="Admin Password" required>
+        <button type="submit">Complete Setup</button>
+    </form>
+    <script>
+        document.getElementById('setupForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            var data = {
+                adminUsername: document.getElementById('adminUsername').value,
+                adminPassword: document.getElementById('adminPassword').value
+            };
+
+            fetch('/complete-setup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                // Redirect or update UI upon successful setup
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        });
+    </script>
+</body>
+</html>

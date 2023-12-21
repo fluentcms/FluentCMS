@@ -66,7 +66,6 @@ public class SystemSettingsService(
 
     public async Task<bool> IsInitialized(CancellationToken cancellationToken = default)
     {
-        var settings = await systemSettingsRepository.Get(cancellationToken);
-        return settings != null;
+        return await systemSettingsRepository.IsInitialized(cancellationToken);
     }
 }

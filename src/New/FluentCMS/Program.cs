@@ -1,7 +1,8 @@
-using FluentCMS.Repositories.MongoDB;
-using MongoDB.Driver;
+using FluentCMS;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Configuration.AddConfig(builder.Environment);
 
 #region Services
 
@@ -24,18 +25,22 @@ services.AddApiServices();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var mongoDb = scope.ServiceProvider.GetRequiredService<IMongoDBContext>();
-
-    foreach (var collectionName in mongoDb.Database.ListCollectionNames().ToList())
-    {
-        mongoDb.Database.DropCollection(collectionName);
-    }
-
-}
-
 app.UseHttpsRedirection();
+
+app.UseMiddleware<SetupMiddleware>();
+
+//using var scope = app.Services.CreateScope();
+//var setupService = scope.ServiceProvider.GetRequiredService<ISystemSetupService>();
+//if (!await setupService.IsInitialized())
+//{
+//    var systemSettingsService = scope.ServiceProvider.GetRequiredService<ISystemSettingsService>();
+//    var systemSettings = new SystemSettings
+//    {
+//        Name = "FluentCMS",
+//        SuperUsers = new List<string> { "admin" }
+//    };
+//    await systemSettingsService.Create(systemSettings);
+//}
 
 app.UseApiDocumentation();
 
