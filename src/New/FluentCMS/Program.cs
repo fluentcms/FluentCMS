@@ -22,6 +22,12 @@ services.AddApiServices();
 
 var app = builder.Build();
 
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+    app.Services.ResetDb();
+}
+
 app.UseHttpsRedirection();
 
 app.UseApiDocumentation();

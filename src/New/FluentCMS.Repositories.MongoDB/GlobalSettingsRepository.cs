@@ -7,11 +7,13 @@ public class GlobalSettingsRepository : IGlobalSettingsRepository
 {
     private readonly IMongoCollection<GlobalSettings> _collection;
     private readonly IAuthContext _authContext;
+    private readonly IMongoDBContext _mongoDbContext;
 
     public GlobalSettingsRepository(IMongoDBContext mongoDbContext, IAuthContext authContext)
     {
         _collection = mongoDbContext.Database.GetCollection<GlobalSettings>("global_settings");
         _authContext = authContext;
+        _mongoDbContext = mongoDbContext;
     }
 
     public async Task<GlobalSettings?> Get(CancellationToken cancellationToken = default)
@@ -34,6 +36,16 @@ public class GlobalSettingsRepository : IGlobalSettingsRepository
         var idFilter = Builders<GlobalSettings>.Filter.Eq(x => x.Id, settings.Id);
 
         return await _collection.FindOneAndReplaceAsync(idFilter, settings, null, cancellationToken);
+    }
+
+    public async Task Reset(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var collections = await _mongoDbContext.Database.ListCollectionNamesAsync(cancellationToken: cancellationToken);
+
+        foreach (var collectionName in collections.ToEnumerable(cancellationToken))
+            await _mongoDbContext.Database.DropCollectionAsync(collectionName, cancellationToken);
     }
 
     private async Task<GlobalSettings?> Create(GlobalSettings settings, CancellationToken cancellationToken = default)
