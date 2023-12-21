@@ -1,5 +1,7 @@
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Configuration.AddConfig(builder.Environment);
+
 #region Services
 
 var services = builder.Services;
@@ -15,7 +17,6 @@ services.AddApplicationServices();
 services.AddApiServices();
 
 #endregion
-
 
 #region App
 

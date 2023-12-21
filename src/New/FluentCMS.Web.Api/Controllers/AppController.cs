@@ -28,4 +28,30 @@ public class AppController(
         var appResponse = mapper.Map<AppResponse>(updated);
         return Ok(appResponse);
     }
+
+    //[HttpGet]
+    //public async Task<IApiPagingResult<AppResponse>> GetAllApps(CancellationToken cancellationToken = default)
+    //{
+    //    var apps = await appService.GetAll(cancellationToken);
+    //    var appsResponse = mapper.Map<List<AppResponse>>(apps);
+    //    return OkPaged(appsResponse);
+    //}
+
+
+
+    //[HttpPost]
+    //public async Task<IApiResult<AppResponse>> CreateApp(AppCreateRequest request, CancellationToken cancellationToken = default)
+    //{
+    //    var app = mapper.Map<App>(request);
+    //    var created = await appService.Create(app, cancellationToken);
+    //    var response = mapper.Map<AppResponse>(created);
+    //    return Ok(response);
+    //}
+
+    //[HttpDelete("{appId}")]
+    //public async Task<IApiResult<bool>> DeleteApp([FromRoute] Guid appId, CancellationToken cancellationToken = default)
+    //{
+    //    _ = await appService.Delete(appId, cancellationToken);
+    //    return Ok(true);
+    //}
 }
