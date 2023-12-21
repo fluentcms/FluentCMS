@@ -8,6 +8,7 @@ public interface IGlobalSettingsService
     Task<GlobalSettings> Update(GlobalSettings settings, CancellationToken cancellationToken = default);
     Task<GlobalSettings?> Get(CancellationToken cancellationToken = default);
     Task<GlobalSettings> Init(GlobalSettings settings, CancellationToken cancellationToken = default);
+    Task<bool> Reset(CancellationToken cancellationToken = default);
 }
 
 public class GlobalSettingsService(
@@ -36,6 +37,11 @@ public class GlobalSettingsService(
     public async Task<GlobalSettings?> Get(CancellationToken cancellationToken = default)
     {
         return await repository.Get(cancellationToken);
+    }
+
+    public async Task<bool> Reset(CancellationToken cancellationToken = default)
+    {
+        return await repository.Reset(cancellationToken);
     }
 
     private static void CheckSuperUsers(GlobalSettings systemSettings)

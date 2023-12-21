@@ -66,7 +66,22 @@ public class SetupController : BaseController
             SuperUsers = [_setupSettings.SuperAdmin.Username],
         };
 
-        return Ok(await _globalSettingsService.Init(settings));
+        var update = await _globalSettingsService.Init(settings);
+
+        _initialized = true;
+
+        return Ok(update);
+    }
+
+    [HttpPost]
+    public async Task<IApiResult<bool>> Reset()
+    {
+        var resetResult = await _globalSettingsService.Reset();
+
+        if (resetResult)
+            _initialized = false;
+
+        return Ok(resetResult);
     }
 
     private async Task<bool> InitCondition()
