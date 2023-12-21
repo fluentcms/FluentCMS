@@ -43,7 +43,7 @@ public static class SwaggerServiceExtensions
         return services;
     }
 
-    public static IApplicationBuilder UseApiDocumentation(this IApplicationBuilder app, string routePrefix = "doc")
+    public static IApplicationBuilder UseApiDocumentation(this IApplicationBuilder app, string routePrefix = "api/doc")
     {
         // Enable middleware to serve generated Swagger as a JSON endpoint
         app.UseSwagger();

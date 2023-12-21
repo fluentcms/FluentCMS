@@ -6,10 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-[Route("app/{appSlug}/api/[controller]/[action]")]
 public class AppController(
     IAppService appService,
-    IMapper mapper) : BaseController
+    IMapper mapper) : BaseSystemController
 {
     [HttpGet]
     public async Task<IApiResult<AppResponse>> Get([FromRoute] string appSlug, CancellationToken cancellationToken = default)
