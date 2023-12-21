@@ -17,3 +17,15 @@ public abstract class BaseController
         return new ApiPagingResult<T>(items);
     }
 }
+
+[Route("api/app/{appSlug}/[controller]/[action]")]
+public abstract class BaseAppController : BaseController
+{
+
+}
+
+[Route("api/global/[controller]/[action]")]
+public abstract class BaseSystemController : BaseController
+{
+
+}

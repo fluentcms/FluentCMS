@@ -6,11 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-[Route("app/{appSlug}/api/[controller]/[action]")]
 public class RoleController(
     IMapper mapper,
     IRoleService roleService,
-    AppService appService) : BaseController
+    AppService appService) : BaseAppController
 {
     [HttpGet]
     public async Task<IApiPagingResult<RoleResponse>> GetAll([FromRoute] string appSlug, CancellationToken cancellationToken = default)

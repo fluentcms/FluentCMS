@@ -6,8 +6,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-[Route("sys/api/[controller]/[action]")]
-public class SetupController : BaseController
+public class SetupController : BaseSystemController
 {
 
     private static bool? _initialized;

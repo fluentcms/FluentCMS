@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-[Route("app/{appSlug}/api/[controller]/{contentTypeSlug}/[action]")]
+[Route("api/app/{appSlug}/[controller]/{contentTypeSlug}/[action]")]
 public class ContentController(
     IMapper mapper,
     IContentService contentService,
