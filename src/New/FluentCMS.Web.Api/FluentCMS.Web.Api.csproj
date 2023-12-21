@@ -15,4 +15,8 @@
     <ProjectReference Include="..\FluentCMS.Services\FluentCMS.Services.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Models\Setup\" />
+  </ItemGroup>
+
 </Project>

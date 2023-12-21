@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Web.Api.Models;
+﻿namespace FluentCMS.Web.Api;
 public class SetupSettings
 {
     public User SuperAdmin { get; set; } = default!;
