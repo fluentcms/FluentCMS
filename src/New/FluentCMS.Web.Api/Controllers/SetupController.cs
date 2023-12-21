@@ -1,8 +1,6 @@
 ﻿using FluentCMS.Entities;
-using FluentCMS.Services;
 using FluentCMS.Web.Api.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 
 namespace FluentCMS.Web.Api.Controllers;
 

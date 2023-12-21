@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace FluentCMS.Web.Api;
 
-public  class SetupManager
+public class SetupManager
 {
     private static bool? _initialized;
 
