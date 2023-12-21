@@ -20,10 +20,10 @@ public class UserService(
     ISystemSettingsRepository systemSettingsRepository,
     IUserTokenProvider userTokenProvider,
     UserManager<User> userManager,
-    IApplicationContext applicationContext) : IUserService
+    IAuthContext authContext) : IUserService
 {
-    const string LOCAL_LOGIN_PROVIDER = "local";
-    const string REFRESH_TOKEN_NAME = "refreshToken";
+    public const string LOCAL_LOGIN_PROVIDER = "local";
+    public string REFRESH_TOKEN_NAME = "refreshToken";
 
     public async Task<User> Create(User user, string password, CancellationToken cancellationToken = default)
     {
@@ -129,7 +129,7 @@ public class UserService(
 
         // Update user properties related to password changing
         user.PasswordChangedAt = DateTime.Now;
-        user.PasswordChangedBy = applicationContext.Username;
+        user.PasswordChangedBy = authContext.Username;
         await userManager.UpdateAsync(user);
 
         return user;

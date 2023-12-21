@@ -6,12 +6,12 @@ namespace FluentCMS.Repositories.MongoDB;
 public class SystemSettingsRepository : ISystemSettingsRepository
 {
     private readonly IMongoCollection<SystemSettings> _collection;
-    private readonly IApplicationContext _applicationContext;
+    private readonly IAuthContext _authContext;
 
-    public SystemSettingsRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext)
+    public SystemSettingsRepository(IMongoDBContext mongoDbContext, IAuthContext authContext)
     {
         _collection = mongoDbContext.Database.GetCollection<SystemSettings>("system_settings");
-        _applicationContext = applicationContext;
+        _authContext = authContext;
     }
 
     public async Task<SystemSettings?> Create(SystemSettings systemSettings, CancellationToken cancellationToken = default)
@@ -40,12 +40,12 @@ public class SystemSettingsRepository : ISystemSettingsRepository
     {
         systemSettings.Id = Guid.NewGuid();
         systemSettings.CreatedAt = DateTime.UtcNow;
-        systemSettings.CreatedBy = _applicationContext.Username;
+        systemSettings.CreatedBy = _authContext.Username;
     }
 
     private void SetAuditableFieldsForUpdate(SystemSettings systemSettings)
     {
         systemSettings.ModifiedAt = DateTime.UtcNow;
-        systemSettings.ModifiedBy = _applicationContext.Username;
+        systemSettings.ModifiedBy = _authContext.Username;
     }
 }

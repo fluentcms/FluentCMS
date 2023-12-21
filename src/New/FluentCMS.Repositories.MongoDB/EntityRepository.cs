@@ -11,15 +11,13 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
     protected readonly IMongoCollection<BsonDocument> BsonCollection;
     protected readonly IMongoDatabase MongoDatabase;
     protected readonly IMongoDBContext MongoDbContext;
-    protected readonly IApplicationContext AppContext;
 
-    public EntityRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext)
+    public EntityRepository(IMongoDBContext mongoDbContext, IAuthContext authContext)
     {
         MongoDatabase = mongoDbContext.Database;
         Collection = mongoDbContext.Database.GetCollection<TEntity>(GetCollectionName());
         BsonCollection = mongoDbContext.Database.GetCollection<BsonDocument>(GetCollectionName());
         MongoDbContext = mongoDbContext;
-        AppContext = applicationContext;
     }
 
     protected virtual string GetCollectionName()

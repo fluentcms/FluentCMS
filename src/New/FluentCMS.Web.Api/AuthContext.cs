@@ -2,14 +2,14 @@
 
 namespace FluentCMS.Web.Api;
 
-public class ApiApplicationContext : IApplicationContext
+public class AuthContext : IAuthContext
 {
     private string _username;
     private readonly IEnumerable<Guid> _roleIds;
     private bool _isSuperAdmin;
     private bool _isAuthenticated;
 
-    public ApiApplicationContext(IHttpContextAccessor httpContextAccessor)
+    public AuthContext(IHttpContextAccessor httpContextAccessor)
     {
         _username = httpContextAccessor.HttpContext?.User?.Identity?.Name ?? string.Empty;
         _roleIds = httpContextAccessor.HttpContext?.User?.Claims?.Where(x => x.Type == "role")?.Select(x => Guid.Parse(x.Value)) ?? Enumerable.Empty<Guid>();
