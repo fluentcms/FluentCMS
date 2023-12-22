@@ -195,6 +195,12 @@
             <Input Placeholder="(check generated html)" Required />
             Name:
             <Input Placeholder="(check generated html)" Name="first_name" />
+            Date:
+            <Input Type="InputTypeEnum.Date" />
+            Time:
+            <Input Type="InputTypeEnum.Time" />
+            DatetimeLocal:
+            <Input Type="InputTypeEnum.DatetimeLocal" />
 
             <div class="h-10"></div>
 
@@ -452,26 +458,26 @@
     }
 
     private List<Item> data = new List<Item> {
-new Item {
-Id= "1",
-Title = "Apple iMac 28\"",
-CreatedAt = "Tuesday, December 12, 2023 at 7:35 PM",
-UpdatedAt = "Tuesday, December 12, 2023 at 7:35 PM",
-State = "Desktop PC"
-},
-new Item {
-Id= "2",
-Title = "Apple iMac 29\"",
-CreatedAt = "Tuesday, December 13, 2023 at 7:35 PM",
-UpdatedAt = "Tuesday, December 13, 2023 at 7:35 PM",
-State = "Desktop PC"
-},
-new Item {
-Id= "3",
-Title = "Apple iMac 27\"",
-CreatedAt = "Tuesday, December 14, 2023 at 7:35 PM",
-UpdatedAt = "Tuesday, December 15, 2023 at 7:35 PM",
-State = "Desktop PC"
-},
-};
+        new Item {
+            Id= "1",
+            Title = "Apple iMac 28\"",
+            CreatedAt = "Tuesday, December 12, 2023 at 7:35 PM",
+            UpdatedAt = "Tuesday, December 12, 2023 at 7:35 PM",
+            State = "Desktop PC"
+        },
+        new Item {
+            Id= "2",
+            Title = "Apple iMac 29\"",
+            CreatedAt = "Tuesday, December 13, 2023 at 7:35 PM",
+            UpdatedAt = "Tuesday, December 13, 2023 at 7:35 PM",
+            State = "Desktop PC"
+        },
+        new Item {
+            Id= "3",
+            Title = "Apple iMac 27\"",
+            CreatedAt = "Tuesday, December 14, 2023 at 7:35 PM",
+            UpdatedAt = "Tuesday, December 15, 2023 at 7:35 PM",
+            State = "Desktop PC"
+        },
+    };
 }
