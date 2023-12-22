@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class AppController(IAppService appService, IMapper mapper) : BaseSystemController
+public class AppController(IAppService appService, IMapper mapper) : BaseGlobalController
 {
 
     [HttpPost]

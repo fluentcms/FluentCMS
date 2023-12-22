@@ -3,9 +3,14 @@
 public class ExceptionCodes
 {
     #region Setup
+
     public const string SetupSettingsNotDefined = "SetupSettings.NotDefined";
     public const string SetupSettingsSuperAdminNotDefined = "SetupSettings.SuperAdminNotDefined";
     public const string SetupSettingsAlreadyInitialized = "SetupSettings.AlreadyInitialized";
+    public const string SetupSettingsTemplatesPathNotDefined = "SetupSettings.TemplatesPathNotDefined";
+    public const string SetupSettingsTemplatesFolderNotFound = "SetupSettings.TemplatesFolderNotFound";
+    public const string SetupSettingsHostingEnvironmentIsNull = "SetupSettings.HostingEnvironmentIsNull";
+
     #endregion
 
     #region GlobalSettings
@@ -34,6 +39,13 @@ public class ExceptionCodes
     public const string AppUnableToCreate = "App.UnableToCreated";
     public const string AppUnableToUpdate = "App.UnableToUpdate";
     public const string AppUnableToDelete = "App.UnableToDelete";
+
+    #endregion
+
+    #region AppTemplate
+
+    public const string AppTemplateNotFound = "AppTemplate.NotFound";
+    public const string AppTemplateUnableToCreate = "AppTemplate.UnableToCreated";
 
     #endregion
 

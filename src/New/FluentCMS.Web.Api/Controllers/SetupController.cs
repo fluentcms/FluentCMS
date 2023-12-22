@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class SetupController(SetupManager setupManager) : BaseSystemController
+public class SetupController(SetupManager setupManager) : BaseGlobalController
 {
 
     [HttpGet]
