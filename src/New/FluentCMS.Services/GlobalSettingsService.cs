@@ -3,7 +3,7 @@ using FluentCMS.Repositories;
 
 namespace FluentCMS.Services;
 
-public interface IGlobalSettingsService
+public interface IGlobalSettingsService : IService
 {
     Task<GlobalSettings> Update(GlobalSettings settings, CancellationToken cancellationToken = default);
     Task<GlobalSettings?> Get(CancellationToken cancellationToken = default);

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Services;
 
-public interface IUserService
+public interface IUserService : IService
 {
     Task<User> Authenticate(string username, string password, CancellationToken cancellationToken = default);
     Task<IEnumerable<User>> GetAll(CancellationToken cancellationToken = default);

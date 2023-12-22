@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Services;
 
-public interface IAppTemplateService
+public interface IAppTemplateService : IService
 {
     Task<IEnumerable<AppTemplate>> GetAll(CancellationToken cancellationToken = default);
     Task<AppTemplate> GetById(Guid id, CancellationToken cancellationToken = default);
