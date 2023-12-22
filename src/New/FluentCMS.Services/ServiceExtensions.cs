@@ -15,6 +15,7 @@ public static class ServiceExtensions
         services.AddScoped<IGlobalSettingsService, GlobalSettingsService>();
         services.AddScoped<IContentService, ContentService>();
         services.AddScoped<IContentTypeService, ContentTypeService>();
+        services.AddScoped<IAppTemplateService, AppTemplateService>();
 
         services.AddIdentity();
 

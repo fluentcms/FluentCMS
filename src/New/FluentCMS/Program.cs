@@ -8,8 +8,6 @@ builder.Configuration.AddConfig(builder.Environment);
 
 var services = builder.Services;
 
-services.AddControllers();
-
 services.AddApiDocumentation();
 
 services.AddMongoDbRepositories("MongoDb");
@@ -17,8 +15,6 @@ services.AddMongoDbRepositories("MongoDb");
 services.AddApplicationServices();
 
 services.AddApiServices();
-
-services.AddScoped<SetupManager>();
 
 #endregion
 

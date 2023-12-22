@@ -1,7 +1,9 @@
 ﻿namespace FluentCMS.Web.Api;
+
 public class SetupSettings
 {
     public User SuperAdmin { get; set; } = default!;
+    public string TemplatesPath { get; set; } = default!;
 
     public class User
     {

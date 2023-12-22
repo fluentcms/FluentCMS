@@ -7,6 +7,8 @@ public static class ApiServiceExtensions
 {
     public static IServiceCollection AddApiServices(this IServiceCollection services)
     {
+        services.AddControllers();
+
         services.AddAuthentication();
 
         services.AddAuthorization();
@@ -14,6 +16,8 @@ public static class ApiServiceExtensions
         services.AddHttpContextAccessor();
 
         services.AddScoped<IAuthContext, AuthContext>();
+
+        services.AddScoped<SetupManager>();
 
         return services;
     }

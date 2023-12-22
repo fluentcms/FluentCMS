@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class GlobalSettingsController(IGlobalSettingsService service, IMapper mapper) : BaseSystemController
+public class GlobalSettingsController(IGlobalSettingsService service, IMapper mapper) : BaseGlobalController
 {
 
     [HttpPut]

@@ -25,7 +25,7 @@ public abstract class BaseAppController : BaseController
 }
 
 [Route("api/global/[controller]/[action]")]
-public abstract class BaseSystemController : BaseController
+public abstract class BaseGlobalController : BaseController
 {
 
 }

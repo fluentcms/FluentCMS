@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class UserController(IUserService userService, IMapper mapper) : BaseSystemController
+public class UserController(IUserService userService, IMapper mapper) : BaseGlobalController
 {
 
     [HttpGet]
