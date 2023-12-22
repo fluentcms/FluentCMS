@@ -22,6 +22,7 @@ body {
 
 body.#{$prefix-theme-dark} {
     @apply bg-gray-800;
+    color-scheme: dark;
 }
 
 

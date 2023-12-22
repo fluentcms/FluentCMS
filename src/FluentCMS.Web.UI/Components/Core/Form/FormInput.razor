@@ -10,7 +10,7 @@
     public string Id {get; set;} = "f-" + Guid.NewGuid().ToString();
 
     [Parameter]
-    public string Type {get; set;}
+    public InputTypeEnum Type { get; set; }
 
     [Parameter]
     public string Label {get; set;} = "";

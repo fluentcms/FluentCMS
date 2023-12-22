@@ -1,25 +1,52 @@
+using FluentCMS.Web.Api;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+builder.Configuration.AddConfig(builder.Environment);
 
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+#region Services
+
+var services = builder.Services;
+
+services.AddControllers();
+
+services.AddApiDocumentation();
+
+services.AddMongoDbRepositories("MongoDb");
+
+services.AddApplicationServices();
+
+services.AddApiServices();
+
+services.AddScoped<SetupManager>();
+
+#endregion
+
+#region App
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseDeveloperExceptionPage();
+
+#if DEBUG
+
+// this section is only for development purposes
+// this will delete all data and re-create the database
+using var scope = app.Services.CreateScope();
+var setup = scope.ServiceProvider.GetRequiredService<SetupManager>();
+setup.Reset().ConfigureAwait(false).GetAwaiter().GetResult();
+setup.Start().ConfigureAwait(false).GetAwaiter().GetResult();
+
+#endif
 
 app.UseHttpsRedirection();
+
+app.UseApiDocumentation();
 
 app.UseAuthorization();
 
 app.MapControllers();
+
+#endregion
 
 app.Run();

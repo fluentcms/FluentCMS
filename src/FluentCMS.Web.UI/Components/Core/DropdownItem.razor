@@ -1,14 +1,23 @@
-<li>
-    <a href="@Href" class="f-dropdown-item">
-        @ChildContent
-    </a>
+@inherits BaseComponent
+
+<li class=@this.GetClasses() @attributes=AdditionalAttributes>
+    @if(!string.IsNullOrEmpty(Href)) {
+        <a href="@Href" class=@this.ClassName("DropdownItemLink")>
+            @ChildContent
+        </a>
+    } else {
+        <span @onclick=OnClick class=@this.ClassName("DropdownItemLink")>
+            @ChildContent
+        </span>
+    }
 </li>
 
 
 @code {
     [Parameter]
-    public string Href { get; set; } = "#";
+    public string Href { get; set; } = "";
 
     [Parameter]
-    public RenderFragment ChildContent { get; set; }
+    public EventCallback OnClick {get; set;}
+
 }

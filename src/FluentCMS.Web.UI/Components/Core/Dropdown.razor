@@ -1,0 +1,24 @@
+@inherits BaseComponent
+
+<CascadingValue Value=@this>
+    <div class=@this.GetClasses() tabindex="0" @attributes=AdditionalAttributes>
+        @ChildContent
+    </div>
+</CascadingValue>
+
+@code {
+    [Parameter]
+    [CssProperty]
+    public bool Open { get; set; } = false;
+
+    [Parameter]
+    [CssProperty]
+    public bool AutoClose { get; set; } = false;
+
+    public void Toggle()
+    {
+        Open = !Open;
+        StateHasChanged();
+    }
+
+}
