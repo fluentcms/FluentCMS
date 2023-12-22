@@ -3,7 +3,7 @@ using FluentCMS.Repositories;
 
 namespace FluentCMS.Services;
 
-public interface IRoleService
+public interface IRoleService : IService
 {
     Task<IEnumerable<Role>> GetAll(Guid appId, CancellationToken cancellationToken = default);
     Task<Role> Create(Role role, CancellationToken cancellationToken = default);
