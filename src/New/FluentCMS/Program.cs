@@ -1,4 +1,5 @@
 using FluentCMS.Web.Api;
+using FluentCMS.Web.Api.Extentions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +16,8 @@ services.AddMongoDbRepositories("MongoDb");
 services.AddApplicationServices();
 
 services.AddApiServices();
+
+services.AddAutoMapper();
 
 #endregion
 
