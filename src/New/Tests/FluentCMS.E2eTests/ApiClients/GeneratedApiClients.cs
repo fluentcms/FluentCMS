@@ -4073,7 +4073,7 @@ namespace FluentCMS.E2eTests.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? CreatedAt { get; set; } = default!;
+        public System.DateTime? CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -4083,7 +4083,7 @@ namespace FluentCMS.E2eTests.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset ModifiedAt { get; set; } = default!;
+        public System.DateTime ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("appId")]
 
@@ -4366,7 +4366,7 @@ namespace FluentCMS.E2eTests.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? CreatedAt { get; set; } = default!;
+        public System.DateTime? CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -4376,7 +4376,7 @@ namespace FluentCMS.E2eTests.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset ModifiedAt { get; set; } = default!;
+        public System.DateTime ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("appId")]
 
@@ -4581,7 +4581,7 @@ namespace FluentCMS.E2eTests.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? CreatedAt { get; set; } = default!;
+        public System.DateTime? CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -4591,7 +4591,7 @@ namespace FluentCMS.E2eTests.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset ModifiedAt { get; set; } = default!;
+        public System.DateTime ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("appId")]
 
@@ -4802,7 +4802,7 @@ namespace FluentCMS.E2eTests.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -4812,7 +4812,7 @@ namespace FluentCMS.E2eTests.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("superUsers")]
 
@@ -4901,7 +4901,7 @@ namespace FluentCMS.E2eTests.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? CreatedAt { get; set; } = default!;
+        public System.DateTime? CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -4911,7 +4911,7 @@ namespace FluentCMS.E2eTests.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset ModifiedAt { get; set; } = default!;
+        public System.DateTime ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("appId")]
 
@@ -5117,7 +5117,7 @@ namespace FluentCMS.E2eTests.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? CreatedAt { get; set; } = default!;
+        public System.DateTime? CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -5127,7 +5127,7 @@ namespace FluentCMS.E2eTests.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset ModifiedAt { get; set; } = default!;
+        public System.DateTime ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("email")]
 
@@ -5142,7 +5142,7 @@ namespace FluentCMS.E2eTests.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("lastLoginAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? LastLoginAt { get; set; } = default!;
+        public System.DateTime? LastLoginAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("loginCount")]
 
@@ -5298,7 +5298,7 @@ namespace FluentCMS.E2eTests.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? CreatedAt { get; set; } = default!;
+        public System.DateTime? CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -5308,7 +5308,7 @@ namespace FluentCMS.E2eTests.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset ModifiedAt { get; set; } = default!;
+        public System.DateTime ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("userName")]
 
