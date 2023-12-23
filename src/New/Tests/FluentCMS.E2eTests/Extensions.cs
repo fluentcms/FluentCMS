@@ -22,15 +22,11 @@ public static class Extensions
         return services;
     }
 
-    // Build Service Provider
-    internal static IServiceProvider BuildServiceProvider(this IServiceCollection services)
-    {
-        return services.BuildServiceProvider();
-    }
-
     // Build Configuration for Tests
     internal static IConfiguration BuildConfiguration()
     {
+        var file = "appsettings.json";
+        var content = File.ReadAllText(file);
         var config = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddEnvironmentVariables()
