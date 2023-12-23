@@ -31,7 +31,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS", "New\FluentCMS\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Entities", "New\FluentCMS.Entities\FluentCMS.Entities.csproj", "{02DFB39D-3769-4448-92B6-EE9B3309829D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Repositories.Abstraction", "New\FluentCMS.Repositories.Abstraction\FluentCMS.Repositories.Abstraction.csproj", "{408025EA-5B54-48F9-B4CF-1E3FE391EBDC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Repositories.Abstractions", "New\FluentCMS.Repositories.Abstractions\FluentCMS.Repositories.Abstractions.csproj", "{408025EA-5B54-48F9-B4CF-1E3FE391EBDC}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Repositories.MongoDB", "New\FluentCMS.Repositories.MongoDB\FluentCMS.Repositories.MongoDB.csproj", "{200120BE-74F1-4439-A480-63726B39E37B}"
 EndProject
