@@ -30,8 +30,8 @@ app.UseDeveloperExceptionPage();
 // this will delete all data and re-create the database
 using var scope = app.Services.CreateScope();
 var setup = scope.ServiceProvider.GetRequiredService<SetupManager>();
-setup.Reset().ConfigureAwait(false).GetAwaiter().GetResult();
-setup.Start().ConfigureAwait(false).GetAwaiter().GetResult();
+//setup.Reset().ConfigureAwait(false).GetAwaiter().GetResult();
+//setup.Start().ConfigureAwait(false).GetAwaiter().GetResult();
 
 #endif
 
