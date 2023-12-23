@@ -81,6 +81,7 @@ public class SetupManager
     public async Task Reset()
     {
         await _globalSettingsService.Reset();
+        _initialized = false;
     }
 
     #region Private
