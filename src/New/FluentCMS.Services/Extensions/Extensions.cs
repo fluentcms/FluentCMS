@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FluentCMS.Services.Extensions;
+﻿namespace FluentCMS.Services.Extensions;
 public static class Extensions
 {
     public static T Merge<T>(this T target, T source)
@@ -20,7 +14,7 @@ public static class Extensions
         return target;
     }
 
-    public static (T[] Removed, T[]Added) Diff<T>(this IEnumerable<T> source, IEnumerable<T> target)
+    public static (T[] Removed, T[] Added) Diff<T>(this IEnumerable<T> source, IEnumerable<T> target)
     {
         var removed = source.Except(target);
         var added = target.Except(removed);

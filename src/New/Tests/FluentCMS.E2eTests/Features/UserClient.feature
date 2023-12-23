@@ -46,4 +46,4 @@ Scenario: Update user
 	When I update a user
 	Then user is updated
 
-# TODO: Delete user
+# We won't have "Delete user" functionality in the first release
