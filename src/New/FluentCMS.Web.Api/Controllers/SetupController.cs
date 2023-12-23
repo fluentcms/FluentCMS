@@ -18,4 +18,11 @@ public class SetupController(SetupManager setupManager) : BaseGlobalController
     {
         return Ok(await setupManager.Start());
     }
+
+    [HttpPost]
+    public async Task<IApiResult<bool>> Reset()
+    {
+        await setupManager.Reset();
+        return Ok(await setupManager.IsInitialized());
+    }
 }
