@@ -22,6 +22,7 @@ body {
 
 body.#{$prefix-theme-dark} {
     @apply bg-gray-800;
+    color-scheme: dark;
 }
 
 
@@ -45,6 +46,7 @@ body.#{$prefix-theme-dark} {
 @import './components/spinner';
 @import './components/pagination';
 @import './components/pagination-item';
+@import './components/select';
 
 /* #endregion COMPONENTS */
 

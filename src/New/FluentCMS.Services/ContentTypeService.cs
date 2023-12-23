@@ -3,7 +3,7 @@ using FluentCMS.Repositories;
 
 namespace FluentCMS.Services;
 
-public interface IContentTypeService
+public interface IContentTypeService : IService
 {
     Task<IEnumerable<ContentType>> GetAll(Guid appId, CancellationToken cancellationToken = default);
     Task<ContentType> GetBySlug(Guid appId, string contentTypeSlug, CancellationToken cancellationToken = default);

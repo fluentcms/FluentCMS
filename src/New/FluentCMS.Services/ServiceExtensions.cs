@@ -10,18 +10,15 @@ public static class ServiceExtensions
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         services.AddScoped<IUserTokenProvider, JwtUserTokenProvider>();
-        services.AddScoped<IUserService, UserService>();
-        services.AddScoped<IRoleService, RoleService>();
-        services.AddScoped<ISystemSettingsService, SystemSettingsService>();
-        services.AddScoped<IContentService, ContentService>();
-        services.AddScoped<IContentTypeService, ContentTypeService>();
 
-        services.AddIdentity();
+        AddIdentity(services);
+
+        RegisterServices(services);
 
         return services;
     }
 
-    private static IdentityBuilder AddIdentity(this IServiceCollection services)
+    private static IdentityBuilder AddIdentity(IServiceCollection services)
     {
         var builder = services.AddIdentityCore<User>();
 
@@ -31,6 +28,21 @@ public static class ServiceExtensions
             .AddDefaultTokenProviders();
 
         return builder;
+    }
+
+    private static void RegisterServices(IServiceCollection services)
+    {
+        var serviceTypes = typeof(ServiceExtensions).Assembly.GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract && t.Name.EndsWith("Service") && t.GetInterfaces().Contains(typeof(IService)))
+            .ToList();
+
+        foreach (var serviceType in serviceTypes)
+        {
+            var interfaceType = serviceType.GetInterfaces().FirstOrDefault(i => i.Name.EndsWith(serviceType.Name))
+                ?? throw new InvalidOperationException($"Interface for service '{serviceType.Name}' not found.");
+
+            services.AddScoped(interfaceType, serviceType);
+        }
     }
 
 }

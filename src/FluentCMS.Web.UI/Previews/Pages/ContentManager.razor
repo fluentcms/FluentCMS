@@ -1,64 +1,51 @@
 @page "/previews/content-manager"
 @layout PanelLayout
 
-
 <div class="grid grid-cols-12">
 
     <div class="col-span-2">
-        <aside class="h-screen transition-transform -translate-x-full border-r border-gray-200 lg:!translate-x-0 dark:border-gray-700" aria-label="Sidenav" id="drawer-navigation">
-            <div class="overflow-y-auto py-5 pt-0 px-3 h-full">
+        <Sidebar Secondary aria-label="Sidenav" id="drawer-navigation">
+             <Header>
+                 <h4 class="text-gray-900 dark:text-white py-5">
+                     Content
+                 </h4>
+                 <div class="w-full mb-3">
+                     <form class="flex items-center">
+                         <label for="simple-search" class="sr-only">Search</label>
+                         <div class="relative w-full">
+                             <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                 <svg aria-hidden="true" class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="currentColor" viewbox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                     <path fill-rule="evenodd" clip-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" />
+                                 </svg>
+                             </div>
+                             <input type="text" id="simple-search" placeholder="Search for products" required="" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500">
+                         </div>
+                     </form>
+                 </div>
+             </Header>
+             <ChildContent>
+                 <SidebarItem>
+                     COLLECTION TYPES
+                 </SidebarItem>
+                 <SidebarItem Href="/previews/content-manager">
+                     foo
+                 </SidebarItem>
+                 <SidebarItem>
+                     SINGLE TYPES
+                 </SidebarItem>
+                 <SidebarItem Href="/previews/content-manager">
+                     bar
+                 </SidebarItem>
+                 <SidebarItem Href="/previews/content-manager">
+                     baz
+                 </SidebarItem>
+             </ChildContent>
+         </Sidebar>
+     </div>
 
-                <h4 class="text-gray-900 dark:text-white py-5">
-                    Content
-                </h4>
-
-                <div class="w-full mb-3">
-                    <form class="flex items-center">
-                        <label for="simple-search" class="sr-only">Search</label>
-                        <div class="relative w-full">
-                            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                <svg aria-hidden="true" class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="currentColor" viewbox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                    <path fill-rule="evenodd" clip-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" />
-                                </svg>
-                            </div>
-                            <input type="text" id="simple-search" placeholder="Search for products" required="" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500">
-                        </div>
-                    </form>
-                </div>
-                <ul class="space-y-2">
-                    <li>
-                        <span class="text-gray-700 dark:text-gray-500 text-xs py-3">
-                            COLLECTION TYPES
-                        </span>
-                    </li>
-                    <li>
-                        <a href="/previews/content-manager" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                            foo
-                        </a>
-                    </li>
-                    <li>
-                        <span class="text-gray-700 dark:text-gray-500 text-xs py-3">
-                            SINGLE TYPES
-                        </span>
-                    </li>
-                    <li>
-                        <a href="/previews/content-manager" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                            bar
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/previews/content-manager" class="text-sm flex items-center py-1 px-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                            baz
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </aside>
-    </div>
-
-    <div class="col-span-10 px-4 pt-20 lg:pt-0">
-        <Page>
-            <PageHeader Title="Page Title" HasBack>
+     <div class="col-span-10 px-4 pt-20 lg:pt-0">
+         <Page>
+             <PageHeader Title="Page Title" HasBack>
                 <PageHeaderSubtitle>
                     <h5>
                         <span class="text-gray-500">All Products:</span>
@@ -450,7 +437,9 @@
                 </div>
             </PageBody>
         </Page>
+
     </div>
+
 </div>
 
 <!-- drawer add -->

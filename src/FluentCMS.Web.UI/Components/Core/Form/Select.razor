@@ -1,0 +1,55 @@
+@inherits InputBaseComponent<string>
+
+@if (Icon != IconNameEnum.Default)
+{
+    <div class=@this.ClassName("InputGroup")>
+        <div class=@this.ClassName("InputIconWrapper")>
+            <Icon Name="@Icon" />
+        </div>
+        <select class=@this.GetClasses()
+                disabled=@Disabled
+                id="@Id"
+                name=@Name
+                multiple=@Multiple
+                required=@Required
+                @bind=Value
+                @attributes="@AdditionalAttributes">
+            @if (this.Placeholder != string.Empty)
+            {
+                <Option Selected>@Placeholder</Option>
+            }
+            @ChildContent
+        </select>
+    </div>
+}
+else
+{
+    <select class=@this.GetClasses()
+            disabled=@Disabled
+            id="@Id"
+            name=@Name
+            multiple=@Multiple
+            required=@Required
+            @bind=Value
+            @attributes="@AdditionalAttributes">
+        @if (this.Placeholder != string.Empty)
+        {
+            <Option Selected>@Placeholder</Option>
+        }
+        @ChildContent
+    </select>
+}
+
+@code {
+    [Parameter]
+    public IconNameEnum Icon { get; set; }
+
+    [Parameter]
+    public string? Id { get; set; }
+
+    [Parameter]
+    public bool Multiple { get; set; }
+
+    [Parameter]
+    public string? Placeholder { get; set; }
+}

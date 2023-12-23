@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Entities;
 
-public class SystemSettings : AuditableEntity
+public class GlobalSettings : AuditableEntity
 {
     public List<string> SuperUsers { get; set; } = [];
 }

@@ -6,8 +6,8 @@ namespace FluentCMS.Repositories.MongoDB;
 
 public class UserRepository(
     IMongoDBContext mongoDbContext,
-    IApplicationContext applicationContext) :
-    AuditableEntityRepository<User>(mongoDbContext, applicationContext),
+    IAuthContext authContext) :
+    AuditableEntityRepository<User>(mongoDbContext, authContext),
     IUserRepository
 {
     public IQueryable<User> AsQueryable()

@@ -3,7 +3,7 @@ using FluentCMS.Repositories;
 
 namespace FluentCMS.Services;
 
-public interface IAppService
+public interface IAppService : IService
 {
     Task<IEnumerable<App>> GetAll(CancellationToken cancellationToken = default);
     Task<App> GetBySlug(string appSlug, CancellationToken cancellationToken = default);

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Services;
 
-public interface IUserService
+public interface IUserService : IService
 {
     Task<User> Authenticate(string username, string password, CancellationToken cancellationToken = default);
     Task<IEnumerable<User>> GetAll(CancellationToken cancellationToken = default);
@@ -14,16 +14,17 @@ public interface IUserService
     Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default);
     Task ChangePassword(User user, string newPassword, CancellationToken cancellationToken = default);
     Task<User> ChangePassword(Guid id, string oldPassword, string newPassword, CancellationToken cancellationToken = default);
+    Task<bool> Any(CancellationToken cancellationToken = default);
 }
 
 public class UserService(
-    ISystemSettingsRepository systemSettingsRepository,
+    IGlobalSettingsRepository globalSettingsRepository,
     IUserTokenProvider userTokenProvider,
     UserManager<User> userManager,
-    IApplicationContext applicationContext) : IUserService
+    IAuthContext authContext) : IUserService
 {
-    const string LOCAL_LOGIN_PROVIDER = "local";
-    const string REFRESH_TOKEN_NAME = "refreshToken";
+    public const string LOCAL_LOGIN_PROVIDER = "local";
+    public string REFRESH_TOKEN_NAME = "refreshToken";
 
     public async Task<User> Create(User user, string password, CancellationToken cancellationToken = default)
     {
@@ -39,10 +40,10 @@ public class UserService(
         // check if user is super admin
         if (!string.IsNullOrEmpty(user.UserName))
         {
-            var sys = await systemSettingsRepository.Get(cancellationToken) ??
-                throw new AppException(ExceptionCodes.SystemSettingsNotFound);
+            var globalSettings = await globalSettingsRepository.Get(cancellationToken) ??
+                throw new AppException(ExceptionCodes.GlobalSettingsNotFound);
 
-            isSuperAdmin = sys.SuperUsers.Contains(user.UserName);
+            isSuperAdmin = globalSettings.SuperUsers.Contains(user.UserName);
         }
 
         // Generate token
@@ -129,9 +130,14 @@ public class UserService(
 
         // Update user properties related to password changing
         user.PasswordChangedAt = DateTime.Now;
-        user.PasswordChangedBy = applicationContext.Username;
+        user.PasswordChangedBy = authContext.Username;
         await userManager.UpdateAsync(user);
 
         return user;
+    }
+
+    public Task<bool> Any(CancellationToken cancellationToken = default)
+    {
+        return Task.Run(() => userManager.Users.Any(), cancellationToken);
     }
 }

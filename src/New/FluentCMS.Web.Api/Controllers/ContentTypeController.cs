@@ -6,11 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-[Route("app/{appSlug}/api/[controller]/[action]")]
-public class ContentTypeController(
-    IMapper mapper,
-    IContentTypeService contentTypeService,
-    AppService appService) : BaseController
+public class ContentTypeController(IMapper mapper, IContentTypeService contentTypeService, AppService appService) : BaseAppController
 {
     [HttpGet]
     public async Task<IApiPagingResult<ContentTypeResponse>> GetAll([FromRoute] string appSlug, CancellationToken cancellationToken = default)

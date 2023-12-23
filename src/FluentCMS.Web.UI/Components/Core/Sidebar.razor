@@ -1,12 +1,27 @@
-<aside id="default-sidebar" aria-label="Sidebar" class="f-sidebar -translate-x-full">
-    <div class="f-sidebar-body">
-        @ChildContent
-        
-    </div>
+﻿@inherits BaseComponent
 
+<aside class="@this.GetClasses() lg:!translate-x-0" @attributes=AdditionalAttributes>
+    <div class="main">
+        @Header
+        <ul>
+            <li>
+                <ul>
+                    @ChildContent
+                </ul>
+            </li>
+        </ul>
+    </div>
+    @Footer
 </aside>
 
 @code {
     [Parameter]
-    public RenderFragment ChildContent {get; set;}
+    [CssProperty]
+    public bool Secondary { get; set; }
+
+    [Parameter]
+    public RenderFragment? Header { get; set; }
+
+    [Parameter]
+    public RenderFragment? Footer { get; set; }
 }

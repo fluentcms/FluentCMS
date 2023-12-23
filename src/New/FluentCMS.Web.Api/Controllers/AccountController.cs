@@ -6,8 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-[Route("sys/api/[controller]/[action]")]
-public class AccountController(IMapper mapper, IUserService userService) : BaseController
+public class AccountController(IMapper mapper, IUserService userService) : BaseGlobalController
 {
     [HttpPost]
     public async Task<IApiResult<UserDetailResponse>> Register([FromBody] UserRegisterRequest request, CancellationToken cancellationToken = default)

@@ -5,7 +5,7 @@ namespace FluentCMS.Repositories.MongoDB;
 
 public class AppRepository : AppAssociatedRepository<App>, IAppRepository
 {
-    public AppRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext) : base(mongoDbContext, applicationContext)
+    public AppRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
     {
     }
 

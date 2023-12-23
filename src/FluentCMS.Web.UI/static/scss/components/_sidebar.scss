@@ -2,41 +2,71 @@ $prefix-sidebar: $prefix + 'sidebar';
 $prefix-sidebar-item: $prefix + 'sidebar-item';
 
 .#{$prefix-sidebar} {
-    @apply fixed top-0 left-0 z-40 w-64 pt-16 h-screen transition-transform;
+    @apply h-screen transition-transform -translate-x-full border-r border-gray-200 dark:border-gray-700;
 
-    @screen sm {
-        @apply translate-x-0;
+    .main {
+        @apply overflow-y-auto py-5 px-3 h-full;
+
+        & > ul {
+            @apply space-y-2;
+
+            & > li > ul {
+                @apply py-2 space-y-2;
+            }
+        }
     }
 
-    & li {
-        list-style-type: none;
+    .#{$prefix-sidebar-item} {
+        & > span {
+            @apply text-xs py-3;
+        }
+
+        & > a {
+            @apply text-sm flex items-center font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700;
+        }
     }
 
-    &-body {
-        @apply h-full px-3 py-4 overflow-y-auto bg-white border-r border-gray-200;
+    &-secondary-true {
+        .main {
+            @apply pt-0;
+        }
+
+        .#{$prefix-sidebar-item} {
+            & > span {
+                @apply text-gray-700 dark:text-gray-500;
+            }
+
+            & > a {
+                @apply py-1 px-2 text-base;
+
+                span {
+                }
+            }
+        }
     }
 
-    .#{$prefix-theme-dark} &-body {
-        @apply bg-gray-800 border-gray-700;
-    }
+    &-secondary-false {
+        @apply fixed top-0 left-0 z-40 w-64 pt-14 lg:pt-0 bg-white dark:bg-gray-800;
 
+        .main {
+            @apply bg-white dark:bg-gray-800;
+        }
+
+        .#{$prefix-sidebar-item} {
+            & > span {
+                @apply text-gray-900 dark:text-white ml-2;
+            }
+
+            & > a {
+                @apply p-2;
+
+                span {
+                    @apply ml-3;
+                }
+            }
+        }
+    }
 }
 
 .#{$prefix-sidebar-item} {
-    @apply flex items-center p-2 text-gray-900 rounded-lg;
-
-    &:hover {
-        @apply bg-gray-100;
-    }
-    .#{$prefix-theme-dark} & {
-        @apply text-white;
-    }
-
-    .#{$prefix-theme-dark} &:hover {
-        @apply bg-gray-700;
-    }    
-
-    &-text {
-        @apply flex-1 ml-3 whitespace-nowrap;
-    }
 }

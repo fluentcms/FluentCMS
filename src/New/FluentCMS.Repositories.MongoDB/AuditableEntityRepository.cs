@@ -5,8 +5,11 @@ namespace FluentCMS.Repositories.MongoDB;
 public abstract class AuditableEntityRepository<TEntity> : EntityRepository<TEntity>, IAuditableEntityRepository<TEntity>
     where TEntity : IAuditableEntity
 {
-    public AuditableEntityRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext) : base(mongoDbContext, applicationContext)
+    protected readonly IAuthContext AuthContext;
+
+    public AuditableEntityRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
     {
+        AuthContext = authContext;
     }
 
     public override async Task<TEntity?> Create(TEntity entity, CancellationToken cancellationToken = default)
@@ -35,12 +38,12 @@ public abstract class AuditableEntityRepository<TEntity> : EntityRepository<TEnt
     private void SetAuditableFieldsForCreate(TEntity entity)
     {
         entity.CreatedAt = DateTime.UtcNow;
-        entity.CreatedBy = AppContext.Username;
+        entity.CreatedBy = AuthContext.Username;
     }
 
     private void SetAuditableFieldsForUpdate(TEntity entity)
     {
         entity.ModifiedAt = DateTime.UtcNow;
-        entity.ModifiedBy = AppContext.Username;
+        entity.ModifiedBy = AuthContext.Username;
     }
 }
