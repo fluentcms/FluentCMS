@@ -1,5 +1,6 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories;
+using FluentCMS.Services.Extensions;
 using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Services;
@@ -86,6 +87,8 @@ public class UserService(
 
     public async Task<User> Update(User entity, CancellationToken cancellationToken = default)
     {
+        var prevUser = await GetById(entity.Id, cancellationToken);
+        entity = prevUser.Merge(entity);
         var result = await userManager.UpdateAsync(entity);
         result.ThrowIfInvalid();
         return await GetById(entity.Id, cancellationToken);
