@@ -1,11 +1,6 @@
 ﻿using FluentCMS.E2eTests.ApiClients;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FluentCMS.E2eTests.StepDefinitions;
 [Binding, Scope(Feature = "Basic functionality Test of Host API client")]
@@ -59,7 +54,5 @@ public class SetupStepDefinition
     {
         await Task.Delay(p0 * 1000);
     }
-
-
 
 }

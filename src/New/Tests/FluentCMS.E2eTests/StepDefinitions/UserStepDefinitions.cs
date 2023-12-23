@@ -1,11 +1,6 @@
 ﻿using FluentCMS.E2eTests.ApiClients;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TechTalk.SpecFlow.Assist;
 
 namespace FluentCMS.E2eTests.StepDefinitions;
@@ -41,8 +36,8 @@ public class UserStepDefinitions
         }
     }
 
-    private SetupClient _setupClient => _serviceProvider.GetRequiredService<SetupClient>();
-    private UserClient _userClient => _serviceProvider.GetRequiredService<UserClient>();
+    private SetupClient SetupClient => _serviceProvider.GetRequiredService<SetupClient>();
+    private UserClient UserClient => _serviceProvider.GetRequiredService<UserClient>();
 
     public UserResponseIApiResult CreateResponse
     {
@@ -99,13 +94,13 @@ public class UserStepDefinitions
     [Given("Reset Setup")]
     public async Task ResetSetup()
     {
-        await _setupClient.ResetAsync();
+        await SetupClient.ResetAsync();
     }
 
     [Given("Setup is initialized")]
     public async Task GivenSetupIsInitialized()
     {
-        await _setupClient.StartAsync();
+        await SetupClient.StartAsync();
     }
 
     [Given("Dummy Data for User Creation")]
@@ -117,7 +112,7 @@ public class UserStepDefinitions
     [When("I create a user")]
     public async Task WhenICreateAUser()
     {
-        CreateResponse = await _userClient.CreateAsync(CreateUserData);
+        CreateResponse = await UserClient.CreateAsync(CreateUserData);
     }
 
     [Then("user is created")]
@@ -130,7 +125,7 @@ public class UserStepDefinitions
     [When("I get a user with id")]
     public async Task WhenIGetAUserWithId()
     {
-        GetUserWithId = await _userClient.GetAsync(CreateResponse.Data.Id);
+        GetUserWithId = await UserClient.GetAsync(CreateResponse.Data.Id);
     }
 
     [Then("user is returned")]
@@ -143,7 +138,7 @@ public class UserStepDefinitions
     [When("I get all users")]
     public async Task WhenIGetAllUsers()
     {
-        AllUsers = await _userClient.GetAllAsync();
+        AllUsers = await UserClient.GetAllAsync();
     }
 
     [Then("all users are returned")]
@@ -156,7 +151,7 @@ public class UserStepDefinitions
     [When("I update a user")]
     public async Task WhenIUpdateAUser()
     {
-        UpdateUserResponse = (await _userClient.UpdateAsync(new UserUpdateRequest() { Id = CreateResponse.Data.Id, Email = "UpdatedDummyUser@localhost", RoleIds = [Guid.NewGuid()] })).Data;
+        UpdateUserResponse = (await UserClient.UpdateAsync(new UserUpdateRequest() { Id = CreateResponse.Data.Id, Email = "UpdatedDummyUser@localhost", RoleIds = [Guid.NewGuid()] })).Data;
     }
 
     [Then("user is updated")]

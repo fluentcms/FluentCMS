@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.E2eTests.StepDefinitions;
 
-public static class  DictionaryExtensions
+public static class DictionaryExtensions
 {
     // GetOrCreate
     public static T GetOrCreate<T>(this IDictionary<string, T> dictionary, string key, T Object)
