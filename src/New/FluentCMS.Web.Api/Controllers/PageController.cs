@@ -2,13 +2,15 @@
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class PageController(IPageService pageService, IMapper mapper) : BaseGlobalController
+public class PageController(ISiteService siteService, IPageService pageService, IMapper mapper) : BaseGlobalController
 {
 
-    [HttpGet("{siteId}")]
-    public async Task<IApiPagingResult<PageDetailResponse>> GetAll([FromRoute] Guid siteId, CancellationToken cancellationToken = default)
+    [HttpGet("{siteUrl}")]
+    [DecodeQueryParam]
+    public async Task<IApiPagingResult<PageDetailResponse>> GetAll([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
     {
-        var entities = await pageService.GetBySiteId(siteId, cancellationToken);
+        var site = await siteService.GetByUrl(siteUrl, cancellationToken);
+        var entities = await pageService.GetBySiteId(site.Id, cancellationToken);
         var entitiesResponse = mapper.Map<List<PageDetailResponse>>(entities.ToList());
         return OkPaged(entitiesResponse);
     }
@@ -21,9 +23,9 @@ public class PageController(IPageService pageService, IMapper mapper) : BaseGlob
         return Ok(entityResponse);
     }
 
-    [HttpGet("{siteId}/{path}")]
+    [HttpGet("{siteUrl}/{path}")]
     [DecodeQueryParam]
-    public async Task<IApiResult<PageDetailResponse>> GetByPath([FromRoute] Guid siteId, [FromRoute] string path, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<PageDetailResponse>> GetByPath([FromRoute] string siteUrl, [FromRoute] string path, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(path))
             path = "/";
@@ -31,7 +33,8 @@ public class PageController(IPageService pageService, IMapper mapper) : BaseGlob
         if (!path.StartsWith("/"))
             path = "/" + path;
 
-        var entity = await pageService.GetByPath(siteId, path, cancellationToken);
+        var site = await siteService.GetByUrl(siteUrl, cancellationToken);
+        var entity = await pageService.GetByPath(site.Id, path, cancellationToken);
         var entityResponse = mapper.Map<PageDetailResponse>(entity);
         return Ok(entityResponse);
     }
@@ -58,6 +61,6 @@ public class PageController(IPageService pageService, IMapper mapper) : BaseGlob
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
     {
         await pageService.Delete(id);
-        return new ApiResult<bool>(true);
+        return Ok(true);
     }
 }

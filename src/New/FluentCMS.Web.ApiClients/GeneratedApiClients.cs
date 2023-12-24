@@ -2689,12 +2689,12 @@ namespace FluentCMS.Web.UI.ApiClients
     {
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(System.Guid siteId);
+        System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(string siteUrl);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(System.Guid siteId, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(string siteUrl, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -2707,12 +2707,12 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageDetailResponseIApiResult> GetByPathAsync(System.Guid siteId, string path);
+        System.Threading.Tasks.Task<PageDetailResponseIApiResult> GetByPathAsync(string siteUrl, string path);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageDetailResponseIApiResult> GetByPathAsync(System.Guid siteId, string path, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PageDetailResponseIApiResult> GetByPathAsync(string siteUrl, string path, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -2772,22 +2772,22 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(System.Guid siteId)
+        public virtual System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(string siteUrl)
         {
-            return GetAllAsync(siteId, System.Threading.CancellationToken.None);
+            return GetAllAsync(siteUrl, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(System.Guid siteId, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(string siteUrl, System.Threading.CancellationToken cancellationToken)
         {
-            if (siteId == null)
-                throw new System.ArgumentNullException("siteId");
+            if (siteUrl == null)
+                throw new System.ArgumentNullException("siteUrl");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/global/Page/GetAll/{siteId}");
-            urlBuilder_.Replace("{siteId}", System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Append("api/global/Page/GetAll/{siteUrl}");
+            urlBuilder_.Replace("{siteUrl}", System.Uri.EscapeDataString(ConvertToString(siteUrl, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -2928,25 +2928,25 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<PageDetailResponseIApiResult> GetByPathAsync(System.Guid siteId, string path)
+        public virtual System.Threading.Tasks.Task<PageDetailResponseIApiResult> GetByPathAsync(string siteUrl, string path)
         {
-            return GetByPathAsync(siteId, path, System.Threading.CancellationToken.None);
+            return GetByPathAsync(siteUrl, path, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PageDetailResponseIApiResult> GetByPathAsync(System.Guid siteId, string path, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PageDetailResponseIApiResult> GetByPathAsync(string siteUrl, string path, System.Threading.CancellationToken cancellationToken)
         {
-            if (siteId == null)
-                throw new System.ArgumentNullException("siteId");
+            if (siteUrl == null)
+                throw new System.ArgumentNullException("siteUrl");
 
             if (path == null)
                 throw new System.ArgumentNullException("path");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/global/Page/GetByPath/{siteId}/{path}");
-            urlBuilder_.Replace("{siteId}", System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Append("api/global/Page/GetByPath/{siteUrl}/{path}");
+            urlBuilder_.Replace("{siteUrl}", System.Uri.EscapeDataString(ConvertToString(siteUrl, System.Globalization.CultureInfo.InvariantCulture)));
             urlBuilder_.Replace("{path}", System.Uri.EscapeDataString(ConvertToString(path, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;

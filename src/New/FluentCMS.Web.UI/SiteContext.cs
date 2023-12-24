@@ -23,7 +23,7 @@ public class SiteContext
             query["siteId"] = Site.Id.ToString();
             query["path"] = uri.LocalPath;
 
-            var taskPage = Task.Run(() => pageClient.GetByPathAsync(Site.Id, uri.LocalPath));
+            var taskPage = Task.Run(() => pageClient.GetByPathAsync(url, uri.LocalPath));
             taskPage.Wait();
             Page = taskPage.Result.Data;
         }
