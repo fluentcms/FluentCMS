@@ -1,6 +1,4 @@
-﻿using FluentCMS.Entities;
-using FluentCMS.Repositories;
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Identity;
 

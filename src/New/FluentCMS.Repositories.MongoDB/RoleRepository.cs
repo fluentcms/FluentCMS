@@ -1,6 +1,4 @@
-﻿using FluentCMS.Entities;
-
-namespace FluentCMS.Repositories.MongoDB;
+﻿namespace FluentCMS.Repositories.MongoDB;
 
 public class RoleRepository : AppAssociatedRepository<Role>, IRoleRepository
 {

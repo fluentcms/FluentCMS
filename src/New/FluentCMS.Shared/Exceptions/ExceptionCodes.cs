@@ -82,4 +82,14 @@ public class ExceptionCodes
     public const string ContentTypeInvalidAppId = "ContentType.ContentTypeInvalidAppId";
 
     #endregion
+
+    #region Site
+
+    public const string SiteNotFound = "Site.NotFound";
+    public const string SiteUrlMustBeUnique = "Site.UrlMustBeUnique";
+    public const string SiteUnableToCreate = "Site.UnableToCreated";
+    public const string SiteUnableToUpdate = "Site.UnableToUpdate";
+    public const string SiteUnableToDelete = "Site.UnableToDelete";
+
+    #endregion
 }

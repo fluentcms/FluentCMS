@@ -1,6 +1,4 @@
-﻿using FluentCMS.Repositories.Abstraction;
-
-namespace FluentCMS.Repositories.MongoDB;
+﻿namespace FluentCMS.Repositories.MongoDB;
 
 public class AppTemplateRepository : AuditableEntityRepository<AppTemplate>, IAppTemplateRepository
 {

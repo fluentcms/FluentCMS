@@ -1,5 +1,6 @@
-﻿namespace FluentCMS.Entities;
-public class Site : AuditableEntity
+﻿namespace FluentCMS.Web.Api.Models;
+
+public class SiteCreateRequest
 {
     public string Name { get; set; } = default!;
     public string? Description { get; set; }

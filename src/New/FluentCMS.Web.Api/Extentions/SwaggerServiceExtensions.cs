@@ -18,7 +18,7 @@ public static class SwaggerServiceExtensions
 
         services.AddSwaggerGen(c =>
         {
-            c.OrderActionsBy(x => x.RelativePath);
+            c.OrderActionsBy((apiDesc) => $"{apiDesc.ActionDescriptor.RouteValues["controller"]}");
             c.SwaggerDoc("v1", new OpenApiInfo { Title = applicationName, Version = version });
 
             // Define the security scheme for bearer tokens

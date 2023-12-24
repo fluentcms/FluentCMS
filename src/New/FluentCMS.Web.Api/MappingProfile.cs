@@ -1,8 +1,4 @@
-﻿using AutoMapper;
-using FluentCMS.Entities;
-using FluentCMS.Web.Api.Models;
-
-namespace FluentCMS.Web.Api;
+﻿namespace FluentCMS.Web.Api;
 public class MappingProfile : Profile
 {
     public MappingProfile()
