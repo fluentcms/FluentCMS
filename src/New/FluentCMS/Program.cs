@@ -1,4 +1,5 @@
 using FluentCMS.Web.Api;
+using FluentCMS.Web.Api.Extentions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,8 @@ services.AddApplicationServices();
 
 services.AddApiServices();
 
+services.AddAutoMapper();
+
 #endregion
 
 #region App
@@ -30,8 +33,8 @@ app.UseDeveloperExceptionPage();
 // this will delete all data and re-create the database
 using var scope = app.Services.CreateScope();
 var setup = scope.ServiceProvider.GetRequiredService<SetupManager>();
-setup.Reset().ConfigureAwait(false).GetAwaiter().GetResult();
-setup.Start().ConfigureAwait(false).GetAwaiter().GetResult();
+//setup.Reset().ConfigureAwait(false).GetAwaiter().GetResult();
+//setup.Start().ConfigureAwait(false).GetAwaiter().GetResult();
 
 #endif
 
