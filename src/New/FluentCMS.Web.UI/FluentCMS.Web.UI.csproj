@@ -15,4 +15,8 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\FluentCMS.Web.UI.Components\FluentCMS.Web.UI.Components.csproj" />
+  </ItemGroup>
+
 </Project>

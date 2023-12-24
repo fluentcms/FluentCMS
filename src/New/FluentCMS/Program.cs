@@ -1,6 +1,6 @@
-using FluentCMS;
 using FluentCMS.Web.Api;
 using FluentCMS.Web.Api.Extentions;
+using FluentCMS.Web.UI;
 
 var builder = WebApplication.CreateBuilder(args);
 

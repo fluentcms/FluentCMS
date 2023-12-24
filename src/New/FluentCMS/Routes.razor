@@ -1,9 +1,0 @@
-﻿@using FluentCMS.Web.UI
-@using Microsoft.AspNetCore.Components.Routing
-
-<Router AppAssembly="@typeof(Program).Assembly" AdditionalAssemblies="new[] { typeof(DefaultPage).Assembly }">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" />
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-    </Found>
-</Router>

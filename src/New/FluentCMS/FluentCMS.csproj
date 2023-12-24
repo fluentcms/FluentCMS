@@ -7,15 +7,7 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
-  <ItemGroup>
-    <None Remove="Pages\Default.razor1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Pages\Default.razor1" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <ItemGroup>
     <ProjectReference Include="..\FluentCMS.Repositories.MongoDB\FluentCMS.Repositories.MongoDB.csproj" />
     <ProjectReference Include="..\FluentCMS.Web.Api\FluentCMS.Web.Api.csproj" />
     <ProjectReference Include="..\FluentCMS.Web.UI\FluentCMS.Web.UI.csproj" />
