@@ -10,7 +10,7 @@ public class PageController(IPageService pageService, IMapper mapper) : BaseGlob
     {
         var entities = await pageService.GetBySiteId(siteId, cancellationToken);
         var entitiesResponse = mapper.Map<List<PageDetailResponse>>(entities.ToList());
-        return OkPaged<PageDetailResponse>(entitiesResponse);
+        return OkPaged(entitiesResponse);
     }
 
     [HttpGet("{id}")]
