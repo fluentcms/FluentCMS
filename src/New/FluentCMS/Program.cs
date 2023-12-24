@@ -1,6 +1,4 @@
 using FluentCMS.Web.Api;
-using FluentCMS.Web.Api.Extentions;
-using FluentCMS.Web.UI;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,8 +8,7 @@ builder.Configuration.AddConfig(builder.Environment);
 
 var services = builder.Services;
 
-services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+services.AddSiteServices();
 
 services.AddApiDocumentation();
 
@@ -20,8 +17,6 @@ services.AddMongoDbRepositories("MongoDb");
 services.AddApplicationServices();
 
 services.AddApiServices();
-
-services.AddAutoMapper();
 
 #endregion
 
@@ -58,8 +53,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+app.UseSiteServices();
 
 #endregion
 

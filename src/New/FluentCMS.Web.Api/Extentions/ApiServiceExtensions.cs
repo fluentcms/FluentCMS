@@ -19,6 +19,8 @@ public static class ApiServiceExtensions
 
         services.AddScoped<SetupManager>();
 
+        services.AddAutoMapper(typeof(ApiServiceExtensions));
+
         return services;
     }
 }
