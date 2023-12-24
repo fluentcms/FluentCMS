@@ -3347,30 +3347,30 @@ namespace FluentCMS.Web.UI.ApiClients
     {
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleResponseIApiPagingResult> GetAllAsync(string appSlug);
+        System.Threading.Tasks.Task<RoleDetailResponseIApiPagingResult> GetAllAsync(string appSlug);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleResponseIApiPagingResult> GetAllAsync(string appSlug, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<RoleDetailResponseIApiPagingResult> GetAllAsync(string appSlug, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleResponseIApiResult> CreateAsync(string appSlug, RoleCreateRequest? body);
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleResponseIApiResult> CreateAsync(string appSlug, RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleResponseIApiResult> UpdateAsync(string appSlug, RoleUpdateRequest? body);
+        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(string appSlug, RoleCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleResponseIApiResult> UpdateAsync(string appSlug, RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(string appSlug, RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken);
+
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(string appSlug, RoleUpdateRequest? body);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(string appSlug, RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -3412,7 +3412,7 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<RoleResponseIApiPagingResult> GetAllAsync(string appSlug)
+        public virtual System.Threading.Tasks.Task<RoleDetailResponseIApiPagingResult> GetAllAsync(string appSlug)
         {
             return GetAllAsync(appSlug, System.Threading.CancellationToken.None);
         }
@@ -3420,7 +3420,7 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<RoleResponseIApiPagingResult> GetAllAsync(string appSlug, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<RoleDetailResponseIApiPagingResult> GetAllAsync(string appSlug, System.Threading.CancellationToken cancellationToken)
         {
             if (appSlug == null)
                 throw new System.ArgumentNullException("appSlug");
@@ -3461,7 +3461,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<RoleResponseIApiPagingResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<RoleDetailResponseIApiPagingResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -3490,7 +3490,7 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<RoleResponseIApiResult> CreateAsync(string appSlug, RoleCreateRequest? body)
+        public virtual System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(string appSlug, RoleCreateRequest? body)
         {
             return CreateAsync(appSlug, body, System.Threading.CancellationToken.None);
         }
@@ -3498,7 +3498,7 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<RoleResponseIApiResult> CreateAsync(string appSlug, RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(string appSlug, RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
             if (appSlug == null)
                 throw new System.ArgumentNullException("appSlug");
@@ -3543,7 +3543,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<RoleResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<RoleDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -3572,7 +3572,7 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<RoleResponseIApiResult> UpdateAsync(string appSlug, RoleUpdateRequest? body)
+        public virtual System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(string appSlug, RoleUpdateRequest? body)
         {
             return UpdateAsync(appSlug, body, System.Threading.CancellationToken.None);
         }
@@ -3580,7 +3580,7 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<RoleResponseIApiResult> UpdateAsync(string appSlug, RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(string appSlug, RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
             if (appSlug == null)
                 throw new System.ArgumentNullException("appSlug");
@@ -3625,7 +3625,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<RoleResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<RoleDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -6336,7 +6336,7 @@ namespace FluentCMS.Web.UI.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class RoleResponse
+    public partial class RoleDetailResponse
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
@@ -6382,7 +6382,7 @@ namespace FluentCMS.Web.UI.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class RoleResponseIApiPagingResult
+    public partial class RoleDetailResponseIApiPagingResult
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
@@ -6443,12 +6443,12 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("data")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<RoleResponse>? Data { get; set; } = default!;
+        public System.Collections.Generic.ICollection<RoleDetailResponse>? Data { get; set; } = default!;
 
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class RoleResponseIApiResult
+    public partial class RoleDetailResponseIApiResult
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
@@ -6479,7 +6479,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("data")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public RoleResponse Data { get; set; } = default!;
+        public RoleDetailResponse Data { get; set; } = default!;
 
     }
 
