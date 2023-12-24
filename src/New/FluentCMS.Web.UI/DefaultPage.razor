@@ -1,4 +1,5 @@
 ﻿@page "/{*Route:nonfile}"
+@using Microsoft.AspNetCore.Components.Web
 
 <PageTitle>Page Title</PageTitle>
 <HeadContent>
@@ -7,7 +8,7 @@
 
 This is @Route route!
 
-<a href="api/doc">Swagger</a>
+<a href="api/doc"  target="_blank">Swagger</a>
 
 @code {
     [Parameter]
