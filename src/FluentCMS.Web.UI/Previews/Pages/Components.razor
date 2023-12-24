@@ -222,10 +222,10 @@
     <div class="py-8">
         <h2 class="font-bold text-2xl">Modals</h2>
         <div class="py-4 flex flex-col gap-4">
-            <Button data-modal-target="default-modal" data-modal-toggle="default-modal">
-                Toggle modal
+            <Button OnClick="() => ModalOpen = !ModalOpen">
+                Toggle modal by api
             </Button>
-            <Modal id="default-modal" tabindex="-1">
+            <Modal Open=ModalOpen>
                 <ModalHeader Title="Terms of Service" Closable />
                 <ModalBody>
                     <p class="text-base leading-relaxed text-gray-500 dark:text-gray-400">
@@ -280,7 +280,6 @@
         </div>
     </div>
     @* #endregion *@
-
 
     @* #region Buttons *@
     <div class="py-8">
@@ -398,7 +397,6 @@
             </Button>
         </div>
     </div>
-
     @* #endregion *@
 
     @* #region Checkbox *@
@@ -473,7 +471,6 @@
     </div>
     @* #endregion *@
 
-
     @* #region Spinner *@
     <div class="py-8">
         <h2 class="font-bold text-2xl">Spinner</h2>
@@ -512,6 +509,8 @@
 
     private string Select1Value { get; set; } = "US";
     private string Select2Value { get; set; }
+
+    private bool ModalOpen { get; set; }
 
     public class Item
     {

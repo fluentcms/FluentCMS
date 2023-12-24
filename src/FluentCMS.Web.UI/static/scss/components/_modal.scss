@@ -7,7 +7,11 @@ $prefix-modal-header: $prefix + "modal-header";
 $prefix-modal-title: $prefix + "modal-title";
 
 .#{$prefix-modal} {
-    @apply fixed left-0 right-0 top-0 z-50 hidden max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0;
+    @apply hidden fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0;
+
+    &-open-true {
+        @apply justify-center items-center flex;
+    }
 
     & > div {
         @apply relative max-h-full w-full;
