@@ -1,0 +1,17 @@
+﻿@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <HeadOutlet />
+</head>
+<body class="dark f-theme-dark">
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="@routeData" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+    </Router>
+    <script src="_framework/blazor.web.js"></script>
+</body>
+</html>

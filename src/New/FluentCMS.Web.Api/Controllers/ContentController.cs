@@ -1,10 +1,4 @@
-﻿using AutoMapper;
-using FluentCMS.Entities;
-using FluentCMS.Services;
-using FluentCMS.Web.Api.Models;
-using Microsoft.AspNetCore.Mvc;
-
-namespace FluentCMS.Web.Api.Controllers;
+﻿namespace FluentCMS.Web.Api.Controllers;
 
 [Route("api/app/{appSlug}/[controller]/{contentTypeSlug}/[action]")]
 public class ContentController(

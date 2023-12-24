@@ -1,7 +1,4 @@
-﻿using FluentCMS.Entities;
-using MongoDB.Driver;
-
-namespace FluentCMS.Repositories.MongoDB;
+﻿namespace FluentCMS.Repositories.MongoDB;
 
 public class GlobalSettingsRepository : IGlobalSettingsRepository
 {

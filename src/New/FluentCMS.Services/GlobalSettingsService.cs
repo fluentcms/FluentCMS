@@ -1,7 +1,4 @@
-﻿using FluentCMS.Entities;
-using FluentCMS.Repositories;
-
-namespace FluentCMS.Services;
+﻿namespace FluentCMS.Services;
 
 public interface IGlobalSettingsService : IService
 {
@@ -11,9 +8,7 @@ public interface IGlobalSettingsService : IService
     Task<bool> Reset(CancellationToken cancellationToken = default);
 }
 
-public class GlobalSettingsService(
-    IGlobalSettingsRepository repository,
-    IAuthContext authContext) : IGlobalSettingsService
+public class GlobalSettingsService(IGlobalSettingsRepository repository, IAuthContext authContext) : IGlobalSettingsService
 {
     public async Task<GlobalSettings> Update(GlobalSettings settings, CancellationToken cancellationToken = default)
     {

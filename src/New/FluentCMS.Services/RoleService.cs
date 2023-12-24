@@ -1,7 +1,4 @@
-﻿using FluentCMS.Entities;
-using FluentCMS.Repositories;
-
-namespace FluentCMS.Services;
+﻿namespace FluentCMS.Services;
 
 public interface IRoleService : IService
 {
@@ -13,7 +10,6 @@ public interface IRoleService : IService
 
 public class RoleService(IRoleRepository roleRepository, IAppRepository appRepository) : IRoleService
 {
-
     public async Task<IEnumerable<Role>> GetAll(Guid appId, CancellationToken cancellationToken = default)
     {
         return await roleRepository.GetAll(appId, cancellationToken);

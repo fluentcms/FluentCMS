@@ -1,5 +1,4 @@
-﻿using FluentCMS.Entities;
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 
 namespace FluentCMS.Identity;

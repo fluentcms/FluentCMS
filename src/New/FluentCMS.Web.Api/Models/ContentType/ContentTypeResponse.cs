@@ -1,6 +1,4 @@
-﻿using FluentCMS.Entities;
-
-namespace FluentCMS.Web.Api.Models;
+﻿namespace FluentCMS.Web.Api.Models;
 
 public class ContentTypeResponse : BaseAppAssociatedResponse
 {

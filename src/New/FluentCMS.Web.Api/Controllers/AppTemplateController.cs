@@ -1,9 +1,4 @@
-﻿using AutoMapper;
-using FluentCMS.Services;
-using FluentCMS.Web.Api.Models;
-using Microsoft.AspNetCore.Mvc;
-
-namespace FluentCMS.Web.Api.Controllers;
+﻿namespace FluentCMS.Web.Api.Controllers;
 
 public class AppTemplateController(IAppTemplateService appTemplateService, IMapper mapper) : BaseGlobalController
 {

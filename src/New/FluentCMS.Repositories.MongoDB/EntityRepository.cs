@@ -1,7 +1,5 @@
-﻿using FluentCMS.Entities;
-using Humanizer;
+﻿using Humanizer;
 using MongoDB.Bson;
-using MongoDB.Driver;
 
 namespace FluentCMS.Repositories.MongoDB;
 

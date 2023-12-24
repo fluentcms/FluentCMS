@@ -1,7 +1,4 @@
-﻿using FluentCMS.Entities;
-using FluentCMS.Repositories;
-
-namespace FluentCMS.Services;
+﻿namespace FluentCMS.Services;
 
 public interface IAppService : IService
 {

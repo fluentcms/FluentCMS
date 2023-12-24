@@ -1,7 +1,4 @@
-﻿using FluentCMS.Web.Api.Models;
-using Microsoft.AspNetCore.Mvc;
-
-namespace FluentCMS.Web.Api.Controllers;
+﻿namespace FluentCMS.Web.Api.Controllers;
 
 [ApiController]
 [Produces("application/json")]
