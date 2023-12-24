@@ -1,0 +1,15 @@
+﻿@inherits BaseComponent
+
+<div class="@this.GetClasses() h-[calc(100%-1rem)]" @attributes=@AdditionalAttributes tabindex="-1" aria-hidden="true">
+    <div>
+        <ModalContent>
+            @ChildContent
+        </ModalContent>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    [CssProperty]
+    public SizeEnum Size { get; set; } = SizeEnum.Medium;
+}

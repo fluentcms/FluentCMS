@@ -218,6 +218,36 @@
     </div>
     @* #endregion *@
 
+    @* #region Modal *@
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Modals</h2>
+        <div class="py-4 flex flex-col gap-4">
+            <Button data-modal-target="default-modal" data-modal-toggle="default-modal">
+                Toggle modal
+            </Button>
+            <Modal id="default-modal" tabindex="-1">
+                <ModalHeader Title="Terms of Service" Closable />
+                <ModalBody>
+                    <p class="text-base leading-relaxed text-gray-500 dark:text-gray-400">
+                        With less than a month to go before the European Union enacts new consumer privacy laws for its
+                        citizens, companies around the world are updating their terms of service agreements to comply.
+                    </p>
+                </ModalBody>
+                <ModalFooter>
+                    <ButtonGroup>
+                        <Button Color=@ColorEnum.Primary>
+                            I accept
+                        </Button>
+                        <Button>
+                            Decline
+                        </Button>
+                    </ButtonGroup>
+                </ModalFooter>
+            </Modal>
+        </div>
+    </div>
+    @* #endregion *@
+
     @* #region Select *@
     <div class="py-8">
         <h2 class="font-bold text-2xl">Selects</h2>

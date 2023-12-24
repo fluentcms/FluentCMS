@@ -1,0 +1,29 @@
+﻿@inherits BaseComponent
+
+<div class=@this.GetClasses() @attributes=@AdditionalAttributes>
+    @if (ChildContent == null)
+    {
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <ModalTitle>
+                @Title
+            </ModalTitle>
+        }
+        @if (Closable)
+        {
+            <ModalClose />
+        }
+    }
+    else
+    {
+        @ChildContent
+    }
+</div>
+
+@code {
+    [Parameter]
+    public bool Closable { get; set; } = true;
+
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+}
