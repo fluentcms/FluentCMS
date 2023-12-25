@@ -34,10 +34,16 @@ public static class BaseComponentHelper
     // Get Classes
     public static string GetClasses(this BaseComponent baseComponent)
     {
-        var classes = ClassNames(baseComponent);
+        List<string> classes = new() {};
 
-        // add component name
-        classes.Add(string.Join(UISettings.SEPARATOR, [UISettings.PREFIX, baseComponent.ComponentName]));
+		// f-component
+		classes.Add(string.Join(UISettings.SEPARATOR, [UISettings.PREFIX, baseComponent.ComponentName]));
+
+		// add css properties
+		classes = classes.Concat(ClassNames(baseComponent)).ToList();
+
+        // add class property's value
+        classes.Add(baseComponent.Class);
 
         return string.Join(" ", classes);
     }
