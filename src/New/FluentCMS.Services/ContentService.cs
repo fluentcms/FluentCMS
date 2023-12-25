@@ -1,7 +1,4 @@
-﻿using FluentCMS.Entities;
-using FluentCMS.Repositories;
-
-namespace FluentCMS.Services;
+﻿namespace FluentCMS.Services;
 
 public interface IContentService : IService
 {
@@ -11,11 +8,8 @@ public interface IContentService : IService
     Task<Content> Update(Content content, CancellationToken cancellationToken = default);
 }
 
-public class ContentService(
-    IContentRepository contentRepository) :
-    IContentService
+public class ContentService(IContentRepository contentRepository) : IContentService
 {
-
     public async Task<IEnumerable<Content>> GetAll(Guid appId, Guid contentTypeId, CancellationToken cancellationToken = default)
     {
         return await contentRepository.GetAll(appId, contentTypeId, cancellationToken);

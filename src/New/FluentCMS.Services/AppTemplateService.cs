@@ -1,6 +1,4 @@
-﻿using FluentCMS.Repositories.Abstraction;
-
-namespace FluentCMS.Services;
+﻿namespace FluentCMS.Services;
 
 public interface IAppTemplateService : IService
 {

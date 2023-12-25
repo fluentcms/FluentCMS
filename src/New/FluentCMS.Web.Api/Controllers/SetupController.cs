@@ -1,8 +1,4 @@
-﻿using FluentCMS.Entities;
-using FluentCMS.Web.Api.Models;
-using Microsoft.AspNetCore.Mvc;
-
-namespace FluentCMS.Web.Api.Controllers;
+﻿namespace FluentCMS.Web.Api.Controllers;
 
 public class SetupController(SetupManager setupManager) : BaseGlobalController
 {

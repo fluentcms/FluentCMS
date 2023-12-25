@@ -13,3 +13,8 @@ public class BaseAppAssociatedResponse : BaseAuditableResponse
 {
     public Guid AppId { get; set; }
 }
+
+public class BaseSiteAssociatedResponse : BaseAuditableResponse
+{
+    public Guid SiteId { get; set; }
+}

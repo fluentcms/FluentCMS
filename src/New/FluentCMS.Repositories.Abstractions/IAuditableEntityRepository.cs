@@ -1,6 +1,4 @@
-﻿using FluentCMS.Entities;
-
-namespace FluentCMS.Repositories;
+﻿namespace FluentCMS.Repositories.Abstractions;
 
 public interface IAuditableEntityRepository<TEntity> : IEntityRepository<TEntity> where TEntity : IAuditableEntity
 {

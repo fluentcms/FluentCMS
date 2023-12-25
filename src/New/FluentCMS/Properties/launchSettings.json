@@ -13,7 +13,7 @@
             "commandName": "Project",
             "dotnetRunMessages": true,
             "launchBrowser": true,
-            "launchUrl": "api/doc",
+            "launchUrl": "",
             "applicationUrl": "http://localhost:5190",
             "environmentVariables": {
                 "ASPNETCORE_ENVIRONMENT": "Development"
@@ -23,7 +23,7 @@
             "commandName": "Project",
             "dotnetRunMessages": true,
             "launchBrowser": true,
-            "launchUrl": "api/doc",
+            "launchUrl": "",
             "applicationUrl": "https://localhost:7230;http://localhost:5190",
             "environmentVariables": {
                 "ASPNETCORE_ENVIRONMENT": "Development"
@@ -32,7 +32,7 @@
         "IIS Express": {
             "commandName": "IISExpress",
             "launchBrowser": true,
-            "launchUrl": "api/doc",
+            "launchUrl": "",
             "environmentVariables": {
                 "ASPNETCORE_ENVIRONMENT": "Development"
             }
