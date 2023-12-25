@@ -52,7 +52,6 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
     public virtual async Task<TEntity?> Create(TEntity entity, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        entity.Id = Guid.NewGuid();
         await Collection.InsertOneAsync(entity, null, cancellationToken);
         return entity;
     }
@@ -60,8 +59,6 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
     public virtual async Task<IEnumerable<TEntity>> CreateMany(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        foreach (var entity in entities)
-            entity.Id = Guid.NewGuid();
         await Collection.InsertManyAsync(entities, null, cancellationToken);
         return entities;
     }
