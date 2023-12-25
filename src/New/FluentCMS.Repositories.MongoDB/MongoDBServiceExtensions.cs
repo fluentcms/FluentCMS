@@ -8,12 +8,6 @@ namespace Microsoft.Extensions.DependencyInjection;
 
 public static class MongoDbServiceExtensions
 {
-    /// <summary>
-    /// Registers MongoDB repositories and necessary configurations.
-    /// </summary>
-    /// <param name="services">The IServiceCollection to add services to.</param>
-    /// <param name="connectionString">The name of the connection string in the configuration.</param>
-    /// <returns>The IServiceCollection for chaining.</returns>
     public static IServiceCollection AddMongoDbRepositories(this IServiceCollection services, string connectionString)
     {
         // Configure BsonSerializers for accurate data representation in MongoDB
