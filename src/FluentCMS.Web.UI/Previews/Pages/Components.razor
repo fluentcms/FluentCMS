@@ -2,7 +2,6 @@
 @layout PanelLayout
 @rendermode InteractiveServer
 
-
 <div class="px-4 mx-auto container">
 
     <PageHeader Title="Components">
@@ -15,10 +14,10 @@
     <div class="py-8">
         <h2 class="font-bold text-2xl">Alerts</h2>
         <div class="py-4 flex flex-col gap-4">
-            <Alert Type="success"> Change a few things up and try submitting again.</Alert>
-            <Alert Dismissible Type="warning"> Change a few things up and try submitting again.</Alert>
-            <Alert Type="danger"> Change a few things up and try submitting again.</Alert>
-            <Alert Type="info"> Change a few things up and try submitting again.</Alert>
+            <Alert Type="AlertTypeEnum.Success"> Change a few things up and try submitting again.</Alert>
+            <Alert Dismissible Type="AlertTypeEnum.Warning"> Change a few things up and try submitting again.</Alert>
+            <Alert Type="AlertTypeEnum.Danger"> Change a few things up and try submitting again.</Alert>
+            <Alert Type="AlertTypeEnum.Info"> Change a few things up and try submitting again.</Alert>
         </div>
     </div>
     @* #endregion *@
@@ -176,7 +175,7 @@
                         <DropdownItem OnClick="() => DropdownCounter += 1">Increment (@DropdownCounter)</DropdownItem>
                     </DropdownMenu>
                 </Dropdown>
-                
+
             </ButtonGroup>
         </div>
 
