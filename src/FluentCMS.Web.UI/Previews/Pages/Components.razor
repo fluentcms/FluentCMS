@@ -223,9 +223,9 @@
         <h2 class="font-bold text-2xl">Modals</h2>
         <div class="py-4 flex flex-col gap-4">
             <Button OnClick="() => ModalOpen = !ModalOpen">
-                Toggle modal by api
+                Open Modal
             </Button>
-            <Modal Open=ModalOpen>
+            <Modal @bind-Open=@ModalOpen >
                 <ModalHeader Title="Terms of Service" Closable />
                 <ModalBody>
                     <p class="text-base leading-relaxed text-gray-500 dark:text-gray-400">

@@ -13,19 +13,19 @@ $prefix-modal-title: $prefix + "modal-title";
         @apply justify-center items-center flex;
     }
 
-    & > div {
+    & > .wrapper {
         @apply relative max-h-full w-full;
     }
 
-    &-size-small > div {
+    &-size-small > .wrapper {
         @apply max-w-md;
     }
 
-    &-size-medium > div {
+    &-size-medium > .wrapper {
         @apply max-w-lg;
     }
 
-    &-size-large > div {
+    &-size-large > .wrapper {
         @apply max-w-4xl;
     }
 }

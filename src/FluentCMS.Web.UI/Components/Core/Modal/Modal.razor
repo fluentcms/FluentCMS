@@ -1,10 +1,19 @@
 ﻿@inherits BaseComponent
 
-<div class="@this.GetClasses() h-[calc(100%-1rem)]" @attributes=@AdditionalAttributes tabindex="-1">
-    <div>
-        <ModalContent>
-            @ChildContent
-        </ModalContent>
+<div class=@this.GetClasses() @attributes=@AdditionalAttributes tabindex="-1">
+
+    @* TODO: It is removed after enabling the JS invoker *@
+    @if (Open)
+    {
+        <div onclick=@Close class="bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0"></div>
+    }
+
+    <div class="wrapper">
+        <CascadingValue Value="this">
+            <ModalContent>
+                @ChildContent
+            </ModalContent>
+        </CascadingValue>
     </div>
 </div>
 
@@ -18,6 +27,17 @@
     public bool Open { get; set; }
 
     [Parameter]
+    public EventCallback<bool> OpenChanged { get; set; }
+
+    [Parameter]
     [CssProperty]
     public bool Static { get; set; }
+
+    public async void Close()
+    {
+        if (!Static)
+        {
+            await OpenChanged.InvokeAsync(Open = false);
+        }
+    }
 }
