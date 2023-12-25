@@ -176,10 +176,25 @@
                         <DropdownItem OnClick="() => DropdownCounter += 1">Increment (@DropdownCounter)</DropdownItem>
                     </DropdownMenu>
                 </Dropdown>
-                
+
             </ButtonGroup>
         </div>
+		<div class="p-6">
+			<Dropdown>
+				<DropdownButton Color="ColorEnum.Warning">Filters</DropdownButton>
+				<DropdownMenu Class="custom-dropdown-menu">
+					<ButtonGroup>
+						<Button Color="ColorEnum.Primary">First</Button>
+						<Button Color="ColorEnum.Primary">Second</Button>
+						<Button Color="ColorEnum.Primary">Third</Button>
+						<Button Color="ColorEnum.Primary">Fourth</Button>
+					</ButtonGroup>
 
+				</DropdownMenu>
+
+			</Dropdown>
+
+		</div>
     </div>
     @* #endregion *@
 
