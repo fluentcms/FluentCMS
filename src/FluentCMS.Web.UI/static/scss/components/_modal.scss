@@ -1,6 +1,5 @@
 $prefix-modal: $prefix + "modal";
 $prefix-modal-body: $prefix + "modal-body";
-$prefix-modal-close: $prefix + "modal-close";
 $prefix-modal-content: $prefix + "modal-content";
 $prefix-modal-footer: $prefix + "modal-footer";
 $prefix-modal-header: $prefix + "modal-header";
@@ -32,14 +31,6 @@ $prefix-modal-title: $prefix + "modal-title";
 
 .#{$prefix-modal-body} {
     @apply space-y-6 p-6;
-}
-
-.#{$prefix-modal-close} {
-    @apply ms-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white;
-
-    svg {
-        @apply h-3 w-3;
-    }
 }
 
 .#{$prefix-modal-content} {

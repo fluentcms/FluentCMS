@@ -11,7 +11,7 @@
         }
         @if (Closable)
         {
-            <ModalClose />
+            <CloseButton @onclick=Modal.Close />
         }
     }
     else
@@ -26,4 +26,7 @@
 
     [Parameter]
     public string Title { get; set; } = string.Empty;
+
+    [CascadingParameter]
+    public Modal Modal { get; set; } = default!;
 }
