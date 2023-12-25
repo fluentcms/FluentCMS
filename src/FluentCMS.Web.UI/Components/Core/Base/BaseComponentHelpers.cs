@@ -36,11 +36,11 @@ public static class BaseComponentHelper
     {
         List<string> classes = new() {};
 
-		// f-component
-		classes.Add(string.Join(UISettings.SEPARATOR, [UISettings.PREFIX, baseComponent.ComponentName]));
+        // f-component
+        classes.Add(string.Join(UISettings.SEPARATOR, [UISettings.PREFIX, baseComponent.ComponentName]));
 
-		// add css properties
-		classes = classes.Concat(ClassNames(baseComponent)).ToList();
+        // add css properties
+        classes = classes.Concat(ClassNames(baseComponent)).ToList();
 
         // add class property's value
         classes.Add(baseComponent.Class);
