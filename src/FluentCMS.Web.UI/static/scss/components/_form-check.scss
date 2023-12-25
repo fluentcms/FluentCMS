@@ -1,10 +1,10 @@
 $prefix-form-check: $prefix + 'form-check';
 
 .#{$prefix-form-check} {
-	@apply relative inline-flex items-center me-5 cursor-pointer;
+    @apply relative inline-flex items-center me-5 cursor-pointer;
 
     &-text {
-		@apply ms-3 text-sm font-medium text-gray-900;
+        @apply ms-3 text-sm font-medium text-gray-900;
     }
 
     .#{$prefix-theme-dark} &-text {
