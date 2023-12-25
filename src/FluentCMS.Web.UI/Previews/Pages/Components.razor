@@ -176,7 +176,7 @@
                         <DropdownItem OnClick="() => DropdownCounter += 1">Increment (@DropdownCounter)</DropdownItem>
                     </DropdownMenu>
                 </Dropdown>
-                
+
             </ButtonGroup>
         </div>
 
@@ -385,6 +385,12 @@
             <Checkbox @bind-Value=@Check1Value />
             <Checkbox @bind-Value=@Check1Value />
             @Check1Value
+        </div>
+        <div class="py-4 flex flex-col gap-4">
+            <div class="text-2xl mt-3">Checkbox Label</div>
+            <Checkbox Label="Check1" />
+            <Checkbox Label="Check2" />
+            <Checkbox Label="Check3" />
         </div>
         <div class="py-4 flex flex-col gap-4">
             <div class="text-2xl mt-3">Checkbox Binding 2</div>

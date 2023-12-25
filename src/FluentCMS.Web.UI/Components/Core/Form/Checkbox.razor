@@ -1,9 +1,34 @@
 @inherits InputBaseComponent<bool>
 
-<input
-    type="checkbox" 
-    class=@this.GetClasses() 
-    disabled=@Disabled 
-    required=@Required
-    @bind=Value 
-    @attributes="@AdditionalAttributes" />
+@if(!string.IsNullOrEmpty(Label)) {
+	<FormCheck>
+		<input
+			type="checkbox"
+			class=@this.GetClasses()
+			disabled=@Disabled
+			required=@Required
+			@bind=Value
+			@attributes=AdditionalAttributes />
+
+		<FormCheckText>
+			@Label
+		</FormCheckText>
+	</FormCheck>
+}
+else
+{
+	<input
+		type="checkbox"
+		class=@this.GetClasses()
+		disabled=@Disabled
+		required=@Required
+		@bind=Value
+		@attributes=AdditionalAttributes />
+
+}
+
+@code {
+
+	[Parameter]
+	public string Label {get; set;}
+}
