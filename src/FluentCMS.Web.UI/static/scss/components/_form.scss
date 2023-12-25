@@ -7,6 +7,13 @@ $prefix-form-field: $prefix + 'form-field';
 
 .#{$prefix-label} {
     @apply block mb-2 text-sm font-medium text-gray-900;
+
+	&-required-true::after {
+		content: "*";
+		@apply ms-1 text-red-500;
+
+
+	}
     .#{$prefix-theme-dark} & {
         @apply text-white;
     }
