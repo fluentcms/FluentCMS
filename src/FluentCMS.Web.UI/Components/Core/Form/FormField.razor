@@ -2,9 +2,12 @@
 
 <div class=@this.GetClasses() @attributes=@AdditionalAttributes>
     @if(Label != String.Empty) {
-        <Label Required=@Required For="@Id">@Label</Label>
+        <Label State=@State Required=@Required For="@Id">@Label</Label>
     }
     @ChildContent
+	@if(!string.IsNullOrEmpty(Hint)) {
+		<FormFieldHint State=@State>@Hint</FormFieldHint>
+	}
 </div>
 
 @code {
@@ -12,8 +15,14 @@
     public string Id {get; set;}
 
     [Parameter]
+    public string Hint {get; set;} = String.Empty;
+
+    [Parameter]
     public string Label {get; set;} = String.Empty;
 
     [Parameter]
     public bool Required {get; set;} = false;
+
+	[Parameter]
+	public FormFieldStateEnum State {get;set;} = FormFieldStateEnum.Default;
 }

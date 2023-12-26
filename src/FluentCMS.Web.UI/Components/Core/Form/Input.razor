@@ -8,14 +8,14 @@
         </div>
         <input
             type=@this.Type.ToString().FromPascalCaseToKebabCase()
-            id="@Id" 
-            disabled=@Disabled 
-            name=@Name 
-            required=@Required 
+            id="@Id"
+            disabled=@Disabled
+            name=@Name
+            required=@Required
             class=@this.GetClasses()
-            placeholder="@Placeholder" 
-            @bind=Value 
-            @bind:event="oninput" 
+            placeholder="@Placeholder"
+            @bind=Value
+            @bind:event="oninput"
             @attributes=AdditionalAttributes>
     </div>
 }
@@ -23,14 +23,14 @@ else
 {
     <input
         type=@this.Type.ToString().FromPascalCaseToKebabCase()
-        id="@Id" 
-        disabled=@Disabled 
-        name=@Name 
-        required=@Required 
+        id="@Id"
+        disabled=@Disabled
+        name=@Name
+        required=@Required
         class=@this.GetClasses()
-        placeholder="@Placeholder" 
-        @bind=Value 
-        @bind:event="oninput" 
+        placeholder="@Placeholder"
+        @bind=Value
+        @bind:event="oninput"
         @attributes=AdditionalAttributes>
 }
 
@@ -47,6 +47,10 @@ else
 
     [CssProperty]
     public bool HasIcon => IconName != IconNameEnum.Default;
+
+	[Parameter]
+	[CssProperty]
+	public FormFieldStateEnum State {get; set;} = FormFieldStateEnum.Default;
 
     [Parameter]
     public InputTypeEnum Type { get; set; } = InputTypeEnum.Text;

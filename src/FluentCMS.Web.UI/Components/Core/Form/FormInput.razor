@@ -1,6 +1,6 @@
 @inherits Input
 
-<FormField Id=@Id Required=@Required Label=@Label>
+<FormField Id=@Id Required=@Required Hint=@Hint State=@State Label=@Label>
     <Input
 		Disabled=@Disabled
 		Id=@Id
@@ -8,6 +8,7 @@
 		Placeholder=@Placeholder
 		Required=@Required
 		Type=@Type
+		State=@State
 		@attributes=@AdditionalAttributes
 		@bind-Value=@Value
 	/>
@@ -16,4 +17,7 @@
 @code {
     [Parameter]
     public string Label {get; set;} = "";
+
+	[Parameter]
+	public string Hint {get;set;} = String.Empty;
 }
