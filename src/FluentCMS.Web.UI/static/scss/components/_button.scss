@@ -96,8 +96,6 @@ $prefix-button: $prefix + "button";
 
         &:hover {
             @apply text-#{$value}-800;
-			text-shadow: 0 0 2px;
-
         }
 
         .#{$prefix-theme-dark} & {
@@ -105,7 +103,7 @@ $prefix-button: $prefix + "button";
         }
 
         .#{$prefix-theme-dark} &:hover {
-            @apply text-#{$value}-500;
+            @apply text-#{$value}-700;
         }
     }
 }
@@ -139,11 +137,10 @@ $prefix-button: $prefix + "button";
 }
 
 .#{$prefix-button}-color-default.#{$prefix-button}-ghost-true.#{$prefix-button}-outline-false {
-	@apply text-gray-700;
+	@apply text-gray-600;
 
 	&:hover {
 		@apply text-gray-800;
-		text-shadow: 0 0 2px;
 	}
 
 	.#{$prefix-theme-dark} & {
@@ -151,7 +148,7 @@ $prefix-button: $prefix + "button";
 	}
 
 	.#{$prefix-theme-dark} &:hover {
-		@apply text-gray-500;
+		@apply text-gray-700;
 	}
 }
 
