@@ -71,18 +71,12 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
         var original = contentType.Fields.FirstOrDefault(f => f.Slug == field.Slug);
 
         if (original == null)
-        {
-            // add the field
-            return await contentTypeRepository.AddField(contentTypeId, field, cancellationToken) ??
-                throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);
-        }
+            contentType.Fields.Add(field);
         else
-        {
-            // update the field
-            return await contentTypeRepository.UpdateField(contentTypeId, field, cancellationToken) ??
-                throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);
-        }
+            contentType.Fields.Remove(original);
 
+        return await contentTypeRepository.Update(contentType, cancellationToken) ??
+            throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);
     }
 
     public async Task<ContentType> DeleteField(Guid appId, Guid contentTypeId, string fieldSlug, CancellationToken cancellationToken = default)
@@ -99,7 +93,7 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
             throw new AppException(ExceptionCodes.ContentTypeFieldNotFound);
 
         // remove the field
-        return await contentTypeRepository.RemoveField(contentTypeId, fieldSlug, cancellationToken) ??
+        return await contentTypeRepository.Update(contentType, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);
     }
 }
