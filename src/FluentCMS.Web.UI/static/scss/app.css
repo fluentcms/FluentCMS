@@ -990,6 +990,45 @@ body.f-theme-dark {
   @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
 }
 
+.f-modal {
+  @apply hidden fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0 justify-center items-center;
+}
+.f-modal-open-true {
+  @apply flex;
+}
+.f-modal > .wrapper {
+  @apply relative max-h-full w-full;
+}
+.f-modal-size-small > .wrapper {
+  @apply max-w-md;
+}
+.f-modal-size-medium > .wrapper {
+  @apply max-w-lg;
+}
+.f-modal-size-large > .wrapper {
+  @apply max-w-4xl;
+}
+
+.f-modal-body {
+  @apply space-y-6 p-6;
+}
+
+.f-modal-content {
+  @apply relative rounded-lg bg-white shadow dark:bg-gray-700;
+}
+
+.f-modal-footer {
+  @apply flex items-center rounded-b border-t border-gray-200 p-6 dark:border-gray-600;
+}
+
+.f-modal-header {
+  @apply flex items-start justify-between rounded-t border-b p-5 dark:border-gray-600;
+}
+
+.f-modal-title {
+  @apply text-xl font-semibold text-gray-900 dark:text-white lg:text-2xl;
+}
+
 /* #endregion COMPONENTS */
 .f-login-form {
   @apply mt-8;
