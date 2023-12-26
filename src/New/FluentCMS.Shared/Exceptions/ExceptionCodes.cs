@@ -5,7 +5,6 @@ public class ExceptionCodes
     #region Setup
 
     public const string SetupSettingsNotDefined = "SetupSettings.NotDefined";
-    public const string SetupSettingsSuperAdminNotDefined = "SetupSettings.SuperAdminNotDefined";
     public const string SetupSettingsAlreadyInitialized = "SetupSettings.AlreadyInitialized";
     public const string SetupSettingsTemplatesPathNotDefined = "SetupSettings.TemplatesPathNotDefined";
     public const string SetupSettingsTemplatesFolderNotFound = "SetupSettings.TemplatesFolderNotFound";

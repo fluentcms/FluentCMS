@@ -17,15 +17,6 @@ public class AuthContext : IAuthContext
         _isAuthenticated = httpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
     }
 
-    // TODO: This is a temporary workaround to set the super admin user into the context.
-    // It should be replaced with a proper authentication system in the future.
-    public void SetSuperAdmin(string username)
-    {
-        _username = username;
-        _isSuperAdmin = true;
-        _isAuthenticated = true;
-    }
-
     public IEnumerable<Guid> RoleIds => _roleIds;
     public string Username => _username;
     public bool IsAuthenticated => _isAuthenticated;

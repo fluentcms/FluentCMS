@@ -33,7 +33,7 @@ app.UseDeveloperExceptionPage();
 using var scope = app.Services.CreateScope();
 var setup = scope.ServiceProvider.GetRequiredService<SetupManager>();
 setup.Reset().ConfigureAwait(false).GetAwaiter().GetResult();
-setup.Start().ConfigureAwait(false).GetAwaiter().GetResult();
+setup.Start("admin", "admin@example.com", "Passw0rd!").ConfigureAwait(false).GetAwaiter().GetResult();
 
 #endif
 
