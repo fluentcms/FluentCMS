@@ -25,9 +25,6 @@ public class SetupManager
         _setupSettings = configuration.GetInstance<SetupSettings>("SetupSettings") ??
             throw new AppException(ExceptionCodes.SetupSettingsNotDefined);
 
-        if (_setupSettings.SuperAdmin == null)
-            throw new AppException(ExceptionCodes.SetupSettingsSuperAdminNotDefined);
-
         if (_setupSettings.TemplatesPath == null)
             throw new AppException(ExceptionCodes.SetupSettingsTemplatesPathNotDefined);
 
@@ -54,7 +51,7 @@ public class SetupManager
         return _initialized.Value;
     }
 
-    public async Task<GlobalSettings> Start()
+    public async Task<GlobalSettings> Start(string username, string email, string password)
     {
         // Check if this is the first time setup or not
         if (_initialized.HasValue && _initialized.Value)
@@ -66,10 +63,11 @@ public class SetupManager
             throw new AppException(ExceptionCodes.SetupSettingsAlreadyInitialized);
         }
 
-        await InitializeSuperAdmin();
+        await InitializeSuperAdmin(username, email, password);
+
         await InitializeAppTemplates();
 
-        var globalSettings = await InitializeGlobalSettings();
+        var globalSettings = await InitializeGlobalSettings(username);
 
         _initialized = true;
 
@@ -84,24 +82,24 @@ public class SetupManager
 
     #region Private
 
-    private async Task InitializeSuperAdmin()
+    private async Task InitializeSuperAdmin(string username, string email, string password)
     {
         // Creating super admin user
         var superAdmin = new User
         {
-            UserName = _setupSettings.SuperAdmin.Username,
-            Email = _setupSettings.SuperAdmin.Email,
+            UserName = username,
+            Email = email,
         };
 
-        await _userService.Create(superAdmin, _setupSettings.SuperAdmin.Password);
+        await _userService.Create(superAdmin, password);
     }
 
-    private async Task<GlobalSettings> InitializeGlobalSettings()
+    private async Task<GlobalSettings> InitializeGlobalSettings(string username)
     {
         // Creating default global settings
         var settings = new GlobalSettings
         {
-            SuperUsers = [_setupSettings.SuperAdmin.Username],
+            SuperUsers = [username],
         };
 
         return await _globalSettingsService.Init(settings);

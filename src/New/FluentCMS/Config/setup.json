@@ -1,10 +1,5 @@
 {
     "SetupSettings": {
-        "TemplatesPath": "Templates",
-        "SuperAdmin": {
-            "Username": "superadmin",
-            "Password": "Passw0rd!",
-            "Email": "admin@example.com"
-        }
+        "TemplatesPath": "Templates"
     }
 }
