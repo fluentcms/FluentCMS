@@ -176,7 +176,7 @@
                         <DropdownItem OnClick="() => DropdownCounter += 1">Increment (@DropdownCounter)</DropdownItem>
                     </DropdownMenu>
                 </Dropdown>
-                
+
             </ButtonGroup>
         </div>
 
@@ -217,6 +217,17 @@
         </div>
     </div>
     @* #endregion *@
+
+	<div class="py-8">
+		<h2 class="font-bold text-2xl">FormInput</h2>
+		<div class="py-4 flex flex-col gap-4">
+			<FormInput Label="Default" placeholder="Form Input component..."/>
+			<FormInput Label="Required" Type="InputTypeEnum.DatetimeLocal" Required placeholder="required Form Input component..."/>
+
+
+		</div>
+
+	</div>
 
     @* #region Select *@
     <div class="py-8">
