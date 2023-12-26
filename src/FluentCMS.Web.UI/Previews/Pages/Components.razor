@@ -2,7 +2,6 @@
 @layout PanelLayout
 @rendermode InteractiveServer
 
-
 <div class="px-4 mx-auto container">
 
     <PageHeader Title="Components">
@@ -15,10 +14,10 @@
     <div class="py-8">
         <h2 class="font-bold text-2xl">Alerts</h2>
         <div class="py-4 flex flex-col gap-4">
-            <Alert Type="success"> Change a few things up and try submitting again.</Alert>
-            <Alert Dismissible Type="warning"> Change a few things up and try submitting again.</Alert>
-            <Alert Type="danger"> Change a few things up and try submitting again.</Alert>
-            <Alert Type="info"> Change a few things up and try submitting again.</Alert>
+            <Alert Type="AlertTypeEnum.Success"> Change a few things up and try submitting again.</Alert>
+            <Alert Dismissible Type="AlertTypeEnum.Warning"> Change a few things up and try submitting again.</Alert>
+            <Alert Type="AlertTypeEnum.Danger"> Change a few things up and try submitting again.</Alert>
+            <Alert Type="AlertTypeEnum.Info"> Change a few things up and try submitting again.</Alert>
         </div>
     </div>
     @* #endregion *@
@@ -37,6 +36,17 @@
         </div>
     </div>
     @* #endregion *@
+
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Badges</h2>
+        <div class="py-4 flex gap-2">
+			<Button>f-button</Button>
+			<Button Color="ColorEnum.Primary">f-button f-button-color-primary ...</Button>
+			<Button Disabled>f-button f-button-disabled-true ...</Button>
+			<Button Disabled Class="custom-class">f-button f-button-disabled-true ... custom-class</Button>
+		</div>
+	</div>
+
 
     @* #region Icon *@
     <div class="py-8">
@@ -176,7 +186,7 @@
                         <DropdownItem OnClick="() => DropdownCounter += 1">Increment (@DropdownCounter)</DropdownItem>
                     </DropdownMenu>
                 </Dropdown>
-                
+
             </ButtonGroup>
         </div>
 
@@ -218,6 +228,46 @@
     </div>
     @* #endregion *@
 
+    @* #region Modal *@
+    <div class="py-8">
+        <h2 class="font-bold text-2xl">Modals</h2>
+        <div class="py-4 flex flex-col gap-4">
+            <Button OnClick="() => ModalOpen = !ModalOpen">
+                Open Modal
+            </Button>
+            <Modal @bind-Open=@ModalOpen >
+                <ModalHeader Title="Terms of Service" Closable />
+                <ModalBody>
+                    <p class="text-base leading-relaxed text-gray-500 dark:text-gray-400">
+                        With less than a month to go before the European Union enacts new consumer privacy laws for its
+                        citizens, companies around the world are updating their terms of service agreements to comply.
+                    </p>
+                </ModalBody>
+                <ModalFooter>
+                    <ButtonGroup>
+                        <Button Color=@ColorEnum.Primary>
+                            I accept
+                        </Button>
+                        <Button>
+                            Decline
+                        </Button>
+                    </ButtonGroup>
+                </ModalFooter>
+            </Modal>
+        </div>
+    </div>
+    @* #endregion *@
+
+	<div class="py-8">
+		<h2 class="font-bold text-2xl">FormInput</h2>
+		<div class="py-4 flex flex-col gap-4">
+			<FormInput Label="Default" placeholder="Form Input component..."/>
+			<FormInput Label="Required" Type="InputTypeEnum.DatetimeLocal" Required placeholder="required Form Input component..."/>
+
+
+		</div>
+	</div>
+
     @* #region Select *@
     <div class="py-8">
         <h2 class="font-bold text-2xl">Selects</h2>
@@ -250,7 +300,6 @@
         </div>
     </div>
     @* #endregion *@
-
 
     @* #region Buttons *@
     <div class="py-8">
@@ -367,9 +416,50 @@
                 Danger
             </Button>
         </div>
-    </div>
-
+		<div>
+			<Button Color="ColorEnum.Primary" >Default</Button>
+			<Button Color="ColorEnum.Primary" Size="SizeEnum.Small">Small</Button>
+			<Button Color="ColorEnum.Primary" Size="SizeEnum.Medium">Medium</Button>
+			<Button Color="ColorEnum.Primary" Size="SizeEnum.Large">Large</Button>
+		</div>
+	  </div>
     @* #endregion *@
+
+	@* #region Cards *@
+	<div class="py-8">
+        <h2 class="font-bold text-2xl">Cards</h2>
+		<div class="py-4 flex flex-col align-start justify-start gap-4">
+			<Card>Simple Card component</Card>
+			<Card >
+				<CardTitle>Some Title</CardTitle>
+				Card With title
+			</Card>
+
+			<Card Width="SizeEnum.Default">
+				default Card
+			</Card>
+			<Card Width="SizeEnum.Small">
+				small Card
+			</Card>
+			<Card Width="SizeEnum.Medium">
+				medium Card
+			</Card>
+			<Card Width="SizeEnum.Large">
+				large Card
+			</Card>
+
+			<Card>
+				<CardBody>
+					<CardTitle>Card title</CardTitle>
+					Content inside card body
+
+					<Button Color="ColorEnum.Primary">Some action</Button>
+				</CardBody>
+			</Card>
+		</div>
+
+	</div>
+	@* #endregion *@
 
     @* #region Checkbox *@
     <div class="py-8">
@@ -443,7 +533,6 @@
     </div>
     @* #endregion *@
 
-
     @* #region Spinner *@
     <div class="py-8">
         <h2 class="font-bold text-2xl">Spinner</h2>
@@ -482,6 +571,8 @@
 
     private string Select1Value { get; set; } = "US";
     private string Select2Value { get; set; }
+
+    private bool ModalOpen { get; set; }
 
     public class Item
     {
