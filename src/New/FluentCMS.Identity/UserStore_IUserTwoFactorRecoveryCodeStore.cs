@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
-
-namespace FluentCMS.Identity;
+﻿namespace FluentCMS.Identity;
 
 public partial class UserStore : IUserTwoFactorRecoveryCodeStore<User>
 {

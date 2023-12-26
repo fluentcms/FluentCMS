@@ -3,13 +3,11 @@
 public class GlobalSettingsRepository : IGlobalSettingsRepository
 {
     private readonly IMongoCollection<GlobalSettings> _collection;
-    private readonly IAuthContext _authContext;
     private readonly IMongoDBContext _mongoDbContext;
 
-    public GlobalSettingsRepository(IMongoDBContext mongoDbContext, IAuthContext authContext)
+    public GlobalSettingsRepository(IMongoDBContext mongoDbContext)
     {
         _collection = mongoDbContext.Database.GetCollection<GlobalSettings>("global_settings");
-        _authContext = authContext;
         _mongoDbContext = mongoDbContext;
     }
 
@@ -27,8 +25,6 @@ public class GlobalSettingsRepository : IGlobalSettingsRepository
 
         if (existing == null)
             return await Create(settings, cancellationToken);
-
-        SetAuditableFieldsForUpdate(settings);
 
         var idFilter = Builders<GlobalSettings>.Filter.Eq(x => x.Id, settings.Id);
 
@@ -50,21 +46,7 @@ public class GlobalSettingsRepository : IGlobalSettingsRepository
     private async Task<GlobalSettings?> Create(GlobalSettings settings, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        SetAuditableFieldsForCreate(settings);
         await _collection.InsertOneAsync(settings, null, cancellationToken);
         return settings;
-    }
-
-    private void SetAuditableFieldsForCreate(GlobalSettings settings)
-    {
-        settings.Id = Guid.NewGuid();
-        settings.CreatedAt = DateTime.UtcNow;
-        settings.CreatedBy = _authContext.Username;
-    }
-
-    private void SetAuditableFieldsForUpdate(GlobalSettings settings)
-    {
-        settings.ModifiedAt = DateTime.UtcNow;
-        settings.ModifiedBy = _authContext.Username;
     }
 }

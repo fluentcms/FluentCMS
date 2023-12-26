@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
-
-namespace FluentCMS.Services;
+﻿namespace FluentCMS.Services;
 
 /// <summary>
 /// Extension methods for IdentityResult to handle validation errors.

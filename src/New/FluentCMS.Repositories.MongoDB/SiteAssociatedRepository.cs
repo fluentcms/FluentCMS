@@ -1,9 +1,9 @@
 ﻿namespace FluentCMS.Repositories.MongoDB;
 
-public abstract class SiteAssociatedRepository<TEntity> : AuditableEntityRepository<TEntity>, ISiteAssociatedRepository<TEntity>
+public abstract class SiteAssociatedRepository<TEntity> : EntityRepository<TEntity>, ISiteAssociatedRepository<TEntity>
     where TEntity : ISiteAssociatedEntity
 {
-    public SiteAssociatedRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
+    public SiteAssociatedRepository(IMongoDBContext mongoDbContext) : base(mongoDbContext)
     {
     }
 

@@ -59,6 +59,7 @@ public static class MongoDbServiceExtensions
                 ?? throw new InvalidOperationException($"Interface for repository '{repositoryType.Name}' not found.");
 
             services.AddScoped(interfaceType, repositoryType);
+            services.AddScoped(repositoryType);
         }
     }
 }

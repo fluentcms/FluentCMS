@@ -1,11 +1,11 @@
 ﻿namespace FluentCMS.Repositories.MongoDB;
 
 public abstract class AppAssociatedRepository<TEntity> :
-    AuditableEntityRepository<TEntity>,
+    EntityRepository<TEntity>,
     IAppAssociatedRepository<TEntity>
     where TEntity : IAppAssociatedEntity
 {
-    public AppAssociatedRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
+    public AppAssociatedRepository(IMongoDBContext mongoDbContext) : base(mongoDbContext)
     {
     }
 

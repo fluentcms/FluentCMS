@@ -10,7 +10,7 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
     protected readonly IMongoDatabase MongoDatabase;
     protected readonly IMongoDBContext MongoDbContext;
 
-    public EntityRepository(IMongoDBContext mongoDbContext, IAuthContext authContext)
+    public EntityRepository(IMongoDBContext mongoDbContext)
     {
         MongoDatabase = mongoDbContext.Database;
         Collection = mongoDbContext.Database.GetCollection<TEntity>(GetCollectionName());

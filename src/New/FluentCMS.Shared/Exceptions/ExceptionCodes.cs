@@ -2,6 +2,12 @@
 
 public class ExceptionCodes
 {
+    #region General
+
+    public const string GeneralArgumentNullException = "General.ArgumentNullException";
+
+    #endregion
+
     #region Setup
 
     public const string SetupSettingsNotDefined = "SetupSettings.NotDefined";

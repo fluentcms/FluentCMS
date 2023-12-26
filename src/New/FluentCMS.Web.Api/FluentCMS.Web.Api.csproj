@@ -12,6 +12,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\FluentCMS.Repositories.Decorators\FluentCMS.Repositories.Decorators.csproj" />
         <ProjectReference Include="..\FluentCMS.Services\FluentCMS.Services.csproj" />
     </ItemGroup>
 

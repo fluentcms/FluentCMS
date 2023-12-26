@@ -2,7 +2,7 @@
 
 public class AppRepository : AppAssociatedRepository<App>, IAppRepository
 {
-    public AppRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
+    public AppRepository(IMongoDBContext mongoDbContext) : base(mongoDbContext)
     {
     }
 

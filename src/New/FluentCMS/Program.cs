@@ -10,11 +10,7 @@ var services = builder.Services;
 
 services.AddSiteServices();
 
-services.AddApiDocumentation();
-
 services.AddMongoDbRepositories("MongoDb");
-
-services.AddApplicationServices();
 
 services.AddApiServices();
 

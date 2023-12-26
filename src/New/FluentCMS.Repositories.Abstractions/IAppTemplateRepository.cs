@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Repositories.Abstractions;
 
-public interface IAppTemplateRepository : IAuditableEntityRepository<AppTemplate>
+public interface IAppTemplateRepository : IEntityRepository<AppTemplate>
 {
 
 }
