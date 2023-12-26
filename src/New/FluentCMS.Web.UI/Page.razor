@@ -1,15 +1,27 @@
 ﻿@page "/{*Route:nonfile}"
 
+@inject SetupManager SetupManager
+@inject NavigationManager NavigationManager
+
 <PageTitle>Page Title</PageTitle>
 <HeadContent>
 
 </HeadContent>
 
-This is @Route route!
-
-<a href="api/doc"  target="_blank">Swagger</a>
-
+<h1>This is: @Route!</h1>
+<a href="/admin/setup">Setup</a>
+<br />
+<a href="api/doc" target="_blank">Swagger</a>
+<br />
 @code {
     [Parameter]
     public string? Route { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // check for initialization
+        if (!await SetupManager.IsInitialized())
+            NavigationManager.NavigateTo("/admin/setup");
+    }
+
 }

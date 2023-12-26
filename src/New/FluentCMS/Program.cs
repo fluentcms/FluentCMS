@@ -14,6 +14,8 @@ services.AddMongoDbRepositories("MongoDb");
 
 services.AddApiServices();
 
+services.AddAdminUIServices();
+
 #endregion
 
 #region App
