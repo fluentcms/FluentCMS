@@ -1,17 +1,19 @@
-<div class="f-form-field">
+@inherits BaseComponent
+
+<div class=@this.GetClasses() @attributes=@AdditionalAttributes>
     @if(Label != String.Empty) {
-        <Label For="@Id">@Label</Label>
+        <Label Required=@Required For="@Id">@Label</Label>
     }
     @ChildContent
 </div>
 
 @code {
     [Parameter]
-    public RenderFragment ChildContent {get; set;}
+    public string Id {get; set;}
 
     [Parameter]
     public string Label {get; set;} = String.Empty;
 
     [Parameter]
-    public string Id {get; set;}
+    public bool Required {get; set;} = false;
 }

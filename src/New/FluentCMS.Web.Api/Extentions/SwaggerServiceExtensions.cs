@@ -18,7 +18,6 @@ public static class SwaggerServiceExtensions
 
         services.AddSwaggerGen(c =>
         {
-            c.OrderActionsBy((apiDesc) => $"{apiDesc.ActionDescriptor.RouteValues["controller"]}");
             c.SwaggerDoc("v1", new OpenApiInfo { Title = applicationName, Version = version });
 
             // Define the security scheme for bearer tokens
@@ -31,6 +30,8 @@ public static class SwaggerServiceExtensions
                 Scheme = "bearer",
                 BearerFormat = "JWT"
             });
+
+            c.OrderActionsBy((apiDesc) => $"{apiDesc.ActionDescriptor.RouteValues["controller"]}");
 
             //// Include XML comments if available
             //var xmlFilename = $"{typeof(FluentCMS.Web.Api.Controllers.BaseController).Assembly.GetName().Name}.xml";

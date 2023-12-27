@@ -8,11 +8,11 @@
         <div onclick=@Close class="bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0"></div>
     }
 
-    <ConfirmWrapper>
-        <ConfirmContent>
-            <CloseButton Onclick=@Cancel />
+    <div class=@this.ClassName("ConfirmWrapper")>
+        <div class=@this.ClassName("ConfirmContent")>
+            <CloseButton OnClick=@Cancel />
 
-            <ConfirmBody>
+            <div class=@this.ClassName("ConfirmBody")>
                 <Icon Name=@IconNameEnum.ExclamationCircle Size=@SizeEnum.Large />
 
                 @* TODO: Replace it with typography component *@
@@ -28,9 +28,9 @@
                         No, cancel
                     </Button>
                 </ButtonGroup>
-            </ConfirmBody>
-        </ConfirmContent>
-    </ConfirmWrapper>
+            </div>
+        </div>
+    </div>
 </div>
 
 @code {
