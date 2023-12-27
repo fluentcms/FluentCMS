@@ -93,7 +93,7 @@ $prefix-button: $prefix + "button";
     &.#{$prefix-button}-disabled-true {
         @apply opacity-50 cursor-not-allowed pointer-events-none;
     }
-    
+
     &:hover {
         @apply bg-gray-100 text-blue-700;
     }
@@ -115,7 +115,7 @@ $prefix-button: $prefix + "button";
 }
 
 .#{$prefix-button}-group {
-    @apply flex justify-end gap-2;
+    @apply inline-flex justify-end gap-2;
 
     &.#{$prefix-button}-group-wrap-true {
         @apply flex-wrap;
