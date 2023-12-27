@@ -1,5 +1,4 @@
 ﻿@inherits BasePluginComponent
-@inject PluginContentClient pluginContentClient
 
 @((MarkupString)Model.Content)
 
@@ -8,13 +7,13 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var response = await pluginContentClient.GetByPluginIdAsync("TextHtml", AppState.Site.Id, Plugin.Id);
-        var pluginContent = response?.Data?.FirstOrDefault() ??
-            new Dictionary<string, object>
-            {
-                { "PluginId" , Plugin.Id },
-                { "SiteId" , AppState.Site.Id }
-            };
-        Model = new TextHtmlContent();
+        // var response = await pluginContentClient.GetByPluginIdAsync("TextHtml", AppState.Site.Id, Plugin.Id);
+        // var pluginContent = response?.Data?.FirstOrDefault() ??
+        //     new Dictionary<string, object>
+        //     {
+        //         { "PluginId" , Plugin.Id },
+        //         { "SiteId" , AppState.Site.Id }
+        //     };
+        // Model = new TextHtmlContent();
     }
 }

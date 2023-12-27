@@ -1,24 +1,10 @@
-<div class="@($"f-card f-card-width-{Width}")">
-    @if (Title != String.Empty) {
-        <CardHeader Title="@Title" />
-    }
-
+@inherits BaseComponent
+<div class=@this.GetClasses() @attributes=AdditionalAttributes>
     @ChildContent
 </div>
 
-
 @code {
     [Parameter]
-    public RenderFragment ChildContent {get; set;}
-
-    [Parameter]
-    public string Title {get; set;} = String.Empty;
-
-    [Parameter]
-    public string Width {get; set;} = String.Empty;
-
-    [Parameter]
-    public string Class {get; set;} = String.Empty;
-
-
+    [CssProperty]
+    public SizeEnum Width {get; set;} = SizeEnum.Default;
 }

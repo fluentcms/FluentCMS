@@ -1,70 +1,41 @@
 ﻿using FluentCMS.Entities;
-using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace FluentCMS.Repositories.MongoDB;
 
-public class PluginContentRepository(
-    IMongoDBContext mongoDbContext,
-    IApplicationContext applicationContext) :
-    ContentRepository<PluginContent>(mongoDbContext, applicationContext),
-    IPluginContentRepository
+/// <summary>
+/// Represents a MongoDB-based repository for managing plugin content entities in the FluentCMS system.
+/// This class provides specific data access functionalities for plugin content.
+/// </summary>
+/// <remarks>
+/// This repository extends the generic ContentRepository for PluginContent type
+/// and implements the IPluginContentRepository interface for specialized operations.
+/// </remarks>
+public class PluginContentRepository : ContentRepository<PluginContent>, IPluginContentRepository
 {
-    public async Task<IEnumerable<PluginContent>> GetByPluginId(Guid siteId, string contentType, Guid pluginId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PluginContentRepository"/> class.
+    /// </summary>
+    /// <param name="mongoDbContext">The MongoDB context used for data operations.</param>
+    /// <param name="applicationContext">The application context that provides access to shared resources and functionality.</param>
+    public PluginContentRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext)
+        : base(mongoDbContext, applicationContext)
     {
-        var bsonCollection = GetBsonCollection(contentType);
-        var builder = Builders<BsonDocument>.Filter;
-        var filter = builder.Eq("PluginId", pluginId);
-        filter &= builder.Eq("SiteId", siteId);
-        var bsonDocs = await bsonCollection.FindAsync(filter, null, cancellationToken);
-        var bsonDicts = await bsonDocs.ToListAsync(cancellationToken);
-
-        var pluginContents = new List<PluginContent>();
-        foreach (var doc in bsonDicts)
-        {
-            var dict = doc.ToDictionary();
-            ReverseMongoDBId(dict);
-            pluginContents.Add(dict.ToContent<PluginContent>());
-        }
-        return pluginContents;
     }
 
-    public override async Task<PluginContent?> Update(PluginContent content, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Asynchronously retrieves a collection of PluginContent entities associated with a specific plugin ID.
+    /// </summary>
+    /// <param name="contentType">The content type to filter the plugin content.</param>
+    /// <param name="pluginId">The plugin ID for which content is to be retrieved.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>A task representing the asynchronous operation, containing a collection of PluginContent entities.</returns>
+    public async Task<IEnumerable<PluginContent>> GetByPluginId(string contentType, Guid pluginId, CancellationToken cancellationToken = default)
     {
-        var existing = await GetById(content.SiteId, content.Type, content.Id, cancellationToken) ??
-            throw new AppException(ExceptionCodes.ContentNotFound);
-
-        if (existing.PluginId != content.PluginId)
-            throw new AppException(ExceptionCodes.ContentPluginIdMismatch);
-
-        return await base.Update(content, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        var builder = Builders<PluginContent>.Filter;
+        var filter = builder.Eq(x => x.PluginId, pluginId);
+        var result = await Collection.FindAsync(filter, null, cancellationToken);
+        return result.ToEnumerable(cancellationToken);
     }
-
-    protected static FilterDefinition<Dictionary<string, object?>> GetPluginIdFilter(Guid pluginId)
-    {
-        var builder = Builders<Dictionary<string, object?>>.Filter;
-        var filter = builder.Eq("PluginId", pluginId);
-        return filter;
-    }
-
-    protected override IMongoCollection<Dictionary<string, object?>> GetCollection(string contentType)
-    {
-        if (string.IsNullOrWhiteSpace(contentType))
-            throw new ArgumentNullException(nameof(contentType));
-
-        var collectionName = $"PluginContent_{contentType.ToLower()}";
-
-        return mongoDbContext.Database.GetCollection<Dictionary<string, object?>>(collectionName);
-    }
-
-    protected IMongoCollection<BsonDocument> GetBsonCollection(string contentType)
-    {
-        if (string.IsNullOrWhiteSpace(contentType))
-            throw new ArgumentNullException(nameof(contentType));
-
-        var collectionName = $"PluginContent_{contentType.ToLower()}";
-
-        return mongoDbContext.Database.GetCollection<BsonDocument>(collectionName);
-    }
-
 }

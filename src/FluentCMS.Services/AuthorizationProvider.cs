@@ -7,7 +7,7 @@ public interface IAuthorizationProvider
 {
     bool Authorize(Site site, IEnumerable<string> policyNames);
     bool IsSuperAdmin();
-    Task<Permission> Create<T>(T entity, string policyName, CancellationToken cancellationToken = default) where T : IAuthorizeEntity;
+    Task<Permission> Create<T>(T entity, string policyName, CancellationToken cancellationToken = default) where T : ISiteAssociatedEntity;
 }
 
 public class AuthorizationProvider(
@@ -15,7 +15,7 @@ public class AuthorizationProvider(
     IApplicationContext applicationContext,
     IRoleRepository roleRepository) : IAuthorizationProvider
 {
-    private readonly IEnumerable<Guid> _userRoleIds = applicationContext.Current.RoleIds;
+    private readonly IEnumerable<Guid> _userRoleIds = applicationContext.RoleIds;
     private IEnumerable<Permission> _permissions = null!;
 
     private async Task Load(Guid siteId, CancellationToken cancellationToken = default)
@@ -29,7 +29,7 @@ public class AuthorizationProvider(
     public bool IsSuperAdmin()
     {
         // super admins have access to everything
-        return applicationContext.Current.IsSuperAdmin;
+        return applicationContext.IsSuperAdmin;
     }
 
     public bool Authorize(Site site, IEnumerable<string> policyNames)
@@ -38,13 +38,13 @@ public class AuthorizationProvider(
         ArgumentNullException.ThrowIfNull(policyNames);
 
         // super admins have access to everything
-        if (applicationContext.Current.IsSuperAdmin)
+        if (applicationContext.IsSuperAdmin)
             return true;
 
         Load(site.Id).Wait();
 
         var entityType = typeof(Site).Name;
-        var userRoleIds = applicationContext.Current.RoleIds;
+        var userRoleIds = applicationContext.RoleIds;
 
         if (_permissions.Any(x => x.Id == site.Id && x.EntityType == typeof(Site).Name && policyNames.Contains(x.Policy)))
             return true;
@@ -52,7 +52,7 @@ public class AuthorizationProvider(
         return false;
     }
 
-    public async Task<Permission> Create<T>(T entity, string policyName, CancellationToken cancellationToken = default) where T : IAuthorizeEntity
+    public async Task<Permission> Create<T>(T entity, string policyName, CancellationToken cancellationToken = default) where T : ISiteAssociatedEntity
     {
         ArgumentNullException.ThrowIfNull(entity);
 

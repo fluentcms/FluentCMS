@@ -1,0 +1,36 @@
+{
+    "Name": "Blog App",
+    "Description": "A simple blog template for the app",
+    "ContentTypes": [
+        {
+            "Name": "Article",
+            "Slug": "article",
+            "Fields": [
+                {
+                    "Title": "Title",
+                    "Slug": "title",
+                    "Type": "string",
+                    "Required": true
+                },
+                {
+                    "Title": "Body",
+                    "Slug": "body",
+                    "Type": "string",
+                    "Required": true
+                }
+            ]
+        }
+    ],
+    "Contents": [
+        {
+            "ContentType": "article",
+            "Title": "My First Article",
+            "Body": "This is my first article"
+        },
+        {
+            "ContentType": "page",
+            "Title": "About",
+            "Body": "This is the about page"
+        }
+    ]
+}

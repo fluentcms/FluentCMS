@@ -1,36 +1,39 @@
-﻿using AutoMapper;
-using FluentCMS.Api.Models;
+﻿using FluentCMS.Api.Models;
 using FluentCMS.Entities;
 using FluentCMS.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Api.Controllers;
 
-public class HostController : BaseController
+/// <summary>
+/// API controller for managing host settings in the FluentCMS system.
+/// Provides actions for retrieving and updating host information.
+/// </summary>
+public class HostController(IHostService hostService) : BaseController
 {
-    private readonly IHostService _hostService;
-    private readonly IMapper _mapper;
-
-    public HostController(IHostService hostService, IMapper mapper)
-    {
-        _hostService = hostService;
-        _mapper = mapper;
-    }
-
+    /// <summary>
+    /// Retrieves the current host settings.
+    /// </summary>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>The current host settings.</returns>
     [HttpGet]
-    public async Task<IApiResult<HostResponse>> Get(CancellationToken cancellationToken = default)
+    public async Task<IApiResult<Host>> Get(CancellationToken cancellationToken = default)
     {
-        var host = await _hostService.Get(cancellationToken);
-        var response = _mapper.Map<HostResponse>(host);
-        return new ApiResult<HostResponse>(response);
+        var host = await hostService.Get(cancellationToken);
+        return new ApiResult<Host>(host);
     }
 
-    [HttpPatch]
-    public async Task<IApiResult<HostResponse>> Update(HostUpdateRequest request, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Updates the host settings.
+    /// </summary>
+    /// <param name="request">The host update request data.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>The updated host settings.</returns>
+    [HttpPut]
+    public async Task<IApiResult<Host>> Update(HostUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        var host = _mapper.Map<Host>(request);
-        var updateHost = await _hostService.Update(host, cancellationToken);
-        var hostResponse = _mapper.Map<HostResponse>(updateHost);
-        return new ApiResult<HostResponse>(hostResponse);
+        var host = new Host { SuperUsers = request.SuperUsers };
+        var updateHost = await hostService.Update(host, cancellationToken);
+        return new ApiResult<Host>(updateHost);
     }
 }

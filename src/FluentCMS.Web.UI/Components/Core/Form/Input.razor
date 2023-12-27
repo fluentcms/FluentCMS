@@ -1,21 +1,53 @@
-<input class="f-input" type="@Type" id="@Id" name="@Name" placeholder="@Placeholder" required=@Required>
+@inherits InputBaseComponent<string>
+
+@if (IconName != IconNameEnum.Default)
+{
+    <div class=@this.ClassName("InputGroup")>
+        <div class=@this.ClassName("InputIconWrapper")>
+            <Icon Name="@IconName" />
+        </div>
+        <input
+            type=@this.Type.ToString().FromPascalCaseToKebabCase()
+            id="@Id" 
+            disabled=@Disabled 
+            name=@Name 
+            required=@Required 
+            class=@this.GetClasses()
+            placeholder="@Placeholder" 
+            @bind=Value 
+            @bind:event="oninput" 
+            @attributes=AdditionalAttributes>
+    </div>
+}
+else
+{
+    <input
+        type=@this.Type.ToString().FromPascalCaseToKebabCase()
+        id="@Id" 
+        disabled=@Disabled 
+        name=@Name 
+        required=@Required 
+        class=@this.GetClasses()
+        placeholder="@Placeholder" 
+        @bind=Value 
+        @bind:event="oninput" 
+        @attributes=AdditionalAttributes>
+}
+
 
 @code {
     [Parameter]
-    public string Type {get; set;} = "text";
+    public string Id { get; set; }
 
     [Parameter]
-    public string Id {get; set;}
+    public string Placeholder { get; set; }
 
     [Parameter]
-    public string Name {get; set;} = "";
+    public IconNameEnum IconName { get; set; }
+
+    [CssProperty]
+    public bool HasIcon => IconName != IconNameEnum.Default;
 
     [Parameter]
-    public string Placeholder {get; set;}
-
-    [Parameter]
-    public bool Required {get; set;} = false;
-
-    [Parameter]
-    public string Value {get; set;} = "";
+    public InputTypeEnum Type { get; set; } = InputTypeEnum.Text;
 }

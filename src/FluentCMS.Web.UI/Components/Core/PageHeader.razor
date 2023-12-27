@@ -1,18 +1,51 @@
-<div class="f-page-header">
-    <h2 class="f-page-title">@Title</h2>
-    <div class="f-page-actions">
-        <ButtonGroup>
-            @PageActions
-        </ButtonGroup>
-    </div>
-</div>
+@inherits BaseComponent
 
+<nav class=@this.GetClasses() @attributes=@AdditionalAttributes>
+    @if (HasBack)
+    {
+        <Button Ghost>
+            <Icon Name=@IconNameEnum.Delete />
+            Back
+        </Button>
+    }
+
+    <h1>
+        @Title
+    </h1>
+
+    <div class="body">
+        <div class="subtitle">
+            @if (PageHeaderSubtitle != null)
+            {
+                @PageHeaderSubtitle
+            }
+            else
+            {
+                @SubTitle
+            }
+        </div>
+        @if (PageHeaderSubtitle != null)
+        {
+            <div class="actions">
+                @PageHeaderActions
+            </div>
+        }
+    </div>
+</nav>
 
 @code {
+    [Parameter]
+    public bool HasBack { get; set; }
 
     [Parameter]
     public string Title { get; set; } = String.Empty;
 
     [Parameter]
-    public RenderFragment PageActions { get; set; }
+    public string SubTitle { get; set; } = String.Empty;
+
+    [Parameter]
+    public RenderFragment? PageHeaderActions { get; set; }
+
+    [Parameter]
+    public RenderFragment? PageHeaderSubtitle { get; set; }
 }

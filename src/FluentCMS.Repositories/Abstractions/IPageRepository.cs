@@ -2,8 +2,7 @@
 
 namespace FluentCMS.Repositories;
 
-public interface IPageRepository : IGenericRepository<Page>
+public interface IPageRepository : ISiteAssociatedRepository<Page>
 {
-    Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     Task<Page> GetByPath(Guid siteId, string path, CancellationToken cancellationToken = default);
 }

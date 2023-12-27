@@ -2,7 +2,6 @@
 
 namespace FluentCMS.Repositories;
 
-public interface IRoleRepository : IGenericRepository<Role>
+public interface IRoleRepository : ISiteAssociatedRepository<Role>
 {
-    Task<IEnumerable<Role>> GetAll(Guid siteId, CancellationToken cancellationToken = default);
 }

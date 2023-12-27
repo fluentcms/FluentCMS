@@ -1,22 +1,21 @@
 ﻿using FluentCMS.Entities;
-using MongoDB.Driver;
 
 namespace FluentCMS.Repositories.MongoDB;
 
-public class RoleRepository : GenericRepository<Role>, IRoleRepository
+/// <summary>
+/// Repository for managing Role entities in MongoDB.
+/// Extends SiteAssociatedRepository to handle roles associated with specific sites in a multi-tenant environment.
+/// </summary>
+public class RoleRepository : SiteAssociatedRepository<Role>, IRoleRepository
 {
-    public RoleRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext) : base(mongoDbContext, applicationContext)
+    /// <summary>
+    /// Initializes a new instance of the RoleRepository class.
+    /// </summary>
+    /// <param name="mongoDbContext">The MongoDB context used to access the database.</param>
+    /// <param name="applicationContext">The application context for the repository.</param>
+    public RoleRepository(IMongoDBContext mongoDbContext, IApplicationContext applicationContext)
+        : base(mongoDbContext, applicationContext)
     {
     }
 
-    public async Task<IEnumerable<Role>> GetAll(Guid siteId, CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var siteIdFilter = Builders<Role>.Filter.Eq(x => x.SiteId, siteId);
-
-        var roles = await Collection.FindAsync(siteIdFilter, null, cancellationToken);
-
-        return roles.ToEnumerable(cancellationToken);
-    }
 }

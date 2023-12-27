@@ -1,6 +1,5 @@
 using FluentCMS;
 using FluentCMS.Api;
-using FluentCMS.Entities;
 using FluentCMS.Web.UI;
 using FluentCMS.Web.UI.Resources;
 using System.Resources;
@@ -29,8 +28,8 @@ services.AddScoped<IApplicationContext, ApiApplicationContext>();
 
 services.AddControllers().AddJsonOptions(options =>
 {
-    options.JsonSerializerOptions.Converters.Add(new JsonContentConverter<Content>());
-    options.JsonSerializerOptions.Converters.Add(new JsonContentConverter<PluginContent>());
+    //options.JsonSerializerOptions.Converters.Add(new JsonContentConverter<Content>());
+    //options.JsonSerializerOptions.Converters.Add(new JsonContentConverter<PluginContent>());
     //options.JsonSerializerOptions.Converters.Add(new DictionaryStringObjectJsonConverter());
 });
 
@@ -43,7 +42,7 @@ services.AddHttpContextAccessor();
 services.AddJwtAuthentication(builder.Configuration);
 
 // register IconResourceManager
-services.AddKeyedScoped<ResourceManager>(typeof(Icons).FullName, (_, _) =>
+services.AddKeyedScoped(typeof(Icons).FullName, (_, _) =>
 {
     var iconsType = typeof(Icons);
     return new ResourceManager(iconsType.FullName!, iconsType.Assembly);

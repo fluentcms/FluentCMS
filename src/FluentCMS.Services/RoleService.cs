@@ -6,10 +6,10 @@ namespace FluentCMS.Services;
 public interface IRoleService
 {
     Task<IEnumerable<Role>> GetAll(Guid siteId, CancellationToken cancellationToken = default);
-    Task<Role> GetById(Guid siteId, Guid id, CancellationToken cancellationToken = default);
+    Task<Role> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<Role> Create(Role role, CancellationToken cancellationToken = default);
     Task<Role> Update(Role role, CancellationToken cancellationToken = default);
-    Task Delete(Guid siteId, Guid id, CancellationToken cancellationToken = default);
+    Task Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
 public class RoleService(
@@ -31,14 +31,15 @@ public class RoleService(
         return site;
     }
 
-    public async Task<Role> GetById(Guid siteId, Guid id, CancellationToken cancellationToken = default)
+    public async Task<Role> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        // permission will be checked inside GetAll
-        var siteRoles = await GetAll(siteId, cancellationToken);
+        var role = await roleRepository.GetById(id, cancellationToken) ??
+            throw new AppException(ExceptionCodes.RoleNotFound);
 
-        var role = siteRoles.SingleOrDefault(role => role.Id.Equals(id));
+        // permission will be checked inside GetSite
+        _ = await GetSite(role.SiteId, cancellationToken);
 
-        return role ?? throw new AppException(ExceptionCodes.RoleNotFound);
+        return role;
     }
 
     public async Task<IEnumerable<Role>> GetAll(Guid siteId, CancellationToken cancellationToken = default)
@@ -46,7 +47,7 @@ public class RoleService(
         // permission will be checked inside GetSite
         await GetSite(siteId, cancellationToken);
 
-        return await roleRepository.GetAll(siteId, cancellationToken);
+        return await roleRepository.GetAllForSite(siteId, cancellationToken);
     }
 
     public async Task<Role> Create(Role role, CancellationToken cancellationToken)
@@ -77,10 +78,10 @@ public class RoleService(
             throw new AppException(ExceptionCodes.RoleUnableToUpdate);
     }
 
-    public async Task Delete(Guid siteId, Guid id, CancellationToken cancellationToken = default)
+    public async Task Delete(Guid id, CancellationToken cancellationToken = default)
     {
         // permission will be checked inside GetById
-        _ = await GetById(siteId, id, cancellationToken) ??
+        _ = await GetById(id, cancellationToken) ??
             throw new AppPermissionException();
 
         _ = await roleRepository.Delete(id, cancellationToken) ??
