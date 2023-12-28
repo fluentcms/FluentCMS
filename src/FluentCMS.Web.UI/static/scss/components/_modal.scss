@@ -4,6 +4,7 @@ $prefix-modal-content: $prefix + "modal-content";
 $prefix-modal-footer: $prefix + "modal-footer";
 $prefix-modal-header: $prefix + "modal-header";
 $prefix-modal-title: $prefix + "modal-title";
+$prefix-modal-wrapper: $prefix + "modal-wrapper";
 
 .#{$prefix-modal} {
     @apply hidden fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0 justify-center items-center;
@@ -12,19 +13,19 @@ $prefix-modal-title: $prefix + "modal-title";
         @apply flex;
     }
 
-    & > .wrapper {
+    & > .#{$prefix-modal-wrapper} {
         @apply relative max-h-full w-full;
     }
 
-    &-size-small > .wrapper {
+    &-size-small > .#{$prefix-modal-wrapper} {
         @apply max-w-md;
     }
 
-    &-size-medium > .wrapper {
+    &-size-medium > .#{$prefix-modal-wrapper} {
         @apply max-w-lg;
     }
 
-    &-size-large > .wrapper {
+    &-size-large > .#{$prefix-modal-wrapper} {
         @apply max-w-4xl;
     }
 }
