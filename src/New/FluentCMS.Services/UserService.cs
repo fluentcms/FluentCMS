@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Services;
 
-public interface IUserService : IService
+public interface IUserService : IAutoRegisterService
 {
     Task<User> Authenticate(string username, string password, CancellationToken cancellationToken = default);
     Task<IEnumerable<User>> GetAll(CancellationToken cancellationToken = default);

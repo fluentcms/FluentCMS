@@ -2,28 +2,38 @@
 @rendermode InteractiveServer
 @inject SiteClient SiteClient
 @inject SetupClient SetupClient
+@inject ISiteState SiteState
 
 @using Microsoft.AspNetCore.Components.Forms
 
 <PageTitle>Setup</PageTitle>
-
 <h1>Setup</h1>
-<h2>Admin Account</h2>
-<div>
+
+@if (SiteState?.Initialized != null && SiteState?.Initialized == false)
+{
     <div>
-        <label for="username">Username</label>
-        <InputText @bind-Value=SetupModel.Username id="username" />
+        <div>
+            <label for="username">Username</label>
+            <InputText @bind-Value=SetupModel.Username id="username" />
+        </div>
+        <div>
+            <label for="email">Email</label>
+            <InputText @bind-Value=SetupModel.Email id="email" />
+        </div>
+        <div>
+            <label for="email">Password</label>
+            <InputText @bind-Value=SetupModel.Password id="email" />
+        </div>
+        <button @onclick=SetupStart>Start</button>
     </div>
+
+}
+else
+{
     <div>
-        <label for="email">Email</label>
-        <InputText @bind-Value=SetupModel.Email id="email" />
+        <p>Site is already initialized</p>
     </div>
-    <div>
-        <label for="email">Password</label>
-        <InputText @bind-Value=SetupModel.Password id="email" />
-    </div>
-    <button @onclick=SetupStart>Start</button>
-</div>
+}
 @code {
 
     public SetupRequest SetupModel { get; set; } = new SetupRequest
@@ -31,7 +41,7 @@
             Username = "admin",
             Email = "admin@example.com",
             Password = "Passw0rd!",
-            AppTemplateName = "Blanck",
+            AppTemplateName = "Blank",
             SiteTemplateName = "Blank"
         };
 
@@ -39,13 +49,11 @@
     {
         if (SetupClient == null) throw new Exception("SetupClient is null");
         if (SiteClient == null) throw new Exception("SiteClient is null");
+        SetupModel.AdminDomain = SiteState.Uri.Authority;
     }
 
     private void SetupStart()
     {
         var response = SetupClient.StartAsync(SetupModel).Result;
-        var x = response;
-        // var settings = response.Data ?? throw new Exception("No settings returned from setup");
-
     }
 }

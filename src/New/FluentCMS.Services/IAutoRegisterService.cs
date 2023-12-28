@@ -1,5 +1,5 @@
 ﻿namespace FluentCMS.Services;
 
-public interface IService
+public interface IAutoRegisterService
 {
 }

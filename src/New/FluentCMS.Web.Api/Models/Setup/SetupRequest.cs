@@ -7,4 +7,5 @@ public class SetupRequest
     public string Password { get; set; } = default!;
     public string AppTemplateName { get; set; } = default!;
     public string SiteTemplateName { get; set; } = default!;
+    public string AdminDomain { get; set; } = default!;
 }

@@ -3,6 +3,23 @@
         "Name": "FluentCMS Administration",
         "Description": "FluentCMS Administration Panel"
     },
+    "Layouts": [
+        {
+            "Name": "AdminLayout",
+            "Description": "Admin Panel Layout",
+            "IsDefault": true
+        },
+        {
+            "Name": "AuthLayout",
+            "Description": "Authentication Layout",
+            "IsDefault": true
+        },
+        {
+            "Name": "SiteLayout",
+            "Description": "Main Site Layout",
+            "IsDefault": false
+        }
+    ],
     "PluginDefinitions": [
         {
             "Name": "Login",

@@ -9,8 +9,10 @@ public class SetupManager
     private static bool? _initialized;
 
     private readonly SetupSettings _setupSettings;
+    private readonly ISiteService _siteService;
     private readonly IGlobalSettingsService _globalSettingsService;
     private readonly IPluginDefinitionService _pluginDefinitionService;
+    private readonly ILayoutService _layoutService;
     private readonly IUserService _userService;
     private readonly IAppTemplateService _appTemplateService;
     private readonly IHostEnvironment _env;
@@ -20,8 +22,10 @@ public class SetupManager
 
     public SetupManager(
         IConfiguration configuration,
+        ISiteService siteService,
         IGlobalSettingsService globalSettingsService,
         IPluginDefinitionService pluginDefinitionService,
+        ILayoutService layoutService,
         IUserService userService,
         IAppTemplateService appTemplateService,
         IHostEnvironment env)
@@ -56,9 +60,10 @@ public class SetupManager
 
         if (!Directory.Exists(_adminTemplatePhysicalPath))
             throw new AppException(ExceptionCodes.SetupSettingsAdminTemplatesFolderNotFound);
-
+        _siteService = siteService;
         _globalSettingsService = globalSettingsService;
         _pluginDefinitionService = pluginDefinitionService;
+        _layoutService = layoutService;
         _userService = userService;
         _appTemplateService = appTemplateService;
         _siteTemplatePhysicalPath = _setupSettings.SiteTemplatePath;
@@ -76,7 +81,7 @@ public class SetupManager
         return _initialized.Value;
     }
 
-    public async Task<GlobalSettings> Start(string username, string email, string password)
+    public async Task<GlobalSettings> Start(string username, string email, string password, string domain)
     {
         // Check if this is the first time setup or not
         if (_initialized.HasValue && _initialized.Value)
@@ -92,7 +97,7 @@ public class SetupManager
 
         await InitializeAppTemplates();
 
-        await InitializeAdminUI();
+        await InitializeAdminUI(domain);
 
         var globalSettings = await InitializeGlobalSettings(username);
 
@@ -154,7 +159,7 @@ public class SetupManager
         }
     }
 
-    private async Task InitializeAdminUI()
+    private async Task InitializeAdminUI(string domain)
     {
         var appTemplateFile = Path.Combine(_adminTemplatePhysicalPath, "manifest.json");
         if (!File.Exists(appTemplateFile))
@@ -164,20 +169,43 @@ public class SetupManager
         if (adminTemplate == null)
             return;
 
+        adminTemplate.Site.Urls = [domain];
+        var site = await InitSite(adminTemplate.Site);
 
         await InitPluginDefinitions(adminTemplate.PluginDefinitions);
+        await InitLayouts(site.Id, adminTemplate.Layouts);
+    }
+
+    private async Task<Site> InitSite(Site site)
+    {
+        return await _siteService.Create(site);
     }
 
     private async Task<List<PluginDefinition>> InitPluginDefinitions(List<PluginDefinition> pluginDefinitions)
     {
         var pluginDefList = new List<PluginDefinition>();
 
-        foreach (var pluginDefRequest in pluginDefinitions)
+        foreach (var pluginDef in pluginDefinitions)
         {
-            pluginDefList.Add(await _pluginDefinitionService.Create(pluginDefRequest));
+            pluginDefList.Add(await _pluginDefinitionService.Create(pluginDef));
         }
 
         return pluginDefList;
+    }
+
+    private async Task<List<Layout>> InitLayouts(Guid siteId, List<Layout> layouts)
+    {
+        var layoutList = new List<Layout>();
+
+        foreach (var layout in layouts)
+        {
+            layout.Body = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, $"{layout.Name}.body.html"));
+            layout.Head = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, $"{layout.Name}.head.html"));
+            layout.SiteId = siteId;
+            layoutList.Add(await _layoutService.Create(layout));
+        }
+
+        return layoutList;
     }
 
     private async Task<bool> InitCondition()

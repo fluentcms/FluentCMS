@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Services;
 
-public interface IAppTemplateService : IService
+public interface IAppTemplateService : IAutoRegisterService
 {
     Task<IEnumerable<AppTemplate>> GetAll(CancellationToken cancellationToken = default);
     Task<AppTemplate> GetById(Guid id, CancellationToken cancellationToken = default);
