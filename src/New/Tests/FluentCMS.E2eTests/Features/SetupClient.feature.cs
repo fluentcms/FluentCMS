@@ -19,7 +19,7 @@ namespace FluentCMS.E2eTests.Features
     
     [System.CodeDom.Compiler.GeneratedCodeAttribute("TechTalk.SpecFlow", "3.9.0.0")]
     [System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    public partial class BasicFunctionalityTestOfHostAPIClientFeature : object, Xunit.IClassFixture<BasicFunctionalityTestOfHostAPIClientFeature.FixtureData>, System.IDisposable
+    public partial class HostAPIClientFeature : object, Xunit.IClassFixture<HostAPIClientFeature.FixtureData>, System.IDisposable
     {
         
         private static TechTalk.SpecFlow.ITestRunner testRunner;
@@ -31,7 +31,7 @@ namespace FluentCMS.E2eTests.Features
 #line 1 "SetupClient.feature"
 #line hidden
         
-        public BasicFunctionalityTestOfHostAPIClientFeature(BasicFunctionalityTestOfHostAPIClientFeature.FixtureData fixtureData, FluentCMS_E2eTests_XUnitAssemblyFixture assemblyFixture, Xunit.Abstractions.ITestOutputHelper testOutputHelper)
+        public HostAPIClientFeature(HostAPIClientFeature.FixtureData fixtureData, FluentCMS_E2eTests_XUnitAssemblyFixture assemblyFixture, Xunit.Abstractions.ITestOutputHelper testOutputHelper)
         {
             this._testOutputHelper = testOutputHelper;
             this.TestInitialize();
@@ -40,7 +40,7 @@ namespace FluentCMS.E2eTests.Features
         public static void FeatureSetup()
         {
             testRunner = TechTalk.SpecFlow.TestRunnerManager.GetTestRunner();
-            TechTalk.SpecFlow.FeatureInfo featureInfo = new TechTalk.SpecFlow.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Basic functionality Test of Host API client", null, ProgrammingLanguage.CSharp, ((string[])(null)));
+            TechTalk.SpecFlow.FeatureInfo featureInfo = new TechTalk.SpecFlow.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Host API client", null, ProgrammingLanguage.CSharp, ((string[])(null)));
             testRunner.OnFeatureStart(featureInfo);
         }
         
@@ -80,10 +80,10 @@ namespace FluentCMS.E2eTests.Features
 #line 3
 #line hidden
 #line 4
- testRunner.Given("I have a SetupClient", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+ testRunner.Given("I have a \"SetupClient\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 5
- testRunner.Then("Reset Setup", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+ testRunner.When("I Reset Setup", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
         }
         
@@ -92,15 +92,15 @@ namespace FluentCMS.E2eTests.Features
             this.TestTearDown();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Get Setup Status")]
-        [Xunit.TraitAttribute("FeatureTitle", "Basic functionality Test of Host API client")]
-        [Xunit.TraitAttribute("Description", "Get Setup Status")]
-        public virtual void GetSetupStatus()
+        [Xunit.SkippableFactAttribute(DisplayName="Reset Setup")]
+        [Xunit.TraitAttribute("FeatureTitle", "Host API client")]
+        [Xunit.TraitAttribute("Description", "Reset Setup")]
+        public virtual void ResetSetup()
         {
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Get Setup Status", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
-#line 7
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Reset Setup", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
+#line 8
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             bool isScenarioIgnored = default(bool);
@@ -123,23 +123,176 @@ this.ScenarioInitialize(scenarioInfo);
 #line 3
 this.FeatureBackground();
 #line hidden
-#line 8
- testRunner.When("I get setup IsInitialized", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
-#line hidden
 #line 9
- testRunner.Then("Setup initialization status should be \"false\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+ testRunner.When("I Reset Setup", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 10
- testRunner.When("I Start the host", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+ testRunner.When("I Fetch Setup IsInitialized", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 12
- testRunner.Then("Wait a Bit 2secs", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line 11
+ testRunner.Then("Setup initialization status should be false", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 13
- testRunner.When("I get setup IsInitialized", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+            }
+            this.ScenarioCleanup();
+        }
+        
+        [Xunit.SkippableFactAttribute(DisplayName="Start Setup")]
+        [Xunit.TraitAttribute("FeatureTitle", "Host API client")]
+        [Xunit.TraitAttribute("Description", "Start Setup")]
+        [Xunit.TraitAttribute("Category", "RequiresResetSetup")]
+        public virtual void StartSetup()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "RequiresResetSetup"};
+            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Start Setup", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
+#line 15
+this.ScenarioInitialize(scenarioInfo);
 #line hidden
-#line 14
- testRunner.Then("Setup initialization status should be \"true\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+            bool isScenarioIgnored = default(bool);
+            bool isFeatureIgnored = default(bool);
+            if ((tagsOfScenario != null))
+            {
+                isScenarioIgnored = tagsOfScenario.Where(__entry => __entry != null).Where(__entry => String.Equals(__entry, "ignore", StringComparison.CurrentCultureIgnoreCase)).Any();
+            }
+            if ((this._featureTags != null))
+            {
+                isFeatureIgnored = this._featureTags.Where(__entry => __entry != null).Where(__entry => String.Equals(__entry, "ignore", StringComparison.CurrentCultureIgnoreCase)).Any();
+            }
+            if ((isScenarioIgnored || isFeatureIgnored))
+            {
+                testRunner.SkipScenario();
+            }
+            else
+            {
+                this.ScenarioStart();
+#line 3
+this.FeatureBackground();
+#line hidden
+                TechTalk.SpecFlow.Table table4 = new TechTalk.SpecFlow.Table(new string[] {
+                            "field",
+                            "value"});
+                table4.AddRow(new string[] {
+                            "username",
+                            "superadmin"});
+                table4.AddRow(new string[] {
+                            "email",
+                            "superadmin@localhost"});
+                table4.AddRow(new string[] {
+                            "password",
+                            "Passw0rd!"});
+#line 16
+ testRunner.When("I Start Setup", ((string)(null)), table4, "When ");
+#line hidden
+#line 21
+ testRunner.Then("Wait 2 seconds", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 22
+ testRunner.When("I Fetch Setup IsInitialized", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 23
+ testRunner.Then("Setup initialization status should be true", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+            }
+            this.ScenarioCleanup();
+        }
+        
+        [Xunit.SkippableFactAttribute(DisplayName="Reinitializing should throw Error")]
+        [Xunit.TraitAttribute("FeatureTitle", "Host API client")]
+        [Xunit.TraitAttribute("Description", "Reinitializing should throw Error")]
+        [Xunit.TraitAttribute("Category", "RequiresResetSetup")]
+        public virtual void ReinitializingShouldThrowError()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "RequiresResetSetup"};
+            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Reinitializing should throw Error", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
+#line 27
+this.ScenarioInitialize(scenarioInfo);
+#line hidden
+            bool isScenarioIgnored = default(bool);
+            bool isFeatureIgnored = default(bool);
+            if ((tagsOfScenario != null))
+            {
+                isScenarioIgnored = tagsOfScenario.Where(__entry => __entry != null).Where(__entry => String.Equals(__entry, "ignore", StringComparison.CurrentCultureIgnoreCase)).Any();
+            }
+            if ((this._featureTags != null))
+            {
+                isFeatureIgnored = this._featureTags.Where(__entry => __entry != null).Where(__entry => String.Equals(__entry, "ignore", StringComparison.CurrentCultureIgnoreCase)).Any();
+            }
+            if ((isScenarioIgnored || isFeatureIgnored))
+            {
+                testRunner.SkipScenario();
+            }
+            else
+            {
+                this.ScenarioStart();
+#line 3
+this.FeatureBackground();
+#line hidden
+                TechTalk.SpecFlow.Table table5 = new TechTalk.SpecFlow.Table(new string[] {
+                            "field",
+                            "value"});
+                table5.AddRow(new string[] {
+                            "username",
+                            "superadmin"});
+                table5.AddRow(new string[] {
+                            "email",
+                            "superadmin@localhost"});
+                table5.AddRow(new string[] {
+                            "password",
+                            "Passw0rd!"});
+#line 28
+ testRunner.When("I Start Setup", ((string)(null)), table5, "When ");
+#line hidden
+#line 33
+ testRunner.Then("Wait 2 seconds", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 34
+ testRunner.When("I Start Setup again should throw Error", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+            }
+            this.ScenarioCleanup();
+        }
+        
+        [Xunit.SkippableFactAttribute(DisplayName="Test RequiresResetSetup decorator")]
+        [Xunit.TraitAttribute("FeatureTitle", "Host API client")]
+        [Xunit.TraitAttribute("Description", "Test RequiresResetSetup decorator")]
+        [Xunit.TraitAttribute("Category", "RequiresResetSetup")]
+        public virtual void TestRequiresResetSetupDecorator()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "RequiresResetSetup"};
+            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Test RequiresResetSetup decorator", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
+#line 38
+this.ScenarioInitialize(scenarioInfo);
+#line hidden
+            bool isScenarioIgnored = default(bool);
+            bool isFeatureIgnored = default(bool);
+            if ((tagsOfScenario != null))
+            {
+                isScenarioIgnored = tagsOfScenario.Where(__entry => __entry != null).Where(__entry => String.Equals(__entry, "ignore", StringComparison.CurrentCultureIgnoreCase)).Any();
+            }
+            if ((this._featureTags != null))
+            {
+                isFeatureIgnored = this._featureTags.Where(__entry => __entry != null).Where(__entry => String.Equals(__entry, "ignore", StringComparison.CurrentCultureIgnoreCase)).Any();
+            }
+            if ((isScenarioIgnored || isFeatureIgnored))
+            {
+                testRunner.SkipScenario();
+            }
+            else
+            {
+                this.ScenarioStart();
+#line 3
+this.FeatureBackground();
+#line hidden
+#line 39
+ testRunner.When("I Fetch Setup IsInitialized", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 40
+ testRunner.Then("Setup initialization status should be false", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
@@ -152,12 +305,12 @@ this.FeatureBackground();
             
             public FixtureData()
             {
-                BasicFunctionalityTestOfHostAPIClientFeature.FeatureSetup();
+                HostAPIClientFeature.FeatureSetup();
             }
             
             void System.IDisposable.Dispose()
             {
-                BasicFunctionalityTestOfHostAPIClientFeature.FeatureTearDown();
+                HostAPIClientFeature.FeatureTearDown();
             }
         }
     }

@@ -20,7 +20,7 @@ namespace FluentCMS.E2eTests.Features
     [System.CodeDom.Compiler.GeneratedCodeAttribute("TechTalk.SpecFlow", "3.9.0.0")]
     [System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     [Xunit.TraitAttribute("Category", "RequiresFreshSetup")]
-    public partial class BasicUserClientFunctionalityFeature : object, Xunit.IClassFixture<BasicUserClientFunctionalityFeature.FixtureData>, System.IDisposable
+    public partial class AccountClientFeature : object, Xunit.IClassFixture<AccountClientFeature.FixtureData>, System.IDisposable
     {
         
         private static TechTalk.SpecFlow.ITestRunner testRunner;
@@ -30,10 +30,10 @@ namespace FluentCMS.E2eTests.Features
         
         private Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
-#line 1 "UserClient.feature"
+#line 1 "AccountClient.feature"
 #line hidden
         
-        public BasicUserClientFunctionalityFeature(BasicUserClientFunctionalityFeature.FixtureData fixtureData, FluentCMS_E2eTests_XUnitAssemblyFixture assemblyFixture, Xunit.Abstractions.ITestOutputHelper testOutputHelper)
+        public AccountClientFeature(AccountClientFeature.FixtureData fixtureData, FluentCMS_E2eTests_XUnitAssemblyFixture assemblyFixture, Xunit.Abstractions.ITestOutputHelper testOutputHelper)
         {
             this._testOutputHelper = testOutputHelper;
             this.TestInitialize();
@@ -42,7 +42,7 @@ namespace FluentCMS.E2eTests.Features
         public static void FeatureSetup()
         {
             testRunner = TechTalk.SpecFlow.TestRunnerManager.GetTestRunner();
-            TechTalk.SpecFlow.FeatureInfo featureInfo = new TechTalk.SpecFlow.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Basic User Client functionality", null, ProgrammingLanguage.CSharp, new string[] {
+            TechTalk.SpecFlow.FeatureInfo featureInfo = new TechTalk.SpecFlow.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Account Client", null, ProgrammingLanguage.CSharp, new string[] {
                         "RequiresFreshSetup"});
             testRunner.OnFeatureStart(featureInfo);
         }
@@ -83,7 +83,10 @@ namespace FluentCMS.E2eTests.Features
 #line 4
 #line hidden
 #line 5
- testRunner.Given("I have a \"UserClient\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+ testRunner.Given("I have a \"SetupClient\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+#line hidden
+#line 6
+ testRunner.Given("I have an \"AccountClient\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
         }
         
@@ -92,15 +95,15 @@ namespace FluentCMS.E2eTests.Features
             this.TestTearDown();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Create user")]
-        [Xunit.TraitAttribute("FeatureTitle", "Basic User Client functionality")]
-        [Xunit.TraitAttribute("Description", "Create user")]
-        public virtual void CreateUser()
+        [Xunit.SkippableFactAttribute(DisplayName="Authenticate with Valid Credentials")]
+        [Xunit.TraitAttribute("FeatureTitle", "Account Client")]
+        [Xunit.TraitAttribute("Description", "Authenticate with Valid Credentials")]
+        public virtual void AuthenticateWithValidCredentials()
         {
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Create user", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
-#line 7
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Authenticate with Valid Credentials", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
+#line 8
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             bool isScenarioIgnored = default(bool);
@@ -123,40 +126,40 @@ this.ScenarioInitialize(scenarioInfo);
 #line 4
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table6 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table1 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table6.AddRow(new string[] {
+                table1.AddRow(new string[] {
                             "username",
-                            "DummyUser"});
-                table6.AddRow(new string[] {
-                            "email",
-                            "DummyUser@localhost"});
-                table6.AddRow(new string[] {
+                            "superadmin"});
+                table1.AddRow(new string[] {
                             "password",
-                            "DummyPassw0rd!"});
-#line 8
- testRunner.Given("I have Credentials", ((string)(null)), table6, "Given ");
+                            "Passw0rd!"});
+#line 9
+ testRunner.Given("I have Credentials", ((string)(null)), table1, "Given ");
 #line hidden
 #line 13
- testRunner.When("I create a user", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+ testRunner.When("I Authenticate", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 14
- testRunner.Then("user is created", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+ testRunner.Then("Response Errors Should be Empty", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 15
+ testRunner.Then("I Should Have a Token", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Get user")]
-        [Xunit.TraitAttribute("FeatureTitle", "Basic User Client functionality")]
-        [Xunit.TraitAttribute("Description", "Get user")]
-        public virtual void GetUser()
+        [Xunit.SkippableFactAttribute(DisplayName="Authenticate with Invalid Credentials")]
+        [Xunit.TraitAttribute("FeatureTitle", "Account Client")]
+        [Xunit.TraitAttribute("Description", "Authenticate with Invalid Credentials")]
+        public virtual void AuthenticateWithInvalidCredentials()
         {
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Get user", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
-#line 16
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Authenticate with Invalid Credentials", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
+#line 18
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             bool isScenarioIgnored = default(bool);
@@ -179,46 +182,37 @@ this.ScenarioInitialize(scenarioInfo);
 #line 4
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table7 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table2 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table7.AddRow(new string[] {
+                table2.AddRow(new string[] {
                             "username",
-                            "DummyUser"});
-                table7.AddRow(new string[] {
-                            "email",
-                            "DummyUser@localhost"});
-                table7.AddRow(new string[] {
+                            "superadmin"});
+                table2.AddRow(new string[] {
                             "password",
-                            "DummyPassw0rd!"});
-#line 17
- testRunner.Given("I have Credentials", ((string)(null)), table7, "Given ");
-#line hidden
-#line 22
- testRunner.When("I create a user", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+                            "InvalidPassw0rd!"});
+#line 19
+ testRunner.Given("I have Credentials", ((string)(null)), table2, "Given ");
 #line hidden
 #line 23
- testRunner.Then("user is created", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+ testRunner.When("I Authenticate", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 24
- testRunner.When("I get a user with id", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
-#line hidden
-#line 25
- testRunner.Then("user is returned", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+ testRunner.Then("Response Errors Should not be Empty", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Get all users")]
-        [Xunit.TraitAttribute("FeatureTitle", "Basic User Client functionality")]
-        [Xunit.TraitAttribute("Description", "Get all users")]
-        public virtual void GetAllUsers()
+        [Xunit.SkippableFactAttribute(DisplayName="Register")]
+        [Xunit.TraitAttribute("FeatureTitle", "Account Client")]
+        [Xunit.TraitAttribute("Description", "Register")]
+        public virtual void Register()
         {
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Get all users", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
-#line 27
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Register", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
+#line 26
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             bool isScenarioIgnored = default(bool);
@@ -241,46 +235,42 @@ this.ScenarioInitialize(scenarioInfo);
 #line 4
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table8 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table3 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table8.AddRow(new string[] {
+                table3.AddRow(new string[] {
                             "username",
                             "DummyUser"});
-                table8.AddRow(new string[] {
-                            "email",
-                            "DummyUser@localhost"});
-                table8.AddRow(new string[] {
+                table3.AddRow(new string[] {
                             "password",
                             "DummyPassw0rd!"});
-#line 28
- testRunner.Given("I have Credentials", ((string)(null)), table8, "Given ");
+                table3.AddRow(new string[] {
+                            "email",
+                            "DummyUser@localhost"});
+#line 27
+ testRunner.Given("I have Credentials", ((string)(null)), table3, "Given ");
+#line hidden
+#line 32
+ testRunner.When("I Register", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 33
- testRunner.When("I create a user", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
-#line hidden
-#line 34
- testRunner.Then("user is created", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
-#line hidden
-#line 35
- testRunner.When("I get all users", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
-#line hidden
-#line 36
- testRunner.Then("all users are returned", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+ testRunner.Then("Response Errors Should be Empty", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Update user")]
-        [Xunit.TraitAttribute("FeatureTitle", "Basic User Client functionality")]
-        [Xunit.TraitAttribute("Description", "Update user")]
-        public virtual void UpdateUser()
+        [Xunit.SkippableFactAttribute(DisplayName="Register and Authenticate")]
+        [Xunit.TraitAttribute("FeatureTitle", "Account Client")]
+        [Xunit.TraitAttribute("Description", "Register and Authenticate")]
+        [Xunit.TraitAttribute("Category", "RequiresRegisteredUser")]
+        public virtual void RegisterAndAuthenticate()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "RequiresRegisteredUser"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Update user", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
-#line 38
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Register and Authenticate", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
+#line 36
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             bool isScenarioIgnored = default(bool);
@@ -303,32 +293,42 @@ this.ScenarioInitialize(scenarioInfo);
 #line 4
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table9 = new TechTalk.SpecFlow.Table(new string[] {
-                            "field",
-                            "value"});
-                table9.AddRow(new string[] {
-                            "username",
-                            "DummyUser"});
-                table9.AddRow(new string[] {
-                            "email",
-                            "DummyUser@localhost"});
-                table9.AddRow(new string[] {
-                            "password",
-                            "DummyPassw0rd!"});
-#line 39
- testRunner.Given("I have Credentials", ((string)(null)), table9, "Given ");
+            }
+            this.ScenarioCleanup();
+        }
+        
+        [Xunit.SkippableFactAttribute(DisplayName="Register and Authenticate and Change Password")]
+        [Xunit.TraitAttribute("FeatureTitle", "Account Client")]
+        [Xunit.TraitAttribute("Description", "Register and Authenticate and Change Password")]
+        [Xunit.TraitAttribute("Category", "RequiresRegisteredUser")]
+        public virtual void RegisterAndAuthenticateAndChangePassword()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "RequiresRegisteredUser"};
+            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Register and Authenticate and Change Password", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
+#line 40
+this.ScenarioInitialize(scenarioInfo);
 #line hidden
-#line 44
- testRunner.When("I create a user", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
-#line hidden
-#line 45
- testRunner.Then("user is created", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
-#line hidden
-#line 46
- testRunner.When("I update a user", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
-#line hidden
-#line 47
- testRunner.Then("user is updated", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+            bool isScenarioIgnored = default(bool);
+            bool isFeatureIgnored = default(bool);
+            if ((tagsOfScenario != null))
+            {
+                isScenarioIgnored = tagsOfScenario.Where(__entry => __entry != null).Where(__entry => String.Equals(__entry, "ignore", StringComparison.CurrentCultureIgnoreCase)).Any();
+            }
+            if ((this._featureTags != null))
+            {
+                isFeatureIgnored = this._featureTags.Where(__entry => __entry != null).Where(__entry => String.Equals(__entry, "ignore", StringComparison.CurrentCultureIgnoreCase)).Any();
+            }
+            if ((isScenarioIgnored || isFeatureIgnored))
+            {
+                testRunner.SkipScenario();
+            }
+            else
+            {
+                this.ScenarioStart();
+#line 4
+this.FeatureBackground();
 #line hidden
             }
             this.ScenarioCleanup();
@@ -341,12 +341,12 @@ this.FeatureBackground();
             
             public FixtureData()
             {
-                BasicUserClientFunctionalityFeature.FeatureSetup();
+                AccountClientFeature.FeatureSetup();
             }
             
             void System.IDisposable.Dispose()
             {
-                BasicUserClientFunctionalityFeature.FeatureTearDown();
+                AccountClientFeature.FeatureTearDown();
             }
         }
     }
