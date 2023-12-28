@@ -1,5 +1,4 @@
 using FluentCMS.E2eTests.ApiClients;
-using System.ComponentModel.DataAnnotations;
 
 namespace FluentCMS.E2eTests.StepDefinitions;
 public partial class StepDefinitions
