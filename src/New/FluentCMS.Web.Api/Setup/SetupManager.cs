@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using FluentCMS.Web.Api.Setup.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using System.Text.Json;
 
@@ -15,6 +16,7 @@ public class SetupManager
     private readonly ILayoutService _layoutService;
     private readonly IUserService _userService;
     private readonly IPageService _pageService;
+    private readonly IPluginService _pluginService;
     private readonly IAppTemplateService _appTemplateService;
     private readonly IHostEnvironment _env;
 
@@ -40,6 +42,7 @@ public class SetupManager
         ILayoutService layoutService,
         IUserService userService,
         IPageService pageService,
+        IPluginService pluginService,
         IAppTemplateService appTemplateService,
         IHostEnvironment env)
     {
@@ -79,6 +82,7 @@ public class SetupManager
         _layoutService = layoutService;
         _userService = userService;
         _pageService = pageService;
+        _pluginService = pluginService;
         _appTemplateService = appTemplateService;
         _siteTemplatePhysicalPath = _setupConfig.SiteTemplatePath;
         _adminTemplatePhysicalPath = _setupConfig.AdminTemplatePath;
@@ -111,11 +115,11 @@ public class SetupManager
 
         await InitializeSuperAdmin();
 
+        await InitializeGlobalSettings();
+
         await InitializeAppTemplates();
 
         await InitializeAdminUI();
-
-        await InitializeGlobalSettings();
 
         _initialized = true;
 
@@ -204,49 +208,74 @@ public class SetupManager
         _site = await _siteService.Create(_adminTemplate.Site);
     }
 
-    private async Task<List<PluginDefinition>> InitPluginDefinitions()
+    private async Task InitPluginDefinitions()
     {
-        var pluginDefList = new List<PluginDefinition>();
-
-        foreach (var pluginDef in _adminTemplate.PluginDefinitions)
+        foreach (var pluginDefTemplate in _adminTemplate.PluginDefinitions)
         {
-            pluginDefList.Add(await _pluginDefinitionService.Create(pluginDef));
+            var pluginDef = new PluginDefinition
+            {
+                Name = pluginDefTemplate.Name,
+                Description = pluginDefTemplate.Description,
+                Type = pluginDefTemplate.Type
+            };
+            _pluginDefinitions.Add(await _pluginDefinitionService.Create(pluginDef));
         }
-
-        return pluginDefList;
     }
 
     private async Task InitLayouts()
     {
         _layouts = [];
 
-        foreach (var layout in _adminTemplate.Layouts)
+        foreach (var layoutTemplate in _adminTemplate.Layouts)
         {
-            layout.Body = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, $"{layout.Name}.body.html"));
-            layout.Head = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, $"{layout.Name}.head.html"));
-            layout.SiteId = _site.Id;
+            var layout = new Layout
+            {
+                Name = layoutTemplate.Name,
+                SiteId = _site.Id,
+                IsDefault = layoutTemplate.IsDefault,
+                Body = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, $"{layoutTemplate.Name}.body.html")),
+                Head = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, $"{layoutTemplate.Name}.head.html"))
+            };
             _layouts.Add(await _layoutService.Create(layout));
         }
     }
 
-    private async Task<List<Page>> InitPages()
+    private async Task InitPages()
     {
-        var pagesList = new List<Page>();
         var order = 0;
         foreach (var pageTemplate in _adminTemplate.Pages)
         {
             var _page = await _pageService.Create(GetPage(pageTemplate, null, order));
             order++;
-            pagesList.Add(_page);
+            await InitPagePlugins(pageTemplate, _page.Id);
+            _pages.Add(_page);
             var childOrder = 0;
             foreach (var child in pageTemplate.Children)
             {
-                pagesList.Add(await _pageService.Create(GetPage(child, _page.Id, childOrder)));
+                var childPage = await _pageService.Create(GetPage(child, _page.Id, childOrder));
+                _pages.Add(childPage);
+                await InitPagePlugins(child, childPage.Id);
                 childOrder++;
             }
         }
+    }
 
-        return pagesList;
+    private async Task InitPagePlugins(PageTemplate pageTemplate, Guid pageId)
+    {
+        var order = 0;
+        foreach (var pluginDef in pageTemplate.Plugins)
+        {
+            var plugin = new Plugin
+            {
+                Order = order,
+                Section = pluginDef.Section,
+                DefinitionId = _pluginDefinitions.Where(p => p.Name.Equals(pluginDef.Definition, StringComparison.InvariantCultureIgnoreCase)).Select(p => p.Id).SingleOrDefault(),
+                PageId = pageId,
+                SiteId = _site.Id
+            };
+            order++;
+            await _pluginService.Create(plugin);
+        }
     }
 
     private Page GetPage(PageTemplate pageTemplate, Guid? parentId, int order)
