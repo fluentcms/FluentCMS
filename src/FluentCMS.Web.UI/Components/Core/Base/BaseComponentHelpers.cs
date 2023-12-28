@@ -34,7 +34,7 @@ public static class BaseComponentHelper
     // Get Classes
     public static string GetClasses(this BaseComponent baseComponent)
     {
-        List<string> classes = new() {};
+        List<string> classes = new() { };
 
         // f-component
         classes.Add(string.Join(UISettings.SEPARATOR, [UISettings.PREFIX, baseComponent.ComponentName]));
