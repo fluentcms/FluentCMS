@@ -33,6 +33,10 @@
     [Parameter]
     public IconNameEnum IconEnd { get; set; }
 
+	[Parameter]
+	[CssProperty]
+	public FormFieldStateEnum State {get; set;} = FormFieldStateEnum.Default;
+
     [Parameter]
     public InputTypeEnum Type { get; set; } = InputTypeEnum.Text;
 }
