@@ -7,12 +7,12 @@
         </FormLabel>
     }
 
-    @if (IconStart != IconNameEnum.Default && IconEnd != IconNameEnum.Default)
+    @if (IconStart != IconNameEnum.Default || IconEnd != IconNameEnum.Default)
     {
-        <div class=@this.ClassName("FormGroup")>
+        <div class=@this.ClassName("FormFieldGroup")>
             @if (IconStart != IconNameEnum.Default)
             {
-                <div class=@this.ClassName("FormIconWrapper")>
+                <div class=@this.ClassName("FormFieldStartIconWrapper")>
                     <Icon Name="@IconStart" />
                 </div>
             }
@@ -20,7 +20,7 @@
 
             @if (IconEnd != IconNameEnum.Default)
             {
-                <div class=@this.ClassName("FormIconWrapper")>
+                <div class=@this.ClassName("FormFieldEndIconWrapper")>
                     <Icon Name="@IconEnd" />
                 </div>
             }
@@ -49,7 +49,6 @@
     [Parameter]
     public bool Required {get; set;} = false;
 
-<<<<<<< HEAD
     [Parameter]
     public IconNameEnum IconStart { get; set; }
 
@@ -61,8 +60,8 @@
 
     [CssProperty]
     public bool HasEndIcon => IconEnd != IconNameEnum.Default;
-=======
+
 	[Parameter]
+	[CssProperty]
 	public FormFieldStateEnum State {get;set;} = FormFieldStateEnum.Default;
->>>>>>> 3749ff4ba71bb4f4750e5f4eaa87afc9169e3044
 }

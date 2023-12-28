@@ -8,65 +8,101 @@ $prefix-form-field: $prefix + 'form-field';
         @apply relative;
     }
 
-    &-has-icon-true {
+    &-has-start-icon-true > .#{$prefix-form-field}-group > :not(.#{$prefix-form-field}-start-icon-wrapper):not(.#{$prefix-form-field}-end-icon-wrapper) {
         @apply ps-10;
     }
 
-    &-icon-wrapper {
+    &-has-end-icon-true > .#{$prefix-form-field}-group > :not(.#{$prefix-form-field}-start-icon-wrapper):not(.#{$prefix-form-field}-end-icon-wrapper) {
+        @apply pe-10;
+    }
+
+    &-start-icon-wrapper {
         @apply absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none;
     }
 
-	&-hint {
-		@apply mt-2 text-sm;
+    &-end-icon-wrapper {
+        @apply absolute inset-y-0 end-0 flex items-center pe-3.5 pointer-events-none;
+    }
 
-		&-state-default {
-			@apply text-gray-500;
-			.#{$prefix-theme-dark} & {
-				@apply text-gray-400;
-			}
-		}
+    &-state-default {
+        .#{$prefix}icon {
+            @apply text-gray-500;
+        }
+    }
 
-		&-state-valid {
-			@apply text-green-600;
-			.#{$prefix-theme-dark} & {
-				@apply text-green-500;
-			}
-		}
+    &-state-valid {
+        .#{$prefix}icon {
+            @apply text-green-500;
+        }
+    }
 
-		&-state-invalid {
-			@apply text-red-600;
-			.#{$prefix-theme-dark} & {
-				@apply text-red-500;
-			}
-		}
-	}
+    &-state-invalid {
+        .#{$prefix}icon {
+            @apply text-red-500;
+        }
+    }
+
+    &-hint {
+        @apply mt-2 text-sm;
+
+        &-state-default {
+            @apply text-gray-500;
+            .#{$prefix-theme-dark} & {
+                @apply text-gray-400;
+            }
+
+            .#{$prefix}-icon {
+                @apply text-gray-500;
+            }
+        }
+
+        &-state-valid {
+            @apply text-green-600;
+            .#{$prefix-theme-dark} & {
+                @apply text-green-500;
+            }
+            .#{$prefix}-icon {
+                @apply text-green-500;
+            }
+        }
+
+        &-state-invalid {
+            @apply text-red-600;
+            .#{$prefix-theme-dark} & {
+                @apply text-red-500;
+            }
+            .#{$prefix}-icon {
+                @apply text-red-500;
+            }
+        }
+    }
 }
 
 .#{$prefix-label} {
     @apply block mb-2 text-sm font-medium text-gray-900;
 
-	&-state-default {
-		@apply text-gray-900;
-		.#{$prefix-theme-dark} & {
-			@apply text-white;
-		}
-	}
+    &-state-default {
+        @apply text-gray-900;
+        .#{$prefix-theme-dark} & {
+            @apply text-white;
+        }
+    }
 
-	&-state-valid {
-		@apply text-green-700;
-		.#{$prefix-theme-dark} & {
-			@apply text-green-500;
-		}
-	}
+    &-state-valid {
+        @apply text-green-700;
+        .#{$prefix-theme-dark} & {
+            @apply text-green-500;
+        }
+    }
 
-	&-state-invalid {
-		@apply text-red-700;
-		.#{$prefix-theme-dark} & {
-			@apply text-red-500;
-		}
-	}
-	&-required-true::after {
-		content: "*";
-		@apply ms-1 text-red-500;
-	}
+    &-state-invalid {
+        @apply text-red-700;
+        .#{$prefix-theme-dark} & {
+            @apply text-red-500;
+        }
+    }
+    &-required-true::after {
+        content: "*";
+        @apply ms-1 text-red-500;
+    }
 }

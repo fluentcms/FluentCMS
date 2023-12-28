@@ -43,7 +43,7 @@ $prefix-input: $prefix + 'input';
 		}
 
 		.#{$prefix-theme-dark} &:focus {
-			@apply ring-blue-500 border-blue-500;
+			@apply ring-green-500 border-green-500;
 		}
 
 	}
@@ -60,7 +60,7 @@ $prefix-input: $prefix + 'input';
 		}
 
 		.#{$prefix-theme-dark} &:focus {
-			@apply ring-blue-500 border-blue-500;
+			@apply ring-red-500 border-red-500;
 		}
 	}
 }

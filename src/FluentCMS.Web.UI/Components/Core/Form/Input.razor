@@ -4,6 +4,7 @@
     IconStart=@IconStart
     IconEnd=@IconEnd
 	Id=@Id
+    Hint=@Hint
     Label=@Label
     Required=@Required
     State=@State>
@@ -25,6 +26,9 @@
     public string Id { get; set; }
 
     [Parameter]
+    public string Hint { get; set; }
+
+    [Parameter]
     public string Placeholder { get; set; }
 
     [Parameter]
@@ -32,10 +36,6 @@
 
     [Parameter]
     public IconNameEnum IconEnd { get; set; }
-
-	[Parameter]
-	[CssProperty]
-	public FormFieldStateEnum State {get; set;} = FormFieldStateEnum.Default;
 
     [Parameter]
     public InputTypeEnum Type { get; set; } = InputTypeEnum.Text;
