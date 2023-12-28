@@ -32,7 +32,7 @@ public static class ServiceExtensions
     private static void RegisterServices(IServiceCollection services)
     {
         var serviceTypes = typeof(ServiceExtensions).Assembly.GetTypes()
-            .Where(t => t.IsClass && !t.IsAbstract && t.Name.EndsWith("Service") && t.GetInterfaces().Contains(typeof(IService)))
+            .Where(t => t.IsClass && !t.IsAbstract && t.Name.EndsWith("Service") && t.GetInterfaces().Contains(typeof(IAutoRegisterService)))
             .ToList();
 
         foreach (var serviceType in serviceTypes)

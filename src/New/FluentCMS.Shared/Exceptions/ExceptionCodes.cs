@@ -6,8 +6,12 @@ public class ExceptionCodes
 
     public const string SetupSettingsNotDefined = "SetupSettings.NotDefined";
     public const string SetupSettingsAlreadyInitialized = "SetupSettings.AlreadyInitialized";
-    public const string SetupSettingsTemplatesPathNotDefined = "SetupSettings.TemplatesPathNotDefined";
-    public const string SetupSettingsTemplatesFolderNotFound = "SetupSettings.TemplatesFolderNotFound";
+    public const string SetupSettingsAppTemplatesPathNotDefined = "SetupSettings.AppTemplatesPathNotDefined";
+    public const string SetupSettingsAppTemplatesFolderNotFound = "SetupSettings.AppTemplatesFolderNotFound";
+    public const string SetupSettingsSiteTemplatesPathNotDefined = "SetupSettings.SiteTemplatesPathNotDefined";
+    public const string SetupSettingsSiteTemplatesFolderNotFound = "SetupSettings.SiteTemplatesFolderNotFound";
+    public const string SetupSettingsAdminTemplatesPathNotDefined = "SetupSettings.AdminTemplatesPathNotDefined";
+    public const string SetupSettingsAdminTemplatesFolderNotFound = "SetupSettings.AdminTemplatesFolderNotFound";
     public const string SetupSettingsHostingEnvironmentIsNull = "SetupSettings.HostingEnvironmentIsNull";
 
     #endregion

@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class PageController(ISiteService siteService, IPageService pageService, IMapper mapper) : BaseGlobalController
+public class PageController(ISiteService siteService, IPageService pageService, ILayoutService layoutService, IMapper mapper) : BaseGlobalController
 {
 
     [HttpGet("{siteUrl}")]
@@ -25,7 +25,7 @@ public class PageController(ISiteService siteService, IPageService pageService, 
 
     [HttpGet("{siteUrl}/{path}")]
     [DecodeQueryParam]
-    public async Task<IApiResult<PageDetailResponse>> GetByPath([FromRoute] string siteUrl, [FromRoute] string path, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<PageFullDetailResponse>> GetByPath([FromRoute] string siteUrl, [FromRoute] string path, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(path))
             path = "/";
@@ -34,9 +34,21 @@ public class PageController(ISiteService siteService, IPageService pageService, 
             path = "/" + path;
 
         var site = await siteService.GetByUrl(siteUrl, cancellationToken);
-        var entity = await pageService.GetByPath(site.Id, path, cancellationToken);
-        var entityResponse = mapper.Map<PageDetailResponse>(entity);
-        return Ok(entityResponse);
+        var page = await pageService.GetByPath(site.Id, path, cancellationToken);
+        var pageResponse = mapper.Map<PageFullDetailResponse>(page);
+        pageResponse.Site = mapper.Map<SiteFullDetailResponse>(site);
+        if (page.LayoutId.HasValue)
+        {
+            var layout = await layoutService.GetById(site.Id, page.LayoutId.Value, cancellationToken);
+            pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
+        }
+        else
+        {
+            var layouts = await layoutService.GetAll(site.Id, cancellationToken);
+            var layout = layouts.Where(l => l.IsDefault).First();
+            pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
+        }
+        return Ok(pageResponse);
     }
 
     [HttpPost]

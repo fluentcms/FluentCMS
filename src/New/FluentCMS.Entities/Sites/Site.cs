@@ -1,4 +1,5 @@
 ﻿namespace FluentCMS.Entities;
+
 public class Site : AuditableEntity
 {
     public string Name { get; set; } = default!;

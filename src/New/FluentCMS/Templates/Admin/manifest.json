@@ -1,0 +1,78 @@
+{
+    "Site": {
+        "Name": "FluentCMS Administration",
+        "Description": "FluentCMS Administration Panel"
+    },
+    "Layouts": [
+        {
+            "Name": "AdminLayout",
+            "Description": "Admin Panel Layout",
+            "IsDefault": true
+        },
+        {
+            "Name": "AuthLayout",
+            "Description": "Authentication Layout",
+            "IsDefault": true
+        },
+        {
+            "Name": "SiteLayout",
+            "Description": "Main Site Layout",
+            "IsDefault": false
+        }
+    ],
+    "PluginDefinitions": [
+        {
+            "Name": "Login",
+            "Description": "Login Plugin",
+            "Type": "LoginViewPlugin"
+        },
+        {
+            "Name": "Forgot Password",
+            "Description": "Forgot Password Plugin",
+            "Type": "ForgotPasswordViewPlugin"
+        },
+        {
+            "Name": "Register",
+            "Description": "Register Plugin",
+            "Type": "RegisterViewPlugin"
+        },
+        {
+            "Name": "Reset Password",
+            "Description": "Reset Password Plugin",
+            "Type": "ResetPasswordViewPlugin"
+        }
+    ],
+    "Pages": [
+        {
+            "Title": "Home",
+            "Path": "/"
+        },
+        {
+            "Title": "Authentication",
+            "Path": "/auth",
+            "Children": [
+                {
+                    "Title": "Login",
+                    "Path": "/login",
+                    "Layout": "AuthLayout"
+                },
+                {
+                    "Title": "Register",
+                    "Path": "/register",
+                    "Layout": "AuthLayout"
+                },
+                {
+                    "Title": "Reset Password",
+                    "Path": "/reset-password",
+                    "Layout": "AuthLayout"
+                },
+                {
+                    "Title": "Forgot Password",
+                    "Path": "/forgot-password",
+                    "Layout": "AuthLayout"
+                }
+            ]
+        }
+
+    ]
+}

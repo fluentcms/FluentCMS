@@ -6,4 +6,5 @@ public class PluginDetailResponse : BaseSiteAssociatedResponse
     public Guid PageId { get; set; }
     public int Order { get; set; } = 0;
     public string Section { get; set; } = default!;
+    public PluginDefinition Definition { get; set; } = default!;
 }

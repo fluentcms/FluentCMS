@@ -1,5 +1,6 @@
 ﻿using FluentCMS;
 using FluentCMS.Web.Api;
+using FluentCMS.Web.Api.Setup;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
