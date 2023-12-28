@@ -261,7 +261,7 @@ body.f-theme-dark {
   @apply text-blue-500;
 }
 .f-theme-dark .f-button-color-primary.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-blue-500;
+  @apply text-blue-700;
 }
 
 .f-button-color-success.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -319,7 +319,7 @@ body.f-theme-dark {
   @apply text-green-500;
 }
 .f-theme-dark .f-button-color-success.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-green-500;
+  @apply text-green-700;
 }
 
 .f-button-color-info.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -377,7 +377,7 @@ body.f-theme-dark {
   @apply text-cyan-500;
 }
 .f-theme-dark .f-button-color-info.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-cyan-500;
+  @apply text-cyan-700;
 }
 
 .f-button-color-danger.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -435,7 +435,7 @@ body.f-theme-dark {
   @apply text-red-500;
 }
 .f-theme-dark .f-button-color-danger.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-red-500;
+  @apply text-red-700;
 }
 
 .f-button-color-warning.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -493,7 +493,7 @@ body.f-theme-dark {
   @apply text-yellow-500;
 }
 .f-theme-dark .f-button-color-warning.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-yellow-500;
+  @apply text-yellow-700;
 }
 
 .f-button-color-secondary.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -551,33 +551,65 @@ body.f-theme-dark {
   @apply text-gray-500;
 }
 .f-theme-dark .f-button-color-secondary.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-gray-500;
+  @apply text-gray-700;
 }
 
-.f-button-color-default {
+.f-button-color-default.f-button-ghost-false.f-button-outline-false {
   @apply text-gray-900 bg-white border border-gray-200;
 }
-.f-button-color-default.f-button-disabled-true {
+.f-button-color-default.f-button-ghost-false.f-button-outline-false.f-button-disabled-true {
   @apply opacity-50 cursor-not-allowed pointer-events-none;
 }
-.f-button-color-default:hover {
+.f-button-color-default.f-button-ghost-false.f-button-outline-false:hover {
   @apply bg-gray-100 text-blue-700;
 }
-.f-button-color-default:focus {
+.f-button-color-default.f-button-ghost-false.f-button-outline-false:focus {
   @apply ring-4 ring-gray-200;
 }
-.f-theme-dark .f-button-color-default {
+.f-theme-dark .f-button-color-default.f-button-ghost-false.f-button-outline-false {
   @apply bg-gray-600/10 text-gray-400 border-gray-600;
 }
-.f-theme-dark .f-button-color-default:hover {
+.f-theme-dark .f-button-color-default.f-button-ghost-false.f-button-outline-false:hover {
   @apply text-white bg-gray-700;
 }
-.f-theme-dark .f-button-color-default:focus {
+.f-theme-dark .f-button-color-default.f-button-ghost-false.f-button-outline-false:focus {
   @apply ring-gray-700;
 }
 
+.f-button-color-default.f-button-ghost-true.f-button-outline-false {
+  @apply text-gray-600;
+}
+.f-button-color-default.f-button-ghost-true.f-button-outline-false:hover {
+  @apply text-gray-800;
+}
+.f-theme-dark .f-button-color-default.f-button-ghost-true.f-button-outline-false {
+  @apply text-gray-500;
+}
+.f-theme-dark .f-button-color-default.f-button-ghost-true.f-button-outline-false:hover {
+  @apply text-gray-700;
+}
+
+.f-button-color-default.f-button-outline-true.f-button-ghost-false {
+  @apply text-gray-700 border border-gray-700;
+}
+.f-button-color-default.f-button-outline-true.f-button-ghost-false:hover {
+  @apply text-white bg-gray-800;
+}
+.f-button-color-default.f-button-outline-true.f-button-ghost-false:focus {
+  @apply ring-4 ring-gray-300;
+}
+.f-theme-dark .f-button-color-default.f-button-outline-true.f-button-ghost-false {
+  @apply border-gray-500 text-gray-500;
+}
+.f-theme-dark .f-button-color-default.f-button-outline-true.f-button-ghost-false:hover {
+  @apply text-white bg-gray-500;
+}
+.f-theme-dark .f-button-color-default.f-button-outline-true.f-button-ghost-false:focus {
+  @apply ring-gray-800;
+}
+
 .f-button-group {
-  @apply flex justify-end gap-2;
+  @apply inline-flex justify-end gap-2;
 }
 .f-button-group.f-button-group-wrap-true {
   @apply flex-wrap;
