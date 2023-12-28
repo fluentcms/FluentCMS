@@ -15,7 +15,11 @@ public partial class StepDefinitions
             await WhenIFetchSetupIsInitialized();
         }
         ThenSetupInitializationStatusShouldBe("False");
-        await WhenIStartSetup();
+        var table = new Table("field","value");
+        table.AddRow("username", "superadmin");
+        table.AddRow("password", "Passw0rd!");
+        table.AddRow("email", "superadmin@localhost");
+        await WhenIStartSetup(table);
         await ThenWaitSeconds(2);
         await WhenIFetchSetupIsInitialized();
         ThenSetupInitializationStatusShouldBe("True");
