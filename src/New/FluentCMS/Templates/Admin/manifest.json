@@ -6,17 +6,14 @@
     "Layouts": [
         {
             "Name": "AdminLayout",
-            "Description": "Admin Panel Layout",
             "IsDefault": true
         },
         {
             "Name": "AuthLayout",
-            "Description": "Authentication Layout",
-            "IsDefault": true
+            "IsDefault": false
         },
         {
             "Name": "SiteLayout",
-            "Description": "Main Site Layout",
             "IsDefault": false
         }
     ],
@@ -54,22 +51,46 @@
                 {
                     "Title": "Login",
                     "Path": "/login",
-                    "Layout": "AuthLayout"
+                    "Layout": "AuthLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "Login",
+                            "Section": "Main"
+                        }
+                    ]
                 },
                 {
                     "Title": "Register",
                     "Path": "/register",
-                    "Layout": "AuthLayout"
+                    "Layout": "AuthLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "Register",
+                            "Section": "Main"
+                        }
+                    ]
                 },
                 {
                     "Title": "Reset Password",
                     "Path": "/reset-password",
-                    "Layout": "AuthLayout"
+                    "Layout": "AuthLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "Reset Password",
+                            "Section": "Main"
+                        }
+                    ]
                 },
                 {
                     "Title": "Forgot Password",
                     "Path": "/forgot-password",
-                    "Layout": "AuthLayout"
+                    "Layout": "AuthLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "Forgot Password",
+                            "Section": "Main"
+                        }
+                    ]
                 }
             ]
         }
