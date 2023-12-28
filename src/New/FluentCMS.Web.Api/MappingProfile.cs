@@ -13,6 +13,13 @@ public class MappingProfile : Profile
 
         #endregion
 
+        #region PluginDefinition
+
+        CreateMap<PluginDefinitionCreateRequest, PluginDefinition>();
+        CreateMap<PluginDefinition, PluginDefinitionDetailResponse>();
+
+        #endregion
+
         #region Page
 
         CreateMap<PageCreateRequest, Page>();

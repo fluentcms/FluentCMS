@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
-using System.Reflection.Metadata;
 using System.Text.Json;
 
 namespace FluentCMS.Web.Api;
@@ -11,6 +10,7 @@ public class SetupManager
 
     private readonly SetupSettings _setupSettings;
     private readonly IGlobalSettingsService _globalSettingsService;
+    private readonly IPluginDefinitionService _pluginDefinitionService;
     private readonly IUserService _userService;
     private readonly IAppTemplateService _appTemplateService;
     private readonly IHostEnvironment _env;
@@ -21,6 +21,7 @@ public class SetupManager
     public SetupManager(
         IConfiguration configuration,
         IGlobalSettingsService globalSettingsService,
+        IPluginDefinitionService pluginDefinitionService,
         IUserService userService,
         IAppTemplateService appTemplateService,
         IHostEnvironment env)
@@ -57,6 +58,7 @@ public class SetupManager
             throw new AppException(ExceptionCodes.SetupSettingsAdminTemplatesFolderNotFound);
 
         _globalSettingsService = globalSettingsService;
+        _pluginDefinitionService = pluginDefinitionService;
         _userService = userService;
         _appTemplateService = appTemplateService;
         _siteTemplatePhysicalPath = _setupSettings.SiteTemplatePath;
@@ -159,7 +161,23 @@ public class SetupManager
             return;
 
         var adminTemplate = await JsonSerializer.DeserializeAsync<AdminTemplate>(File.OpenRead(appTemplateFile));
-        var x = adminTemplate.Site;
+        if (adminTemplate == null)
+            return;
+
+
+        await InitPluginDefinitions(adminTemplate.PluginDefinitions);
+    }
+
+    private async Task<List<PluginDefinition>> InitPluginDefinitions(List<PluginDefinition> pluginDefinitions)
+    {
+        var pluginDefList = new List<PluginDefinition>();
+
+        foreach (var pluginDefRequest in pluginDefinitions)
+        {
+            pluginDefList.Add(await _pluginDefinitionService.Create(pluginDefRequest));
+        }
+
+        return pluginDefList;
     }
 
     private async Task<bool> InitCondition()
@@ -176,5 +194,5 @@ public class AdminTemplate
 {
     public Site Site { get; set; } = default!;
     public List<Layout> Layouts { get; set; } = [];
-    public List<ModuleDefinition> ModuleDefinitions { get; set; } = [];
+    public List<PluginDefinition> PluginDefinitions { get; set; } = [];
 }

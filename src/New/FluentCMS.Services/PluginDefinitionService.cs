@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Services;
 
-public interface IPluginDefinitionService
+public interface IPluginDefinitionService : IService
 {
     Task<IEnumerable<PluginDefinition>> GetAll(CancellationToken cancellationToken = default);
     Task<PluginDefinition> GetById(Guid id, CancellationToken cancellationToken = default);

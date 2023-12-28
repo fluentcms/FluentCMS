@@ -10,7 +10,7 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
     protected readonly IMongoDatabase MongoDatabase;
     protected readonly IMongoDBContext MongoDbContext;
 
-    public EntityRepository(IMongoDBContext mongoDbContext, IAuthContext authContext)
+    public EntityRepository(IMongoDBContext mongoDbContext)
     {
         MongoDatabase = mongoDbContext.Database;
         Collection = mongoDbContext.Database.GetCollection<TEntity>(GetCollectionName());
@@ -20,9 +20,8 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
 
     protected virtual string GetCollectionName()
     {
-        var entityType = typeof(TEntity).Name;
-        var pluralizedName = entityType.Pluralize();
-        return pluralizedName.ToLowerInvariant();
+        var entityTypeName = typeof(TEntity).Name;
+        return entityTypeName.Pluralize().ToLowerInvariant();
     }
 
     public virtual async Task<IEnumerable<TEntity>> GetAll(CancellationToken cancellationToken = default)
