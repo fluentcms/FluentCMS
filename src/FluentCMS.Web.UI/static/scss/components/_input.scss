@@ -3,18 +3,6 @@ $prefix-input: $prefix + 'input';
 .#{$prefix-input} {
     @apply border text-sm rounded-lg block w-full p-2.5;
 
-    &-has-icon-true {
-        @apply ps-10;
-    }
-
-    &-icon-wrapper {
-        @apply absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none;
-    }
-
-    &-group {
-        @apply relative mb-6;
-    }
-
 	&-state-default {
 		@apply bg-gray-50 border-gray-300 text-gray-900;
 

@@ -17,11 +17,11 @@ $prefix-form-field: $prefix + 'form-field';
     }
 
     &-start-icon-wrapper {
-        @apply absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none;
+        @apply absolute top-0 start-0 flex items-center py-3 ps-3.5 pointer-events-none;
     }
 
     &-end-icon-wrapper {
-        @apply absolute inset-y-0 end-0 flex items-center pe-3.5 pointer-events-none;
+        @apply absolute top-0 end-0 flex items-center py-3 pe-3.5 pointer-events-none;
     }
 
     &-state-default {
