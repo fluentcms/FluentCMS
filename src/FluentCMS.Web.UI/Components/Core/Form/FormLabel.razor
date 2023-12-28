@@ -12,4 +12,8 @@
     [Parameter]
 	[CssProperty]
     public bool Required {get; set;} = false;
+
+	[Parameter]
+	[CssProperty]
+	public FormFieldStateEnum State {get;set;} = FormFieldStateEnum.Default;
 }

@@ -205,40 +205,6 @@
     @* #endregion *@
         @* #endregion *@
 
-        @* #region Input *@
-        <div class="py-8">
-            <h2 class="font-bold text-2xl">Inputs</h2>
-            <div class="py-4 flex flex-col gap-4">
-                Disabled:
-                <Input Disabled />
-             Placeholder:
-             <Input Placeholder="This is placeholder" />
-             Required:
-             <Input Placeholder="(check generated html)" Required />
-             Name:
-             <Input Placeholder="(check generated html)" Name="first_name" />
-             Date:
-             <Input Type="InputTypeEnum.Date" />
-             Time:
-             <Input Type="InputTypeEnum.Time" />
-             DatetimeLocal:
-             <Input Type="InputTypeEnum.DatetimeLocal" />
-
-             <div class="h-10"></div>
-
-             <Input @bind-Value=@Input1Value />
-             <Input IconName="IconNameEnum.Plus" @bind-Value=@Input1Value />
-             @Input1Value
-
-            <div class="h-10"></div>
-            <Input @bind-Value=@Input2Value />
-            <Input IconName="IconNameEnum.Plus" @bind-Value=@Input2Value />
-
-            @Input2Value
-        </div>
-    </div>
-    @* #endregion *@
-
     @* #region Modal *@
     <div class="py-8">
         <h2 class="font-bold text-2xl">Modals</h2>
@@ -268,39 +234,6 @@
          </div>
      </div>
      @* #endregion *@
-
-     @* #region Select *@
-     <div class="py-8">
-         <h2 class="font-bold text-2xl">Selects</h2>
-         <div class="py-4 flex flex-col gap-4">
-             Disabled:
-             <Select Disabled />
-             Placeholder:
-             <Select Placeholder="Choose a country">
-                 <Option value="US">United States</Option>
-                 <Option value="CA">Canada</Option>
-                 <Option value="FR">France</Option>
-                 <Option value="DE">Germany</Option>
-             </Select>
-             Required:
-             <Select Required />
-             Name:
-             <Select Name="country" />
-             Icon:
-             <Select Icon=@IconNameEnum.Search />
-
-             <div class="h-10"></div>
-
-             <Select Placeholder="Choose a country" @bind-Value=@Select1Value>
-                 <Option value="US">United States</Option>
-                 <Option value="CA">Canada</Option>
-                 <Option value="FR">France</Option>
-                 <Option value="DE">Germany</Option>
-             </Select>
-             @Select1Value
-        </div>
-    </div>
-    @* #endregion *@
 
     @* #region Buttons *@
     <div class="py-8">
@@ -467,30 +400,6 @@
          </div>
      </div>
      @* #endregion *@
-
-     @* #region Checkbox *@
-     <div class="py-8">
-         <h2 class="font-bold text-2xl">Checkbox</h2>
-         <div class="py-4 flex flex-col gap-4">
-             <Checkbox />
-             <Checkbox Value />
-             <Checkbox Value Disabled />
-             <Checkbox Disabled />
-         </div>
-         <div class="py-4 flex flex-col gap-4">
-             <div class="text-2xl mt-3">Checkbox Binding</div>
-             <Checkbox @bind-Value=@Check1Value />
-             <Checkbox @bind-Value=@Check1Value />
-             @Check1Value
-        </div>
-        <div class="py-4 flex flex-col gap-4">
-            <div class="text-2xl mt-3">Checkbox Binding 2</div>
-            <Checkbox @bind-Value=@Check2Value />
-            <Checkbox @bind-Value=@Check2Value />
-            @Check2Value
-        </div>
-    </div>
-    @* #endregion *@
 
     @* region Tables *@
     <div class="py-8">
