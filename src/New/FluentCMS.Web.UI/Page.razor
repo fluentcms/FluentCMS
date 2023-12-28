@@ -1,15 +1,18 @@
 ﻿@page "/{*Route:nonfile}"
 
-@inject SetupManager SetupManager
+@inject ISiteState SiteState
 @inject NavigationManager NavigationManager
 
 <PageTitle>Page Title</PageTitle>
-<HeadContent>
-
-</HeadContent>
 
 <h1>This is: @Route!</h1>
-<a href="/admin/setup">Setup</a>
+<a href="/setup">Setup</a>
+<br />
+<a href="/counter">Counter</a>
+<br />
+<a href="/admin?plugin=setup">Setup</a>
+<br />
+<a href="/x/y/z/a?plugin=test">XYZ</a>
 <br />
 <a href="api/doc" target="_blank">Swagger</a>
 <br />
@@ -17,11 +20,12 @@
     [Parameter]
     public string? Route { get; set; }
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        // check for initialization
-        if (!await SetupManager.IsInitialized())
-            NavigationManager.NavigateTo("/admin/setup");
+
+        // // check for initialization
+        // if (!SiteState.Initialized)
+        //     NavigationManager.NavigateTo("/setup");
     }
 
 }

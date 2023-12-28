@@ -3,8 +3,8 @@
 <head>
     <HeadOutlet />
 </head>
-<body class="dark f-theme-dark">
-    <Router AppAssembly="@typeof(App).Assembly">
+<body>
+    <Router AppAssembly="@this.GetType().Assembly">
         <Found Context="routeData">
             <RouteView RouteData="@routeData" />
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />

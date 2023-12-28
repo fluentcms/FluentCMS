@@ -10,7 +10,11 @@ public interface IPageService
     Task<Page> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class PageService(IPageRepository pageRepository, ISiteRepository siteRepository) : IPageService
+public class PageService(
+    IPageRepository pageRepository,
+    ISiteRepository siteRepository,
+    ILayoutRepository layoutRepository,
+    IPluginDefinitionRepository pluginDefinitionRepository) : IPageService
 {
 
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)

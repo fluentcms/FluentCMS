@@ -1,4 +1,5 @@
 ﻿namespace FluentCMS.Web.UI.Services;
+
 public class SetupManager
 {
     private readonly SetupClient _setupClient;

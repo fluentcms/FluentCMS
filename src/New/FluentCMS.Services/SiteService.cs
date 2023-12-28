@@ -10,7 +10,7 @@ public interface ISiteService : IService
     Task<Site> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class SiteService(ISiteRepository siteRepository) : ISiteService
+public class SiteService(ISiteRepository siteRepository, IPageRepository pageRepository) : ISiteService
 {
 
     public async Task<IEnumerable<Site>> GetAll(CancellationToken cancellationToken = default)
@@ -42,6 +42,8 @@ public class SiteService(ISiteRepository siteRepository) : ISiteService
         // create the site or throw an exception if it fails
         var newSite = await siteRepository.Create(site, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteUnableToCreate);
+
+
 
         return newSite;
     }

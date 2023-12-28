@@ -1,0 +1,88 @@
+{
+    "Site": {
+        "Name": "FluentCMS Administration",
+        "Description": "FluentCMS Administration Panel"
+    },
+    "PluginDefinitions": [
+        {
+            "Name": "Login",
+            "Description": "Login Plugin",
+            "Type": "LoginViewPlugin"
+        },
+        {
+            "Name": "Forgot Password",
+            "Description": "Forgot Password Plugin",
+            "Type": "ForgotPasswordViewPlugin"
+        },
+        {
+            "Name": "Register",
+            "Description": "Register Plugin",
+            "Type": "RegisterViewPlugin"
+        },
+        {
+            "Name": "Reset Password",
+            "Description": "Reset Password Plugin",
+            "Type": "ResetPasswordViewPlugin"
+        }
+    ],
+    "Pages": [
+        {
+            "Title": "Home",
+            "Path": "/",
+            "Order": 0,
+            "Plugins": []
+        },
+        {
+            "Title": "Login",
+            "Path": "/login",
+            "Order": 1000,
+            "Layout": "AuthLayout",
+            "Plugins": [
+                {
+                    "DefName": "Login",
+                    "Section": "Main",
+                    "Order": 0
+                }
+            ]
+        },
+        {
+            "Title": "Register",
+            "Path": "/register",
+            "Order": 1001,
+            "Layout": "AuthLayout",
+            "Plugins": [
+                {
+                    "DefName": "Register",
+                    "Section": "Main",
+                    "Order": 0
+                }
+            ]
+        },
+        {
+            "Title": "Reset Password",
+            "Path": "/reset-password",
+            "Order": 1002,
+            "Layout": "AuthLayout",
+            "Plugins": [
+                {
+                    "DefName": "Reset Password",
+                    "Section": "Main",
+                    "Order": 0
+                }
+            ]
+        },
+        {
+            "Title": "Forgot Password",
+            "Path": "/forgot-password",
+            "Order": 1003,
+            "Layout": "AuthLayout",
+            "Plugins": [
+                {
+                    "DefName": "Forgot Password",
+                    "Section": "Main",
+                    "Order": 0
+                }
+            ]
+        }
+    ]
+}

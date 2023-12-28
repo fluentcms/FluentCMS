@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using System.Reflection.Metadata;
 using System.Text.Json;
 
 namespace FluentCMS.Web.Api;
@@ -13,7 +14,9 @@ public class SetupManager
     private readonly IUserService _userService;
     private readonly IAppTemplateService _appTemplateService;
     private readonly IHostEnvironment _env;
-    private readonly string _templatesPhysicalPath;
+    private readonly string _appTemplatePhysicalPath;
+    private readonly string _siteTemplatePhysicalPath;
+    private readonly string _adminTemplatePhysicalPath;
 
     public SetupManager(
         IConfiguration configuration,
@@ -22,23 +25,43 @@ public class SetupManager
         IAppTemplateService appTemplateService,
         IHostEnvironment env)
     {
-        _setupSettings = configuration.GetInstance<SetupSettings>("SetupSettings") ??
-            throw new AppException(ExceptionCodes.SetupSettingsNotDefined);
-
-        if (_setupSettings.TemplatesPath == null)
-            throw new AppException(ExceptionCodes.SetupSettingsTemplatesPathNotDefined);
-
         if (env == null)
             throw new AppException(ExceptionCodes.SetupSettingsHostingEnvironmentIsNull);
 
-        _templatesPhysicalPath = Path.Combine(env.ContentRootPath, _setupSettings.TemplatesPath);
+        _setupSettings = configuration.GetInstance<SetupSettings>("SetupSettings") ??
+            throw new AppException(ExceptionCodes.SetupSettingsNotDefined);
 
-        if (!Directory.Exists(_templatesPhysicalPath))
-            throw new AppException(ExceptionCodes.SetupSettingsTemplatesFolderNotFound);
+        if (_setupSettings.AppTemplatePath == null)
+            throw new AppException(ExceptionCodes.SetupSettingsAppTemplatesPathNotDefined);
+
+        _appTemplatePhysicalPath = Path.Combine(env.ContentRootPath, _setupSettings.AppTemplatePath);
+
+        if (!Directory.Exists(_appTemplatePhysicalPath))
+            throw new AppException(ExceptionCodes.SetupSettingsAppTemplatesFolderNotFound);
+
+        if (_setupSettings.SiteTemplatePath == null)
+            throw new AppException(ExceptionCodes.SetupSettingsSiteTemplatesPathNotDefined);
+
+        _siteTemplatePhysicalPath = Path.Combine(env.ContentRootPath, _setupSettings.SiteTemplatePath);
+
+        if (!Directory.Exists(_siteTemplatePhysicalPath))
+            throw new AppException(ExceptionCodes.SetupSettingsSiteTemplatesFolderNotFound);
+
+
+        if (_setupSettings.AdminTemplatePath == null)
+            throw new AppException(ExceptionCodes.SetupSettingsAdminTemplatesPathNotDefined);
+
+        _adminTemplatePhysicalPath = Path.Combine(env.ContentRootPath, _setupSettings.AdminTemplatePath);
+
+        if (!Directory.Exists(_adminTemplatePhysicalPath))
+            throw new AppException(ExceptionCodes.SetupSettingsAdminTemplatesFolderNotFound);
 
         _globalSettingsService = globalSettingsService;
         _userService = userService;
         _appTemplateService = appTemplateService;
+        _siteTemplatePhysicalPath = _setupSettings.SiteTemplatePath;
+        _adminTemplatePhysicalPath = _setupSettings.AdminTemplatePath;
+
         _env = env;
     }
 
@@ -66,6 +89,8 @@ public class SetupManager
         await InitializeSuperAdmin(username, email, password);
 
         await InitializeAppTemplates();
+
+        await InitializeAdminUI();
 
         var globalSettings = await InitializeGlobalSettings(username);
 
@@ -107,10 +132,10 @@ public class SetupManager
 
     private async Task InitializeAppTemplates()
     {
-        foreach (var folder in Directory.GetDirectories(_templatesPhysicalPath))
+        foreach (var folder in Directory.GetDirectories(_appTemplatePhysicalPath))
         {
 
-            var appTemplateFile = Path.Combine(folder, "app-template.json");
+            var appTemplateFile = Path.Combine(folder, "manifest.json");
 
             // check if app.json file exists
             // if not, skip this folder
@@ -127,6 +152,16 @@ public class SetupManager
         }
     }
 
+    private async Task InitializeAdminUI()
+    {
+        var appTemplateFile = Path.Combine(_adminTemplatePhysicalPath, "manifest.json");
+        if (!File.Exists(appTemplateFile))
+            return;
+
+        var adminTemplate = await JsonSerializer.DeserializeAsync<AdminTemplate>(File.OpenRead(appTemplateFile));
+        var x = adminTemplate.Site;
+    }
+
     private async Task<bool> InitCondition()
     {
         // Check if there is any user in the system.
@@ -135,4 +170,11 @@ public class SetupManager
     }
 
     #endregion
+}
+
+public class AdminTemplate
+{
+    public Site Site { get; set; } = default!;
+    public List<Layout> Layouts { get; set; } = [];
+    public List<ModuleDefinition> ModuleDefinitions { get; set; } = [];
 }

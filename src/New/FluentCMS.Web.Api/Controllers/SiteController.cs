@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Web.Api.Controllers;
 
-public class SiteController(ISiteService siteService, IMapper mapper) : BaseGlobalController
+public class SiteController(ISiteService siteService, ILayoutService layoutService, IPageService pageService, IMapper mapper) : BaseGlobalController
 {
     [HttpGet]
     public async Task<IApiPagingResult<SiteDetailResponse>> GetAll(CancellationToken cancellationToken = default)
@@ -10,20 +10,46 @@ public class SiteController(ISiteService siteService, IMapper mapper) : BaseGlob
         return OkPaged(entitiesResponse);
     }
 
-    [HttpGet("{url}")]
-    public async Task<IApiResult<SiteDetailResponse>> GetByUrl([FromRoute] string url, CancellationToken cancellationToken = default)
+    [HttpGet("{id}")]
+    public async Task<IApiResult<SiteFullDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await siteService.GetByUrl(url, cancellationToken);
-        var entityResponse = mapper.Map<SiteDetailResponse>(entity);
-        return Ok(entityResponse);
+        var site = await siteService.GetById(id, cancellationToken);
+        var siteResponse = mapper.Map<SiteFullDetailResponse>(site);
+        var layouts = await layoutService.GetAll(id, cancellationToken);
+        siteResponse.Layouts = mapper.Map<List<LayoutDetailResponse>>(layouts);
+        return Ok(siteResponse);
     }
 
     [HttpPost]
     public async Task<IApiResult<SiteDetailResponse>> Create([FromBody] SiteCreateRequest request, CancellationToken cancellationToken = default)
     {
-        var entity = mapper.Map<Site>(request);
-        var created = await siteService.Create(entity, cancellationToken);
-        var response = mapper.Map<SiteDetailResponse>(created);
+        // creating new site
+        var site = mapper.Map<Site>(request);
+        var newSite = await siteService.Create(site, cancellationToken);
+
+        // creating default page for the site
+        var page = new Page
+        {
+            Title = request.DefaultPageTitle,
+            Path = "/",
+            Order = 0,
+            SiteId = newSite.Id
+        };
+        await pageService.Create(page, cancellationToken);
+
+        // creating default layout for the site
+        var layout = new Layout
+        {
+            Name = request.Name,
+            SiteId = newSite.Id,
+            Body = request.LayoutBody,
+            Head = request.LayoutHead,
+            IsDefault = true
+        };
+        await layoutService.Create(layout, cancellationToken);
+
+        var response = mapper.Map<SiteDetailResponse>(newSite);
+
         return Ok(response);
     }
 
