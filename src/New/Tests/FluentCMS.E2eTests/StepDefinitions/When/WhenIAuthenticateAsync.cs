@@ -1,5 +1,4 @@
 ﻿using FluentCMS.E2eTests.ApiClients;
-using FluentCMS.E2eTests.Models;
 
 namespace FluentCMS.E2eTests.StepDefinitions;
 public partial class StepDefinitions
@@ -8,7 +7,7 @@ public partial class StepDefinitions
     public async Task WhenIAuthenticateAsync()
     {
         var accountClient = context.Get<AccountClient>();
-        var credentials = context.Get<Credential>();
+        var credentials = context.Get<UserRegisterRequest>();
         var authBody = new UserLoginRequest()
         {
             Username = credentials.Username,
