@@ -1,6 +1,6 @@
-﻿namespace FluentCMS.Web.Api;
+﻿namespace FluentCMS.Web.Api.Setup;
 
-public class SetupSettings
+public class SetupConfig
 {
     public string AppTemplatePath { get; set; } = default!;
     public string SiteTemplatePath { get; set; } = default!;

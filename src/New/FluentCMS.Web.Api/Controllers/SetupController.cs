@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Web.Api.Controllers;
+﻿using FluentCMS.Web.Api.Setup;
+
+namespace FluentCMS.Web.Api.Controllers;
 
 public class SetupController(SetupManager setupManager) : BaseGlobalController
 {

@@ -1,5 +1,3 @@
-using FluentCMS.Web.Api;
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddConfig(builder.Environment);
@@ -27,7 +25,7 @@ app.UseDeveloperExceptionPage();
 // this section is only for development purposes
 // this will delete all data and re-create the database
 using var scope = app.Services.CreateScope();
-var setup = scope.ServiceProvider.GetRequiredService<SetupManager>();
+var setup = scope.ServiceProvider.GetRequiredService<FluentCMS.Web.Api.Setup.SetupManager>();
 setup.Reset().ConfigureAwait(false).GetAwaiter().GetResult();
 //setup.Start("admin", "admin@example.com", "Passw0rd!").ConfigureAwait(false).GetAwaiter().GetResult();
 

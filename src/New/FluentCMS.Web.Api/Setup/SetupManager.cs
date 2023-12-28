@@ -2,13 +2,13 @@
 using Microsoft.Extensions.Hosting;
 using System.Text.Json;
 
-namespace FluentCMS.Web.Api;
+namespace FluentCMS.Web.Api.Setup;
 
 public class SetupManager
 {
     private static bool? _initialized;
 
-    private readonly SetupSettings _setupSettings;
+    private readonly SetupConfig _setupConfig;
     private readonly ISiteService _siteService;
     private readonly IGlobalSettingsService _globalSettingsService;
     private readonly IPluginDefinitionService _pluginDefinitionService;
@@ -46,30 +46,30 @@ public class SetupManager
         if (env == null)
             throw new AppException(ExceptionCodes.SetupSettingsHostingEnvironmentIsNull);
 
-        _setupSettings = configuration.GetInstance<SetupSettings>("SetupSettings") ??
+        _setupConfig = configuration.GetInstance<SetupConfig>("SetupConfig") ??
             throw new AppException(ExceptionCodes.SetupSettingsNotDefined);
 
-        if (_setupSettings.AppTemplatePath == null)
+        if (_setupConfig.AppTemplatePath == null)
             throw new AppException(ExceptionCodes.SetupSettingsAppTemplatesPathNotDefined);
 
-        _appTemplatePhysicalPath = Path.Combine(env.ContentRootPath, _setupSettings.AppTemplatePath);
+        _appTemplatePhysicalPath = Path.Combine(env.ContentRootPath, _setupConfig.AppTemplatePath);
 
         if (!Directory.Exists(_appTemplatePhysicalPath))
             throw new AppException(ExceptionCodes.SetupSettingsAppTemplatesFolderNotFound);
 
-        if (_setupSettings.SiteTemplatePath == null)
+        if (_setupConfig.SiteTemplatePath == null)
             throw new AppException(ExceptionCodes.SetupSettingsSiteTemplatesPathNotDefined);
 
-        _siteTemplatePhysicalPath = Path.Combine(env.ContentRootPath, _setupSettings.SiteTemplatePath);
+        _siteTemplatePhysicalPath = Path.Combine(env.ContentRootPath, _setupConfig.SiteTemplatePath);
 
         if (!Directory.Exists(_siteTemplatePhysicalPath))
             throw new AppException(ExceptionCodes.SetupSettingsSiteTemplatesFolderNotFound);
 
 
-        if (_setupSettings.AdminTemplatePath == null)
+        if (_setupConfig.AdminTemplatePath == null)
             throw new AppException(ExceptionCodes.SetupSettingsAdminTemplatesPathNotDefined);
 
-        _adminTemplatePhysicalPath = Path.Combine(env.ContentRootPath, _setupSettings.AdminTemplatePath);
+        _adminTemplatePhysicalPath = Path.Combine(env.ContentRootPath, _setupConfig.AdminTemplatePath);
 
         if (!Directory.Exists(_adminTemplatePhysicalPath))
             throw new AppException(ExceptionCodes.SetupSettingsAdminTemplatesFolderNotFound);
@@ -80,8 +80,8 @@ public class SetupManager
         _userService = userService;
         _pageService = pageService;
         _appTemplateService = appTemplateService;
-        _siteTemplatePhysicalPath = _setupSettings.SiteTemplatePath;
-        _adminTemplatePhysicalPath = _setupSettings.AdminTemplatePath;
+        _siteTemplatePhysicalPath = _setupConfig.SiteTemplatePath;
+        _adminTemplatePhysicalPath = _setupConfig.AdminTemplatePath;
 
         _env = env;
     }
@@ -278,19 +278,6 @@ public class SetupManager
     #endregion
 }
 
-public class AdminTemplate
-{
-    public Site Site { get; set; } = default!;
-    public List<Layout> Layouts { get; set; } = [];
-    public List<PluginDefinition> PluginDefinitions { get; set; } = [];
-    public List<PageTemplate> Pages { get; set; } = [];
-}
 
-public class PageTemplate
-{
-    public string Path { get; set; } = default!;
-    public string Title { get; set; } = default!;
-    public string? Layout { get; set; } = default!;
-    public List<PageTemplate> Children { get; set; } = [];
 
-}
+

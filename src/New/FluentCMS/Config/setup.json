@@ -1,5 +1,5 @@
 {
-    "SetupSettings": {
+    "SetupConfig": {
         "AppTemplatePath": "Templates/App",
         "SiteTemplatePath": "Templates/Site",
         "AdminTemplatePath": "Templates/Admin"
