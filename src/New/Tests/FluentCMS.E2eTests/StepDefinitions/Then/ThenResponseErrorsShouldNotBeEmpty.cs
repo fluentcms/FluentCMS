@@ -1,0 +1,13 @@
+﻿using FluentCMS.E2eTests.ApiClients;
+using Shouldly;
+
+namespace FluentCMS.E2eTests.StepDefinitions;
+public partial class StepDefinitions
+{
+    [Then("Response Errors Should not be Empty")]
+    public void ThenResponseErrorsShouldNotBeEmpty()
+    {
+        var errors = context.Get<ICollection<Error>>();
+        errors.ShouldNotBeEmpty();
+    }
+}
