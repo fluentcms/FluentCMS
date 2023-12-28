@@ -4634,12 +4634,12 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<GlobalSettingsIApiResult> StartAsync(SetupRequest? body);
+        System.Threading.Tasks.Task<BooleanIApiResult> StartAsync(SetupRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<GlobalSettingsIApiResult> StartAsync(SetupRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<BooleanIApiResult> StartAsync(SetupRequest? body, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -4755,7 +4755,7 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<GlobalSettingsIApiResult> StartAsync(SetupRequest? body)
+        public virtual System.Threading.Tasks.Task<BooleanIApiResult> StartAsync(SetupRequest? body)
         {
             return StartAsync(body, System.Threading.CancellationToken.None);
         }
@@ -4763,7 +4763,7 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<GlobalSettingsIApiResult> StartAsync(SetupRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> StartAsync(SetupRequest? body, System.Threading.CancellationToken cancellationToken)
         {
             var urlBuilder_ = new System.Text.StringBuilder();
             urlBuilder_.Append("api/global/Setup/Start");
@@ -4804,7 +4804,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<GlobalSettingsIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<BooleanIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);

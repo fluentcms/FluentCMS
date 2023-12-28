@@ -10,9 +10,9 @@ public class SetupController(SetupManager setupManager) : BaseGlobalController
     }
 
     [HttpPost]
-    public async Task<IApiResult<GlobalSettings>> Start(SetupRequest request)
+    public async Task<IApiResult<bool>> Start(SetupRequest request)
     {
-        return Ok(await setupManager.Start(request.Username, request.Email, request.Password, request.AdminDomain));
+        return Ok(await setupManager.Start(request));
     }
 
     [HttpPost]

@@ -45,61 +45,34 @@
     "Pages": [
         {
             "Title": "Home",
-            "Path": "/",
-            "Order": 0,
-            "Plugins": []
+            "Path": "/"
         },
         {
-            "Title": "Login",
-            "Path": "/login",
-            "Order": 1000,
-            "Layout": "AuthLayout",
-            "Plugins": [
+            "Title": "Authentication",
+            "Path": "/auth",
+            "Children": [
                 {
-                    "DefName": "Login",
-                    "Section": "Main",
-                    "Order": 0
-                }
-            ]
-        },
-        {
-            "Title": "Register",
-            "Path": "/register",
-            "Order": 1001,
-            "Layout": "AuthLayout",
-            "Plugins": [
+                    "Title": "Login",
+                    "Path": "/login",
+                    "Layout": "AuthLayout"
+                },
                 {
-                    "DefName": "Register",
-                    "Section": "Main",
-                    "Order": 0
-                }
-            ]
-        },
-        {
-            "Title": "Reset Password",
-            "Path": "/reset-password",
-            "Order": 1002,
-            "Layout": "AuthLayout",
-            "Plugins": [
+                    "Title": "Register",
+                    "Path": "/register",
+                    "Layout": "AuthLayout"
+                },
                 {
-                    "DefName": "Reset Password",
-                    "Section": "Main",
-                    "Order": 0
-                }
-            ]
-        },
-        {
-            "Title": "Forgot Password",
-            "Path": "/forgot-password",
-            "Order": 1003,
-            "Layout": "AuthLayout",
-            "Plugins": [
+                    "Title": "Reset Password",
+                    "Path": "/reset-password",
+                    "Layout": "AuthLayout"
+                },
                 {
-                    "DefName": "Forgot Password",
-                    "Section": "Main",
-                    "Order": 0
+                    "Title": "Forgot Password",
+                    "Path": "/forgot-password",
+                    "Layout": "AuthLayout"
                 }
             ]
         }
+
     ]
 }

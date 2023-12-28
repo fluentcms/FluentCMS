@@ -14,11 +14,23 @@ public class SetupManager
     private readonly IPluginDefinitionService _pluginDefinitionService;
     private readonly ILayoutService _layoutService;
     private readonly IUserService _userService;
+    private readonly IPageService _pageService;
     private readonly IAppTemplateService _appTemplateService;
     private readonly IHostEnvironment _env;
+
     private readonly string _appTemplatePhysicalPath;
     private readonly string _siteTemplatePhysicalPath;
     private readonly string _adminTemplatePhysicalPath;
+
+    private SetupRequest _setupRequest = default!;
+    private AdminTemplate _adminTemplate = default!;
+    private GlobalSettings _globalSettings = default!;
+    private Site _site = default!;
+    private List<PluginDefinition> _pluginDefinitions = [];
+    private List<Layout> _layouts = [];
+    private List<Page> _pages = [];
+    private User _superAdmin = default!;
+
 
     public SetupManager(
         IConfiguration configuration,
@@ -27,6 +39,7 @@ public class SetupManager
         IPluginDefinitionService pluginDefinitionService,
         ILayoutService layoutService,
         IUserService userService,
+        IPageService pageService,
         IAppTemplateService appTemplateService,
         IHostEnvironment env)
     {
@@ -65,6 +78,7 @@ public class SetupManager
         _pluginDefinitionService = pluginDefinitionService;
         _layoutService = layoutService;
         _userService = userService;
+        _pageService = pageService;
         _appTemplateService = appTemplateService;
         _siteTemplatePhysicalPath = _setupSettings.SiteTemplatePath;
         _adminTemplatePhysicalPath = _setupSettings.AdminTemplatePath;
@@ -81,7 +95,7 @@ public class SetupManager
         return _initialized.Value;
     }
 
-    public async Task<GlobalSettings> Start(string username, string email, string password, string domain)
+    public async Task<bool> Start(SetupRequest request)
     {
         // Check if this is the first time setup or not
         if (_initialized.HasValue && _initialized.Value)
@@ -93,17 +107,19 @@ public class SetupManager
             throw new AppException(ExceptionCodes.SetupSettingsAlreadyInitialized);
         }
 
-        await InitializeSuperAdmin(username, email, password);
+        _setupRequest = request;
+
+        await InitializeSuperAdmin();
 
         await InitializeAppTemplates();
 
-        await InitializeAdminUI(domain);
+        await InitializeAdminUI();
 
-        var globalSettings = await InitializeGlobalSettings(username);
+        await InitializeGlobalSettings();
 
         _initialized = true;
 
-        return globalSettings;
+        return true;
     }
 
     public async Task Reset()
@@ -114,27 +130,27 @@ public class SetupManager
 
     #region Private
 
-    private async Task InitializeSuperAdmin(string username, string email, string password)
+    private async Task InitializeSuperAdmin()
     {
         // Creating super admin user
         var superAdmin = new User
         {
-            UserName = username,
-            Email = email,
+            UserName = _setupRequest.Username,
+            Email = _setupRequest.Email,
         };
 
-        await _userService.Create(superAdmin, password);
+        _superAdmin = await _userService.Create(superAdmin, _setupRequest.Password);
     }
 
-    private async Task<GlobalSettings> InitializeGlobalSettings(string username)
+    private async Task InitializeGlobalSettings()
     {
         // Creating default global settings
         var settings = new GlobalSettings
         {
-            SuperUsers = [username],
+            SuperUsers = [_setupRequest.Username]
         };
 
-        return await _globalSettingsService.Init(settings);
+        _globalSettings = await _globalSettingsService.Init(settings);
     }
 
     private async Task InitializeAppTemplates()
@@ -159,33 +175,40 @@ public class SetupManager
         }
     }
 
-    private async Task InitializeAdminUI(string domain)
+    private async Task InitializeAdminUI()
     {
         var appTemplateFile = Path.Combine(_adminTemplatePhysicalPath, "manifest.json");
+
         if (!File.Exists(appTemplateFile))
             return;
 
         var adminTemplate = await JsonSerializer.DeserializeAsync<AdminTemplate>(File.OpenRead(appTemplateFile));
+
         if (adminTemplate == null)
             return;
 
-        adminTemplate.Site.Urls = [domain];
-        var site = await InitSite(adminTemplate.Site);
+        _adminTemplate = adminTemplate;
 
-        await InitPluginDefinitions(adminTemplate.PluginDefinitions);
-        await InitLayouts(site.Id, adminTemplate.Layouts);
+        if (_adminTemplate == null)
+            return;
+
+        await InitSite();
+        await InitPluginDefinitions();
+        await InitLayouts();
+        await InitPages();
     }
 
-    private async Task<Site> InitSite(Site site)
+    private async Task InitSite()
     {
-        return await _siteService.Create(site);
+        _adminTemplate.Site.Urls = [_setupRequest.AdminDomain];
+        _site = await _siteService.Create(_adminTemplate.Site);
     }
 
-    private async Task<List<PluginDefinition>> InitPluginDefinitions(List<PluginDefinition> pluginDefinitions)
+    private async Task<List<PluginDefinition>> InitPluginDefinitions()
     {
         var pluginDefList = new List<PluginDefinition>();
 
-        foreach (var pluginDef in pluginDefinitions)
+        foreach (var pluginDef in _adminTemplate.PluginDefinitions)
         {
             pluginDefList.Add(await _pluginDefinitionService.Create(pluginDef));
         }
@@ -193,19 +216,56 @@ public class SetupManager
         return pluginDefList;
     }
 
-    private async Task<List<Layout>> InitLayouts(Guid siteId, List<Layout> layouts)
+    private async Task InitLayouts()
     {
-        var layoutList = new List<Layout>();
+        _layouts = [];
 
-        foreach (var layout in layouts)
+        foreach (var layout in _adminTemplate.Layouts)
         {
             layout.Body = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, $"{layout.Name}.body.html"));
             layout.Head = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, $"{layout.Name}.head.html"));
-            layout.SiteId = siteId;
-            layoutList.Add(await _layoutService.Create(layout));
+            layout.SiteId = _site.Id;
+            _layouts.Add(await _layoutService.Create(layout));
+        }
+    }
+
+    private async Task<List<Page>> InitPages()
+    {
+        var pagesList = new List<Page>();
+        var order = 0;
+        foreach (var pageTemplate in _adminTemplate.Pages)
+        {
+            var _page = await _pageService.Create(GetPage(pageTemplate, null, order));
+            order++;
+            pagesList.Add(_page);
+            var childOrder = 0;
+            foreach (var child in pageTemplate.Children)
+            {
+                pagesList.Add(await _pageService.Create(GetPage(child, _page.Id, childOrder)));
+                childOrder++;
+            }
         }
 
-        return layoutList;
+        return pagesList;
+    }
+
+    private Page GetPage(PageTemplate pageTemplate, Guid? parentId, int order)
+    {
+        Guid? layoutId = _layouts.Where(l => l.Name.Equals(pageTemplate?.Layout?.ToLowerInvariant(), StringComparison.InvariantCultureIgnoreCase)).Select(l => l.Id).SingleOrDefault();
+        if (layoutId == Guid.Empty)
+            layoutId = null;
+
+        var page = new Page
+        {
+            Title = pageTemplate.Title,
+            Path = pageTemplate.Path,
+            LayoutId = layoutId,
+            SiteId = _site.Id,
+            ParentId = parentId,
+            Order = order
+        };
+
+        return page;
     }
 
     private async Task<bool> InitCondition()
@@ -223,4 +283,14 @@ public class AdminTemplate
     public Site Site { get; set; } = default!;
     public List<Layout> Layouts { get; set; } = [];
     public List<PluginDefinition> PluginDefinitions { get; set; } = [];
+    public List<PageTemplate> Pages { get; set; } = [];
+}
+
+public class PageTemplate
+{
+    public string Path { get; set; } = default!;
+    public string Title { get; set; } = default!;
+    public string? Layout { get; set; } = default!;
+    public List<PageTemplate> Children { get; set; } = [];
+
 }
