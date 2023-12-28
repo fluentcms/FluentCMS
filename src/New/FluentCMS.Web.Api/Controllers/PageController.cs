@@ -2,7 +2,13 @@
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class PageController(ISiteService siteService, IPageService pageService, ILayoutService layoutService, IMapper mapper) : BaseGlobalController
+public class PageController(
+    ISiteService siteService,
+    IPageService pageService,
+    IPluginDefinitionService pluginDefinitionService,
+    IPluginService pluginService,
+    ILayoutService layoutService,
+    IMapper mapper) : BaseGlobalController
 {
 
     [HttpGet("{siteUrl}")]
@@ -35,19 +41,34 @@ public class PageController(ISiteService siteService, IPageService pageService, 
 
         var site = await siteService.GetByUrl(siteUrl, cancellationToken);
         var page = await pageService.GetByPath(site.Id, path, cancellationToken);
+        var layouts = await layoutService.GetAll(site.Id, cancellationToken);
+        var pluginDefinitions = (await pluginDefinitionService.GetAll(cancellationToken)).ToDictionary(x => x.Id);
+        var plugins = await pluginService.GetByPageId(page.Id, cancellationToken);
+
         var pageResponse = mapper.Map<PageFullDetailResponse>(page);
-        pageResponse.Site = mapper.Map<SiteFullDetailResponse>(site);
+        pageResponse.Site = mapper.Map<SiteDetailResponse>(site);
+
         if (page.LayoutId.HasValue)
         {
-            var layout = await layoutService.GetById(site.Id, page.LayoutId.Value, cancellationToken);
+            var layout = layouts.Where(l => l.Id == page.LayoutId.Value).First();
             pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
         }
         else
         {
-            var layouts = await layoutService.GetAll(site.Id, cancellationToken);
             var layout = layouts.Where(l => l.IsDefault).First();
             pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
         }
+
+        foreach (var plugin in plugins)
+        {
+            if (!pageResponse.Sections.ContainsKey(plugin.Section))
+                pageResponse.Sections.Add(plugin.Section, []);
+
+            var pluginResponse = mapper.Map<PluginDetailResponse>(plugin);
+            pluginResponse.Definition = mapper.Map<PluginDefinitionDetailResponse>(pluginDefinitions[plugin.DefinitionId]);
+            pageResponse.Sections[plugin.Section].Add(pluginResponse);
+        }
+
         return Ok(pageResponse);
     }
 
