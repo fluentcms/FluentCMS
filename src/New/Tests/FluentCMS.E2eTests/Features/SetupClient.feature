@@ -14,6 +14,10 @@ Scenario: Reset Setup
 @RequiresResetSetup
 Scenario: Start Setup
 	When I Start Setup
+		| field    | value                |
+		| username | superadmin           |
+		| email    | superadmin@localhost |
+		| password | Passw0rd!            |
 	Then Wait 2 seconds
 	When I Fetch Setup IsInitialized
 	Then Setup initialization status should be true
@@ -22,6 +26,10 @@ Scenario: Start Setup
 @RequiresResetSetup
 Scenario: Reinitializing should throw Error
 	When I Start Setup
+		| field    | value                |
+		| username | superadmin           |
+		| email    | superadmin@localhost |
+		| password | Passw0rd!            |
 	Then Wait 2 seconds
 	When I Start Setup again should throw Error
 
