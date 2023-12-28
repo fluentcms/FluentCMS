@@ -1,10 +1,36 @@
 @inherits BaseComponent
 
 <div class=@this.GetClasses() @attributes=@AdditionalAttributes>
-    @if(Label != String.Empty) {
-        <Label Required=@Required For="@Id">@Label</Label>
+    @if(!string.IsNullOrEmpty(Label)) {
+        <FormLabel Required=@Required For="@Id">
+            @Label
+        </FormLabel>
     }
-    @ChildContent
+
+    @if (IconStart != IconNameEnum.Default && IconEnd != IconNameEnum.Default)
+    {
+        <div class=@this.ClassName("FormGroup")>
+            @if (IconStart != IconNameEnum.Default)
+            {
+                <div class=@this.ClassName("FormIconWrapper")>
+                    <Icon Name="@IconStart" />
+                </div>
+            }
+            @ChildContent
+
+            @if (IconEnd != IconNameEnum.Default)
+            {
+                <div class=@this.ClassName("FormIconWrapper")>
+                    <Icon Name="@IconEnd" />
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        @ChildContent
+    }
+
 </div>
 
 @code {
@@ -16,4 +42,16 @@
 
     [Parameter]
     public bool Required {get; set;} = false;
+
+    [Parameter]
+    public IconNameEnum IconStart { get; set; }
+
+    [Parameter]
+    public IconNameEnum IconEnd { get; set; }
+
+    [CssProperty]
+    public bool HasStartIcon => IconStart != IconNameEnum.Default;
+
+    [CssProperty]
+    public bool HasEndIcon => IconEnd != IconNameEnum.Default;
 }

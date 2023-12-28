@@ -1,39 +1,24 @@
 @inherits InputBaseComponent<string>
 
-@if (IconName != IconNameEnum.Default)
-{
-    <div class=@this.ClassName("InputGroup")>
-        <div class=@this.ClassName("InputIconWrapper")>
-            <Icon Name="@IconName" />
-        </div>
-        <input
-            type=@this.Type.ToString().FromPascalCaseToKebabCase()
-            id="@Id" 
-            disabled=@Disabled 
-            name=@Name 
-            required=@Required 
-            class=@this.GetClasses()
-            placeholder="@Placeholder" 
-            @bind=Value 
-            @bind:event="oninput" 
-            @attributes=AdditionalAttributes>
-    </div>
-}
-else
-{
-    <input
-        type=@this.Type.ToString().FromPascalCaseToKebabCase()
-        id="@Id" 
-        disabled=@Disabled 
-        name=@Name 
-        required=@Required 
-        class=@this.GetClasses()
-        placeholder="@Placeholder" 
-        @bind=Value 
-        @bind:event="oninput" 
-        @attributes=AdditionalAttributes>
-}
-
+<FormField
+    IconStart=@IconStart
+    IconEnd=@IconEnd
+	Id=@Id
+    Label=@Label
+    Required=@Required
+    State=@State>
+	<input
+		type=@this.Type.ToString().FromPascalCaseToKebabCase()
+		id="@Id"
+		disabled=@Disabled
+		name=@Name
+		required=@Required
+		class=@this.GetClasses()
+		placeholder="@Placeholder"
+		@bind=Value
+		@bind:event="oninput"
+		@attributes=AdditionalAttributes />
+</FormField>
 
 @code {
     [Parameter]
@@ -43,10 +28,10 @@ else
     public string Placeholder { get; set; }
 
     [Parameter]
-    public IconNameEnum IconName { get; set; }
+    public IconNameEnum IconStart { get; set; }
 
-    [CssProperty]
-    public bool HasIcon => IconName != IconNameEnum.Default;
+    [Parameter]
+    public IconNameEnum IconEnd { get; set; }
 
     [Parameter]
     public InputTypeEnum Type { get; set; } = InputTypeEnum.Text;

@@ -1,8 +1,21 @@
-$prefix-label: $prefix + 'label';
+$prefix-label: $prefix + 'form-label';
 $prefix-form-field: $prefix + 'form-field';
 
 .#{$prefix-form-field} {
     @apply mb-6;
+
+    &-group {
+        @apply relative;
+    }
+
+    &-has-icon-true {
+        @apply ps-10;
+    }
+
+    &-icon-wrapper {
+        @apply absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none;
+    }
+
 }
 
 .#{$prefix-label} {
