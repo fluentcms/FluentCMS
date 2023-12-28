@@ -1,11 +1,11 @@
+@RequiresFreshSetup
 Feature: Basic User Client functionality
 
 Background:
-	Given Reset Setup
-	Given Setup is initialized
+	Given I have a "UserClient"
 
 Scenario: Create user
-	Given Dummy Data for User Creation
+	Given I have Credentials
 		| field    | value               |
 		| username | DummyUser           |
 		| email    | DummyUser@localhost |
@@ -14,7 +14,7 @@ Scenario: Create user
 	Then user is created
 
 Scenario: Get user
-	Given Dummy Data for User Creation
+	Given I have Credentials
 		| field    | value               |
 		| username | DummyUser           |
 		| email    | DummyUser@localhost |
@@ -25,7 +25,7 @@ Scenario: Get user
 	Then user is returned
 
 Scenario: Get all users
-	Given Dummy Data for User Creation
+	Given I have Credentials
 		| field    | value               |
 		| username | DummyUser           |
 		| email    | DummyUser@localhost |
@@ -36,7 +36,7 @@ Scenario: Get all users
 	Then all users are returned
 
 Scenario: Update user
-	Given Dummy Data for User Creation
+	Given I have Credentials
 		| field    | value               |
 		| username | DummyUser           |
 		| email    | DummyUser@localhost |
@@ -45,5 +45,3 @@ Scenario: Update user
 	Then user is created
 	When I update a user
 	Then user is updated
-
-# We won't have "Delete user" functionality in the first release
