@@ -26,12 +26,11 @@ $prefix-dropdown: $prefix + 'dropdown';
     }
 
     &-item-link {
-        @apply block px-4 py-2;
+        @apply block ps-4 pe-8 whitespace-nowrap py-2;
     }
 
     &-menu {
         @apply absolute z-10 bg-white divide-y divide-gray-100 rounded-lg shadow;
-        min-width: 11rem;
 
         &-placement-top {
             @apply bottom-full;
