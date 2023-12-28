@@ -2,17 +2,6 @@
 
 public class GlobalSettingsController(IGlobalSettingsService service, IMapper mapper) : BaseGlobalController
 {
-
-    [HttpPut]
-    public async Task<IApiResult<GlobalSettings>> Update(GlobalSettingsUpdateRequest request, CancellationToken cancellationToken = default)
-    {
-        var settings = mapper.Map<GlobalSettings>(request);
-
-        var updated = await service.Update(settings, cancellationToken);
-
-        return Ok(updated);
-    }
-
     [HttpGet]
     public async Task<IApiResult<GlobalSettings>> Get(CancellationToken cancellationToken = default)
     {
@@ -20,5 +9,15 @@ public class GlobalSettingsController(IGlobalSettingsService service, IMapper ma
             throw new AppException(ExceptionCodes.GlobalSettingsNotFound);
 
         return Ok(systemSettings);
+    }
+
+    [HttpPost]
+    public async Task<IApiResult<GlobalSettings>> Update(GlobalSettingsUpdateRequest request, CancellationToken cancellationToken = default)
+    {
+        var settings = mapper.Map<GlobalSettings>(request);
+
+        var updated = await service.Update(settings, cancellationToken);
+
+        return Ok(updated);
     }
 }

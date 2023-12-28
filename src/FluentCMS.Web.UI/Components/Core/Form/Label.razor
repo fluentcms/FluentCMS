@@ -1,10 +1,15 @@
-<label for=@For class="f-label">@ChildContent</label>
+@inherits BaseComponent
+
+<label for=@For class=@this.GetClasses()>
+	@ChildContent
+</label>
 
 
 @code {
     [Parameter]
-    public RenderFragment ChildContent {get; set;}
+    public string For {get; set;} = String.Empty;
 
     [Parameter]
-    public string For {get; set;} = String.Empty;
+	[CssProperty]
+    public bool Required {get; set;} = false;
 }

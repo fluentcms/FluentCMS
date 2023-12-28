@@ -15,10 +15,6 @@ $alert-types: (
         @apply fixed bottom-4 right-4 flex gap-4 w-full max-w-md;
     }
 
-    .#{$prefix-theme-dark} & {
-        @apply bg-gray-800;
-    }
-
     &-close {
         @apply ms-auto -mx-1.5 -my-1.5 p-1.5 inline-flex items-center justify-center h-8 w-8 rounded-lg;
     }
@@ -26,17 +22,18 @@ $alert-types: (
     &-icon {
         @apply me-2;
     }
-    
+
+
     @each $type, $color in $alert-types {
         &-type-#{$type} {
-            @apply text-#{$color}-800 bg-#{$color}-100;
+            @apply text-#{$color}-800 bg-#{$color}-50;
 
-            .#{$prefix-theme-dark} {
-                @apply text-#{$color}-400;
+            .#{$prefix-theme-dark} & {
+                @apply bg-gray-800 text-#{$color}-400;
             }
 
             .#{$prefix-alert}-close {
-                @apply bg-#{$color}-100 text-#{$color}-500 hover:bg-#{$color}-200;
+                @apply bg-#{$color}-50 text-#{$color}-500 hover:bg-#{$color}-200;
 
                 &:hover {
                     @apply ring-2 ring-#{$color}-200;
@@ -46,7 +43,7 @@ $alert-types: (
                     @apply ring-2 ring-#{$color}-400;
                 }
 
-                
+
                 .#{$prefix-theme-dark} & {
                     @apply bg-gray-800 text-#{$color}-400;
                 }
