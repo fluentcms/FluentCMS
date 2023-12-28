@@ -8,7 +8,8 @@ public partial class StepDefinitions
     public async Task WhenIStartSetupAgainShouldThrowError()
     {
         var setupClient = context.Get<SetupClient>();
-        var e = await (setupClient.StartAsync().ShouldThrowAsync<ApiClientException>());
+        var startupBody = context.Get<SetupRequest>();
+        var e = await (setupClient.StartAsync(startupBody).ShouldThrowAsync<ApiClientException>());
         // TODO: fetch and check error message
     }
 }
