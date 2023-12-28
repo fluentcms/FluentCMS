@@ -34,7 +34,7 @@ public abstract class InputBaseComponent<T> : BaseComponent
     public string Name { get; set; }
 
     [Parameter]
-	[CssProperty]
+    [CssProperty]
     public FormFieldStateEnum State { get; set; } = FormFieldStateEnum.Default;
 
     // current value to invoke ValueChanged

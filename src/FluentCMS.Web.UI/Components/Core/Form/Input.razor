@@ -3,22 +3,22 @@
 <FormField
     IconStart=@IconStart
     IconEnd=@IconEnd
-	Id=@Id
+    Id=@Id
     Hint=@Hint
     Label=@Label
     Required=@Required
     State=@State>
-	<input
-		type=@this.Type.ToString().FromPascalCaseToKebabCase()
-		id="@Id"
-		disabled=@Disabled
-		name=@Name
-		required=@Required
-		class=@this.GetClasses()
-		placeholder="@Placeholder"
-		@bind=Value
-		@bind:event="oninput"
-		@attributes=AdditionalAttributes />
+    <input
+        type=@this.Type.ToString().FromPascalCaseToKebabCase()
+        id="@Id"
+        disabled=@Disabled
+        name=@Name
+        required=@Required
+        class=@this.GetClasses()
+        placeholder="@Placeholder"
+        @bind=Value
+        @bind:event="oninput"
+        @attributes=AdditionalAttributes />
 </FormField>
 
 @code {
