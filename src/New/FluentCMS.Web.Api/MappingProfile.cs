@@ -8,6 +8,8 @@ public class MappingProfile : Profile
         CreateMap<UserCreateRequest, User>();
         CreateMap<User, UserResponse>();
         CreateMap<UserUpdateRequest, User>();
+        CreateMap<UserRegisterRequest, User>();
+        CreateMap<User, UserDetailResponse>();
 
         #endregion
     }
