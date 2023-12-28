@@ -10,11 +10,7 @@ var services = builder.Services;
 
 services.AddSiteServices();
 
-services.AddApiDocumentation();
-
 services.AddMongoDbRepositories("MongoDb");
-
-services.AddApplicationServices();
 
 services.AddApiServices();
 
@@ -33,7 +29,7 @@ app.UseDeveloperExceptionPage();
 using var scope = app.Services.CreateScope();
 var setup = scope.ServiceProvider.GetRequiredService<SetupManager>();
 setup.Reset().ConfigureAwait(false).GetAwaiter().GetResult();
-setup.Start().ConfigureAwait(false).GetAwaiter().GetResult();
+setup.Start("admin", "admin@example.com", "Passw0rd!").ConfigureAwait(false).GetAwaiter().GetResult();
 
 #endif
 

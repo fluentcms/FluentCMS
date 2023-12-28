@@ -7,6 +7,7 @@ body {
 
 body.f-theme-dark {
   @apply bg-gray-800;
+  color-scheme: dark;
 }
 
 /* #region COMPONENTS */
@@ -16,9 +17,6 @@ body.f-theme-dark {
 .f-alert-container {
   @apply fixed bottom-4 right-4 flex gap-4 w-full max-w-md;
 }
-.f-theme-dark .f-alert {
-  @apply bg-gray-800;
-}
 .f-alert-close {
   @apply ms-auto -mx-1.5 -my-1.5 p-1.5 inline-flex items-center justify-center h-8 w-8 rounded-lg;
 }
@@ -26,13 +24,13 @@ body.f-theme-dark {
   @apply me-2;
 }
 .f-alert-type-info {
-  @apply text-blue-800 bg-blue-100;
+  @apply text-blue-800 bg-blue-50;
 }
-.f-alert-type-info .f-theme-dark {
-  @apply text-blue-400;
+.f-theme-dark .f-alert-type-info {
+  @apply bg-gray-800 text-blue-400;
 }
 .f-alert-type-info .f-alert-close {
-  @apply bg-blue-100 text-blue-500 hover:bg-blue-200;
+  @apply bg-blue-50 text-blue-500 hover:bg-blue-200;
 }
 .f-alert-type-info .f-alert-close:hover {
   @apply ring-2 ring-blue-200;
@@ -47,13 +45,13 @@ body.f-theme-dark {
   @apply bg-gray-700;
 }
 .f-alert-type-danger {
-  @apply text-red-800 bg-red-100;
+  @apply text-red-800 bg-red-50;
 }
-.f-alert-type-danger .f-theme-dark {
-  @apply text-red-400;
+.f-theme-dark .f-alert-type-danger {
+  @apply bg-gray-800 text-red-400;
 }
 .f-alert-type-danger .f-alert-close {
-  @apply bg-red-100 text-red-500 hover:bg-red-200;
+  @apply bg-red-50 text-red-500 hover:bg-red-200;
 }
 .f-alert-type-danger .f-alert-close:hover {
   @apply ring-2 ring-red-200;
@@ -68,13 +66,13 @@ body.f-theme-dark {
   @apply bg-gray-700;
 }
 .f-alert-type-warning {
-  @apply text-yellow-800 bg-yellow-100;
+  @apply text-yellow-800 bg-yellow-50;
 }
-.f-alert-type-warning .f-theme-dark {
-  @apply text-yellow-400;
+.f-theme-dark .f-alert-type-warning {
+  @apply bg-gray-800 text-yellow-400;
 }
 .f-alert-type-warning .f-alert-close {
-  @apply bg-yellow-100 text-yellow-500 hover:bg-yellow-200;
+  @apply bg-yellow-50 text-yellow-500 hover:bg-yellow-200;
 }
 .f-alert-type-warning .f-alert-close:hover {
   @apply ring-2 ring-yellow-200;
@@ -89,13 +87,13 @@ body.f-theme-dark {
   @apply bg-gray-700;
 }
 .f-alert-type-success {
-  @apply text-green-800 bg-green-100;
+  @apply text-green-800 bg-green-50;
 }
-.f-alert-type-success .f-theme-dark {
-  @apply text-green-400;
+.f-theme-dark .f-alert-type-success {
+  @apply bg-gray-800 text-green-400;
 }
 .f-alert-type-success .f-alert-close {
-  @apply bg-green-100 text-green-500 hover:bg-green-200;
+  @apply bg-green-50 text-green-500 hover:bg-green-200;
 }
 .f-alert-type-success .f-alert-close:hover {
   @apply ring-2 ring-green-200;
@@ -110,13 +108,13 @@ body.f-theme-dark {
   @apply bg-gray-700;
 }
 .f-alert-type-default {
-  @apply text-gray-800 bg-gray-100;
+  @apply text-gray-800 bg-gray-50;
 }
-.f-alert-type-default .f-theme-dark {
-  @apply text-gray-400;
+.f-theme-dark .f-alert-type-default {
+  @apply bg-gray-800 text-gray-400;
 }
 .f-alert-type-default .f-alert-close {
-  @apply bg-gray-100 text-gray-500 hover:bg-gray-200;
+  @apply bg-gray-50 text-gray-500 hover:bg-gray-200;
 }
 .f-alert-type-default .f-alert-close:hover {
   @apply ring-2 ring-gray-200;
@@ -178,7 +176,10 @@ body.f-theme-dark {
 }
 
 .f-button {
-  @apply font-medium rounded-lg gap-2 text-center inline-flex items-center relative;
+  @apply font-medium rounded-lg relative;
+}
+.f-button > span {
+  @apply items-center gap-2 text-center inline-flex;
 }
 .f-button-size-default {
   @apply px-5 py-2.5 text-sm;
@@ -260,7 +261,7 @@ body.f-theme-dark {
   @apply text-blue-500;
 }
 .f-theme-dark .f-button-color-primary.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-blue-500;
+  @apply text-blue-700;
 }
 
 .f-button-color-success.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -318,7 +319,7 @@ body.f-theme-dark {
   @apply text-green-500;
 }
 .f-theme-dark .f-button-color-success.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-green-500;
+  @apply text-green-700;
 }
 
 .f-button-color-info.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -376,7 +377,7 @@ body.f-theme-dark {
   @apply text-cyan-500;
 }
 .f-theme-dark .f-button-color-info.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-cyan-500;
+  @apply text-cyan-700;
 }
 
 .f-button-color-danger.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -434,7 +435,7 @@ body.f-theme-dark {
   @apply text-red-500;
 }
 .f-theme-dark .f-button-color-danger.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-red-500;
+  @apply text-red-700;
 }
 
 .f-button-color-warning.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -492,7 +493,7 @@ body.f-theme-dark {
   @apply text-yellow-500;
 }
 .f-theme-dark .f-button-color-warning.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-yellow-500;
+  @apply text-yellow-700;
 }
 
 .f-button-color-secondary.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -550,33 +551,65 @@ body.f-theme-dark {
   @apply text-gray-500;
 }
 .f-theme-dark .f-button-color-secondary.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-gray-500;
+  @apply text-gray-700;
 }
 
-.f-button-color-default {
+.f-button-color-default.f-button-ghost-false.f-button-outline-false {
   @apply text-gray-900 bg-white border border-gray-200;
 }
-.f-button-color-default.f-button-disabled-true {
+.f-button-color-default.f-button-ghost-false.f-button-outline-false.f-button-disabled-true {
   @apply opacity-50 cursor-not-allowed pointer-events-none;
 }
-.f-button-color-default:hover {
+.f-button-color-default.f-button-ghost-false.f-button-outline-false:hover {
   @apply bg-gray-100 text-blue-700;
 }
-.f-button-color-default:focus {
+.f-button-color-default.f-button-ghost-false.f-button-outline-false:focus {
   @apply ring-4 ring-gray-200;
 }
-.f-theme-dark .f-button-color-default {
+.f-theme-dark .f-button-color-default.f-button-ghost-false.f-button-outline-false {
   @apply bg-gray-600/10 text-gray-400 border-gray-600;
 }
-.f-theme-dark .f-button-color-default:hover {
+.f-theme-dark .f-button-color-default.f-button-ghost-false.f-button-outline-false:hover {
   @apply text-white bg-gray-700;
 }
-.f-theme-dark .f-button-color-default:focus {
+.f-theme-dark .f-button-color-default.f-button-ghost-false.f-button-outline-false:focus {
   @apply ring-gray-700;
 }
 
+.f-button-color-default.f-button-ghost-true.f-button-outline-false {
+  @apply text-gray-600;
+}
+.f-button-color-default.f-button-ghost-true.f-button-outline-false:hover {
+  @apply text-gray-800;
+}
+.f-theme-dark .f-button-color-default.f-button-ghost-true.f-button-outline-false {
+  @apply text-gray-500;
+}
+.f-theme-dark .f-button-color-default.f-button-ghost-true.f-button-outline-false:hover {
+  @apply text-gray-700;
+}
+
+.f-button-color-default.f-button-outline-true.f-button-ghost-false {
+  @apply text-gray-700 border border-gray-700;
+}
+.f-button-color-default.f-button-outline-true.f-button-ghost-false:hover {
+  @apply text-white bg-gray-800;
+}
+.f-button-color-default.f-button-outline-true.f-button-ghost-false:focus {
+  @apply ring-4 ring-gray-300;
+}
+.f-theme-dark .f-button-color-default.f-button-outline-true.f-button-ghost-false {
+  @apply border-gray-500 text-gray-500;
+}
+.f-theme-dark .f-button-color-default.f-button-outline-true.f-button-ghost-false:hover {
+  @apply text-white bg-gray-500;
+}
+.f-theme-dark .f-button-color-default.f-button-outline-true.f-button-ghost-false:focus {
+  @apply ring-gray-800;
+}
+
 .f-button-group {
-  @apply flex justify-end gap-2;
+  @apply inline-flex justify-end gap-2;
 }
 .f-button-group.f-button-group-wrap-true {
   @apply flex-wrap;
@@ -588,31 +621,22 @@ body.f-theme-dark {
 .f-card-title {
   @apply text-2xl font-bold text-gray-900;
 }
-.f-card-header {
-  @apply rounded-t-lg bg-gray-50 p-4 border-b border-gray-200;
-}
-.f-card-footer {
-  @apply text-gray-800 rounded-b-lg bg-gray-50 p-4 border-t border-gray-200;
-}
 .f-card-body {
-  @apply p-4;
+  @apply p-6;
 }
 @screen sm {
   .f-card-body {
     @apply p-8;
   }
 }
-.f-card-width-sm {
+.f-card-width-small {
   @apply w-full max-w-sm;
 }
-.f-card-width-md {
+.f-card-width-medium {
   @apply w-full max-w-md;
 }
-.f-card-width-lg {
+.f-card-width-large {
   @apply w-full max-w-lg;
-}
-.f-card-width-xl {
-  @apply w-full max-w-xl;
 }
 .f-theme-dark .f-card {
   @apply bg-gray-700/20 border-gray-700;
@@ -644,25 +668,80 @@ body.f-theme-dark {
   @apply ring-blue-600;
 }
 
-.f-dropdown {
-  @apply z-10 bg-white divide-y divide-gray-100 rounded-lg shadow w-44;
+.f-close-button {
+  @apply text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white;
 }
-.f-dropdown-item {
+
+.f-dropdown {
+  @apply relative;
+}
+.f-dropdown > .f-button > .f-icon {
+  @apply flex items-center justify-center;
+}
+.f-dropdown > .f-button > .f-icon svg {
+  @apply w-2.5 h-2.5;
+}
+.f-dropdown-auto-close-false.f-dropdown-open-false .f-dropdown-menu {
+  @apply hidden;
+}
+.f-dropdown-auto-close-true:not(:focus-within) .f-dropdown-menu {
+  @apply hidden;
+}
+.f-dropdown-item-link {
   @apply block px-4 py-2;
 }
 .f-dropdown-menu {
+  @apply absolute z-10 bg-white divide-y divide-gray-100 rounded-lg shadow w-44;
+}
+.f-dropdown-menu-placement-top {
+  @apply bottom-full;
+}
+.f-dropdown-menu-placement-top-end {
+  @apply bottom-full right-0;
+}
+.f-dropdown-menu-placement-top-start {
+  @apply bottom-full left-0;
+}
+.f-dropdown-menu-placement-bottom {
+  @apply top-full;
+}
+.f-dropdown-menu-placement-bottom-end {
+  @apply top-full right-0;
+}
+.f-dropdown-menu-placement-bottom-start {
+  @apply top-full left-0;
+}
+.f-dropdown-menu-placement-left {
+  @apply right-full top-0;
+}
+.f-dropdown-menu-placement-left-start {
+  @apply right-full top-0;
+}
+.f-dropdown-menu-placement-left-end {
+  @apply right-full bottom-0;
+}
+.f-dropdown-menu-placement-right {
+  @apply left-full top-0;
+}
+.f-dropdown-menu-placement-right-start {
+  @apply left-full top-0;
+}
+.f-dropdown-menu-placement-right-end {
+  @apply left-full bottom-0;
+}
+.f-dropdown-menu-body {
   @apply py-2 text-sm text-gray-700;
 }
-.f-dropdown-item:hover {
-  @apply bg-gray-100;
-}
-.f-theme-dark .f-dropdown {
+.f-theme-dark .f-dropdown-menu {
   @apply bg-gray-700;
 }
-.f-theme-dark .f-dropdown-item:hover {
+.f-dropdown-item-link:hover {
+  @apply bg-gray-100;
+}
+.f-theme-dark .f-dropdown-item-link:hover {
   @apply bg-gray-600 text-white;
 }
-.f-theme-dark .f-dropdown-menu {
+.f-theme-dark .f-dropdown-menu-body {
   @apply text-gray-200;
 }
 
@@ -676,17 +755,21 @@ body.f-theme-dark {
   @apply text-white;
 }
 
-.f-page {
-  @apply px-4 mx-auto max-w-7xl;
+.f-page h1 {
+  @apply text-3xl text-gray-900 dark:text-gray-300;
 }
+.f-page .body {
+  @apply flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 md:space-x-4 p-4 px-0;
+}
+.f-page .subtitle {
+  @apply flex-1 flex items-center space-x-2;
+}
+.f-page .actions {
+  @apply flex-shrink-0 flex flex-col items-start md:flex-row md:items-center lg:justify-end space-y-3 md:space-y-0 md:space-x-3;
+}
+
 .f-page-header {
-  @apply flex items-center justify-between py-4;
-}
-.f-page-title {
-  @apply font-bold text-2xl text-gray-700;
-}
-.f-theme-dark .f-page-title {
-  @apply text-gray-200;
+  @apply border-gray-200 px-0 py-2.5 pt-2 text-gray-700;
 }
 
 .f-layout-center {
@@ -719,6 +802,10 @@ body.f-theme-dark {
 
 .f-label {
   @apply block mb-2 text-sm font-medium text-gray-900;
+}
+.f-label-required-true::after {
+  content: "*";
+  @apply ms-1 text-red-500;
 }
 .f-theme-dark .f-label {
   @apply text-white;
@@ -847,37 +934,46 @@ body.f-theme-dark {
 }
 
 .f-sidebar {
-  @apply fixed top-0 left-0 z-40 w-64 pt-16 h-screen transition-transform;
+  @apply h-screen transition-transform -translate-x-full border-r border-gray-200 dark:border-gray-700;
 }
-@screen sm {
-  .f-sidebar {
-    @apply translate-x-0;
-  }
+.f-sidebar .main {
+  @apply overflow-y-auto py-5 px-3 h-full;
 }
-.f-sidebar li {
-  list-style-type: none;
+.f-sidebar .main > ul {
+  @apply space-y-2;
 }
-.f-sidebar-body {
-  @apply h-full px-3 py-4 overflow-y-auto bg-white border-r border-gray-200;
+.f-sidebar .main > ul > li > ul {
+  @apply py-2 space-y-2;
 }
-.f-theme-dark .f-sidebar-body {
-  @apply bg-gray-800 border-gray-700;
+.f-sidebar .f-sidebar-item > span {
+  @apply text-xs py-3;
 }
-
-.f-sidebar-item {
-  @apply flex items-center p-2 text-gray-900 rounded-lg;
+.f-sidebar .f-sidebar-item > a {
+  @apply text-sm flex items-center font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700;
 }
-.f-sidebar-item:hover {
-  @apply bg-gray-100;
+.f-sidebar-secondary-true .main {
+  @apply pt-0;
 }
-.f-theme-dark .f-sidebar-item {
-  @apply text-white;
+.f-sidebar-secondary-true .f-sidebar-item > span {
+  @apply text-gray-700 dark:text-gray-500;
 }
-.f-theme-dark .f-sidebar-item:hover {
-  @apply bg-gray-700;
+.f-sidebar-secondary-true .f-sidebar-item > a {
+  @apply py-1 px-2 text-base;
 }
-.f-sidebar-item-text {
-  @apply flex-1 ml-3 whitespace-nowrap;
+.f-sidebar-secondary-false {
+  @apply fixed top-0 left-0 z-40 w-64 pt-14 lg:pt-0 bg-white dark:bg-gray-800;
+}
+.f-sidebar-secondary-false .main {
+  @apply bg-white dark:bg-gray-800;
+}
+.f-sidebar-secondary-false .f-sidebar-item > span {
+  @apply text-gray-900 dark:text-white ml-2;
+}
+.f-sidebar-secondary-false .f-sidebar-item > a {
+  @apply p-2;
+}
+.f-sidebar-secondary-false .f-sidebar-item > a span {
+  @apply ml-3;
 }
 
 .f-spinner svg {
@@ -920,6 +1016,49 @@ body.f-theme-dark {
 }
 .f-pagination-item-active-true button {
   @apply text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-700 dark:text-white;
+}
+
+.f-select {
+  @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
+}
+
+.f-modal {
+  @apply hidden fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0 justify-center items-center;
+}
+.f-modal-open-true {
+  @apply flex;
+}
+.f-modal > .wrapper {
+  @apply relative max-h-full w-full;
+}
+.f-modal-size-small > .wrapper {
+  @apply max-w-md;
+}
+.f-modal-size-medium > .wrapper {
+  @apply max-w-lg;
+}
+.f-modal-size-large > .wrapper {
+  @apply max-w-4xl;
+}
+
+.f-modal-body {
+  @apply space-y-6 p-6;
+}
+
+.f-modal-content {
+  @apply relative rounded-lg bg-white shadow dark:bg-gray-700;
+}
+
+.f-modal-footer {
+  @apply flex items-center rounded-b border-t border-gray-200 p-6 dark:border-gray-600;
+}
+
+.f-modal-header {
+  @apply flex items-start justify-between rounded-t border-b p-5 dark:border-gray-600;
+}
+
+.f-modal-title {
+  @apply text-xl font-semibold text-gray-900 dark:text-white lg:text-2xl;
 }
 
 /* #endregion COMPONENTS */

@@ -32,6 +32,8 @@ body.#{$prefix-theme-dark} {
 @import './components/button';
 @import './components/card';
 @import './components/checkbox';
+@import './components/close-button';
+@import './components/confirm';
 @import './components/dropdown';
 @import './components/form-check';
 @import './components/page';
@@ -47,6 +49,7 @@ body.#{$prefix-theme-dark} {
 @import './components/pagination';
 @import './components/pagination-item';
 @import './components/select';
+@import './components/modal';
 
 /* #endregion COMPONENTS */
 

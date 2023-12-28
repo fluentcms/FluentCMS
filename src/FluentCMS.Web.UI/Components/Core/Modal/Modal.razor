@@ -1,0 +1,60 @@
+﻿@inject IJSRuntime JS
+@inherits BaseComponent
+
+<div @ref=element class=@this.GetClasses() @attributes=@AdditionalAttributes tabindex="-1">
+    <div class=@this.ClassName("ModalWrapper")>
+        <CascadingValue Value="this">
+            <ModalContent>
+                @ChildContent
+            </ModalContent>
+        </CascadingValue>
+    </div>
+</div>
+
+@code {
+    private IJSObjectReference module = default!;
+
+    private bool open;
+
+    public ElementReference element;
+
+    [Parameter]
+    [CssProperty]
+    public SizeEnum Size { get; set; } = SizeEnum.Medium;
+
+    [Parameter]
+    [CssProperty]
+    public bool Open
+    {
+        get
+        {
+            return open;
+        }
+        set
+        {
+            if (value == open) return;
+
+            open = value;
+
+            module.InvokeVoidAsync(open ? "open" : "close", DotNetObjectReference.Create(this), element);
+        }
+    }
+
+    [Parameter]
+    public EventCallback<bool> OpenChanged { get; set; }
+
+    [JSInvokable]
+    public async void Close()
+    {
+        await OpenChanged.InvokeAsync(Open = false);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Core/Modal/Modal.razor.js");
+
+        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element);
+    }
+}
