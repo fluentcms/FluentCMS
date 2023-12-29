@@ -1,6 +1,8 @@
 ﻿using FluentCMS;
 using FluentCMS.Web.Api;
+using FluentCMS.Web.Api.Middleware;
 using FluentCMS.Web.Api.Setup;
+using Microsoft.AspNetCore.Builder;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -27,5 +29,22 @@ public static class ApiServiceExtensions
         services.AddApiDocumentation();
 
         return services;
+    }
+
+    public static WebApplication UseApiService(this WebApplication app)
+    {
+        app.UseApiDocumentation();
+
+        app.UseAntiforgery();
+
+        app.UseAuthentication();
+
+        app.UseAuthorization();
+
+        app.UseMiddleware<ApiResultHandlerMiddleware>();
+
+        app.MapControllers();
+
+        return app;
     }
 }

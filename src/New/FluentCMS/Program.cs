@@ -36,15 +36,7 @@ app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 
-app.UseApiDocumentation();
-
-app.UseAntiforgery();
-
-app.UseAuthentication();
-
-app.UseAuthorization();
-
-app.MapControllers();
+app.UseApiService();
 
 app.UseSiteServices();
 
