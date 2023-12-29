@@ -45,9 +45,9 @@ public class SiteState : ISiteState
         else
             Mode = PageMode.Page;
 
-        var taskPage = Task.Run(() => pageClient.GetByPathAsync(Uri.Authority, Uri.LocalPath));
         try
         {
+            var taskPage = Task.Run(() => pageClient.GetByPathAsync(Uri.Authority, Uri.LocalPath));
             taskPage.Wait();
             if (taskPage.Result.Data != null)
             {
@@ -55,7 +55,7 @@ public class SiteState : ISiteState
                 Site = Page.Site;
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             //if (Initialized)
             //    navigator.NavigateTo("/error", true);

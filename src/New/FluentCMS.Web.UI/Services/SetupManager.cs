@@ -9,6 +9,7 @@ public class SetupManager
     {
         _setupClient = setupClient;
     }
+
     public async Task<bool> IsInitialized()
     {
         if (_initialized)
@@ -19,5 +20,11 @@ public class SetupManager
         _initialized = response.Data;
 
         return _initialized;
+    }
+
+    public async Task<bool> Start(SetupRequest request)
+    {
+        var response = await _setupClient.StartAsync(request);
+        return response.Data;
     }
 }

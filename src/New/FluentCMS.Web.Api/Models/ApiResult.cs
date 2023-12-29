@@ -1,4 +1,5 @@
 ﻿namespace FluentCMS.Web.Api.Models;
+
 public interface IApiResult
 {
     List<Error> Errors { get; }
@@ -15,7 +16,7 @@ public interface IApiResult<TData> : IApiResult
 
 public class ApiResult<TData> : IApiResult<TData>
 {
-    public List<Error> Errors { get; internal set; } = [];
+    public List<Error> Errors { get; } = [];
     public string TraceId { get; set; } = string.Empty;
     public string SessionId { get; set; } = string.Empty;
     public string UniqueId { get; set; } = string.Empty;
@@ -23,7 +24,10 @@ public class ApiResult<TData> : IApiResult<TData>
     public int Code { get; set; }
     public TData? Data { get; }
 
-    public ApiResult() { }
+    public ApiResult()
+    {
+    }
+
     public ApiResult(TData data)
     {
         Data = data;

@@ -31,7 +31,6 @@ public class ApiExecutionContextHandlerMiddleware
     {
         var apiResult = new ExceptionApiResult
         {
-            Errors = new List<Error> { },
             TraceId = apiExecutionContext.TraceId,
             UniqueId = apiExecutionContext.UniqueId,
             SessionId = apiExecutionContext.SessionId,
@@ -39,10 +38,11 @@ public class ApiExecutionContextHandlerMiddleware
             Code = 500 // Internal Server Error
         };
 
+        context.Response.Body.Seek(0, SeekOrigin.Begin);
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = apiResult.Code;
 
-        return context.Response.WriteAsync(JsonSerializer.Serialize(apiResult));
+        return context.Response.WriteAsJsonAsync(apiResult);
     }
 
     private class ExceptionApiResult : ApiResult<object>
