@@ -12,7 +12,7 @@ public class ApiResultActionFilter : IAsyncActionFilter
     }
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
-        var start = DateTimeOffset.UtcNow;
+        var start = DateTime.UtcNow;
 
         // Execute the action
         var executedContext = await next();
@@ -31,7 +31,7 @@ public class ApiResultActionFilter : IAsyncActionFilter
             if (resultType.IsGenericType && resultType.GetInterfaces().Contains(typeof(IApiResult)))
             {
                 var apiResult = (IApiResult)value;
-                apiResult.Duration = (DateTimeOffset.UtcNow - start).TotalMilliseconds;
+                apiResult.Duration = (DateTime.UtcNow - start).TotalMilliseconds;
                 apiResult.SessionId = _apiExecutionContext.SessionId;
                 apiResult.TraceId = _apiExecutionContext.TraceId;
                 apiResult.UniqueId = _apiExecutionContext.UniqueId;

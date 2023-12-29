@@ -1,6 +1,7 @@
 ﻿using FluentCMS;
 using FluentCMS.Web.Api;
 using FluentCMS.Web.Api.Filters;
+using FluentCMS.Web.Api.Middleware;
 using FluentCMS.Web.Api.Setup;
 using Microsoft.AspNetCore.Builder;
 
@@ -42,11 +43,11 @@ public static class ApiServiceExtensions
 
         app.UseAntiforgery();
 
-        //app.UseWhen(context => context.Request.Path.StartsWithSegments("/api"), app =>
-        //{
-        //    // this will be executed only when the path starts with "/api"
-        //    app.UseMiddleware<ApiExecutionContextHandlerMiddleware>();
-        //});
+        app.UseWhen(context => context.Request.Path.StartsWithSegments("/api"), app =>
+        {
+            // this will be executed only when the path starts with "/api"
+            app.UseMiddleware<ApiExecutionContextHandlerMiddleware>();
+        });
 
         app.UseAuthentication();
 

@@ -8,7 +8,7 @@ public interface IApiResult
     double Duration { get; set; }
     int Code { get; set; }
 }
-public interface IApiResult<TData>: IApiResult
+public interface IApiResult<TData> : IApiResult
 {
     TData? Data { get; }
 }
