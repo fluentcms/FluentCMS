@@ -10,9 +10,9 @@
 <br />
 <a href="/counter">Counter</a>
 <br />
-<a href="/admin?plugin=setup">Setup</a>
+<a href="/auth/login">Login</a>
 <br />
-<a href="/x/y/z/a?plugin=test">XYZ</a>
+<a href="/auth/register">Register</a>
 <br />
 <a href="api/doc" target="_blank">Swagger</a>
 <br />
@@ -20,12 +20,11 @@
     [Parameter]
     public string? Route { get; set; }
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        if (!SiteState.Initialized)
+            NavigationManager.NavigateTo("/setup", true);
 
-        // // check for initialization
-        // if (!SiteState.Initialized)
-        //     NavigationManager.NavigateTo("/setup");
+        await base.OnInitializedAsync();
     }
-
 }

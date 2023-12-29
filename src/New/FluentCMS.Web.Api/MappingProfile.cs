@@ -20,6 +20,15 @@ public class MappingProfile : Profile
 
         #endregion
 
+
+        #region Plugin
+
+        CreateMap<PluginCreateRequest, Plugin>();
+        CreateMap<PluginUpdateRequest, Plugin>();
+        CreateMap<Plugin, PluginDetailResponse>();
+
+        #endregion
+
         #region Page
 
         CreateMap<PageCreateRequest, Page>();

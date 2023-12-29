@@ -45,12 +45,20 @@ public class SiteState : ISiteState
         else
             Mode = PageMode.Page;
 
-        //var taskPage = Task.Run(() => pageClient.GetByPathAsync(Uri.Authority, Uri.LocalPath));
-        //taskPage.Wait();
-        //if (taskPage.Result.Data != null)
-        //{
-        //    Page = taskPage.Result.Data;
-        //    Site = Page.Site;
-        //}
+        var taskPage = Task.Run(() => pageClient.GetByPathAsync(Uri.Authority, Uri.LocalPath));
+        try
+        {
+            taskPage.Wait();
+            if (taskPage.Result.Data != null)
+            {
+                Page = taskPage.Result.Data;
+                Site = Page.Site;
+            }
+        }
+        catch (Exception)
+        {
+            //if (Initialized)
+            //    navigator.NavigateTo("/error", true);
+        }
     }
 }
