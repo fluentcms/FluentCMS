@@ -13,6 +13,7 @@ public class ApiExecutionContext
     public string SessionId { get; set; } = string.Empty;
     public string UserIp { get; set; } = string.Empty;
     public string Language { get; set; } = string.Empty;
+    public DateTime StartDate { get; set; } = DateTime.UtcNow;
 
     public ApiExecutionContext(IHttpContextAccessor accessor)
     {

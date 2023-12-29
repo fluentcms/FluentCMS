@@ -2,7 +2,7 @@
 
 public interface IApiResult
 {
-    List<Error> Errors { get; }
+    List<AppError> Errors { get; }
     string TraceId { get; set; }
     string SessionId { get; set; }
     string UniqueId { get; set; }
@@ -16,7 +16,7 @@ public interface IApiResult<TData> : IApiResult
 
 public class ApiResult<TData> : IApiResult<TData>
 {
-    public List<Error> Errors { get; } = [];
+    public List<AppError> Errors { get; } = [];
     public string TraceId { get; set; } = string.Empty;
     public string SessionId { get; set; } = string.Empty;
     public string UniqueId { get; set; } = string.Empty;

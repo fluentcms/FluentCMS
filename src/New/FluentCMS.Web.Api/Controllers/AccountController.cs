@@ -2,36 +2,6 @@
 
 public class AccountController(IMapper mapper, IUserService userService) : BaseGlobalController
 {
-    [HttpGet]
-    public void Test1()
-    {
-        throw new NotImplementedException();
-    }
-
-    [HttpGet]
-    public bool Test2()
-    {
-        throw new NotImplementedException();
-    }
-
-    [HttpGet]
-    public async Task Test3()
-    {
-        throw new NotImplementedException();
-    }
-
-    [HttpGet]
-    public async Task<bool> Test4()
-    {
-        throw new NotImplementedException();
-    }
-
-    [HttpGet]
-    public async Task<IApiResult<bool>> Test5()
-    {
-        throw new NotImplementedException();
-    }
-
     [HttpPost]
     public async Task<IApiResult<UserDetailResponse>> Register([FromBody] UserRegisterRequest request, CancellationToken cancellationToken = default)
     {
@@ -60,5 +30,4 @@ public class AccountController(IMapper mapper, IUserService userService) : BaseG
         await userService.ChangePassword(request.UserId, request.OldPassword, request.NewPassword, cancellationToken);
         return Ok(true);
     }
-
 }

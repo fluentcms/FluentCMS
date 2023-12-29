@@ -16,6 +16,7 @@ public static class ApiServiceExtensions
         services.AddControllers(config =>
         {
             config.Filters.Add<ApiResultActionFilter>();
+            config.Filters.Add<ApiResultExceptionFilter>();
         });
 
         services.AddAuthentication();
@@ -46,7 +47,7 @@ public static class ApiServiceExtensions
         app.UseWhen(context => context.Request.Path.StartsWithSegments("/api"), app =>
         {
             // this will be executed only when the path starts with "/api"
-            app.UseMiddleware<ApiExecutionContextHandlerMiddleware>();
+            app.UseMiddleware<ApplicationExecutionContextMiddleware>();
         });
 
         app.UseAuthentication();
