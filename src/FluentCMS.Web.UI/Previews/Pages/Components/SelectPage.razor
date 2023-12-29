@@ -1,0 +1,62 @@
+@page "/previews/components/select"
+@layout ComponentsLayout;
+@rendermode InteractiveServer
+
+<PageHeader HasBack Title="Select"/>
+<div class="m-4 bg-white border border-gray-200 dark:border-gray-700 p-4 shadow dark:bg-gray-800">
+    <Select Label="Default Select">
+        <Option>One</Option>
+        <Option>Two</Option>
+        <Option>Three</Option>
+    </Select>
+
+    <Select Required Label="Required Select">
+        <Option>One</Option>
+        <Option>Two</Option>
+        <Option>Three</Option>
+    </Select>
+
+    <Select Disabled Label="Disabled Select" Value="2">
+        <Option Value="1">One</Option>
+        <Option Value="2">Two</Option>
+        <Option Value="3">Three</Option>
+    </Select>
+
+    <Select Readonly Label="Readonly Select" Value="2">
+        <Option Value="1">One</Option>
+        <Option Value="2">Two</Option>
+        <Option Value="3">Three</Option>
+    </Select>
+    <Select Label="Select with Placeholder" Placeholder="Choose an option" Value="2">
+        <Option Value="1">One</Option>
+        <Option Value="2">Two</Option>
+        <Option Value="3">Three</Option>
+    </Select>
+
+
+    <Select IconStart="IconNameEnum.Search" Label="Select Icon Start">
+        <Option>One</Option>
+        <Option>Two</Option>
+        <Option>Three</Option>
+    </Select>
+
+    <Select Label="Select With Hint" Hint="Some description here...">
+        <Option>One</Option>
+        <Option>Two</Option>
+        <Option>Three</Option>
+    </Select>
+
+    <Select State="FormFieldStateEnum.Invalid" Label="Invalid Select" Hint="Something went wrong...">
+        <Option>One</Option>
+        <Option>Two</Option>
+        <Option>Three</Option>
+    </Select>
+
+    <Select State="FormFieldStateEnum.Valid" Label="Valid Select" Hint="Something went wrong...">
+        <Option>One</Option>
+        <Option>Two</Option>
+        <Option>Three</Option>
+    </Select>
+
+</div>
+

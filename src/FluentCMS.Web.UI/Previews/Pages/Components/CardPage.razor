@@ -1,0 +1,33 @@
+@page "/previews/components/card"
+@layout ComponentsLayout
+@rendermode InteractiveServer
+
+<PageHeader HasBack Title="Card"/>
+
+<div class="py-4 flex flex-col align-start justify-start gap-4">
+    <Card>Simple Card component</Card>
+    <Card>
+        <CardTitle>Some Title</CardTitle>
+        Card With title
+    </Card>
+    <Card Width="SizeEnum.Default">
+        default Card
+    </Card>
+    <Card Width="SizeEnum.Small">
+        small Card
+    </Card>
+    <Card Width="SizeEnum.Medium">
+        medium Card
+    </Card>
+    <Card Width="SizeEnum.Large">
+        large Card
+    </Card>
+    <Card>
+        <CardBody>
+            <CardTitle>Card title</CardTitle>
+            Content inside card body
+            <Button Color="ColorEnum.Primary">Some action</Button>
+        </CardBody>
+    </Card>
+</div>
+
