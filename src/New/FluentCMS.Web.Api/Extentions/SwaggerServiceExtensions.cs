@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using FluentCMS.Web.Api;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerUI;
 
@@ -44,7 +45,7 @@ public static class SwaggerServiceExtensions
         return services;
     }
 
-    public static IApplicationBuilder UseApiDocumentation(this IApplicationBuilder app, string routePrefix = "api/doc")
+    public static IApplicationBuilder UseApiDocumentation(this IApplicationBuilder app)
     {
         // Enable middleware to serve generated Swagger as a JSON endpoint
         app.UseSwagger();
@@ -54,7 +55,7 @@ public static class SwaggerServiceExtensions
         {
             c.DisplayRequestDuration();
             c.SwaggerEndpoint("/swagger/v1/swagger.json", _applicationName + " " + _applicationVersion);
-            c.RoutePrefix = routePrefix;
+            c.RoutePrefix = "api/doc";
             c.DocExpansion(DocExpansion.None);
         });
 

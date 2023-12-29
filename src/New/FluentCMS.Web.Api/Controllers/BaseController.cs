@@ -15,7 +15,7 @@ public abstract class BaseController
     }
 }
 
-[Route("api/app/{appSlug}/[controller]/[action]")]
+[Route("APP_PATH/{appSlug}/[controller]/[action]")]
 public abstract class BaseAppController : BaseController
 {
 
