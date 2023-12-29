@@ -1,0 +1,20 @@
+@page "/previews/components/input"
+@layout ComponentsLayout;
+@rendermode InteractiveServer
+
+<PageHeader HasBack Title="Input" />
+
+<div class="m-4 bg-white border border-gray-200 dark:border-gray-700 p-4 shadow dark:bg-gray-800">
+    <Input Label="Default Input"/>
+    <Input Required Label="Required Input"/>
+    <Input Disabled Label="Disabled Input"/>
+    <Input Readonly Label="Readonly Input" Value="Value"/>
+    <Input Placeholder="This is Placeholder" Label="Placeholder"/>
+    <Input Label="Icon Start" IconStart="IconNameEnum.Search"/>
+    <Input Label="Icon End" IconEnd="IconNameEnum.Delete"/>
+    <Input Label="Hint" Hint="Some description comes here..."/>
+
+    <Input Label="Invalid" State="FormFieldStateEnum.Invalid" IconEnd="IconNameEnum.Delete" Hint="This field has problem"/>
+    <Input Label="Valid" State="FormFieldStateEnum.Valid" IconEnd="IconNameEnum.Search" Hint="Success"/>
+</div>
+

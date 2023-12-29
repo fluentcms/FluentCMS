@@ -1,0 +1,26 @@
+@page "/previews/components"
+@layout ComponentsLayout
+@rendermode InteractiveServer
+
+<div class="px-4 mx-auto container">
+
+    <PageHeader Title="Components">
+        <PageActions>
+            <NavigationButton To="/">Go Back</NavigationButton>
+        </PageActions>
+    </PageHeader>
+
+</div>
+
+ @code {
+    private bool Check1Value { get; set; } = true;
+    private bool Check2Value { get; set; } = false;
+
+
+    private string Input1Value { get; set; } = "initial";
+    private string Input2Value { get; set; }
+
+    private string Select1Value { get; set; } = "US";
+    private string Select2Value { get; set; }
+
+}
