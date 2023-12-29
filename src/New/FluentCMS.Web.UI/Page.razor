@@ -1,6 +1,6 @@
 ﻿@page "/{*Route:nonfile}"
 
-@inject ISiteState SiteState
+@inject SetupManager SetupManager
 @inject NavigationManager NavigationManager
 
 <PageTitle>Page Title</PageTitle>
@@ -22,7 +22,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (!SiteState.Initialized)
+        if (!await SetupManager.IsInitialized())
             NavigationManager.NavigateTo("/setup", true);
 
         await base.OnInitializedAsync();

@@ -30,5 +30,4 @@ public class AccountController(IMapper mapper, IUserService userService) : BaseG
         await userService.ChangePassword(request.UserId, request.OldPassword, request.NewPassword, cancellationToken);
         return Ok(true);
     }
-
 }

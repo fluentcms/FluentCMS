@@ -1,17 +1,13 @@
 ﻿@page "/setup"
 @rendermode InteractiveServer
 
-@inject SiteClient SiteClient
-@inject SetupClient SetupClient
-@inject ISiteState SiteState
+@inject SetupManager SetupManager
 @inject NavigationManager NavigationManager
-
-@using Microsoft.AspNetCore.Components.Forms
 
 <PageTitle>Setup</PageTitle>
 <h1>Setup</h1>
 
-@if (SiteState?.Initialized != null && SiteState?.Initialized == false)
+@if (!IsInitialized)
 {
     <div>
         <div>
@@ -37,6 +33,7 @@ else
     </div>
 }
 @code {
+    public bool IsInitialized { get; set; } = false;
 
     public SetupRequest SetupModel { get; set; } = new SetupRequest
         {
@@ -47,18 +44,15 @@ else
             SiteTemplateName = "Blank"
         };
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        if (SetupClient == null) throw new Exception("SetupClient is null");
-        if (SiteClient == null) throw new Exception("SiteClient is null");
-        SetupModel.AdminDomain = SiteState.Uri.Authority;
+        IsInitialized = await SetupManager.IsInitialized();
+        SetupModel.AdminDomain = new Uri(NavigationManager.Uri).Authority;
     }
 
-    private void SetupStart()
+    private async Task SetupStart()
     {
-        var response = SetupClient.StartAsync(SetupModel).Result;
-
-        if (response?.Data != null)
+        if (await SetupManager.Start(SetupModel))
             NavigationManager.NavigateTo("/", true);
     }
 }
