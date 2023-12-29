@@ -20,12 +20,11 @@
     [Parameter]
     public string? Route { get; set; }
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        if (!SiteState.Initialized)
+            NavigationManager.NavigateTo("/setup", true);
 
-        // // check for initialization
-        // if (!SiteState.Initialized)
-        //     NavigationManager.NavigateTo("/setup");
+        await base.OnInitializedAsync();
     }
-
 }
