@@ -39,9 +39,8 @@ public class AppService(IAppRepository appRepository) : IAppService
     {
         // check if slug is unique
         var existing = await appRepository.GetBySlug(app.Slug, cancellationToken);
-
-        // restore id
-        app.Id = existing.Id;
+        if (existing != null && existing.Id != app.Id)
+            throw new AppException(ExceptionCodes.AppSlugNotUnique);
 
         return await appRepository.Update(app, cancellationToken) ??
             throw new AppException(ExceptionCodes.AppUnableToUpdate);
