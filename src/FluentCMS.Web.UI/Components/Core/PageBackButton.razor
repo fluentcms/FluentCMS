@@ -1,0 +1,16 @@
+@inherits BaseComponent
+@inject NavigationManager Navigation
+
+<Button OnClick="() => GoBack()" class=@this.GetClasses() Ghost>
+    <Icon Name=@IconNameEnum.Previous />
+    Back
+</Button>
+
+@code {
+
+    public void GoBack() {
+        Console.Write("Go back");
+
+    }
+}
+
