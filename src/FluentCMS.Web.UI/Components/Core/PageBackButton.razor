@@ -1,5 +1,4 @@
 @inherits BaseComponent
-@inject NavigationManager Navigation
 
 <Button OnClick="() => GoBack()" class=@this.GetClasses() Ghost>
     <Icon Name=@IconNameEnum.Previous />
@@ -7,10 +6,10 @@
 </Button>
 
 @code {
+    [Inject] IJSRuntime JsRuntime {get; set;}
 
-    public void GoBack() {
-        Console.Write("Go back");
-
+    public async Task GoBack() {
+        await JsRuntime.InvokeAsync<object>("history.back");
     }
 }
 
