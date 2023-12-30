@@ -4,61 +4,55 @@ using System.Web;
 
 namespace FluentCMS.Web.UI.Services;
 
-public interface ISiteState
-{
-    public bool Initialized { get; }
-    public PageFullDetailResponse? Page { get; }
-    public SiteDetailResponse? Site { get; }
-    public PageMode Mode { get; }
-    public Uri Uri { get; }
-    public NameValueCollection QueryString { get; }
-}
-
 public enum PageMode
 {
     Plugin,
     Page
 }
 
-public class SiteState : ISiteState
+public class SiteState
 {
-    private readonly SetupManager _setupManager;
-
-    public bool Initialized { get; private set; }
-    public PageFullDetailResponse? Page { get; private set; }
-    public SiteDetailResponse? Site { get; private set; }
+    public bool Initialized { get; }
     public PageMode Mode { get; private set; }
-    public Uri Uri { get; private set; }
+    public Uri Uri { get; }
     public NameValueCollection QueryString { get; } = [];
+
+    private readonly SetupManager _setupManager;
+    private readonly NavigationManager _navigator;
+    private readonly PageClient _pageClient;
 
     public SiteState(NavigationManager navigator, PageClient pageClient, SetupManager setupManager)
     {
         _setupManager = setupManager;
+        _navigator = navigator;
+        _pageClient = pageClient;
         var taskInit = Task.Run(setupManager.IsInitialized);
         Initialized = taskInit.Result;
         Uri = new Uri(navigator.Uri);
-
         QueryString = HttpUtility.ParseQueryString(Uri.Query);
 
         if (QueryString["plugin"] != null && Uri.Fragment.ToLowerInvariant().Equals("admin"))
             Mode = PageMode.Plugin;
         else
             Mode = PageMode.Page;
+    }
+
+    public async Task<PageFullDetailResponse> GetCurrentPage(CancellationToken cancellationToken = default)
+    {
+        if (!Initialized)
+            throw new AppException(ExceptionCodes.SetupSettingsNotInitialized);
 
         try
         {
-            var taskPage = Task.Run(() => pageClient.GetByPathAsync(Uri.Authority, Uri.LocalPath));
-            taskPage.Wait();
-            if (taskPage.Result.Data != null)
-            {
-                Page = taskPage.Result.Data;
-                Site = Page.Site;
-            }
+            var pageResponse = await _pageClient.GetByPathAsync(Uri.Authority, Uri.LocalPath);
+            if (pageResponse.Data != null)
+                return pageResponse.Data;
+
+            throw new AppException(ExceptionCodes.PageNotFound);
         }
-        catch (Exception ex)
+        catch
         {
-            //if (Initialized)
-            //    navigator.NavigateTo("/error", true);
+            throw new AppException(ExceptionCodes.PageNotFound);
         }
     }
 }
