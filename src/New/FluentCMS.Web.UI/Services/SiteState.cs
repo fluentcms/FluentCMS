@@ -4,16 +4,9 @@ using System.Web;
 
 namespace FluentCMS.Web.UI.Services;
 
-public enum PageMode
-{
-    Plugin,
-    Page
-}
-
 public class SiteState
 {
     public bool Initialized { get; }
-    public PageMode Mode { get; private set; }
     public Uri Uri { get; }
     public NameValueCollection QueryString { get; } = [];
 
@@ -30,25 +23,20 @@ public class SiteState
         Initialized = taskInit.Result;
         Uri = new Uri(navigator.Uri);
         QueryString = HttpUtility.ParseQueryString(Uri.Query);
-
-        if (QueryString["plugin"] != null && Uri.Fragment.ToLowerInvariant().Equals("admin"))
-            Mode = PageMode.Plugin;
-        else
-            Mode = PageMode.Page;
     }
 
-    public async Task<PageFullDetailResponse> GetCurrentPage(CancellationToken cancellationToken = default)
+    public async Task<PageFullDetailResponse?> GetCurrentPage(CancellationToken cancellationToken = default)
     {
         if (!Initialized)
             throw new AppException(ExceptionCodes.SetupSettingsNotInitialized);
 
         try
         {
-            var pageResponse = await _pageClient.GetByPathAsync(Uri.Authority, Uri.LocalPath);
+            var pageResponse = await _pageClient.GetByPathAsync(Uri.Authority, Uri.LocalPath, cancellationToken);
             if (pageResponse.Data != null)
                 return pageResponse.Data;
 
-            throw new AppException(ExceptionCodes.PageNotFound);
+            return null;
         }
         catch
         {
