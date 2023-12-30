@@ -29,7 +29,6 @@ Scenario: Delete App
 	When I Delete App
 	Then App Delete result should be Success
 
-@RequiresMultipleTestApp
 Scenario: Get All Apps
 	Given I have 10 Apps
 	When I Get All Apps
