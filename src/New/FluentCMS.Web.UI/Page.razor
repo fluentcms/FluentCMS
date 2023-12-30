@@ -1,10 +1,10 @@
 ﻿@page "/{*Route:nonfile}"
 
 @inject SetupManager SetupManager
+@inject SiteState SiteState
 
-<PageTitle>Page Title</PageTitle>
-
-<h1>This is: @Route! Setup status: @_isInitialized</h1>
+<PageTitle>@_page?.Title</PageTitle>
+<h1>This is: @_page?.FullPath Setup status: @_isInitialized</h1>
 <a href="/setup">Setup</a>
 <br />
 <a href="/counter">Counter</a>
@@ -20,11 +20,14 @@
     public string? Route { get; set; }
 
     private bool _isInitialized = false;
+    private PageFullDetailResponse? _page;
 
     protected override async Task OnInitializedAsync()
     {
         _isInitialized = await SetupManager.IsInitialized();
         if (!_isInitialized)
             SetupManager.NavigateToSetupRoute();
+
+        _page = await SiteState.GetCurrentPage();
     }
 }

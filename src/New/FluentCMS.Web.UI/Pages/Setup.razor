@@ -1,7 +1,6 @@
 ﻿@page "/setup"
 
 @inject SetupManager SetupManager
-@inject NavigationManager NavigationManager
 
 <PageTitle>Setup</PageTitle>
 <h1>Setup</h1>
@@ -46,12 +45,11 @@ else
     protected override async Task OnInitializedAsync()
     {
         IsInitialized = await SetupManager.IsInitialized();
-        SetupModel.AdminDomain = new Uri(NavigationManager.Uri).Authority;
     }
 
     private async Task SetupStart()
     {
         if (await SetupManager.Start(SetupModel))
-            NavigationManager.NavigateTo("/", true);
+            SetupManager.NavigateToRoot();
     }
 }

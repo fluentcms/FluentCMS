@@ -29,6 +29,7 @@ public class SetupManager
 
     public async Task<bool> Start(SetupRequest request)
     {
+        request.AdminDomain = new Uri(_navigationManager.Uri).Authority;
         var response = await _setupClient.StartAsync(request);
         return response.Data;
     }
@@ -36,5 +37,10 @@ public class SetupManager
     public void NavigateToSetupRoute()
     {
         _navigationManager.NavigateTo("/setup", true);
+    }
+
+    public void NavigateToRoot()
+    {
+        _navigationManager.NavigateTo("/", true);
     }
 }
