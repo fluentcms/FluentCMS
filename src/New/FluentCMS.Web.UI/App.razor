@@ -4,12 +4,7 @@
     <HeadOutlet />
 </head>
 <body>
-    <Router AppAssembly="@this.GetType().Assembly">
-        <Found Context="routeData">
-            <RouteView RouteData="@routeData" />
-            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-        </Found>
-    </Router>
+    <Routes @rendermode="@InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
 </body>
 </html>
