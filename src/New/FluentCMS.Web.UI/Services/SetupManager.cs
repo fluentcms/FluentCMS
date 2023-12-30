@@ -1,13 +1,18 @@
-﻿namespace FluentCMS.Web.UI.Services;
+﻿using Microsoft.AspNetCore.Components;
+
+namespace FluentCMS.Web.UI.Services;
 
 public class SetupManager
 {
     private readonly SetupClient _setupClient;
+    private readonly NavigationManager _navigationManager;
+
     private static bool _initialized = false;
 
-    public SetupManager(SetupClient setupClient)
+    public SetupManager(SetupClient setupClient, NavigationManager navigationManager)
     {
         _setupClient = setupClient;
+        _navigationManager = navigationManager;
     }
 
     public async Task<bool> IsInitialized()
@@ -26,5 +31,10 @@ public class SetupManager
     {
         var response = await _setupClient.StartAsync(request);
         return response.Data;
+    }
+
+    public void NavigateToSetupRoute()
+    {
+        _navigationManager.NavigateTo("/setup", true);
     }
 }

@@ -1,11 +1,10 @@
 ﻿@page "/{*Route:nonfile}"
 
 @inject SetupManager SetupManager
-@inject NavigationManager NavigationManager
 
 <PageTitle>Page Title</PageTitle>
 
-<h1>This is: @Route!</h1>
+<h1>This is: @Route! Setup status: @_isInitialized</h1>
 <a href="/setup">Setup</a>
 <br />
 <a href="/counter">Counter</a>
@@ -20,10 +19,13 @@
     [Parameter]
     public string? Route { get; set; }
 
+    private bool _isInitialized = false;
+
     protected override async Task OnInitializedAsync()
     {
-        if (!await SetupManager.IsInitialized())
-            NavigationManager.NavigateTo("/setup", true);
+        _isInitialized = await SetupManager.IsInitialized();
+        if (!_isInitialized)
+            SetupManager.NavigateToSetupRoute();
 
         await base.OnInitializedAsync();
     }
