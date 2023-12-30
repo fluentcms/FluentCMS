@@ -26,7 +26,5 @@
         _isInitialized = await SetupManager.IsInitialized();
         if (!_isInitialized)
             SetupManager.NavigateToSetupRoute();
-
-        await base.OnInitializedAsync();
     }
 }
