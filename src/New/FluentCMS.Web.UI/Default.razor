@@ -1,0 +1,21 @@
+﻿@page "/{*Route:nonfile}"
+@inherits BaseSiteComponent
+
+<PageTitle>@Page?.Title</PageTitle>
+<HeadContent>
+    @if (Page?.Layout?.Head != null)
+    {
+        @((MarkupString)Page.Layout.Head)
+    }
+</HeadContent>
+@ChildComponents()
+<a href="/setup">Setup</a>
+<br />
+<a href="/counter">Counter</a>
+<br />
+<a href="/auth/login">Login</a>
+<br />
+<a href="/auth/register">Register</a>
+<br />
+<a href="api/doc" target="_blank">Swagger</a>
+<br />
