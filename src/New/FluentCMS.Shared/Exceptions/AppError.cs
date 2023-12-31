@@ -2,13 +2,16 @@
 
 public class AppError
 {
-    public string Code { get; set; }
-    public string Description { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+
+    public AppError()
+    {
+    }
 
     public AppError(string code)
     {
         Code = code;
-        Description = code;
     }
 
     public override string ToString()

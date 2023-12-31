@@ -1,0 +1,11 @@
+@inherits BaseComponent
+
+<p class=@this.GetClasses() @attributes=@AdditionalAttributes>
+	@ChildContent
+</p>
+
+@code {
+	[Parameter]
+	[CssProperty]
+	public FormFieldStateEnum State {get; set;} = FormFieldStateEnum.Default;
+}

@@ -1,14 +1,8 @@
-﻿@inherits BaseComponent
+﻿@inject IJSRuntime JS
+@inherits BaseComponent
 
-<div class=@this.GetClasses() @attributes=@AdditionalAttributes tabindex="-1">
-
-    @* TODO: It is removed after enabling the JS invoker *@
-    @if (Open)
-    {
-        <div onclick=@Close class="bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0"></div>
-    }
-
-    <div class="wrapper">
+<div @ref=element class=@this.GetClasses() @attributes=@AdditionalAttributes tabindex="-1">
+    <div class=@this.ClassName("ModalWrapper")>
         <CascadingValue Value="this">
             <ModalContent>
                 @ChildContent
@@ -18,26 +12,49 @@
 </div>
 
 @code {
+    private IJSObjectReference module = default!;
+
+    private bool open;
+
+    public ElementReference element;
+
     [Parameter]
     [CssProperty]
     public SizeEnum Size { get; set; } = SizeEnum.Medium;
 
     [Parameter]
     [CssProperty]
-    public bool Open { get; set; }
+    public bool Open
+    {
+        get
+        {
+            return open;
+        }
+        set
+        {
+            if (value == open) return;
+
+            open = value;
+
+            module.InvokeVoidAsync(open ? "open" : "close", DotNetObjectReference.Create(this), element);
+        }
+    }
 
     [Parameter]
     public EventCallback<bool> OpenChanged { get; set; }
 
-    [Parameter]
-    [CssProperty]
-    public bool Static { get; set; }
-
+    [JSInvokable]
     public async void Close()
     {
-        if (!Static)
-        {
-            await OpenChanged.InvokeAsync(Open = false);
-        }
+        await OpenChanged.InvokeAsync(Open = false);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Core/Modal/Modal.razor.js");
+
+        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element);
     }
 }

@@ -261,7 +261,7 @@ body.f-theme-dark {
   @apply text-blue-500;
 }
 .f-theme-dark .f-button-color-primary.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-blue-500;
+  @apply text-blue-700;
 }
 
 .f-button-color-success.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -319,7 +319,7 @@ body.f-theme-dark {
   @apply text-green-500;
 }
 .f-theme-dark .f-button-color-success.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-green-500;
+  @apply text-green-700;
 }
 
 .f-button-color-info.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -377,7 +377,7 @@ body.f-theme-dark {
   @apply text-cyan-500;
 }
 .f-theme-dark .f-button-color-info.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-cyan-500;
+  @apply text-cyan-700;
 }
 
 .f-button-color-danger.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -435,7 +435,7 @@ body.f-theme-dark {
   @apply text-red-500;
 }
 .f-theme-dark .f-button-color-danger.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-red-500;
+  @apply text-red-700;
 }
 
 .f-button-color-warning.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -493,7 +493,7 @@ body.f-theme-dark {
   @apply text-yellow-500;
 }
 .f-theme-dark .f-button-color-warning.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-yellow-500;
+  @apply text-yellow-700;
 }
 
 .f-button-color-secondary.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -551,33 +551,65 @@ body.f-theme-dark {
   @apply text-gray-500;
 }
 .f-theme-dark .f-button-color-secondary.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-gray-500;
+  @apply text-gray-700;
 }
 
-.f-button-color-default {
+.f-button-color-default.f-button-ghost-false.f-button-outline-false {
   @apply text-gray-900 bg-white border border-gray-200;
 }
-.f-button-color-default.f-button-disabled-true {
+.f-button-color-default.f-button-ghost-false.f-button-outline-false.f-button-disabled-true {
   @apply opacity-50 cursor-not-allowed pointer-events-none;
 }
-.f-button-color-default:hover {
+.f-button-color-default.f-button-ghost-false.f-button-outline-false:hover {
   @apply bg-gray-100 text-blue-700;
 }
-.f-button-color-default:focus {
+.f-button-color-default.f-button-ghost-false.f-button-outline-false:focus {
   @apply ring-4 ring-gray-200;
 }
-.f-theme-dark .f-button-color-default {
+.f-theme-dark .f-button-color-default.f-button-ghost-false.f-button-outline-false {
   @apply bg-gray-600/10 text-gray-400 border-gray-600;
 }
-.f-theme-dark .f-button-color-default:hover {
+.f-theme-dark .f-button-color-default.f-button-ghost-false.f-button-outline-false:hover {
   @apply text-white bg-gray-700;
 }
-.f-theme-dark .f-button-color-default:focus {
+.f-theme-dark .f-button-color-default.f-button-ghost-false.f-button-outline-false:focus {
   @apply ring-gray-700;
 }
 
+.f-button-color-default.f-button-ghost-true.f-button-outline-false {
+  @apply text-gray-600;
+}
+.f-button-color-default.f-button-ghost-true.f-button-outline-false:hover {
+  @apply text-gray-800;
+}
+.f-theme-dark .f-button-color-default.f-button-ghost-true.f-button-outline-false {
+  @apply text-gray-500;
+}
+.f-theme-dark .f-button-color-default.f-button-ghost-true.f-button-outline-false:hover {
+  @apply text-gray-700;
+}
+
+.f-button-color-default.f-button-outline-true.f-button-ghost-false {
+  @apply text-gray-700 border border-gray-700;
+}
+.f-button-color-default.f-button-outline-true.f-button-ghost-false:hover {
+  @apply text-white bg-gray-800;
+}
+.f-button-color-default.f-button-outline-true.f-button-ghost-false:focus {
+  @apply ring-4 ring-gray-300;
+}
+.f-theme-dark .f-button-color-default.f-button-outline-true.f-button-ghost-false {
+  @apply border-gray-500 text-gray-500;
+}
+.f-theme-dark .f-button-color-default.f-button-outline-true.f-button-ghost-false:hover {
+  @apply text-white bg-gray-500;
+}
+.f-theme-dark .f-button-color-default.f-button-outline-true.f-button-ghost-false:focus {
+  @apply ring-gray-800;
+}
+
 .f-button-group {
-  @apply flex justify-end gap-2;
+  @apply inline-flex justify-end gap-2;
 }
 .f-button-group.f-button-group-wrap-true {
   @apply flex-wrap;
@@ -640,6 +672,35 @@ body.f-theme-dark {
   @apply text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white;
 }
 
+.f-confirm {
+  @apply hidden fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0 justify-center items-center;
+}
+.f-confirm-open-true {
+  @apply flex;
+}
+
+.f-confirm-body {
+  @apply p-4 md:p-5 text-center;
+}
+.f-confirm-body > .f-icon {
+  @apply block mx-auto mb-4 text-gray-400 w-12 h-12 dark:text-gray-200;
+}
+.f-confirm-body > .f-button-group {
+  /* TODO: Remove it after fix in ButtonGroup component */
+  @apply inline-flex;
+}
+
+.f-confirm-content {
+  @apply relative bg-white rounded-lg shadow dark:bg-gray-700;
+}
+.f-confirm-content > .f-close-button {
+  @apply absolute top-3 end-2.5;
+}
+
+.f-confirm-wrapper {
+  @apply relative p-4 w-full max-w-md max-h-full;
+}
+
 .f-dropdown {
   @apply relative;
 }
@@ -656,10 +717,10 @@ body.f-theme-dark {
   @apply hidden;
 }
 .f-dropdown-item-link {
-  @apply block px-4 py-2;
+  @apply block ps-4 pe-8 whitespace-nowrap py-2;
 }
 .f-dropdown-menu {
-  @apply absolute z-10 bg-white divide-y divide-gray-100 rounded-lg shadow w-44;
+  @apply absolute z-10 bg-white divide-y divide-gray-100 rounded-lg shadow;
 }
 .f-dropdown-menu-placement-top {
   @apply bottom-full;
@@ -767,38 +828,125 @@ body.f-theme-dark {
 .f-form-field {
   @apply mb-6;
 }
+.f-form-field-group {
+  @apply relative;
+}
+.f-form-field-has-start-icon-true > .f-form-field-group > :not(.f-form-field-start-icon-wrapper):not(.f-form-field-end-icon-wrapper) {
+  @apply ps-10;
+}
+.f-form-field-has-end-icon-true > .f-form-field-group > :not(.f-form-field-start-icon-wrapper):not(.f-form-field-end-icon-wrapper) {
+  @apply pe-10;
+}
+.f-form-field-start-icon-wrapper {
+  @apply absolute top-0 start-0 flex items-center py-3 ps-3.5 pointer-events-none;
+}
+.f-form-field-end-icon-wrapper {
+  @apply absolute top-0 end-0 flex items-center py-3 pe-3.5 pointer-events-none;
+}
+.f-form-field-state-default .f-icon {
+  @apply text-gray-500;
+}
+.f-form-field-state-valid .f-icon {
+  @apply text-green-500;
+}
+.f-form-field-state-invalid .f-icon {
+  @apply text-red-500;
+}
+.f-form-field-hint {
+  @apply mt-2 text-sm;
+}
+.f-form-field-hint-state-default {
+  @apply text-gray-500;
+}
+.f-theme-dark .f-form-field-hint-state-default {
+  @apply text-gray-400;
+}
+.f-form-field-hint-state-default .f--icon {
+  @apply text-gray-500;
+}
+.f-form-field-hint-state-valid {
+  @apply text-green-600;
+}
+.f-theme-dark .f-form-field-hint-state-valid {
+  @apply text-green-500;
+}
+.f-form-field-hint-state-valid .f--icon {
+  @apply text-green-500;
+}
+.f-form-field-hint-state-invalid {
+  @apply text-red-600;
+}
+.f-theme-dark .f-form-field-hint-state-invalid {
+  @apply text-red-500;
+}
+.f-form-field-hint-state-invalid .f--icon {
+  @apply text-red-500;
+}
 
-.f-label {
+.f-form-label {
   @apply block mb-2 text-sm font-medium text-gray-900;
 }
-.f-label-required-true::after {
+.f-form-label-state-default {
+  @apply text-gray-900;
+}
+.f-theme-dark .f-form-label-state-default {
+  @apply text-white;
+}
+.f-form-label-state-valid {
+  @apply text-green-700;
+}
+.f-theme-dark .f-form-label-state-valid {
+  @apply text-green-500;
+}
+.f-form-label-state-invalid {
+  @apply text-red-700;
+}
+.f-theme-dark .f-form-label-state-invalid {
+  @apply text-red-500;
+}
+.f-form-label-required-true::after {
   content: "*";
   @apply ms-1 text-red-500;
 }
-.f-theme-dark .f-label {
-  @apply text-white;
-}
 
 .f-input {
-  @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5;
+  @apply border text-sm rounded-lg block w-full p-2.5;
 }
-.f-input-has-icon-true {
-  @apply ps-10;
+.f-input-state-default {
+  @apply bg-gray-50 border-gray-300 text-gray-900;
 }
-.f-input-icon-wrapper {
-  @apply absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none;
-}
-.f-input:focus {
+.f-input-state-default:focus {
   @apply ring-blue-500 border-blue-500;
 }
-.f-theme-dark .f-input {
+.f-theme-dark .f-input-state-default {
   @apply bg-gray-700 border-gray-600 placeholder-gray-400 text-white;
 }
-.f-theme-dark .f-input:focus {
+.f-theme-dark .f-input-state-default:focus {
   @apply ring-blue-500 border-blue-500;
 }
-.f-input-group {
-  @apply relative mb-6;
+.f-input-state-valid {
+  @apply bg-green-50 border-green-500 text-green-900 placeholder-green-700;
+}
+.f-input-state-valid:focus {
+  @apply ring-green-500 border-green-500;
+}
+.f-theme-dark .f-input-state-valid {
+  @apply text-green-400 bg-gray-700 border-green-500 placeholder-green-500;
+}
+.f-theme-dark .f-input-state-valid:focus {
+  @apply ring-green-500 border-green-500;
+}
+.f-input-state-invalid {
+  @apply bg-red-50 border-red-500 text-red-900 placeholder-red-700;
+}
+.f-input-state-invalid:focus {
+  @apply ring-red-500 border-red-500;
+}
+.f-theme-dark .f-input-state-invalid {
+  @apply text-red-400 bg-gray-700 border-red-500 placeholder-red-500;
+}
+.f-theme-dark .f-input-state-invalid:focus {
+  @apply ring-red-500 border-red-500;
 }
 
 .f-icon {
@@ -989,6 +1137,85 @@ body.f-theme-dark {
 .f-select {
   @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
 }
+.f-select-state-default {
+  @apply bg-gray-50 border-gray-300 text-gray-900;
+}
+.f-select-state-default:focus {
+  @apply ring-blue-500 border-blue-500;
+}
+.f-theme-dark .f-select-state-default {
+  @apply bg-gray-700 border-gray-600 placeholder-gray-400 text-white;
+}
+.f-theme-dark .f-select-state-default:focus {
+  @apply ring-blue-500 border-blue-500;
+}
+.f-select-state-valid {
+  @apply bg-green-50 border-green-500 text-green-900 placeholder-green-700;
+}
+.f-select-state-valid:focus {
+  @apply ring-green-500 border-green-500;
+}
+.f-theme-dark .f-select-state-valid {
+  @apply text-green-400 bg-gray-700 border-green-500 placeholder-green-500;
+}
+.f-theme-dark .f-select-state-valid:focus {
+  @apply ring-green-500 border-green-500;
+}
+.f-select-state-invalid {
+  @apply bg-red-50 border-red-500 text-red-900 placeholder-red-700;
+}
+.f-select-state-invalid:focus {
+  @apply ring-red-500 border-red-500;
+}
+.f-theme-dark .f-select-state-invalid {
+  @apply text-red-400 bg-gray-700 border-red-500 placeholder-red-500;
+}
+.f-theme-dark .f-select-state-invalid:focus {
+  @apply ring-red-500 border-red-500;
+}
+
+.f-textarea {
+  @apply block p-2.5 w-full text-sm rounded-lg border;
+}
+.f-textarea-has-icon-true {
+  @apply ps-10;
+}
+.f-textarea-state-default {
+  @apply bg-gray-50 border-gray-300 text-gray-900;
+}
+.f-textarea-state-default:focus {
+  @apply ring-blue-500 border-blue-500;
+}
+.f-theme-dark .f-textarea-state-default {
+  @apply bg-gray-700 border-gray-600 placeholder-gray-400 text-white;
+}
+.f-theme-dark .f-textarea-state-default:focus {
+  @apply ring-blue-500 border-blue-500;
+}
+.f-textarea-state-valid {
+  @apply bg-green-50 border-green-500 text-green-900 placeholder-green-700;
+}
+.f-textarea-state-valid:focus {
+  @apply ring-green-500 border-green-500;
+}
+.f-theme-dark .f-textarea-state-valid {
+  @apply text-green-400 bg-gray-700 border-green-500 placeholder-green-500;
+}
+.f-theme-dark .f-textarea-state-valid:focus {
+  @apply ring-green-500 border-green-500;
+}
+.f-textarea-state-invalid {
+  @apply bg-red-50 border-red-500 text-red-900 placeholder-red-700;
+}
+.f-textarea-state-invalid:focus {
+  @apply ring-red-500 border-red-500;
+}
+.f-theme-dark .f-textarea-state-invalid {
+  @apply text-red-400 bg-gray-700 border-red-500 placeholder-red-500;
+}
+.f-theme-dark .f-textarea-state-invalid:focus {
+  @apply ring-red-500 border-red-500;
+}
 
 .f-modal {
   @apply hidden fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0 justify-center items-center;
@@ -996,16 +1223,16 @@ body.f-theme-dark {
 .f-modal-open-true {
   @apply flex;
 }
-.f-modal > .wrapper {
+.f-modal > .f-modal-wrapper {
   @apply relative max-h-full w-full;
 }
-.f-modal-size-small > .wrapper {
+.f-modal-size-small > .f-modal-wrapper {
   @apply max-w-md;
 }
-.f-modal-size-medium > .wrapper {
+.f-modal-size-medium > .f-modal-wrapper {
   @apply max-w-lg;
 }
-.f-modal-size-large > .wrapper {
+.f-modal-size-large > .f-modal-wrapper {
   @apply max-w-4xl;
 }
 
