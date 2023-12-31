@@ -4,7 +4,7 @@ public partial class StepDefinitions
     [Then("all users are returned")]
     public void ThenAllUsersAreReturned()
     {
-        var users = context.Get<UserDetailResponseIApiPagingResult>();
+        var users = context.Get<UserResponseIApiPagingResult>();
         users.Errors.ShouldBeEmpty();
         users.Data.ShouldNotBeNull();
         users.Data.ShouldNotBeEmpty();
