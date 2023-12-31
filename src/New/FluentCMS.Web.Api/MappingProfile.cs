@@ -47,7 +47,6 @@ public class MappingProfile : Profile
         #region User
 
         CreateMap<UserCreateRequest, User>();
-        CreateMap<User, UserResponse>();
         CreateMap<UserUpdateRequest, User>();
         CreateMap<UserRegisterRequest, User>();
         CreateMap<User, UserDetailResponse>();
