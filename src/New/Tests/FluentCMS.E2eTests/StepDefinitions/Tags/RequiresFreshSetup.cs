@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.E2eTests.StepDefinitions;
+﻿using System.Numerics;
+
+namespace FluentCMS.E2eTests.StepDefinitions;
 public partial class StepDefinitions
 {
     [Before("RequiresFreshSetup", Order = 20)]
@@ -17,6 +19,10 @@ public partial class StepDefinitions
         table.AddRow("username", "superadmin");
         table.AddRow("password", "Passw0rd!");
         table.AddRow("email", "superadmin@localhost");
+        table.AddRow("AppTemplateName", "Blank");
+        table.AddRow("SiteTemplateName", "Blank");
+        table.AddRow("AdminDomain", "https://localhost:7230");
+
         await WhenIStartSetup(table);
         await ThenWaitSeconds(2);
         await WhenIFetchSetupIsInitialized();
