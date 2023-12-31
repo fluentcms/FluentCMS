@@ -1,0 +1,12 @@
+@page "/previews/components/tooltip"
+@layout ComponentsLayout
+@rendermode InteractiveServer
+
+<Button ref=@ButtonRef>Tooltip Bottom</Button>
+
+<Tooltip target=ButtonRef Placement="TooltipPlacementEnum.Bottom">Tooltip Content</Tooltip>
+
+@code {
+    public ElementReference ButtonRef;
+
+}
