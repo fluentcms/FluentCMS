@@ -1,37 +1,54 @@
-import { computePosition, autoUpdate } from '../../../js/floating-ui-dom.min.js'
+import { computePosition, autoUpdate } from 'https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3/+esm'
 
-const tooltips = new Map();
 const cleanups = new Map();
 
 export function update(dotnet, element, config) {
-    const tooltip = tooltips.get(element)
 
     console.log('update')
 }
-export function initialize(dotnet, target, element) {
+
+
+export function initialize(dotnet, target, element, config) {
+    console.log('initialize', dotnet, target, element, config)
     terminate(dotnet, element)
-    if(!target) {
+    if(!target || target.__internalId == null) {
         target = element.previousElementSibling;
     }
 
-    const cleanup = autoUpdate(target, element, () => {
-        computePosition(target, element).then(({x, y}) => {
-            console.log(x, y)
-            Object.assign(tooltip, {
+    function onMouseEnter(e) {
+        element.classList.add('f-tooltip-show')
+    }
+
+
+    function onMouseLeave(e) {
+        element.classList.remove('f-tooltip-show')
+    }
+
+    target.addEventListener('mouseenter', onMouseEnter)
+    target.addEventListener('mouseleave', onMouseLeave)
+
+    const cleanupFloatingUi = autoUpdate(target, element, () => {
+        computePosition(target, element, {
+            placement: config.placement
+        }).then(({x, y}) => {
+            Object.assign(element.style, {
                 left: `${x}px`,
                 top: `${y}px`
             })
         })
     })
 
-    tooltips.set(element, cleanup)
+    function cleanup() {
+        target.removeEventListener('mouseenter', onMouseEnter)
+        target.removeEventListener('mouseleave', onMouseLeave)
+
+        cleanupFloatingUi()
+    }
+
     cleanups.set(element, cleanup)
 }
 
-export function terminate() {
-    const tooltip = tooltips.get(element)
-
-    tooltips.delete(element);
+export function terminate(dotnet, element) {
     cleanups.delete(element);
 }
 
