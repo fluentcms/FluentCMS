@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Services;
 
-public interface IRoleService : IService
+public interface IRoleService : IAutoRegisterService
 {
     Task<IEnumerable<Role>> GetAll(Guid appId, CancellationToken cancellationToken = default);
     Task<Role> Create(Role role, CancellationToken cancellationToken = default);

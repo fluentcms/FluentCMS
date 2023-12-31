@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Services;
 
-public interface IPageService
+public interface IPageService : IAutoRegisterService
 {
     Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     Task<Page> GetById(Guid id, CancellationToken cancellationToken = default);
@@ -10,7 +10,9 @@ public interface IPageService
     Task<Page> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class PageService(IPageRepository pageRepository, ISiteRepository siteRepository) : IPageService
+public class PageService(
+    IPageRepository pageRepository,
+    ISiteRepository siteRepository) : IPageService
 {
 
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)

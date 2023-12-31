@@ -176,7 +176,7 @@ $prefix-button: $prefix + "button";
     }
 
 .#{$prefix-button}-group {
-    @apply flex justify-end gap-2;
+    @apply inline-flex justify-end gap-2;
 
     &.#{$prefix-button}-group-wrap-true {
         @apply flex-wrap;

@@ -1,0 +1,108 @@
+@page "/previews/components/dropdown"
+@layout ComponentsLayout
+@rendermode InteractiveServer
+
+<PageHeader HasBack Title="Dropdown"/>
+<div class="p-4">
+    <ButtonGroup>
+        <Dropdown AutoClose>
+           <DropdownButton Color="ColorEnum.Primary">AutoClose</DropdownButton>
+           <DropdownMenu Placement="DropdownPlacementEnum.Bottom">
+               <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
+               <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
+               <DropdownItem Href="/previews/components">Components</DropdownItem>
+               <DropdownItem OnClick="() => DropdownCounter += 1">Increment (@DropdownCounter)</DropdownItem>
+           </DropdownMenu>
+       </Dropdown>
+        <Dropdown>
+           <DropdownButton Color="ColorEnum.Danger">Bottom</DropdownButton>
+           <DropdownMenu Placement="DropdownPlacementEnum.Bottom">
+               <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
+               <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
+               <DropdownItem Href="/previews/components">Components</DropdownItem>
+               <DropdownItem OnClick="() => DropdownCounter += 1">Increment (@DropdownCounter)</DropdownItem>
+           </DropdownMenu>
+       </Dropdown>
+       <Dropdown>
+           <DropdownButton>BottomEnd</DropdownButton>
+           <DropdownMenu Placement="DropdownPlacementEnum.BottomEnd">
+               <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
+               <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
+               <DropdownItem Href="/previews/components">Components</DropdownItem>
+               <DropdownItem OnClick="() => DropdownCounter += 1">Increment (@DropdownCounter)</DropdownItem>
+           </DropdownMenu>
+       </Dropdown>
+       <Dropdown>
+           <DropdownButton>Top</DropdownButton>
+           <DropdownMenu Placement="DropdownPlacementEnum.Top">
+               <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
+               <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
+               <DropdownItem Href="/previews/components">Components</DropdownItem>
+               <DropdownItem OnClick="() => DropdownCounter += 1">Increment (@DropdownCounter)</DropdownItem>
+           </DropdownMenu>
+       </Dropdown>
+        <Dropdown>
+           <DropdownButton>TopEnd</DropdownButton>
+           <DropdownMenu Placement="DropdownPlacementEnum.TopEnd">
+               <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
+               <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
+               <DropdownItem Href="/previews/components">Components</DropdownItem>
+               <DropdownItem OnClick="() => DropdownCounter += 1">Increment (@DropdownCounter)</DropdownItem>
+           </DropdownMenu>
+       </Dropdown>
+       <Dropdown>
+           <DropdownButton>Left</DropdownButton>
+           <DropdownMenu Placement="DropdownPlacementEnum.Left">
+               <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
+               <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
+               <DropdownItem Href="/previews/components">Components</DropdownItem>
+               <DropdownItem OnClick="() => DropdownCounter += 1">Increment (@DropdownCounter)</DropdownItem>
+           </DropdownMenu>
+       </Dropdown>
+       <Dropdown>
+           <DropdownButton>LeftEnd</DropdownButton>
+           <DropdownMenu Placement="DropdownPlacementEnum.LeftEnd">
+               <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
+               <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
+               <DropdownItem Href="/previews/components">Components</DropdownItem>
+               <DropdownItem OnClick="() => DropdownCounter += 1">Increment (@DropdownCounter)</DropdownItem>
+           </DropdownMenu>
+       </Dropdown>
+       <Dropdown>
+           <DropdownButton>Right</DropdownButton>
+           <DropdownMenu Placement="DropdownPlacementEnum.Right">
+               <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
+               <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
+               <DropdownItem Href="/previews/components">Components</DropdownItem>
+               <DropdownItem OnClick="() => DropdownCounter += 1">Increment (@DropdownCounter)</DropdownItem>
+           </DropdownMenu>
+       </Dropdown>
+       <Dropdown>
+           <DropdownButton>RightEnd</DropdownButton>
+           <DropdownMenu Placement="DropdownPlacementEnum.RightEnd">
+               <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
+               <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
+               <DropdownItem Href="/previews/components">Components</DropdownItem>
+               <DropdownItem OnClick="() => DropdownCounter += 1">Increment (@DropdownCounter)</DropdownItem>
+           </DropdownMenu>
+       </Dropdown>
+
+   </ButtonGroup>
+
+   <Dropdown>
+       <DropdownButton Color="ColorEnum.Warning">Filters</DropdownButton>
+       <DropdownMenu Class="custom-dropdown-menu">
+           <ButtonGroup>
+               <Button Color="ColorEnum.Primary">First</Button>
+               <Button Color="ColorEnum.Primary">Second</Button>
+               <Button Color="ColorEnum.Primary">Third</Button>
+               <Button Color="ColorEnum.Primary">Fourth</Button>
+           </ButtonGroup>
+       </DropdownMenu>
+   </Dropdown>
+</div>
+
+@code {
+    private int DropdownCounter { get; set; } = 0;
+}
+

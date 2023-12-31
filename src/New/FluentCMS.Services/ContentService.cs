@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Services;
 
-public interface IContentService : IService
+public interface IContentService : IAutoRegisterService
 {
     Task<IEnumerable<Content>> GetAll(Guid appId, Guid contentTypeId, CancellationToken cancellationToken = default);
     Task<Content> Create(Content content, CancellationToken cancellationToken = default);

@@ -8,7 +8,7 @@ public class GlobalSettingsRepository : IGlobalSettingsRepository
 
     public GlobalSettingsRepository(IMongoDBContext mongoDbContext, IAuthContext authContext)
     {
-        _collection = mongoDbContext.Database.GetCollection<GlobalSettings>("global_settings");
+        _collection = mongoDbContext.Database.GetCollection<GlobalSettings>(nameof(GlobalSettings).ToLowerInvariant());
         _authContext = authContext;
         _mongoDbContext = mongoDbContext;
     }

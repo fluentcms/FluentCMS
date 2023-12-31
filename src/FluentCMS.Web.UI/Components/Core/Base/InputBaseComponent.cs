@@ -28,7 +28,14 @@ public abstract class InputBaseComponent<T> : BaseComponent
     public bool Disabled { get; set; } = false;
 
     [Parameter]
+    public string Label { get; set; }
+
+    [Parameter]
     public string Name { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public FormFieldStateEnum State { get; set; } = FormFieldStateEnum.Default;
 
     // current value to invoke ValueChanged
     protected T? CurrentValue { get; set; }

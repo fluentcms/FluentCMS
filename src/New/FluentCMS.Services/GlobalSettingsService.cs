@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Services;
 
-public interface IGlobalSettingsService : IService
+public interface IGlobalSettingsService : IAutoRegisterService
 {
     Task<GlobalSettings> Update(GlobalSettings settings, CancellationToken cancellationToken = default);
     Task<GlobalSettings?> Get(CancellationToken cancellationToken = default);
