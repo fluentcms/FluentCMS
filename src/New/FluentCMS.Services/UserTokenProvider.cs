@@ -49,7 +49,7 @@ public class JwtUserTokenProvider : IUserTokenProvider
     private UserToken GenerateToken(User user, bool isSuperAdmin)
     {
         var jwtTokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.UTF8.GetBytes(_options.Secret);
+        var key = SHA512.Create().ComputeHash(Encoding.UTF8.GetBytes(_options.Secret));
         var claims = GetJwtClaims(user, isSuperAdmin);
 
         var tokenDescriptor = new SecurityTokenDescriptor
@@ -57,7 +57,7 @@ public class JwtUserTokenProvider : IUserTokenProvider
             Issuer = _options.Issuer,
             Audience = _options.Audience,
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddSeconds(_options.TokenExpiry),
+            Expires = _options.TokenExpiry == -1 ? null : DateTime.UtcNow.AddSeconds(_options.TokenExpiry),
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha512Signature),
             NotBefore = DateTime.UtcNow,
             IssuedAt = DateTime.UtcNow
@@ -67,7 +67,7 @@ public class JwtUserTokenProvider : IUserTokenProvider
         return new UserToken
         {
             AccessToken = new JwtSecurityTokenHandler().WriteToken(token),
-            Expiry = tokenDescriptor.Expires.Value
+            Expiry = tokenDescriptor.Expires ?? DateTime.MaxValue
         };
     }
 
@@ -164,9 +164,9 @@ public class UserToken
 
 public class JwtOptions
 {
-    public string Issuer { get; set; } = string.Empty;
-    public string Audience { get; set; } = string.Empty;
+    public string Issuer { get; set; } = "FluentCMS";
+    public string Audience { get; set; } = "FluentCMS";
     public double TokenExpiry { get; set; } = -1; // second, -1 means never expire
     public double RefreshTokenExpiry { get; set; } = -1; // second, -1 means never expire
-    public string Secret { get; set; } = string.Empty;
+    public string Secret { get; set; } = "SuperSecretPasswordForDevelopment";
 }
