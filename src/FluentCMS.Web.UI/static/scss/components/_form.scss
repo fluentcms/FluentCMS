@@ -2,7 +2,7 @@ $prefix-label: $prefix + 'form-label';
 $prefix-form-field: $prefix + 'form-field';
 
 .#{$prefix-form-field} {
-    @apply mb-6;
+    @apply mb-6 relative inline-flex;
 
     &-group {
         @apply relative;
