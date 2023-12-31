@@ -1,0 +1,36 @@
+﻿@inherits BaseSiteComponent
+
+@if (Page?.Sections != null)
+{
+    @foreach (var section in Page.Sections)
+    {
+        <div class="f-section">
+            @foreach (var plugin in section.Value.OrderBy(p => p.Order))
+            {
+                <PluginContainer Plugin=@plugin>
+                    <DynamicComponent Type=@GetType(plugin) Parameters=@GetParameters(plugin) />
+                </PluginContainer>
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public string Name { get; set; } = default!;
+
+    private Dictionary<string, object> GetParameters(PluginDetailResponse plugin)
+    {
+        return new Dictionary<string, object>
+        {
+            { "Plugin", plugin }
+        };
+    }
+
+    private Type? GetType(PluginDetailResponse plugin)
+    {
+        var assembly = typeof(Section).Assembly;
+
+        return assembly.DefinedTypes.FirstOrDefault(x => x.Name == plugin.Definition.Type);
+    }
+}
