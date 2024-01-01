@@ -1,11 +1,9 @@
-﻿@page "/setup"
-
-@inject SetupManager SetupManager
+﻿@inject SetupManager SetupManager
+@inject NavigationManager NavigationManager
 
 <PageTitle>Setup</PageTitle>
-<h1>Setup</h1>
 
-@if (!IsInitialized)
+@if (!Initialized)
 {
     <div>
         <div>
@@ -27,11 +25,11 @@
 else
 {
     <div>
-        <p>Site is already initialized</p>
+        <p>Site is already done!</p>
     </div>
 }
 @code {
-    public bool IsInitialized { get; set; } = false;
+    public bool Initialized { get; set; } = false;
 
     public SetupRequest SetupModel { get; set; } = new SetupRequest
         {
@@ -44,12 +42,13 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        IsInitialized = await SetupManager.IsInitialized();
+        Initialized = await SetupManager.IsInitialized();
+        SetupModel.AdminDomain = new Uri(NavigationManager.BaseUri).Authority;
     }
 
     private async Task SetupStart()
     {
         if (await SetupManager.Start(SetupModel))
-            SetupManager.NavigateToRoot();
+            NavigationManager.NavigateTo("/", true);
     }
 }

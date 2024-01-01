@@ -1,16 +1,48 @@
-﻿using HtmlAgilityPack;
+﻿using FluentCMS.Web.UI.Services;
+using HtmlAgilityPack;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
-using System.Text.RegularExpressions;
 
 namespace FluentCMS.Web.UI;
 
 public partial class Default
 {
+
     public const string ATTRIBUTE = "FluentCMS";
+
+    public PageFullDetailResponse? Page { get; set; }
+
+    [Inject]
+    public NavigationManager NavigationManager { set; get; } = default!;
+
+    [Inject]
+    public SetupManager SetupManager { set; get; } = default!;
+
+    [Inject]
+    public PageClient PageClient { set; get; } = default!;
 
     [Parameter]
     public string? Route { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!await SetupManager.IsInitialized())
+        {
+            Page = await SetupManager.GetSetupPage();
+            return;
+        }
+
+        try
+        {
+            var uri = new Uri(NavigationManager.Uri);
+            var pageResponse = await PageClient.GetByPathAsync(uri.Authority, uri.LocalPath);
+            if (pageResponse.Data != null)
+                Page = pageResponse.Data;
+        }
+        catch
+        {
+        }
+    }
 
     protected RenderFragment ChildComponents() => builder =>
     {
@@ -72,6 +104,7 @@ public partial class Default
                 foreach (var attribute in attributes)
                 {
                     builder.AddComponentParameter(2, attribute.Name, attribute.Value);
+                    builder.AddComponentParameter(3, "Page", Page);
                 }
                 // add children
                 AddChildrenToDom(builder, GetChildren(child));
@@ -92,11 +125,5 @@ public partial class Default
         var assembly = typeof(Section).Assembly;
         var typeInfo = assembly.DefinedTypes.FirstOrDefault(x => x.Name == typeName);
         return typeInfo?.AsType();
-    }
-
-    private Dictionary<string, string> ParseAttributes(string layout)
-    {
-        var parameterParserRegex = new Regex("(\\s(?<name>\\w+)=\\\"?(?<value>\\w+)\\\"?)+");
-        return new Dictionary<string, string>(parameterParserRegex.Matches(layout).Select(x => new KeyValuePair<string, string>(x.Groups["name"].Value, x.Groups["value"].Value)));
     }
 }
