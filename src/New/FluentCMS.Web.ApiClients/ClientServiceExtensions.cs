@@ -1,4 +1,4 @@
-﻿using FluentCMS.Web.UI.ApiClients;
+﻿using FluentCMS.Web.ApiClients;
 using System.Net.Http.Headers;
 using System.Reflection;
 
