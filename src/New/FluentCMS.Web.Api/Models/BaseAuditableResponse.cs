@@ -1,20 +1,20 @@
 ﻿namespace FluentCMS.Web.Api.Models;
 
-public class BaseAuditableResponse
+public abstract class BaseAuditableResponse
 {
     public Guid Id { get; set; }
     public string CreatedBy { get; set; } = default!;
-    public DateTime? CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
     public string? ModifiedBy { get; set; }
-    public DateTime ModifiedAt { get; set; }
+    public DateTime? ModifiedAt { get; set; }
 }
 
-public class BaseAppAssociatedResponse : BaseAuditableResponse
+public abstract class BaseAppAssociatedResponse : BaseAuditableResponse
 {
     public Guid AppId { get; set; }
 }
 
-public class BaseSiteAssociatedResponse : BaseAuditableResponse
+public abstract class BaseSiteAssociatedResponse : BaseAuditableResponse
 {
     public Guid SiteId { get; set; }
 }

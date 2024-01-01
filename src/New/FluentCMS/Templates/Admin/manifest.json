@@ -1,0 +1,99 @@
+{
+    "Site": {
+        "Name": "FluentCMS Administration",
+        "Description": "FluentCMS Administration Panel"
+    },
+    "Layouts": [
+        {
+            "Name": "AdminLayout",
+            "IsDefault": true
+        },
+        {
+            "Name": "AuthLayout",
+            "IsDefault": false
+        },
+        {
+            "Name": "SiteLayout",
+            "IsDefault": false
+        }
+    ],
+    "PluginDefinitions": [
+        {
+            "Name": "Login",
+            "Description": "Login Plugin",
+            "Type": "LoginViewPlugin"
+        },
+        {
+            "Name": "Forgot Password",
+            "Description": "Forgot Password Plugin",
+            "Type": "ForgotPasswordViewPlugin"
+        },
+        {
+            "Name": "Register",
+            "Description": "Register Plugin",
+            "Type": "RegisterViewPlugin"
+        },
+        {
+            "Name": "Reset Password",
+            "Description": "Reset Password Plugin",
+            "Type": "ResetPasswordViewPlugin"
+        }
+    ],
+    "Pages": [
+        {
+            "Title": "Home",
+            "Path": "/"
+        },
+        {
+            "Title": "Authentication",
+            "Path": "/auth",
+            "Children": [
+                {
+                    "Title": "Login",
+                    "Path": "/login",
+                    "Layout": "AuthLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "Login",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Register",
+                    "Path": "/register",
+                    "Layout": "AuthLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "Register",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Reset Password",
+                    "Path": "/reset-password",
+                    "Layout": "AuthLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "Reset Password",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Forgot Password",
+                    "Path": "/forgot-password",
+                    "Layout": "AuthLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "Forgot Password",
+                            "Section": "Main"
+                        }
+                    ]
+                }
+            ]
+        }
+
+    ]
+}

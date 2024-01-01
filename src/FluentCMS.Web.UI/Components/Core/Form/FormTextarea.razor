@@ -1,5 +1,20 @@
-<FormField Id=@Id Label=@Label>
-    <Textarea Rows=@Rows Placeholder=@Placeholder Id=@Id Required=@Required @attributes=@RestProps @bind-Value=@Value/>
+@inherits InputBaseComponent<string>
+
+<FormField Id=@Id
+    Label=@Label
+	Hint=@Hint
+    Required=@Required
+    State=@State
+    IconStart=@IconStart
+    IconEnd=@IconEnd>
+
+    <Textarea
+        Rows=@Rows
+        Placeholder=@Placeholder
+        Id=@Id
+        Required=@Required
+        @attributes=@AdditionalAttributes
+    @bind-Value=@Value/>
 </FormField>
 
 @code {
@@ -16,11 +31,18 @@
     public string Label {get; set;} = "";
 
     [Parameter]
+    public string Hint {get; set;}
+
+
+    [Parameter]
     public bool Required {get; set;} = false;
 
     [Parameter]
     public string Value {get; set;}
 
-    [Parameter(CaptureUnmatchedValues = true)]
-    public Dictionary<string, object> RestProps {get; set;}
+	[Parameter]
+	public IconNameEnum IconStart {get; set;} = IconNameEnum.Default;
+
+	[Parameter]
+	public IconNameEnum IconEnd {get; set;} = IconNameEnum.Default;
 }

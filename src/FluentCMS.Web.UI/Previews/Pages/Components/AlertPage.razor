@@ -1,0 +1,13 @@
+@page "/previews/components/alert"
+@rendermode InteractiveServer
+@layout ComponentsLayout
+
+
+<PageHeader HasBack Title="Alerts"/>
+
+<div class="py-4 flex flex-col gap-4">
+    <Alert Type="AlertTypeEnum.Success"> Change a few things up and try submitting again.</Alert>
+    <Alert Dismissible Type="AlertTypeEnum.Warning"> Change a few things up and try submitting again.</Alert>
+     <Alert Type="AlertTypeEnum.Danger"> Change a few things up and try submitting again.</Alert>
+     <Alert Type="AlertTypeEnum.Info"> Change a few things up and try submitting again.</Alert>
+ </div>

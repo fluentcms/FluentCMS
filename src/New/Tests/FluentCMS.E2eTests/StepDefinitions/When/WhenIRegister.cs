@@ -1,6 +1,4 @@
-﻿using FluentCMS.E2eTests.ApiClients;
-
-namespace FluentCMS.E2eTests.StepDefinitions;
+﻿namespace FluentCMS.E2eTests.StepDefinitions;
 public partial class StepDefinitions
 {
     [When("I Register")]

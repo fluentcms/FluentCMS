@@ -1,5 +1,3 @@
-using FluentCMS.E2eTests.ApiClients;
-
 namespace FluentCMS.E2eTests.StepDefinitions;
 public partial class StepDefinitions
 {
@@ -7,7 +5,7 @@ public partial class StepDefinitions
     public async Task WhenIUpdateAUserAsync()
     {
         var userClient = context.Get<UserClient>();
-        var userId = context.Get<UserResponseIApiResult>().Data.Id;
+        var userId = context.Get<UserDetailResponseIApiResult>().Data.Id;
         var updateBody = new UserUpdateRequest() {
             Id = userId,
             Email = "UpdatedDummyEmail@localhost",

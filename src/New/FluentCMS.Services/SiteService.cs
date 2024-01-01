@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Services;
 
-public interface ISiteService : IService
+public interface ISiteService : IAutoRegisterService
 {
     Task<IEnumerable<Site>> GetAll(CancellationToken cancellationToken = default);
     Task<Site> GetById(Guid id, CancellationToken cancellationToken = default);
@@ -42,6 +42,8 @@ public class SiteService(ISiteRepository siteRepository) : ISiteService
         // create the site or throw an exception if it fails
         var newSite = await siteRepository.Create(site, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteUnableToCreate);
+
+
 
         return newSite;
     }

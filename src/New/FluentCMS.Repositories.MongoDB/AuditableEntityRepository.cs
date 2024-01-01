@@ -5,7 +5,7 @@ public abstract class AuditableEntityRepository<TEntity> : EntityRepository<TEnt
 {
     protected readonly IAuthContext AuthContext;
 
-    public AuditableEntityRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
+    public AuditableEntityRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext)
     {
         AuthContext = authContext;
     }
