@@ -13,7 +13,7 @@
             "IsDefault": false
         },
         {
-            "Name": "SiteLayout",
+            "Name": "SetupLayout",
             "IsDefault": false
         }
     ],
@@ -37,12 +37,23 @@
             "Name": "Reset Password",
             "Description": "Reset Password Plugin",
             "Type": "ResetPasswordViewPlugin"
+        },
+        {
+            "Name": "Counter",
+            "Description": "Counter Plugin",
+            "Type": "Counter"
         }
     ],
     "Pages": [
         {
             "Title": "Home",
-            "Path": "/"
+            "Path": "/",
+            "Plugins": [
+                {
+                    "Definition": "Counter",
+                    "Section": "Main"
+                }
+            ]
         },
         {
             "Title": "Authentication",
@@ -94,6 +105,5 @@
                 }
             ]
         }
-
     ]
 }
