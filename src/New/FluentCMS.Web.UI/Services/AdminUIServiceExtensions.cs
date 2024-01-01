@@ -8,7 +8,7 @@ public static class AdminUIServiceExtensions
     {
         services.AddApiClients();
         services.AddScoped<SetupManager>();
-        services.AddScoped<ISiteState, SiteState>();
+        services.AddScoped<SiteState>();
 
         return services;
     }
