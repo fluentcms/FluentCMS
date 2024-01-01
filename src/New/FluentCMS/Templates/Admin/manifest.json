@@ -11,10 +11,6 @@
         {
             "Name": "AuthLayout",
             "IsDefault": false
-        },
-        {
-            "Name": "SetupLayout",
-            "IsDefault": false
         }
     ],
     "PluginDefinitions": [
