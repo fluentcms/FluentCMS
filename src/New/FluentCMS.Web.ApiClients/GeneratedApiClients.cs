@@ -17,7 +17,7 @@
 #pragma warning disable 8603 // Disable "CS8603 Possible null reference return"
 #pragma warning disable 8604 // Disable "CS8604 Possible null reference argument for parameter"
 
-namespace FluentCMS.Web.UI.ApiClients
+namespace FluentCMS.Web.ApiClients
 {
     using System = global::System;
 
@@ -1802,7 +1802,7 @@ namespace FluentCMS.Web.UI.ApiClients
                 throw new System.ArgumentNullException("appSlug");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/app/{appSlug}/ContentType/GetAll");
+            urlBuilder_.Append("APP_PATH/{appSlug}/ContentType/GetAll");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
@@ -1880,7 +1880,7 @@ namespace FluentCMS.Web.UI.ApiClients
                 throw new System.ArgumentNullException("appSlug");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/app/{appSlug}/ContentType/Create");
+            urlBuilder_.Append("APP_PATH/{appSlug}/ContentType/Create");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
@@ -1962,7 +1962,7 @@ namespace FluentCMS.Web.UI.ApiClients
                 throw new System.ArgumentNullException("appSlug");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/app/{appSlug}/ContentType/Update");
+            urlBuilder_.Append("APP_PATH/{appSlug}/ContentType/Update");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
@@ -2047,7 +2047,7 @@ namespace FluentCMS.Web.UI.ApiClients
                 throw new System.ArgumentNullException("id");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/app/{appSlug}/ContentType/Delete/{id}");
+            urlBuilder_.Append("APP_PATH/{appSlug}/ContentType/Delete/{id}");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
             urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
@@ -2129,7 +2129,7 @@ namespace FluentCMS.Web.UI.ApiClients
                 throw new System.ArgumentNullException("id");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/app/{appSlug}/ContentType/SetField/{id}");
+            urlBuilder_.Append("APP_PATH/{appSlug}/ContentType/SetField/{id}");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
             urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
@@ -2218,7 +2218,7 @@ namespace FluentCMS.Web.UI.ApiClients
                 throw new System.ArgumentNullException("name");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/app/{appSlug}/ContentType/DeleteField/{id}/{name}");
+            urlBuilder_.Append("APP_PATH/{appSlug}/ContentType/DeleteField/{id}/{name}");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
             urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
             urlBuilder_.Replace("{name}", System.Uri.EscapeDataString(ConvertToString(name, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4212,7 +4212,7 @@ namespace FluentCMS.Web.UI.ApiClients
                 throw new System.ArgumentNullException("appSlug");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/app/{appSlug}/Role/GetAll");
+            urlBuilder_.Append("APP_PATH/{appSlug}/Role/GetAll");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
@@ -4290,7 +4290,7 @@ namespace FluentCMS.Web.UI.ApiClients
                 throw new System.ArgumentNullException("appSlug");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/app/{appSlug}/Role/Create");
+            urlBuilder_.Append("APP_PATH/{appSlug}/Role/Create");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
@@ -4372,7 +4372,7 @@ namespace FluentCMS.Web.UI.ApiClients
                 throw new System.ArgumentNullException("appSlug");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/app/{appSlug}/Role/Update");
+            urlBuilder_.Append("APP_PATH/{appSlug}/Role/Update");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
@@ -4457,7 +4457,7 @@ namespace FluentCMS.Web.UI.ApiClients
                 throw new System.ArgumentNullException("id");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("api/app/{appSlug}/Role/Delete/{id}");
+            urlBuilder_.Append("APP_PATH/{appSlug}/Role/Delete/{id}");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
             urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
@@ -4649,6 +4649,15 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> ResetAsync(System.Threading.CancellationToken cancellationToken);
+
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<PageFullDetailResponseIApiResult> GetSetupPageAsync();
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<PageFullDetailResponseIApiResult> GetSetupPageAsync(System.Threading.CancellationToken cancellationToken);
 
     }
 
@@ -4880,6 +4889,80 @@ namespace FluentCMS.Web.UI.ApiClients
                         if (status_ == 200)
                         {
                             var objectResponse_ = await ReadObjectResponseAsync<BooleanIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiClientException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        public virtual System.Threading.Tasks.Task<PageFullDetailResponseIApiResult> GetSetupPageAsync()
+        {
+            return GetSetupPageAsync(System.Threading.CancellationToken.None);
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<PageFullDetailResponseIApiResult> GetSetupPageAsync(System.Threading.CancellationToken cancellationToken)
+        {
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append("api/global/Setup/GetSetupPage");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<PageFullDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -5574,39 +5657,39 @@ namespace FluentCMS.Web.UI.ApiClients
     {
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserResponseIApiPagingResult> GetAllAsync();
+        System.Threading.Tasks.Task<UserDetailResponseIApiPagingResult> GetAllAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<UserDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserResponseIApiResult> GetAsync(System.Guid userId);
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserResponseIApiResult> GetAsync(System.Guid userId, System.Threading.CancellationToken cancellationToken);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserResponseIApiResult> UpdateAsync(UserUpdateRequest? body);
+        System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetAsync(System.Guid userId);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserResponseIApiResult> UpdateAsync(UserUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetAsync(System.Guid userId, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserResponseIApiResult> CreateAsync(UserCreateRequest? body);
+        System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateAsync(UserUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserResponseIApiResult> CreateAsync(UserCreateRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateAsync(UserUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
+
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<UserDetailResponseIApiResult> CreateAsync(UserCreateRequest? body);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<UserDetailResponseIApiResult> CreateAsync(UserCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
     }
 
@@ -5639,7 +5722,7 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<UserResponseIApiPagingResult> GetAllAsync()
+        public virtual System.Threading.Tasks.Task<UserDetailResponseIApiPagingResult> GetAllAsync()
         {
             return GetAllAsync(System.Threading.CancellationToken.None);
         }
@@ -5647,7 +5730,7 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<UserResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
         {
             var urlBuilder_ = new System.Text.StringBuilder();
             urlBuilder_.Append("api/global/User/GetAll");
@@ -5684,7 +5767,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<UserResponseIApiPagingResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<UserDetailResponseIApiPagingResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -5713,7 +5796,7 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<UserResponseIApiResult> GetAsync(System.Guid userId)
+        public virtual System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetAsync(System.Guid userId)
         {
             return GetAsync(userId, System.Threading.CancellationToken.None);
         }
@@ -5721,7 +5804,7 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<UserResponseIApiResult> GetAsync(System.Guid userId, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetAsync(System.Guid userId, System.Threading.CancellationToken cancellationToken)
         {
             if (userId == null)
                 throw new System.ArgumentNullException("userId");
@@ -5762,7 +5845,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<UserResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<UserDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -5791,7 +5874,7 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<UserResponseIApiResult> UpdateAsync(UserUpdateRequest? body)
+        public virtual System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateAsync(UserUpdateRequest? body)
         {
             return UpdateAsync(body, System.Threading.CancellationToken.None);
         }
@@ -5799,7 +5882,7 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<UserResponseIApiResult> UpdateAsync(UserUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateAsync(UserUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
             var urlBuilder_ = new System.Text.StringBuilder();
             urlBuilder_.Append("api/global/User/Update");
@@ -5840,7 +5923,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<UserResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<UserDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -5869,7 +5952,7 @@ namespace FluentCMS.Web.UI.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<UserResponseIApiResult> CreateAsync(UserCreateRequest? body)
+        public virtual System.Threading.Tasks.Task<UserDetailResponseIApiResult> CreateAsync(UserCreateRequest? body)
         {
             return CreateAsync(body, System.Threading.CancellationToken.None);
         }
@@ -5877,7 +5960,7 @@ namespace FluentCMS.Web.UI.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<UserResponseIApiResult> CreateAsync(UserCreateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiResult> CreateAsync(UserCreateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
             var urlBuilder_ = new System.Text.StringBuilder();
             urlBuilder_.Append("api/global/User/Create");
@@ -5918,7 +6001,7 @@ namespace FluentCMS.Web.UI.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<UserResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<UserDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -6067,6 +6150,22 @@ namespace FluentCMS.Web.UI.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class AppError
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("code")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? Code { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? Description { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class AppResponse
     {
 
@@ -6083,7 +6182,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -6093,7 +6192,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("appId")]
 
@@ -6151,15 +6250,15 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasNext { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<AppResponse>? Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -6171,15 +6270,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<AppResponse>? Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -6187,15 +6291,15 @@ namespace FluentCMS.Web.UI.ApiClients
     public partial class AppResponseIApiResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public AppResponse Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -6207,15 +6311,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public AppResponse Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -6259,15 +6368,15 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasNext { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<AppTemplateResponse>? Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -6279,15 +6388,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<AppTemplateResponse>? Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -6316,15 +6430,15 @@ namespace FluentCMS.Web.UI.ApiClients
     public partial class BooleanIApiResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public bool Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -6336,15 +6450,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public bool Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -6376,7 +6495,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -6386,7 +6505,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("appId")]
 
@@ -6439,15 +6558,15 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasNext { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<ContentResponse>? Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -6459,15 +6578,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<ContentResponse>? Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -6475,15 +6599,15 @@ namespace FluentCMS.Web.UI.ApiClients
     public partial class ContentResponseIApiResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public ContentResponse Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -6495,15 +6619,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public ContentResponse Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -6591,7 +6720,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -6601,7 +6730,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("appId")]
 
@@ -6664,15 +6793,15 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasNext { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<ContentTypeResponse>? Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -6684,15 +6813,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<ContentTypeResponse>? Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -6700,15 +6834,15 @@ namespace FluentCMS.Web.UI.ApiClients
     public partial class ContentTypeResponseIApiResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public ContentTypeResponse Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -6720,15 +6854,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public ContentTypeResponse Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -6775,27 +6914,6 @@ namespace FluentCMS.Web.UI.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Error
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? Code { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("description")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? Description { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("details")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? Details { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class GlobalSettings
     {
 
@@ -6812,7 +6930,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -6822,7 +6940,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("superUsers")]
 
@@ -6835,15 +6953,15 @@ namespace FluentCMS.Web.UI.ApiClients
     public partial class GlobalSettingsIApiResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public GlobalSettings Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -6855,15 +6973,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public GlobalSettings Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -6895,7 +7018,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -6905,7 +7028,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
@@ -6982,7 +7105,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -6992,7 +7115,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
@@ -7065,15 +7188,15 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasNext { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<PageDetailResponse>? Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -7085,15 +7208,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<PageDetailResponse>? Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -7101,15 +7229,15 @@ namespace FluentCMS.Web.UI.ApiClients
     public partial class PageDetailResponseIApiResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public PageDetailResponse Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -7121,15 +7249,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public PageDetailResponse Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -7150,7 +7283,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -7160,7 +7293,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
@@ -7213,15 +7346,15 @@ namespace FluentCMS.Web.UI.ApiClients
     public partial class PageFullDetailResponseIApiResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public PageFullDetailResponse Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -7233,15 +7366,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public PageFullDetailResponse Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -7345,7 +7483,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -7355,7 +7493,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("name")]
 
@@ -7378,15 +7516,15 @@ namespace FluentCMS.Web.UI.ApiClients
     public partial class PluginDefinitionDetailResponseIApiResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public PluginDefinitionDetailResponse Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -7398,15 +7536,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public PluginDefinitionDetailResponse Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -7427,7 +7570,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -7437,7 +7580,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
@@ -7505,15 +7648,15 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasNext { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<PluginDetailResponse>? Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -7525,15 +7668,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<PluginDetailResponse>? Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -7541,15 +7689,15 @@ namespace FluentCMS.Web.UI.ApiClients
     public partial class PluginDetailResponseIApiResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public PluginDetailResponse Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -7561,15 +7709,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public PluginDetailResponse Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -7627,7 +7780,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -7637,7 +7790,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("appId")]
 
@@ -7690,15 +7843,15 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasNext { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<RoleDetailResponse>? Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -7710,15 +7863,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<RoleDetailResponse>? Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -7726,15 +7884,15 @@ namespace FluentCMS.Web.UI.ApiClients
     public partial class RoleDetailResponseIApiResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public RoleDetailResponse Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -7746,15 +7904,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public RoleDetailResponse Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -7878,7 +8041,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -7888,7 +8051,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
@@ -7946,15 +8109,15 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool HasNext { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<SiteDetailResponse>? Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -7966,15 +8129,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<SiteDetailResponse>? Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -7982,15 +8150,15 @@ namespace FluentCMS.Web.UI.ApiClients
     public partial class SiteDetailResponseIApiResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public SiteDetailResponse Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -8002,15 +8170,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public SiteDetailResponse Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -8031,7 +8204,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -8041,7 +8214,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
@@ -8074,15 +8247,15 @@ namespace FluentCMS.Web.UI.ApiClients
     public partial class SiteFullDetailResponseIApiResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public SiteFullDetailResponse Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -8094,15 +8267,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public SiteFullDetailResponse Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -8221,7 +8399,7 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -8231,22 +8409,27 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("email")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? Email { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("username")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Username { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("email")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? Email { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("phoneNumber")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? PhoneNumber { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("lastLoginAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? LastLoginAt { get; set; } = default!;
+        public System.DateTime? LastLoginAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("loginCount")]
 
@@ -8256,18 +8439,48 @@ namespace FluentCMS.Web.UI.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UserDetailResponseIApiResult
+    public partial class UserDetailResponseIApiPagingResult
     {
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int PageSize { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int TotalPages { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int PageNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public long TotalCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public bool HasPrevious { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public bool HasNext { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<UserDetailResponse>? Data { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -8279,15 +8492,61 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int Status { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UserDetailResponseIApiResult
+    {
+
         [System.Text.Json.Serialization.JsonPropertyName("data")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public UserDetailResponse Data { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? TraceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public double Duration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int Status { get; set; } = default!;
 
     }
 
@@ -8332,15 +8591,15 @@ namespace FluentCMS.Web.UI.ApiClients
     public partial class UserLoginResponseIApiResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public UserLoginResponse Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("traceId")]
 
@@ -8352,15 +8611,20 @@ namespace FluentCMS.Web.UI.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? SessionId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UniqueId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("duration")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public UserLoginResponse Data { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -8382,154 +8646,6 @@ namespace FluentCMS.Web.UI.ApiClients
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Password { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UserResponse
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Guid Id { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("createdBy")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? CreatedBy { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? ModifiedBy { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("userName")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? UserName { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("email")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? Email { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("phoneNumber")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? PhoneNumber { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UserResponseIApiPagingResult
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int PageSize { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int TotalPages { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int PageNumber { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public long TotalCount { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public bool HasPrevious { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public bool HasNext { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<UserResponse>? Data { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UserResponseIApiResult
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<Error>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("debug")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<object>? Debug { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public UserResponse Data { get; set; } = default!;
 
     }
 
