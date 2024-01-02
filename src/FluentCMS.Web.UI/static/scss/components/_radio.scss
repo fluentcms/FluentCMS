@@ -1,15 +1,7 @@
-$prefix-checkbox: $prefix + "checkbox";
+$prefix-radio: $prefix + 'radio';
 
-.#{$prefix-checkbox} {
-    @apply w-4 h-4 border-gray-300 rounded bg-gray-50;
-    border-radius: 4px !important;
-
-    &:disabled {
-        @apply opacity-50;
-    }
-    &:focus {
-        @apply ring-4 ring-blue-300;
-    }
+.#{$prefix-radio} {
+    @apply w-4 h-4 focus:ring-2;
 
 	&-state-default {
 		@apply bg-gray-50 border-gray-300 text-blue-600;
@@ -59,4 +51,5 @@ $prefix-checkbox: $prefix + "checkbox";
 			@apply ring-red-500 border-red-500;
 		}
 	}
+
 }

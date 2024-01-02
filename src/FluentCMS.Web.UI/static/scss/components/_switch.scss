@@ -1,0 +1,37 @@
+$prefix-switch: $prefix + 'switch';
+
+.#{$prefix-switch}  {
+    @apply sr-only;
+
+    &-inner {
+        @apply w-11 h-6 bg-gray-200 rounded-full;
+    }
+
+    .#{$prefix-theme-dark} &-inner {
+        @apply bg-gray-700 border-gray-600;
+    }
+    &-inner::after {
+        @apply content-[''] absolute top-[2px] start-[2px] bg-white border-gray-300 border rounded-full h-5 w-5 transition-all;
+
+    }
+
+    &:focus + &-inner {
+        @apply outline-none ring-4 ring-blue-300;
+    }
+
+    &:checked + &-inner {
+        @apply bg-blue-600;
+
+    }
+
+    &:checked + &-inner::after {
+        @apply translate-x-full border-white;
+
+        [dir="rtl"] & {
+            @apply -translate-x-full;
+        }
+    }
+    .#{$prefix-theme-dark} &:focus + &-inner {
+        @apply ring-blue-800;
+    }
+}

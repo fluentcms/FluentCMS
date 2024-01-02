@@ -1,13 +1,22 @@
 @inherits BaseComponent
 
-<label for=@For class=@this.GetClasses()>
-	@ChildContent
-</label>
+@if(IsSpan) {
+    <span class=@this.GetClasses() @attributes=@AdditionalAttributes>
+        @ChildContent
+    </span>
+} else {
+    <label for=@For class=@this.GetClasses() @attributes=@AdditionalAttributes>
+        @ChildContent
+    </label>
+}
 
 
 @code {
     [Parameter]
     public string For {get; set;} = String.Empty;
+
+    [Parameter]
+    public bool IsSpan {get; set;} = false;
 
     [Parameter]
 	[CssProperty]

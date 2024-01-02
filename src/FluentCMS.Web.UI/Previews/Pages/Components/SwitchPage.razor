@@ -1,0 +1,20 @@
+@page "/previews/components/switch"
+@layout ComponentsLayout
+@rendermode InteractiveServer
+
+<PageHeader HasBack Title="Switch"/>
+<div>
+    <Switch Id="check-1"/>
+    <div class="h-10"></div>
+    <Switch Id="check-2" Value/>
+    <div class="h-10"></div>
+    <Switch Id="check-3" Label="Label"/>
+    <div class="h-10"></div>
+    <Switch Id="check-4" Label="Description" Hint="This is description"/>
+    <div class="h-10"></div>
+    <Switch Id="check-5" Label="Invalid" Hint="This is required" State="FormFieldStateEnum.Invalid"/>
+    <div class="h-10"></div>
+    <Switch Id="check-6" Label="Valid" Hint="This is okay" State="FormFieldStateEnum.Valid"/>
+
+</div>
+
