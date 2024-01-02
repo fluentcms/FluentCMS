@@ -1,0 +1,23 @@
+@inherits BaseComponent
+
+<div class=@this.GetClasses() @attributes=AdditionalAttributes>
+    @ChildContent
+</div>
+
+@code {
+    #region Column
+
+    [Parameter]
+    [CssProperty]
+    public GridItemColumnEnum? Small { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public GridItemColumnEnum? Medium { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public GridItemColumnEnum? Large { get; set; }
+
+    #endregion
+}
