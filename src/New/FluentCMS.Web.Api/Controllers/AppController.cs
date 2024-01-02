@@ -4,28 +4,28 @@ public class AppController(IAppService appService, IMapper mapper) : BaseGlobalC
 {
 
     [HttpPost]
-    public async Task<IApiResult<AppResponse>> Create([FromBody] AppCreateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<AppDetailResponse>> Create([FromBody] AppCreateRequest request, CancellationToken cancellationToken = default)
     {
         var app = mapper.Map<App>(request);
         var created = await appService.Create(app, cancellationToken);
-        var response = mapper.Map<AppResponse>(created);
+        var response = mapper.Map<AppDetailResponse>(created);
         return Ok(response);
     }
 
     [HttpPut]
-    public async Task<IApiResult<AppResponse>> Update([FromBody] AppUpdateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<AppDetailResponse>> Update([FromBody] AppUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var app = mapper.Map<App>(request);
         var updated = await appService.Update(app, cancellationToken);
-        var appResponse = mapper.Map<AppResponse>(updated);
+        var appResponse = mapper.Map<AppDetailResponse>(updated);
         return Ok(appResponse);
     }
 
     [HttpGet]
-    public async Task<IApiPagingResult<AppResponse>> GetAll(CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<AppDetailResponse>> GetAll(CancellationToken cancellationToken = default)
     {
         var apps = await appService.GetAll(cancellationToken);
-        var appsResponse = mapper.Map<List<AppResponse>>(apps);
+        var appsResponse = mapper.Map<List<AppDetailResponse>>(apps);
         return OkPaged(appsResponse);
     }
 
@@ -37,10 +37,10 @@ public class AppController(IAppService appService, IMapper mapper) : BaseGlobalC
     }
 
     [HttpGet("{appSlug}")]
-    public async Task<IApiResult<AppResponse>> GetBySlug([FromRoute] string appSlug, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<AppDetailResponse>> GetBySlug([FromRoute] string appSlug, CancellationToken cancellationToken = default)
     {
         var app = await appService.GetBySlug(appSlug, cancellationToken);
-        var appResponse = mapper.Map<AppResponse>(app);
+        var appResponse = mapper.Map<AppDetailResponse>(app);
         return Ok(appResponse);
     }
 }

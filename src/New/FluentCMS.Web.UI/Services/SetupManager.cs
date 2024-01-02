@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Web.UI.Services;
+﻿using FluentCMS.Web.ApiClients;
+
+namespace FluentCMS.Web.UI.Services;
 
 public class SetupManager
 {

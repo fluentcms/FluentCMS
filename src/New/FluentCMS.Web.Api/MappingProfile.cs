@@ -52,5 +52,13 @@ public class MappingProfile : Profile
         CreateMap<User, UserDetailResponse>();
 
         #endregion
+
+        #region App
+
+        CreateMap<AppCreateRequest, App>();
+        CreateMap<App, AppDetailResponse>();
+        CreateMap<AppUpdateRequest, App>();
+
+        #endregion
     }
 }
