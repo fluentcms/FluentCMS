@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Web.ApiClients;
+﻿namespace FluentCMS.Web.UI.ApiClients;
 
 public interface IApiClient
 {
