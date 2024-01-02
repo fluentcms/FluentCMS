@@ -1,0 +1,17 @@
+@inherits InputBaseComponent<bool>
+
+<FormField InlineLabel Label=@Label State=@State Hint=@Hint Required=@Required>
+    <input
+        name=@Name
+        type="radio"
+        class=@this.GetClasses()
+        disabled=@Disabled
+        required=@Required
+        @bind=Value
+        @attributes="@AdditionalAttributes" />
+</FormField>
+
+@code {
+    [Parameter]
+    public string Hint {get; set;}
+}

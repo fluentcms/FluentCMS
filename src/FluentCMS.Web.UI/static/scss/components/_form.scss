@@ -2,7 +2,19 @@ $prefix-label: $prefix + 'form-label';
 $prefix-form-field: $prefix + 'form-field';
 
 .#{$prefix-form-field} {
-    @apply mb-6;
+    @apply mb-6 relative inline-flex;
+
+    &-inline-label-true {
+        @apply flex flex-wrap items-center;
+
+        .#{$prefix-label} {
+            @apply order-1 ms-3 mb-0;
+        }
+        .#{$prefix-form-field}-hint {
+            @apply order-2 w-full;
+
+        }
+    }
 
     &-group {
         @apply relative;

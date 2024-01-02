@@ -1,0 +1,20 @@
+@page "/previews/components/tab"
+@layout ComponentsLayout
+@rendermode InteractiveServer
+
+<PageHeader HasBack Title="Tab"/>
+
+<div class="py-4 flex flex-col gap-4">
+    <Tabs>
+         <TabPanel Name="General">
+             General Tab content
+         </TabPanel>
+         <TabPanel Active Name="Permissions">
+             Permissions Tab content
+         </TabPanel>
+         <TabPanel Name="seo">
+             SEO Tab content
+         </TabPanel>
+     </Tabs>
+</div>
+

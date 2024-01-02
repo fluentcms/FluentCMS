@@ -1,0 +1,35 @@
+@inherits BaseComponent
+
+<li class=@this.ClassName("TabItemWrapper") role="presentation">
+    <a
+        class=@this.GetClasses()
+        id="tab-@Index"
+        @onclick="(e) => Parent.ActivateTab(Index)"
+        type="button"
+        role="tab"
+        aria-controls="panel-@Index"
+        aria-current=@AriaCurrent
+        aria-selected=@AriaSelected>
+        @ChildContent
+    </a>
+</li>
+
+@code {
+    [CascadingParameter]
+    protected Tabs? Parent { get; set; }
+
+    [Parameter]
+    public int Index { get; set; } = default!;
+
+    [Parameter]
+    [CssProperty]
+    public bool Active { get; set; } = false;
+
+    [Parameter]
+    [CssProperty]
+    public bool Disabled { get; set; } = false;
+
+    private string AriaSelected => Active ? "true" : "false";
+    private string? AriaCurrent => Active ? "page" : null;
+}
+
