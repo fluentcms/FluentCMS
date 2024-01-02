@@ -22,8 +22,6 @@
     {
         if (!firstRender) return;
 
-        Console.WriteLine(element);
-
         module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Core/Tooltip/Tooltip.razor.js");
 
         await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), target, element, new { Placement = Placement.ToString().FromPascalCaseToKebabCase() });

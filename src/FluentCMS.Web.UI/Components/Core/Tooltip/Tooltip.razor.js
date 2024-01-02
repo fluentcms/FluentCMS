@@ -3,13 +3,11 @@ import { computePosition, autoUpdate } from 'https://cdn.jsdelivr.net/npm/@float
 const cleanups = new Map();
 
 export function update(dotnet, element, config) {
-
-    console.log('update')
+    //
 }
 
 
 export function initialize(dotnet, target, element, config) {
-    console.log('initialize', dotnet, target, element, config)
     terminate(dotnet, element)
     if(!target || target.__internalId == null) {
         target = element.previousElementSibling;
