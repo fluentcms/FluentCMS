@@ -23,4 +23,11 @@ public class SetupController(SetupManager setupManager) : BaseGlobalController
         await setupManager.Reset();
         return Ok(await setupManager.IsInitialized());
     }
+
+    [HttpGet]
+    public async Task<IApiResult<PageFullDetailResponse>> GetSetupPage()
+    {
+        await setupManager.Reset();
+        return Ok(await setupManager.GetSetupPage());
+    }
 }

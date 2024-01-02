@@ -1,18 +1,16 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using FluentCMS.Web.ApiClients;
 
 namespace FluentCMS.Web.UI.Services;
 
 public class SetupManager
 {
     private readonly SetupClient _setupClient;
-    private readonly NavigationManager _navigationManager;
 
     private static bool _initialized = false;
 
-    public SetupManager(SetupClient setupClient, NavigationManager navigationManager)
+    public SetupManager(SetupClient setupClient)
     {
         _setupClient = setupClient;
-        _navigationManager = navigationManager;
     }
 
     public async Task<bool> IsInitialized()
@@ -20,27 +18,36 @@ public class SetupManager
         if (_initialized)
             return _initialized;
 
-        var response = await _setupClient.IsInitializedAsync();
+        var initResponse = await _setupClient.IsInitializedAsync();
 
-        _initialized = response.Data;
+        _initialized = initResponse.Data;
 
         return _initialized;
     }
 
+
     public async Task<bool> Start(SetupRequest request)
     {
-        request.AdminDomain = new Uri(_navigationManager.Uri).Authority;
+        if (_initialized)
+            return _initialized;
+
+        var initResponse = await _setupClient.IsInitializedAsync();
+
+        _initialized = initResponse.Data;
+
+        if (_initialized)
+            return _initialized;
+
         var response = await _setupClient.StartAsync(request);
+
+        _initialized = response.Data;
         return response.Data;
     }
 
-    public void NavigateToSetupRoute()
+    public async Task<PageFullDetailResponse> GetSetupPage()
     {
-        _navigationManager.NavigateTo("/setup", true);
-    }
+        var response = await _setupClient.GetSetupPageAsync();
 
-    public void NavigateToRoot()
-    {
-        _navigationManager.NavigateTo("/", true);
+        return response.Data;
     }
 }
