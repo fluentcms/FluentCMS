@@ -7,11 +7,11 @@ $grid-column-width: math.div(100%, 12);
 
 $grid-breakpoint: ( small: 0, medium: 768px, large: 1200px );
 
-$grid-items: ( start: flex-start, end: flex-end, center: center, baseline: baseline, stretch: stretch);
+$grid-items: ( start, end, center, baseline, stretch);
 
 $grid-gutter: ( small: 0.25em, medium: 0.5em, large: 1em );
 
-$grid-justify: ( normal: normal, start: flex-start, end: flex-end, center: center, between: space-between, around: space-around, evenly: space-evenly, stretch: stretch);
+$grid-justify: ( normal, start, end, center, between, around, evenly, stretch);
 
 $grid-item-column: ( one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 );
 
@@ -19,57 +19,51 @@ $grid-item-column: ( one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 
     --grid-gutter-x: 0;
     --grid-gutter-y: 0;
 
+    @each $gutter, $value in $grid-gutter {
+        @each $key in (x, y) {
+            &-gutter-#{$gutter} {
+                --grid-gutter-#{$key}: #{$value};
+            }
+        }
+    }
+
+    @each $gutter, $value in $grid-gutter {
+        @each $key in (x, y) {
+            &-gutter-#{$key}-#{$gutter} {
+                --grid-gutter-#{$key}: #{$value};
+            }
+        }
+    }
+
     & > div {
-        display: flex;
-        flex-wrap: wrap;
-        height: 100%;
-        margin-top: calc(var(--grid-gutter-y) * -1);
-        margin-left: calc(var(--grid-gutter-x) * -1);
+        @apply flex flex-wrap h-full -mt-[var(--grid-gutter-y)] -ms-[var(--grid-gutter-x)];
 
         & > .#{$prefix-grid-item} {
-            padding-top: var(--grid-gutter-y);
-            padding-left: var(--grid-gutter-x);
+            @apply pt-[var(--grid-gutter-y)] ps-[var(--grid-gutter-x)];
         }
 
-        @each $gutter, $value in $grid-gutter {
-            @each $key in (x, y) {
-                &-gutter-#{$gutter} {
-                    --grid-gutter-#{$key}: #{$value};
-                }
+
+    }
+}
+
+@each $breakpoint, $value in $grid-breakpoint {
+    @media (min-width: $value) {
+        @each $key in $grid-items {
+            .#{$prefix-grid}-items-#{$breakpoint}-#{$key} > div {
+                @apply items-#{$key};
             }
         }
 
-        @each $gutter, $value in $grid-gutter {
-            @each $key in (x, y) {
-                &-gutter-#{$key}-#{$gutter} {
-                    --grid-gutter-#{$key}: #{$value};
-                }
-            }
-        }
-
-        @each $breakpoint, $value in $grid-breakpoint {
-            @media (min-width: $value) {
-                @each $key, $value in $grid-items {
-                    &-items-#{$breakpoint}-#{$key} {
-                        align-items: $value;
-                    }
-                }
-
-                @each $key, $value in $grid-justify {
-                    &-justify-#{$breakpoint}-#{$key} {
-                        justify-content: $value;
-                    }
-                }
+        @each $key in $grid-justify {
+            .#{$prefix-grid}-justify-#{$breakpoint}-#{$key} > div {
+                @apply justify-#{$key};
             }
         }
     }
 }
 
 .#{$prefix-grid-item} {
-    flex-grow: 0;
-    flex-basis: auto;
-    max-width: none;
-    box-sizing: border-box;
+    @apply grow-0 basis-auto max-w-none box-border;
 
     @each $breakpoint, $value in $grid-breakpoint {
         @media (min-width: $value) {
