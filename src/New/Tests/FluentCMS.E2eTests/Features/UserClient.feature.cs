@@ -19,12 +19,14 @@ namespace FluentCMS.E2eTests.Features
     
     [System.CodeDom.Compiler.GeneratedCodeAttribute("TechTalk.SpecFlow", "3.9.0.0")]
     [System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
+    [Xunit.TraitAttribute("Category", "RequiresFreshSetup")]
     public partial class BasicUserClientFunctionalityFeature : object, Xunit.IClassFixture<BasicUserClientFunctionalityFeature.FixtureData>, System.IDisposable
     {
         
         private static TechTalk.SpecFlow.ITestRunner testRunner;
         
-        private string[] _featureTags = ((string[])(null));
+        private string[] _featureTags = new string[] {
+                "RequiresFreshSetup"};
         
         private Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
@@ -40,7 +42,8 @@ namespace FluentCMS.E2eTests.Features
         public static void FeatureSetup()
         {
             testRunner = TechTalk.SpecFlow.TestRunnerManager.GetTestRunner();
-            TechTalk.SpecFlow.FeatureInfo featureInfo = new TechTalk.SpecFlow.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Basic User Client functionality", null, ProgrammingLanguage.CSharp, ((string[])(null)));
+            TechTalk.SpecFlow.FeatureInfo featureInfo = new TechTalk.SpecFlow.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Basic User Client functionality", null, ProgrammingLanguage.CSharp, new string[] {
+                        "RequiresFreshSetup"});
             testRunner.OnFeatureStart(featureInfo);
         }
         
@@ -77,13 +80,10 @@ namespace FluentCMS.E2eTests.Features
         
         public virtual void FeatureBackground()
         {
-#line 3
-#line hidden
 #line 4
- testRunner.Given("Reset Setup", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 5
- testRunner.Given("Setup is initialized", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+ testRunner.Given("I have a \"UserClient\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
         }
         
@@ -120,23 +120,23 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 3
+#line 4
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table1 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table6 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table1.AddRow(new string[] {
+                table6.AddRow(new string[] {
                             "username",
                             "DummyUser"});
-                table1.AddRow(new string[] {
+                table6.AddRow(new string[] {
                             "email",
                             "DummyUser@localhost"});
-                table1.AddRow(new string[] {
+                table6.AddRow(new string[] {
                             "password",
                             "DummyPassw0rd!"});
 #line 8
- testRunner.Given("Dummy Data for User Creation", ((string)(null)), table1, "Given ");
+ testRunner.Given("I have Credentials", ((string)(null)), table6, "Given ");
 #line hidden
 #line 13
  testRunner.When("I create a user", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
@@ -176,23 +176,23 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 3
+#line 4
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table2 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table7 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table2.AddRow(new string[] {
+                table7.AddRow(new string[] {
                             "username",
                             "DummyUser"});
-                table2.AddRow(new string[] {
+                table7.AddRow(new string[] {
                             "email",
                             "DummyUser@localhost"});
-                table2.AddRow(new string[] {
+                table7.AddRow(new string[] {
                             "password",
                             "DummyPassw0rd!"});
 #line 17
- testRunner.Given("Dummy Data for User Creation", ((string)(null)), table2, "Given ");
+ testRunner.Given("I have Credentials", ((string)(null)), table7, "Given ");
 #line hidden
 #line 22
  testRunner.When("I create a user", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
@@ -238,23 +238,23 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 3
+#line 4
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table3 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table8 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table3.AddRow(new string[] {
+                table8.AddRow(new string[] {
                             "username",
                             "DummyUser"});
-                table3.AddRow(new string[] {
+                table8.AddRow(new string[] {
                             "email",
                             "DummyUser@localhost"});
-                table3.AddRow(new string[] {
+                table8.AddRow(new string[] {
                             "password",
                             "DummyPassw0rd!"});
 #line 28
- testRunner.Given("Dummy Data for User Creation", ((string)(null)), table3, "Given ");
+ testRunner.Given("I have Credentials", ((string)(null)), table8, "Given ");
 #line hidden
 #line 33
  testRunner.When("I create a user", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
@@ -300,23 +300,23 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 3
+#line 4
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table4 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table9 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table4.AddRow(new string[] {
+                table9.AddRow(new string[] {
                             "username",
                             "DummyUser"});
-                table4.AddRow(new string[] {
+                table9.AddRow(new string[] {
                             "email",
                             "DummyUser@localhost"});
-                table4.AddRow(new string[] {
+                table9.AddRow(new string[] {
                             "password",
                             "DummyPassw0rd!"});
 #line 39
- testRunner.Given("Dummy Data for User Creation", ((string)(null)), table4, "Given ");
+ testRunner.Given("I have Credentials", ((string)(null)), table9, "Given ");
 #line hidden
 #line 44
  testRunner.When("I create a user", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");

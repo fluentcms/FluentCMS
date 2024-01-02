@@ -1,14 +1,46 @@
-Feature: Basic functionality Test of Host API client
+Feature: Host API client
 
 Background:
-	Given I have a SetupClient
-	Then Reset Setup
+	Given I have a "SetupClient"
+	When I Reset Setup
 
-Scenario: Get Setup Status
-	When I get setup IsInitialized 
-	Then Setup initialization status should be "false"
-	When I Start the host
-	# if i get result immidiately i get a wrong result i guess this is expecte behaviour
-	Then Wait a Bit 2secs
-	When I get setup IsInitialized
-	Then Setup initialization status should be "true"
+# Reset Setup
+Scenario: Reset Setup
+	When I Reset Setup
+	When I Fetch Setup IsInitialized
+	Then Setup initialization status should be false
+
+# Start Setup
+@RequiresResetSetup
+Scenario: Start Setup
+	When I Start Setup
+		| field            | value                  |
+		| username         | superadmin             |
+		| email            | superadmin@localhost   |
+		| password         | Passw0rd!              |
+		| AppTemplateName  | Blank                  |
+		| SiteTemplateName | Blank                  |
+		| AdminDomain      | https://localhost:7230 |
+	Then Wait 2 seconds
+	When I Fetch Setup IsInitialized
+	Then Setup initialization status should be true
+
+# Reinitializing should throw Error
+@RequiresResetSetup
+Scenario: Reinitializing should throw Error
+	When I Start Setup
+		| field            | value                  |
+		| username         | superadmin             |
+		| email            | superadmin@localhost   |
+		| password         | Passw0rd!              |
+		| AppTemplateName  | Blank                  |
+		| SiteTemplateName | Blank                  |
+		| AdminDomain      | https://localhost:7230 |
+	Then Wait 2 seconds
+	When I Start Setup again should throw Error
+
+# Test RequiresResetSetup decorator
+@RequiresResetSetup
+Scenario: Test RequiresResetSetup decorator
+	When I Fetch Setup IsInitialized
+	Then Setup initialization status should be false

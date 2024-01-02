@@ -4,9 +4,9 @@ using Xunit;
 
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
 
-namespace FluentCMS.E2eTests;
+namespace FluentCMS.E2eTests.Extensions;
 
-public static class Extensions
+public static class DependencyExtensions
 {
     // Configure Services for Tests
     internal static IServiceCollection ConfigureServices(this IServiceCollection services)
@@ -16,7 +16,7 @@ public static class Extensions
         services.AddSingleton(configuration);
 
         // setup Clients
-        services.AddApiClients(configuration);
+        services.AddApiClients();
 
         return services;
     }
