@@ -6182,7 +6182,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -6192,7 +6192,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("appId")]
 
@@ -6280,10 +6280,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -6321,10 +6321,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -6398,10 +6398,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -6460,10 +6460,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -6495,7 +6495,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -6505,7 +6505,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("appId")]
 
@@ -6588,10 +6588,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -6629,10 +6629,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -6720,7 +6720,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -6730,7 +6730,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("appId")]
 
@@ -6823,10 +6823,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -6864,10 +6864,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -6930,7 +6930,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -6940,7 +6940,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("superUsers")]
 
@@ -6983,10 +6983,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -7018,7 +7018,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -7028,7 +7028,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
@@ -7105,7 +7105,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -7115,7 +7115,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
@@ -7218,10 +7218,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -7259,10 +7259,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -7283,7 +7283,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -7293,7 +7293,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
@@ -7376,10 +7376,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -7483,7 +7483,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -7493,7 +7493,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("name")]
 
@@ -7546,10 +7546,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -7570,7 +7570,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -7580,7 +7580,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
@@ -7678,10 +7678,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -7719,10 +7719,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -7780,7 +7780,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -7790,7 +7790,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("appId")]
 
@@ -7873,10 +7873,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -7914,10 +7914,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -8041,7 +8041,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -8051,7 +8051,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
@@ -8139,10 +8139,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -8180,10 +8180,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -8204,7 +8204,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -8214,7 +8214,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
 
@@ -8277,10 +8277,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -8399,7 +8399,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+        public System.DateTime CreatedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
 
@@ -8409,7 +8409,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? ModifiedAt { get; set; } = default!;
+        public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("username")]
 
@@ -8429,7 +8429,7 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("lastLoginAt")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.DateTimeOffset? LastLoginAt { get; set; } = default!;
+        public System.DateTime? LastLoginAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("loginCount")]
 
@@ -8502,10 +8502,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -8543,10 +8543,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
@@ -8621,10 +8621,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public double Duration { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("code")]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public int Code { get; set; } = default!;
+        public int Status { get; set; } = default!;
 
     }
 
