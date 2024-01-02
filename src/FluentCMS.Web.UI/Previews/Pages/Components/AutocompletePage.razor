@@ -1,0 +1,61 @@
+@page "/previews/components/autocomplete"
+@rendermode InteractiveServer
+@layout ComponentsLayout
+
+<PageHeader HasBack Title="Autocomplete" />
+
+ <div class="py-4 flex flex-col gap-4">
+     <Autocomplete Disabled=Disabled Options=Options />
+     <Autocomplete Disabled=Disabled Options=Options @bind-Value=Value Multiple />
+     <div>
+         @foreach (var item in Value)
+        {
+            <span @key=item>@item, </span>
+        }
+    </div>
+    <Button OnClick="() => Disabled = !Disabled">
+        @if (Disabled)
+        {
+            <text>Enable</text>
+        }
+        else
+        {
+            <text>Disable</text>
+        }
+    </Button>
+</div>
+
+@code {
+    public bool Disabled { get; set; }
+
+    public List<AutocompleteOptions> Options = new()
+    {
+        new AutocompleteOptions
+        {
+            Id = "1",
+            Title = "A"
+        },
+        new AutocompleteOptions
+        {
+            Id = "2",
+            Title = "B"
+        },
+        new AutocompleteOptions
+        {
+            Id = "3",
+            Title = "C"
+        },
+        new AutocompleteOptions
+        {
+            Id = "4",
+            Title = "D"
+        },
+        new AutocompleteOptions
+        {
+            Id = "5",
+            Title = "E"
+        }
+    };
+
+    public List<string> Value { get; set; } = ["3"];
+}
