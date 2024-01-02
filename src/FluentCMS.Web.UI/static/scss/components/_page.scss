@@ -2,8 +2,20 @@ $prefix-page: $prefix + 'page';
 $prefix-page-header: $prefix + 'page-header';
 
 .#{$prefix-page} {
-    h1 {
-        @apply text-3xl text-gray-900 dark:text-gray-300;
+    @apply px-4;
+
+}
+
+.#{$prefix-page-header} {
+    @apply border-gray-200 px-0 py-2.5 pt-2 text-gray-700;
+
+    .f-page-back-button {
+        @apply p-0;
+
+        svg {
+            @apply w-full h-full;
+        }
+
     }
 
     .body {
@@ -17,9 +29,8 @@ $prefix-page-header: $prefix + 'page-header';
     .actions {
         @apply flex-shrink-0 flex flex-col items-start md:flex-row md:items-center lg:justify-end space-y-3 md:space-y-0 md:space-x-3;
     }
-}
-
-.#{$prefix-page-header} {
-    @apply border-gray-200 px-0 py-2.5 pt-2 text-gray-700;
+    .title {
+        @apply text-3xl text-gray-900 dark:text-gray-300;
+    }
 }
 

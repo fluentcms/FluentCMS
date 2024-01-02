@@ -38,9 +38,11 @@ public class AppService(IAppRepository appRepository) : IAppService
     public async Task<App> Update(App app, CancellationToken cancellationToken = default)
     {
         // check if slug is unique
-        var existing = await appRepository.GetBySlug(app.Slug, cancellationToken);
-        if (existing != null && existing.Id != app.Id)
-            throw new AppException(ExceptionCodes.AppSlugNotUnique);
+        var existing = await appRepository.GetBySlug(app.Slug, cancellationToken)
+            ?? throw new AppException(ExceptionCodes.AppNotFound);
+
+        // restore id
+        app.Id = existing.Id;
 
         return await appRepository.Update(app, cancellationToken) ??
             throw new AppException(ExceptionCodes.AppUnableToUpdate);

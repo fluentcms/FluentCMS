@@ -29,7 +29,7 @@ public class ApiResultActionFilter : IAsyncActionFilter
             apiResult.SessionId = _apiExecutionContext.SessionId;
             apiResult.TraceId = _apiExecutionContext.TraceId;
             apiResult.UniqueId = _apiExecutionContext.UniqueId;
-            apiResult.Code = 200;
+            apiResult.Status = 200;
         }
     }
 }

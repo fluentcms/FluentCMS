@@ -126,6 +126,38 @@ public class SetupManager
         return true;
     }
 
+    public Task<PageFullDetailResponse> GetSetupPage()
+    {
+        if (_initialized.HasValue && _initialized.Value)
+            throw new AppException(ExceptionCodes.SetupSettingsAlreadyInitialized);
+
+        var page = new PageFullDetailResponse
+        {
+            Title = "Setup",
+            Layout = new LayoutDetailResponse
+            {
+                Body = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, "SetupLayout.body.html")),
+                Head = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, "SetupLayout.head.html"))
+            },
+            Site = new(),
+            Sections = new Dictionary<string, List<PluginDetailResponse>>
+            {
+                ["Main"] =
+                [
+                    new() {
+                        Definition = new PluginDefinitionDetailResponse
+                        {
+                            Name = "Setup",
+                            Type = "SetupViewPlugin",
+                            Description = "Setup View Plugin"
+                        }
+                    }
+                ]
+            }
+        };
+        return Task.FromResult(page);
+    }
+
     public async Task Reset()
     {
         await _globalSettingsService.Reset();

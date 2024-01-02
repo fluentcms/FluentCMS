@@ -22,26 +22,26 @@ public class ApiResultExceptionFilter : IExceptionFilter
             SessionId = _apiExecutionContext.SessionId,
             TraceId = _apiExecutionContext.TraceId,
             UniqueId = _apiExecutionContext.UniqueId,
-            Code = 500
+            Status = 500
         };
 
         var exception = context.Exception;
         switch (exception)
         {
             case AppException appException:
-                apiResult.Code = 500;
+                apiResult.Status = 500;
                 apiResult.Errors.AddRange(appException.Errors);
                 break;
 
             case Exception _:
-                apiResult.Code = 500;
+                apiResult.Status = 500;
                 apiResult.Errors.Add(new AppError { Code = "Unknown", Description = exception.Message });
                 break;
         }
 
         context.Result = new ObjectResult(apiResult)
         {
-            StatusCode = apiResult.Code
+            StatusCode = apiResult.Status
         };
     }
 }
