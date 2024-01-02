@@ -1,0 +1,23 @@
+@page "/previews/components/grid"
+@rendermode InteractiveServer
+@layout ComponentsLayout
+
+<PageHeader HasBack Title="Grids" />
+
+ <div class="py-4 flex flex-col gap-4">
+     Default
+     <Grid>
+         <GridItem Small=GridItemColumnEnum.Twelve Medium=GridItemColumnEnum.Six Large=GridItemColumnEnum.Three>
+             <Card>Small=12 Medium=6 Large=3</Card>
+         </GridItem>
+         <GridItem Small=GridItemColumnEnum.Twelve Medium=GridItemColumnEnum.Six Large=GridItemColumnEnum.Three>
+             <Card>Small=12 Medium=6 Large=3</Card>
+         </GridItem>
+         <GridItem Small=GridItemColumnEnum.Twelve Medium=GridItemColumnEnum.Six Large=GridItemColumnEnum.Three>
+             <Card>Small=12 Medium=6 Large=3</Card>
+         </GridItem>
+         <GridItem Small=GridItemColumnEnum.Twelve Medium=GridItemColumnEnum.Six Large=GridItemColumnEnum.Three>
+             <Card>Small=12 Medium=6 Large=3</Card>
+         </GridItem>
+     </Grid>
+ </div>

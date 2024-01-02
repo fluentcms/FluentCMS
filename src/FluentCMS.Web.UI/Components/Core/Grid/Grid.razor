@@ -1,0 +1,57 @@
+@inherits BaseComponent
+
+<div class=@this.GetClasses() @attributes=AdditionalAttributes>
+    <div>
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    #region Items
+
+    [Parameter]
+    [CssProperty]
+    public GridItemsEnum? ItemsSmall { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public GridItemsEnum? ItemsMedium { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public GridItemsEnum? ItemsLarge { get; set; }
+
+    #endregion
+
+    #region Gutter
+
+    [Parameter]
+    [CssProperty]
+    public GridGutterEnum? Gutter { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public GridGutterEnum? GutterX { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public GridGutterEnum? GutterY { get; set; }
+
+    #endregion
+
+    #region Justify
+
+    [Parameter]
+    [CssProperty]
+    public GridJustifyEnum? JustifySmall { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public GridJustifyEnum? JustifyMedium { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public GridJustifyEnum? JustifyLarge { get; set; }
+
+    #endregion
+}
