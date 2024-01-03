@@ -60,7 +60,11 @@ public class MappingProfile : Profile
 
         #endregion
 
+        #region Role
+
         CreateMap<RoleCreateRequest, Role>();
         CreateMap<Role, RoleDetailResponse>();
+
+        #endregion
     }
 }
