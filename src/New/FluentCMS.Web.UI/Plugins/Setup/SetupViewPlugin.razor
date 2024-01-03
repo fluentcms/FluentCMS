@@ -1,8 +1,6 @@
 ﻿@inject SetupManager SetupManager
 @inject NavigationManager NavigationManager
 
-<PageTitle>Setup</PageTitle>
-
 @if (!Initialized)
 {
     <EditForm Model="@SetupModel" OnValidSubmit="SetupStart">
