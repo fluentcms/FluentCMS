@@ -1,6 +1,8 @@
 @RequiresFreshSetup
 @RequiresTestApp
 Feature: Role Client
+Background:
+	Given I have a "RoleClient"
 
 Scenario: Create Role
 	Given I have a role
