@@ -35,6 +35,16 @@
             "Type": "ResetPasswordViewPlugin"
         },
         {
+            "Name": "Users List",
+            "Description": "Users List Plugin",
+            "Type": "UserListViewPlugin"
+        },
+        {
+            "Name": "User Create",
+            "Description": "User Create Plugin",
+            "Type": "UserCreatePlugin"
+        },
+        {
             "Name": "Counter",
             "Description": "Counter Plugin",
             "Type": "Counter"
@@ -46,8 +56,35 @@
             "Path": "/",
             "Plugins": [
                 {
-                    "Definition": "Counter",
+                    "Definition": "Users List",
                     "Section": "Main"
+                }
+            ]
+        },
+        {
+            "Title": "Admin",
+            "Path": "/admin",
+            "Plugins": [],
+            "Children": [
+                {
+                    "Title": "Users",
+                    "Path": "/users",
+                    "Plugins": [
+                        {
+                            "Definition": "Users List",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Create User",
+                    "Path": "/usercreate",
+                    "Plugins": [
+                        {
+                            "Definition": "User Create",
+                            "Section": "Main"
+                        }
+                    ]
                 }
             ]
         },

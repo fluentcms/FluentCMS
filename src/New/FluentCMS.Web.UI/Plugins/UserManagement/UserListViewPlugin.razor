@@ -1,0 +1,75 @@
+﻿<div class="w-full p-4 bg-white border border-gray-200 rounded-lg shadow sm:p-6 dark:bg-gray-800 dark:border-gray-700">
+    <h5 class="mb-3 text-base font-semibold text-gray-900 md:text-xl dark:text-white">
+        Users List
+    </h5>
+    <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+            <tr>
+                <th scope="col" class="px-6 py-3">
+                    Username
+                </th>
+                <th scope="col" class="px-6 py-3">
+                    Email
+                </th>
+                <th scope="col" class="px-6 py-3">
+                    Phone
+                </th>
+                <th scope="col" class="px-6 py-3">
+                    Enable
+                </th>
+                <th scope="col" class="px-6 py-3">
+                    Login Count
+                </th>
+                <th scope="col" class="px-6 py-3">
+                    Last Login
+                </th>
+                <th scope="col" class="px-6 py-3">
+                    Action
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in Users)
+            {
+                <tr class="odd:bg-white odd:dark:bg-gray-900 even:bg-gray-50 even:dark:bg-gray-800 border-b dark:border-gray-700">
+                    <th scope="col" class="px-6 py-3">
+                        @user.Username
+                    </th>
+                    <th scope="col" class="px-6 py-3">
+                        @user.Email
+                    </th>
+                    <th scope="col" class="px-6 py-3">
+                        @user.PhoneNumber
+                    </th>
+                    <th scope="col" class="px-6 py-3">
+                        @user.Enabled
+                    </th>
+                    <th scope="col" class="px-6 py-3">
+                        @user.LoginCount
+                    </th>
+                    <th scope="col" class="px-6 py-3">
+                        @user.LastLoginAt
+                    </th>
+                    <td class="px-6 py-4">
+                        <a href="?PluginDef=User Create" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Inject]
+    private UserClient? UserClient { get; set; }
+
+    private List<UserDetailResponse> Users { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await UserClient!.GetAllAsync();
+
+        if (response?.Data != null)
+            Users = response.Data.ToList();
+    }
+}
