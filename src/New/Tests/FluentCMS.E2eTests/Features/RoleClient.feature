@@ -12,6 +12,7 @@ Scenario: Create Role
 	When I Create Role
 	Then Role Creation Result should be Success
 
+@RequiresTestRole
 Scenario: Update Role
 	When I Update Role to
 		| field       | value                         |
@@ -19,6 +20,7 @@ Scenario: Update Role
 		| description | Updated DummyRole Description |
 	Then Role Update Result should be Success
 
+@RequiresTestRole
 Scenario: Delete Role
 	When I Delete Role
 	Then Role Deletion Result should be Success
