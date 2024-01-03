@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Services;
 
-public interface IAppService : IService
+public interface IAppService : IAutoRegisterService
 {
     Task<IEnumerable<App>> GetAll(CancellationToken cancellationToken = default);
     Task<App> GetBySlug(string appSlug, CancellationToken cancellationToken = default);
@@ -38,7 +38,8 @@ public class AppService(IAppRepository appRepository) : IAppService
     public async Task<App> Update(App app, CancellationToken cancellationToken = default)
     {
         // check if slug is unique
-        var existing = await appRepository.GetBySlug(app.Slug, cancellationToken);
+        var existing = await appRepository.GetBySlug(app.Slug, cancellationToken)
+            ?? throw new AppException(ExceptionCodes.AppNotFound);
 
         // restore id
         app.Id = existing.Id;

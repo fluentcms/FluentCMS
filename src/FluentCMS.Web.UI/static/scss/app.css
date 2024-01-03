@@ -1,3 +1,4 @@
+@import './components/_autocomplete.scss.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -127,6 +128,30 @@ body.f-theme-dark {
 }
 .f-theme-dark .f-alert-type-default .f-alert-close:hover {
   @apply bg-gray-700;
+}
+
+.f-autocomplete .ts-control,
+.f-autocomplete .ts-wrapper.single.input-active .ts-control {
+  @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
+}
+.f-autocomplete .ts-dropdown {
+  @apply bg-white divide-y divide-gray-100 rounded-lg shadow dark:bg-gray-700 border-none;
+}
+.f-autocomplete .ts-dropdown-content {
+  @apply py-2 text-sm text-gray-700 dark:text-gray-200;
+}
+.f-autocomplete .ts-dropdown .option {
+  @apply block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white;
+}
+.f-autocomplete .ts-dropdown .active,
+.f-autocomplete .ts-dropdown .selected {
+  @apply bg-gray-100 dark:bg-gray-600 dark:text-white;
+}
+.f-autocomplete .ts-wrapper.multi .ts-control > div {
+  @apply bg-gray-100 dark:bg-gray-600 dark:text-white;
+}
+.f-autocomplete .ts-control input {
+  @apply dark:caret-white;
 }
 
 .f-badge {
@@ -261,7 +286,7 @@ body.f-theme-dark {
   @apply text-blue-500;
 }
 .f-theme-dark .f-button-color-primary.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-blue-500;
+  @apply text-blue-700;
 }
 
 .f-button-color-success.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -319,7 +344,7 @@ body.f-theme-dark {
   @apply text-green-500;
 }
 .f-theme-dark .f-button-color-success.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-green-500;
+  @apply text-green-700;
 }
 
 .f-button-color-info.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -377,7 +402,7 @@ body.f-theme-dark {
   @apply text-cyan-500;
 }
 .f-theme-dark .f-button-color-info.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-cyan-500;
+  @apply text-cyan-700;
 }
 
 .f-button-color-danger.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -435,7 +460,7 @@ body.f-theme-dark {
   @apply text-red-500;
 }
 .f-theme-dark .f-button-color-danger.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-red-500;
+  @apply text-red-700;
 }
 
 .f-button-color-warning.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -493,7 +518,7 @@ body.f-theme-dark {
   @apply text-yellow-500;
 }
 .f-theme-dark .f-button-color-warning.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-yellow-500;
+  @apply text-yellow-700;
 }
 
 .f-button-color-secondary.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -551,33 +576,65 @@ body.f-theme-dark {
   @apply text-gray-500;
 }
 .f-theme-dark .f-button-color-secondary.f-button-ghost-true.f-button-outline-false:hover {
-  @apply text-gray-500;
+  @apply text-gray-700;
 }
 
-.f-button-color-default {
+.f-button-color-default.f-button-ghost-false.f-button-outline-false {
   @apply text-gray-900 bg-white border border-gray-200;
 }
-.f-button-color-default.f-button-disabled-true {
+.f-button-color-default.f-button-ghost-false.f-button-outline-false.f-button-disabled-true {
   @apply opacity-50 cursor-not-allowed pointer-events-none;
 }
-.f-button-color-default:hover {
+.f-button-color-default.f-button-ghost-false.f-button-outline-false:hover {
   @apply bg-gray-100 text-blue-700;
 }
-.f-button-color-default:focus {
+.f-button-color-default.f-button-ghost-false.f-button-outline-false:focus {
   @apply ring-4 ring-gray-200;
 }
-.f-theme-dark .f-button-color-default {
+.f-theme-dark .f-button-color-default.f-button-ghost-false.f-button-outline-false {
   @apply bg-gray-600/10 text-gray-400 border-gray-600;
 }
-.f-theme-dark .f-button-color-default:hover {
+.f-theme-dark .f-button-color-default.f-button-ghost-false.f-button-outline-false:hover {
   @apply text-white bg-gray-700;
 }
-.f-theme-dark .f-button-color-default:focus {
+.f-theme-dark .f-button-color-default.f-button-ghost-false.f-button-outline-false:focus {
   @apply ring-gray-700;
 }
 
+.f-button-color-default.f-button-ghost-true.f-button-outline-false {
+  @apply text-gray-600;
+}
+.f-button-color-default.f-button-ghost-true.f-button-outline-false:hover {
+  @apply text-gray-800;
+}
+.f-theme-dark .f-button-color-default.f-button-ghost-true.f-button-outline-false {
+  @apply text-gray-500;
+}
+.f-theme-dark .f-button-color-default.f-button-ghost-true.f-button-outline-false:hover {
+  @apply text-gray-700;
+}
+
+.f-button-color-default.f-button-outline-true.f-button-ghost-false {
+  @apply text-gray-700 border border-gray-700;
+}
+.f-button-color-default.f-button-outline-true.f-button-ghost-false:hover {
+  @apply text-white bg-gray-800;
+}
+.f-button-color-default.f-button-outline-true.f-button-ghost-false:focus {
+  @apply ring-4 ring-gray-300;
+}
+.f-theme-dark .f-button-color-default.f-button-outline-true.f-button-ghost-false {
+  @apply border-gray-500 text-gray-500;
+}
+.f-theme-dark .f-button-color-default.f-button-outline-true.f-button-ghost-false:hover {
+  @apply text-white bg-gray-500;
+}
+.f-theme-dark .f-button-color-default.f-button-outline-true.f-button-ghost-false:focus {
+  @apply ring-gray-800;
+}
+
 .f-button-group {
-  @apply flex justify-end gap-2;
+  @apply inline-flex justify-end gap-2;
 }
 .f-button-group.f-button-group-wrap-true {
   @apply flex-wrap;
@@ -629,15 +686,74 @@ body.f-theme-dark {
 .f-checkbox:focus {
   @apply ring-4 ring-blue-300;
 }
-.f-theme-dark .f-checkbox {
-  @apply ring-offset-gray-800 bg-gray-700 border-gray-600;
+.f-checkbox-state-default {
+  @apply bg-gray-50 border-gray-300 text-blue-600;
 }
-.f-theme-dark .f-checkbox:focus {
-  @apply ring-blue-600;
+.f-checkbox-state-default:focus {
+  @apply ring-blue-500 border-blue-500;
+}
+.f-theme-dark .f-checkbox-state-default {
+  @apply bg-gray-700 ring-offset-gray-800 border-gray-600 placeholder-gray-400;
+}
+.f-theme-dark .f-checkbox-state-default:focus {
+  @apply ring-blue-500 border-blue-500;
+}
+.f-checkbox-state-valid {
+  @apply bg-green-50 border-green-500 text-green-900 placeholder-green-700;
+}
+.f-checkbox-state-valid:focus {
+  @apply ring-green-500 border-green-500;
+}
+.f-theme-dark .f-checkbox-state-valid {
+  @apply text-green-400 ring-offset-gray-800 bg-gray-700 border-green-500 placeholder-green-500;
+}
+.f-theme-dark .f-checkbox-state-valid:focus {
+  @apply ring-green-500 border-green-500;
+}
+.f-checkbox-state-invalid {
+  @apply bg-red-50 border-red-500 text-red-900 ring-offset-gray-800 placeholder-red-700;
+}
+.f-checkbox-state-invalid:focus {
+  @apply ring-red-500 border-red-500;
+}
+.f-theme-dark .f-checkbox-state-invalid {
+  @apply text-red-400 bg-gray-700 border-red-500 placeholder-red-500;
+}
+.f-theme-dark .f-checkbox-state-invalid:focus {
+  @apply ring-red-500 border-red-500;
 }
 
 .f-close-button {
   @apply text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white;
+}
+
+.f-confirm {
+  @apply hidden fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0 justify-center items-center;
+}
+.f-confirm-open-true {
+  @apply flex;
+}
+
+.f-confirm-body {
+  @apply p-4 md:p-5 text-center;
+}
+.f-confirm-body > .f-icon {
+  @apply block mx-auto mb-4 text-gray-400 w-12 h-12 dark:text-gray-200;
+}
+.f-confirm-body > .f-button-group {
+  /* TODO: Remove it after fix in ButtonGroup component */
+  @apply inline-flex;
+}
+
+.f-confirm-content {
+  @apply relative bg-white rounded-lg shadow dark:bg-gray-700;
+}
+.f-confirm-content > .f-close-button {
+  @apply absolute top-3 end-2.5;
+}
+
+.f-confirm-wrapper {
+  @apply relative p-4 w-full max-w-md max-h-full;
 }
 
 .f-dropdown {
@@ -656,10 +772,10 @@ body.f-theme-dark {
   @apply hidden;
 }
 .f-dropdown-item-link {
-  @apply block px-4 py-2;
+  @apply block ps-4 pe-8 whitespace-nowrap py-2;
 }
 .f-dropdown-menu {
-  @apply absolute z-10 bg-white divide-y divide-gray-100 rounded-lg shadow w-44;
+  @apply absolute z-10 bg-white divide-y divide-gray-100 rounded-lg shadow;
 }
 .f-dropdown-menu-placement-top {
   @apply bottom-full;
@@ -723,21 +839,30 @@ body.f-theme-dark {
   @apply text-white;
 }
 
-.f-page h1 {
-  @apply text-3xl text-gray-900 dark:text-gray-300;
-}
-.f-page .body {
-  @apply flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 md:space-x-4 p-4 px-0;
-}
-.f-page .subtitle {
-  @apply flex-1 flex items-center space-x-2;
-}
-.f-page .actions {
-  @apply flex-shrink-0 flex flex-col items-start md:flex-row md:items-center lg:justify-end space-y-3 md:space-y-0 md:space-x-3;
+.f-page {
+  @apply px-4;
 }
 
 .f-page-header {
   @apply border-gray-200 px-0 py-2.5 pt-2 text-gray-700;
+}
+.f-page-header .f-page-back-button {
+  @apply p-0;
+}
+.f-page-header .f-page-back-button svg {
+  @apply w-full h-full;
+}
+.f-page-header .body {
+  @apply flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 md:space-x-4 p-4 px-0;
+}
+.f-page-header .subtitle {
+  @apply flex-1 flex items-center space-x-2;
+}
+.f-page-header .actions {
+  @apply flex-shrink-0 flex flex-col items-start md:flex-row md:items-center lg:justify-end space-y-3 md:space-y-0 md:space-x-3;
+}
+.f-page-header .title {
+  @apply text-3xl text-gray-900 dark:text-gray-300;
 }
 
 .f-layout-center {
@@ -765,40 +890,480 @@ body.f-theme-dark {
 }
 
 .f-form-field {
-  @apply mb-6;
+  @apply mb-6 relative inline-flex;
+}
+.f-form-field-inline-label-true {
+  @apply flex flex-wrap items-center;
+}
+.f-form-field-inline-label-true .f-form-label {
+  @apply order-1 ms-3 mb-0;
+}
+.f-form-field-inline-label-true .f-form-field-hint {
+  @apply order-2 w-full;
+}
+.f-form-field-group {
+  @apply relative;
+}
+.f-form-field-has-start-icon-true > .f-form-field-group > :not(.f-form-field-start-icon-wrapper):not(.f-form-field-end-icon-wrapper) {
+  @apply ps-10;
+}
+.f-form-field-has-end-icon-true > .f-form-field-group > :not(.f-form-field-start-icon-wrapper):not(.f-form-field-end-icon-wrapper) {
+  @apply pe-10;
+}
+.f-form-field-start-icon-wrapper {
+  @apply absolute top-0 start-0 flex items-center py-3 ps-3.5 pointer-events-none;
+}
+.f-form-field-end-icon-wrapper {
+  @apply absolute top-0 end-0 flex items-center py-3 pe-3.5 pointer-events-none;
+}
+.f-form-field-state-default .f-icon {
+  @apply text-gray-500;
+}
+.f-form-field-state-valid .f-icon {
+  @apply text-green-500;
+}
+.f-form-field-state-invalid .f-icon {
+  @apply text-red-500;
+}
+.f-form-field-hint {
+  @apply mt-2 text-sm;
+}
+.f-form-field-hint-state-default {
+  @apply text-gray-500;
+}
+.f-theme-dark .f-form-field-hint-state-default {
+  @apply text-gray-400;
+}
+.f-form-field-hint-state-default .f--icon {
+  @apply text-gray-500;
+}
+.f-form-field-hint-state-valid {
+  @apply text-green-600;
+}
+.f-theme-dark .f-form-field-hint-state-valid {
+  @apply text-green-500;
+}
+.f-form-field-hint-state-valid .f--icon {
+  @apply text-green-500;
+}
+.f-form-field-hint-state-invalid {
+  @apply text-red-600;
+}
+.f-theme-dark .f-form-field-hint-state-invalid {
+  @apply text-red-500;
+}
+.f-form-field-hint-state-invalid .f--icon {
+  @apply text-red-500;
 }
 
-.f-label {
+.f-form-label {
   @apply block mb-2 text-sm font-medium text-gray-900;
 }
-.f-label-required-true::after {
+.f-form-label-state-default {
+  @apply text-gray-900;
+}
+.f-theme-dark .f-form-label-state-default {
+  @apply text-white;
+}
+.f-form-label-state-valid {
+  @apply text-green-700;
+}
+.f-theme-dark .f-form-label-state-valid {
+  @apply text-green-500;
+}
+.f-form-label-state-invalid {
+  @apply text-red-700;
+}
+.f-theme-dark .f-form-label-state-invalid {
+  @apply text-red-500;
+}
+.f-form-label-required-true::after {
   content: "*";
   @apply ms-1 text-red-500;
 }
-.f-theme-dark .f-label {
-  @apply text-white;
-}
 
 .f-input {
-  @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5;
+  @apply border text-sm rounded-lg block w-full p-2.5;
 }
-.f-input-has-icon-true {
-  @apply ps-10;
+.f-input-state-default {
+  @apply bg-gray-50 border-gray-300 text-gray-900;
 }
-.f-input-icon-wrapper {
-  @apply absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none;
-}
-.f-input:focus {
+.f-input-state-default:focus {
   @apply ring-blue-500 border-blue-500;
 }
-.f-theme-dark .f-input {
+.f-theme-dark .f-input-state-default {
   @apply bg-gray-700 border-gray-600 placeholder-gray-400 text-white;
 }
-.f-theme-dark .f-input:focus {
+.f-theme-dark .f-input-state-default:focus {
   @apply ring-blue-500 border-blue-500;
 }
-.f-input-group {
-  @apply relative mb-6;
+.f-input-state-valid {
+  @apply bg-green-50 border-green-500 text-green-900 placeholder-green-700;
+}
+.f-input-state-valid:focus {
+  @apply ring-green-500 border-green-500;
+}
+.f-theme-dark .f-input-state-valid {
+  @apply text-green-400 bg-gray-700 border-green-500 placeholder-green-500;
+}
+.f-theme-dark .f-input-state-valid:focus {
+  @apply ring-green-500 border-green-500;
+}
+.f-input-state-invalid {
+  @apply bg-red-50 border-red-500 text-red-900 placeholder-red-700;
+}
+.f-input-state-invalid:focus {
+  @apply ring-red-500 border-red-500;
+}
+.f-theme-dark .f-input-state-invalid {
+  @apply text-red-400 bg-gray-700 border-red-500 placeholder-red-500;
+}
+.f-theme-dark .f-input-state-invalid:focus {
+  @apply ring-red-500 border-red-500;
+}
+
+.f-grid {
+  --grid-gutter-x: 0;
+  --grid-gutter-y: 0;
+}
+.f-grid-gutter-small {
+  --grid-gutter-x: 0.25em;
+}
+.f-grid-gutter-small {
+  --grid-gutter-y: 0.25em;
+}
+.f-grid-gutter-medium {
+  --grid-gutter-x: 0.5em;
+}
+.f-grid-gutter-medium {
+  --grid-gutter-y: 0.5em;
+}
+.f-grid-gutter-large {
+  --grid-gutter-x: 1em;
+}
+.f-grid-gutter-large {
+  --grid-gutter-y: 1em;
+}
+.f-grid-gutter-x-small {
+  --grid-gutter-x: 0.25em;
+}
+.f-grid-gutter-y-small {
+  --grid-gutter-y: 0.25em;
+}
+.f-grid-gutter-x-medium {
+  --grid-gutter-x: 0.5em;
+}
+.f-grid-gutter-y-medium {
+  --grid-gutter-y: 0.5em;
+}
+.f-grid-gutter-x-large {
+  --grid-gutter-x: 1em;
+}
+.f-grid-gutter-y-large {
+  --grid-gutter-y: 1em;
+}
+@media (min-width: 0) {
+  .f-grid-items-small-start > div {
+    @apply items-start;
+  }
+  .f-grid-items-small-end > div {
+    @apply items-end;
+  }
+  .f-grid-items-small-center > div {
+    @apply items-center;
+  }
+  .f-grid-items-small-baseline > div {
+    @apply items-baseline;
+  }
+  .f-grid-items-small-stretch > div {
+    @apply items-stretch;
+  }
+  .f-grid-justify-small-normal > div {
+    @apply justify-normal;
+  }
+  .f-grid-justify-small-start > div {
+    @apply justify-start;
+  }
+  .f-grid-justify-small-end > div {
+    @apply justify-end;
+  }
+  .f-grid-justify-small-center > div {
+    @apply justify-center;
+  }
+  .f-grid-justify-small-between > div {
+    @apply justify-between;
+  }
+  .f-grid-justify-small-around > div {
+    @apply justify-around;
+  }
+  .f-grid-justify-small-evenly > div {
+    @apply justify-evenly;
+  }
+  .f-grid-justify-small-stretch > div {
+    @apply justify-stretch;
+  }
+}
+@media (min-width: 768px) {
+  .f-grid-items-medium-start > div {
+    @apply items-start;
+  }
+  .f-grid-items-medium-end > div {
+    @apply items-end;
+  }
+  .f-grid-items-medium-center > div {
+    @apply items-center;
+  }
+  .f-grid-items-medium-baseline > div {
+    @apply items-baseline;
+  }
+  .f-grid-items-medium-stretch > div {
+    @apply items-stretch;
+  }
+  .f-grid-justify-medium-normal > div {
+    @apply justify-normal;
+  }
+  .f-grid-justify-medium-start > div {
+    @apply justify-start;
+  }
+  .f-grid-justify-medium-end > div {
+    @apply justify-end;
+  }
+  .f-grid-justify-medium-center > div {
+    @apply justify-center;
+  }
+  .f-grid-justify-medium-between > div {
+    @apply justify-between;
+  }
+  .f-grid-justify-medium-around > div {
+    @apply justify-around;
+  }
+  .f-grid-justify-medium-evenly > div {
+    @apply justify-evenly;
+  }
+  .f-grid-justify-medium-stretch > div {
+    @apply justify-stretch;
+  }
+}
+@media (min-width: 1200px) {
+  .f-grid-items-large-start > div {
+    @apply items-start;
+  }
+  .f-grid-items-large-end > div {
+    @apply items-end;
+  }
+  .f-grid-items-large-center > div {
+    @apply items-center;
+  }
+  .f-grid-items-large-baseline > div {
+    @apply items-baseline;
+  }
+  .f-grid-items-large-stretch > div {
+    @apply items-stretch;
+  }
+  .f-grid-justify-large-normal > div {
+    @apply justify-normal;
+  }
+  .f-grid-justify-large-start > div {
+    @apply justify-start;
+  }
+  .f-grid-justify-large-end > div {
+    @apply justify-end;
+  }
+  .f-grid-justify-large-center > div {
+    @apply justify-center;
+  }
+  .f-grid-justify-large-between > div {
+    @apply justify-between;
+  }
+  .f-grid-justify-large-around > div {
+    @apply justify-around;
+  }
+  .f-grid-justify-large-evenly > div {
+    @apply justify-evenly;
+  }
+  .f-grid-justify-large-stretch > div {
+    @apply justify-stretch;
+  }
+}
+.f-grid > div {
+  @apply flex flex-wrap h-full;
+  margin-top: calc(var(--grid-gutter-y) * -1);
+  margin-left: calc(var(--grid-gutter-x) * -1);
+}
+.f-grid > div > .f-grid-item {
+  @apply pt-[var(--grid-gutter-y)] ps-[var(--grid-gutter-x)];
+}
+
+.f-grid-item {
+  @apply grow-0 basis-auto max-w-none box-border;
+}
+@media (min-width: 0) {
+  .f-grid-item-small-auto {
+    @apply basis-auto max-w-none;
+  }
+  .f-grid-item-small-grow {
+    @apply grow basis-0 max-w-full;
+  }
+  .f-grid-item-small-one {
+    flex-basis: 8.3333333333%;
+    max-width: 8.3333333333%;
+  }
+  .f-grid-item-small-two {
+    flex-basis: 16.6666666667%;
+    max-width: 16.6666666667%;
+  }
+  .f-grid-item-small-three {
+    flex-basis: 25%;
+    max-width: 25%;
+  }
+  .f-grid-item-small-four {
+    flex-basis: 33.3333333333%;
+    max-width: 33.3333333333%;
+  }
+  .f-grid-item-small-five {
+    flex-basis: 41.6666666667%;
+    max-width: 41.6666666667%;
+  }
+  .f-grid-item-small-six {
+    flex-basis: 50%;
+    max-width: 50%;
+  }
+  .f-grid-item-small-seven {
+    flex-basis: 58.3333333333%;
+    max-width: 58.3333333333%;
+  }
+  .f-grid-item-small-eight {
+    flex-basis: 66.6666666667%;
+    max-width: 66.6666666667%;
+  }
+  .f-grid-item-small-nine {
+    flex-basis: 75%;
+    max-width: 75%;
+  }
+  .f-grid-item-small-ten {
+    flex-basis: 83.3333333333%;
+    max-width: 83.3333333333%;
+  }
+  .f-grid-item-small-eleven {
+    flex-basis: 91.6666666667%;
+    max-width: 91.6666666667%;
+  }
+  .f-grid-item-small-twelve {
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+}
+@media (min-width: 768px) {
+  .f-grid-item-medium-auto {
+    @apply basis-auto max-w-none;
+  }
+  .f-grid-item-medium-grow {
+    @apply grow basis-0 max-w-full;
+  }
+  .f-grid-item-medium-one {
+    flex-basis: 8.3333333333%;
+    max-width: 8.3333333333%;
+  }
+  .f-grid-item-medium-two {
+    flex-basis: 16.6666666667%;
+    max-width: 16.6666666667%;
+  }
+  .f-grid-item-medium-three {
+    flex-basis: 25%;
+    max-width: 25%;
+  }
+  .f-grid-item-medium-four {
+    flex-basis: 33.3333333333%;
+    max-width: 33.3333333333%;
+  }
+  .f-grid-item-medium-five {
+    flex-basis: 41.6666666667%;
+    max-width: 41.6666666667%;
+  }
+  .f-grid-item-medium-six {
+    flex-basis: 50%;
+    max-width: 50%;
+  }
+  .f-grid-item-medium-seven {
+    flex-basis: 58.3333333333%;
+    max-width: 58.3333333333%;
+  }
+  .f-grid-item-medium-eight {
+    flex-basis: 66.6666666667%;
+    max-width: 66.6666666667%;
+  }
+  .f-grid-item-medium-nine {
+    flex-basis: 75%;
+    max-width: 75%;
+  }
+  .f-grid-item-medium-ten {
+    flex-basis: 83.3333333333%;
+    max-width: 83.3333333333%;
+  }
+  .f-grid-item-medium-eleven {
+    flex-basis: 91.6666666667%;
+    max-width: 91.6666666667%;
+  }
+  .f-grid-item-medium-twelve {
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+}
+@media (min-width: 1200px) {
+  .f-grid-item-large-auto {
+    @apply basis-auto max-w-none;
+  }
+  .f-grid-item-large-grow {
+    @apply grow basis-0 max-w-full;
+  }
+  .f-grid-item-large-one {
+    flex-basis: 8.3333333333%;
+    max-width: 8.3333333333%;
+  }
+  .f-grid-item-large-two {
+    flex-basis: 16.6666666667%;
+    max-width: 16.6666666667%;
+  }
+  .f-grid-item-large-three {
+    flex-basis: 25%;
+    max-width: 25%;
+  }
+  .f-grid-item-large-four {
+    flex-basis: 33.3333333333%;
+    max-width: 33.3333333333%;
+  }
+  .f-grid-item-large-five {
+    flex-basis: 41.6666666667%;
+    max-width: 41.6666666667%;
+  }
+  .f-grid-item-large-six {
+    flex-basis: 50%;
+    max-width: 50%;
+  }
+  .f-grid-item-large-seven {
+    flex-basis: 58.3333333333%;
+    max-width: 58.3333333333%;
+  }
+  .f-grid-item-large-eight {
+    flex-basis: 66.6666666667%;
+    max-width: 66.6666666667%;
+  }
+  .f-grid-item-large-nine {
+    flex-basis: 75%;
+    max-width: 75%;
+  }
+  .f-grid-item-large-ten {
+    flex-basis: 83.3333333333%;
+    max-width: 83.3333333333%;
+  }
+  .f-grid-item-large-eleven {
+    flex-basis: 91.6666666667%;
+    max-width: 91.6666666667%;
+  }
+  .f-grid-item-large-twelve {
+    flex-basis: 100%;
+    max-width: 100%;
+  }
 }
 
 .f-icon {
@@ -879,11 +1444,43 @@ body.f-theme-dark {
   @apply text-white;
 }
 
-.f-tabs {
-  @apply text-sm font-medium text-center text-gray-500 border-b border-gray-200;
+.f-tab-item {
+  @apply inline-block p-4 border-b-2 border-transparent rounded-t-lg;
 }
-.f-theme-dark .f-tabs {
+.f-tab-item:hover {
+  @apply text-gray-600 border-gray-300;
+}
+.f-tab-item-wrapper {
+  @apply me-2;
+}
+.f-theme-dark .f-tab-item:hover {
+  @apply text-gray-300;
+}
+.f-tab-item-active-true {
+  @apply text-blue-600 border-blue-600;
+}
+.f-theme-dark .f-tab-item-active-true {
+  @apply text-blue-500 border-blue-500;
+}
+.f-tab-item-disabled-true {
+  @apply text-gray-400 border-b-0 cursor-not-allowed;
+}
+.f-theme-dark .f-tab-item-disabled-true {
+  @apply text-gray-500;
+}
+
+.f-tab-list {
+  @apply flex flex-wrap text-sm font-medium text-center text-gray-500 border-b border-gray-200;
+}
+.f-theme-dark .f-tab-list {
   @apply text-gray-400 border-gray-700;
+}
+
+.f-tab-panel {
+  @apply hidden p-4;
+}
+.f-tab-panel-active-true {
+  @apply block;
 }
 
 .f-logo {
@@ -986,8 +1583,155 @@ body.f-theme-dark {
   @apply text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-700 dark:text-white;
 }
 
+.f-radio {
+  @apply w-4 h-4 focus:ring-2;
+}
+.f-radio-state-default {
+  @apply bg-gray-50 border-gray-300 text-blue-600;
+}
+.f-radio-state-default:focus {
+  @apply ring-blue-500 border-blue-500;
+}
+.f-theme-dark .f-radio-state-default {
+  @apply bg-gray-700 ring-offset-gray-800 border-gray-600 placeholder-gray-400;
+}
+.f-theme-dark .f-radio-state-default:focus {
+  @apply ring-blue-500 border-blue-500;
+}
+.f-radio-state-valid {
+  @apply bg-green-50 border-green-500 text-green-900 placeholder-green-700;
+}
+.f-radio-state-valid:focus {
+  @apply ring-green-500 border-green-500;
+}
+.f-theme-dark .f-radio-state-valid {
+  @apply text-green-400 ring-offset-gray-800 bg-gray-700 border-green-500 placeholder-green-500;
+}
+.f-theme-dark .f-radio-state-valid:focus {
+  @apply ring-green-500 border-green-500;
+}
+.f-radio-state-invalid {
+  @apply bg-red-50 border-red-500 text-red-900 ring-offset-gray-800 placeholder-red-700;
+}
+.f-radio-state-invalid:focus {
+  @apply ring-red-500 border-red-500;
+}
+.f-theme-dark .f-radio-state-invalid {
+  @apply text-red-400 bg-gray-700 border-red-500 placeholder-red-500;
+}
+.f-theme-dark .f-radio-state-invalid:focus {
+  @apply ring-red-500 border-red-500;
+}
+
 .f-select {
   @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
+}
+.f-select-state-default {
+  @apply bg-gray-50 border-gray-300 text-gray-900;
+}
+.f-select-state-default:focus {
+  @apply ring-blue-500 border-blue-500;
+}
+.f-theme-dark .f-select-state-default {
+  @apply bg-gray-700 border-gray-600 placeholder-gray-400 text-white;
+}
+.f-theme-dark .f-select-state-default:focus {
+  @apply ring-blue-500 border-blue-500;
+}
+.f-select-state-valid {
+  @apply bg-green-50 border-green-500 text-green-900 placeholder-green-700;
+}
+.f-select-state-valid:focus {
+  @apply ring-green-500 border-green-500;
+}
+.f-theme-dark .f-select-state-valid {
+  @apply text-green-400 bg-gray-700 border-green-500 placeholder-green-500;
+}
+.f-theme-dark .f-select-state-valid:focus {
+  @apply ring-green-500 border-green-500;
+}
+.f-select-state-invalid {
+  @apply bg-red-50 border-red-500 text-red-900 placeholder-red-700;
+}
+.f-select-state-invalid:focus {
+  @apply ring-red-500 border-red-500;
+}
+.f-theme-dark .f-select-state-invalid {
+  @apply text-red-400 bg-gray-700 border-red-500 placeholder-red-500;
+}
+.f-theme-dark .f-select-state-invalid:focus {
+  @apply ring-red-500 border-red-500;
+}
+
+.f-switch {
+  @apply sr-only;
+}
+.f-switch-inner {
+  @apply w-11 h-6 bg-gray-200 rounded-full;
+}
+.f-theme-dark .f-switch-inner {
+  @apply bg-gray-700 border-gray-600;
+}
+.f-switch-inner::after {
+  @apply content-[""] absolute top-[2px] start-[2px] bg-white border-gray-300 border rounded-full h-5 w-5 transition-all;
+}
+.f-switch:focus + .f-switch-inner {
+  @apply outline-none ring-4 ring-blue-300;
+}
+.f-switch:checked + .f-switch-inner {
+  @apply bg-blue-600;
+}
+.f-switch:checked + .f-switch-inner::after {
+  @apply translate-x-full border-white;
+}
+[dir=rtl] .f-switch:checked + .f-switch-inner::after {
+  @apply -translate-x-full;
+}
+.f-theme-dark .f-switch:focus + .f-switch-inner {
+  @apply ring-blue-800;
+}
+
+.f-textarea {
+  @apply block p-2.5 w-full text-sm rounded-lg border;
+}
+.f-textarea-has-icon-true {
+  @apply ps-10;
+}
+.f-textarea-state-default {
+  @apply bg-gray-50 border-gray-300 text-gray-900;
+}
+.f-textarea-state-default:focus {
+  @apply ring-blue-500 border-blue-500;
+}
+.f-theme-dark .f-textarea-state-default {
+  @apply bg-gray-700 border-gray-600 placeholder-gray-400 text-white;
+}
+.f-theme-dark .f-textarea-state-default:focus {
+  @apply ring-blue-500 border-blue-500;
+}
+.f-textarea-state-valid {
+  @apply bg-green-50 border-green-500 text-green-900 placeholder-green-700;
+}
+.f-textarea-state-valid:focus {
+  @apply ring-green-500 border-green-500;
+}
+.f-theme-dark .f-textarea-state-valid {
+  @apply text-green-400 bg-gray-700 border-green-500 placeholder-green-500;
+}
+.f-theme-dark .f-textarea-state-valid:focus {
+  @apply ring-green-500 border-green-500;
+}
+.f-textarea-state-invalid {
+  @apply bg-red-50 border-red-500 text-red-900 placeholder-red-700;
+}
+.f-textarea-state-invalid:focus {
+  @apply ring-red-500 border-red-500;
+}
+.f-theme-dark .f-textarea-state-invalid {
+  @apply text-red-400 bg-gray-700 border-red-500 placeholder-red-500;
+}
+.f-theme-dark .f-textarea-state-invalid:focus {
+  @apply ring-red-500 border-red-500;
 }
 
 .f-modal {
@@ -996,16 +1740,16 @@ body.f-theme-dark {
 .f-modal-open-true {
   @apply flex;
 }
-.f-modal > .wrapper {
+.f-modal > .f-modal-wrapper {
   @apply relative max-h-full w-full;
 }
-.f-modal-size-small > .wrapper {
+.f-modal-size-small > .f-modal-wrapper {
   @apply max-w-md;
 }
-.f-modal-size-medium > .wrapper {
+.f-modal-size-medium > .f-modal-wrapper {
   @apply max-w-lg;
 }
-.f-modal-size-large > .wrapper {
+.f-modal-size-large > .f-modal-wrapper {
   @apply max-w-4xl;
 }
 

@@ -1,0 +1,21 @@
+@page "/previews/components/textarea"
+@layout ComponentsLayout;
+@rendermode InteractiveServer
+
+<PageHeader HasBack Title="Textarea"/>
+
+<div class="m-4 bg-white border border-gray-200 dark:border-gray-700 p-4 shadow dark:bg-gray-800">
+    <Textarea Label="Default Textarea"/>
+    <Textarea Required Label="Required Textarea"/>
+    <Textarea Disabled Label="Disabled Textarea"/>
+    <Textarea Rows="20" Label="Textarea Rows (20 rows)"/>
+    <Textarea Readonly Label="Readonly Textarea" Value="Value"/>
+    <Textarea Placeholder="This is Placeholder" Label="Placeholder"/>
+    <Textarea Label="Icon Start" IconStart="IconNameEnum.Search"/>
+    <Textarea Label="Icon End" IconEnd="IconNameEnum.Delete"/>
+    <Textarea Label="Hint" Hint="Some description comes here..."/>
+
+    <Textarea Label="Invalid" State="FormFieldStateEnum.Invalid" IconEnd="IconNameEnum.Delete" Hint="This field has problem"/>
+    <Textarea Label="Valid" State="FormFieldStateEnum.Valid" IconEnd="IconNameEnum.Search" Hint="Success"/>
+</div>
+

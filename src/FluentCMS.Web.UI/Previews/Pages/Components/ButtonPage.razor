@@ -1,0 +1,135 @@
+@page "/previews/components/button"
+@rendermode InteractiveServer
+@layout ComponentsLayout
+
+<PageHeader HasBack Title="Buttons"/>
+
+<div class="py-4 flex gap-4">
+    <ButtonGroup>
+        <Button>Hello</Button>
+        <Button Outline Color=@ColorEnum.Primary>Primary</Button>
+        <Button Outline Color=@ColorEnum.Secondary>Secondary</Button>
+        <Button Outline Color=@ColorEnum.Success>Success</Button>
+        <Button Outline Color=@ColorEnum.Info>Info</Button>
+        <Button Outline Color=@ColorEnum.Warning>Warning</Button>
+        <Button Outline Color=@ColorEnum.Danger>Danger</Button>
+    </ButtonGroup>
+</div>
+
+<div class="py-4 flex gap-4">
+    <ButtonGroup Wrap=false>
+        <Button Disabled>Hello</Button>
+        <Button Outline Color=@ColorEnum.Secondary>Secondary</Button>
+        <Button Outline Color=@ColorEnum.Success>Success</Button>
+        <Button Outline Color=@ColorEnum.Info>Info</Button>
+        <Button Outline Color=@ColorEnum.Warning>Warning</Button>
+        <Button Outline Color=@ColorEnum.Danger>Danger</Button>
+   </ButtonGroup>
+</div>
+<div class="py-4 flex gap-4">
+    <ButtonGroup>
+        <Button Disabled>Hello</Button>
+        <Button Disabled Color=@ColorEnum.Primary>Primary</Button>
+        <Button Disabled Color=@ColorEnum.Secondary>Secondary</Button>
+        <Button Disabled Color=@ColorEnum.Success>Success</Button>
+        <Button Disabled Color=@ColorEnum.Info>Info</Button>
+        <Button Disabled Color=@ColorEnum.Warning>Warning</Button>
+        <Button Disabled Color=@ColorEnum.Danger>Danger</Button>
+    </ButtonGroup>
+</div>
+<div class="py-4 flex gap-4">
+    <Button>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Hello
+    </Button>
+    <Button Color=@ColorEnum.Primary>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Primary
+    </Button>
+    <Button Color=@ColorEnum.Secondary>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Secondary
+    </Button>
+    <Button Color=@ColorEnum.Success>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Success
+    </Button>
+    <Button Color=@ColorEnum.Info>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Info
+    </Button>
+    <Button Color=@ColorEnum.Warning>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Warning
+    </Button>
+    <Button Color=@ColorEnum.Danger>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Danger
+    </Button>
+</div>
+<div class="py-4 flex gap-4">
+    <Button Outline>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Hello
+   </Button>
+   <Button Outline Color=@ColorEnum.Primary>
+        <Icon Name="IconNameEnum.InformationFilled" />
+         Primary
+    </Button>
+    <Button Outline Color=@ColorEnum.Secondary>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Secondary
+    </Button>
+    <Button Outline Color=@ColorEnum.Success>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Success
+    </Button>
+    <Button Outline Color=@ColorEnum.Info>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Info
+    </Button>
+    <Button Outline Color=@ColorEnum.Warning>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Warning
+    </Button>
+    <Button Outline Color=@ColorEnum.Danger>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Danger
+    </Button>
+</div>
+<div class="py-4 flex gap-4">
+    <Button Ghost>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Hello
+   </Button>
+   <Button Type="ButtonTypeEnum.Submit" Ghost Color=@ColorEnum.Primary>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Primary
+    </Button>
+    <Button Ghost Color=@ColorEnum.Secondary>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Secondary
+    </Button>
+    <Button Ghost Color=@ColorEnum.Success>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Success
+    </Button>
+    <Button Ghost Color=@ColorEnum.Info>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Info
+    </Button>
+    <Button Ghost Color=@ColorEnum.Warning>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Warning
+    </Button>
+    <Button Ghost Color=@ColorEnum.Danger>
+        <Icon Name="IconNameEnum.InformationFilled" />
+        Danger
+    </Button>
+</div>
+<div>
+    <Button Color="ColorEnum.Primary">Default</Button>
+    <Button Color="ColorEnum.Primary" Size="SizeEnum.Small">Small</Button>
+    <Button Color="ColorEnum.Primary" Size="SizeEnum.Medium">Medium</Button>
+    <Button Color="ColorEnum.Primary" Size="SizeEnum.Large">Large</Button>
+</div>

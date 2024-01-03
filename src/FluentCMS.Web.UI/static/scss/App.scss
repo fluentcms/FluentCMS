@@ -28,6 +28,7 @@ body.#{$prefix-theme-dark} {
 
 /* #region COMPONENTS */
 @import './components/alert';
+@import './components/autocomplete';
 @import './components/badge';
 @import './components/button';
 @import './components/card';
@@ -40,6 +41,7 @@ body.#{$prefix-theme-dark} {
 @import './components/layout';
 @import './components/form';
 @import './components/input';
+@import './components/grid';
 @import './components/icon';
 @import './components/table';
 @import './components/tabs';
@@ -48,7 +50,10 @@ body.#{$prefix-theme-dark} {
 @import './components/spinner';
 @import './components/pagination';
 @import './components/pagination-item';
+@import './components/radio';
 @import './components/select';
+@import './components/switch';
+@import './components/textarea';
 @import './components/modal';
 
 /* #endregion COMPONENTS */

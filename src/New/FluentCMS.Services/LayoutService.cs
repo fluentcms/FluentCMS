@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Services;
 
-public interface ILayoutService
+public interface ILayoutService : IAutoRegisterService
 {
     Task<Layout> Create(Layout layout, CancellationToken cancellationToken = default);
     Task<Layout> Delete(Guid id, CancellationToken cancellationToken = default);

@@ -2,7 +2,7 @@ $prefix-dropdown: $prefix + 'dropdown';
 
 .#{$prefix-dropdown} {
     @apply relative;
-    
+
 
     & > .#{$prefix-button} > .#{$prefix}icon {
         @apply flex items-center justify-center;
@@ -26,11 +26,11 @@ $prefix-dropdown: $prefix + 'dropdown';
     }
 
     &-item-link {
-        @apply block px-4 py-2; 
+        @apply block ps-4 pe-8 whitespace-nowrap py-2;
     }
 
     &-menu {
-        @apply absolute z-10 bg-white divide-y divide-gray-100 rounded-lg shadow w-44;
+        @apply absolute z-10 bg-white divide-y divide-gray-100 rounded-lg shadow;
 
         &-placement-top {
             @apply bottom-full;
@@ -39,7 +39,7 @@ $prefix-dropdown: $prefix + 'dropdown';
         &-placement-top-end {
             @apply bottom-full right-0;
         }
-        
+
         &-placement-top-start {
             @apply bottom-full left-0;
         }
@@ -47,7 +47,7 @@ $prefix-dropdown: $prefix + 'dropdown';
         &-placement-bottom {
             @apply top-full;
         }
-        
+
         &-placement-bottom-end {
             @apply top-full right-0;
         }
@@ -65,7 +65,7 @@ $prefix-dropdown: $prefix + 'dropdown';
         &-placement-left-end {
             @apply right-full bottom-0;
         }
-        
+
         &-placement-right {
             @apply left-full top-0;
         }

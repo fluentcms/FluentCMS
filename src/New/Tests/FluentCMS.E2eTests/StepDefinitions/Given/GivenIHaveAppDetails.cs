@@ -1,4 +1,3 @@
-using FluentCMS.E2eTests.ApiClients;
 using TechTalk.SpecFlow.Assist;
 
 namespace FluentCMS.E2eTests.StepDefinitions;

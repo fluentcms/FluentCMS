@@ -1,0 +1,28 @@
+@inherits BaseComponent
+
+@if(IsSpan) {
+    <span class=@this.GetClasses() @attributes=@AdditionalAttributes>
+        @ChildContent
+    </span>
+} else {
+    <label for=@For class=@this.GetClasses() @attributes=@AdditionalAttributes>
+        @ChildContent
+    </label>
+}
+
+
+@code {
+    [Parameter]
+    public string For {get; set;} = String.Empty;
+
+    [Parameter]
+    public bool IsSpan {get; set;} = false;
+
+    [Parameter]
+	[CssProperty]
+    public bool Required {get; set;} = false;
+
+	[Parameter]
+	[CssProperty]
+	public FormFieldStateEnum State {get;set;} = FormFieldStateEnum.Default;
+}

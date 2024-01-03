@@ -3,13 +3,10 @@
 <nav class=@this.GetClasses() @attributes=@AdditionalAttributes>
     @if (HasBack)
     {
-        <Button Ghost>
-            <Icon Name=@IconNameEnum.Delete />
-            Back
-        </Button>
+        <PageBackButton />
     }
 
-    <h1>
+    <h1 class="title">
         @Title
     </h1>
 

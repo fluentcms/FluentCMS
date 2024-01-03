@@ -1,0 +1,33 @@
+﻿@if (Page?.Sections != null)
+{
+    @foreach (var section in Page.Sections)
+    {
+        <div class="f-section">
+            @foreach (var Plugin in section.Value.OrderBy(p => p.Order))
+            {
+                <CascadingValue Value="@Page">
+                    <CascadingValue Value="@Plugin">
+                        <PluginContainer>
+                            <DynamicComponent Type=@GetType(Plugin) />
+                        </PluginContainer>
+                    </CascadingValue>
+                </CascadingValue>
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public string Name { get; set; } = default!;
+
+    [Parameter]
+    public PageFullDetailResponse? Page { get; set; }
+
+    private Type? GetType(PluginDetailResponse plugin)
+    {
+        var assembly = typeof(Section).Assembly;
+
+        return assembly.DefinedTypes.FirstOrDefault(x => x.Name == plugin.Definition.Type);
+    }
+}

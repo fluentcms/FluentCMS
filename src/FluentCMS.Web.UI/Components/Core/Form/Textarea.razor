@@ -1,26 +1,42 @@
-@inherits InputBase<string?>
-<textarea class="f-textarea" id="@Id" rows="@Rows" placeholder="@Placeholder" required=@Required @attributes="AdditionalAttributes" @bind="CurrentValue" />
+@inherits InputBaseComponent<string>
+
+<FormField
+    IconStart=@IconStart
+    IconEnd=@IconEnd
+	Id=@Id
+    Hint=@Hint
+    Label=@Label
+    Required=@Required
+    State=@State>
+	<textarea
+		rows=@Rows
+		id="@Id"
+		disabled=@Disabled
+		name=@Name
+		required=@Required
+		class=@this.GetClasses()
+		placeholder="@Placeholder"
+		@bind=Value
+		@bind:event="oninput"
+		@attributes=AdditionalAttributes />
+</FormField>
 
 @code {
     [Parameter]
-    public string Rows { get; set; } = "5";
+    public string Id { get; set; }
 
     [Parameter]
-    public string Id { get; set; }
+    public string Hint { get; set; }
 
     [Parameter]
     public string Placeholder { get; set; }
 
     [Parameter]
-    public bool Required { get; set; } = false;
+    public IconNameEnum IconStart { get; set; }
 
-    protected override bool TryParseValueFromString(string value, out string result, out string validationErrorMessage)
-    {
-        result = value;
-        validationErrorMessage = null;
-        return true;
-    }
+    [Parameter]
+    public IconNameEnum IconEnd { get; set; }
 
-    // [Parameter(CaptureUnmatchedValues = true)]
-    // public Dictionary<string, object> RestProps { get; set; }
+    [Parameter]
+    public string Rows { get; set; } = "5";
 }

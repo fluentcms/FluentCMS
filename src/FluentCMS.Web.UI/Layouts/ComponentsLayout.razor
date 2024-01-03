@@ -1,0 +1,66 @@
+@inherits LayoutComponentBase
+@layout PanelLayout
+
+
+<div class="grid grid-cols-12">
+
+    <div class="col-span-2">
+        <Sidebar Secondary aria-label="Sidenav" id="drawer-navigation">
+             <Header>
+                 <h4 class="text-gray-900 dark:text-white py-5">
+                     Components
+                 </h4>
+             </Header>
+             <ChildContent>
+                 <SidebarItem> CORE </SidebarItem>
+                 <SidebarItem href="/previews/components/alert"> Alert </SidebarItem>
+                 <SidebarItem href="/previews/components/autocomplete"> Autocomplete </SidebarItem>
+                 <SidebarItem href="/previews/components/badge"> Badge </SidebarItem>
+                 <SidebarItem href="/previews/components/button"> Button </SidebarItem>
+                 <SidebarItem href="/previews/components/card"> Card </SidebarItem>
+                 <SidebarItem href="/previews/components/confirm"> Confirm </SidebarItem>
+                 <SidebarItem href="/previews/components/dropdown"> Dropdown </SidebarItem>
+                 <SidebarItem href="/previews/components/grid"> Grid </SidebarItem>
+                 <SidebarItem href="/previews/components/icon"> Icon </SidebarItem>
+                 <SidebarItem href="/previews/components/modal"> Modal </SidebarItem>
+                 <SidebarItem href="/previews/components/pagination"> Pagination </SidebarItem>
+                 <SidebarItem href="/previews/components/table"> Table </SidebarItem>
+                 <SidebarItem href="/previews/components/tab"> Tab </SidebarItem>
+                 <SidebarItem href="/previews/components/spinner"> Spinner </SidebarItem>
+                 <SidebarItem> FORM </SidebarItem>
+
+                 <SidebarItem href="/previews/components/checkbox"> Checkbox </SidebarItem>
+                 <SidebarItem href="/previews/components/input"> Input </SidebarItem>
+                 <SidebarItem href="/previews/components/radio"> Radio </SidebarItem>
+                 <SidebarItem href="/previews/components/select"> Select </SidebarItem>
+                 <SidebarItem href="/previews/components/switch"> Switch </SidebarItem>
+                 <SidebarItem href="/previews/components/textarea"> Textarea </SidebarItem>
+
+                 <SidebarItem> APPLICATION </SidebarItem>
+                 <SidebarItem href="/previews/components/page-header">PageHeader </SidebarItem>
+             </ChildContent>
+         </Sidebar>
+     </div>
+
+     <div class="col-span-10 px-4 pt-20 lg:pt-0">
+
+         @Body
+         <!-- nav class="border-gray-200 px-0 py-2.5 pt-2 text-gray-700">
+             <button type="button" class="py-2.5 hover:text-gray-100 text-center inline-flex items-center me-2 mb-2 dark:text-white">
+                 <svg class="h-4 w-4 mr-2 text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
+                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 1 1 5l4 4" />
+                 </svg>
+                 Back
+             </button>
+
+             <h1 class="text-3xl text-gray-900 dark:text-gray-300">Page Title</h1>
+
+             <div class="flex flex-col md:flex-row md:items-center
+        md:justify-between space-y-3 md:space-y-0 md:space-x-4 p-4 px-0">
+                 <div class="flex-1 flex items-center space-x-2">
+                 </div>
+             </div>
+         </nav -->
+
+     </div>
+ </div>

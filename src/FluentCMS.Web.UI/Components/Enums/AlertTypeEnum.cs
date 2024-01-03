@@ -1,6 +1,7 @@
 namespace FluentCMS.Web.UI.Components;
 
-public enum AlertTypeEnum {
+public enum AlertTypeEnum
+{
     Default,
     Danger,
     Info,

@@ -1,0 +1,28 @@
+@page "/previews/components/page-header"
+@layout ComponentsLayout
+@rendermode InteractiveServer
+
+
+<PageHeader HasBack Title="PageHeader"/>
+
+<PageHeader Title="Without back button"/>
+
+<PageHeader HasBack Title="With back button"/>
+
+<PageHeader SubTitle="This is subtitle" Title="With SubTitle"/>
+
+<PageHeader SubTitle="This is subtitle" Title="With Actions">
+    <PageHeaderActions>
+        <Button Color="ColorEnum.Primary">Create New Item</Button>
+    </PageHeaderActions>
+</PageHeader>
+
+<PageHeader Title="subtitle slot">
+    <PageHeaderActions>
+        <Button Color="ColorEnum.Primary">Create New Item</Button>
+    </PageHeaderActions>
+    <PageHeaderSubtitle>
+        This is subtitle <Icon Name="IconNameEnum.Delete"/>
+
+    </PageHeaderSubtitle>
+</PageHeader>

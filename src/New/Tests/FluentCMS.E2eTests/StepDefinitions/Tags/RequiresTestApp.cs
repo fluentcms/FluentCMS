@@ -9,8 +9,6 @@ public partial class StepDefinitions
         table.AddRow("title", "test");
         table.AddRow("description", "test");
 
-        context.Set("test", "appSlug");
-
         GivenIHaveAService("AppClient");
         GivenIHaveAppCreateRequest(table);
         await WhenICreateAppAsync();

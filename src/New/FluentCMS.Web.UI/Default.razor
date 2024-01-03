@@ -1,0 +1,10 @@
+﻿@page "/{**Route:nonfile}"
+
+<PageTitle>@Page?.Title</PageTitle>
+<HeadContent>
+    @if (Page?.Layout?.Head != null)
+    {
+        @((MarkupString)Page.Layout.Head)
+    }
+</HeadContent>
+@ChildComponents()

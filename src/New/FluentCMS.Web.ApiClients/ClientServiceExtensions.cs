@@ -1,4 +1,4 @@
-﻿using FluentCMS.Web.UI.ApiClients;
+﻿using FluentCMS.Web.ApiClients;
 using System.Net.Http.Headers;
 using System.Reflection;
 
@@ -27,9 +27,15 @@ public static class ClientServiceExtensions
             services.AddScoped(type, sp =>
             {
                 var clientFactory = sp.GetRequiredService<IHttpClientFactory>();
-                var client = clientFactory.CreateClient("FluentCMS.Web.Api");
-                var ctor = type.GetConstructor([typeof(HttpClient)]);
+
+                var client = clientFactory.CreateClient("FluentCMS.Web.Api") ??
+                    throw new InvalidOperationException($"Could not create HttpClient for {type.Name}");
+
+                var ctor = type.GetConstructor([typeof(HttpClient)]) ??
+                    throw new InvalidOperationException($"Could not find constructor for {type.Name}");
+
                 var instance = ctor.Invoke(new[] { client });
+
                 return instance;
             });
         }

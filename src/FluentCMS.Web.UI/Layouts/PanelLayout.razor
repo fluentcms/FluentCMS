@@ -132,7 +132,7 @@
             </div>
         </div>
     </nav>
-    <div class="relative flex h-full w-full flex-1">
+    <div class="relative flex h-full w-full flex-1 overflow-auto">
         <Sidebar aria-label="Sidenav" id="drawer-navigation">
             <Header>
                 <a href="/" class="items-center pl-2.5 mb-5 hidden lg:flex">
@@ -162,6 +162,9 @@
                 </SidebarItem>
                 <SidebarItem Href="/previews/examples" Icon=@IconNameEnum.Rocket>
                     Examples
+                </SidebarItem>
+                <SidebarItem Href="/previews/components" Icon=@IconNameEnum.Rocket>
+                    Components
                 </SidebarItem>
                 <SidebarItem>
                     <ul class="py-2 border-t border-gray-200 dark:border-gray-700"></ul>
@@ -280,7 +283,7 @@
                 </div>
             </Footer>
         </Sidebar>
-        <main class="h-screen dark:bg-gray-900 w-full flex-1 flex flex-col items-stretch h-full lg:ml-64 pt-20 lg:pt-0">
+        <main class="h-screen overflow-auto dark:bg-gray-900 w-full flex-1 flex flex-col items-stretch h-full lg:ml-64 pt-20 lg:pt-0">
             @Body
         </main>
     </div>
