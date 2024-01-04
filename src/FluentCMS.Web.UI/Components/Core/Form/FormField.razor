@@ -1,21 +1,19 @@
 @inherits BaseComponent
 
 @if(InlineLabel) {
-    @if(!string.IsNullOrEmpty(Label)) {
-        <label class=@this.GetClasses() @attributes=@AdditionalAttributes>
+    <label class=@this.GetClasses() @attributes=@AdditionalAttributes>
+        @if(!string.IsNullOrEmpty(Label)) {
             <FormLabel IsSpan State=@State Required=@Required For="@Id">
                 @Label
             </FormLabel>
+        }
 
-            @ChildContent
-
-            @if(!string.IsNullOrEmpty(Hint)) {
-                <FormFieldHint State=@State>@Hint</FormFieldHint>
-            }
-        </label>
-    } else {
         @ChildContent
-    }
+
+        @if(!string.IsNullOrEmpty(Hint)) {
+            <FormFieldHint State=@State>@Hint</FormFieldHint>
+        }
+    </label>
 } else {
 
     <div class=@this.GetClasses() @attributes=@AdditionalAttributes>
@@ -87,4 +85,8 @@
 	[Parameter]
 	[CssProperty]
 	public FormFieldStateEnum State {get;set;} = FormFieldStateEnum.Default;
+
+	[Parameter]
+	[CssProperty]
+	public bool Dense {get;set;}
 }
