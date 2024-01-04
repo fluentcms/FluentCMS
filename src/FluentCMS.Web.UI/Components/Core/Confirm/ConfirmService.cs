@@ -2,9 +2,10 @@
 
 public class ConfirmService
 {
-    public ConfirmProvider? ConfirmProvider { get; set; } = null;
-    public void Show(string message)
+    public ConfirmProvider ConfirmProvider { get; set; } = default!;
+
+    public async Task<bool> Show(string Message)
     {
-        ConfirmProvider?.Show(message);
+        return await ConfirmProvider.Show(Message);
     }
 }

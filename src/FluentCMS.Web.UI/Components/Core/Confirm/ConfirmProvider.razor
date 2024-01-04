@@ -1,2 +1,3 @@
 ﻿@rendermode InteractiveServer
-<Confirm Message="@Message" Open="@IsOpen"></Confirm>
+
+<Confirm @bind-Open=Open Message=@Message Static OnCancel=@OnCancel OnConfirm=@OnConfirm />

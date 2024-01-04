@@ -1,23 +1,47 @@
 using Microsoft.AspNetCore.Components;
 
 namespace FluentCMS.Web.UI.Components.Core.Confirm;
+
 public partial class ConfirmProvider
 {
-    [Parameter]
-    public string Message { get; set; } = "Are you sure?";
     [Inject]
     public ConfirmService ConfirmService { get; set; } = default!;
+
+    public string Message { get; set; } = string.Empty;
+
+    public bool Open { get; set; } = false;
+
+    public TaskCompletionSource<bool> Wating;
+
+    public async Task<bool> Show(string Message)
+    {
+        this.Message = Message;
+
+        Open = true;
+
+        StateHasChanged();
+
+        Wating = new TaskCompletionSource<bool>();
+
+        await Wating.Task;
+
+        return Wating.Task.Result;
+
+    }
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
         ConfirmService.ConfirmProvider = this;
     }
-    public bool IsOpen { get; set; } = false;
-    public void Show(string message)
+
+    public void OnCancel()
     {
-        Message = message;
-        IsOpen = true;
-        StateHasChanged();
+        Wating.SetResult(false);
+    }
+
+    public void OnConfirm()
+    {
+        Wating.SetResult(true);
     }
 }
