@@ -1,20 +1,21 @@
 @inherits BaseComponent
 
 @if(InlineLabel) {
-    <label class=@this.GetClasses() @attributes=@AdditionalAttributes>
-        @if(!string.IsNullOrEmpty(Label)) {
+    @if(!string.IsNullOrEmpty(Label)) {
+        <label class=@this.GetClasses() @attributes=@AdditionalAttributes>
             <FormLabel IsSpan State=@State Required=@Required For="@Id">
                 @Label
             </FormLabel>
-        }
 
+            @ChildContent
+
+            @if(!string.IsNullOrEmpty(Hint)) {
+                <FormFieldHint State=@State>@Hint</FormFieldHint>
+            }
+        </label>
+    } else {
         @ChildContent
-
-        @if(!string.IsNullOrEmpty(Hint)) {
-            <FormFieldHint State=@State>@Hint</FormFieldHint>
-        }
-    </label>
-
+    }
 } else {
 
     <div class=@this.GetClasses() @attributes=@AdditionalAttributes>
