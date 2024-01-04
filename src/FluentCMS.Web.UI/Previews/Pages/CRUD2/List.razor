@@ -1,0 +1,201 @@
+@page "/previews/crud/users"
+@rendermode InteractiveServer
+@layout PanelLayout
+
+<Page>
+    <PageHeader Subtitle="Simple CRUD page for users" Title="Users">
+        <PageHeaderActions>
+            <Button Color="ColorEnum.Primary" OnClick=OpenAddUser>
+                <Icon Name="IconNameEnum.Plus"/>
+                Add User
+            </Button>
+        </PageHeaderActions>
+    </PageHeader>
+    <PageBody>
+
+        <Table>
+            <TableHead>
+
+                <TableCell>Id</TableCell>
+                <TableCell>Name</TableCell>
+                <TableCell>Username</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Actions</TableCell>
+            </TableHead>
+            <TableBody>
+                @foreach (var User in UserList)
+                {
+                    <TableRow>
+
+                        <TableCell>@User.Id</TableCell>
+                        <TableCell>@User.Name</TableCell>
+                        <TableCell>@User.Username</TableCell>
+                        <TableCell>
+                            <Badge Color=@(User.Status == UserStatusEnum.Active ? ColorEnum.Success : ColorEnum.Danger)>
+                                @User.Status.ToString()
+                            </Badge>
+                        </TableCell>
+                        <TableCell>
+                            <ButtonGroup>
+                                <Button OnClick="(e) => OpenEditUser(User)" Ghost Color="ColorEnum.Primary"><Icon Name="IconNameEnum.Edit"/></Button>
+                                <Button OnClick="(e) => OpenRemoveUser(User)" Ghost Color="ColorEnum.Danger"><Icon Name="IconNameEnum.Delete"/></Button>
+
+                            </ButtonGroup>
+                        </TableCell>
+                    </TableRow>
+
+                }
+
+            </TableBody>
+
+        </Table>
+    </PageBody>
+
+</Page>
+
+<Modal @bind-Open=ShowEditModal>
+    @if(CurrentEditingUser != null) {
+        @if(CurrentEditingUser.Id == null)
+        {
+            <ModalHeader Title="Add New User" Closable />
+        } else {
+            <ModalHeader Title="Update User" Closable />
+        }
+        <ModalBody>
+            <Grid Gutter="GridGutterEnum.Medium">
+                <GridItem Small="GridItemColumnEnum.Twelve" Medium="GridItemColumnEnum.Six">
+                    <Input Label="Name" @bind-Value=@CurrentEditingUser.Name/>
+                </GridItem>
+                <GridItem Small="GridItemColumnEnum.Twelve" Medium="GridItemColumnEnum.Six">
+                    <Input Label="Username" @bind-Value=@CurrentEditingUser.Username/>
+                </GridItem>
+                <GridItem Small="GridItemColumnEnum.Twelve">
+                    <Select @bind-Value=@CurrentStatus Placeholder="Choose a Status" Label="Status">
+                        <Option Value=0>Active</Option>
+                        <Option Value=1>Disabled</Option>
+                    </Select>
+                </GridItem>
+            </Grid>
+
+
+        </ModalBody>
+
+        <ModalFooter>
+
+            <ButtonGroup>
+                @if (CurrentEditingUser.Id != null)
+                {
+                    <Button OnClick=UpdateUser Color=@ColorEnum.Primary>
+                        Update
+                    </Button>
+                } else {
+                    <Button OnClick=InsertUser Color=@ColorEnum.Primary>
+                        Insert
+                    </Button>
+                }
+                <Button OnClick=CancelEdit>
+                    Cancel
+                </Button>
+            </ButtonGroup>
+        </ModalFooter>
+    }
+</Modal>
+
+<Confirm @bind-Open=ShowRemoveConfirm
+         Static
+         Message="Are you sure you want to delete this user?"
+         OnCancel=CancelRemove
+         OnConfirm=RemoveUser />
+
+@code {
+    public void OpenAddUser() {
+        ShowEditModal = true;
+        CurrentEditingUser = new UserType {};
+    }
+
+    public void InsertUser() {
+        ShowEditModal = false;
+        CurrentEditingUser.Id = Guid.NewGuid().ToString();
+        UserList.Add(CurrentEditingUser);
+        CurrentEditingUser = null;
+    }
+
+    public void UpdateUser()
+    {
+        ShowEditModal = false;
+
+        UserType userToUpdate = UserList.FirstOrDefault(p => p.Id == CurrentEditingUser.Id);
+
+        if (userToUpdate != null)
+        {
+            userToUpdate.Name = CurrentEditingUser.Name;
+            userToUpdate.Status = CurrentStatus == "0" ? UserStatusEnum.Active : UserStatusEnum.Disabled;
+            userToUpdate.Username = CurrentEditingUser.Username;
+        }
+
+    }
+
+    public void CancelEdit() {
+        ShowEditModal = false;
+        CurrentEditingUser = null;
+    }
+    public void CancelRemove() {
+        ShowRemoveConfirm = false;
+        CurrentRemovingUser = null;
+
+    }
+
+    public void RemoveUser() {
+        // delete CurrentRemovingUser
+        UserType userToRemove = UserList.FirstOrDefault(p => p.Id == CurrentRemovingUser.Id);
+
+        UserList.Remove(userToRemove);;
+    }
+    public void OpenRemoveUser(UserType user)
+    {
+        CurrentRemovingUser = new UserType {
+            Id = user.Id,
+            Name = user.Name,
+            Username = user.Username,
+            Status = user.Status
+        };
+
+        ShowRemoveConfirm = true;
+    }
+    public void OpenEditUser(UserType user)
+    {
+        CurrentStatus = user.Status == UserStatusEnum.Active ? "0" : "1";
+        CurrentEditingUser = new UserType {
+            Id = user.Id,
+            Name = user.Name,
+            Username = user.Username,
+            Status = user.Status
+        };
+        ShowEditModal = true;
+    }
+
+    public bool ShowEditModal = false;
+    public bool ShowRemoveConfirm = false;
+    public UserType CurrentEditingUser = null;
+    public UserType CurrentRemovingUser = null;
+    public string CurrentStatus;
+
+    #region User list
+    public enum UserStatusEnum {
+        Active,
+        Disabled
+    }
+
+    public class UserType {
+        public string Id;
+        public string Username;
+        public string Name;
+        public UserStatusEnum Status;
+    }
+
+    public List<UserType> UserList = new List<UserType> {
+    };
+    #endregion
+
+}
+
