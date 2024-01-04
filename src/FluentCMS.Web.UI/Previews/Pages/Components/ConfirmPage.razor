@@ -19,14 +19,15 @@
      <button @onclick="@AlertBtn">Alert</button>
  </div>
 
- @code {
-    //[Inject]
-    //IConfirmService ConfirmService { get; set; }
+@code {
+    [Inject]
+    ConfirmService ConfirmService { get; set; }
 
     private bool ConfirmValue { get; set; } = false;
 
     async Task AlertBtn()
     {
-        //await ConfirmService.Info("Test");
+        // await ConfirmService.Info("Test");
+        ConfirmService.Show("Test");
     }
 }
