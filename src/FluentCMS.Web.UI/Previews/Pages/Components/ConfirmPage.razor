@@ -2,17 +2,31 @@
 @layout ComponentsLayout
 @rendermode InteractiveServer
 
-<PageHeader HasBack Title="Confirm"/>
+@* @inject SfDialogService ConfirmService *@
 
-<div class="py-4 flex gap-2">
-    <Confirm @bind-Open=ConfirmValue
-             Static
-             Message="Are you sure you want to delete this product?"
-             OnCancel="() => Console.Write(1)"
-             OnConfirm="() => Console.Write(2)" />
-    <button @onclick="() => ConfirmValue = !ConfirmValue">Open</button>
-</div>
+<PageHeader HasBack Title="Confirm" />
+
+ <div class="py-4 flex gap-2">
+     <Confirm @bind-Open=ConfirmValue
+              Static
+              Message="Are you sure you want to delete this product?"
+              OnCancel="() => Console.Write(1)"
+              OnConfirm="() => Console.Write(2)" />
+     <button @onclick="() => ConfirmValue = !ConfirmValue">Open</button>
+
+     <br />
+
+     <button @onclick="@AlertBtn">Alert</button>
+ </div>
 
  @code {
+    //[Inject]
+    //IConfirmService ConfirmService { get; set; }
+
     private bool ConfirmValue { get; set; } = false;
- }
+
+    async Task AlertBtn()
+    {
+        //await ConfirmService.Info("Test");
+    }
+}
