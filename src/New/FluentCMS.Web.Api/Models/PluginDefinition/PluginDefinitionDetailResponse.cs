@@ -4,5 +4,5 @@ public class PluginDefinitionDetailResponse : BaseAuditableResponse
 {
     public string Name { get; set; } = default!;
     public string? Description { get; set; }
-    public string Type { get; set; } = default!;
+    public List<PluginDefinitionType> Types { get; set; } = [];
 }

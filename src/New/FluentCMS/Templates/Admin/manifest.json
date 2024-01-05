@@ -17,37 +17,77 @@
         {
             "Name": "Login",
             "Description": "Login Plugin",
-            "Type": "LoginViewPlugin"
-        },
-        {
-            "Name": "Forgot Password",
-            "Description": "Forgot Password Plugin",
-            "Type": "ForgotPasswordViewPlugin"
+            "Types": [
+                {
+                    "Name": "Login",
+                    "Type": "LoginViewPlugin",
+                    "IsDefault": true
+                }
+            ]
         },
         {
             "Name": "Register",
             "Description": "Register Plugin",
-            "Type": "RegisterViewPlugin"
+            "Types": [
+                {
+                    "Name": "Regsiter",
+                    "Type": "RegisterViewPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
+            "Name": "Forgot Password",
+            "Description": "Forgot Password Plugin",
+            "Types": [
+                {
+                    "Name": "Forgot Password",
+                    "Type": "ForgotPasswordViewPlugin",
+                    "IsDefault": true
+                }
+            ]
         },
         {
             "Name": "Reset Password",
             "Description": "Reset Password Plugin",
-            "Type": "ResetPasswordViewPlugin"
+            "Types": [
+                {
+                    "Name": "Reset Password",
+                    "Type": "ResetPasswordViewPlugin",
+                    "IsDefault": true
+                }
+            ]
         },
         {
-            "Name": "Users List",
-            "Description": "Users List Plugin",
-            "Type": "UserListViewPlugin"
-        },
-        {
-            "Name": "User Create",
-            "Description": "User Create Plugin",
-            "Type": "UserCreatePlugin"
+            "Name": "User Management",
+            "Description": "Users Management Plugin",
+            "Types": [
+                {
+                    "Name": "Users List",
+                    "Type": "UserListViewPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create User",
+                    "Type": "UserCreatePlugin"
+                },
+                {
+                    "Name": "Update User",
+                    "Type": "UserUpdatePlugin"
+                }
+            ]
+
         },
         {
             "Name": "Counter",
             "Description": "Counter Plugin",
-            "Type": "Counter"
+            "Types": [
+                {
+                    "Name": "Counter",
+                    "Type": "Counter",
+                    "IsDefault": true
+                }
+            ]
         }
     ],
     "Pages": [
@@ -56,7 +96,7 @@
             "Path": "/",
             "Plugins": [
                 {
-                    "Definition": "Users List",
+                    "Definition": "User Management",
                     "Section": "Main"
                 }
             ]
@@ -71,17 +111,7 @@
                     "Path": "/users",
                     "Plugins": [
                         {
-                            "Definition": "Users List",
-                            "Section": "Main"
-                        }
-                    ]
-                },
-                {
-                    "Title": "Create User",
-                    "Path": "/usercreate",
-                    "Plugins": [
-                        {
-                            "Definition": "User Create",
+                            "Definition": "User Management",
                             "Section": "Main"
                         }
                     ]

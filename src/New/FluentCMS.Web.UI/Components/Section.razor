@@ -28,6 +28,11 @@
     {
         var assembly = typeof(Section).Assembly;
 
-        return assembly.DefinedTypes.FirstOrDefault(x => x.Name == plugin.Definition.Type);
+        var pluginDefType = plugin.Definition?.Types?.Where(p => p.IsDefault).FirstOrDefault();
+
+        if (pluginDefType is null)
+            throw new Exception("Plugin definition not found: " + plugin.Definition?.Name);
+
+        return assembly.DefinedTypes.FirstOrDefault(x => x.Name == pluginDefType.Type);
     }
 }

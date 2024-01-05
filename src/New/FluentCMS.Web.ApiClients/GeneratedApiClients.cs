@@ -7672,10 +7672,10 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Description { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("type")]
+        [System.Text.Json.Serialization.JsonPropertyName("types")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public string? Type { get; set; } = default!;
+        public System.Collections.Generic.ICollection<PluginDefinitionType>? Types { get; set; } = default!;
 
     }
 
@@ -7788,6 +7788,27 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int Status { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PluginDefinitionType
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? Name { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public string? Type { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isDefault")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public bool IsDefault { get; set; } = default!;
 
     }
 
