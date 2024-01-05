@@ -9,14 +9,6 @@ public partial class Default
 {
     public const string ATTRIBUTE = "FluentCMS";
 
-    // todo: read from navigation manager
-    [SupplyParameterFromQuery]
-    public string? PluginDef { get; set; }
-
-    // todo: read from navigation manager
-    [SupplyParameterFromQuery]
-    public string? Layout { get; set; }
-
     public PageFullDetailResponse? Page { get; set; }
 
     [Inject]
@@ -47,43 +39,9 @@ public partial class Default
 
         try
         {
-            var uri = new Uri(NavigationManager.Uri);
-
-            if (!string.IsNullOrEmpty(PluginDef))
-            {
-                var siteResponse = await SiteClient.GetByUrlAsync(uri.Authority);
-                var site = siteResponse.Data;
-
-                var layout = site.Layouts?.Single(x => x.IsDefault);
-                if (!string.IsNullOrEmpty(Layout))
-                {
-                    layout = site.Layouts.SingleOrDefault(x => x.Name.ToLowerInvariant() == Layout.ToLowerInvariant()) ?? layout;
-                }
-
-                var pluginDefsResponse = await PluginDefinitionClient.GetAllAsync();
-                var pluginDefs = pluginDefsResponse.Data;
-                var pluginDef = pluginDefs.Where(x => x.Name.ToLowerInvariant() == PluginDef.ToLowerInvariant()).FirstOrDefault();
-
-                Page = new PageFullDetailResponse
-                {
-                    Layout = layout,
-                    Sections = new Dictionary<string, ICollection<PluginDetailResponse>>()
-                    {
-                        ["Main"] = [new PluginDetailResponse() {
-                            Definition = pluginDef,
-                           Section="Main"
-                        }]
-                    }
-                    ,
-                    Title = pluginDef.Name
-                };
-            }
-            else
-            {
-                var pageResponse = await PageClient.GetByPathAsync(uri.Authority, uri.LocalPath);
-                if (pageResponse.Data != null)
-                    Page = pageResponse.Data;
-            }
+            var pageResponse = await PageClient.GetByUrlAsync(NavigationManager.Uri);
+            if (pageResponse.Data != null)
+                Page = pageResponse.Data;
         }
         catch
         {
@@ -172,6 +130,5 @@ public partial class Default
         var typeInfo = assembly.DefinedTypes.FirstOrDefault(x => x.Name == typeName);
         return typeInfo?.AsType();
     }
-
 
 }
