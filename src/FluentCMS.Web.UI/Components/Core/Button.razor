@@ -1,7 +1,7 @@
 @inherits BaseComponent
 @if (!string.IsNullOrEmpty(Href))
 {
-    <a class=@this.GetClasses() disabled=@Disabled href=@Href @attributes="AdditionalAttributes">
+    <a @ref=Refe class=@this.GetClasses() disabled=@Disabled href=@Href @attributes="AdditionalAttributes">
         <span>
             @ChildContent
         </span>
@@ -13,7 +13,7 @@
 }
 else
 {
-    <button class=@this.GetClasses() disabled=@Disabled type="@Type.ToString()" @onclick=OnClick @attributes="AdditionalAttributes">
+    <button @ref=Refe class=@this.GetClasses() disabled=@Disabled type="@Type.ToString()" @onclick=OnClick @attributes="AdditionalAttributes">
         <span>
             @ChildContent
         </span>
@@ -29,6 +29,9 @@ else
     [Parameter]
     [CssProperty]
     public ColorEnum Color { get; set; } = ColorEnum.Default;
+
+    [Parameter]
+    public ElementReference Refe {get; set;}
 
     [Parameter]
     public string? Href { get; set; }
