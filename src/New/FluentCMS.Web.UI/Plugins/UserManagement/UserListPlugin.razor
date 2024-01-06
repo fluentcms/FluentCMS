@@ -1,6 +1,7 @@
 ﻿<div class="w-full p-4 bg-white border border-gray-200 rounded-lg shadow sm:p-6 dark:bg-gray-800 dark:border-gray-700">
     <h5 class="mb-3 text-base font-semibold text-gray-900 md:text-xl dark:text-white">
-        Users List
+        Users List 
+        <a href="?PluginDef=User Management&typeName=Create User" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Add New</a>
     </h5>
     <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
         <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
@@ -51,7 +52,7 @@
                         @user.LastLoginAt
                     </th>
                     <td class="px-6 py-4">
-                        <a href="?PluginDef=User Create" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</a>
+                        <a href="?PluginDef=User Management&typeName=Update User" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</a>
                     </td>
                 </tr>
             }

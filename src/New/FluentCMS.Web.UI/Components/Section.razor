@@ -1,4 +1,6 @@
-﻿@if (Page?.Sections != null)
+﻿@using System.Web
+
+@if (Page?.Sections != null)
 {
     @foreach (var section in Page.Sections)
     {
@@ -24,14 +26,22 @@
     [Parameter]
     public PageFullDetailResponse? Page { get; set; }
 
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = default!;
+
     private Type? GetType(PluginDetailResponse plugin)
     {
+        var uri = new Uri(NavigationManager.Uri);
+        var query = HttpUtility.ParseQueryString(uri.Query);
+
         var assembly = typeof(Section).Assembly;
+        var x = query["typeName"];
+        PluginDefinitionType pluginDefType;
 
-        var pluginDefType = plugin.Definition?.Types?.Where(p => p.IsDefault).FirstOrDefault();
-
-        if (pluginDefType is null)
-            throw new Exception("Plugin definition not found: " + plugin.Definition?.Name);
+        if (string.IsNullOrEmpty(x))
+            pluginDefType = plugin.Definition?.Types?.Where(p => p.IsDefault).FirstOrDefault();
+        else
+            pluginDefType = plugin.Definition?.Types?.Where(p => p.Name.Equals(x, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
 
         return assembly.DefinedTypes.FirstOrDefault(x => x.Name == pluginDefType.Type);
     }

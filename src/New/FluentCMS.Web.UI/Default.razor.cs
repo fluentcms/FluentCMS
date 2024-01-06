@@ -2,10 +2,11 @@
 using HtmlAgilityPack;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Routing;
 
 namespace FluentCMS.Web.UI;
 
-public partial class Default
+public partial class Default : IDisposable
 {
     public const string ATTRIBUTE = "FluentCMS";
 
@@ -28,6 +29,21 @@ public partial class Default
 
     [Parameter]
     public string? Route { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavigationManager.LocationChanged += LocationChanged;
+    }
+
+    void LocationChanged(object sender, LocationChangedEventArgs e)
+    {
+        StateHasChanged();
+    }
+
+    void IDisposable.Dispose()
+    {
+        NavigationManager.LocationChanged -= LocationChanged;
+    }
 
     protected override async Task OnParametersSetAsync()
     {
