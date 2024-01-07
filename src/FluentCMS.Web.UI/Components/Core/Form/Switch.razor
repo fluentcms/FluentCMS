@@ -1,6 +1,12 @@
 @inherits InputBaseComponent<bool>
 
-<FormField InlineLabel Label=@Label State=@State Hint=@Hint Required=@Required>
+<FormField
+    Dense=@Dense
+    InlineLabel
+    Label=@Label
+    State=@State
+    Hint=@Hint
+    Required=@Required>
     <input
         name=@Name
         type="checkbox"
@@ -9,11 +15,14 @@
         required=@Required
         @bind=Value
         @attributes="@AdditionalAttributes" />
-  <div class=@this.ClassName("SwitchInner")></div>
 
+      <div class=@this.ClassName("SwitchInner")></div>
 </FormField>
 
 @code {
     [Parameter]
     public string Hint {get; set;}
+
+    [Parameter]
+    public bool Dense { get; set; }
 }
