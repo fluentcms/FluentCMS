@@ -14,7 +14,6 @@
             <FormFieldHint State=@State>@Hint</FormFieldHint>
         }
     </label>
-
 } else {
 
     <div class=@this.GetClasses() @attributes=@AdditionalAttributes>
@@ -86,4 +85,8 @@
 	[Parameter]
 	[CssProperty]
 	public FormFieldStateEnum State {get;set;} = FormFieldStateEnum.Default;
+
+	[Parameter]
+	[CssProperty]
+	public bool Dense {get;set;}
 }

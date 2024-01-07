@@ -2,6 +2,7 @@
 
 <FormField
 	Id=@Id
+    Dense=@Dense
     Required=@Required
     Label=@Label
 	Hint=@Hint
@@ -41,4 +42,7 @@
 
     [Parameter]
     public string? Placeholder { get; set; }
+
+    [Parameter]
+    public bool Dense { get; set; }
 }

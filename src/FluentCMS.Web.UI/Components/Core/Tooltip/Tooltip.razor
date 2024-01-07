@@ -1,0 +1,34 @@
+@inject IJSRuntime JS
+@inherits BaseComponent
+@implements IDisposable
+
+<div @ref=element role="tooltip" class=@this.GetClasses()>
+    @ChildContent
+    <div class=@this.ClassName("TooltipArrow")></div>
+</div>
+
+@code {
+    private IJSObjectReference module = default!;
+
+    public ElementReference element;
+
+    [Parameter]
+    public ElementReference target {get; set;}
+
+    [Parameter]
+    public TooltipPlacementEnum Placement {get; set;} = TooltipPlacementEnum.Default;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Core/Tooltip/Tooltip.razor.js");
+
+        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), target, element, new { Placement = Placement.ToString().FromPascalCaseToKebabCase() });
+    }
+
+    public void Dispose() {
+        module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
+
+    }
+}
