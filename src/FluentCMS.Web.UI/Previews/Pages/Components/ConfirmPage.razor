@@ -2,17 +2,29 @@
 @layout ComponentsLayout
 @rendermode InteractiveServer
 
-<PageHeader HasBack Title="Confirm"/>
+<PageHeader HasBack Title="Confirm" />
 
-<div class="py-4 flex gap-2">
-    <Confirm @bind-Open=ConfirmValue
-             Static
-             Message="Are you sure you want to delete this product?"
-             OnCancel="() => Console.Write(1)"
-             OnConfirm="() => Console.Write(2)" />
-    <button @onclick="() => ConfirmValue = !ConfirmValue">Open</button>
-</div>
+ <div class="py-4 flex gap-2">
+     <Confirm @bind-Open=Open
+              Static
+              Message="Are you sure you want to delete this product?"
+              OnCancel="() => Console.Write(1)"
+              OnConfirm="() => Console.Write(2)" />
+     <button @onclick="() => Open = !Open">Open</button>
+
+     <br />
+
+     <button @onclick=@OpenByService>Open By Service</button>
+ </div>
 
  @code {
-    private bool ConfirmValue { get; set; } = false;
- }
+    [Inject]
+    ConfirmService ConfirmService { get; set; } = default!;
+
+    private bool Open { get; set; } = false;
+
+    async Task OpenByService()
+    {
+        var Result = await ConfirmService!.Show("Are you sure you want to delete this product?");
+    }
+}
