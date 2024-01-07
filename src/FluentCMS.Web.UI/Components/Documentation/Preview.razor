@@ -3,19 +3,15 @@
 <div class="pb-6">
     <h2 class="py-2 text-2xl font-bold">@Title</h2>
     <p class="mb-2">@Description</p>
-
-    <Card>
-        <CardBody>
-            @ChildContent
-        </CardBody>
-    </Card>
+    <div class="dark:bg-gray-800 shadow p-6">
+        @ChildContent
+    </div>
 </div>
 
 @code {
     [Parameter]
-    public string Title {get; set;}
+    public string? Title { get; set; }
 
     [Parameter]
-    public RenderFragment Description {get; set;}
-
+    public RenderFragment? Description { get; set; }
 }
