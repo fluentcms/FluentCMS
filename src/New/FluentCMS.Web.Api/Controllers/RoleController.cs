@@ -3,7 +3,7 @@
 public class RoleController(
     IMapper mapper,
     IRoleService roleService,
-    AppService appService) : BaseAppController
+    IAppService appService) : BaseAppController
 {
     [HttpGet]
     public async Task<IApiPagingResult<RoleDetailResponse>> GetAll([FromRoute] string appSlug, CancellationToken cancellationToken = default)
