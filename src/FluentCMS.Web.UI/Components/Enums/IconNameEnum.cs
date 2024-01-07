@@ -9,6 +9,7 @@ public enum IconNameEnum
     ClipboardList,
     Cog,
     Delete,
+    Eye,
     Edit,
     ExclamationCircle,
     Filter,

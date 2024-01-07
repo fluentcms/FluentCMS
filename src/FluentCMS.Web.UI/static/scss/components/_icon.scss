@@ -27,8 +27,9 @@ $prefix-icon: $prefix + "icon";
     width: var(--#{$prefix-icon}-size);
     height: var(--#{$prefix-icon}-size);
 
-    display: inline-block;
-    vertical-align: bottom;
+    display: inline-flex;
+    justify-content: center;
+
     @each $key, $value in $icon-sizes {
         &-size-#{$key} {
             --#{$prefix-icon}-size: #{$value};
