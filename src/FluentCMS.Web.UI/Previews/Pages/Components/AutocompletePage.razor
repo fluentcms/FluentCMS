@@ -4,25 +4,38 @@
 
 <PageHeader HasBack Title="Autocomplete" />
 
- <div class="py-4 flex flex-col gap-4">
-     <Autocomplete Disabled=Disabled Options=Options />
-     <Autocomplete Disabled=Disabled Options=Options @bind-Value=Value Multiple />
-     <div>
-         @foreach (var item in Value)
+<h2>Default</h2>
+<div class="flex flex-col gap-4">
+    <Autocomplete Options=Options />
+</div>
+
+<h2>Disabled</h2>
+<div class="flex flex-col gap-4">
+    <Autocomplete Options=Options Disabled />
+</div>
+
+<h2>Multiple</h2>
+<div class="flex flex-col gap-4">
+    <Autocomplete Options=Options Multiple />
+</div>
+
+<h2>Initialize</h2>
+<div class="flex flex-col gap-4">
+    <Autocomplete Options=Options @bind-Value=Value />
+</div>
+
+<h2>Value</h2>
+<div class="flex flex-col gap-4">
+    <Autocomplete Options=Options @bind-Value=Value Multiple />
+    <div>
+        @foreach (var item in Value)
         {
-            <span @key=item>@item, </span>
+            <Badge @key=item Color=ColorEnum.Primary>
+                @Options.FirstOrDefault(X => X.Id == item).Title
+            </Badge>
+            <span>&nbsp;</span>
         }
     </div>
-    <Button OnClick="() => Disabled = !Disabled">
-        @if (Disabled)
-        {
-            <text>Enable</text>
-        }
-        else
-        {
-            <text>Disable</text>
-        }
-    </Button>
 </div>
 
 @code {
@@ -33,27 +46,27 @@
         new AutocompleteOptions
         {
             Id = "1",
-            Title = "A"
+            Title = "Item A"
         },
         new AutocompleteOptions
         {
             Id = "2",
-            Title = "B"
+            Title = "Item B"
         },
         new AutocompleteOptions
         {
             Id = "3",
-            Title = "C"
+            Title = "Item C"
         },
         new AutocompleteOptions
         {
             Id = "4",
-            Title = "D"
+            Title = "Item D"
         },
         new AutocompleteOptions
         {
             Id = "5",
-            Title = "E"
+            Title = "Item E"
         }
     };
 
