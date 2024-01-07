@@ -4,30 +4,88 @@
 
 <PageHeader HasBack Title="Card"/>
 
-<div class="py-4 flex flex-col align-start justify-start gap-4">
-    <Card>Simple Card component</Card>
-    <Card>
-        <CardTitle>Some Title</CardTitle>
-        Card With title
-    </Card>
-    <Card Width="SizeEnum.Default">
-        default Card
-    </Card>
-    <Card Width="SizeEnum.Small">
-        small Card
-    </Card>
-    <Card Width="SizeEnum.Medium">
-        medium Card
-    </Card>
-    <Card Width="SizeEnum.Large">
-        large Card
-    </Card>
-    <Card>
-        <CardBody>
-            <CardTitle>Card title</CardTitle>
-            Content inside card body
-            <Button Color="ColorEnum.Primary">Some action</Button>
-        </CardBody>
-    </Card>
-</div>
+<Preview Title="Default">
+    <Description>
+        Use the following simple card component with a title and description.
+    </Description>
+    <ChildContent>
+        <div class="flex items-center justify-center">
+            <Card Width=SizeEnum.Small>
+                <CardBody>
+                    <CardTitle>Noteworthy technology acquisitions 2021</CardTitle>
+                    Here are the biggest enterprise technology acquisitions of 2021 so far, in reverse chronological order.
+                </CardBody>
+            </Card>
+        </div>
+    </ChildContent>
+</Preview>
 
+<Preview Title="Widths">
+    <Description>
+        Card supports multiple sizes
+    </Description>
+    <ChildContent>
+        <div class="flex flex-col gap-4 items-center justify-center">
+            <Card Width=SizeEnum.Small>
+                <CardBody>
+                    <CardTitle>Noteworthy technology acquisitions 2021 (Small)</CardTitle>
+                    Here are the biggest enterprise technology acquisitions of 2021 so far, in reverse chronological order.
+                </CardBody>
+            </Card>
+            <Card Width=SizeEnum.Medium>
+                <CardBody>
+                    <CardTitle>Noteworthy technology acquisitions 2021 (Medium)</CardTitle>
+                    Here are the biggest enterprise technology acquisitions of 2021 so far, in reverse chronological order.
+                </CardBody>
+            </Card>
+            <Card Width=SizeEnum.Large>
+                <CardBody>
+                    <CardTitle>Noteworthy technology acquisitions 2021 (Large)</CardTitle>
+                    Here are the biggest enterprise technology acquisitions of 2021 so far, in reverse chronological order.
+                </CardBody>
+            </Card>
+            <Card Width=SizeEnum.Default>
+                <CardBody>
+                    <CardTitle>Noteworthy technology acquisitions 2021 (Default)</CardTitle>
+                    Here are the biggest enterprise technology acquisitions of 2021 so far, in reverse chronological order.
+                </CardBody>
+            </Card>
+        </div>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Media">
+    <ChildContent>
+        <Card Width=SizeEnum.Medium>
+            <img class="w-full rounded-t" src="https://c4.wallpaperflare.com/wallpaper/756/1014/339/body-of-water-over-the-horizon-wallpaper-preview.jpg"/>
+            <CardBody>
+                <CardTitle>Some title</CardTitle>
+
+                <div class="mb-2">
+                    Here are the biggest enterprise technology acquisitions of 2021 so far, in reverse chronological order.
+                </div>
+
+                <Button Color=@ColorEnum.Primary>Read More ></Button>
+            </CardBody>
+        </Card>
+    </ChildContent>
+</Preview>
+
+<Preview Title="With Form">
+    <ChildContent>
+        <Card Width=SizeEnum.Medium>
+            <form>
+                <CardBody>
+                    <CardTitle>Login Form</CardTitle>
+                    <Input Label="Username"/>
+                    <Input Type="InputTypeEnum.Date" Label="Password"/>
+                    <ButtonGroup>
+                        <Button Ghost>No Account?</Button>
+                        <Button Color="ColorEnum.Primary">Login</Button>
+                    </ButtonGroup>
+                </CardBody>
+            </form>
+        </Card>
+
+    </ChildContent>
+</Preview>

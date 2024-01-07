@@ -4,47 +4,51 @@
 
 <PageHeader HasBack Title="Tables" />
 
-<div class="py-4 flex flex-col gap-4">
-    <Table>
-        <TableHead>
-            <TableCell>Id</TableCell>
-            <TableCell>Title</TableCell>
-            <TableCell>Created At</TableCell>
-            <TableCell>Updated At</TableCell>
-            <TableCell>State</TableCell>
-            <TableCell></TableCell>
-        </TableHead>
-        <TableBody>
-            @foreach (var item in data)
-            {
-                <TableRow>
-                    <TableCell>#@item.Id</TableCell>
-                        <TableCell>@item.Title</TableCell>
-                        <TableCell>@item.CreatedAt</TableCell>
-                        <TableCell>@item.UpdatedAt</TableCell>
+<Preview Title="Default">
+    <Description>
+        Use the table component to show text, images, links, and other elements inside a structured set of data made up of rows and columns of table cells
+    </Description>
+    <ChildContent>
+        <Table>
+            <TableHead>
+                <TableCell>Id</TableCell>
+                <TableCell>Title</TableCell>
+                <TableCell>Created At</TableCell>
+                <TableCell>Updated At</TableCell>
+                <TableCell>State</TableCell>
+                <TableCell></TableCell>
+            </TableHead>
+            <TableBody>
+                @foreach (var item in data)
+                {
+                    <TableRow>
+                        <TableCell>#@item.Id</TableCell>
+                            <TableCell>@item.Title</TableCell>
+                            <TableCell>@item.CreatedAt</TableCell>
+                            <TableCell>@item.UpdatedAt</TableCell>
+                            <TableCell>
+                                <Badge Color="ColorEnum.Primary">
+                                    @item.State
+                            </Badge>
+                        </TableCell>
                         <TableCell>
-                            <Badge Color="ColorEnum.Primary">
-                                @item.State
-                        </Badge>
-                    </TableCell>
-                    <TableCell>
-                        Button Group
+                            Button Group
 
-                    </TableCell>
-                </TableRow>
-            }
-        </TableBody>
-        <TableFoot>
-            <TableCell>Total</TableCell>
-            <TableCell></TableCell>
-            <TableCell></TableCell>
-            <TableCell>5,233</TableCell>
-            <TableCell></TableCell>
-            <TableCell>12,200</TableCell>
-
-        </TableFoot>
-    </Table>
-</div>
+                        </TableCell>
+                    </TableRow>
+                }
+            </TableBody>
+            <TableFoot>
+                <TableCell>Total</TableCell>
+                <TableCell></TableCell>
+                <TableCell></TableCell>
+                <TableCell>5,233</TableCell>
+                <TableCell></TableCell>
+                <TableCell>12,200</TableCell>
+            </TableFoot>
+        </Table>
+    </ChildContent>
+</Preview>
 
 @code {
     public class Item
