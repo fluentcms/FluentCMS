@@ -2,12 +2,46 @@
 @rendermode InteractiveServer
 @layout ComponentsLayout
 
+<PageHeader HasBack Title="Alerts" />
 
-<PageHeader HasBack Title="Alerts"/>
+ <h2>Default alert</h2>
+ <p>Use the following examples of alert components to show messages as feedback to your users.</p>
 
-<div class="py-4 flex flex-col gap-4">
-    <Alert Type="AlertTypeEnum.Success"> Change a few things up and try submitting again.</Alert>
-    <Alert Dismissible Type="AlertTypeEnum.Warning"> Change a few things up and try submitting again.</Alert>
-     <Alert Type="AlertTypeEnum.Danger"> Change a few things up and try submitting again.</Alert>
-     <Alert Type="AlertTypeEnum.Info"> Change a few things up and try submitting again.</Alert>
+ <div class="flex flex-col gap-4">
+     <Alert Type=AlertTypeEnum.Info>
+         <b>Info alert!</b> Change a few things up and try submitting again.
+     </Alert>
+     <Alert Type=AlertTypeEnum.Danger>
+         <b>Danger alert!</b> Change a few things up and try submitting again.
+     </Alert>
+     <Alert Type=AlertTypeEnum.Success>
+         <b>Success alert!</b> Change a few things up and try submitting again.
+     </Alert>
+     <Alert Type=AlertTypeEnum.Warning>
+         <b>Warning alert!</b> Change a few things up and try submitting again.
+     </Alert>
+     <Alert Type=AlertTypeEnum.Default>
+         <b>Default alert!</b> Change a few things up and try submitting again.
+     </Alert>
+ </div>
+
+ <h2>Dismissing </h2>
+ <p>Use the following alert elements that are also dismissible.</p>
+
+ <div class="flex flex-col gap-4">
+     <Alert Dismissible Type=AlertTypeEnum.Info>
+         <b>Info alert!</b> Change a few things up and try submitting again.
+     </Alert>
+     <Alert Dismissible Type=AlertTypeEnum.Danger>
+         <b>Danger alert!</b> Change a few things up and try submitting again.
+     </Alert>
+     <Alert Dismissible Type=AlertTypeEnum.Success>
+         <b>Success alert!</b> Change a few things up and try submitting again.
+     </Alert>
+     <Alert Dismissible Type=AlertTypeEnum.Warning>
+         <b>Warning alert!</b> Change a few things up and try submitting again.
+     </Alert>
+     <Alert Dismissible Type=AlertTypeEnum.Default>
+         <b>Default alert!</b> Change a few things up and try submitting again.
+     </Alert>
  </div>
