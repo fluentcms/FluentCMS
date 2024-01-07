@@ -14,9 +14,11 @@ $prefix-button: $prefix + "button";
     &-size-small {
         @apply px-3 py-2 text-xs;
     }
+
     &-size-medium {
         @apply px-5 py-2.5 text-sm;
     }
+
     &-size-large {
         @apply px-5 py-3 text-base;
     }
@@ -41,6 +43,7 @@ $prefix-button: $prefix + "button";
 @each $key, $value in $colors {
     .#{$prefix-button}-color-#{$key}.#{$prefix-button}-outline-false.#{$prefix-button}-disabled-false.#{$prefix-button}-ghost-false {
         @apply text-white bg-#{$value}-700;
+
         &:hover {
             @apply bg-#{$value}-800;
         }
@@ -61,6 +64,7 @@ $prefix-button: $prefix + "button";
             @apply ring-#{$value}-800;
         }
     }
+
     .#{$prefix-button}-color-#{$key}.#{$prefix-button}-disabled-true {
         @apply text-white bg-#{$value}-400 cursor-not-allowed pointer-events-none;
 
@@ -71,6 +75,7 @@ $prefix-button: $prefix + "button";
 
     .#{$prefix-button}-color-#{$key}.#{$prefix-button}-outline-true.#{$prefix-button}-ghost-false {
         @apply text-#{$value}-700 border border-#{$value}-700;
+
         &:hover {
             @apply text-white bg-#{$value}-800;
         }
@@ -91,6 +96,7 @@ $prefix-button: $prefix + "button";
             @apply ring-#{$value}-800;
         }
     }
+
     .#{$prefix-button}-color-#{$key}.#{$prefix-button}-ghost-true.#{$prefix-button}-outline-false {
         @apply text-#{$value}-700;
 
@@ -137,48 +143,45 @@ $prefix-button: $prefix + "button";
 }
 
 .#{$prefix-button}-color-default.#{$prefix-button}-ghost-true.#{$prefix-button}-outline-false {
-	@apply text-gray-600;
+    @apply text-gray-600;
 
-	&:hover {
-		@apply text-gray-800;
-	}
+    &:hover {
+        @apply text-gray-800;
+    }
 
-	.#{$prefix-theme-dark} & {
-		@apply text-gray-500;
-	}
+    .#{$prefix-theme-dark} & {
+        @apply text-gray-500;
+    }
 
-	.#{$prefix-theme-dark} &:hover {
-		@apply text-gray-700;
-	}
+    .#{$prefix-theme-dark} &:hover {
+        @apply text-gray-700;
+    }
 }
 
 .#{$prefix-button}-color-default.#{$prefix-button}-outline-true.#{$prefix-button}-ghost-false {
-        @apply text-gray-700 border border-gray-700;
-        &:hover {
-            @apply text-white bg-gray-800;
-        }
+    @apply text-gray-700 border border-gray-700;
 
-        &:focus {
-            @apply ring-4 ring-gray-300;
-        }
-
-        .#{$prefix-theme-dark} & {
-            @apply border-gray-500 text-gray-500;
-        }
-
-        .#{$prefix-theme-dark} &:hover {
-            @apply text-white bg-gray-500;
-        }
-
-        .#{$prefix-theme-dark} &:focus {
-            @apply ring-gray-800;
-        }
+    &:hover {
+        @apply text-white bg-gray-800;
     }
+
+    &:focus {
+        @apply ring-4 ring-gray-300;
+    }
+
+    .#{$prefix-theme-dark} & {
+        @apply border-gray-500 text-gray-500;
+    }
+
+    .#{$prefix-theme-dark} &:hover {
+        @apply text-white bg-gray-500;
+    }
+
+    .#{$prefix-theme-dark} &:focus {
+        @apply ring-gray-800;
+    }
+}
 
 .#{$prefix-button}-group {
     @apply inline-flex justify-end gap-2;
-
-    &.#{$prefix-button}-group-wrap-true {
-        @apply flex-wrap;
-    }
 }

@@ -8,15 +8,13 @@
 <p>Use these default button styles with multiple colors to indicate an action or link within your website.</p>
 
  <div class="flex gap-4">
-     <ButtonGroup>
-        <Button>Default</Button>
-        <Button Color=@ColorEnum.Primary>Primary</Button>
-        <Button Color=@ColorEnum.Secondary>Secondary</Button>
-        <Button Color=@ColorEnum.Success>Success</Button>
-        <Button Color=@ColorEnum.Info>Info</Button>
-        <Button Color=@ColorEnum.Warning>Warning</Button>
-        <Button Color=@ColorEnum.Danger>Danger</Button>
-    </ButtonGroup>
+    <Button>Default</Button>
+    <Button Color=@ColorEnum.Primary>Primary</Button>
+    <Button Color=@ColorEnum.Secondary>Secondary</Button>
+    <Button Color=@ColorEnum.Success>Success</Button>
+    <Button Color=@ColorEnum.Info>Info</Button>
+    <Button Color=@ColorEnum.Warning>Warning</Button>
+    <Button Color=@ColorEnum.Danger>Danger</Button>
 </div>
 
 <h2>Outline</h2>
@@ -101,4 +99,13 @@
     <Button Size=SizeEnum.Small>Small</Button>
     <Button Size=SizeEnum.Medium>Medium</Button>
     <Button Size=SizeEnum.Large>Large</Button>
-</div> 
+</div>
+
+<h2>Group</h2>
+
+<div class="flex gap-4">
+    <ButtonGroup>
+        <Button>Cancel</Button>
+        <Button Color=@ColorEnum.Primary>Confirm</Button>
+    </ButtonGroup>
+</div>
