@@ -4,15 +4,20 @@
 
 <PageHeader HasBack Title="Badges"/>
 
-<h2>Default</h2>
-<p>Use the following badge elements to indicate counts or labels inside or outside components.</p>
+<Preview Title="Default">
+    <Description>
+        Use the following badge elements to indicate counts or labels inside or outside components.
+    </Description>
+    <ChildContent>
+        <div class="flex gap-4">
+            <Badge Color=@ColorEnum.Default>Default</Badge>
+            <Badge Color=@ColorEnum.Primary>Primary</Badge>
+            <Badge Color=@ColorEnum.Secondary>Secondary</Badge>
+            <Badge Color=@ColorEnum.Success>Success</Badge>
+            <Badge Color=@ColorEnum.Danger>Danger</Badge>
+            <Badge Color=@ColorEnum.Warning>Warning</Badge>
+            <Badge Color=@ColorEnum.Info>Info</Badge>
+        </div>
+    </ChildContent>
+</Preview>
 
-<div class="flex gap-4">
-    <Badge Color=@ColorEnum.Default>Default</Badge>
-    <Badge Color=@ColorEnum.Primary>Primary</Badge>
-    <Badge Color=@ColorEnum.Secondary>Secondary</Badge>
-    <Badge Color=@ColorEnum.Success>Success</Badge>
-    <Badge Color=@ColorEnum.Danger>Danger</Badge>
-    <Badge Color=@ColorEnum.Warning>Warning</Badge>
-    <Badge Color=@ColorEnum.Info>Info</Badge>
-</div>

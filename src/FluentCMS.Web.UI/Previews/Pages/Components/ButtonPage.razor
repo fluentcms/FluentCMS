@@ -4,108 +4,134 @@
 
 <PageHeader HasBack Title="Buttons"/>
 
-<h2>Default</h2>
-<p>Use these default button styles with multiple colors to indicate an action or link within your website.</p>
+<Preview Title="Default">
+    <Description>
+        Use these default button styles with multiple colors to indicate an action or link within your website.
+    </Description>
+    <ChildContent>
+         <div class="flex gap-4">
+            <Button>Default</Button>
+            <Button Color=@ColorEnum.Primary>Primary</Button>
+            <Button Color=@ColorEnum.Secondary>Secondary</Button>
+            <Button Color=@ColorEnum.Success>Success</Button>
+            <Button Color=@ColorEnum.Info>Info</Button>
+            <Button Color=@ColorEnum.Warning>Warning</Button>
+            <Button Color=@ColorEnum.Danger>Danger</Button>
+        </div>
+    </ChildContent>
+</Preview>
 
- <div class="flex gap-4">
-    <Button>Default</Button>
-    <Button Color=@ColorEnum.Primary>Primary</Button>
-    <Button Color=@ColorEnum.Secondary>Secondary</Button>
-    <Button Color=@ColorEnum.Success>Success</Button>
-    <Button Color=@ColorEnum.Info>Info</Button>
-    <Button Color=@ColorEnum.Warning>Warning</Button>
-    <Button Color=@ColorEnum.Danger>Danger</Button>
-</div>
 
-<h2>Outline</h2>
-<p>Use the following button styles to show the colors only for the border of the element.</p>
+<Preview Title="Outline">
+    <Description>
+        Use the following button styles to show the colors only for the border of the element.
+    </Description>
+    <ChildContent>
+        <div class="flex gap-4">
+            <Button Outline>Default</Button>
+            <Button Outline Color=@ColorEnum.Primary>Primary</Button>
+            <Button Outline Color=@ColorEnum.Secondary>Secondary</Button>
+            <Button Outline Color=@ColorEnum.Success>Success</Button>
+            <Button Outline Color=@ColorEnum.Info>Info</Button>
+            <Button Outline Color=@ColorEnum.Warning>Warning</Button>
+            <Button Outline Color=@ColorEnum.Danger>Danger</Button>
+        </div>
+    </ChildContent>
+</Preview>
 
- <div class="flex gap-4">
-    <Button Outline>Default</Button>
-    <Button Outline Color=@ColorEnum.Primary>Primary</Button>
-    <Button Outline Color=@ColorEnum.Secondary>Secondary</Button>
-    <Button Outline Color=@ColorEnum.Success>Success</Button>
-    <Button Outline Color=@ColorEnum.Info>Info</Button>
-    <Button Outline Color=@ColorEnum.Warning>Warning</Button>
-    <Button Outline Color=@ColorEnum.Danger>Danger</Button>
-</div>
+<Preview Title="Disabled">
+    <Description>
+        Use the following styles to indicate a disabled button.
+        This can be often used inside form elements to disable the submit button before all the form elements have been completed and validated.
+    </Description>
+    <ChildContent>
+        <div class="flex gap-4">
+            <Button Disabled>Default</Button>
+            <Button Disabled Color=@ColorEnum.Primary>Primary</Button>
+            <Button Disabled Color=@ColorEnum.Secondary>Secondary</Button>
+            <Button Disabled Color=@ColorEnum.Success>Success</Button>
+            <Button Disabled Color=@ColorEnum.Info>Info</Button>
+            <Button Disabled Color=@ColorEnum.Warning>Warning</Button>
+            <Button Disabled Color=@ColorEnum.Danger>Danger</Button>
+        </div>
+    </ChildContent>
+</Preview>
 
-<h2>Disabled</h2>
-<p>
-    Use the following styles to indicate a disabled button.
-    This can be often used inside form elements to disable the submit button before all the form elements have been completed and validated.
-</p>
+<Preview Title="With Icon">
+    <Description>
+        Use the following examples to add a icon inside the button either on the left or right side.
+    </Description>
+    <ChildContent>
+        <div class="flex gap-4">
+            <Button>
+                <Icon Name=IconNameEnum.InformationFilled />
+                Default
+            </Button>
+            <Button Color=@ColorEnum.Primary>
+                <Icon Name=IconNameEnum.InformationFilled />
+                Primary
+            </Button>
+            <Button Color=@ColorEnum.Secondary>
+                <Icon Name=IconNameEnum.InformationFilled />
+                Secondary
+            </Button>
+            <Button Color=@ColorEnum.Success>
+                <Icon Name=IconNameEnum.InformationFilled />
+                Success
+            </Button>
+            <Button Color=@ColorEnum.Info>
+                <Icon Name=IconNameEnum.InformationFilled />
+                Info
+            </Button>
+            <Button Color=@ColorEnum.Warning>
+                <Icon Name=IconNameEnum.InformationFilled />
+                Warning
+            </Button>
+            <Button Color=@ColorEnum.Danger>
+                <Icon Name=IconNameEnum.InformationFilled />
+                Danger
+            </Button>
+        </div>
+    </ChildContent>
+</Preview>
 
- <div class="flex gap-4">
-    <Button Disabled>Default</Button>
-    <Button Disabled Color=@ColorEnum.Primary>Primary</Button>
-    <Button Disabled Color=@ColorEnum.Secondary>Secondary</Button>
-    <Button Disabled Color=@ColorEnum.Success>Success</Button>
-    <Button Disabled Color=@ColorEnum.Info>Info</Button>
-    <Button Disabled Color=@ColorEnum.Warning>Warning</Button>
-    <Button Disabled Color=@ColorEnum.Danger>Danger</Button>
-</div>
+<Preview Title="Ghost">
+    <Description>
+    </Description>
+    <ChildContent>
+        <div class="flex gap-4">
+            <Button Ghost>Default</Button>
+            <Button Ghost Color=ColorEnum.Primary>Primary</Button>
+            <Button Ghost Color=ColorEnum.Secondary>Secondary</Button>
+            <Button Ghost Color=ColorEnum.Success>Success</Button>
+            <Button Ghost Color=ColorEnum.Info>Info</Button>
+            <Button Ghost Color=ColorEnum.Warning>Warning</Button>
+            <Button Ghost Color=ColorEnum.Danger>Danger</Button>
+        </div>
+    </ChildContent>
+</Preview>
 
-<h2>With Icon</h2>
-<p>Use the following examples to add a icon inside the button either on the left or right side.</p>
- 
-<div class="flex gap-4">
-    <Button>
-        <Icon Name=IconNameEnum.InformationFilled />
-        Default
-    </Button>
-    <Button Color=@ColorEnum.Primary>
-        <Icon Name=IconNameEnum.InformationFilled />
-        Primary
-    </Button>
-    <Button Color=@ColorEnum.Secondary>
-        <Icon Name=IconNameEnum.InformationFilled />
-        Secondary
-    </Button>
-    <Button Color=@ColorEnum.Success>
-        <Icon Name=IconNameEnum.InformationFilled />
-        Success
-    </Button>
-    <Button Color=@ColorEnum.Info>
-        <Icon Name=IconNameEnum.InformationFilled />
-        Info
-    </Button>
-    <Button Color=@ColorEnum.Warning>
-        <Icon Name=IconNameEnum.InformationFilled />
-        Warning
-    </Button>
-    <Button Color=@ColorEnum.Danger>
-        <Icon Name=IconNameEnum.InformationFilled />
-        Danger
-    </Button>
- </div>
 
-<h2>Ghost</h2>
+<Preview Title="Sizes">
+    <Description>
+        Use these examples if you want to use smaller or larger buttons.
+    </Description>
+    <ChildContent>
+        <div class="flex gap-4">
+            <Button Size=SizeEnum.Small>Small</Button>
+            <Button Size=SizeEnum.Medium>Medium (Default)</Button>
+            <Button Size=SizeEnum.Large>Large</Button>
+        </div>
+    </ChildContent>
+</Preview>
 
-<div class="flex gap-4">
-    <Button Ghost>Default</Button>
-    <Button Ghost Color=ColorEnum.Primary>Primary</Button>
-    <Button Ghost Color=ColorEnum.Secondary>Secondary</Button>
-    <Button Ghost Color=ColorEnum.Success>Success</Button>
-    <Button Ghost Color=ColorEnum.Info>Info</Button>
-    <Button Ghost Color=ColorEnum.Warning>Warning</Button>
-    <Button Ghost Color=ColorEnum.Danger>Danger</Button>
-</div>
-
-<h2>Sizes</h2>
-<p>Use these examples if you want to use smaller or larger buttons.</p>
- 
- <div>
-    <Button Size=SizeEnum.Small>Small</Button>
-    <Button Size=SizeEnum.Medium>Medium</Button>
-    <Button Size=SizeEnum.Large>Large</Button>
-</div>
-
-<h2>Group</h2>
-
-<div class="flex gap-4">
-    <ButtonGroup>
-        <Button>Cancel</Button>
-        <Button Color=@ColorEnum.Primary>Confirm</Button>
-    </ButtonGroup>
-</div>
+<Preview Title="Group">
+    <ChildContent>
+        <div class="flex gap-4">
+            <ButtonGroup>
+                <Button>Cancel</Button>
+                <Button Color=@ColorEnum.Primary>Confirm</Button>
+            </ButtonGroup>
+        </div>
+    </ChildContent>
+</Preview>

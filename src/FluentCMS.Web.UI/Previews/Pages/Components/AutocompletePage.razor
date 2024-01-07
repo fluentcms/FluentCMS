@@ -4,39 +4,45 @@
 
 <PageHeader HasBack Title="Autocomplete" />
 
-<h2>Default</h2>
-<div class="flex flex-col gap-4">
-    <Autocomplete Options=Options />
-</div>
+<Preview Title="Default">
+    <ChildContent>
+        <Autocomplete Options=Options />
+    </ChildContent>
+</Preview>
 
-<h2>Disabled</h2>
-<div class="flex flex-col gap-4">
-    <Autocomplete Options=Options Disabled />
-</div>
+<Preview Title="Disabled">
+    <ChildContent>
+        <Autocomplete Options=Options Disabled />
+    </ChildContent>
+</Preview>
 
-<h2>Multiple</h2>
-<div class="flex flex-col gap-4">
-    <Autocomplete Options=Options Multiple />
-</div>
+<Preview Title="Multiple">
+    <ChildContent>
+        <Autocomplete Options=Options Multiple />
+    </ChildContent>
+</Preview>
 
-<h2>Initialize</h2>
-<div class="flex flex-col gap-4">
-    <Autocomplete Options=Options @bind-Value=Value />
-</div>
+<Preview Title="Initialize">
+    <ChildContent>
+        <Autocomplete Options=Options @bind-Value=Value />
+    </ChildContent>
+</Preview>
 
-<h2>Value</h2>
-<div class="flex flex-col gap-4">
-    <Autocomplete Options=Options @bind-Value=Value Multiple />
-    <div>
-        @foreach (var item in Value)
-        {
-            <Badge @key=item Color=ColorEnum.Primary>
-                @Options.FirstOrDefault(X => X.Id == item).Title
-            </Badge>
-            <span>&nbsp;</span>
-        }
-    </div>
-</div>
+<Preview Title="Value">
+    <ChildContent>
+        <Autocomplete Options=Options @bind-Value=Value Multiple />
+
+        <div class="pb-12">
+            @foreach (var item in Value)
+            {
+                <Badge @key=item Color=ColorEnum.Primary>
+                    @Options.FirstOrDefault(X => X.Id == item).Title
+                </Badge>
+                <span>&nbsp;</span>
+            }
+        </div>
+    </ChildContent>
+</Preview>
 
 @code {
     public bool Disabled { get; set; }
