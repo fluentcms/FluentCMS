@@ -10,33 +10,39 @@
         when deleting an item and making sure if the user really wants to do that by double confirming.
     </Description>
     <ChildContent>
-        <div class="flex items-center justify-center">
-            <Confirm @bind-Open=Open1 Message="Are you sure you want to delete this product?" />
-            <Button OnClick="() => Open1 = !Open1">Open</Button>
-        </div>
+        <Grid ItemsSmall=GridItemsEnum.Center JustifySmall=GridJustifyEnum.Center>
+            <GridItem>
+                <Confirm @bind-Open=Open1 Message="Are you sure you want to delete this product?" />
+                <Button OnClick="() => Open1 = !Open1">Open</Button>
+            </GridItem>
+        </Grid>
     </ChildContent>
 </Preview>
 
- <Preview Title="Static">
+<Preview Title="Static">
     <Description>
         You can not close confirm dialog by click outside.
     </Description>
     <ChildContent>
-        <div class="flex items-center justify-center">
-            <Confirm @bind-Open=Open2 Message="Are you sure you want to delete this product?" Static/>
-            <Button OnClick="() => Open2 = !Open2">Open</Button>
-        </div>
+        <Grid ItemsSmall=GridItemsEnum.Center JustifySmall=GridJustifyEnum.Center>
+            <GridItem>
+                <Confirm @bind-Open=Open2 Message="Are you sure you want to delete this product?" Static/>
+                <Button OnClick="() => Open2 = !Open2">Open</Button>
+            </GridItem>
+        </Grid>
     </ChildContent>
 </Preview>
 
- <Preview Title="Service">
+<Preview Title="Service">
     <Description>
         Confirmation modal can open with the ConfirmService as well.
     </Description>
     <ChildContent>
-        <div class="flex items-center justify-center">
-             <Button OnClick=OpenByService>Open</Button>
-        </div>
+        <Grid ItemsSmall=GridItemsEnum.Center JustifySmall=GridJustifyEnum.Center>
+            <GridItem>
+                <Button OnClick=OpenByService>Open</Button>
+            </GridItem>
+        </Grid>
     </ChildContent>
 </Preview>
 
