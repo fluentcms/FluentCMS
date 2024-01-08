@@ -11,7 +11,6 @@ public partial class StepDefinitions
             Email = credentials.Email,
             Username = credentials.Username,
             Password = credentials.Password,
-            RoleIds = new List<Guid>()
         };
         var response = await userClient.CreateAsync(createUserRequest);
         context.Set(response);

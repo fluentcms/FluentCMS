@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Web.Api.Controllers;
 
-public class ContentTypeController(IMapper mapper, IContentTypeService contentTypeService, AppService appService) : BaseAppController
+public class ContentTypeController(IMapper mapper, IContentTypeService contentTypeService, IAppService appService) : BaseAppController
 {
     [HttpGet]
     public async Task<IApiPagingResult<ContentTypeResponse>> GetAll([FromRoute] string appSlug, CancellationToken cancellationToken = default)
