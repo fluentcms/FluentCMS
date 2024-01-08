@@ -1,6 +1,4 @@
-﻿@using System.Web
-
-@if (Page?.Sections != null)
+﻿@if (Page?.Sections != null)
 {
     @foreach (var section in Page.Sections)
     {
@@ -35,13 +33,13 @@
         var query = HttpUtility.ParseQueryString(uri.Query);
 
         var assembly = typeof(Section).Assembly;
-        var x = query["typeName"];
+        var pluginTypeName = query["typeName"];
         PluginDefinitionType pluginDefType;
 
-        if (string.IsNullOrEmpty(x))
+        if (string.IsNullOrEmpty(pluginTypeName))
             pluginDefType = plugin.Definition?.Types?.Where(p => p.IsDefault).FirstOrDefault();
         else
-            pluginDefType = plugin.Definition?.Types?.Where(p => p.Name.Equals(x, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+            pluginDefType = plugin.Definition?.Types?.Where(p => p.Name.Equals(pluginTypeName, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
 
         return assembly.DefinedTypes.FirstOrDefault(x => x.Name == pluginDefType.Type);
     }

@@ -1802,7 +1802,7 @@ namespace FluentCMS.Web.ApiClients
                 throw new System.ArgumentNullException("appSlug");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("APP_PATH/{appSlug}/ContentType/GetAll");
+            urlBuilder_.Append("api/{appSlug}/ContentType/GetAll");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
@@ -1880,7 +1880,7 @@ namespace FluentCMS.Web.ApiClients
                 throw new System.ArgumentNullException("appSlug");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("APP_PATH/{appSlug}/ContentType/Create");
+            urlBuilder_.Append("api/{appSlug}/ContentType/Create");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
@@ -1962,7 +1962,7 @@ namespace FluentCMS.Web.ApiClients
                 throw new System.ArgumentNullException("appSlug");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("APP_PATH/{appSlug}/ContentType/Update");
+            urlBuilder_.Append("api/{appSlug}/ContentType/Update");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
@@ -2047,7 +2047,7 @@ namespace FluentCMS.Web.ApiClients
                 throw new System.ArgumentNullException("id");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("APP_PATH/{appSlug}/ContentType/Delete/{id}");
+            urlBuilder_.Append("api/{appSlug}/ContentType/Delete/{id}");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
             urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
@@ -2129,7 +2129,7 @@ namespace FluentCMS.Web.ApiClients
                 throw new System.ArgumentNullException("id");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("APP_PATH/{appSlug}/ContentType/SetField/{id}");
+            urlBuilder_.Append("api/{appSlug}/ContentType/SetField/{id}");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
             urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
@@ -2218,7 +2218,7 @@ namespace FluentCMS.Web.ApiClients
                 throw new System.ArgumentNullException("name");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("APP_PATH/{appSlug}/ContentType/DeleteField/{id}/{name}");
+            urlBuilder_.Append("api/{appSlug}/ContentType/DeleteField/{id}/{name}");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
             urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
             urlBuilder_.Replace("{name}", System.Uri.EscapeDataString(ConvertToString(name, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4292,7 +4292,7 @@ namespace FluentCMS.Web.ApiClients
                 throw new System.ArgumentNullException("appSlug");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("APP_PATH/{appSlug}/Role/GetAll");
+            urlBuilder_.Append("api/{appSlug}/Role/GetAll");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
@@ -4370,7 +4370,7 @@ namespace FluentCMS.Web.ApiClients
                 throw new System.ArgumentNullException("appSlug");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("APP_PATH/{appSlug}/Role/Create");
+            urlBuilder_.Append("api/{appSlug}/Role/Create");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
@@ -4452,7 +4452,7 @@ namespace FluentCMS.Web.ApiClients
                 throw new System.ArgumentNullException("appSlug");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("APP_PATH/{appSlug}/Role/Update");
+            urlBuilder_.Append("api/{appSlug}/Role/Update");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
@@ -4537,7 +4537,7 @@ namespace FluentCMS.Web.ApiClients
                 throw new System.ArgumentNullException("id");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append("APP_PATH/{appSlug}/Role/Delete/{id}");
+            urlBuilder_.Append("api/{appSlug}/Role/Delete/{id}");
             urlBuilder_.Replace("{appSlug}", System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
             urlBuilder_.Replace("{id}", System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
@@ -8634,11 +8634,6 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Password { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("roleIds")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<System.Guid>? RoleIds { get; set; } = default!;
-
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.20.0.0 (NJsonSchema v10.9.0.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -8926,11 +8921,6 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string? Email { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("roleIds")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-        public System.Collections.Generic.ICollection<System.Guid>? RoleIds { get; set; } = default!;
 
     }
 

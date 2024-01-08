@@ -94,12 +94,7 @@
         {
             "Title": "Home",
             "Path": "/",
-            "Plugins": [
-                {
-                    "Definition": "User Management",
-                    "Section": "Main"
-                }
-            ]
+            "Plugins": []
         },
         {
             "Title": "Admin",
