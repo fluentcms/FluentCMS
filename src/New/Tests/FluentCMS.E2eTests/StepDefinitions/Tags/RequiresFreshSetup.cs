@@ -1,6 +1,4 @@
-﻿using System.Numerics;
-
-namespace FluentCMS.E2eTests.StepDefinitions;
+﻿namespace FluentCMS.E2eTests.StepDefinitions;
 public partial class StepDefinitions
 {
     [Before("RequiresFreshSetup", Order = 20)]
