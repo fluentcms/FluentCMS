@@ -1,6 +1,4 @@
-﻿using System.Numerics;
-
-namespace FluentCMS.E2eTests.StepDefinitions;
+﻿namespace FluentCMS.E2eTests.StepDefinitions;
 public partial class StepDefinitions
 {
     [Before("RequiresFreshSetup", Order = 20)]
@@ -15,7 +13,7 @@ public partial class StepDefinitions
             await WhenIFetchSetupIsInitialized();
         }
         ThenSetupInitializationStatusShouldBe("False");
-        var table = new Table("field","value");
+        var table = new Table("field", "value");
         table.AddRow("username", "superadmin");
         table.AddRow("password", "Passw0rd!");
         table.AddRow("email", "superadmin@localhost");

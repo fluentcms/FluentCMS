@@ -10,6 +10,6 @@ public partial class StepDefinitions
         // find service type byName
         var definedTypes = Assembly.GetAssembly(typeof(ClientServiceExtensions))!.DefinedTypes;
         var serviceType = definedTypes.Single(x => x.Name == serviceName);
-        context[serviceType.FullName]=(context.GetServiceProvider().GetRequiredService(serviceType));
+        context[serviceType.FullName] = (context.GetServiceProvider().GetRequiredService(serviceType));
     }
 }

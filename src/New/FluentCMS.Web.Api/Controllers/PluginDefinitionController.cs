@@ -10,4 +10,12 @@ public class PluginDefinitionController(IMapper mapper, IPluginDefinitionService
         var response = mapper.Map<PluginDefinitionDetailResponse>(created);
         return Ok(response);
     }
+
+    [HttpGet]
+    public async Task<IApiPagingResult<PluginDefinitionDetailResponse>> GetAll(CancellationToken cancellationToken = default)
+    {
+        var entities = await pluginDefinitionService.GetAll(cancellationToken);
+        var entitiesResponse = mapper.Map<List<PluginDefinitionDetailResponse>>(entities);
+        return OkPaged(entitiesResponse);
+    }
 }

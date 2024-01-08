@@ -148,8 +148,16 @@ public class SetupManager
                         Definition = new PluginDefinitionDetailResponse
                         {
                             Name = "Setup",
-                            Type = "SetupViewPlugin",
-                            Description = "Setup View Plugin"
+                            Description = "Setup View Plugin",
+                            Types =
+                            [
+                                new PluginDefinitionType
+                                {
+                                    IsDefault = true,
+                                    Name="Setup",
+                                    Type = "SetupViewPlugin"
+                                }
+                            ]
                         }
                     }
                 ]
@@ -248,7 +256,7 @@ public class SetupManager
             {
                 Name = pluginDefTemplate.Name,
                 Description = pluginDefTemplate.Description,
-                Type = pluginDefTemplate.Type
+                Types = pluginDefTemplate.Types
             };
             _pluginDefinitions.Add(await _pluginDefinitionService.Create(pluginDef));
         }
@@ -295,13 +303,14 @@ public class SetupManager
     private async Task InitPagePlugins(PageTemplate pageTemplate, Guid pageId)
     {
         var order = 0;
-        foreach (var pluginDef in pageTemplate.Plugins)
+        foreach (var pluginTemplate in pageTemplate.Plugins)
         {
+            var pluginDefinition = _pluginDefinitions.Where(p => p.Name.Equals(pluginTemplate.Definition, StringComparison.InvariantCultureIgnoreCase)).Single();
             var plugin = new Plugin
             {
                 Order = order,
-                Section = pluginDef.Section,
-                DefinitionId = _pluginDefinitions.Where(p => p.Name.Equals(pluginDef.Definition, StringComparison.InvariantCultureIgnoreCase)).Select(p => p.Id).SingleOrDefault(),
+                Section = pluginTemplate.Section,
+                DefinitionId = pluginDefinition.Id,
                 PageId = pageId,
                 SiteId = _site.Id
             };
