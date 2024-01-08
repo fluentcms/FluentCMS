@@ -10,7 +10,7 @@ public partial class StepDefinitions
         var contentType = context.Get<ContentTypeResponseIApiResult>();
 
         // delete content type
-        var app = context.Get<AppResponseIApiResult>();
+        var app = context.Get<AppDetailResponseIApiResult>();
         var contentTypeClient = context.Get<ContentTypeClient>();
 
         var deleteResult = await contentTypeClient.DeleteAsync(

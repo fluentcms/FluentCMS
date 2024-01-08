@@ -9,7 +9,7 @@ public partial class StepDefinitions
         var updateRequest = table.CreateInstance<RoleUpdateRequest>();
         var roleToBeUpdated = context.Get<RoleDetailResponseIApiResult>();
         updateRequest.Id = roleToBeUpdated.Data.Id;
-        var app = context.Get<AppResponseIApiResult>();
+        var app = context.Get<AppDetailResponseIApiResult>();
         var rolesClient = context.Get<RoleClient>();
         var response = await rolesClient.UpdateAsync(app.Data.Slug!, updateRequest);
         context.Set(response);

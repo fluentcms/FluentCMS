@@ -8,7 +8,7 @@ public partial class StepDefinitions
     {
         var updateRequest = context.Get<ContentTypeUpdateRequest>();
         var client = context.Get<ContentTypeClient>();
-        var app = context.Get<AppResponseIApiResult>();
+        var app = context.Get<AppDetailResponseIApiResult>();
         var result = await client.UpdateAsync(app.Data.Slug!, updateRequest);
         context.Set(result);
     }

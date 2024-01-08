@@ -6,7 +6,7 @@ public partial class StepDefinitions
     [When("I set a field")]
     public async Task WhenISetAFieldAsync()
     {
-        var app = context.Get<AppResponseIApiResult>();
+        var app = context.Get<AppDetailResponseIApiResult>();
 
         var contentType = context.Get<ContentTypeResponseIApiResult>();
 

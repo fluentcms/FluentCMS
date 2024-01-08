@@ -8,7 +8,7 @@ public partial class StepDefinitions
     {
         var contentTypeClient = context.Get<ContentTypeClient>();
 
-        var app = context.Get<AppResponseIApiResult>();
+        var app = context.Get<AppDetailResponseIApiResult>();
 
         var contentTypesToBeCreated = Enumerable.Range(1, count)
             .Select(x => new ContentTypeCreateRequest()

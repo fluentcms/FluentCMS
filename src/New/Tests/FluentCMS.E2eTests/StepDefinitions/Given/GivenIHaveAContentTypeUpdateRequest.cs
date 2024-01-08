@@ -8,7 +8,7 @@ public partial class StepDefinitions
     public void GivenIHaveAContentTypeUpdateRequest(Table table)
     {
         // fetch app and created content type from previous steps
-        var app  = context.Get<AppResponseIApiResult>();
+        var app  = context.Get<AppDetailResponseIApiResult>();
         var createResult = context.Get<ContentTypeResponseIApiResult>();
 
         var updateRequest = table.CreateInstance<ContentTypeUpdateRequest>();

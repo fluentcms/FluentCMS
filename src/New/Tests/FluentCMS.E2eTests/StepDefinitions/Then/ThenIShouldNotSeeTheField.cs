@@ -7,7 +7,7 @@ public partial class StepDefinitions
     public async Task ThenIShouldNotSeeTheFieldAsync()
     {
         var client = context.Get<ContentTypeClient>();
-        var app = context.Get<AppResponseIApiResult>();
+        var app = context.Get<AppDetailResponseIApiResult>();
 
         // fetch all content types
         var result = await client.GetAllAsync(app.Data.Slug!);
