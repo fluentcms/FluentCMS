@@ -7,7 +7,7 @@ public partial class StepDefinitions
     {
         var rolesClient = context.Get<RoleClient>();
         var roleCreateRequest = context.Get<RoleCreateRequest>();
-        var app = context.Get<AppResponseIApiResult>();
+        var app = context.Get<AppDetailResponseIApiResult>();
         var response = await rolesClient.CreateAsync(app.Data.Slug!, roleCreateRequest);
         context.Set(response);
     }

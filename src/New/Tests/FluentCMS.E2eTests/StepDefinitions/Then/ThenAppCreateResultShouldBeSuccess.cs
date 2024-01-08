@@ -4,7 +4,7 @@ public partial class StepDefinitions
     [Then("App Create result should be Success")]
     public void ThenAppCreateResultShouldBeSuccess()
     {
-        var appApiResponse = context.Get<AppResponseIApiResult>();
+        var appApiResponse = context.Get<AppDetailResponseIApiResult>();
 
         appApiResponse.Errors.ShouldBeEmpty();
         appApiResponse.Data.ShouldNotBeNull();

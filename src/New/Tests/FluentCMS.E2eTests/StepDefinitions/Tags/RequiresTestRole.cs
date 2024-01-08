@@ -12,5 +12,5 @@ public partial class StepDefinitions
         GivenIHaveARole(table);
         await WhenICreateRoleAsync();
         ThenRoleCreationResultShouldBeSuccess();
-}
+    }
 }

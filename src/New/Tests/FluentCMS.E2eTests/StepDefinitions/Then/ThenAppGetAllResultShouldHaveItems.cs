@@ -4,7 +4,7 @@ public partial class StepDefinitions
     [Then("App GetAll result should have {int} items")]
     public void ThenAppGetAllResultShouldHaveItems(int count)
     {
-        var pagingResult = context.Get<AppResponseIApiPagingResult>();
+        var pagingResult = context.Get<AppDetailResponseIApiPagingResult>();
         pagingResult.TotalCount.ShouldBe(count);
     }
 }

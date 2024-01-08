@@ -4,7 +4,7 @@ public partial class StepDefinitions
     [Then("App GetBySlug result should be Success")]
     public void ThenAppGetBySlugResultShouldBeSuccess()
     {
-        var appGetBySlugResult = context.Get<AppResponseIApiResult>();
+        var appGetBySlugResult = context.Get<AppDetailResponseIApiResult>();
         var slug = context.Get<string>("appSlug");
         appGetBySlugResult.Errors.ShouldBeEmpty();
         appGetBySlugResult.Data.ShouldNotBeNull();
