@@ -1,5 +1,6 @@
 ﻿@inherits BaseComponent
 
-<h3 class=@this.GetClasses() @attributes=@AdditionalAttributes>
+<h3 @attributes="AdditionalAttributes"
+    class="@this.GetClasses()">
     @ChildContent
 </h3>

@@ -1,20 +1,23 @@
 @inherits BaseComponent
 
-<div class=@this.GetClasses() @attributes=AdditionalAttributes role="tabpanel" aria-labelledby="tab-@Index">
+<div @attributes="AdditionalAttributes"
+     aria-labelledby="tab-@Index"
+     class=@this.GetClasses()
+     role="tabpanel">
     @ChildContent
 </div>
 
 @code {
-    private int Index = 0;
-
-    [CascadingParameter]
-    public Tabs Parent { get; set; } = default!;
+    [CssProperty]
+    public bool Active => Index == Parent.ActiveTabIndex;
 
     [Parameter]
     public string Name { get; set; }
 
-    [CssProperty]
-    public bool Active => Index == Parent.ActiveTabIndex;
+    [CascadingParameter]
+    public Tabs Parent { get; set; } = default!;
+
+    private int Index = 0;
 
     protected override void OnInitialized()
     {

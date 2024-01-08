@@ -1,11 +1,17 @@
 ﻿@inject IJSRuntime JS
 @inherits BaseComponent
 
-<div class=@this.GetClasses() @attributes=AdditionalAttributes>
-    <select @ref="element" autocomplete="off" disabled=@Disabled multiple=@Multiple>
+<div @attributes="AdditionalAttributes"
+     class="@this.GetClasses()">
+    <select @ref="element"
+            autocomplete="off"
+            disabled="@Disabled"
+            multiple="@Multiple">
         @foreach (var Option in Options)
         {
-            <option @key=Option.Id value=@Option.Id selected=@Value.Contains(Option.Id)>
+            <option @key="Option.Id"
+                    selected="@Value.Contains(Option.Id)"
+                    value="@Option.Id">
                 @Option.Title
             </option>
         }
@@ -13,6 +19,8 @@
 </div>
 
 @code {
+    public ElementReference element;
+
     private IJSObjectReference module = default!;
 
     private bool disabled;
@@ -68,8 +76,6 @@
 
     [Parameter]
     public EventCallback<List<string>> ValueChanged { get; set; }
-
-    public ElementReference element;
 
     [JSInvokable]
     public void UpdateValue(List<string> Value)

@@ -2,13 +2,16 @@
 
 @if (Show)
 {
-    <div class=@this.GetClasses() role="alert" @attributes=AdditionalAttributes>
+    <div @attributes="AdditionalAttributes"
+         class="@this.GetClasses()"
+         role="alert">
         <div>
             @ChildContent
         </div>
         @if (Dismissible)
         {
-            <CloseButton class=@this.ClassName("AlertClose") OnClick=Close />
+            <CloseButton class="@this.ClassName("AlertClose")"
+                         OnClick="Close" />
         }
     </div>
 }

@@ -1,7 +1,9 @@
 @inherits BaseComponent
 
-<CascadingValue Value=@this>
-    <div class=@this.GetClasses() tabindex="0" @attributes=AdditionalAttributes>
+<CascadingValue Value="this">
+    <div @attributes="AdditionalAttributes"
+         class="@this.GetClasses()"
+         tabindex="0">
         @ChildContent
     </div>
 </CascadingValue>
@@ -9,16 +11,15 @@
 @code {
     [Parameter]
     [CssProperty]
-    public bool Open { get; set; } = false;
+    public bool AutoClose { get; set; }
 
     [Parameter]
     [CssProperty]
-    public bool AutoClose { get; set; } = false;
+    public bool Open { get; set; }
 
     public void Toggle()
     {
         Open = !Open;
         StateHasChanged();
     }
-
 }

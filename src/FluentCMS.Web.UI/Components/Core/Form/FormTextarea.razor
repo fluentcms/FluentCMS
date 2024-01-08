@@ -1,48 +1,45 @@
 @inherits InputBaseComponent<string>
 
-<FormField Id=@Id
-    Label=@Label
-	Hint=@Hint
-    Required=@Required
-    State=@State
-    IconStart=@IconStart
-    IconEnd=@IconEnd>
-
-    <Textarea
-        Rows=@Rows
-        Placeholder=@Placeholder
-        Id=@Id
-        Required=@Required
-        @attributes=@AdditionalAttributes
-    @bind-Value=@Value/>
+<FormField Hint="Hint"
+           Id="Id"
+           IconEnd="IconEnd"
+           IconStart="IconStart"
+           Label="Label"
+           Required="Required"
+           State="State">
+    <Textarea @attributes="AdditionalAttributes"
+              @bind-Value="Value"
+              Id="Id"
+              Placeholder="Placeholder"
+              Required="Required"
+              Rows="Rows" />
 </FormField>
 
 @code {
     [Parameter]
-    public string Placeholder {get; set;} = "";
+    public string Hint { get; set; }
 
     [Parameter]
-    public string Id {get; set;} = "f-" + Guid.NewGuid().ToString();
+    public IconNameEnum IconStart { get; set; } = IconNameEnum.Default;
 
     [Parameter]
-    public string Rows {get; set;}
+    public IconNameEnum IconEnd { get; set; } = IconNameEnum.Default;
 
     [Parameter]
-    public string Label {get; set;} = "";
+    public string Id { get; set; } = "f-" + Guid.NewGuid().ToString();
 
     [Parameter]
-    public string Hint {get; set;}
-
-
-    [Parameter]
-    public bool Required {get; set;} = false;
+    public string Label { get; set; } = "";
 
     [Parameter]
-    public string Value {get; set;}
+    public string Placeholder { get; set; } = "";
 
-	[Parameter]
-	public IconNameEnum IconStart {get; set;} = IconNameEnum.Default;
+    [Parameter]
+    public bool Required { get; set; } = false;
 
-	[Parameter]
-	public IconNameEnum IconEnd {get; set;} = IconNameEnum.Default;
+    [Parameter]
+    public string Rows { get; set; }
+
+    [Parameter]
+    public string Value { get; set; }
 }
