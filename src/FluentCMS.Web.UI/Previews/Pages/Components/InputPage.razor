@@ -4,17 +4,84 @@
 
 <PageHeader HasBack Title="Input" />
 
-<div class="m-4 bg-white border border-gray-200 dark:border-gray-700 p-4 shadow dark:bg-gray-800">
-    <Input Label="Default Input"/>
-    <Input Required Label="Required Input"/>
-    <Input Disabled Label="Disabled Input"/>
-    <Input Readonly Label="Readonly Input" Value="Value"/>
-    <Input Placeholder="This is Placeholder" Label="Placeholder"/>
-    <Input Label="Icon Start" IconStart="IconNameEnum.Search"/>
-    <Input Label="Icon End" IconEnd="IconNameEnum.Delete"/>
-    <Input Label="Hint" Hint="Some description comes here..."/>
+<Preview Title="Default">
+    <ChildContent>
+        <Input />
+    </ChildContent>
+</Preview>
 
-    <Input Label="Invalid" State="FormFieldStateEnum.Invalid" IconEnd="IconNameEnum.Delete" Hint="This field has problem"/>
-    <Input Label="Valid" State="FormFieldStateEnum.Valid" IconEnd="IconNameEnum.Search" Hint="Success"/>
-</div>
+<Preview Title="Label">
+    <ChildContent>
+        <Input Label="Input"/>
+    </ChildContent>
+</Preview>
 
+<Preview Title="Disabled">
+    <ChildContent>
+        <Input Label="Disabled Input" Disabled/>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Required">
+    <ChildContent>
+        <Input Label="Required Input" Required/>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Readonly">
+    <ChildContent>
+        <Input Label="Readonly Input" Readonly Value="Value"/>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Placeholder">
+    <ChildContent>
+        <Input Label="Placeholder Input" Placeholder="Type something..."/>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Icons">
+    <ChildContent>
+        <div class="flex flex-col">
+            <Input IconStart=@IconNameEnum.InformationFilled Label="Start Icon" Placeholder="Type something..."/>
+            <Input IconEnd=@IconNameEnum.Search  Label="End Icon" Placeholder="Type something..."/>
+        </div>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Hint">
+    <ChildContent>
+        <div class="flex flex-col">
+            <Input Hint="This is info message" Label="Username" Placeholder="Type something..."/>
+            <Input Hint="This field is required!" State=FormFieldStateEnum.Invalid Label="Email" Placeholder="Type something..."/>
+            <Input Hint="This field is okay!" State=FormFieldStateEnum.Valid Label="Name" Placeholder="Type something..."/>
+        </div>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Initial Value">
+    <ChildContent>
+        <div class="flex flex-col">
+            <Input @bind-Value=@Input1Value Label="Input 1"/>
+
+            <div class="w-full mx-auto">
+                <Badge Color="ColorEnum.Primary">@Input1Value</Badge>
+            </div>
+        </div>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Value Binding">
+    <ChildContent>
+        <div class="flex flex-col">
+            <Input @bind-Value=@InputValue Label="Input 1"/>
+            <Input @bind-Value=@InputValue Label="Input 2"/>
+        </div>
+    </ChildContent>
+</Preview>
+
+@code {
+    private string Input1Value = "Initial";
+    private string InputValue;
+
+}
