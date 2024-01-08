@@ -1,6 +1,7 @@
 ﻿@inherits BaseComponent
 
-<aside class="@this.GetClasses() lg:!translate-x-0" @attributes=AdditionalAttributes>
+<aside @attributes="AdditionalAttributes"
+    class="@this.GetClasses() lg:!translate-x-0">
     <div class="main">
         @Header
         <ul>
