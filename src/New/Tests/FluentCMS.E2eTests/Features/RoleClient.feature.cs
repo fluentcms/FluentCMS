@@ -19,19 +19,23 @@ namespace FluentCMS.E2eTests.Features
     
     [System.CodeDom.Compiler.GeneratedCodeAttribute("TechTalk.SpecFlow", "3.9.0.0")]
     [System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    public partial class HostAPIClientFeature : object, Xunit.IClassFixture<HostAPIClientFeature.FixtureData>, System.IDisposable
+    [Xunit.TraitAttribute("Category", "RequiresFreshSetup")]
+    [Xunit.TraitAttribute("Category", "RequiresTestApp")]
+    public partial class RoleClientFeature : object, Xunit.IClassFixture<RoleClientFeature.FixtureData>, System.IDisposable
     {
         
         private static TechTalk.SpecFlow.ITestRunner testRunner;
         
-        private string[] _featureTags = ((string[])(null));
+        private string[] _featureTags = new string[] {
+                "RequiresFreshSetup",
+                "RequiresTestApp"};
         
         private Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
-#line 1 "SetupClient.feature"
+#line 1 "RoleClient.feature"
 #line hidden
         
-        public HostAPIClientFeature(HostAPIClientFeature.FixtureData fixtureData, FluentCMS_E2eTests_XUnitAssemblyFixture assemblyFixture, Xunit.Abstractions.ITestOutputHelper testOutputHelper)
+        public RoleClientFeature(RoleClientFeature.FixtureData fixtureData, FluentCMS_E2eTests_XUnitAssemblyFixture assemblyFixture, Xunit.Abstractions.ITestOutputHelper testOutputHelper)
         {
             this._testOutputHelper = testOutputHelper;
             this.TestInitialize();
@@ -40,7 +44,9 @@ namespace FluentCMS.E2eTests.Features
         public static void FeatureSetup()
         {
             testRunner = TechTalk.SpecFlow.TestRunnerManager.GetTestRunner();
-            TechTalk.SpecFlow.FeatureInfo featureInfo = new TechTalk.SpecFlow.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Host API client", null, ProgrammingLanguage.CSharp, ((string[])(null)));
+            TechTalk.SpecFlow.FeatureInfo featureInfo = new TechTalk.SpecFlow.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Role Client", null, ProgrammingLanguage.CSharp, new string[] {
+                        "RequiresFreshSetup",
+                        "RequiresTestApp"});
             testRunner.OnFeatureStart(featureInfo);
         }
         
@@ -77,13 +83,10 @@ namespace FluentCMS.E2eTests.Features
         
         public virtual void FeatureBackground()
         {
-#line 3
-#line hidden
 #line 4
- testRunner.Given("I have a \"SetupClient\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 5
- testRunner.When("I Reset Setup", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+ testRunner.Given("I have a \"RoleClient\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
         }
         
@@ -92,15 +95,15 @@ namespace FluentCMS.E2eTests.Features
             this.TestTearDown();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Reset Setup")]
-        [Xunit.TraitAttribute("FeatureTitle", "Host API client")]
-        [Xunit.TraitAttribute("Description", "Reset Setup")]
-        public virtual void ResetSetup()
+        [Xunit.SkippableFactAttribute(DisplayName="Create Role")]
+        [Xunit.TraitAttribute("FeatureTitle", "Role Client")]
+        [Xunit.TraitAttribute("Description", "Create Role")]
+        public virtual void CreateRole()
         {
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Reset Setup", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
-#line 8
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Create Role", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
+#line 7
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             bool isScenarioIgnored = default(bool);
@@ -120,33 +123,42 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 3
+#line 4
 this.FeatureBackground();
 #line hidden
-#line 9
- testRunner.When("I Reset Setup", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+                TechTalk.SpecFlow.Table table8 = new TechTalk.SpecFlow.Table(new string[] {
+                            "field",
+                            "value"});
+                table8.AddRow(new string[] {
+                            "name",
+                            "DummyRole"});
+                table8.AddRow(new string[] {
+                            "description",
+                            "DummyRole Description"});
+#line 8
+ testRunner.Given("I have a role", ((string)(null)), table8, "Given ");
 #line hidden
-#line 10
- testRunner.When("I Fetch Setup IsInitialized", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line 12
+ testRunner.When("I Create Role", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 11
- testRunner.Then("Setup initialization status should be false", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line 13
+ testRunner.Then("Role Creation Result should be Success", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Start Setup")]
-        [Xunit.TraitAttribute("FeatureTitle", "Host API client")]
-        [Xunit.TraitAttribute("Description", "Start Setup")]
-        [Xunit.TraitAttribute("Category", "RequiresResetSetup")]
-        public virtual void StartSetup()
+        [Xunit.SkippableFactAttribute(DisplayName="Update Role")]
+        [Xunit.TraitAttribute("FeatureTitle", "Role Client")]
+        [Xunit.TraitAttribute("Description", "Update Role")]
+        [Xunit.TraitAttribute("Category", "RequiresTestRole")]
+        public virtual void UpdateRole()
         {
             string[] tagsOfScenario = new string[] {
-                    "RequiresResetSetup"};
+                    "RequiresTestRole"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Start Setup", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
-#line 15
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Update Role", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
+#line 16
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             bool isScenarioIgnored = default(bool);
@@ -166,151 +178,110 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 3
+#line 4
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table10 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table9 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table10.AddRow(new string[] {
-                            "username",
-                            "superadmin"});
-                table10.AddRow(new string[] {
-                            "email",
-                            "superadmin@localhost"});
-                table10.AddRow(new string[] {
-                            "password",
-                            "Passw0rd!"});
-                table10.AddRow(new string[] {
-                            "AppTemplateName",
-                            "Blank"});
-                table10.AddRow(new string[] {
-                            "SiteTemplateName",
-                            "Blank"});
-                table10.AddRow(new string[] {
-                            "AdminDomain",
-                            "https://localhost:7230"});
-#line 16
- testRunner.When("I Start Setup", ((string)(null)), table10, "When ");
+                table9.AddRow(new string[] {
+                            "name",
+                            "UpdatedDummyRole"});
+                table9.AddRow(new string[] {
+                            "description",
+                            "Updated DummyRole Description"});
+#line 17
+ testRunner.When("I Update Role to", ((string)(null)), table9, "When ");
 #line hidden
+#line 21
+ testRunner.Then("Role Update Result should be Success", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+            }
+            this.ScenarioCleanup();
+        }
+        
+        [Xunit.SkippableFactAttribute(DisplayName="Delete Role")]
+        [Xunit.TraitAttribute("FeatureTitle", "Role Client")]
+        [Xunit.TraitAttribute("Description", "Delete Role")]
+        [Xunit.TraitAttribute("Category", "RequiresTestRole")]
+        public virtual void DeleteRole()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "RequiresTestRole"};
+            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Delete Role", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
 #line 24
- testRunner.Then("Wait 2 seconds", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+this.ScenarioInitialize(scenarioInfo);
+#line hidden
+            bool isScenarioIgnored = default(bool);
+            bool isFeatureIgnored = default(bool);
+            if ((tagsOfScenario != null))
+            {
+                isScenarioIgnored = tagsOfScenario.Where(__entry => __entry != null).Where(__entry => String.Equals(__entry, "ignore", StringComparison.CurrentCultureIgnoreCase)).Any();
+            }
+            if ((this._featureTags != null))
+            {
+                isFeatureIgnored = this._featureTags.Where(__entry => __entry != null).Where(__entry => String.Equals(__entry, "ignore", StringComparison.CurrentCultureIgnoreCase)).Any();
+            }
+            if ((isScenarioIgnored || isFeatureIgnored))
+            {
+                testRunner.SkipScenario();
+            }
+            else
+            {
+                this.ScenarioStart();
+#line 4
+this.FeatureBackground();
 #line hidden
 #line 25
- testRunner.When("I Fetch Setup IsInitialized", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+ testRunner.When("I Delete Role", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 26
- testRunner.Then("Setup initialization status should be true", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+ testRunner.Then("Role Deletion Result should be Success", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Reinitializing should throw Error")]
-        [Xunit.TraitAttribute("FeatureTitle", "Host API client")]
-        [Xunit.TraitAttribute("Description", "Reinitializing should throw Error")]
-        [Xunit.TraitAttribute("Category", "RequiresResetSetup")]
-        public virtual void ReinitializingShouldThrowError()
+        [Xunit.SkippableFactAttribute(DisplayName="GetAll Roles")]
+        [Xunit.TraitAttribute("FeatureTitle", "Role Client")]
+        [Xunit.TraitAttribute("Description", "GetAll Roles")]
+        public virtual void GetAllRoles()
         {
-            string[] tagsOfScenario = new string[] {
-                    "RequiresResetSetup"};
+            string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Reinitializing should throw Error", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("GetAll Roles", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
+#line 28
+this.ScenarioInitialize(scenarioInfo);
+#line hidden
+            bool isScenarioIgnored = default(bool);
+            bool isFeatureIgnored = default(bool);
+            if ((tagsOfScenario != null))
+            {
+                isScenarioIgnored = tagsOfScenario.Where(__entry => __entry != null).Where(__entry => String.Equals(__entry, "ignore", StringComparison.CurrentCultureIgnoreCase)).Any();
+            }
+            if ((this._featureTags != null))
+            {
+                isFeatureIgnored = this._featureTags.Where(__entry => __entry != null).Where(__entry => String.Equals(__entry, "ignore", StringComparison.CurrentCultureIgnoreCase)).Any();
+            }
+            if ((isScenarioIgnored || isFeatureIgnored))
+            {
+                testRunner.SkipScenario();
+            }
+            else
+            {
+                this.ScenarioStart();
+#line 4
+this.FeatureBackground();
+#line hidden
+#line 29
+ testRunner.Given("I have 10 Roles", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+#line hidden
 #line 30
-this.ScenarioInitialize(scenarioInfo);
+ testRunner.When("I Get All Roles", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-            bool isScenarioIgnored = default(bool);
-            bool isFeatureIgnored = default(bool);
-            if ((tagsOfScenario != null))
-            {
-                isScenarioIgnored = tagsOfScenario.Where(__entry => __entry != null).Where(__entry => String.Equals(__entry, "ignore", StringComparison.CurrentCultureIgnoreCase)).Any();
-            }
-            if ((this._featureTags != null))
-            {
-                isFeatureIgnored = this._featureTags.Where(__entry => __entry != null).Where(__entry => String.Equals(__entry, "ignore", StringComparison.CurrentCultureIgnoreCase)).Any();
-            }
-            if ((isScenarioIgnored || isFeatureIgnored))
-            {
-                testRunner.SkipScenario();
-            }
-            else
-            {
-                this.ScenarioStart();
-#line 3
-this.FeatureBackground();
-#line hidden
-                TechTalk.SpecFlow.Table table11 = new TechTalk.SpecFlow.Table(new string[] {
-                            "field",
-                            "value"});
-                table11.AddRow(new string[] {
-                            "username",
-                            "superadmin"});
-                table11.AddRow(new string[] {
-                            "email",
-                            "superadmin@localhost"});
-                table11.AddRow(new string[] {
-                            "password",
-                            "Passw0rd!"});
-                table11.AddRow(new string[] {
-                            "AppTemplateName",
-                            "Blank"});
-                table11.AddRow(new string[] {
-                            "SiteTemplateName",
-                            "Blank"});
-                table11.AddRow(new string[] {
-                            "AdminDomain",
-                            "https://localhost:7230"});
 #line 31
- testRunner.When("I Start Setup", ((string)(null)), table11, "When ");
-#line hidden
-#line 39
- testRunner.Then("Wait 2 seconds", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
-#line hidden
-#line 40
- testRunner.When("I Start Setup again should throw Error", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
-#line hidden
-            }
-            this.ScenarioCleanup();
-        }
-        
-        [Xunit.SkippableFactAttribute(DisplayName="Test RequiresResetSetup decorator")]
-        [Xunit.TraitAttribute("FeatureTitle", "Host API client")]
-        [Xunit.TraitAttribute("Description", "Test RequiresResetSetup decorator")]
-        [Xunit.TraitAttribute("Category", "RequiresResetSetup")]
-        public virtual void TestRequiresResetSetupDecorator()
-        {
-            string[] tagsOfScenario = new string[] {
-                    "RequiresResetSetup"};
-            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Test RequiresResetSetup decorator", null, tagsOfScenario, argumentsOfScenario, this._featureTags);
-#line 44
-this.ScenarioInitialize(scenarioInfo);
-#line hidden
-            bool isScenarioIgnored = default(bool);
-            bool isFeatureIgnored = default(bool);
-            if ((tagsOfScenario != null))
-            {
-                isScenarioIgnored = tagsOfScenario.Where(__entry => __entry != null).Where(__entry => String.Equals(__entry, "ignore", StringComparison.CurrentCultureIgnoreCase)).Any();
-            }
-            if ((this._featureTags != null))
-            {
-                isFeatureIgnored = this._featureTags.Where(__entry => __entry != null).Where(__entry => String.Equals(__entry, "ignore", StringComparison.CurrentCultureIgnoreCase)).Any();
-            }
-            if ((isScenarioIgnored || isFeatureIgnored))
-            {
-                testRunner.SkipScenario();
-            }
-            else
-            {
-                this.ScenarioStart();
-#line 3
-this.FeatureBackground();
-#line hidden
-#line 45
- testRunner.When("I Fetch Setup IsInitialized", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
-#line hidden
-#line 46
- testRunner.Then("Setup initialization status should be false", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+ testRunner.Then("I should get 10 Roles", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
@@ -323,12 +294,12 @@ this.FeatureBackground();
             
             public FixtureData()
             {
-                HostAPIClientFeature.FeatureSetup();
+                RoleClientFeature.FeatureSetup();
             }
             
             void System.IDisposable.Dispose()
             {
-                HostAPIClientFeature.FeatureTearDown();
+                RoleClientFeature.FeatureTearDown();
             }
         }
     }
