@@ -6,7 +6,7 @@ public partial class StepDefinitions
         [Then("I should see the content type")]
         public async Task ThenIShouldSeeTheContentTypeAsync()
         {
-        var createResponse = context.Get<ContentTypeResponseIApiResult>();
+        var createResponse = context.Get<ContentTypeDetailResponseIApiResult>();
 
         var client = context.Get<ContentTypeClient>();
 

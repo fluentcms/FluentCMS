@@ -8,7 +8,7 @@ public partial class StepDefinitions
     {
         var app = context.Get<AppDetailResponseIApiResult>();
 
-        var contentType = context.Get<ContentTypeResponseIApiResult>();
+        var contentType = context.Get<ContentTypeDetailResponseIApiResult>();
 
         var contentTypeClient = context.Get<ContentTypeClient>();
 

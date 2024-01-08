@@ -13,7 +13,7 @@ public partial class StepDefinitions
         var result = await client.GetAllAsync(app.Data.Slug!);
 
         // find the content type
-        var contentType = context.Get<ContentTypeResponseIApiResult>();
+        var contentType = context.Get<ContentTypeDetailResponseIApiResult>();
 
         var updatedContentType = result.Data!.Single(x => x.Id == contentType.Data.Id);
 

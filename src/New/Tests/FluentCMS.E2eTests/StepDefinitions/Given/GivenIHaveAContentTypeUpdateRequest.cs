@@ -9,7 +9,7 @@ public partial class StepDefinitions
     {
         // fetch app and created content type from previous steps
         var app  = context.Get<AppDetailResponseIApiResult>();
-        var createResult = context.Get<ContentTypeResponseIApiResult>();
+        var createResult = context.Get<ContentTypeDetailResponseIApiResult>();
 
         var updateRequest = table.CreateInstance<ContentTypeUpdateRequest>();
 

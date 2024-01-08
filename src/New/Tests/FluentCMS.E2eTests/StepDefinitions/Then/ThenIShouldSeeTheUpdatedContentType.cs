@@ -6,7 +6,7 @@ public partial class StepDefinitions
     public void ThenIShouldSeeTheUpdatedContentType()
     {
         var updateRequest = context.Get<ContentTypeUpdateRequest>();
-        var updateResponse = context.Get<ContentTypeResponseIApiResult>();
+        var updateResponse = context.Get<ContentTypeDetailResponseIApiResult>();
 
         updateResponse.Data.Title.ShouldBe(updateRequest.Title);
         updateResponse.Data.Description.ShouldBe(updateRequest.Description);

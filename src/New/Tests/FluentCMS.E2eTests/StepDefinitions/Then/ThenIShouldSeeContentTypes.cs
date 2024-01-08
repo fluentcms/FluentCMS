@@ -5,7 +5,7 @@ public partial class StepDefinitions
     [Then("I should see {int} content types")]
     public void ThenIShouldSeeContentTypes(int count)
     {
-        var contentTypes = context.Get<ContentTypeResponseIApiPagingResult>();
+        var contentTypes = context.Get<ContentTypeDetailResponseIApiPagingResult>();
 
         contentTypes.TotalCount.ShouldBe(count);
     }
