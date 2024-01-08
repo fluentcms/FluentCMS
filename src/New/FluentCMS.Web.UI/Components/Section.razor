@@ -24,10 +24,23 @@
     [Parameter]
     public PageFullDetailResponse? Page { get; set; }
 
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = default!;
+
     private Type? GetType(PluginDetailResponse plugin)
     {
-        var assembly = typeof(Section).Assembly;
+        var uri = new Uri(NavigationManager.Uri);
+        var query = HttpUtility.ParseQueryString(uri.Query);
 
-        return assembly.DefinedTypes.FirstOrDefault(x => x.Name == plugin.Definition.Type);
+        var assembly = typeof(Section).Assembly;
+        var pluginTypeName = query["typeName"];
+        PluginDefinitionType pluginDefType;
+
+        if (string.IsNullOrEmpty(pluginTypeName))
+            pluginDefType = plugin.Definition?.Types?.Where(p => p.IsDefault).FirstOrDefault();
+        else
+            pluginDefType = plugin.Definition?.Types?.Where(p => p.Name.Equals(pluginTypeName, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+
+        return assembly.DefinedTypes.FirstOrDefault(x => x.Name == pluginDefType.Type);
     }
 }

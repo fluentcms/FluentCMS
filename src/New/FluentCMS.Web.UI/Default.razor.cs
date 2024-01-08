@@ -2,12 +2,12 @@
 using HtmlAgilityPack;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Routing;
 
 namespace FluentCMS.Web.UI;
 
-public partial class Default
+public partial class Default : IDisposable
 {
-
     public const string ATTRIBUTE = "FluentCMS";
 
     public PageFullDetailResponse? Page { get; set; }
@@ -21,8 +21,29 @@ public partial class Default
     [Inject]
     public PageClient PageClient { set; get; } = default!;
 
+    [Inject]
+    public SiteClient SiteClient { set; get; } = default!;
+
+    [Inject]
+    public PluginDefinitionClient PluginDefinitionClient { set; get; } = default!;
+
     [Parameter]
     public string? Route { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavigationManager.LocationChanged += LocationChanged;
+    }
+
+    void LocationChanged(object sender, LocationChangedEventArgs e)
+    {
+        StateHasChanged();
+    }
+
+    void IDisposable.Dispose()
+    {
+        NavigationManager.LocationChanged -= LocationChanged;
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -34,8 +55,7 @@ public partial class Default
 
         try
         {
-            var uri = new Uri(NavigationManager.Uri);
-            var pageResponse = await PageClient.GetByPathAsync(uri.Authority, uri.LocalPath);
+            var pageResponse = await PageClient.GetByUrlAsync(NavigationManager.Uri);
             if (pageResponse.Data != null)
                 Page = pageResponse.Data;
         }
@@ -126,4 +146,5 @@ public partial class Default
         var typeInfo = assembly.DefinedTypes.FirstOrDefault(x => x.Name == typeName);
         return typeInfo?.AsType();
     }
+
 }

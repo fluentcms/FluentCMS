@@ -6,7 +6,8 @@ public partial class StepDefinitions
     {
         var userClient = context.Get<UserClient>();
         var userId = context.Get<UserDetailResponseIApiResult>().Data.Id;
-        var updateBody = new UserUpdateRequest() {
+        var updateBody = new UserUpdateRequest()
+        {
             Id = userId,
             Email = "UpdatedDummyEmail@localhost",
         };

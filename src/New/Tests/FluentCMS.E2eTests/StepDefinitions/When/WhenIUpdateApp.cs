@@ -5,7 +5,7 @@ public partial class StepDefinitions
     public async Task WhenIUpdateAppAsync()
     {
         var appUpdateRequest = context.Get<AppUpdateRequest>();
-        
+
         var appClient = context.Get<AppClient>();
         var result = await appClient.UpdateAsync(appUpdateRequest);
         context.Set(result);

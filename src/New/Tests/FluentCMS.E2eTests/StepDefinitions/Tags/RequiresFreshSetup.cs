@@ -13,7 +13,7 @@ public partial class StepDefinitions
             await WhenIFetchSetupIsInitialized();
         }
         ThenSetupInitializationStatusShouldBe("False");
-        var table = new Table("field","value");
+        var table = new Table("field", "value");
         table.AddRow("username", "superadmin");
         table.AddRow("password", "Passw0rd!");
         table.AddRow("email", "superadmin@localhost");

@@ -20,7 +20,7 @@ public partial class StepDefinitions
         catch (ApiClientException e)
         {
             // todo: fetch error messages
-            
+
         }
     }
 }

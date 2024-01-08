@@ -2,6 +2,16 @@
 
 public class SiteController(ISiteService siteService, ILayoutService layoutService, IPageService pageService, IMapper mapper) : BaseGlobalController
 {
+    [HttpGet("{siteUrl}")]
+    public async Task<IApiResult<SiteFullDetailResponse>> GetByUrl([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
+    {
+        var site = await siteService.GetByUrl(siteUrl, cancellationToken);
+        var siteResponse = mapper.Map<SiteFullDetailResponse>(site);
+        var layouts = await layoutService.GetAll(site.Id, cancellationToken);
+        siteResponse.Layouts = mapper.Map<List<LayoutDetailResponse>>(layouts);
+        return Ok(siteResponse);
+    }
+
     [HttpGet]
     public async Task<IApiPagingResult<SiteDetailResponse>> GetAll(CancellationToken cancellationToken = default)
     {

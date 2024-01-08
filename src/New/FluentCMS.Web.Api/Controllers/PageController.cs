@@ -1,4 +1,6 @@
 ﻿using FluentCMS.Web.Api.Filters;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Primitives;
 
 namespace FluentCMS.Web.Api.Controllers;
 
@@ -29,17 +31,26 @@ public class PageController(
         return Ok(entityResponse);
     }
 
-    [HttpGet("{siteUrl}/{path}")]
+    [HttpGet]
     [DecodeQueryParam]
-    public async Task<IApiResult<PageFullDetailResponse>> GetByPath([FromRoute] string siteUrl, [FromRoute] string path, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<PageFullDetailResponse>> GetByUrl([FromQuery] string url, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(path))
-            path = "/";
+        var uri = new Uri(url);
+        var domain = uri.Authority;
+        var path = uri.AbsolutePath;
+        var query = QueryHelpers.ParseQuery(uri.Query);
 
-        if (!path.StartsWith("/"))
-            path = "/" + path;
+        if (query.TryGetValue(PLUGIN_DEFINIOTION_NAME, out _))
+            return await GetDynamicPage(domain, path, query, cancellationToken);
+        else
+            return await GetRealPage(domain, path, cancellationToken);
+    }
 
-        var site = await siteService.GetByUrl(siteUrl, cancellationToken);
+    public const string PLUGIN_DEFINIOTION_NAME = "PluginDef";
+
+    private async Task<IApiResult<PageFullDetailResponse>> GetRealPage(string domain, string path, CancellationToken cancellationToken = default)
+    {
+        var site = await siteService.GetByUrl(domain, cancellationToken);
         var pages = (await pageService.GetBySiteId(site.Id, cancellationToken)).ToDictionary(x => x.Id);
         var layouts = await layoutService.GetAll(site.Id, cancellationToken);
         var pluginDefinitions = (await pluginDefinitionService.GetAll(cancellationToken)).ToDictionary(x => x.Id);
@@ -47,10 +58,10 @@ public class PageController(
         // defining a dictionary of nested paths (full paths) to page ids
         var fullPaths = GetFullPaths(pages);
 
-        if (!fullPaths.ContainsKey(path))
+        if (!fullPaths.TryGetValue(path, out Guid value))
             throw new AppException(ExceptionCodes.PageNotFound);
 
-        var page = pages[fullPaths[path]];
+        var page = pages[value];
 
         var plugins = await pluginService.GetByPageId(page.Id, cancellationToken);
 
@@ -80,6 +91,64 @@ public class PageController(
         }
 
         return Ok(pageResponse);
+    }
+
+    private async Task<IApiResult<PageFullDetailResponse>> GetDynamicPage(string domain, string path, Dictionary<string, StringValues> query, CancellationToken cancellationToken = default)
+    {
+        // example.com?pluginDef=pluginDefName&typeName=pluginDefTypeName&layout=layoutName
+        var site = await siteService.GetByUrl(domain, cancellationToken);
+        var pages = (await pageService.GetBySiteId(site.Id, cancellationToken)).ToDictionary(x => x.Id);
+        var layouts = await layoutService.GetAll(site.Id, cancellationToken);
+        var pluginDefinitions = (await pluginDefinitionService.GetAll(cancellationToken)).ToList();
+
+        var pluginDefinitionName = query[PLUGIN_DEFINIOTION_NAME].FirstOrDefault() ??
+            throw new Exception("Plugin Definition is not set!");
+
+        var pluginDefinition = pluginDefinitions.Where(p => p.Name.Equals(query[PLUGIN_DEFINIOTION_NAME].ToString(), StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+        //?? throw new Exception("Plugin Definition not found!");
+
+        // defining a dictionary of nested paths (full paths) to page ids
+        var fullPaths = GetFullPaths(pages);
+
+        Page page;
+        if (fullPaths.TryGetValue(path, out Guid value))
+            page = pages[value];
+        else
+            page = new Page { Path = path, SiteId = site.Id, Title = pluginDefinition.Name };
+
+        var pageResponse = mapper.Map<PageFullDetailResponse>(page);
+        pageResponse.FullPath = path;
+        pageResponse.Site = mapper.Map<SiteDetailResponse>(site);
+
+        if (page.LayoutId.HasValue)
+        {
+            var layout = layouts.Where(l => l.Id == page.LayoutId.Value).First();
+            pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
+        }
+        else
+        {
+            var layout = layouts.Where(l => l.IsDefault).First();
+            pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
+        }
+
+        pageResponse.Sections = [];
+        var pluginResponse = mapper.Map<PluginDetailResponse>(GetRuntimePlugin(site.Id, page.Id, pluginDefinition.Id));
+        pluginResponse.Definition = mapper.Map<PluginDefinitionDetailResponse>(pluginDefinition);
+        pageResponse.Sections.Add("Main", [pluginResponse]);
+
+        return Ok(pageResponse);
+    }
+
+    private Plugin GetRuntimePlugin(Guid siteId, Guid pageId, Guid pluginDefId)
+    {
+        return new Plugin
+        {
+            PageId = pageId,
+            Section = "Main",
+            Order = 0,
+            SiteId = siteId,
+            DefinitionId = pluginDefId
+        };
     }
 
     [HttpPost]
