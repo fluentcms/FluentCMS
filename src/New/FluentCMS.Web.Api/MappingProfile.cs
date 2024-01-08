@@ -20,7 +20,6 @@ public class MappingProfile : Profile
 
         #endregion
 
-
         #region Plugin
 
         CreateMap<PluginCreateRequest, Plugin>();
@@ -58,6 +57,14 @@ public class MappingProfile : Profile
         CreateMap<AppCreateRequest, App>();
         CreateMap<App, AppDetailResponse>();
         CreateMap<AppUpdateRequest, App>();
+
+        #endregion
+
+        #region Role
+
+        CreateMap<RoleCreateRequest, Role>();
+        CreateMap<RoleUpdateRequest, Role>();
+        CreateMap<Role, RoleDetailResponse>();
 
         #endregion
     }
