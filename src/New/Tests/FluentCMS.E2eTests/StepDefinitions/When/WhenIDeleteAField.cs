@@ -3,7 +3,7 @@ namespace FluentCMS.E2eTests.StepDefinitions;
 public partial class StepDefinitions
 {
     [When("I delete a field")]
-    public async void WhenIDeleteAField()
+    public void WhenIDeleteAField()
     {
         var contentType = context.Get<ContentTypeDetailResponseIApiResult>();
 
@@ -11,11 +11,10 @@ public partial class StepDefinitions
 
         var client = context.Get<ContentTypeClient>();
 
-        var deleteResult = await client.DeleteFieldAsync(
+        var deleteResult = client.DeleteFieldAsync(
                     app.Data.Slug!,
                     contentType.Data.Id,
                     "test-field");
 
-        context.Set(deleteResult);
     }
 }
