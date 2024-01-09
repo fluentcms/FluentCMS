@@ -1,4 +1,6 @@
-﻿using FluentCMS.Web.Api.Filters;
+﻿using FluentCMS.Entities;
+using FluentCMS.Web.Api.Filters;
+using FluentCMS.Web.Api.Models.Pages;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Primitives;
 
@@ -65,30 +67,9 @@ public class PageController(
 
         var plugins = await pluginService.GetByPageId(page.Id, cancellationToken);
 
-        var pageResponse = mapper.Map<PageFullDetailResponse>(page);
-        pageResponse.FullPath = path;
-        pageResponse.Site = mapper.Map<SiteDetailResponse>(site);
-
-        if (page.LayoutId.HasValue)
-        {
-            var layout = layouts.Where(l => l.Id == page.LayoutId.Value).First();
-            pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
-        }
-        else
-        {
-            var layout = layouts.Where(l => l.IsDefault).First();
-            pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
-        }
-
-        foreach (var plugin in plugins)
-        {
-            if (!pageResponse.Sections.ContainsKey(plugin.Section))
-                pageResponse.Sections.Add(plugin.Section, []);
-
-            var pluginResponse = mapper.Map<PluginDetailResponse>(plugin);
-            pluginResponse.Definition = mapper.Map<PluginDefinitionDetailResponse>(pluginDefinitions[plugin.DefinitionId]);
-            pageResponse.Sections[plugin.Section].Add(pluginResponse);
-        }
+        var pageResponse = mapper.Map<PageFullDetailModel, PageFullDetailResponse>(
+                new PageFullDetailModel(page, path, site, layouts, plugins, pluginDefinitions, false)
+            );
 
         return Ok(pageResponse);
     }
@@ -115,26 +96,10 @@ public class PageController(
             page = pages[value];
         else
             page = new Page { Path = path, SiteId = site.Id, Title = pluginDefinition.Name };
-
-        var pageResponse = mapper.Map<PageFullDetailResponse>(page);
-        pageResponse.FullPath = path;
-        pageResponse.Site = mapper.Map<SiteDetailResponse>(site);
-
-        if (page.LayoutId.HasValue)
-        {
-            var layout = layouts.Where(l => l.Id == page.LayoutId.Value).First();
-            pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
-        }
-        else
-        {
-            var layout = layouts.Where(l => l.IsDefault).First();
-            pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
-        }
-
-        pageResponse.Sections = [];
-        var pluginResponse = mapper.Map<PluginDetailResponse>(GetRuntimePlugin(site.Id, page.Id, pluginDefinition.Id));
-        pluginResponse.Definition = mapper.Map<PluginDefinitionDetailResponse>(pluginDefinition);
-        pageResponse.Sections.Add("Main", [pluginResponse]);
+        IEnumerable<Plugin> plugins = [GetRuntimePlugin(site.Id, page.Id, pluginDefinition.Id)];
+        var pageResponse = mapper.Map<PageFullDetailModel, PageFullDetailResponse>(
+                new PageFullDetailModel(page, path, site, layouts, plugins, new[] { pluginDefinition }.ToDictionary(x => x.Id), true)
+            );
 
         return Ok(pageResponse);
     }
