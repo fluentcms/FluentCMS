@@ -1,0 +1,17 @@
+@inherits LayoutComponentBase
+@layout PanelLayout
+
+<Grid>
+    <GridItem Small="GridItemColumnEnum.Two">
+        <Sidebar Title="Examples" Secondary="true">
+            <ChildContent>
+                <SidebarItem>CRUD</SidebarItem>
+                <SidebarItem href="/previews/examples/crud/list">List</SidebarItem>
+                <SidebarItem href="/previews/examples/crud/create">Create</SidebarItem>
+            </ChildContent>
+        </Sidebar>
+    </GridItem>
+    <GridItem Small="GridItemColumnEnum.Ten">
+        @Body
+    </GridItem>
+</Grid>

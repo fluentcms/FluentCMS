@@ -1,0 +1,75 @@
+@page "/previews/examples/crud/list"
+@layout ExamplesLayout
+
+<Page>
+    <PageHeader HasBack="true"
+                Title="CURD List"
+                Subtitle="Simple CRUD page for a entity">
+        <PageHeaderActions>
+            <ButtonGroup>
+                <Button Color="ColorEnum.Primary">
+                    <Icon Name="IconNameEnum.Plus" />
+                    Add New
+                </Button>
+            </ButtonGroup>
+        </PageHeaderActions>
+    </PageHeader>
+    <PageBody>
+        <Grid class="mb-4"
+              ItemsSmall="GridItemsEnum.Center"
+              JustifySmall="GridJustifyEnum.Between">
+            <GridItem Small="GridItemColumnEnum.Six">
+                <Input Dense="true"
+                       IconStart="IconNameEnum.Search"
+                       Placeholder="Search for entities" />
+            </GridItem>
+            <GridItem Small="GridItemColumnEnum.Auto">
+                <ButtonGroup>
+                    <Button>
+                        <Icon Name="IconNameEnum.Cog" />
+                        Table Settings
+                    </Button>
+                </ButtonGroup>
+            </GridItem>
+        </Grid>
+        <Table class="mb-4">
+            <TableHead>
+                <TableCell>Id</TableCell>
+                <TableCell>Title</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Actions</TableCell>
+            </TableHead>
+            <TableBody>
+                <TableRow>
+                    <TableCell>1</TableCell>
+                    <TableCell>Title of entity</TableCell>
+                    <TableCell>
+                        <Badge Color="ColorEnum.Success">Active</Badge>
+                    </TableCell>
+                    <TableCell>
+                        <ButtonGroup>
+                            <Button Color="ColorEnum.Danger">
+                                <Icon Name="IconNameEnum.Delete" />
+                                Delete
+                            </Button>
+                            <Button Color="ColorEnum.Primary" Outline>
+                                <Icon Name="IconNameEnum.Edit" />
+                                Edit
+                            </Button>
+                        </ButtonGroup>
+                    </TableCell>
+                </TableRow>
+            </TableBody>
+        </Table>
+        <Grid class="mb-4"
+              ItemsSmall="GridItemsEnum.Center"
+              JustifySmall="GridJustifyEnum.Between">
+            <GridItem>
+                <PaginationInfo Total="1000" Current="1" />
+            </GridItem>
+            <GridItem>
+                <Pagination Total="10" Current="5" />
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>

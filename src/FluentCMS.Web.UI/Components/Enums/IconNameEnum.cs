@@ -4,6 +4,7 @@ namespace FluentCMS.Web.UI.Resources;
 public enum IconNameEnum
 {
     Default,
+    CheckCircle,
     ChevronDown,
     Clipboard,
     ClipboardList,
