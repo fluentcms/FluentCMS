@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Web.Api;
+﻿using FluentCMS.Web.Api.Models.Pages;
+
+namespace FluentCMS.Web.Api;
 
 public class MappingProfile : Profile
 {
@@ -33,7 +35,8 @@ public class MappingProfile : Profile
         CreateMap<PageCreateRequest, Page>();
         CreateMap<PageUpdateRequest, Page>();
         CreateMap<Page, PageDetailResponse>();
-        CreateMap<Page, PageFullDetailResponse>();
+        CreateMap<PageFullDetailModel, PageFullDetailResponse>()
+            .ConvertUsing<PageFullDetailResponseTypeConverter>();
 
         #endregion
 
@@ -72,7 +75,7 @@ public class MappingProfile : Profile
 
         CreateMap<ContentTypeCreateRequest, ContentType>();
         CreateMap<ContentTypeUpdateRequest, ContentType>();
-        CreateMap<ContentType, ContentTypeDetailResponse>(); 
+        CreateMap<ContentType, ContentTypeDetailResponse>();
 
         #endregion
     }
