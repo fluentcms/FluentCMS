@@ -5,7 +5,7 @@ public partial class StepDefinitions
     [Given("I have a ContentType")]
     public void GivenIHaveAContentType()
     {
-        var createdContentType = context.Get<ContentTypeResponseIApiResult>();
+        var createdContentType = context.Get<ContentTypeDetailResponseIApiResult>();
 
         createdContentType.ShouldNotBeNull();
     }

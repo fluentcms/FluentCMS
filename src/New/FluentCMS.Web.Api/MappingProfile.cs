@@ -67,5 +67,13 @@ public class MappingProfile : Profile
         CreateMap<Role, RoleDetailResponse>();
 
         #endregion
+
+        #region ContentType
+
+        CreateMap<ContentTypeCreateRequest, ContentType>();
+        CreateMap<ContentTypeUpdateRequest, ContentType>();
+        CreateMap<ContentType, ContentTypeDetailResponse>(); 
+
+        #endregion
     }
 }

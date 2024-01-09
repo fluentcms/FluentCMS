@@ -7,7 +7,7 @@ public partial class StepDefinitions
     public async Task WhenIDeleteAContentTypeAsync()
     {
         // fetch content type from previous steps
-        var contentType = context.Get<ContentTypeResponseIApiResult>();
+        var contentType = context.Get<ContentTypeDetailResponseIApiResult>();
 
         // delete content type
         var app = context.Get<AppDetailResponseIApiResult>();

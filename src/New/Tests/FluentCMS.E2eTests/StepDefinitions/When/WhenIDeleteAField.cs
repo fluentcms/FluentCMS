@@ -5,7 +5,7 @@ public partial class StepDefinitions
     [When("I delete a field")]
     public void WhenIDeleteAField()
     {
-        var contentType = context.Get<ContentTypeResponseIApiResult>();
+        var contentType = context.Get<ContentTypeDetailResponseIApiResult>();
 
         var app = context.Get<AppDetailResponseIApiResult>();
 
