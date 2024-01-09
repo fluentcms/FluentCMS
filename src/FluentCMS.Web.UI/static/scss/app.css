@@ -817,6 +817,16 @@ body.f-theme-dark {
   @apply text-gray-200;
 }
 
+.f-form-check {
+  @apply ml-3 text-sm;
+}
+.f-form-check-text {
+  @apply font-medium text-gray-900;
+}
+.f-theme-dark .f-form-check-text {
+  @apply text-white;
+}
+
 .f-page {
   @apply px-4;
 }
@@ -1769,5 +1779,38 @@ body.f-theme-dark {
 }
 
 /* #endregion COMPONENTS */
+.f-login-form {
+  @apply mt-8;
+}
+
+.f-site-card-list {
+  @apply grid grid-cols-1 gap-4;
+}
+@screen sm {
+  .f-site-card-list {
+    @apply grid-cols-2;
+  }
+}
+@screen md {
+  .f-site-card-list {
+    @apply grid-cols-3;
+  }
+}
+@screen lg {
+  .f-site-card-list {
+    @apply grid-cols-4;
+  }
+}
+
+.f-site-card-pagination {
+  @apply mt-8 flex justify-center gap-2;
+}
+
+.f-site-card-description {
+  @apply mb-3 font-normal text-gray-700;
+}
+.f-theme-dark .f-site-card-description {
+  @apply text-gray-400;
+}
 
 /*# sourceMappingURL=app.css.map */
