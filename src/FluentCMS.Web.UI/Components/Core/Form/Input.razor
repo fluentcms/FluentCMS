@@ -1,46 +1,44 @@
 @inherits InputBaseComponent<string>
 
-<FormField
-    IconStart=@IconStart
-    IconEnd=@IconEnd
-    Dense=@Dense
-    Id=@Id
-    Hint=@Hint
-    Label=@Label
-    Required=@Required
-    State=@State>
-    <input
-        type=@this.Type.ToString().FromPascalCaseToKebabCase()
-        id="@Id"
-        disabled=@Disabled
-        name=@Name
-        required=@Required
-        class=@this.GetClasses()
-        placeholder="@Placeholder"
-        @bind=Value
-        @bind:event="oninput"
-        @attributes=AdditionalAttributes />
+<FormField Dense="Dense"
+           Hint="Hint"
+           IconEnd="IconEnd"
+           IconStart="IconStart"
+           Id="Id"
+           Label="Label"
+           Required="Required"
+           State="State">
+    <input @attributes="AdditionalAttributes"
+           @bind="Value"
+           @bind:event="oninput"
+           class="@this.GetClasses()"
+           disabled="@Disabled"
+           id="@Id"
+           name="@Name"
+           placeholder="@Placeholder"
+           required="@Required"
+           type="@this.Type.ToString().FromPascalCaseToKebabCase()" />
 </FormField>
 
 @code {
     [Parameter]
-    public string Id { get; set; }
+    public bool Dense { get; set; } = false;
 
     [Parameter]
     public string Hint { get; set; }
 
     [Parameter]
-    public string Placeholder { get; set; }
+    public IconNameEnum IconEnd { get; set; }
 
     [Parameter]
     public IconNameEnum IconStart { get; set; }
 
     [Parameter]
-    public IconNameEnum IconEnd { get; set; }
+    public string Id { get; set; }
+
+    [Parameter]
+    public string Placeholder { get; set; }
 
     [Parameter]
     public InputTypeEnum Type { get; set; } = InputTypeEnum.Text;
-
-    [Parameter]
-    public bool Dense { get; set; } = false;
 }

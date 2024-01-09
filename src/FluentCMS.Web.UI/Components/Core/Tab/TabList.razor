@@ -1,5 +1,6 @@
 @inherits BaseComponent
 
-<ul Class=@this.GetClasses() @attributes=AdditionalAttributes>
+<ul @attributes="AdditionalAttributes"
+    class="@this.GetClasses()">
     @ChildContent
 </ul>

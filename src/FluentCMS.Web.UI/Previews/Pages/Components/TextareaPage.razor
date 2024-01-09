@@ -4,18 +4,92 @@
 
 <PageHeader HasBack Title="Textarea"/>
 
-<div class="m-4 bg-white border border-gray-200 dark:border-gray-700 p-4 shadow dark:bg-gray-800">
-    <Textarea Label="Default Textarea"/>
-    <Textarea Required Label="Required Textarea"/>
-    <Textarea Disabled Label="Disabled Textarea"/>
-    <Textarea Rows="20" Label="Textarea Rows (20 rows)"/>
-    <Textarea Readonly Label="Readonly Textarea" Value="Value"/>
-    <Textarea Placeholder="This is Placeholder" Label="Placeholder"/>
-    <Textarea Label="Icon Start" IconStart="IconNameEnum.Search"/>
-    <Textarea Label="Icon End" IconEnd="IconNameEnum.Delete"/>
-    <Textarea Label="Hint" Hint="Some description comes here..."/>
+<Preview Title="Default">
+    <ChildContent>
+        <Textarea />
+    </ChildContent>
+</Preview>
 
-    <Textarea Label="Invalid" State="FormFieldStateEnum.Invalid" IconEnd="IconNameEnum.Delete" Hint="This field has problem"/>
-    <Textarea Label="Valid" State="FormFieldStateEnum.Valid" IconEnd="IconNameEnum.Search" Hint="Success"/>
-</div>
+<Preview Title="Label">
+    <ChildContent>
+        <Textarea Label="Textarea"/>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Disabled">
+    <ChildContent>
+        <Textarea Label="Disabled Textarea" Disabled/>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Required">
+    <ChildContent>
+        <Textarea Label="Required Textarea" Required/>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Readonly">
+    <ChildContent>
+        <Textarea Label="Readonly Textarea" Readonly Value="Value"/>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Placeholder">
+    <ChildContent>
+        <Textarea Label="Placeholder Textarea" Placeholder="Type something..."/>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Icons">
+    <ChildContent>
+        <div class="flex flex-col">
+            <Textarea IconStart=@IconNameEnum.InformationFilled Label="Start Icon" Placeholder="Type something..."/>
+            <Textarea IconEnd=@IconNameEnum.Search  Label="End Icon" Placeholder="Type something..."/>
+        </div>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Rows">
+    <ChildContent>
+        <div class="flex flex-col">
+            <Textarea Label="Textarea Rows" Rows=20/>
+        </div>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Hint">
+    <ChildContent>
+        <div class="flex flex-col">
+            <Textarea Hint="This is info message" Label="Username" Placeholder="Type something..."/>
+            <Textarea Hint="This field is required!" State=FormFieldStateEnum.Invalid Label="Email" Placeholder="Type something..."/>
+            <Textarea Hint="This field is okay!" State=FormFieldStateEnum.Valid Label="Name" Placeholder="Type something..."/>
+        </div>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Initial Value">
+    <ChildContent>
+        <div class="flex flex-col">
+            <Textarea @bind-Value=@Textarea1Value Label="Textarea"/>
+
+            <div class="w-full mx-auto">
+                <Badge Color="ColorEnum.Primary">@Textarea1Value</Badge>
+            </div>
+        </div>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Value Binding">
+    <ChildContent>
+        <div class="flex flex-col">
+            <Textarea @bind-Value=@TextareaValue Label="Textarea 1"/>
+            <Textarea @bind-Value=@TextareaValue Label="Textarea 2"/>
+        </div>
+    </ChildContent>
+</Preview>
+
+@code {
+    private string Textarea1Value = "Initial";
+    private string TextareaValue;
+}
 

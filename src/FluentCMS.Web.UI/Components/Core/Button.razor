@@ -1,25 +1,35 @@
 @inherits BaseComponent
+
 @if (!string.IsNullOrEmpty(Href))
 {
-    <a @ref=Refe class=@this.GetClasses() disabled=@Disabled href=@Href @attributes="AdditionalAttributes">
+    <a @attributes="AdditionalAttributes"
+       @ref="Reference"
+       class="@this.GetClasses()"
+       disabled="@Disabled"
+       href="@Href">
         <span>
             @ChildContent
         </span>
         @if (Loading)
         {
-            <Spinner Color=@this.Color />
+            <Spinner Color="Color" />
         }
     </a>
 }
 else
 {
-    <button @ref=Refe class=@this.GetClasses() disabled=@Disabled type="@Type.ToString()" @onclick=OnClick @attributes="AdditionalAttributes">
+    <button @attributes="AdditionalAttributes"
+            @ref="Reference"
+            class="@this.GetClasses()"
+            disabled="@Disabled"
+            type="@Type.ToString()"
+            @onclick="OnClick">
         <span>
             @ChildContent
         </span>
         @if (Loading)
         {
-            <Spinner Color=@this.Color />
+            <Spinner Color="Color" />
         }
     </button>
 }
@@ -31,33 +41,33 @@ else
     public ColorEnum Color { get; set; } = ColorEnum.Default;
 
     [Parameter]
-    public ElementReference Refe {get; set;}
+    [CssProperty]
+    public bool Disabled { get; set; } = false;
+
+    [Parameter]
+    [CssProperty]
+    public bool Ghost { get; set; } = false;
 
     [Parameter]
     public string? Href { get; set; }
 
     [Parameter]
     [CssProperty]
-    public bool Disabled { get; set; } = false;
-
-    [Parameter]
-    [CssProperty]
     public bool Loading { get; set; } = false;
-
-    [Parameter]
-    public ButtonTypeEnum Type { get; set; } = ButtonTypeEnum.Button;
-
-    [Parameter]
-    [CssProperty]
-    public SizeEnum Size { get; set; } = SizeEnum.Medium;
 
     [Parameter]
     [CssProperty]
     public bool Outline { get; set; } = false;
 
     [Parameter]
+    public ElementReference Reference { get; set; }
+
+    [Parameter]
     [CssProperty]
-    public bool Ghost { get; set; } = false;
+    public SizeEnum Size { get; set; } = SizeEnum.Medium;
+
+    [Parameter]
+    public ButtonTypeEnum Type { get; set; } = ButtonTypeEnum.Button;
 
     [Parameter]
     public EventCallback<MouseEventArgs> OnClick { get; set; }

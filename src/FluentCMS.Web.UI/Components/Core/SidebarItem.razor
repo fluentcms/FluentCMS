@@ -1,6 +1,7 @@
 @inherits BaseComponent
 
-<li class=@this.GetClasses() @attributes=AdditionalAttributes>
+<li @attributes="AdditionalAttributes"
+    class="@this.GetClasses()">
     @if (string.IsNullOrEmpty(Href))
     {
         <span>
@@ -9,10 +10,10 @@
     }
     else
     {
-        <a class="group " href=@Href>
+        <a class="group" href="@Href">
             @if (this.Icon != IconNameEnum.Default)
             {
-                <Icon Name=@Icon />
+                <Icon Name="@Icon" />
             }
             <span class="ml-3">
                 @ChildContent
@@ -23,7 +24,7 @@
 
 @code {
     [Parameter]
-    public string Href { get; set; } = string.Empty;
+    public string Href { get; set; }
 
     [Parameter]
     public IconNameEnum Icon { get; set; }

@@ -1,8 +1,11 @@
 ﻿@inject IJSRuntime JS
 @inherits BaseComponent
 
-<div @ref=element class=@this.GetClasses() @attributes=@AdditionalAttributes tabindex="-1">
-    <div class=@this.ClassName("ModalWrapper")>
+<div @attributes="AdditionalAttributes"
+     @ref="element"
+     class="@this.GetClasses()"
+     tabindex="-1">
+    <div class="@this.ClassName("ModalWrapper")">
         <CascadingValue Value="this">
             <ModalContent>
                 @ChildContent
@@ -12,15 +15,11 @@
 </div>
 
 @code {
+    public ElementReference element;
+
     private IJSObjectReference module = default!;
 
     private bool open;
-
-    public ElementReference element;
-
-    [Parameter]
-    [CssProperty]
-    public SizeEnum Size { get; set; } = SizeEnum.Medium;
 
     [Parameter]
     [CssProperty]
@@ -42,6 +41,10 @@
 
     [Parameter]
     public EventCallback<bool> OpenChanged { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public SizeEnum Size { get; set; } = SizeEnum.Medium;
 
     [JSInvokable]
     public async void Close()

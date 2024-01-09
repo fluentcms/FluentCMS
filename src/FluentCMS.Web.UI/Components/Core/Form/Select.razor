@@ -1,38 +1,40 @@
 @inherits InputBaseComponent<string>
 
-<FormField
-	Id=@Id
-    Dense=@Dense
-    Required=@Required
-    Label=@Label
-	Hint=@Hint
-    State=@State
-    IconStart=@IconStart>
-    <select class=@this.GetClasses()
-		disabled=@Disabled
-		id="@Id"
-		name=@Name
-		multiple=@Multiple
-		required=@Required
-		@bind=Value
-		@attributes="@AdditionalAttributes">
-            @if (this.Placeholder != string.Empty)
-            {
-                <Option Selected>@Placeholder</Option>
-            }
-            @ChildContent
-        </select>
+<FormField Dense="Dense"
+           Hint="Hint"
+           IconStart="IconStart"
+           Id="Id"
+           Label="Label"
+           Required="Required"
+           State="State">
+    <select @attributes="AdditionalAttributes"
+            @bind="Value"
+            class="@this.GetClasses()"
+            disabled="@Disabled"
+            id="@Id"
+            multiple="@Multiple"
+            name="@Name"
+            required="@Required">
+        @if (this.Placeholder != string.Empty)
+        {
+            <Option Selected>@Placeholder</Option>
+        }
+        @ChildContent
+    </select>
 
-	</FormField>
+</FormField>
 
 @code {
     [Parameter]
-    public IconNameEnum IconStart { get; set; }
-
-	@* TODO: Add IconEnd *@
+    public bool Dense { get; set; }
 
     [Parameter]
-    public string Hint { get; set; }
+    public string? Hint { get; set; }
+
+    @* TODO: Add IconEnd *@
+
+    [Parameter]
+    public IconNameEnum IconStart { get; set; }
 
     [Parameter]
     public string? Id { get; set; }
@@ -42,7 +44,4 @@
 
     [Parameter]
     public string? Placeholder { get; set; }
-
-    [Parameter]
-    public bool Dense { get; set; }
 }

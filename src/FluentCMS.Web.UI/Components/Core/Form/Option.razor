@@ -1,9 +1,9 @@
 @inherits BaseComponent
 
-<option class=@this.GetClasses()
-        @attributes=AdditionalAttributes
-        selected=@this.Selected
-        value=@this.Value>
+<option @attributes="AdditionalAttributes"
+        class="@this.GetClasses()"
+        selected="@this.Selected"
+        value="@this.Value">
     @ChildContent
 </option>
 

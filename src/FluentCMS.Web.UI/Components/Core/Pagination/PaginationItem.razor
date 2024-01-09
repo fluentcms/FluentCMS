@@ -1,7 +1,8 @@
 @inherits BaseComponent
 
-<li class=@this.GetClasses() @attributes=AdditionalAttributes>
-    <Button Disabled=@Disabled OnClick=@OnClick>
+<li @attributes="AdditionalAttributes"
+    class="@this.GetClasses()">
+    <Button Disabled="Disabled" OnClick="OnClick">
         @ChildContent
     </Button>
 </li>
