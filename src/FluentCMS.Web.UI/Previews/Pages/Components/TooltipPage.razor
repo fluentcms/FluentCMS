@@ -2,119 +2,123 @@
 @layout ComponentsLayout
 @rendermode InteractiveServer
 
-<PageHeader HasBack Title="Tooltip"/>
+<Page>
+    <PageHeader HasBack Title="Tooltip"/>
 
-<Preview Title="Default">
-    <ChildContent>
-        <Grid Class="p-16" ItemsSmall="GridItemsEnum.Center" JustifySmall="GridJustifyEnum.Center">
-            <GridItem>
-                <Button Color=ColorEnum.Danger>
-                    <Icon Name="IconNameEnum.Delete"/>
-                </Button>
-                <Tooltip Placement=TooltipPlacementEnum.Top>
-                    Delete current Item
-                </Tooltip>
-            </GridItem>
-        </Grid>
-    </ChildContent>
-</Preview>
+    <PageBody>
+        <Preview Title="Default">
+            <ChildContent>
+                <Grid Class="p-16" ItemsSmall="GridItemsEnum.Center" JustifySmall="GridJustifyEnum.Center">
+                    <GridItem>
+                        <Button Color=ColorEnum.Danger>
+                            <Icon Name="IconNameEnum.Delete"/>
+                        </Button>
+                        <Tooltip Placement=TooltipPlacementEnum.Top>
+                            Delete current Item
+                        </Tooltip>
+                    </GridItem>
+                </Grid>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Placements - Top">
-    <ChildContent>
-        <Grid Class="p-16" Gutter=GridGutterEnum.Large ItemsSmall="GridItemsEnum.Center" JustifySmall="GridJustifyEnum.Center">
-            <GridItem>
-                <Button>Tooltip Top</Button>
-                <Tooltip Placement="TooltipPlacementEnum.Top">
-                    Tooltip Content
-                </Tooltip>
-            </GridItem>
-            <GridItem>
-                <Button>Tooltip TopStart</Button>
-                <Tooltip Placement="TooltipPlacementEnum.TopStart">
-                    Tooltip Content
-                </Tooltip>
-            </GridItem>
-            <GridItem>
-                <Button>Tooltip TopEnd</Button>
-                <Tooltip Placement="TooltipPlacementEnum.TopEnd">
-                    Tooltip Content
-                </Tooltip>
-            </GridItem>
-        </Grid>
-    </ChildContent>
-</Preview>
+        <Preview Title="Placements - Top">
+            <ChildContent>
+                <Grid Class="p-16" Gutter=GridGutterEnum.Large ItemsSmall="GridItemsEnum.Center" JustifySmall="GridJustifyEnum.Center">
+                    <GridItem>
+                        <Button>Tooltip Top</Button>
+                        <Tooltip Placement="TooltipPlacementEnum.Top">
+                            Tooltip Content
+                        </Tooltip>
+                    </GridItem>
+                    <GridItem>
+                        <Button>Tooltip TopStart</Button>
+                        <Tooltip Placement="TooltipPlacementEnum.TopStart">
+                            Tooltip Content
+                        </Tooltip>
+                    </GridItem>
+                    <GridItem>
+                        <Button>Tooltip TopEnd</Button>
+                        <Tooltip Placement="TooltipPlacementEnum.TopEnd">
+                            Tooltip Content
+                        </Tooltip>
+                    </GridItem>
+                </Grid>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Placements - Left">
-    <ChildContent>
-        <Grid Class="p-16" Gutter=GridGutterEnum.Large ItemsSmall="GridItemsEnum.Center" JustifySmall="GridJustifyEnum.Center">
-            <GridItem>
-                <Button>Tooltip Left</Button>
-                <Tooltip Placement="TooltipPlacementEnum.Left">
-                    Tooltip Content
-                </Tooltip>
-            </GridItem>
-            <GridItem>
-                <Button>Tooltip LeftStart</Button>
-                <Tooltip Placement="TooltipPlacementEnum.LeftStart">
-                    Tooltip Content
-                </Tooltip>
-            </GridItem>
-            <GridItem>
-                <Button>Tooltip LeftEnd</Button>
-                <Tooltip Placement="TooltipPlacementEnum.LeftEnd">
-                    Tooltip Content
-                </Tooltip>
-            </GridItem>
-        </Grid>
-    </ChildContent>
-</Preview>
+        <Preview Title="Placements - Left">
+            <ChildContent>
+                <Grid Class="p-16" Gutter=GridGutterEnum.Large ItemsSmall="GridItemsEnum.Center" JustifySmall="GridJustifyEnum.Center">
+                    <GridItem>
+                        <Button>Tooltip Left</Button>
+                        <Tooltip Placement="TooltipPlacementEnum.Left">
+                            Tooltip Content
+                        </Tooltip>
+                    </GridItem>
+                    <GridItem>
+                        <Button>Tooltip LeftStart</Button>
+                        <Tooltip Placement="TooltipPlacementEnum.LeftStart">
+                            Tooltip Content
+                        </Tooltip>
+                    </GridItem>
+                    <GridItem>
+                        <Button>Tooltip LeftEnd</Button>
+                        <Tooltip Placement="TooltipPlacementEnum.LeftEnd">
+                            Tooltip Content
+                        </Tooltip>
+                    </GridItem>
+                </Grid>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Placements - Bottom">
-    <ChildContent>
-        <Grid Class="p-16" Gutter=GridGutterEnum.Large ItemsSmall="GridItemsEnum.Center" JustifySmall="GridJustifyEnum.Center">
-            <GridItem>
-                <Button>Tooltip Bottom</Button>
-                <Tooltip Placement="TooltipPlacementEnum.Bottom">
-                    Tooltip Content
-                </Tooltip>
-            </GridItem>
-            <GridItem>
-                <Button>Tooltip BottomStart</Button>
-                <Tooltip Placement="TooltipPlacementEnum.BottomStart">
-                    Tooltip Content
-                </Tooltip>
-            </GridItem>
-            <GridItem>
-                <Button>Tooltip BottomEnd</Button>
-                <Tooltip Placement="TooltipPlacementEnum.BottomEnd">
-                    Tooltip Content
-                </Tooltip>
-            </GridItem>
-        </Grid>
-    </ChildContent>
-</Preview>
+        <Preview Title="Placements - Bottom">
+            <ChildContent>
+                <Grid Class="p-16" Gutter=GridGutterEnum.Large ItemsSmall="GridItemsEnum.Center" JustifySmall="GridJustifyEnum.Center">
+                    <GridItem>
+                        <Button>Tooltip Bottom</Button>
+                        <Tooltip Placement="TooltipPlacementEnum.Bottom">
+                            Tooltip Content
+                        </Tooltip>
+                    </GridItem>
+                    <GridItem>
+                        <Button>Tooltip BottomStart</Button>
+                        <Tooltip Placement="TooltipPlacementEnum.BottomStart">
+                            Tooltip Content
+                        </Tooltip>
+                    </GridItem>
+                    <GridItem>
+                        <Button>Tooltip BottomEnd</Button>
+                        <Tooltip Placement="TooltipPlacementEnum.BottomEnd">
+                            Tooltip Content
+                        </Tooltip>
+                    </GridItem>
+                </Grid>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Placements - Right">
-    <ChildContent>
-        <Grid Class="p-16" Gutter=GridGutterEnum.Large ItemsSmall="GridItemsEnum.Center" JustifySmall="GridJustifyEnum.Center">
-            <GridItem>
-                <Button>Tooltip Right</Button>
-                <Tooltip Placement="TooltipPlacementEnum.Right">
-                    Tooltip Content
-                </Tooltip>
-            </GridItem>
-            <GridItem>
-                <Button>Tooltip RightStart</Button>
-                <Tooltip Placement="TooltipPlacementEnum.RightStart">
-                    Tooltip Content
-                </Tooltip>
-            </GridItem>
-            <GridItem>
-                <Button>Tooltip RightEnd</Button>
-                <Tooltip Placement="TooltipPlacementEnum.RightEnd">
-                    Tooltip Content
-                </Tooltip>
-            </GridItem>
-        </Grid>
-    </ChildContent>
-</Preview>
+        <Preview Title="Placements - Right">
+            <ChildContent>
+                <Grid Class="p-16" Gutter=GridGutterEnum.Large ItemsSmall="GridItemsEnum.Center" JustifySmall="GridJustifyEnum.Center">
+                    <GridItem>
+                        <Button>Tooltip Right</Button>
+                        <Tooltip Placement="TooltipPlacementEnum.Right">
+                            Tooltip Content
+                        </Tooltip>
+                    </GridItem>
+                    <GridItem>
+                        <Button>Tooltip RightStart</Button>
+                        <Tooltip Placement="TooltipPlacementEnum.RightStart">
+                            Tooltip Content
+                        </Tooltip>
+                    </GridItem>
+                    <GridItem>
+                        <Button>Tooltip RightEnd</Button>
+                        <Tooltip Placement="TooltipPlacementEnum.RightEnd">
+                            Tooltip Content
+                        </Tooltip>
+                    </GridItem>
+                </Grid>
+            </ChildContent>
+        </Preview>
+    </PageBody>
+</Page>

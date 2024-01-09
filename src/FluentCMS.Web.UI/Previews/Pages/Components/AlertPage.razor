@@ -2,55 +2,59 @@
 @rendermode InteractiveServer
 @layout ComponentsLayout
 
-<PageHeader HasBack Title="Alerts" />
+<Page>
+    <PageHeader HasBack Title="Alerts" />
 
-<Preview Title="Default">
-    <Description>
-        Use the following examples of alert components to show messages as feedback to your users.
-    </Description>
-    <ChildContent>
-        <div class="flex flex-col gap-4">
-            <Alert Type=AlertTypeEnum.Info>
-                <b>Info alert!</b> Change a few things up and try submitting again.
-            </Alert>
-            <Alert Type=AlertTypeEnum.Danger>
-                <b>Danger alert!</b> Change a few things up and try submitting again.
-            </Alert>
-            <Alert Type=AlertTypeEnum.Success>
-                <b>Success alert!</b> Change a few things up and try submitting again.
-            </Alert>
-            <Alert Type=AlertTypeEnum.Warning>
-                <b>Warning alert!</b> Change a few things up and try submitting again.
-            </Alert>
-            <Alert Type=AlertTypeEnum.Default>
-                <b>Default alert!</b> Change a few things up and try submitting again.
-            </Alert>
-        </div>
-    </ChildContent>
-</Preview>
+    <PageBody>
+        <Preview Title="Default">
+            <Description>
+                Use the following examples of alert components to show messages as feedback to your users.
+            </Description>
+            <ChildContent>
+                <div class="flex flex-col gap-4">
+                    <Alert Type=AlertTypeEnum.Info>
+                        <b>Info alert!</b> Change a few things up and try submitting again.
+                    </Alert>
+                    <Alert Type=AlertTypeEnum.Danger>
+                        <b>Danger alert!</b> Change a few things up and try submitting again.
+                    </Alert>
+                    <Alert Type=AlertTypeEnum.Success>
+                        <b>Success alert!</b> Change a few things up and try submitting again.
+                    </Alert>
+                    <Alert Type=AlertTypeEnum.Warning>
+                        <b>Warning alert!</b> Change a few things up and try submitting again.
+                    </Alert>
+                    <Alert Type=AlertTypeEnum.Default>
+                        <b>Default alert!</b> Change a few things up and try submitting again.
+                    </Alert>
+                </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Dismissing">
-    <Description>
-        Use the following alert elements that are also dismissible.
-    </Description>
+        <Preview Title="Dismissing">
+            <Description>
+                Use the following alert elements that are also dismissible.
+            </Description>
 
-    <ChildContent>
-        <div class="flex flex-col gap-4">
-            <Alert Dismissible Type=AlertTypeEnum.Info>
-                <b>Info alert!</b> Change a few things up and try submitting again.
-            </Alert>
-            <Alert Dismissible Type=AlertTypeEnum.Danger>
-                <b>Danger alert!</b> Change a few things up and try submitting again.
-            </Alert>
-            <Alert Dismissible Type=AlertTypeEnum.Success>
-                <b>Success alert!</b> Change a few things up and try submitting again.
-            </Alert>
-            <Alert Dismissible Type=AlertTypeEnum.Warning>
-                <b>Warning alert!</b> Change a few things up and try submitting again.
-            </Alert>
-            <Alert Dismissible Type=AlertTypeEnum.Default>
-                <b>Default alert!</b> Change a few things up and try submitting again.
-            </Alert>
-        </div>
-    </ChildContent>
-</Preview>
+            <ChildContent>
+                <div class="flex flex-col gap-4">
+                    <Alert Dismissible Type=AlertTypeEnum.Info>
+                        <b>Info alert!</b> Change a few things up and try submitting again.
+                    </Alert>
+                    <Alert Dismissible Type=AlertTypeEnum.Danger>
+                        <b>Danger alert!</b> Change a few things up and try submitting again.
+                    </Alert>
+                    <Alert Dismissible Type=AlertTypeEnum.Success>
+                        <b>Success alert!</b> Change a few things up and try submitting again.
+                    </Alert>
+                    <Alert Dismissible Type=AlertTypeEnum.Warning>
+                        <b>Warning alert!</b> Change a few things up and try submitting again.
+                    </Alert>
+                    <Alert Dismissible Type=AlertTypeEnum.Default>
+                        <b>Default alert!</b> Change a few things up and try submitting again.
+                    </Alert>
+                </div>
+            </ChildContent>
+        </Preview>
+    </PageBody>
+</Page>

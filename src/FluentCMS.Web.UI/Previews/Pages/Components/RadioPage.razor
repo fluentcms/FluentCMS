@@ -2,94 +2,98 @@
 @layout ComponentsLayout
 @rendermode InteractiveServer
 
-<PageHeader HasBack Title="Radio"/>
+<Page>
+    <PageHeader HasBack Title="Radio"/>
 
-<Preview Title="Default">
-    <ChildContent>
-        <Radio />
-    </ChildContent>
-</Preview>
+    <PageBody>
+        <Preview Title="Default">
+            <ChildContent>
+                <Radio />
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Label">
-    <ChildContent>
-        <Radio Label="Radio"/>
-    </ChildContent>
-</Preview>
+        <Preview Title="Label">
+            <ChildContent>
+                <Radio Label="Radio"/>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Checked">
-    <Description>
-        When Value is true, checkbox is in checked state.
-    </Description>
-    <ChildContent>
-        <Radio Value Label="Checked"/>
-    </ChildContent>
-</Preview>
+        <Preview Title="Checked">
+            <Description>
+                When Value is true, checkbox is in checked state.
+            </Description>
+            <ChildContent>
+                <Radio Value Label="Checked"/>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Dense">
-    <Description>
-        Removes space from bottom of element
-    </Description>
-    <ChildContent>
-        <div class="flex flex-col">
-            <Radio Dense Label="Unchecked"/>
-            <Radio Dense Value Label="Checked"/>
-        </div>
-    </ChildContent>
-</Preview>
-<Preview Title="Disabled">
-    <ChildContent>
-        <div class="flex flex-col">
-            <Radio Disabled Label="Unchecked"/>
-            <Radio Disabled Value Label="Checked"/>
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Dense">
+            <Description>
+                Removes space from bottom of element
+            </Description>
+            <ChildContent>
+                <div class="flex flex-col">
+                    <Radio Dense Label="Unchecked"/>
+                    <Radio Dense Value Label="Checked"/>
+                </div>
+            </ChildContent>
+        </Preview>
+        <Preview Title="Disabled">
+            <ChildContent>
+                <div class="flex flex-col">
+                    <Radio Disabled Label="Unchecked"/>
+                    <Radio Disabled Value Label="Checked"/>
+                </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Inline">
-    <ChildContent>
-        <div>
-            <Radio Label="Unchecked"/>
-            <Radio Value Label="Checked"/>
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Inline">
+            <ChildContent>
+                <div>
+                    <Radio Label="Unchecked"/>
+                    <Radio Value Label="Checked"/>
+                </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Description">
-    <ChildContent>
-        <div>
-            <Radio Label="Description" Hint="This is description"/>
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Description">
+            <ChildContent>
+                <div>
+                    <Radio Label="Description" Hint="This is description"/>
+                </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Validation">
-    <ChildContent>
-        <div>
-            <Radio Label="Invalid" Hint="This is required" State="FormFieldStateEnum.Invalid"/>
-            <Radio Label="Valid" Hint="This is okay" State="FormFieldStateEnum.Valid"/>
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Validation">
+            <ChildContent>
+                <div>
+                    <Radio Label="Invalid" Hint="This is required" State="FormFieldStateEnum.Invalid"/>
+                    <Radio Label="Valid" Hint="This is okay" State="FormFieldStateEnum.Valid"/>
+                </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Initial">
-    <ChildContent>
-        <div>
-            <Radio Label="Initial Value" @bind-Value=@Check1Value />
-            <div>
-                <Badge Color=@(Check1Value ? ColorEnum.Success : ColorEnum.Danger)>@Check1Value</Badge>
-            </div>
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Initial">
+            <ChildContent>
+                <div>
+                    <Radio Label="Initial Value" @bind-Value=@Check1Value />
+                    <div>
+                        <Badge Color=@(Check1Value ? ColorEnum.Success : ColorEnum.Danger)>@Check1Value</Badge>
+                    </div>
+                </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Bind Value">
-    <ChildContent>
-        <div>
-            <Radio Label="Radio 1" @bind-Value=@Check2Value />
-            <Radio Label="Radio 2" @bind-Value=@Check2Value />
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Bind Value">
+            <ChildContent>
+                <div>
+                    <Radio Label="Radio 1" @bind-Value=@Check2Value />
+                    <Radio Label="Radio 2" @bind-Value=@Check2Value />
+                </div>
+            </ChildContent>
+        </Preview>
+    </PageBody>
+</Page>
 
 @code {
     private bool Check1Value = true;

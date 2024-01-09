@@ -2,55 +2,56 @@
 @layout ComponentsLayout
 @rendermode InteractiveServer
 
+<Page>
+    <PageHeader HasBack Title="PageHeader"/>
 
-<PageHeader HasBack Title="PageHeader"/>
+    <PageBody>
+        <Preview Title="Default">
+            <ChildContent> <PageHeader Title="Page Title"/>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Default">
-    <ChildContent>
-        <PageHeader Title="Page Title"/>
-    </ChildContent>
-</Preview>
+        <Preview Title="Back button">
+            <ChildContent>
+                <PageHeader HasBack Title="Page Title"/>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Back button">
-    <ChildContent>
-        <PageHeader HasBack Title="Page Title"/>
-    </ChildContent>
-</Preview>
-
-<Preview Title="Subtitle">
-    <ChildContent>
-        <div>
-            <PageHeader SubTitle="This is subtitle" Title="With SubTitle"/>
-
-
-        </div>
-    </ChildContent>
-</Preview>
-
-<Preview Title="Actions">
-    <ChildContent>
-        <div>
-            <PageHeader SubTitle="This is subtitle" Title="With Actions">
-            <PageHeaderActions>
-                <Button Color="ColorEnum.Primary">Create New Item</Button>
-            </PageHeaderActions>
-        </PageHeader>
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Subtitle">
+            <ChildContent>
+                <div>
+                    <PageHeader SubTitle="This is subtitle" Title="With SubTitle"/>
 
 
-<Preview Title="Subtitle Slot">
-    <ChildContent>
-        <PageHeader Title="Subtitle slot">
-            <PageHeaderActions>
-                <Button Color="ColorEnum.Primary">Create New Item</Button>
-            </PageHeaderActions>
-            <PageHeaderSubtitle>
-                This is subtitle&nbsp;<Icon Name="IconNameEnum.InformationFilled"/>
-                <Tooltip Placement=TooltipPlacementEnum.Bottom>This is some help text</Tooltip>
+                </div>
+            </ChildContent>
+        </Preview>
 
-            </PageHeaderSubtitle>
-        </PageHeader>
-    </ChildContent>
-</Preview>
+        <Preview Title="Actions">
+            <ChildContent>
+                <div>
+                    <PageHeader SubTitle="This is subtitle" Title="With Actions">
+                    <PageHeaderActions>
+                        <Button Color="ColorEnum.Primary">Create New Item</Button>
+                    </PageHeaderActions>
+                </PageHeader>
+                </div>
+            </ChildContent>
+        </Preview>
+
+        <Preview Title="Subtitle Slot">
+            <ChildContent>
+                <PageHeader Title="Subtitle slot">
+                    <PageHeaderActions>
+                        <Button Color="ColorEnum.Primary">Create New Item</Button>
+                    </PageHeaderActions>
+                    <PageHeaderSubtitle>
+                        This is subtitle&nbsp;<Icon Name="IconNameEnum.InformationFilled"/>
+                        <Tooltip Placement=TooltipPlacementEnum.Bottom>This is some help text</Tooltip>
+
+                    </PageHeaderSubtitle>
+                </PageHeader>
+            </ChildContent>
+        </Preview>
+    </PageBody>
+</Page>
