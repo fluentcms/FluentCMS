@@ -93,6 +93,9 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
             throw new AppException(ExceptionCodes.ContentTypeFieldNotFound);
 
         // remove the field
+        contentType.Fields.Remove(original);
+
+        //apply changes
         return await contentTypeRepository.Update(contentType, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);
     }
