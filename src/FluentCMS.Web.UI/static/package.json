@@ -4,8 +4,8 @@
     "description": "",
     "main": "index.js",
     "scripts": {
-        "tailwind:watch": "tailwindcss -i ./scss/app.css -o ../wwwroot/css/app.min.css --watch",
-        "tailwind": "tailwindcss -i ./scss/app.css -o ../wwwroot/css/app.min.css --minify",
+        "tailwind:watch": "postcss scss/app.css -o ../wwwroot/css/app.min.css --watch",
+        "tailwind": "postcss scss/app.css -o ../wwwroot/css/app.min.css --minify",
         "sass:watch": "sass ./scss/App.scss:./scss/app.css --watch",
         "sass": "sass ./scss/App.scss:./scss/app.css",
         "watch": "conc \"npm run tailwind:watch\" \"npm run sass:watch\"",
@@ -13,9 +13,14 @@
     },
     "devDependencies": {
         "conc": "^0.0.3",
+        "concurrently": "^8.2.2",
         "flowbite": "^2.1.1",
-        "sass": "^1.69.5",
-        "tailwindcss": "^3.3.5",
-        "concurrently": "^8.2.2"
+        "postcss": "^8.4.33",
+        "postcss-cli": "^11.0.0",
+        "postcss-selector-replace": "^1.0.2",
+        "sass": "^1.69.5"
+    },
+    "dependencies": {
+        "tailwindcss": "^3.4.1"
     }
 }
