@@ -1,0 +1,37 @@
+$prefix-alert: $prefix + "alert";
+
+$alert-types: ( "info": "blue", "danger": "red", "warning": "yellow", "success": "green", "default": "gray" );
+
+.#{$prefix-alert} {
+    @apply flex items-center p-4 text-sm rounded-lg w-full;
+
+    @each $type, $color in $alert-types {
+        &-type-#{$type} {
+            @apply text-#{$color}-800 bg-#{$color}-50;
+
+            .#{$prefix-theme-dark} & {
+                @apply bg-gray-800 text-#{$color}-400;
+            }
+
+            .#{$prefix-alert}-close {
+                @apply bg-#{$color}-50 text-#{$color}-500 hover:bg-#{$color}-200;
+
+                &:focus {
+                    @apply ring-2 ring-#{$color}-400;
+                }
+
+                &:hover {
+                    @apply text-#{$color}-500 #{!important};
+                }
+
+                .#{$prefix-theme-dark} & {
+                    @apply bg-gray-800 text-#{$color}-400;
+                }
+
+                .#{$prefix-theme-dark} &:hover {
+                    @apply bg-gray-700;
+                }
+            }
+        }
+    }
+}

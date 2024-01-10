@@ -49,7 +49,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.UI", "New\Flu
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.ApiClients", "New\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj", "{9F3AA713-BC59-45F9-BBBD-C872FCA91B70}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCms.Web.Ui.Components.Docs", "New\FluentCms.Web.Ui.Components.Docs\FluentCms.Web.Ui.Components.Docs.csproj", "{B33D83B8-2FDF-43AA-8E49-A3EB769A6A36}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Web.UI.Components.Docs", "New\FluentCms.Web.Ui.Components.Docs\FluentCMS.Web.UI.Components.Docs.csproj", "{B33D83B8-2FDF-43AA-8E49-A3EB769A6A36}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

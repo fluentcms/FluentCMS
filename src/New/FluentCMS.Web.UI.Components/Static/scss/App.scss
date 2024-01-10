@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+$prefix: 'f-';
+$prefix-theme-dark: $prefix + 'theme-dark';
+
+// COMPONENTS
+@import './components/alert';

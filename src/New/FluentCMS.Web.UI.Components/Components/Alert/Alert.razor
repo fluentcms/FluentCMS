@@ -1,0 +1,34 @@
+@inherits BaseComponent
+
+@if (Show)
+{
+    <div @attributes="AdditionalAttributes"
+         class="@this.GetClasses()"
+         role="alert">
+        <div>
+            @ChildContent
+        </div>
+        @if (Dismissible)
+        {
+            <CloseButton class="@this.ClassName("AlertClose")"
+                         OnClick="Close" />
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool Dismissible { get; set; } = false;
+
+    [Parameter]
+    public bool Show { get; set; } = true;
+
+    [Parameter]
+    [CssProperty]
+    public AlertType Type { get; set; } = AlertType.Default;
+
+    public void Close()
+    {
+        Show = false;
+    }
+}
