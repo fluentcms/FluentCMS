@@ -1,11 +1,12 @@
 @inherits BaseComponent
 
-<nav class=@this.GetClasses() @attributes=AdditionalAttributes>
+<nav @attributes="AdditionalAttributes"
+     class="@this.GetClasses()">
     <ul>
-        <PaginationItem Disabled=!this.CanPrevious() OnClick=@Previous>
+        <PaginationItem Disabled="!this.CanPrevious()" OnClick="Previous">
             @if (ShowIcons)
             {
-                <Icon Name=IconNameEnum.Previous />
+                <Icon Name="IconNameEnum.Previous" />
             }
             else
             {
@@ -14,11 +15,13 @@
         </PaginationItem>
         @foreach (var Page in this.Pages())
         {
-            <PaginationItem @key=Page Active="Page == Current" OnClick="() => GoTo(Page)">
+            <PaginationItem @key="Page"
+                            Active="Page == Current"
+                            OnClick="() => GoTo(Page)">
                 @(Page == 0 ? "..." : Page)
             </PaginationItem>
         }
-        <PaginationItem Disabled=!this.CanNext() OnClick=@Next>
+        <PaginationItem Disabled="!this.CanNext()" OnClick="Next">
             @if (ShowIcons)
             {
                 <Icon Name=IconNameEnum.Next />
@@ -36,13 +39,13 @@
     public int Current { get; set; } = 0;
 
     [Parameter]
+    public EventCallback<int> CurrentChanged { get; set; }
+
+    [Parameter]
     public bool ShowIcons { get; set; } = true;
 
     [Parameter]
     public int Total { get; set; } = 0;
-
-    [Parameter]
-    public EventCallback<int> CurrentChanged { get; set; }
 
     public IEnumerable<int> Pages()
     {
@@ -110,15 +113,6 @@
         return Current < Total;
     }
 
-    public void Previous()
-    {
-        if (!this.CanPrevious()) return;
-
-        Current--;
-
-        this.CurrentChanged.InvokeAsync(Current);
-    }
-
     public void GoTo(int To)
     {
         if (To == Current) return;
@@ -133,6 +127,15 @@
         if (!this.CanNext()) return;
 
         Current++;
+
+        this.CurrentChanged.InvokeAsync(Current);
+    }
+
+    public void Previous()
+    {
+        if (!this.CanPrevious()) return;
+
+        Current--;
 
         this.CurrentChanged.InvokeAsync(Current);
     }

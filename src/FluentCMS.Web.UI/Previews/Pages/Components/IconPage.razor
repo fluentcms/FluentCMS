@@ -4,43 +4,65 @@
 
 <PageHeader HasBack Title="Icons"/>
 
-<div class="py-4 flex flex-col gap-4">
-    <Icon Name="IconNameEnum.Plus" />
-    <Icon Name="IconNameEnum.InformationFilled" />
-    <Icon Name="IconNameEnum.Delete" />
-</div>
-<div class="py-4 flex flex-col gap-4">
-    <h1 class="text-4xl">
-        <Icon Name="IconNameEnum.InformationFilled" /> Default
-    </h1>
-    <div>
-        <Icon Size="SizeEnum.Small" Name="IconNameEnum.InformationFilled" /> Small
-    </div>
-    <div>
-        <Icon Size="SizeEnum.Medium" Name="IconNameEnum.InformationFilled" /> Medium
-    </div>
-    <div>
-        <Icon Size="SizeEnum.Large" Name="IconNameEnum.InformationFilled" /> Large
-    </div>
-</div>
-<div class="py-4 flex flex-col gap-4">
-    <h1 class="text-4xl">
-        <Icon Color="ColorEnum.Primary" Name="IconNameEnum.InformationFilled" /> Primary
-    </h1>
-    <h1 class="text-4xl">
-        <Icon Color="ColorEnum.Secondary" Name="IconNameEnum.InformationFilled" /> Secondary
-    </h1>
-    <h1 class="text-4xl">
-        <Icon Color="ColorEnum.Success" Name="IconNameEnum.InformationFilled" /> Success
-    </h1>
-    <h1 class="text-4xl">
-        <Icon Color="ColorEnum.Danger" Name="IconNameEnum.InformationFilled" /> Danger
-    </h1>
-    <h1 class="text-4xl">
-        <Icon Color="ColorEnum.Info" Name="IconNameEnum.InformationFilled" /> Info
-    </h1>
-    <h1 class="text-4xl">
-        <Icon Color="ColorEnum.Warning" Name="IconNameEnum.InformationFilled" /> Warning
-    </h1>
-</div>
+<Preview Title="Default">
+    <ChildContent>
+        <div class="flex gap-4">
+            <Icon Name="IconNameEnum.InformationFilled" />
+            <Icon Name="IconNameEnum.Plus" />
+            <Icon Name="IconNameEnum.Delete" />
+            <Icon Name="IconNameEnum.Search" />
+            <Icon Name="IconNameEnum.Next" />
+        </div>
+    </ChildContent>
+</Preview>
 
+<Preview Title="Color">
+    <ChildContent>
+        <div class="flex gap-4">
+            <Icon Name="IconNameEnum.InformationFilled" />
+            <Icon Color="ColorEnum.Primary" Name="IconNameEnum.InformationFilled" />
+            <Icon Color="ColorEnum.Secondary" Name="IconNameEnum.InformationFilled" />
+            <Icon Color="ColorEnum.Success" Name="IconNameEnum.InformationFilled" />
+            <Icon Color="ColorEnum.Danger" Name="IconNameEnum.InformationFilled" />
+            <Icon Color="ColorEnum.Info" Name="IconNameEnum.InformationFilled" />
+            <Icon Color="ColorEnum.Warning" Name="IconNameEnum.InformationFilled" />
+        </div>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Size">
+    <ChildContent>
+        <div class="flex gap-4">
+            <Icon Size="SizeEnum.Small" Name="IconNameEnum.InformationFilled" />
+            <Icon Size="SizeEnum.Medium" Name="IconNameEnum.InformationFilled" />
+            <Icon Size="SizeEnum.Large" Name="IconNameEnum.InformationFilled" />
+        </div>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Size Based on text size">
+    <ChildContent>
+        <div class="flex flex-col gap-4">
+            <h1 class="text-4xl">
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Heading 1
+            </h1>
+            <h2 class="text-3xl">
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Heading 2
+            </h2>
+            <h3 class="text-2xl">
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Heading 3
+            </h3>
+            <h4 class="text-xl">
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Heading 4
+            </h4>
+            <p>
+                <Icon Name="IconNameEnum.InformationFilled" />
+                Paragraph
+            </p>
+        </div>
+    </ChildContent>
+</Preview>

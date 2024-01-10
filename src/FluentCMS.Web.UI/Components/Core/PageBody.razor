@@ -1,8 +1,6 @@
 @inherits BaseComponent
 
-<section class=@this.GetClasses() @attributes=@AdditionalAttributes>
+<section @attributes="@AdditionalAttributes"
+    class="@this.GetClasses()">
     @ChildContent
 </section>
-
-@code {
-}

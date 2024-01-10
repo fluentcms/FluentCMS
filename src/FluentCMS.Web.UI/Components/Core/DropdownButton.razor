@@ -1,24 +1,27 @@
 @inherits Button
 
-<Button OnClick="HandleClick" Color=@Color Size="@Size" Outline=@Outline Ghost=@Ghost Loading=@Loading
-    @attributes=AdditionalAttributes>
+<Button @attributes="AdditionalAttributes"
+    Color="@Color"
+    Size="@Size"
+    Outline="@Outline"
+    Ghost="@Ghost"
+    Loading="@Loading"
+    OnClick="HandleClick">
     @ChildContent
-
     <Icon Name="IconNameEnum.ChevronDown" />
 </Button>
-
 
 @code {
     [CascadingParameter]
     public Dropdown Parent { get; set; }
-    
-    [Parameter]
-    public string Text { get; set; }
 
     [Parameter]
     public string Id { get; set; } = "dropdown-" + Guid.NewGuid().ToString();
 
-    public void HandleClick()
+    [Parameter]
+    public string Text { get; set; }
+
+    private void HandleClick()
     {
         Parent.Toggle();
     }

@@ -1,10 +1,11 @@
 @inherits BaseComponent
 
-<div class=@this.GetClasses()>
+<div @attributes="AdditionalAttributes"
+    class="@this.GetClasses()">
     @DropdownMenuHeader
     @if (ChildContent != null)
     {
-        <ul class=@this.ClassName("DropdownMenuBody")>
+        <ul class="@this.ClassName("DropdownMenuBody")">
             @ChildContent
         </ul>
     }
@@ -16,13 +17,12 @@
     public Dropdown Parent { get; set; }
 
     [Parameter]
-    [CssProperty]
-    public DropdownPlacementEnum Placement { get; set; } = DropdownPlacementEnum.Default;
+    public RenderFragment DropdownMenuFooter { get; set; }
 
     [Parameter]
     public RenderFragment DropdownMenuHeader { get; set; }
 
     [Parameter]
-    public RenderFragment DropdownMenuFooter { get; set; }
-
+    [CssProperty]
+    public DropdownPlacementEnum Placement { get; set; } = DropdownPlacementEnum.Default;
 }

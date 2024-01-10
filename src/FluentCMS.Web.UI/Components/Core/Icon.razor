@@ -1,22 +1,23 @@
 @inherits BaseComponent
 @using System.Resources;
 
-<span class=@this.GetClasses() @attributes=@AdditionalAttributes>
+<span @attributes="@AdditionalAttributes"
+    class="@this.GetClasses()">
     @Content
 </span>
 
 @code {
+    private MarkupString? Content { get; set; }
+
     [Inject(Key = "FluentCMS.Web.UI.Resources.Icons")]
     public required ResourceManager ResourceManager { get; set; }
 
     [Parameter]
-    public IconNameEnum Name { get; set; } = IconNameEnum.Default;
-
-    public MarkupString Content { get; set; } = default!;
-
-    [Parameter]
     [CssProperty]
     public ColorEnum Color { get; set; } = ColorEnum.Default;
+
+    [Parameter]
+    public IconNameEnum Name { get; set; } = IconNameEnum.Default;
 
     [Parameter]
     [CssProperty]

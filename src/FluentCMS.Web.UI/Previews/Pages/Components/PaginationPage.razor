@@ -4,8 +4,35 @@
 
 <PageHeader HasBack Title="Pagination"/>
 
-<div class="py-4 flex flex-col gap-4">
-    <Pagination Total="10" Current="5"></Pagination>
-    <Pagination Total="10" Current="5" ShowIcons></Pagination>
-</div>
+<Preview Title="Default">
+    <Description></Description>
+    <ChildContent>
+        <Grid ItemsSmall=GridItemsEnum.Center JustifySmall=GridJustifyEnum.Center>
+            <GridItem>
+                <Pagination Total="10" Current="5" ShowIcons=false />
+            </GridItem>
+        </Grid>
+    </ChildContent>
+</Preview>
 
+<Preview Title="Icons">
+    <Description></Description>
+    <ChildContent>
+        <Grid ItemsSmall=GridItemsEnum.Center JustifySmall=GridJustifyEnum.Center>
+            <GridItem>
+                <Pagination Total="10" Current="5" ShowIcons=true />
+            </GridItem>
+        </Grid>
+    </ChildContent>
+</Preview>
+
+ <Preview Title="Info">
+     <Description></Description>
+     <ChildContent>
+         <Grid ItemsSmall=GridItemsEnum.Center JustifySmall=GridJustifyEnum.Center>
+             <GridItem>
+                 <PaginationInfo Total="1000" Current="1" />
+             </GridItem>
+         </Grid>
+     </ChildContent>
+ </Preview>

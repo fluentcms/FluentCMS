@@ -1,46 +1,44 @@
 @inherits InputBaseComponent<string>
 
-<FormField
-    IconStart=@IconStart
-    IconEnd=@IconEnd
-    Dense=@Dense
-	Id=@Id
-    Hint=@Hint
-    Label=@Label
-    Required=@Required
-    State=@State>
-	<textarea
-		rows=@Rows
-		id="@Id"
-		disabled=@Disabled
-		name=@Name
-		required=@Required
-		class=@this.GetClasses()
-		placeholder="@Placeholder"
-		@bind=Value
-		@bind:event="oninput"
-		@attributes=AdditionalAttributes />
+<FormField Dense="Dense"
+           Hint="Hint"
+           IconEnd="IconEnd"
+           IconStart="IconStart"
+           Id="Id"
+           Label="Label"
+           Required="Required"
+           State="State">
+    <textarea @attributes="AdditionalAttributes"
+              @bind="Value"
+              @bind:event="oninput"
+              class="@this.GetClasses()"
+              disabled="@Disabled"
+              id="@Id"
+              name="@Name"
+              placeholder="@Placeholder"
+              required="@Required"
+              rows="@Rows" />
 </FormField>
 
 @code {
     [Parameter]
-    public string Id { get; set; }
+    public bool Dense { get; set; }
 
     [Parameter]
-    public string Hint { get; set; }
-
-    [Parameter]
-    public string Placeholder { get; set; }
-
-    [Parameter]
-    public IconNameEnum IconStart { get; set; }
+    public string? Hint { get; set; }
 
     [Parameter]
     public IconNameEnum IconEnd { get; set; }
 
     [Parameter]
-    public string Rows { get; set; } = "5";
+    public IconNameEnum IconStart { get; set; }
 
     [Parameter]
-    public bool Dense { get; set; }
+    public string? Id { get; set; }
+
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    [Parameter]
+    public int Rows { get; set; } = 5;
 }

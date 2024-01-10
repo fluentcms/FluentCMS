@@ -3,31 +3,101 @@
 @rendermode InteractiveServer
 
 <PageHeader HasBack Title="Modal"/>
-<div class="py-4 flex flex-col gap-4">
-    <Button OnClick="() => ModalOpen = !ModalOpen">
-        Open Modal
-    </Button>
-    <Modal @bind-Open=@ModalOpen>
-        <ModalHeader Title="Terms of Service" Closable />
-        <ModalBody>
-            <p class="text-base leading-relaxed text-gray-500 dark:text-gray-400">
-                With less than a month to go before the European Union enacts new consumer privacy laws for its
-                citizens, companies around the world are updating their terms of service agreements to comply.
-            </p>
-        </ModalBody>
-        <ModalFooter>
-            <ButtonGroup>
-                <Button Color=@ColorEnum.Primary>
-                    I accept
+
+<Preview Title="Default">
+    <Description></Description>
+    <ChildContent>
+        <Grid ItemsSmall=GridItemsEnum.Center JustifySmall=GridJustifyEnum.Center>
+            <GridItem>
+                 <Button OnClick="() => Open1 = !Open1">
+                    Open
                 </Button>
-                <Button>
-                    Decline
+                <Modal @bind-Open=@Open1>
+                    <ModalHeader Title="Terms of Service" Closable=false />
+                    <ModalBody>
+                         With less than a month to go before the European Union enacts new consumer privacy laws for its
+                         citizens, companies around the world are updating their terms of service agreements to comply.
+                    </ModalBody>
+                    <ModalFooter>
+                        <ButtonGroup>
+                            <Button Color=@ColorEnum.Primary>
+                                I accept
+                            </Button>
+                            <Button>
+                                Decline
+                            </Button>
+                        </ButtonGroup>
+                    </ModalFooter>
+                </Modal>
+            </GridItem>
+        </Grid>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Closable">
+    <Description></Description>
+    <ChildContent>
+        <Grid ItemsSmall=GridItemsEnum.Center JustifySmall=GridJustifyEnum.Center>
+            <GridItem>
+                <Button OnClick="() => Open2 = !Open2">
+                    Open
                 </Button>
-            </ButtonGroup>
-        </ModalFooter>
-    </Modal>
-</div>
+                <Modal @bind-Open=@Open2>
+                    <ModalHeader Title="Terms of Service" Closable=true />
+                    <ModalBody>
+                         With less than a month to go before the European Union enacts new consumer privacy laws for its
+                         citizens, companies around the world are updating their terms of service agreements to comply.
+                    </ModalBody>
+                    <ModalFooter>
+                        <ButtonGroup>
+                            <Button Color=@ColorEnum.Primary>
+                                I accept
+                            </Button>
+                            <Button>
+                                Decline
+                            </Button>
+                        </ButtonGroup>
+                    </ModalFooter>
+                </Modal>
+            </GridItem>
+        </Grid>
+    </ChildContent>
+</Preview>
+
+<Preview Title="Size">
+    <Description></Description>
+    <ChildContent>
+        <Grid ItemsSmall=GridItemsEnum.Center JustifySmall=GridJustifyEnum.Center>
+            <GridItem>
+                <Button OnClick="() => Open3 = !Open3">
+                    Open
+                </Button>
+                <Modal @bind-Open=@Open3 Size=SizeEnum.Large>
+                    <ModalHeader Title="Terms of Service" Closable=false />
+                    <ModalBody>
+                        With less than a month to go before the European Union enacts new consumer privacy laws for its
+                        citizens, companies around the world are updating their terms of service agreements to comply.
+                    </ModalBody>
+                    <ModalFooter>
+                        <ButtonGroup>
+                            <Button Color=@ColorEnum.Primary>
+                                I accept
+                            </Button>
+                            <Button>
+                                Decline
+                            </Button>
+                        </ButtonGroup>
+                    </ModalFooter>
+                </Modal>
+            </GridItem>
+        </Grid>
+    </ChildContent>
+</Preview>
 
 @code {
-    private bool ModalOpen { get; set; }
+    private bool Open1 { get; set; }
+
+    private bool Open2 { get; set; }
+
+    private bool Open3 { get; set; }
 }

@@ -10,6 +10,7 @@ $prefix-badge: $prefix + "badge";
             @apply text-gray-300 bg-gray-700;
         }
     }
+
     @each $key, $value in $colors {
         &-color-#{$key} {
             @apply bg-#{$value}-100 text-#{$value}-800;

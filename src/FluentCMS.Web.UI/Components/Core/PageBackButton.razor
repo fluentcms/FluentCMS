@@ -1,7 +1,9 @@
 @inherits BaseComponent
 
-<Button OnClick="() => GoBack()" class=@this.GetClasses() Ghost>
-    <Icon Name=@IconNameEnum.Previous />
+<Button class="@this.GetClasses()"
+    Ghost
+    OnClick="() => GoBack()">
+    <Icon Name="@IconNameEnum.Previous" />
     Back
 </Button>
 

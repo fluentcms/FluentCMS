@@ -11,10 +11,10 @@
     else
     {
         @* TODO: checked the class *@
-        <a class="group" href=@Href>
+        <a class="group" href="@Href">
             @if (this.Icon != IconNameEnum.Default)
             {
-                <Icon Name="Icon" />
+                <Icon Name="@Icon" />
             }
             <span class="ml-3">
                 @ChildContent
@@ -25,7 +25,7 @@
 
 @code {
     [Parameter]
-    public string Href { get; set; } = string.Empty;
+    public string Href { get; set; }
 
     [Parameter]
     public IconNameEnum Icon { get; set; }

@@ -1,23 +1,24 @@
 @inherits BaseComponent
 
-<li class=@this.GetClasses() @attributes=AdditionalAttributes>
+<li @attributes="AdditionalAttributes"
+    class="@this.GetClasses()">
     @if(!string.IsNullOrEmpty(Href)) {
-        <a href="@Href" class=@this.ClassName("DropdownItemLink")>
+        <a href="@Href"
+            class="@this.ClassName("DropdownItemLink")">
             @ChildContent
         </a>
     } else {
-        <span @onclick=OnClick class=@this.ClassName("DropdownItemLink")>
+        <span class="@this.ClassName("DropdownItemLink")"
+            @onclick="OnClick">
             @ChildContent
         </span>
     }
 </li>
 
-
 @code {
     [Parameter]
-    public string Href { get; set; } = "";
+    public string Href { get; set; }
 
     [Parameter]
     public EventCallback OnClick {get; set;}
-
 }

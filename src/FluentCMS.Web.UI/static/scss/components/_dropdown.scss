@@ -1,7 +1,7 @@
 $prefix-dropdown: $prefix + 'dropdown';
 
 .#{$prefix-dropdown} {
-    @apply relative;
+    @apply inline-flex relative;
 
 
     & > .#{$prefix-button} > .#{$prefix}icon {

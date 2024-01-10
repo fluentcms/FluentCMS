@@ -1,6 +1,7 @@
 ﻿@inherits BaseComponent
 
-<div class=@this.GetClasses() @attributes=@AdditionalAttributes>
+<div @attributes="AdditionalAttributes"
+     class="@this.GetClasses()">
     @if (ChildContent == null)
     {
         @if (!string.IsNullOrEmpty(Title))
@@ -11,7 +12,7 @@
         }
         @if (Closable)
         {
-            <CloseButton @onclick=Modal.Close />
+            <CloseButton OnClick="Modal.Close" />
         }
     }
     else
@@ -24,9 +25,9 @@
     [Parameter]
     public bool Closable { get; set; } = true;
 
-    [Parameter]
-    public string Title { get; set; } = string.Empty;
-
     [CascadingParameter]
     public Modal Modal { get; set; } = default!;
+
+    [Parameter]
+    public string? Title { get; set; }
 }

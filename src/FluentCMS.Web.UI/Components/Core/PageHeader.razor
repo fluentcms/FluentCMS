@@ -1,6 +1,7 @@
 @inherits BaseComponent
 
-<nav class=@this.GetClasses() @attributes=@AdditionalAttributes>
+<nav @attributes="@AdditionalAttributes"
+    class="@this.GetClasses()">
     @if (HasBack)
     {
         <PageBackButton />
@@ -37,14 +38,14 @@
     public bool HasBack { get; set; }
 
     [Parameter]
-    public string Title { get; set; } = String.Empty;
-
-    [Parameter]
-    public string SubTitle { get; set; } = String.Empty;
-
-    [Parameter]
     public RenderFragment? PageHeaderActions { get; set; }
 
     [Parameter]
     public RenderFragment? PageHeaderSubtitle { get; set; }
+
+    [Parameter]
+    public string SubTitle { get; set; }
+
+    [Parameter]
+    public string Title { get; set; }
 }

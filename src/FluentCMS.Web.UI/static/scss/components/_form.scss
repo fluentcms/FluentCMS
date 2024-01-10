@@ -8,7 +8,7 @@ $prefix-form-field: $prefix + 'form-field';
         @apply inline-flex flex-wrap items-center;
 
         .#{$prefix-label} {
-            @apply order-1 ms-3 mb-0;
+            @apply order-1 ms-3 me-5 mb-0;
         }
         .#{$prefix-form-field}-hint {
             @apply order-2 w-full;

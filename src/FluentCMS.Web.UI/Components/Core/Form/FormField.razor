@@ -1,43 +1,56 @@
 @inherits BaseComponent
 
-@if(InlineLabel) {
-    <label class=@this.GetClasses() @attributes=@AdditionalAttributes>
-        @if(!string.IsNullOrEmpty(Label)) {
-            <FormLabel IsSpan State=@State Required=@Required For="@Id">
+@if (InlineLabel)
+{
+    <label @attributes="AdditionalAttributes"
+           class="@this.GetClasses()">
+        @if (!string.IsNullOrEmpty(Label))
+        {
+            <FormLabel For="Id"
+                       IsSpan="true"
+                       Required="Required"
+                       State="State">
                 @Label
             </FormLabel>
         }
 
         @ChildContent
 
-        @if(!string.IsNullOrEmpty(Hint)) {
-            <FormFieldHint State=@State>@Hint</FormFieldHint>
+        @if (!string.IsNullOrEmpty(Hint))
+        {
+            <FormFieldHint State="State">@Hint</FormFieldHint>
         }
     </label>
-} else {
+}
+else
+{
 
-    <div class=@this.GetClasses() @attributes=@AdditionalAttributes>
-        @if(!string.IsNullOrEmpty(Label)) {
-            <FormLabel State=@State Required=@Required For="@Id">
+    <div @attributes="AdditionalAttributes"
+         class=@this.GetClasses()>
+        @if (!string.IsNullOrEmpty(Label))
+        {
+            <FormLabel For="Id"
+                       Required="Required"
+                       State="State">
                 @Label
             </FormLabel>
         }
 
         @if (IconStart != IconNameEnum.Default || IconEnd != IconNameEnum.Default)
         {
-            <div class=@this.ClassName("FormFieldGroup")>
+            <div class="@this.ClassName("FormFieldGroup")">
                 @if (IconStart != IconNameEnum.Default)
                 {
-                    <div class=@this.ClassName("FormFieldStartIconWrapper")>
-                        <Icon Name="@IconStart" />
+                    <div class="@this.ClassName("FormFieldStartIconWrapper")">
+                        <Icon Name="IconStart" />
                     </div>
                 }
                 @ChildContent
 
                 @if (IconEnd != IconNameEnum.Default)
                 {
-                    <div class=@this.ClassName("FormFieldEndIconWrapper")>
-                        <Icon Name="@IconEnd" />
+                    <div class="@this.ClassName("FormFieldEndIconWrapper")">
+                        <Icon Name="IconEnd" />
                     </div>
                 }
             </div>
@@ -47,46 +60,47 @@
             @ChildContent
         }
 
-        @if(!string.IsNullOrEmpty(Hint)) {
-            <FormFieldHint State=@State>@Hint</FormFieldHint>
+        @if (!string.IsNullOrEmpty(Hint))
+        {
+            <FormFieldHint State="State">@Hint</FormFieldHint>
         }
     </div>
 }
 
 @code {
     [Parameter]
-    public string Id {get; set;}
-
-    [Parameter]
-    public string Hint {get; set;} = String.Empty;
-
-    [Parameter]
-    public string Label {get; set;} = String.Empty;
-
-    [Parameter]
-    public bool Required {get; set;} = false;
-
-    [Parameter]
     [CssProperty]
-    public bool InlineLabel {get;set;}
+    public bool Dense { get; set; }
+
+    [CssProperty]
+    public bool HasEndIcon => IconEnd != IconNameEnum.Default;
+
+    [CssProperty]
+    public bool HasStartIcon => IconStart != IconNameEnum.Default;
+
+    [Parameter]
+    public string? Hint { get; set; }
+
+    [Parameter]
+    public IconNameEnum IconEnd { get; set; }
 
     [Parameter]
     public IconNameEnum IconStart { get; set; }
 
     [Parameter]
-    public IconNameEnum IconEnd { get; set; }
+    public string Id { get; set; }
 
+    [Parameter]
     [CssProperty]
-    public bool HasStartIcon => IconStart != IconNameEnum.Default;
+    public bool InlineLabel { get; set; }
 
+    [Parameter]
+    public string Label { get; set; } = String.Empty;
+
+    [Parameter]
+    public bool Required { get; set; } = false;
+
+    [Parameter]
     [CssProperty]
-    public bool HasEndIcon => IconEnd != IconNameEnum.Default;
-
-	[Parameter]
-	[CssProperty]
-	public FormFieldStateEnum State {get;set;} = FormFieldStateEnum.Default;
-
-	[Parameter]
-	[CssProperty]
-	public bool Dense {get;set;}
+    public FormFieldStateEnum State { get; set; } = FormFieldStateEnum.Default;
 }
