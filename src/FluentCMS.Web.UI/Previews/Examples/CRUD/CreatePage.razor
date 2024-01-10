@@ -14,6 +14,74 @@
             </ButtonGroup>
         </PageHeaderActions>
     </PageHeader>
-    <PageBody> 
+    <PageBody>
+        <Grid Gutter="GridGutterEnum.Medium">
+            <GridItem Small="GridItemColumnEnum.Twelve" Medium="GridItemColumnEnum.Nine">
+                <form @onsubmit=OnSubmit @onsubmit:preventDefault="true">
+                    <Card>
+                        <CardBody>
+                            <Grid GutterX="GridGutterEnum.Large" JustifySmall="GridJustifyEnum.End">
+                                <GridItem Small=GridItemColumnEnum.Twelve>
+                                    <Input Label="Title"/>
+                                </GridItem>
+                                <GridItem Small=GridItemColumnEnum.Twelve>
+                                    <Textarea Label="Content"/>
+                                </GridItem>
+                                <GridItem Small=GridItemColumnEnum.Twelve Medium="GridItemColumnEnum.Six">
+                                    <Input Label="Minimum Value" Type="InputTypeEnum.Number"/>
+                                </GridItem>
+                                <GridItem Small=GridItemColumnEnum.Twelve Medium="GridItemColumnEnum.Six">
+                                    <Input Label="Maximum Value" Type="InputTypeEnum.Number"/>
+                                </GridItem>
+                            </Grid>
+                        </CardBody>
+                    </Card>
+                </form>
+            </GridItem>
+            <GridItem Small="GridItemColumnEnum.Twelve"
+                      Medium="GridItemColumnEnum.Three">
+                <Grid Gutter="GridGutterEnum.Medium">
+                    <GridItem Small=GridItemColumnEnum.Twelve>
+                        <Card>
+                            <CardBody>
+                                <Grid Gutter="GridGutterEnum.Medium">
+                                    <GridItem Small=GridItemColumnEnum.Twelve>
+                                        <Switch Label="Published"/>
+                                    </GridItem>
+                                    <GridItem Small=GridItemColumnEnum.Twelve>
+                                        Information
+                                    </GridItem>
+                                </Grid>
+                            </CardBody>
+                        </Card>
+                    </GridItem>
+                    <GridItem Small="GridItemColumnEnum.Twelve">
+                        <Button Color="ColorEnum.Primary"
+                            Outline>
+                            <Icon Name="IconNameEnum.Edit"/>
+                            Edit the Model
+                        </Button>
+                    </GridItem>
+                    <GridItem Small="GridItemColumnEnum.Twelve">
+                        <Button Color="ColorEnum.Primary"
+                            Outline>
+                            <Icon Name="IconNameEnum.Settings"/>
+                            Configure the View
+                        </Button>
+                    </GridItem>
+                </Grid>
+            </GridItem>
+        </Grid>
     </PageBody>
 </Page>
+
+@code {
+    [Inject]
+    public ConfirmService Confirm {get; set;}
+
+    public void OnSubmit() {
+        Confirm.Show("Are you sure you want to submit this form?");
+
+    }
+
+}

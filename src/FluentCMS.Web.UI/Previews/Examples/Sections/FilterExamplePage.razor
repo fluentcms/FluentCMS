@@ -1,0 +1,55 @@
+@page "/previews/examples/crud/filter-examples"
+@layout ExamplesLayout
+
+<Page>
+    <PageHeader HasBack Title="Filter Examples">
+    </PageHeader>
+
+    <PageBody>
+        <Grid Gutter="GridGutterEnum.Medium">
+            <GridItem Small="GridItemColumnEnum.Auto">
+                <Dropdown AutoClose>
+                    <DropdownButton>Filters</DropdownButton>
+                    <DropdownMenu class="w-[400px] p-2">
+                        <Grid Gutter="GridGutterEnum.Medium">
+                            <GridItem Small="GridItemColumnEnum.Twelve">
+
+                                <Select Dense Placeholder="Choose a field">
+                                    <Option Value="title">Title</Option>
+                                    <Option Value="status">Status</Option>
+                                </Select>
+                            </GridItem>
+                            <GridItem Small="GridItemColumnEnum.Twelve">
+                                <Select Dense Placeholder="Choose an operator">
+                                    <Option Value="=">Equals</Option>
+                                    <Option Value="!=">Not Equals</Option>
+                                    <Option Value="...">More...</Option>
+                                </Select>
+
+                            </GridItem>
+                            <GridItem Small="GridItemColumnEnum.Twelve">
+                                <Input Dense Placeholder="Enter filter value..."/>
+                            </GridItem>
+
+                            <GridItem Small="GridItemColumnEnum.Auto">
+                                <Button Color="ColorEnum.Primary">
+                                    <Icon Name="IconNameEnum.Plus"/>
+                                    Add Filters
+                                </Button>
+                            </GridItem>
+                        </Grid>
+
+                    </DropdownMenu>
+
+                </Dropdown>
+            </GridItem>
+            <GridItem Small="GridItemColumnEnum.Auto">
+                <Button Outline Color="ColorEnum.Primary">
+                    Title Equals abc
+                    <Icon Name="IconNameEnum.Delete"/>
+                </Button>
+            </GridItem>
+        </Grid>
+    </PageBody>
+
+</Page>
