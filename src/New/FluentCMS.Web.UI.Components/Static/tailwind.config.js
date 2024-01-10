@@ -2,7 +2,7 @@
 module.exports = {
   content: [
     "../**/*.{razor,html,cshtml}",
-        "./node_modules/flowbite/**/*.js"
+    "./node_modules/flowbite/**/*.js"
   ],
   theme: {
     extend: {

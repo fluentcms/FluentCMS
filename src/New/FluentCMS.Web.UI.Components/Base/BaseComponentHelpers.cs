@@ -31,7 +31,6 @@ public static class BaseComponentHelper
         return classes;
     }
 
-    // Get Classes
     public static string GetClasses(this BaseComponent baseComponent)
     {
         List<string> classes = new() { };

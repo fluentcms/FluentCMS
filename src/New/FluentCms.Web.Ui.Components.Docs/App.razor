@@ -5,11 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
+    <link rel="icon" type="image/png" href="favicon.png" />
     <link rel="stylesheet" href="_content/FluentCMS.Web.UI.Components/css/app.min.css" />
     <HeadOutlet @rendermode="@InteractiveServer" />
 </head>
 
-<body>
+@* TODO: remove `dark` class *@
+<body class="f-theme-dark dark">
     <Routes @rendermode="@InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
 </body>

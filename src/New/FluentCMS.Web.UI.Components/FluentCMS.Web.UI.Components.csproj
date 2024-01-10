@@ -19,4 +19,10 @@
     <ProjectReference Include="..\FluentCMS.Shared\FluentCMS.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Update="Resources\Icons.resx">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

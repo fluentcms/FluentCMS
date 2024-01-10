@@ -1,8 +1,8 @@
-$prefix-alert: $prefix + "alert";
+$alert: $prefix + "alert";
 
 $alert-types: ( "info": "blue", "danger": "red", "warning": "yellow", "success": "green", "default": "gray" );
 
-.#{$prefix-alert} {
+.#{$alert} {
     @apply flex items-center p-4 text-sm rounded-lg w-full;
 
     @each $type, $color in $alert-types {
@@ -13,7 +13,7 @@ $alert-types: ( "info": "blue", "danger": "red", "warning": "yellow", "success":
                 @apply bg-gray-800 text-#{$color}-400;
             }
 
-            .#{$prefix-alert}-close {
+            .#{$alert}-close {
                 @apply bg-#{$color}-50 text-#{$color}-500 hover:bg-#{$color}-200;
 
                 &:focus {

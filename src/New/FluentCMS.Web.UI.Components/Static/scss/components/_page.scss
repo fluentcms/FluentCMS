@@ -1,0 +1,33 @@
+$page: $prefix + 'page';
+
+.#{$page} {
+    @apply px-4;
+
+    &-back-button {
+        @apply p-0;
+
+        svg {
+            @apply w-full h-full;
+        }
+    }
+
+    &-header {
+        @apply border-gray-200 px-0 py-2.5 pt-2 text-gray-700;
+
+        &-actions {
+            @apply flex-shrink-0 flex flex-col items-start md:flex-row md:items-center lg:justify-end space-y-3 md:space-y-0 md:space-x-3;
+        }
+
+        &-body {
+            @apply flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 md:space-x-4 p-4 px-0;
+        }
+
+        &-subtitle {
+            @apply flex-1 flex items-center space-x-2;
+        }
+
+        &-title {
+            @apply text-3xl text-gray-900 dark:text-gray-300;
+        }
+    }
+}
