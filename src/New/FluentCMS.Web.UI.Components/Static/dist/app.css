@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+.f-alert {
+  @apply flex items-center p-4 text-sm rounded-lg w-full;
+}
+.f-alert-type-info {
+  @apply text-blue-800 bg-blue-50;
+}
+.f-theme-dark .f-alert-type-info {
+  @apply bg-gray-800 text-blue-400;
+}
+.f-alert-type-info .f-alert-close {
+  @apply bg-blue-50 text-blue-500 hover:bg-blue-200;
+}
+.f-alert-type-info .f-alert-close:focus {
+  @apply ring-2 ring-blue-400;
+}
+.f-alert-type-info .f-alert-close:hover {
+  @apply text-blue-500 !important;
+}
+.f-theme-dark .f-alert-type-info .f-alert-close {
+  @apply bg-gray-800 text-blue-400;
+}
+.f-theme-dark .f-alert-type-info .f-alert-close:hover {
+  @apply bg-gray-700;
+}
+.f-alert-type-danger {
+  @apply text-red-800 bg-red-50;
+}
+.f-theme-dark .f-alert-type-danger {
+  @apply bg-gray-800 text-red-400;
+}
+.f-alert-type-danger .f-alert-close {
+  @apply bg-red-50 text-red-500 hover:bg-red-200;
+}
+.f-alert-type-danger .f-alert-close:focus {
+  @apply ring-2 ring-red-400;
+}
+.f-alert-type-danger .f-alert-close:hover {
+  @apply text-red-500 !important;
+}
+.f-theme-dark .f-alert-type-danger .f-alert-close {
+  @apply bg-gray-800 text-red-400;
+}
+.f-theme-dark .f-alert-type-danger .f-alert-close:hover {
+  @apply bg-gray-700;
+}
+.f-alert-type-warning {
+  @apply text-yellow-800 bg-yellow-50;
+}
+.f-theme-dark .f-alert-type-warning {
+  @apply bg-gray-800 text-yellow-400;
+}
+.f-alert-type-warning .f-alert-close {
+  @apply bg-yellow-50 text-yellow-500 hover:bg-yellow-200;
+}
+.f-alert-type-warning .f-alert-close:focus {
+  @apply ring-2 ring-yellow-400;
+}
+.f-alert-type-warning .f-alert-close:hover {
+  @apply text-yellow-500 !important;
+}
+.f-theme-dark .f-alert-type-warning .f-alert-close {
+  @apply bg-gray-800 text-yellow-400;
+}
+.f-theme-dark .f-alert-type-warning .f-alert-close:hover {
+  @apply bg-gray-700;
+}
+.f-alert-type-success {
+  @apply text-green-800 bg-green-50;
+}
+.f-theme-dark .f-alert-type-success {
+  @apply bg-gray-800 text-green-400;
+}
+.f-alert-type-success .f-alert-close {
+  @apply bg-green-50 text-green-500 hover:bg-green-200;
+}
+.f-alert-type-success .f-alert-close:focus {
+  @apply ring-2 ring-green-400;
+}
+.f-alert-type-success .f-alert-close:hover {
+  @apply text-green-500 !important;
+}
+.f-theme-dark .f-alert-type-success .f-alert-close {
+  @apply bg-gray-800 text-green-400;
+}
+.f-theme-dark .f-alert-type-success .f-alert-close:hover {
+  @apply bg-gray-700;
+}
+.f-alert-type-default {
+  @apply text-gray-800 bg-gray-50;
+}
+.f-theme-dark .f-alert-type-default {
+  @apply bg-gray-800 text-gray-400;
+}
+.f-alert-type-default .f-alert-close {
+  @apply bg-gray-50 text-gray-500 hover:bg-gray-200;
+}
+.f-alert-type-default .f-alert-close:focus {
+  @apply ring-2 ring-gray-400;
+}
+.f-alert-type-default .f-alert-close:hover {
+  @apply text-gray-500 !important;
+}
+.f-theme-dark .f-alert-type-default .f-alert-close {
+  @apply bg-gray-800 text-gray-400;
+}
+.f-theme-dark .f-alert-type-default .f-alert-close:hover {
+  @apply bg-gray-700;
+}
+
+/*# sourceMappingURL=app.css.map */
