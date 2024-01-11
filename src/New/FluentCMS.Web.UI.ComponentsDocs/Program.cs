@@ -2,6 +2,8 @@ using FluentCMS.Web.UI.ComponentsDocs;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddFluentCmsUiComponents();
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
