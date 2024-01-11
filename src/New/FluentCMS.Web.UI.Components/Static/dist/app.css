@@ -1,17 +1,547 @@
-/* Error: Can't find stylesheet to import.
- *    ,
- * 24 | @import './components/icon';
- *    |         ^^^^^^^^^^^^^^^^^^^
- *    '
- *   scss\App.scss 24:9  root stylesheet */
-
-body::before {
-  font-family: "Source Code Pro", "SF Mono", Monaco, Inconsolata, "Fira Mono",
-      "Droid Sans Mono", monospace, monospace;
-  white-space: pre;
-  display: block;
-  padding: 1em;
-  margin-bottom: 1em;
-  border-bottom: 2px solid black;
-  content: "Error: Can't find stylesheet to import.\a    \2577 \a 24 \2502  @import './components/icon';\d\a    \2502          ^^^^^^^^^^^^^^^^^^^\a    \2575 \a   scss\\App.scss 24:9  root stylesheet";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+body {
+  @apply bg-gray-50;
 }
+
+body.dark {
+  @apply bg-gray-800;
+  color-scheme: dark;
+}
+
+.f-alert {
+  @apply flex items-center p-4 text-sm rounded-lg w-full;
+}
+.f-alert-type-info {
+  @apply text-blue-800 bg-blue-50 dark:bg-gray-800 dark:text-blue-400;
+}
+.f-alert-type-info .f-alert-close {
+  @apply bg-blue-50 text-blue-500 hover:bg-blue-200 dark:bg-gray-800 dark:text-blue-400;
+}
+.f-alert-type-info .f-alert-close:focus {
+  @apply ring-2 ring-blue-400;
+}
+.f-alert-type-info .f-alert-close:hover {
+  @apply dark:bg-gray-700;
+  @apply text-blue-500 !important;
+}
+.f-alert-type-danger {
+  @apply text-red-800 bg-red-50 dark:bg-gray-800 dark:text-red-400;
+}
+.f-alert-type-danger .f-alert-close {
+  @apply bg-red-50 text-red-500 hover:bg-red-200 dark:bg-gray-800 dark:text-red-400;
+}
+.f-alert-type-danger .f-alert-close:focus {
+  @apply ring-2 ring-red-400;
+}
+.f-alert-type-danger .f-alert-close:hover {
+  @apply dark:bg-gray-700;
+  @apply text-red-500 !important;
+}
+.f-alert-type-warning {
+  @apply text-yellow-800 bg-yellow-50 dark:bg-gray-800 dark:text-yellow-400;
+}
+.f-alert-type-warning .f-alert-close {
+  @apply bg-yellow-50 text-yellow-500 hover:bg-yellow-200 dark:bg-gray-800 dark:text-yellow-400;
+}
+.f-alert-type-warning .f-alert-close:focus {
+  @apply ring-2 ring-yellow-400;
+}
+.f-alert-type-warning .f-alert-close:hover {
+  @apply dark:bg-gray-700;
+  @apply text-yellow-500 !important;
+}
+.f-alert-type-success {
+  @apply text-green-800 bg-green-50 dark:bg-gray-800 dark:text-green-400;
+}
+.f-alert-type-success .f-alert-close {
+  @apply bg-green-50 text-green-500 hover:bg-green-200 dark:bg-gray-800 dark:text-green-400;
+}
+.f-alert-type-success .f-alert-close:focus {
+  @apply ring-2 ring-green-400;
+}
+.f-alert-type-success .f-alert-close:hover {
+  @apply dark:bg-gray-700;
+  @apply text-green-500 !important;
+}
+.f-alert-type-default {
+  @apply text-gray-800 bg-gray-50 dark:bg-gray-800 dark:text-gray-400;
+}
+.f-alert-type-default .f-alert-close {
+  @apply bg-gray-50 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400;
+}
+.f-alert-type-default .f-alert-close:focus {
+  @apply ring-2 ring-gray-400;
+}
+.f-alert-type-default .f-alert-close:hover {
+  @apply dark:bg-gray-700;
+  @apply text-gray-500 !important;
+}
+
+.f-close-button {
+  @apply text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white;
+}
+
+.f-grid {
+  --grid-gutter-x: 0;
+  --grid-gutter-y: 0;
+}
+.f-grid-gutter-small {
+  --grid-gutter-x: 0.25em;
+}
+.f-grid-gutter-small {
+  --grid-gutter-y: 0.25em;
+}
+.f-grid-gutter-medium {
+  --grid-gutter-x: 0.5em;
+}
+.f-grid-gutter-medium {
+  --grid-gutter-y: 0.5em;
+}
+.f-grid-gutter-large {
+  --grid-gutter-x: 1em;
+}
+.f-grid-gutter-large {
+  --grid-gutter-y: 1em;
+}
+.f-grid-gutter-x-small {
+  --grid-gutter-x: 0.25em;
+}
+.f-grid-gutter-y-small {
+  --grid-gutter-y: 0.25em;
+}
+.f-grid-gutter-x-medium {
+  --grid-gutter-x: 0.5em;
+}
+.f-grid-gutter-y-medium {
+  --grid-gutter-y: 0.5em;
+}
+.f-grid-gutter-x-large {
+  --grid-gutter-x: 1em;
+}
+.f-grid-gutter-y-large {
+  --grid-gutter-y: 1em;
+}
+@media (min-width: 0) {
+  .f-grid-items-small-start > div {
+    @apply items-start;
+  }
+  .f-grid-items-small-end > div {
+    @apply items-end;
+  }
+  .f-grid-items-small-center > div {
+    @apply items-center;
+  }
+  .f-grid-items-small-baseline > div {
+    @apply items-baseline;
+  }
+  .f-grid-items-small-stretch > div {
+    @apply items-stretch;
+  }
+  .f-grid-justify-small-normal > div {
+    @apply justify-normal;
+  }
+  .f-grid-justify-small-start > div {
+    @apply justify-start;
+  }
+  .f-grid-justify-small-end > div {
+    @apply justify-end;
+  }
+  .f-grid-justify-small-center > div {
+    @apply justify-center;
+  }
+  .f-grid-justify-small-between > div {
+    @apply justify-between;
+  }
+  .f-grid-justify-small-around > div {
+    @apply justify-around;
+  }
+  .f-grid-justify-small-evenly > div {
+    @apply justify-evenly;
+  }
+  .f-grid-justify-small-stretch > div {
+    @apply justify-stretch;
+  }
+}
+@media (min-width: 768px) {
+  .f-grid-items-medium-start > div {
+    @apply items-start;
+  }
+  .f-grid-items-medium-end > div {
+    @apply items-end;
+  }
+  .f-grid-items-medium-center > div {
+    @apply items-center;
+  }
+  .f-grid-items-medium-baseline > div {
+    @apply items-baseline;
+  }
+  .f-grid-items-medium-stretch > div {
+    @apply items-stretch;
+  }
+  .f-grid-justify-medium-normal > div {
+    @apply justify-normal;
+  }
+  .f-grid-justify-medium-start > div {
+    @apply justify-start;
+  }
+  .f-grid-justify-medium-end > div {
+    @apply justify-end;
+  }
+  .f-grid-justify-medium-center > div {
+    @apply justify-center;
+  }
+  .f-grid-justify-medium-between > div {
+    @apply justify-between;
+  }
+  .f-grid-justify-medium-around > div {
+    @apply justify-around;
+  }
+  .f-grid-justify-medium-evenly > div {
+    @apply justify-evenly;
+  }
+  .f-grid-justify-medium-stretch > div {
+    @apply justify-stretch;
+  }
+}
+@media (min-width: 1200px) {
+  .f-grid-items-large-start > div {
+    @apply items-start;
+  }
+  .f-grid-items-large-end > div {
+    @apply items-end;
+  }
+  .f-grid-items-large-center > div {
+    @apply items-center;
+  }
+  .f-grid-items-large-baseline > div {
+    @apply items-baseline;
+  }
+  .f-grid-items-large-stretch > div {
+    @apply items-stretch;
+  }
+  .f-grid-justify-large-normal > div {
+    @apply justify-normal;
+  }
+  .f-grid-justify-large-start > div {
+    @apply justify-start;
+  }
+  .f-grid-justify-large-end > div {
+    @apply justify-end;
+  }
+  .f-grid-justify-large-center > div {
+    @apply justify-center;
+  }
+  .f-grid-justify-large-between > div {
+    @apply justify-between;
+  }
+  .f-grid-justify-large-around > div {
+    @apply justify-around;
+  }
+  .f-grid-justify-large-evenly > div {
+    @apply justify-evenly;
+  }
+  .f-grid-justify-large-stretch > div {
+    @apply justify-stretch;
+  }
+}
+.f-grid > div {
+  @apply flex flex-wrap h-full;
+  margin-top: calc(var(--grid-gutter-y) * -1);
+  margin-left: calc(var(--grid-gutter-x) * -1);
+}
+
+.f-grid-item {
+  @apply grow-0 basis-auto max-w-none box-border;
+}
+.f-grid-item {
+  @apply pt-[var(--grid-gutter-y)] ps-[var(--grid-gutter-x)];
+}
+@media (min-width: 0) {
+  .f-grid-item-small-auto {
+    @apply basis-auto max-w-none;
+  }
+  .f-grid-item-small-grow {
+    @apply grow basis-0 max-w-full;
+  }
+  .f-grid-item-small-one {
+    flex-basis: 8.3333333333%;
+    max-width: 8.3333333333%;
+  }
+  .f-grid-item-small-two {
+    flex-basis: 16.6666666667%;
+    max-width: 16.6666666667%;
+  }
+  .f-grid-item-small-three {
+    flex-basis: 25%;
+    max-width: 25%;
+  }
+  .f-grid-item-small-four {
+    flex-basis: 33.3333333333%;
+    max-width: 33.3333333333%;
+  }
+  .f-grid-item-small-five {
+    flex-basis: 41.6666666667%;
+    max-width: 41.6666666667%;
+  }
+  .f-grid-item-small-six {
+    flex-basis: 50%;
+    max-width: 50%;
+  }
+  .f-grid-item-small-seven {
+    flex-basis: 58.3333333333%;
+    max-width: 58.3333333333%;
+  }
+  .f-grid-item-small-eight {
+    flex-basis: 66.6666666667%;
+    max-width: 66.6666666667%;
+  }
+  .f-grid-item-small-nine {
+    flex-basis: 75%;
+    max-width: 75%;
+  }
+  .f-grid-item-small-ten {
+    flex-basis: 83.3333333333%;
+    max-width: 83.3333333333%;
+  }
+  .f-grid-item-small-eleven {
+    flex-basis: 91.6666666667%;
+    max-width: 91.6666666667%;
+  }
+  .f-grid-item-small-twelve {
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+}
+@media (min-width: 768px) {
+  .f-grid-item-medium-auto {
+    @apply basis-auto max-w-none;
+  }
+  .f-grid-item-medium-grow {
+    @apply grow basis-0 max-w-full;
+  }
+  .f-grid-item-medium-one {
+    flex-basis: 8.3333333333%;
+    max-width: 8.3333333333%;
+  }
+  .f-grid-item-medium-two {
+    flex-basis: 16.6666666667%;
+    max-width: 16.6666666667%;
+  }
+  .f-grid-item-medium-three {
+    flex-basis: 25%;
+    max-width: 25%;
+  }
+  .f-grid-item-medium-four {
+    flex-basis: 33.3333333333%;
+    max-width: 33.3333333333%;
+  }
+  .f-grid-item-medium-five {
+    flex-basis: 41.6666666667%;
+    max-width: 41.6666666667%;
+  }
+  .f-grid-item-medium-six {
+    flex-basis: 50%;
+    max-width: 50%;
+  }
+  .f-grid-item-medium-seven {
+    flex-basis: 58.3333333333%;
+    max-width: 58.3333333333%;
+  }
+  .f-grid-item-medium-eight {
+    flex-basis: 66.6666666667%;
+    max-width: 66.6666666667%;
+  }
+  .f-grid-item-medium-nine {
+    flex-basis: 75%;
+    max-width: 75%;
+  }
+  .f-grid-item-medium-ten {
+    flex-basis: 83.3333333333%;
+    max-width: 83.3333333333%;
+  }
+  .f-grid-item-medium-eleven {
+    flex-basis: 91.6666666667%;
+    max-width: 91.6666666667%;
+  }
+  .f-grid-item-medium-twelve {
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+}
+@media (min-width: 1200px) {
+  .f-grid-item-large-auto {
+    @apply basis-auto max-w-none;
+  }
+  .f-grid-item-large-grow {
+    @apply grow basis-0 max-w-full;
+  }
+  .f-grid-item-large-one {
+    flex-basis: 8.3333333333%;
+    max-width: 8.3333333333%;
+  }
+  .f-grid-item-large-two {
+    flex-basis: 16.6666666667%;
+    max-width: 16.6666666667%;
+  }
+  .f-grid-item-large-three {
+    flex-basis: 25%;
+    max-width: 25%;
+  }
+  .f-grid-item-large-four {
+    flex-basis: 33.3333333333%;
+    max-width: 33.3333333333%;
+  }
+  .f-grid-item-large-five {
+    flex-basis: 41.6666666667%;
+    max-width: 41.6666666667%;
+  }
+  .f-grid-item-large-six {
+    flex-basis: 50%;
+    max-width: 50%;
+  }
+  .f-grid-item-large-seven {
+    flex-basis: 58.3333333333%;
+    max-width: 58.3333333333%;
+  }
+  .f-grid-item-large-eight {
+    flex-basis: 66.6666666667%;
+    max-width: 66.6666666667%;
+  }
+  .f-grid-item-large-nine {
+    flex-basis: 75%;
+    max-width: 75%;
+  }
+  .f-grid-item-large-ten {
+    flex-basis: 83.3333333333%;
+    max-width: 83.3333333333%;
+  }
+  .f-grid-item-large-eleven {
+    flex-basis: 91.6666666667%;
+    max-width: 91.6666666667%;
+  }
+  .f-grid-item-large-twelve {
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+}
+
+.f-icon {
+  width: 1em;
+  height: 1em;
+  @apply inline-flex justify-center;
+}
+.f-icon * {
+  stroke-width: 1.5px;
+}
+.f-icon-color-primary {
+  @apply text-blue-500;
+}
+.f-icon-color-success {
+  @apply text-green-500;
+}
+.f-icon-color-info {
+  @apply text-cyan-500;
+}
+.f-icon-color-danger {
+  @apply text-red-500;
+}
+.f-icon-color-warning {
+  @apply text-yellow-500;
+}
+.f-icon-color-secondary {
+  @apply text-gray-500;
+}
+.f-icon-size-small {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+.f-icon-size-medium {
+  width: 1rem;
+  height: 1rem;
+}
+.f-icon-size-large {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.f-page {
+  @apply px-4;
+}
+.f-page-back-button {
+  @apply p-0;
+}
+.f-page-back-button svg {
+  @apply w-full h-full;
+}
+.f-page-header {
+  @apply border-gray-200 px-0 py-2.5 pt-2 text-gray-700;
+}
+.f-page-header-actions {
+  @apply flex-shrink-0 flex flex-col items-start md:flex-row md:items-center lg:justify-end space-y-3 md:space-y-0 md:space-x-3;
+}
+.f-page-header-body {
+  @apply flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 md:space-x-4 p-4 px-0;
+}
+.f-page-header-subtitle {
+  @apply flex-1 flex items-center space-x-2;
+}
+.f-page-header-title {
+  @apply text-3xl text-gray-900 dark:text-gray-300;
+}
+
+.f-sidebar {
+  @apply h-screen transition-transform -translate-x-full border-r border-gray-200 dark:border-gray-700;
+}
+.f-sidebar-item > span {
+  @apply text-xs py-3;
+}
+.f-sidebar-item > a {
+  @apply text-sm flex items-center font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700;
+}
+.f-sidebar-item > a > span {
+  @apply ml-3;
+}
+.f-sidebar-main {
+  @apply overflow-y-auto py-5 px-3 h-full;
+}
+.f-sidebar-main > ul {
+  @apply space-y-2;
+}
+.f-sidebar-main > ul > li > ul {
+  @apply py-2 space-y-2;
+}
+.f-sidebar-title {
+  @apply text-gray-900 dark:text-white py-5;
+}
+.f-sidebar-secondary-true .f-sidebar-item > span {
+  @apply text-gray-700 dark:text-gray-500;
+}
+.f-sidebar-secondary-true .f-sidebar-item > a {
+  @apply py-1 px-2 text-base;
+}
+.f-sidebar-secondary-true .f-sidebar-main {
+  @apply pt-0;
+}
+.f-sidebar-secondary-false {
+  @apply fixed top-0 left-0 z-40 w-64 pt-14 lg:pt-0 bg-white dark:bg-gray-800;
+}
+.f-sidebar-secondary-false .f-sidebar-item > span {
+  @apply text-gray-900 dark:text-white ml-2;
+}
+.f-sidebar-secondary-false .f-sidebar-item > a {
+  @apply p-2;
+}
+.f-sidebar-secondary-false .f-sidebar-item > a span {
+  @apply ml-3;
+}
+.f-sidebar-secondary-false .f-sidebar-main {
+  @apply bg-white dark:bg-gray-800;
+}
+
+.f-stack {
+  @apply flex gap-4;
+}
+
+/*# sourceMappingURL=app.css.map */

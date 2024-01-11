@@ -2,6 +2,7 @@
 module.exports = {
   content: [
     "../**/*.{razor,html,cshtml}",
+    "../../FluentCMS.Web.UI.ComponentsDocs/**/*.{razor,html,cshtml}", // TODO: should be remove
     "./node_modules/flowbite/**/*.js"
   ],
   theme: {

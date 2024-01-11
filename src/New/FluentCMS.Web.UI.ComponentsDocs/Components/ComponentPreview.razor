@@ -1,12 +1,10 @@
 @inherits BaseComponent
 
 @* TODO *@
-<div style="padding-bottom: 1.5rem;">
-    <h2 style="padding: 0.5rem 0; font-size: 1.5rem; line-height: 2rem; font-weight: 700;">
-        @Title
-    </h2>
-    <p style="margin-bottom: 0.5rem;">@Description</p>
-    <div style="padding: 1.5rem; background: black;">
+<div class="pb-6">
+    <h2 class="py-2 text-2xl font-bold">@Title</h2>
+    <p class="mb-2">@Description</p>
+    <div class="dark:bg-gray-800 dark:bg-opacity-50 shadow p-6">
         @ChildContent
     </div>
 </div>
