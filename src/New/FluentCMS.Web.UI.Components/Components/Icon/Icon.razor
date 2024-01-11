@@ -1,0 +1,31 @@
+@inherits BaseComponent
+@using System.Resources;
+
+<span @attributes="AdditionalAttributes"
+    class="@this.GetClasses()">
+    @Content
+</span>
+
+@code {
+    private MarkupString? Content { get; set; }
+
+    [Inject(Key = "FluentCMS.Web.UI.Resources.Icons")]
+    public required ResourceManager ResourceManager { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public Color Color { get; set; }
+
+    [Parameter]
+    public IconName Name { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public IconSize Size { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Content = (MarkupString)(ResourceManager.GetString(Name.ToString()) ?? throw new Exception("Invalid Icon name: \"" + Name.ToString() + "\""));
+    }
+}

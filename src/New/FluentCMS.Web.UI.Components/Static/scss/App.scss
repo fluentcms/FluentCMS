@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+$prefix: "f-";
+$colors: ( "primary": "blue", "success": "green", "info": "cyan", "danger": "red", "warning": "yellow", "secondary": "gray" );
+
+// BODY
+
+body {
+    @apply bg-gray-50;
+}
+
+body.dark {
+    @apply bg-gray-800;
+    color-scheme: dark;
+}
+
+// COMPONENTS
+
+@import './components/alert';
+@import './components/close-button';
+@import './components/grid';
+@import './components/page';
+@import './components/spacer';

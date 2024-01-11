@@ -1,0 +1,19 @@
+@inherits BaseComponent
+
+@* TODO *@
+@* <Button class="@this.GetClasses()"
+    Ghost
+    OnClick="() => GoBack()">
+    <Icon Name="@IconNameEnum.Previous" />
+    Back
+</Button> *@
+
+@code {
+    [Inject]
+    IJSRuntime JsRuntime {get; set;}
+
+    public async Task GoBack() {
+        await JsRuntime.InvokeAsync<object>("history.back");
+    }
+}
+
