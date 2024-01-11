@@ -1,4 +1,4 @@
-namespace FluentCMS.Web.UI.Resources;
+namespace FluentCMS.Web.UI.Components.Resources;
 
 public class Icons
 {

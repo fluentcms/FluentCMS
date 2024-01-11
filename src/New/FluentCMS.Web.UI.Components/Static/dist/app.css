@@ -79,6 +79,10 @@ body.dark {
   @apply text-gray-500 !important;
 }
 
+.f-card {
+  /*TODO*/
+}
+
 .f-close-button {
   @apply text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white;
 }
@@ -427,6 +431,45 @@ body.dark {
   }
 }
 
+.f-icon {
+  width: 1em;
+  height: 1em;
+  @apply inline-flex justify-center;
+}
+.f-icon * {
+  stroke-width: 1.5px;
+}
+.f-icon-color-primary {
+  @apply text-blue-500;
+}
+.f-icon-color-success {
+  @apply text-green-500;
+}
+.f-icon-color-info {
+  @apply text-cyan-500;
+}
+.f-icon-color-danger {
+  @apply text-red-500;
+}
+.f-icon-color-warning {
+  @apply text-yellow-500;
+}
+.f-icon-color-secondary {
+  @apply text-gray-500;
+}
+.f-icon-size-small {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+.f-icon-size-medium {
+  width: 1rem;
+  height: 1rem;
+}
+.f-icon-size-large {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
 .f-page {
   @apply px-4;
 }
@@ -450,6 +493,59 @@ body.dark {
 }
 .f-page-header-title {
   @apply text-3xl text-gray-900 dark:text-gray-300;
+}
+
+.f-sidebar {
+  @apply h-screen transition-transform -translate-x-full border-r border-gray-200 dark:border-gray-700;
+}
+.f-sidebar-item > span {
+  @apply text-xs py-3;
+}
+.f-sidebar-item > a {
+  @apply text-sm flex items-center font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700;
+}
+.f-sidebar-item > a > span {
+  @apply ml-3;
+}
+.f-sidebar-main {
+  @apply overflow-y-auto py-5 px-3 h-full;
+}
+.f-sidebar-main > ul {
+  @apply space-y-2;
+}
+.f-sidebar-main > ul > li > ul {
+  @apply py-2 space-y-2;
+}
+.f-sidebar-title {
+  @apply text-gray-900 dark:text-white py-5;
+}
+.f-sidebar-secondary-true .f-sidebar-item > span {
+  @apply text-gray-700 dark:text-gray-500;
+}
+.f-sidebar-secondary-true .f-sidebar-item > a {
+  @apply py-1 px-2 text-base;
+}
+.f-sidebar-secondary-true .f-sidebar-main {
+  @apply pt-0;
+}
+.f-sidebar-secondary-false {
+  @apply fixed top-0 left-0 z-40 w-64 pt-14 lg:pt-0 bg-white dark:bg-gray-800;
+}
+.f-sidebar-secondary-false .f-sidebar-item > span {
+  @apply text-gray-900 dark:text-white ml-2;
+}
+.f-sidebar-secondary-false .f-sidebar-item > a {
+  @apply p-2;
+}
+.f-sidebar-secondary-false .f-sidebar-item > a span {
+  @apply ml-3;
+}
+.f-sidebar-secondary-false .f-sidebar-main {
+  @apply bg-white dark:bg-gray-800;
+}
+
+.f-stack {
+  @apply flex gap-4;
 }
 
 /*# sourceMappingURL=app.css.map */

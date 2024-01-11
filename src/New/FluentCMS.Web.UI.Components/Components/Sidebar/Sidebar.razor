@@ -1,0 +1,39 @@
+@inherits BaseComponent
+
+@* TODO: remove extra class *@
+<aside @attributes="AdditionalAttributes"
+       class="@this.GetClasses() lg:!translate-x-0">
+    <div class="@this.ClassName("SidebarMain")">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            @* TODO: move class value to style file *@
+            <h4 class="@this.ClassName("SidebarTitle")">
+                @Title
+            </h4>
+        }
+        @Header
+        <ul>
+            <li>
+                <ul>
+                    @ChildContent
+                </ul>
+            </li>
+        </ul>
+    </div>
+    @Footer
+</aside>
+
+@code {
+    [Parameter]
+    public RenderFragment? Header { get; set; }
+
+    [Parameter]
+    public RenderFragment? Footer { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public bool Secondary { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+}
