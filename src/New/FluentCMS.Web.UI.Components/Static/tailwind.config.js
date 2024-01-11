@@ -22,7 +22,7 @@ module.exports = {
           on:        '#f4f8fd',
           dark: {
             DEFAULT: '#a3c8ed',
-            on:    '#0f477e', 
+            on:      '#0f477e', 
           }
         },
       },
