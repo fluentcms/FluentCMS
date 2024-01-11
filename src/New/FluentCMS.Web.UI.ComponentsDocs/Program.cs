@@ -1,4 +1,4 @@
-using FluentCMS.Web.UI.Components.Docs;
+using FluentCMS.Web.UI.ComponentsDocs;
 
 var builder = WebApplication.CreateBuilder(args);
 
