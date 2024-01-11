@@ -7,29 +7,18 @@ $alert-types: ( "info": "blue", "danger": "red", "warning": "yellow", "success":
 
     @each $type, $color in $alert-types {
         &-type-#{$type} {
-            @apply text-#{$color}-800 bg-#{$color}-50;
-
-            .#{$prefix-theme-dark} & {
-                @apply bg-gray-800 text-#{$color}-400;
-            }
+            @apply text-#{$color}-800 bg-#{$color}-50 dark:bg-gray-800 dark:text-#{$color}-400;
 
             .#{$alert}-close {
-                @apply bg-#{$color}-50 text-#{$color}-500 hover:bg-#{$color}-200;
+                @apply bg-#{$color}-50 text-#{$color}-500 hover:bg-#{$color}-200 dark:bg-gray-800 dark:text-#{$color}-400;
 
                 &:focus {
                     @apply ring-2 ring-#{$color}-400;
                 }
 
                 &:hover {
+                    @apply dark:bg-gray-700;
                     @apply text-#{$color}-500 #{!important};
-                }
-
-                .#{$prefix-theme-dark} & {
-                    @apply bg-gray-800 text-#{$color}-400;
-                }
-
-                .#{$prefix-theme-dark} &:hover {
-                    @apply bg-gray-700;
                 }
             }
         }

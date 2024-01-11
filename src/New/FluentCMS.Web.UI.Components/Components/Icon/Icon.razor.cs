@@ -1,8 +1,5 @@
 namespace FluentCMS.Web.UI.Components;
 
-// TODO
-public enum IconColor { }
-
 public enum IconName
 {
     Default,

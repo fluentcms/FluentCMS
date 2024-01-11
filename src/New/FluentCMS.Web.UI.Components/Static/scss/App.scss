@@ -3,7 +3,6 @@
 @tailwind utilities;
 
 $prefix: "f-";
-$prefix-theme-dark: $prefix + "theme-dark";
 $colors: ( "primary": "blue", "success": "green", "info": "cyan", "danger": "red", "warning": "yellow", "secondary": "gray" );
 
 // BODY
@@ -12,7 +11,7 @@ body {
     @apply bg-gray-50;
 }
 
-body.#{$prefix-theme-dark} {
+body.dark {
     @apply bg-gray-800;
     color-scheme: dark;
 }
