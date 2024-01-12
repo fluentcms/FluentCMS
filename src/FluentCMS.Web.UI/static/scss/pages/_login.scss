@@ -1,8 +1,0 @@
-$prefix-login: $prefix + 'login';
-
-
-.#{$prefix-login} {
-    &-form {
-        @apply mt-8;
-    }
-}

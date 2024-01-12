@@ -1,16 +1,16 @@
-$prefix-label: $prefix + 'form-label';
-$prefix-form-field: $prefix + 'form-field';
+$label: $prefix + 'form-label';
+$form-field: $prefix + 'form-field';
 
-.#{$prefix-form-field} {
+.#{$form-field} {
     @apply relative;
 
     &-inline-label-true {
         @apply inline-flex flex-wrap items-center;
 
-        .#{$prefix-label} {
+        .#{$label} {
             @apply order-1 ms-3 me-5 mb-0;
         }
-        .#{$prefix-form-field}-hint {
+        .#{$form-field}-hint {
             @apply order-2 w-full;
 
         }
@@ -24,11 +24,11 @@ $prefix-form-field: $prefix + 'form-field';
         @apply relative;
     }
 
-    &-has-start-icon-true > .#{$prefix-form-field}-group > :not(.#{$prefix-form-field}-start-icon-wrapper):not(.#{$prefix-form-field}-end-icon-wrapper) {
+    &-has-start-icon-true > .#{$form-field}-group > :not(.#{$form-field}-start-icon-wrapper):not(.#{$form-field}-end-icon-wrapper) {
         @apply ps-10;
     }
 
-    &-has-end-icon-true > .#{$prefix-form-field}-group > :not(.#{$prefix-form-field}-start-icon-wrapper):not(.#{$prefix-form-field}-end-icon-wrapper) {
+    &-has-end-icon-true > .#{$form-field}-group > :not(.#{$form-field}-start-icon-wrapper):not(.#{$form-field}-end-icon-wrapper) {
         @apply pe-10;
     }
 
@@ -62,10 +62,7 @@ $prefix-form-field: $prefix + 'form-field';
         @apply mt-2 text-sm;
 
         &-state-default {
-            @apply text-gray-500;
-            .#{$prefix-theme-dark} & {
-                @apply text-gray-400;
-            }
+            @apply text-gray-500 dark:text-gray-400;
 
             .#{$prefix}-icon {
                 @apply text-gray-500;
@@ -73,20 +70,16 @@ $prefix-form-field: $prefix + 'form-field';
         }
 
         &-state-valid {
-            @apply text-green-600;
-            .#{$prefix-theme-dark} & {
-                @apply text-green-500;
-            }
+            @apply text-green-600 dark:text-green-500;
+
             .#{$prefix}-icon {
                 @apply text-green-500;
             }
         }
 
         &-state-invalid {
-            @apply text-red-600;
-            .#{$prefix-theme-dark} & {
-                @apply text-red-500;
-            }
+            @apply text-red-600 dark:text-red-500;
+
             .#{$prefix}-icon {
                 @apply text-red-500;
             }
@@ -94,29 +87,21 @@ $prefix-form-field: $prefix + 'form-field';
     }
 }
 
-.#{$prefix-label} {
+.#{$label} {
     @apply block mb-2 text-sm font-medium text-gray-900;
 
     &-state-default {
-        @apply text-gray-900;
-        .#{$prefix-theme-dark} & {
-            @apply text-white;
-        }
+        @apply text-gray-900 dark:text-white;
     }
 
     &-state-valid {
-        @apply text-green-700;
-        .#{$prefix-theme-dark} & {
-            @apply text-green-500;
-        }
+        @apply text-green-700 dark:text-green-500;
     }
 
     &-state-invalid {
-        @apply text-red-700;
-        .#{$prefix-theme-dark} & {
-            @apply text-red-500;
-        }
+        @apply text-red-700 dark:text-red-500;
     }
+
     &-required-true::after {
         content: "*";
         @apply ms-1 text-red-500;
