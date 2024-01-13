@@ -1,0 +1,69 @@
+@inherits BaseComponent
+
+@if (!string.IsNullOrEmpty(Href))
+{
+    <a @attributes="AdditionalAttributes"
+       class="@this.GetClasses()"
+       disabled="@Disabled"
+       href="@Href">
+        <span>
+            @ChildContent
+        </span>
+        @if (Loading)
+        {
+            <Spinner Color="Color" />
+        }
+    </a>
+}
+else
+{
+    <button @attributes="AdditionalAttributes"
+            class="@this.GetClasses()"
+            disabled="@Disabled"
+            type="@Type.ToString()"
+            @onclick="OnClick">
+        <span>
+            @ChildContent
+        </span>
+        @if (Loading)
+        {
+            <Spinner Color="Color" />
+        }
+    </button>
+}
+
+@code {
+
+    [Parameter]
+    [CssProperty]
+    public Color Color { get; set; } = Color.Default;
+
+    [Parameter]
+    [CssProperty]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public bool Ghost { get; set; }
+
+    [Parameter]
+    public string? Href { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public bool Loading { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public bool Outline { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public ButtonSize Size { get; set; } = ButtonSize.Medium;
+
+    [Parameter]
+    public ButtonType Type { get; set; } = ButtonType.Button;
+
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnClick { get; set; }
+}

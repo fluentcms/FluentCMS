@@ -19,6 +19,8 @@ body.dark {
 // COMPONENTS
 
 @import './components/alert';
+@import './components/badge';
+@import './components/button';
 @import './components/card';
 @import './components/close-button';
 @import './components/grid';
@@ -26,4 +28,6 @@ body.dark {
 @import './components/page';
 @import './components/sidebar';
 @import './components/spacer';
+@import './components/spinner';
 @import './components/stack';
+@import './components/pagination';
