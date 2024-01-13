@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public enum ButtonTypeEnum
+public enum ButtonTypes
 {
     Button,
     Submit,

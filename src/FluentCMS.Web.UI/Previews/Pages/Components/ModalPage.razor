@@ -9,7 +9,7 @@
         <Preview Title="Default">
             <Description></Description>
             <ChildContent>
-                <Grid ItemsSmall=GridItemsEnum.Center JustifySmall=GridJustifyEnum.Center>
+                <Grid ItemsSmall=GridItems.Center JustifySmall=GridJustifies.Center>
                     <GridItem>
                          <Button OnClick="() => Open1 = !Open1">
                             Open
@@ -22,7 +22,7 @@
                             </ModalBody>
                             <ModalFooter>
                                 <ButtonGroup>
-                                    <Button Color=@ColorEnum.Primary>
+                                    <Button Color=@Colors.Primary>
                                         I accept
                                     </Button>
                                     <Button>
@@ -39,7 +39,7 @@
         <Preview Title="Closable">
             <Description></Description>
             <ChildContent>
-                <Grid ItemsSmall=GridItemsEnum.Center JustifySmall=GridJustifyEnum.Center>
+                <Grid ItemsSmall=GridItems.Center JustifySmall=GridJustifies.Center>
                     <GridItem>
                         <Button OnClick="() => Open2 = !Open2">
                             Open
@@ -52,7 +52,7 @@
                             </ModalBody>
                             <ModalFooter>
                                 <ButtonGroup>
-                                    <Button Color=@ColorEnum.Primary>
+                                    <Button Color=@Colors.Primary>
                                         I accept
                                     </Button>
                                     <Button>
@@ -69,12 +69,12 @@
         <Preview Title="Size">
             <Description></Description>
             <ChildContent>
-                <Grid ItemsSmall=GridItemsEnum.Center JustifySmall=GridJustifyEnum.Center>
+                <Grid ItemsSmall=GridItems.Center JustifySmall=GridJustifies.Center>
                     <GridItem>
                         <Button OnClick="() => Open3 = !Open3">
                             Open
                         </Button>
-                        <Modal @bind-Open=@Open3 Size=SizeEnum.Large>
+                        <Modal @bind-Open=@Open3 Size=Sizes.Large>
                             <ModalHeader Title="Terms of Service" Closable=false />
                             <ModalBody>
                                 With less than a month to go before the European Union enacts new consumer privacy laws for its
@@ -82,7 +82,7 @@
                             </ModalBody>
                             <ModalFooter>
                                 <ButtonGroup>
-                                    <Button Color=@ColorEnum.Primary>
+                                    <Button Color=@Colors.Primary>
                                         I accept
                                     </Button>
                                     <Button>

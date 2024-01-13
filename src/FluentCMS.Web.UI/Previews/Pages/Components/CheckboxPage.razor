@@ -67,8 +67,8 @@
         <Preview Title="Validation">
             <ChildContent>
                 <div>
-                    <Checkbox Label="Invalid" Hint="This is required" State="FormFieldStateEnum.Invalid"/>
-                    <Checkbox Label="Valid" Hint="This is okay" State="FormFieldStateEnum.Valid"/>
+                    <Checkbox Label="Invalid" Hint="This is required" State="FormFieldStates.Invalid"/>
+                    <Checkbox Label="Valid" Hint="This is okay" State="FormFieldStates.Valid"/>
                 </div>
             </ChildContent>
         </Preview>
@@ -78,7 +78,7 @@
                 <div>
                     <Checkbox Label="Initial Value" @bind-Value=@Check1Value />
                     <div>
-                        <Badge Color=@(Check1Value ? ColorEnum.Success : ColorEnum.Danger)>@Check1Value</Badge>
+                        <Badge Color=@(Check1Value ? Colors.Success : Colors.Danger)>@Check1Value</Badge>
                     </div>
                 </div>
             </ChildContent>
