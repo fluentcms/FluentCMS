@@ -1,3 +1,4 @@
+@import '../scss/components/_autocomplete.scss.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -17,66 +18,55 @@ body.dark {
   @apply text-blue-800 bg-blue-50 dark:bg-gray-800 dark:text-blue-400;
 }
 .f-alert-type-info .f-alert-close {
-  @apply bg-blue-50 text-blue-500 hover:bg-blue-200 dark:bg-gray-800 dark:text-blue-400;
-}
-.f-alert-type-info .f-alert-close:focus {
-  @apply ring-2 ring-blue-400;
-}
-.f-alert-type-info .f-alert-close:hover {
-  @apply dark:bg-gray-700;
-  @apply text-blue-500 !important;
+  @apply bg-blue-50 text-blue-500 hover:bg-blue-200 hover:text-blue-500 focus:ring-2 focus:ring-blue-400 dark:hover:bg-gray-700 dark:bg-gray-800 dark:text-blue-400;
 }
 .f-alert-type-danger {
   @apply text-red-800 bg-red-50 dark:bg-gray-800 dark:text-red-400;
 }
 .f-alert-type-danger .f-alert-close {
-  @apply bg-red-50 text-red-500 hover:bg-red-200 dark:bg-gray-800 dark:text-red-400;
-}
-.f-alert-type-danger .f-alert-close:focus {
-  @apply ring-2 ring-red-400;
-}
-.f-alert-type-danger .f-alert-close:hover {
-  @apply dark:bg-gray-700;
-  @apply text-red-500 !important;
+  @apply bg-red-50 text-red-500 hover:bg-red-200 hover:text-red-500 focus:ring-2 focus:ring-red-400 dark:hover:bg-gray-700 dark:bg-gray-800 dark:text-red-400;
 }
 .f-alert-type-warning {
   @apply text-yellow-800 bg-yellow-50 dark:bg-gray-800 dark:text-yellow-400;
 }
 .f-alert-type-warning .f-alert-close {
-  @apply bg-yellow-50 text-yellow-500 hover:bg-yellow-200 dark:bg-gray-800 dark:text-yellow-400;
-}
-.f-alert-type-warning .f-alert-close:focus {
-  @apply ring-2 ring-yellow-400;
-}
-.f-alert-type-warning .f-alert-close:hover {
-  @apply dark:bg-gray-700;
-  @apply text-yellow-500 !important;
+  @apply bg-yellow-50 text-yellow-500 hover:bg-yellow-200 hover:text-yellow-500 focus:ring-2 focus:ring-yellow-400 dark:hover:bg-gray-700 dark:bg-gray-800 dark:text-yellow-400;
 }
 .f-alert-type-success {
   @apply text-green-800 bg-green-50 dark:bg-gray-800 dark:text-green-400;
 }
 .f-alert-type-success .f-alert-close {
-  @apply bg-green-50 text-green-500 hover:bg-green-200 dark:bg-gray-800 dark:text-green-400;
-}
-.f-alert-type-success .f-alert-close:focus {
-  @apply ring-2 ring-green-400;
-}
-.f-alert-type-success .f-alert-close:hover {
-  @apply dark:bg-gray-700;
-  @apply text-green-500 !important;
+  @apply bg-green-50 text-green-500 hover:bg-green-200 hover:text-green-500 focus:ring-2 focus:ring-green-400 dark:hover:bg-gray-700 dark:bg-gray-800 dark:text-green-400;
 }
 .f-alert-type-default {
   @apply text-gray-800 bg-gray-50 dark:bg-gray-800 dark:text-gray-400;
 }
 .f-alert-type-default .f-alert-close {
-  @apply bg-gray-50 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400;
+  @apply bg-gray-50 text-gray-500 hover:bg-gray-200 hover:text-gray-500 focus:ring-2 focus:ring-gray-400 dark:hover:bg-gray-700 dark:bg-gray-800 dark:text-gray-400;
 }
-.f-alert-type-default .f-alert-close:focus {
-  @apply ring-2 ring-gray-400;
+
+.f-autocomplete .ts-control,
+.f-autocomplete .ts-wrapper.single.input-active .ts-control {
+  @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
 }
-.f-alert-type-default .f-alert-close:hover {
-  @apply dark:bg-gray-700;
-  @apply text-gray-500 !important;
+.f-autocomplete .ts-dropdown {
+  @apply bg-white divide-y divide-gray-100 rounded-lg shadow dark:bg-gray-700 border-none;
+}
+.f-autocomplete .ts-dropdown-content {
+  @apply py-2 text-sm text-gray-700 dark:text-gray-200;
+}
+.f-autocomplete .ts-dropdown .option {
+  @apply block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white;
+}
+.f-autocomplete .ts-dropdown .active,
+.f-autocomplete .ts-dropdown .selected {
+  @apply bg-gray-100 dark:bg-gray-600 dark:text-white;
+}
+.f-autocomplete .ts-wrapper.multi .ts-control > div {
+  @apply bg-gray-100 dark:bg-gray-600 dark:text-white;
+}
+.f-autocomplete .ts-control input {
+  @apply dark:caret-white;
 }
 
 .f-badge {
