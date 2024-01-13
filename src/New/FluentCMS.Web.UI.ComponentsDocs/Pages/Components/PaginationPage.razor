@@ -1,0 +1,39 @@
+@page "/components/pagination"
+@layout ComponentsLayout
+
+<Page>
+    <PageHeader Title="Paginations" />
+
+    <ComponentPreview Title="Default">
+        <Grid ItemsSmall=GridItems.Center
+              JustifySmall=GridJustify.Center>
+            <GridItem>
+                <Pagination Current="5"
+                            ShowIcons="false"
+                            Total="10" />
+            </GridItem>
+        </Grid>
+    </ComponentPreview>
+
+    <ComponentPreview Title="Icons">
+        <Grid ItemsSmall=GridItems.Center
+              JustifySmall=GridJustify.Center>
+            <GridItem>
+                <Pagination Current="5"
+                            ShowIcons="true"
+                            Total="10" />
+            </GridItem>
+        </Grid>
+    </ComponentPreview>
+
+    <ComponentPreview Title="Info">
+        <Grid ItemsSmall=GridItems.Center
+              JustifySmall=GridJustify.Center>
+            <GridItem>
+                <PaginationInfo Current="1"
+                                Total="1000" />
+            </GridItem>
+        </Grid>
+    </ComponentPreview>
+
+</Page>
