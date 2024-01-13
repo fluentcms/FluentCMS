@@ -25,9 +25,10 @@
 
     <ComponentPreview Title="Value">
         <Autocomplete @bind-Value="Value" Multiple
-                      Options=Options />
-        <Stack>
-            @foreach (var item in Value)
+                       Options=Options />
+         <Spacer />
+         <Stack>
+             @foreach (var item in Value)
             {
                 <Badge @key=item Color=Color.Primary>
                     @Options.FirstOrDefault(X => X.Id == item).Title

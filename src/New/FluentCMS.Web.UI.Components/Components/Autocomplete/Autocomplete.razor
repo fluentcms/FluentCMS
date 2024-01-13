@@ -1,6 +1,8 @@
 ﻿@inject IJSRuntime JS
 @inherits BaseComponent
 
+@namespace FluentCMS.Web.UI.Components
+
 <div @attributes="AdditionalAttributes"
      class="@this.GetClasses()">
     <select @ref="element"

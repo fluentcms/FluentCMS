@@ -1,0 +1,42 @@
+@page "/components/confirm"
+@layout ComponentsLayout
+
+<Page>
+    <PageHeader Title="Confirms" />
+
+    <ComponentPreview Title="Default"
+                      Description="You can use this modal example to show a pop-up decision dialog to your users especially when deleting an item and making sure if the user really wants to do that by double confirming.">
+        <Confirm @bind-Open=Open1
+                 Message="Are you sure you want to delete this product?" />
+        <Button OnClick="() => Open1 = !Open1">Open</Button>
+    </ComponentPreview>
+
+    <ComponentPreview Title="Static"
+                      Description="You can not close confirm dialog by click outside.">
+        <Confirm @bind-Open=Open2
+                 Message="Are you sure you want to delete this product?" Static />
+         <Button OnClick="() => Open2 = !Open2">Open</Button>
+     </ComponentPreview>
+
+     <ComponentPreview Title="Service"
+                       Description="Confirmation modal can open with the ConfirmService as well.">
+         <Button OnClick=OpenByService>Open</Button>
+     </ComponentPreview>
+ </Page>
+
+
+ @code {
+    // TODO
+    // [Inject]
+    // ConfirmService ConfirmService { get; set; } = default!;
+
+    private bool Open1 { get; set; }
+
+    private bool Open2 { get; set; }
+
+    async Task OpenByService()
+    {
+        // TODO
+        // var Result = await ConfirmService!.Show("Are you sure you want to delete this product?");
+    }
+}
