@@ -1,23 +1,15 @@
-$prefix-badge: $prefix + "badge";
+$badge: $prefix + "badge";
 
-.#{$prefix-badge} {
+.#{$badge} {
     @apply text-xs font-medium px-2.5 py-0.5 rounded;
 
-    .#{$prefix-badge}-color-default {
-        @apply bg-gray-100 text-gray-800;
-
-        .#{$prefix-theme-dark} & {
-            @apply text-gray-300 bg-gray-700;
-        }
+    .#{$badge}-color-default {
+        @apply bg-gray-100 text-gray-800 dark:text-gray-300 dark:bg-gray-700;
     }
 
     @each $key, $value in $colors {
         &-color-#{$key} {
-            @apply bg-#{$value}-100 text-#{$value}-800;
-
-            .#{$prefix-theme-dark} & {
-                @apply bg-#{$value}-900 text-#{$value}-300;
-            }
+            @apply bg-#{$value}-100 text-#{$value}-800 dark:bg-#{$value}-900 dark:text-#{$value}-300;
         }
     }
 }

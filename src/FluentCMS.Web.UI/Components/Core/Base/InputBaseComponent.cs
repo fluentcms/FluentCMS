@@ -25,6 +25,7 @@ public abstract class InputBaseComponent<T> : BaseComponent
     public bool Required { get; set; } = false;
 
     [Parameter]
+    [CssProperty]
     public bool Disabled { get; set; } = false;
 
     [Parameter]

@@ -1,6 +1,6 @@
-$prefix-button: $prefix + "button";
+$button: $prefix + "button";
 
-.#{$prefix-button} {
+.#{$button} {
     @apply font-medium rounded-lg relative;
 
     & > span {
@@ -41,147 +41,41 @@ $prefix-button: $prefix + "button";
 }
 
 @each $key, $value in $colors {
-    .#{$prefix-button}-color-#{$key}.#{$prefix-button}-outline-false.#{$prefix-button}-disabled-false.#{$prefix-button}-ghost-false {
-        @apply text-white bg-#{$value}-700;
+    .#{$button}-color-#{$key}.#{$button}-outline-false.#{$button}-disabled-false.#{$button}-ghost-false {
+        @apply text-white bg-#{$value}-700 hover:bg-#{$value}-800 focus:ring-4 focus:ring-#{$value}-300 dark:bg-#{$value}-600 dark:hover:bg-#{$value}-700 dark:focus:ring-#{$value}-800;
 
-        &:hover {
-            @apply bg-#{$value}-800;
-        }
-
-        &:focus {
-            @apply ring-4 ring-#{$value}-300;
-        }
-
-        .#{$prefix-theme-dark} & {
-            @apply bg-#{$value}-600;
-        }
-
-        .#{$prefix-theme-dark} &:hover {
-            @apply bg-#{$value}-700;
-        }
-
-        .#{$prefix-theme-dark} &:focus {
-            @apply ring-#{$value}-800;
-        }
     }
 
-    .#{$prefix-button}-color-#{$key}.#{$prefix-button}-disabled-true {
-        @apply text-white bg-#{$value}-400 cursor-not-allowed pointer-events-none;
-
-        .#{$prefix-theme-dark} & {
-            @apply bg-#{$value}-500;
-        }
+    .#{$button}-color-#{$key}.#{$button}-disabled-true {
+        @apply text-white bg-#{$value}-400 cursor-not-allowed pointer-events-none dark:bg-#{$value}-500;
     }
 
-    .#{$prefix-button}-color-#{$key}.#{$prefix-button}-outline-true.#{$prefix-button}-ghost-false {
-        @apply text-#{$value}-700 border border-#{$value}-700;
-
-        &:hover {
-            @apply text-white bg-#{$value}-800;
-        }
-
-        &:focus {
-            @apply ring-4 ring-#{$value}-300;
-        }
-
-        .#{$prefix-theme-dark} & {
-            @apply border-#{$value}-500 text-#{$value}-500;
-        }
-
-        .#{$prefix-theme-dark} &:hover {
-            @apply text-white bg-#{$value}-500;
-        }
-
-        .#{$prefix-theme-dark} &:focus {
-            @apply ring-#{$value}-800;
-        }
+    .#{$button}-color-#{$key}.#{$button}-outline-true.#{$button}-ghost-false {
+        @apply text-#{$value}-700 border border-#{$value}-700 hover:text-white hover:bg-#{$value}-800 focus:ring-4 focus:ring-#{$value}-300 dark:border-#{$value}-500 dark:text-#{$value}-500 dark:hover:text-white dark:hover:bg-#{$value}-500 dark:focus:ring-#{$value}-800;
     }
 
-    .#{$prefix-button}-color-#{$key}.#{$prefix-button}-ghost-true.#{$prefix-button}-outline-false {
-        @apply text-#{$value}-700;
-
-        &:hover {
-            @apply text-#{$value}-800;
-        }
-
-        .#{$prefix-theme-dark} & {
-            @apply text-#{$value}-500;
-        }
-
-        .#{$prefix-theme-dark} &:hover {
-            @apply text-#{$value}-700;
-        }
+    .#{$button}-color-#{$key}.#{$button}-ghost-true.#{$button}-outline-false {
+        @apply text-#{$value}-700 hover:text-#{$value}-800 dark:text-#{$value}-500 dark:hover:text-#{$value}-700;
     }
 }
 
-.#{$prefix-button}-color-default.#{$prefix-button}-ghost-false.#{$prefix-button}-outline-false {
-    @apply text-gray-900 bg-white border border-gray-200;
+.#{$button}-color-default.#{$button}-ghost-false.#{$button}-outline-false {
+    @apply text-gray-900 bg-white border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:ring-4 focus:ring-gray-200 dark:bg-gray-600/10 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700 dark:focus:ring-gray-700;
 
-    &.#{$prefix-button}-disabled-true {
-        @apply opacity-50 cursor-not-allowed pointer-events-none;
-    }
-
-    &:hover {
-        @apply bg-gray-100 text-blue-700;
-    }
-
-    &:focus {
-        @apply ring-4 ring-gray-200;
-    }
-
-    .#{$prefix-theme-dark} & {
-        @apply bg-gray-600/10 text-gray-400 border-gray-600;
-    }
-
-    .#{$prefix-theme-dark} &:hover {
-        @apply text-white bg-gray-700;
-    }
-
-    .#{$prefix-theme-dark} &:focus {
-        @apply ring-gray-700;
-    }
 }
 
-.#{$prefix-button}-color-default.#{$prefix-button}-ghost-true.#{$prefix-button}-outline-false {
-    @apply text-gray-600;
-
-    &:hover {
-        @apply text-gray-800;
-    }
-
-    .#{$prefix-theme-dark} & {
-        @apply text-gray-500;
-    }
-
-    .#{$prefix-theme-dark} &:hover {
-        @apply text-gray-700;
-    }
+.#{$button}-color-default.#{$button}-ghost-true.#{$button}-outline-false {
+    @apply text-gray-600 hover:text-gray-800 dark:text-gray-500 dark:hover:text-gray-700;
 }
 
-.#{$prefix-button}-color-default.#{$prefix-button}-outline-true.#{$prefix-button}-ghost-false {
-    @apply text-gray-700 border border-gray-700;
-
-    &:hover {
-        @apply text-white bg-gray-800;
-    }
-
-    &:focus {
-        @apply ring-4 ring-gray-300;
-    }
-
-    .#{$prefix-theme-dark} & {
-        @apply border-gray-500 text-gray-500;
-    }
-
-    .#{$prefix-theme-dark} &:hover {
-        @apply text-white bg-gray-500;
-    }
-
-    .#{$prefix-theme-dark} &:focus {
-        @apply ring-gray-800;
-    }
+.#{$button}-color-default.#{$button}-outline-true.#{$button}-ghost-false {
+    @apply text-gray-700 border border-gray-700 hover:text-white hover:bg-gray-800 focus:ring-4 focus:ring-gray-300 dark:border-gray-500 dark:text-gray-500 dark:hover:text-white dark:hover:bg-gray-500 dark:focus:ring-gray-800;
 }
 
-.#{$prefix-button}-group {
+.#{$button}-color-default.#{$button}-disabled-true {
+    @apply text-white bg-gray-400 cursor-not-allowed pointer-events-none dark:bg-gray-500;
+}
+
+.#{$button}-group {
     @apply inline-flex justify-end gap-2;
 }

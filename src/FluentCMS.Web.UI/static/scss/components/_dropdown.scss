@@ -1,18 +1,18 @@
-$prefix-dropdown: $prefix + 'dropdown';
+$dropdown: $prefix + 'dropdown';
 
-.#{$prefix-dropdown} {
+.#{$dropdown} {
     @apply inline-flex relative;
 
-
-    & > .#{$prefix-button} > .#{$prefix}icon {
+    & > .#{$prefix}button > .#{$prefix}icon {
         @apply flex items-center justify-center;
-        & svg {
+
+        svg {
             @apply w-2.5 h-2.5;
         }
     }
 
-    &-auto-close-false.#{$prefix-dropdown}-open-false {
-        .#{$prefix-dropdown}-menu {
+    &-auto-close-false.#{$dropdown}-open-false {
+        .#{$dropdown}-menu {
             @apply hidden;
         }
         // Do not close on focus out
@@ -20,17 +20,17 @@ $prefix-dropdown: $prefix + 'dropdown';
 
     &-auto-close-true {
         // Close after focus out
-        &:not(:focus-within) .#{$prefix-dropdown}-menu {
+        &:not(:focus-within) .#{$dropdown}-menu {
             @apply hidden;
         }
     }
 
     &-item-link {
-        @apply block ps-4 pe-8 whitespace-nowrap py-2;
+        @apply block ps-4 pe-8 whitespace-nowrap py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white;
     }
 
     &-menu {
-        @apply absolute z-10 bg-white divide-y divide-gray-100 rounded-lg shadow;
+        @apply absolute z-10 bg-white divide-y divide-gray-100 rounded-lg shadow dark:bg-gray-700;
 
         &-placement-top {
             @apply bottom-full;
@@ -77,22 +77,7 @@ $prefix-dropdown: $prefix + 'dropdown';
         }
 
         &-body {
-            @apply py-2 text-sm text-gray-700;
+            @apply py-2 text-sm text-gray-700 dark:text-gray-200;
         }
-        .#{$prefix-theme-dark} & {
-            @apply bg-gray-700;
-        }
-    }
-
-    &-item-link:hover {
-        @apply bg-gray-100;
-    }
-
-    .#{$prefix-theme-dark} &-item-link:hover {
-        @apply bg-gray-600 text-white;
-    }
-
-    .#{$prefix-theme-dark} &-menu-body {
-        @apply text-gray-200;
     }
 }

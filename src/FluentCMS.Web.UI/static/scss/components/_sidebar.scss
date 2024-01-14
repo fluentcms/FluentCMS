@@ -1,7 +1,6 @@
-$prefix-sidebar: $prefix + 'sidebar';
-$prefix-sidebar-item: $prefix + 'sidebar-item';
+$sidebar: $prefix + 'sidebar';
 
-.#{$prefix-sidebar} {
+.#{$sidebar} {
     @apply h-screen transition-transform -translate-x-full border-r border-gray-200 dark:border-gray-700;
 
     .main {
@@ -16,7 +15,7 @@ $prefix-sidebar-item: $prefix + 'sidebar-item';
         }
     }
 
-    .#{$prefix-sidebar-item} {
+    &-item {
         & > span {
             @apply text-xs py-3;
         }
@@ -31,7 +30,7 @@ $prefix-sidebar-item: $prefix + 'sidebar-item';
             @apply pt-0;
         }
 
-        .#{$prefix-sidebar-item} {
+        .#{$sidebar}-item {
             & > span {
                 @apply text-gray-700 dark:text-gray-500;
             }
@@ -52,7 +51,7 @@ $prefix-sidebar-item: $prefix + 'sidebar-item';
             @apply bg-white dark:bg-gray-800;
         }
 
-        .#{$prefix-sidebar-item} {
+        .#{$sidebar}-item {
             & > span {
                 @apply text-gray-900 dark:text-white ml-2;
             }
@@ -66,7 +65,4 @@ $prefix-sidebar-item: $prefix + 'sidebar-item';
             }
         }
     }
-}
-
-.#{$prefix-sidebar-item} {
 }
