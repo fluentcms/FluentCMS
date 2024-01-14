@@ -1,0 +1,28 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+<li @attributes="AdditionalAttributes"
+    class="@this.GetClasses()">
+    <a  id="tab-@Index"
+       @onclick="() => Parent?.Activate(Index)">
+        @ChildContent
+    </a>
+</li>
+
+@code {
+    [Parameter]
+    [CssProperty]
+    public bool Active { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public int Index { get; set; }
+
+    [CascadingParameter]
+    protected Tabs? Parent { get; set; }
+}
+

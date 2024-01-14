@@ -1,0 +1,48 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+<div @attributes="AdditionalAttributes"
+     class="@this.GetClasses()">
+    <CascadingValue Value="this">
+        <TabsList>
+            @foreach (int index in Enumerable.Range(0, Items.Count))
+            {
+                <TabsTab Active="index == Current"
+                         Index="index">
+                    @Items[index]
+                </TabsTab>
+            }
+        </TabsList>
+        <TabsPanels>
+            @ChildContent
+        </TabsPanels>
+    </CascadingValue>
+</div>
+
+@code {
+    private List<string> Items = new List<string>();
+
+    public int Current { get; set; }
+
+    public void Activate(int index)
+    {
+        Current = index;
+        StateHasChanged();
+    }
+
+    public int Register(string name)
+    {
+        Items.Add(name);
+
+        StateHasChanged();
+
+        return Items.Count - 1;
+    }
+
+    public void Unregister(string name)
+    {
+        // TODO
+    }
+}
+
