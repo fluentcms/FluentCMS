@@ -1,5 +1,5 @@
-@inherits BaseComponent
 @implements IDisposable
+@inherits BaseComponent
 
 @namespace FluentCMS.Web.UI.Components
 
@@ -20,14 +20,14 @@
 
     private int Index = 0;
 
-    protected override void OnInitialized()
-    {
-        Index = Parent?.Register(Name) ?? 0;
-    }
-
     public void Dispose()
     {
         // TODO
+    }
+
+    protected override void OnInitialized()
+    {
+        Index = Parent?.Register(Name) ?? 0;
     }
 }
 

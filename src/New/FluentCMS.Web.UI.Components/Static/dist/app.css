@@ -103,7 +103,27 @@ body.dark {
 }
 
 .f-card {
-  /*TODO*/
+  @apply bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-700/20 dark:border-gray-700;
+}
+.f-card-body {
+  @apply p-6;
+}
+@screen sm {
+  .f-card-body {
+    @apply p-8;
+  }
+}
+.f-card-title {
+  @apply text-2xl font-bold text-gray-900 dark:text-white;
+}
+.f-card-width-small {
+  @apply w-full max-w-sm;
+}
+.f-card-width-medium {
+  @apply w-full max-w-md;
+}
+.f-card-width-large {
+  @apply w-full max-w-lg;
 }
 
 .f-close-button {
@@ -653,6 +673,10 @@ body.dark {
   @apply bg-white dark:bg-gray-800;
 }
 
+.f-spacer {
+  /*TODO*/
+}
+
 .f-spinner svg {
   @apply w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-gray-400;
 }
@@ -677,28 +701,6 @@ body.dark {
 
 .f-stack {
   @apply flex gap-4;
-}
-
-.f-tabs-list {
-  @apply flex flex-wrap text-sm font-medium text-center text-gray-500 border-b border-gray-200 dark:text-gray-400 dark:border-gray-700;
-}
-.f-tabs-panel {
-  @apply hidden p-4;
-}
-.f-tabs-panel-active-true {
-  @apply block;
-}
-.f-tabs-tab {
-  @apply me-2;
-}
-.f-tabs-tab-active-true > a {
-  @apply text-blue-600 border-blue-600 dark:text-blue-500 dark:border-blue-500;
-}
-.f-tabs-tab-disabled-true > a {
-  @apply text-gray-400 border-b-0 cursor-not-allowed dark:text-gray-500;
-}
-.f-tabs-tab > a {
-  @apply inline-block p-4 border-b-2 cursor-pointer border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300;
 }
 
 .f-table {
@@ -726,6 +728,35 @@ body.dark {
 }
 .f-table-row {
   @apply bg-white border-b dark:bg-gray-800 dark:border-gray-700;
+}
+
+.f-tabs-list {
+  @apply flex flex-wrap text-sm font-medium text-center text-gray-500 border-b border-gray-200 dark:text-gray-400 dark:border-gray-700;
+}
+.f-tabs-panel {
+  @apply hidden p-4;
+}
+.f-tabs-panel-active-true {
+  @apply block;
+}
+.f-tabs-tab {
+  @apply me-2;
+}
+.f-tabs-tab-active-true > a {
+  @apply text-blue-600 border-blue-600 dark:text-blue-500 dark:border-blue-500;
+}
+.f-tabs-tab-disabled-true > a {
+  @apply text-gray-400 border-b-0 cursor-not-allowed dark:text-gray-500;
+}
+.f-tabs-tab > a {
+  @apply inline-block p-4 border-b-2 cursor-pointer border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300;
+}
+
+.f-tooltip {
+  @apply absolute z-10 invisible inline-block px-3 py-2 text-sm font-medium text-white transition-opacity duration-300 bg-gray-900 rounded-lg shadow-sm opacity-0 tooltip dark:bg-gray-700;
+}
+.f-tooltip-show {
+  @apply opacity-100 visible;
 }
 
 /*# sourceMappingURL=app.css.map */

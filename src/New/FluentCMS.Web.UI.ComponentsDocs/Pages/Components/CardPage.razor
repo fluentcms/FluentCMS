@@ -3,5 +3,49 @@
 
 <Page>
     <PageHeader Title="Cards" />
-    TODO
+
+    <PageBody>
+        <ComponentPreview Title="Default"
+                          Description="Use the following simple card component with a title and description.">
+            <Card>
+                <CardBody>
+                    <CardTitle>Noteworthy technology acquisitions 2021</CardTitle>
+                    Here are the biggest enterprise technology acquisitions of 2021 so far, in reverse chronological order.
+                </CardBody>
+            </Card>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Media">
+            <Card>
+                @* TODO *@
+                <img class="w-full rounded-t" src="https://c4.wallpaperflare.com/wallpaper/756/1014/339/body-of-water-over-the-horizon-wallpaper-preview.jpg" />
+                <CardBody>
+                    <CardTitle>Some title</CardTitle>
+                    @* TODO *@
+                    <div class="mb-2">
+                        Here are the biggest enterprise technology acquisitions of 2021 so far, in reverse chronological order.
+                    </div>
+                    <Button Color="Color.Primary">Read More ></Button>
+                </CardBody>
+            </Card>
+        </ComponentPreview>
+
+        <ComponentPreview Title="With Form">
+            <Card>
+                <form>
+                    <CardBody>
+                        <CardTitle>Login Form</CardTitle>
+                        @* TODO *@
+                        <Input Label="Username" />
+                        <Input Label="Password"
+                               Type="InputTypes.Date" />
+                        <ButtonGroup>
+                            <Button Ghost>No Account?</Button>
+                            <Button Color="Color.Primary">Login</Button>
+                        </ButtonGroup>
+                    </CardBody>
+                </form>
+            </Card>
+        </ComponentPreview>
+    </PageBody>
 </Page>

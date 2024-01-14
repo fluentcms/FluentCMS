@@ -31,7 +31,7 @@ export function update(dotnet, element, config) {
 }
 
 export function initialize(dotnet, element) {
-    terminate(dotnet, element);
+    dispose(dotnet, element);
 
     const autocomplete = new TomSelect(element, {
         valueField: 'id',
@@ -46,7 +46,7 @@ export function initialize(dotnet, element) {
     autocompletes.set(element, autocomplete);
 }
 
-export function terminate(dotnet, element) {
+export function dispose(dotnet, element) {
     const autocomplete = autocompletes.get(element);
 
     autocomplete?.destroy();

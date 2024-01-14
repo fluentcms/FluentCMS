@@ -13,7 +13,7 @@ export function open(dotnet, element) {
 }
 
 export function initialize(dotnet, element) {
-    terminate(dotnet, element);
+    dispose(dotnet, element);
 
     const Modal = window.Flowbite.default.Modal;
 
@@ -26,7 +26,7 @@ export function initialize(dotnet, element) {
     modals.set(element, modal);
 }
 
-export function terminate(dotnet, element) {
+export function dispose(dotnet, element) {
     const modal = modals.get(element);
 
     modal?.destroy();
