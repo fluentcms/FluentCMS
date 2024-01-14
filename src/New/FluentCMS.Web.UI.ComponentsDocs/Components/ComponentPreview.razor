@@ -1,0 +1,18 @@
+@inherits BaseComponent
+
+@* TODO *@
+<div class="pb-6">
+    <h2 class="py-2 text-2xl font-bold">@Title</h2>
+    <p class="mb-2">@Description</p>
+    <div class="dark:bg-gray-800 dark:bg-opacity-50 shadow p-6">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public string? Description { get; set; }
+}

@@ -1,0 +1,17 @@
+﻿@inherits LayoutComponentBase
+@layout RootLayout
+
+<Grid>
+    <GridItem Small="GridItemColumn.Two">
+        <Sidebar Title="Examples"
+                 Secondary="true">
+            <ChildContent>
+                <SidebarItem>Authentication</SidebarItem>
+                <SidebarItem href="/examples/login">Login</SidebarItem>
+            </ChildContent>
+        </Sidebar>
+    </GridItem>
+    <GridItem Small="GridItemColumn.Ten">
+        @Body
+    </GridItem>
+</Grid>

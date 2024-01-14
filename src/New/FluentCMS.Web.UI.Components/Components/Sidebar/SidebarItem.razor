@@ -1,0 +1,37 @@
+@inherits BaseComponent
+
+<li @attributes="AdditionalAttributes"
+    class="@this.GetClasses()">
+    @if (string.IsNullOrEmpty(Href))
+    {
+        <span>
+            @ChildContent
+        </span>
+    }
+    else
+    {
+        @* TODO: checked the usage of class *@
+        <a class="group" href="@Href">
+            @if (this.Icon != IconName.Default)
+            {
+                <Icon Name="Icon" />
+            }
+            <span>
+                @ChildContent
+            </span>
+        </a>
+    }
+</li>
+
+@code {
+    [Parameter]
+    public string? Href { get; set; }
+
+    [Parameter]
+    public IconName Icon { get; set; }
+
+    // TODO: remove or make it better
+    [Parameter]
+    [CssProperty]
+    public bool Sub { get; set; }
+}

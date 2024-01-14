@@ -8,6 +8,14 @@ $prefix-autocomplete: $prefix + "autocomplete";
         @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
     }
 
+    .ts-control > input {
+        @apply absolute w-0 h-0 invisible pointer-events-none;
+    }
+
+    select {
+        @apply absolute w-0 h-0 invisible pointer-events-none;
+    }
+
     .ts-dropdown {
         @apply bg-white divide-y divide-gray-100 rounded-lg shadow dark:bg-gray-700 border-none;
     }

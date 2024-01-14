@@ -1,0 +1,49 @@
+@inherits BaseComponent
+
+<nav @attributes="AdditionalAttributes"
+    class="@this.GetClasses()">
+    @if (HasBack)
+    {
+        <PageBackButton />
+    }
+
+    <h1 class="@this.ClassName("PageHeaderTitle")">
+        @Title
+    </h1>
+
+    <div class="@this.ClassName("PageHeaderBody")">
+        <div class="@this.ClassName("PageHeaderSubtitle")">
+            @if (PageHeaderSubtitle != null)
+            {
+                @PageHeaderSubtitle
+            }
+            else
+            {
+                @SubTitle
+            }
+        </div>
+        @if (PageHeaderActions != null)
+        {
+            <div class="@this.ClassName("PageHeaderActions")">
+                @PageHeaderActions
+            </div>
+        }
+    </div>
+</nav>
+
+@code {
+    [Parameter]
+    public bool HasBack { get; set; }
+
+    [Parameter]
+    public RenderFragment? PageHeaderActions { get; set; }
+
+    [Parameter]
+    public RenderFragment? PageHeaderSubtitle { get; set; }
+
+    [Parameter]
+    public string? SubTitle { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+}

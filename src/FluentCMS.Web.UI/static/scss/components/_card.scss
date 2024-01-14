@@ -1,17 +1,11 @@
-$prefix-card: $prefix + 'card';
+$card: $prefix + 'card';
 
-.#{$prefix-card} {
-    @apply bg-white border border-gray-200 rounded-lg shadow;
-    // max-w-sm
+.#{$card} {
+    @apply bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-700/20 dark:border-gray-700;
 
     &-title {
-        @apply text-2xl font-bold text-gray-900;
-        // TODO: Sometimes card title should be: text-xl font-medium
+        @apply text-2xl font-bold text-gray-900 dark:text-white;
     }
-
-    // &-footer {
-    //     @apply text-gray-800 rounded-b-lg bg-gray-50 p-4 border-t border-gray-200;
-    // }
 
     &-body {
         @apply p-6;
@@ -29,19 +23,4 @@ $prefix-card: $prefix + 'card';
 	&-width-large {
 		@apply w-full max-w-lg;
 	}
-
-    .#{$prefix-theme-dark} & {
-        @apply bg-gray-700/20 border-gray-700;
-    }
-
-    .#{$prefix-theme-dark} &-header {
-        @apply border-gray-700 bg-gray-800;
-    }
-    .#{$prefix-theme-dark} &-footer {
-        @apply border-gray-700 bg-gray-700/50;
-    }
-
-    .#{$prefix-theme-dark} &-title {
-        @apply text-white;
-    }
 }

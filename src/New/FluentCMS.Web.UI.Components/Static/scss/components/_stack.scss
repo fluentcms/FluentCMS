@@ -1,0 +1,5 @@
+$stack: $prefix + 'stack';
+
+.#{$stack} {
+    @apply flex gap-4;
+}

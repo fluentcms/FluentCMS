@@ -49,6 +49,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.UI", "New\Flu
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.ApiClients", "New\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj", "{9F3AA713-BC59-45F9-BBBD-C872FCA91B70}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.UI.ComponentsDocs", "New\FluentCMS.Web.UI.ComponentsDocs\FluentCMS.Web.UI.ComponentsDocs.csproj", "{52B55216-80A2-4B41-9661-CD93FB5AB7B6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -131,6 +133,10 @@ Global
 		{9F3AA713-BC59-45F9-BBBD-C872FCA91B70}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9F3AA713-BC59-45F9-BBBD-C872FCA91B70}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9F3AA713-BC59-45F9-BBBD-C872FCA91B70}.Release|Any CPU.Build.0 = Release|Any CPU
+		{52B55216-80A2-4B41-9661-CD93FB5AB7B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{52B55216-80A2-4B41-9661-CD93FB5AB7B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{52B55216-80A2-4B41-9661-CD93FB5AB7B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{52B55216-80A2-4B41-9661-CD93FB5AB7B6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -156,6 +162,7 @@ Global
 		{03263410-6E19-400B-9806-F0F40FB72D43} = {71838D6C-5D35-4A5F-A00A-3E42D6313235}
 		{1AA29D9C-E8FD-4269-93DD-7DB82C77498B} = {71838D6C-5D35-4A5F-A00A-3E42D6313235}
 		{9F3AA713-BC59-45F9-BBBD-C872FCA91B70} = {71838D6C-5D35-4A5F-A00A-3E42D6313235}
+		{52B55216-80A2-4B41-9661-CD93FB5AB7B6} = {71838D6C-5D35-4A5F-A00A-3E42D6313235}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2E9F4217-7A58-48A4-9850-84CD0CDA31DA}

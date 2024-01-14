@@ -1,6 +1,4 @@
-//
-// Icon
-//
+$icon: $prefix + "icon";
 
 $icon-sizes: (
     // xs: 0.75rem,
@@ -19,20 +17,18 @@ $icon-sizes: (
     // 9x: 9rem
 );
 
-$prefix-icon: $prefix + "icon";
+.#{$icon} {
+    --#{$icon}-size: 1em;
 
-.#{$prefix-icon} {
-    --#{$prefix-icon}-size: 1em;
-
-    width: var(--#{$prefix-icon}-size);
-    height: var(--#{$prefix-icon}-size);
+    width: var(--#{$icon}-size);
+    height: var(--#{$icon}-size);
 
     display: inline-flex;
     justify-content: center;
 
     @each $key, $value in $icon-sizes {
         &-size-#{$key} {
-            --#{$prefix-icon}-size: #{$value};
+            --#{$icon}-size: #{$value};
         }
     }
 

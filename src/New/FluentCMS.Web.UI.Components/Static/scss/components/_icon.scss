@@ -1,0 +1,27 @@
+$icon: $prefix + "icon";
+
+$icon-size: ( small: 0.875rem, medium: 1rem, large: 1.25rem );
+
+.#{$icon} {
+    width: 1em;
+    height: 1em;
+
+    @apply inline-flex justify-center;
+
+    * {
+        stroke-width: 1.5px;
+    }
+
+    @each $key, $value in $colors {
+        &-color-#{$key} {
+            @apply text-#{$value}-500;
+        }
+    }
+
+    @each $key, $value in $icon-size {
+        &-size-#{$key} {
+            width: $value;
+            height: $value;
+        }
+    }
+}
