@@ -1,0 +1,15 @@
+﻿@inherits ErrorBoundary
+
+@namespace FluentCMS.Web.UI.Components
+
+@ChildContent
+
+@code {
+
+    [Parameter]
+    public EventCallback<Exception> OnError { get; set; }
+    protected override async Task OnErrorAsync(Exception exception)
+    {
+        await OnError.InvokeAsync(exception);
+    }
+}
