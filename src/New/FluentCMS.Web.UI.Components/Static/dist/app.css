@@ -110,6 +110,31 @@ body.dark {
   @apply text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white;
 }
 
+.f-confirm {
+  @apply hidden fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0 justify-center items-center;
+}
+.f-confirm-open-true {
+  @apply flex;
+}
+.f-confirm-body {
+  @apply p-4 md:p-5 text-center;
+}
+.f-confirm-body > .f-icon {
+  @apply block mx-auto mb-4 text-gray-400 w-12 h-12 dark:text-gray-200;
+}
+.f-confirm-content {
+  @apply relative bg-white rounded-lg shadow dark:bg-gray-700;
+}
+.f-confirm-content > .f-close-button {
+  @apply absolute top-3 end-2.5;
+}
+.f-confirm-message {
+  @apply mb-5 text-lg font-normal text-gray-500 dark:text-gray-400;
+}
+.f-confirm-wrapper {
+  @apply relative p-4 w-full max-w-md max-h-full;
+}
+
 .f-grid {
   --grid-gutter-x: 0;
   --grid-gutter-y: 0;

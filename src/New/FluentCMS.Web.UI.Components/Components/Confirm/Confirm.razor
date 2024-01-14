@@ -9,17 +9,18 @@
     @* TODO: It is removed after enabling the JS invoker *@
     @if (Open)
     {
-        <div class="bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0" @onclick="Close"></div>
+        <div class="bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0"
+             @onclick="Close" />
     }
 
     <div class="@this.ClassName("ConfirmWrapper")">
         <div class="@this.ClassName("ConfirmContent")">
             <CloseButton OnClick="Cancel" />
             <div class="@this.ClassName("ConfirmBody")">
-                <Icon Name="IconName.ExclamationCircle" Size="IconSize.Large" />
+                <Icon Name="IconName.ExclamationCircle"
+                      Size="IconSize.Large" />
 
-                @* TODO: Replace it with typography component *@
-                <h3 class="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">
+                <h3 class="@this.ClassName("ConfirmMessage")">
                     @Message
                 </h3>
 

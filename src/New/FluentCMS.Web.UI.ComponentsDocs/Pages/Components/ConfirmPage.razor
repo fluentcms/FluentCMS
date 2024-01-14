@@ -26,9 +26,8 @@
 
 
  @code {
-    // TODO
-    // [Inject]
-    // ConfirmService ConfirmService { get; set; } = default!;
+    [Inject]
+    ConfirmService ConfirmService { get; set; } = default!;
 
     private bool Open1 { get; set; }
 
@@ -36,7 +35,6 @@
 
     async Task OpenByService()
     {
-        // TODO
-        // var Result = await ConfirmService!.Show("Are you sure you want to delete this product?");
+        var Result = await ConfirmService!.Show("Are you sure you want to delete this product?");
     }
 }
