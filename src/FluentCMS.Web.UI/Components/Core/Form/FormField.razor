@@ -36,10 +36,10 @@ else
             </FormLabel>
         }
 
-        @if (IconStart != IconNameEnum.Default || IconEnd != IconNameEnum.Default)
+        @if (IconStart != IconNames.Default || IconEnd != IconNames.Default)
         {
             <div class="@this.ClassName("FormFieldGroup")">
-                @if (IconStart != IconNameEnum.Default)
+                @if (IconStart != IconNames.Default)
                 {
                     <div class="@this.ClassName("FormFieldStartIconWrapper")">
                         <Icon Name="IconStart" />
@@ -47,7 +47,7 @@ else
                 }
                 @ChildContent
 
-                @if (IconEnd != IconNameEnum.Default)
+                @if (IconEnd != IconNames.Default)
                 {
                     <div class="@this.ClassName("FormFieldEndIconWrapper")">
                         <Icon Name="IconEnd" />
@@ -73,19 +73,19 @@ else
     public bool Dense { get; set; }
 
     [CssProperty]
-    public bool HasEndIcon => IconEnd != IconNameEnum.Default;
+    public bool HasEndIcon => IconEnd != IconNames.Default;
 
     [CssProperty]
-    public bool HasStartIcon => IconStart != IconNameEnum.Default;
+    public bool HasStartIcon => IconStart != IconNames.Default;
 
     [Parameter]
     public string? Hint { get; set; }
 
     [Parameter]
-    public IconNameEnum IconEnd { get; set; }
+    public IconNames IconEnd { get; set; }
 
     [Parameter]
-    public IconNameEnum IconStart { get; set; }
+    public IconNames IconStart { get; set; }
 
     [Parameter]
     public string Id { get; set; }
@@ -102,5 +102,5 @@ else
 
     [Parameter]
     [CssProperty]
-    public FormFieldStateEnum State { get; set; } = FormFieldStateEnum.Default;
+    public FormFieldStates State { get; set; } = FormFieldStates.Default;
 }

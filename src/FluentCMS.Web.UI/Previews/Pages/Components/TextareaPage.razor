@@ -45,8 +45,8 @@
         <Preview Title="Icons">
             <ChildContent>
                 <div class="flex flex-col">
-                    <Textarea IconStart=@IconNameEnum.InformationFilled Label="Start Icon" Placeholder="Type something..."/>
-                    <Textarea IconEnd=@IconNameEnum.Search  Label="End Icon" Placeholder="Type something..."/>
+                    <Textarea IconStart=@IconNames.InformationFilled Label="Start Icon" Placeholder="Type something..."/>
+                    <Textarea IconEnd=@IconNames.Search  Label="End Icon" Placeholder="Type something..."/>
                 </div>
             </ChildContent>
         </Preview>
@@ -63,8 +63,8 @@
             <ChildContent>
                 <div class="flex flex-col">
                     <Textarea Hint="This is info message" Label="Username" Placeholder="Type something..."/>
-                    <Textarea Hint="This field is required!" State=FormFieldStateEnum.Invalid Label="Email" Placeholder="Type something..."/>
-                    <Textarea Hint="This field is okay!" State=FormFieldStateEnum.Valid Label="Name" Placeholder="Type something..."/>
+                    <Textarea Hint="This field is required!" State=FormFieldStates.Invalid Label="Email" Placeholder="Type something..."/>
+                    <Textarea Hint="This field is okay!" State=FormFieldStates.Valid Label="Name" Placeholder="Type something..."/>
                 </div>
             </ChildContent>
         </Preview>
@@ -75,7 +75,7 @@
                     <Textarea @bind-Value=@Textarea1Value Label="Textarea"/>
 
                     <div class="w-full mx-auto">
-                        <Badge Color="ColorEnum.Primary">@Textarea1Value</Badge>
+                        <Badge Color="Colors.Primary">@Textarea1Value</Badge>
                     </div>
                 </div>
             </ChildContent>

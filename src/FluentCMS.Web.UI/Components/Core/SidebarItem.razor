@@ -11,7 +11,7 @@
     else
     {
         <a class="group" href="@Href">
-            @if (this.Icon != IconNameEnum.Default)
+            @if (this.Icon != IconNames.Default)
             {
                 <Icon Name="@Icon" />
             }
@@ -27,7 +27,7 @@
     public string Href { get; set; }
 
     [Parameter]
-    public IconNameEnum Icon { get; set; }
+    public IconNames Icon { get; set; }
 
     [Parameter]
     [CssProperty]

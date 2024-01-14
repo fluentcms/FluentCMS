@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public enum FormFieldStateEnum
+public enum FormFieldStates
 {
     Default,
     Invalid,

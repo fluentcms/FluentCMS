@@ -37,7 +37,7 @@
                 <div class="pb-12">
                     @foreach (var item in Value)
                     {
-                        <Badge @key=item Color=ColorEnum.Primary>
+                        <Badge @key=item Color=Colors.Primary>
                             @Options.FirstOrDefault(X => X.Id == item).Title
                         </Badge>
                         <span>&nbsp;</span>

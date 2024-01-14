@@ -67,8 +67,8 @@
         <Preview Title="Validation">
             <ChildContent>
                 <div>
-                    <Switch Label="Invalid" Hint="This is required" State="FormFieldStateEnum.Invalid"/>
-                    <Switch Label="Valid" Hint="This is okay" State="FormFieldStateEnum.Valid"/>
+                    <Switch Label="Invalid" Hint="This is required" State="FormFieldStates.Invalid"/>
+                    <Switch Label="Valid" Hint="This is okay" State="FormFieldStates.Valid"/>
                 </div>
             </ChildContent>
         </Preview>
@@ -78,7 +78,7 @@
                 <div>
                     <Switch Label="Initial Value" @bind-Value=@Switch1Value />
                     <div>
-                        <Badge Color=@(Switch1Value ? ColorEnum.Success : ColorEnum.Danger)>@Switch1Value</Badge>
+                        <Badge Color=@(Switch1Value ? Colors.Success : Colors.Danger)>@Switch1Value</Badge>
                     </div>
                 </div>
             </ChildContent>

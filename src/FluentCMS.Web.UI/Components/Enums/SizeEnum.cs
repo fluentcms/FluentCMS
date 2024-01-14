@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public enum SizeEnum
+public enum Sizes
 {
     Default,
     Small,

@@ -69,7 +69,7 @@
         <Preview Title="Icon">
             <ChildContent>
                 <div class="flex flex-col">
-                    <Select IconStart="IconNameEnum.Search" Label="Select Icon Start">
+                    <Select IconStart="IconNames.Search" Label="Select Icon Start">
                         <Option>One</Option>
                         <Option>Two</Option>
                         <Option>Three</Option>
@@ -87,13 +87,13 @@
                         <Option>Three</Option>
                     </Select>
 
-                    <Select State="FormFieldStateEnum.Invalid" Label="Invalid" Hint="Something went wrong...">
+                    <Select State="FormFieldStates.Invalid" Label="Invalid" Hint="Something went wrong...">
                         <Option>One</Option>
                         <Option>Two</Option>
                         <Option>Three</Option>
                     </Select>
 
-                    <Select State="FormFieldStateEnum.Valid" Label="Valid" Hint="Everything is okay!">
+                    <Select State="FormFieldStates.Valid" Label="Valid" Hint="Everything is okay!">
                         <Option>One</Option>
                         <Option>Two</Option>
                         <Option>Three</Option>
@@ -112,7 +112,7 @@
                     </Select>
 
                     <div class="w-full mx-auto">
-                        <Badge Color="ColorEnum.Primary">@Select1Value</Badge>
+                        <Badge Color="Colors.Primary">@Select1Value</Badge>
                     </div>
                 </div>
             </ChildContent>
