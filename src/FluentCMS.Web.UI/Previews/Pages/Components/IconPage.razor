@@ -2,67 +2,71 @@
 @layout ComponentsLayout
 @rendermode InteractiveServer
 
-<PageHeader HasBack Title="Icons"/>
+<Page>
+    <PageHeader HasBack Title="Icons"/>
 
-<Preview Title="Default">
-    <ChildContent>
-        <div class="flex gap-4">
-            <Icon Name="IconNameEnum.InformationFilled" />
-            <Icon Name="IconNameEnum.Plus" />
-            <Icon Name="IconNameEnum.Delete" />
-            <Icon Name="IconNameEnum.Search" />
-            <Icon Name="IconNameEnum.Next" />
-        </div>
-    </ChildContent>
-</Preview>
+    <PageBody>
+        <Preview Title="Default">
+            <ChildContent>
+                <div class="flex gap-4">
+                    <Icon Name="IconNames.InformationFilled" />
+                    <Icon Name="IconNames.Plus" />
+                    <Icon Name="IconNames.Delete" />
+                    <Icon Name="IconNames.Search" />
+                    <Icon Name="IconNames.Next" />
+                </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Color">
-    <ChildContent>
-        <div class="flex gap-4">
-            <Icon Name="IconNameEnum.InformationFilled" />
-            <Icon Color="ColorEnum.Primary" Name="IconNameEnum.InformationFilled" />
-            <Icon Color="ColorEnum.Secondary" Name="IconNameEnum.InformationFilled" />
-            <Icon Color="ColorEnum.Success" Name="IconNameEnum.InformationFilled" />
-            <Icon Color="ColorEnum.Danger" Name="IconNameEnum.InformationFilled" />
-            <Icon Color="ColorEnum.Info" Name="IconNameEnum.InformationFilled" />
-            <Icon Color="ColorEnum.Warning" Name="IconNameEnum.InformationFilled" />
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Color">
+            <ChildContent>
+                <div class="flex gap-4">
+                    <Icon Name="IconNames.InformationFilled" />
+                    <Icon Color="Colors.Primary" Name="IconNames.InformationFilled" />
+                    <Icon Color="Colors.Secondary" Name="IconNames.InformationFilled" />
+                    <Icon Color="Colors.Success" Name="IconNames.InformationFilled" />
+                    <Icon Color="Colors.Danger" Name="IconNames.InformationFilled" />
+                    <Icon Color="Colors.Info" Name="IconNames.InformationFilled" />
+                    <Icon Color="Colors.Warning" Name="IconNames.InformationFilled" />
+                </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Size">
-    <ChildContent>
-        <div class="flex gap-4">
-            <Icon Size="SizeEnum.Small" Name="IconNameEnum.InformationFilled" />
-            <Icon Size="SizeEnum.Medium" Name="IconNameEnum.InformationFilled" />
-            <Icon Size="SizeEnum.Large" Name="IconNameEnum.InformationFilled" />
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Size">
+            <ChildContent>
+                <div class="flex gap-4">
+                    <Icon Size="Sizes.Small" Name="IconNames.InformationFilled" />
+                    <Icon Size="Sizes.Medium" Name="IconNames.InformationFilled" />
+                    <Icon Size="Sizes.Large" Name="IconNames.InformationFilled" />
+                </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Size Based on text size">
-    <ChildContent>
-        <div class="flex flex-col gap-4">
-            <h1 class="text-4xl">
-                <Icon Name="IconNameEnum.InformationFilled" />
-                Heading 1
-            </h1>
-            <h2 class="text-3xl">
-                <Icon Name="IconNameEnum.InformationFilled" />
-                Heading 2
-            </h2>
-            <h3 class="text-2xl">
-                <Icon Name="IconNameEnum.InformationFilled" />
-                Heading 3
-            </h3>
-            <h4 class="text-xl">
-                <Icon Name="IconNameEnum.InformationFilled" />
-                Heading 4
-            </h4>
-            <p>
-                <Icon Name="IconNameEnum.InformationFilled" />
-                Paragraph
-            </p>
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Size Based on text size">
+            <ChildContent>
+                <div class="flex flex-col gap-4">
+                    <h1 class="text-4xl">
+                        <Icon Name="IconNames.InformationFilled" />
+                        Heading 1
+                    </h1>
+                    <h2 class="text-3xl">
+                        <Icon Name="IconNames.InformationFilled" />
+                        Heading 2
+                    </h2>
+                    <h3 class="text-2xl">
+                        <Icon Name="IconNames.InformationFilled" />
+                        Heading 3
+                    </h3>
+                    <h4 class="text-xl">
+                        <Icon Name="IconNames.InformationFilled" />
+                        Heading 4
+                    </h4>
+                    <p>
+                        <Icon Name="IconNames.InformationFilled" />
+                        Paragraph
+                    </p>
+                </div>
+            </ChildContent>
+        </Preview>
+    </PageBody>
+</Page>

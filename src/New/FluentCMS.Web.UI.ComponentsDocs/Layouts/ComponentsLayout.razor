@@ -1,0 +1,20 @@
+﻿@inherits LayoutComponentBase
+@layout RootLayout
+
+<Grid>
+    <GridItem Small="GridItemColumn.Two">
+        <Sidebar Secondary="true"
+                 Title="Components">
+            <SidebarItem> CORE </SidebarItem>
+            <SidebarItem href="/components/alert"> Alert </SidebarItem>
+            @* <SidebarItem href="/components/card"> Card </SidebarItem> *@
+            <SidebarItem href="/components/icon"> Icon </SidebarItem>
+
+            <SidebarItem> LAYOUT </SidebarItem>
+            <SidebarItem href="/components/grid"> Grid </SidebarItem>
+        </Sidebar>
+    </GridItem>
+    <GridItem Small="GridItemColumn.Ten">
+        @Body
+    </GridItem>
+</Grid>

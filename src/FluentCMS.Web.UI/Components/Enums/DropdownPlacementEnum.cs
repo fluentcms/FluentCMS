@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public enum DropdownPlacementEnum
+public enum DropdownPlacements
 {
     Default,
     Bottom,

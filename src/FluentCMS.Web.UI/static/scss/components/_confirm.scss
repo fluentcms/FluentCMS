@@ -1,37 +1,29 @@
-$prefix-confirm: $prefix + "confirm";
-$prefix-confirm-body: $prefix + "confirm-body";
-$prefix-confirm-content: $prefix + "confirm-content";
-$prefix-confirm-wrapper: $prefix + "confirm-wrapper";
+$confirm: $prefix + "confirm";
 
-.#{$prefix-confirm} {
+.#{$confirm} {
     @apply hidden fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0 justify-center items-center;
 
     &-open-true {
         @apply flex;
     }
-}
 
-.#{$prefix-confirm-body} {
-    @apply p-4 md:p-5 text-center;
+    &-body {
+        @apply p-4 md:p-5 text-center;
 
-    & > .#{$prefix + "icon"} {
-        @apply block mx-auto mb-4 text-gray-400 w-12 h-12 dark:text-gray-200;
+        & > .#{$prefix}-icon {
+            @apply block mx-auto mb-4 text-gray-400 w-12 h-12 dark:text-gray-200;
+        }
     }
 
-    & > .#{$prefix + "button-group"} {
-        /* TODO: Remove it after fix in ButtonGroup component */
-        @apply inline-flex;
+    &-content {
+        @apply relative bg-white rounded-lg shadow dark:bg-gray-700;
+
+        & > .#{$prefix}-close-button {
+            @apply absolute top-3 end-2.5;
+        }
     }
-}
 
-.#{$prefix-confirm-content} {
-    @apply relative bg-white rounded-lg shadow dark:bg-gray-700;
-
-    & > .#{$prefix + "close-button"} {
-        @apply absolute top-3 end-2.5;
+    &-wrapper {
+        @apply relative p-4 w-full max-w-md max-h-full;
     }
-}
-
-.#{$prefix-confirm-wrapper} {
-    @apply relative p-4 w-full max-w-md max-h-full;
 }

@@ -1,47 +1,29 @@
-$prefix-tabs: $prefix + 'tabs';
-$prefix-tab: $prefix + 'tab';
+$tabs: $prefix + 'tabs';
+$tab: $prefix + 'tab';
 
-.#{$prefix-tab}-item {
-    @apply inline-block p-4 border-b-2 border-transparent rounded-t-lg;
-
-    &:hover {
-        @apply text-gray-600 border-gray-300;
-    }
+.#{$tab}-item {
+    @apply inline-block p-4 border-b-2 cursor-pointer border-transparent rounded-t-lg;
+        @apply hover:text-gray-600 hover:border-gray-300;
+        @apply dark:hover:text-gray-300;
 
     &-wrapper {
         @apply me-2;
     }
 
-    .#{$prefix-theme-dark} &:hover {
-        @apply text-gray-300;
-    }
-
     &-active-true {
-        @apply text-blue-600 border-blue-600;
-        // should add active class
-        .#{$prefix-theme-dark} & {
-            @apply text-blue-500 border-blue-500;
-        }
+        @apply text-blue-600 border-blue-600 dark:text-blue-500 dark:border-blue-500;
     }
 
     &-disabled-true {
-        @apply text-gray-400 border-b-0 cursor-not-allowed;
-
-        .#{$prefix-theme-dark} & {
-            @apply text-gray-500;
-        }
+        @apply text-gray-400 border-b-0 cursor-not-allowed dark:text-gray-500;
     }
 }
 
-.#{$prefix-tab}-list {
-    @apply flex flex-wrap text-sm font-medium text-center text-gray-500 border-b border-gray-200;
-
-    .#{$prefix-theme-dark} & {
-        @apply text-gray-400 border-gray-700;
-    }
+.#{$tab}-list {
+    @apply flex flex-wrap text-sm font-medium text-center text-gray-500 border-b border-gray-200 dark:text-gray-400 dark:border-gray-700;
 }
 
-.#{$prefix-tab}-panel {
+.#{$tab}-panel {
     @apply hidden p-4;
 
     &-active-true {
