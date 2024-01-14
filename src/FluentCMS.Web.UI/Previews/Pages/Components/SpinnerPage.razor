@@ -2,22 +2,25 @@
 @layout ComponentsLayout
 @rendermode InteractiveServer
 
-<PageHeader HasBack Title="Spinner"/>
+<Page>
+    <PageHeader HasBack Title="Spinner"/>
 
-<Preview Title="Default">
-    <Description>
-        Use the spinner component as a loader indicator in your projects when fetching data based on an animated SVG
-    </Description>
-    <ChildContent>
-        <div class="flex gap-4">
-            <Spinner />
-            <Spinner Color="@ColorEnum.Primary" />
-            <Spinner Color="@ColorEnum.Secondary" />
-            <Spinner Color="@ColorEnum.Success" />
-            <Spinner Color="@ColorEnum.Danger" />
-            <Spinner Color="@ColorEnum.Warning" />
-            <Spinner Color="@ColorEnum.Info" />
-        </div>
-    </ChildContent>
-</Preview>
-
+    <PageBody>
+        <Preview Title="Default">
+            <Description>
+                Use the spinner component as a loader indicator in your projects when fetching data based on an animated SVG
+            </Description>
+            <ChildContent>
+                <div class="flex gap-4">
+                    <Spinner />
+                    <Spinner Color="@ColorEnum.Primary" />
+                    <Spinner Color="@ColorEnum.Secondary" />
+                    <Spinner Color="@ColorEnum.Success" />
+                    <Spinner Color="@ColorEnum.Danger" />
+                    <Spinner Color="@ColorEnum.Warning" />
+                    <Spinner Color="@ColorEnum.Info" />
+                </div>
+            </ChildContent>
+        </Preview>
+    </PageBody>
+</Page>

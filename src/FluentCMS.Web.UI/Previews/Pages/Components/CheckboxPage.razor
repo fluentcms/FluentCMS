@@ -2,94 +2,98 @@
 @layout ComponentsLayout
 @rendermode InteractiveServer
 
-<PageHeader HasBack Title="Checkbox"/>
+<Page>
+    <PageHeader HasBack Title="Checkbox"/>
 
-<Preview Title="Default">
-    <ChildContent>
-        <Checkbox />
-    </ChildContent>
-</Preview>
+    <PageBody>
+        <Preview Title="Default">
+            <ChildContent>
+                <Checkbox />
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Label">
-    <ChildContent>
-        <Checkbox Label="Checkbox"/>
-    </ChildContent>
-</Preview>
+        <Preview Title="Label">
+            <ChildContent>
+                <Checkbox Label="Checkbox"/>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Checked">
-    <Description>
-        When Value is true, checkbox is in checked state.
-    </Description>
-    <ChildContent>
-        <Checkbox Value Label="Checked"/>
-    </ChildContent>
-</Preview>
+        <Preview Title="Checked">
+            <Description>
+                When Value is true, checkbox is in checked state.
+            </Description>
+            <ChildContent>
+                <Checkbox Value Label="Checked"/>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Dense">
-    <Description>
-        Removes space from bottom of element
-    </Description>
-    <ChildContent>
-        <div class="flex flex-col">
-            <Checkbox Dense Label="Unchecked"/>
-            <Checkbox Dense Value Label="Checked"/>
-        </div>
-    </ChildContent>
-</Preview>
-<Preview Title="Disabled">
-    <ChildContent>
-        <div class="flex flex-col">
-            <Checkbox Disabled Label="Unchecked"/>
-            <Checkbox Disabled Value Label="Checked"/>
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Dense">
+            <Description>
+                Removes space from bottom of element
+            </Description>
+            <ChildContent>
+                <div class="flex flex-col">
+                    <Checkbox Dense Label="Unchecked"/>
+                    <Checkbox Dense Value Label="Checked"/>
+                </div>
+            </ChildContent>
+        </Preview>
+        <Preview Title="Disabled">
+            <ChildContent>
+                <div class="flex flex-col">
+                    <Checkbox Disabled Label="Unchecked"/>
+                    <Checkbox Disabled Value Label="Checked"/>
+                </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Inline">
-    <ChildContent>
-        <div>
-            <Checkbox Disabled Label="Unchecked"/>
-            <Checkbox Disabled Value Label="Checked"/>
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Inline">
+            <ChildContent>
+                <div>
+                    <Checkbox Disabled Label="Unchecked"/>
+                    <Checkbox Disabled Value Label="Checked"/>
+                </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Description">
-    <ChildContent>
-        <div>
-            <Checkbox Label="Description" Hint="This is description"/>
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Description">
+            <ChildContent>
+                <div>
+                    <Checkbox Label="Description" Hint="This is description"/>
+                </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Validation">
-    <ChildContent>
-        <div>
-            <Checkbox Label="Invalid" Hint="This is required" State="FormFieldStateEnum.Invalid"/>
-            <Checkbox Label="Valid" Hint="This is okay" State="FormFieldStateEnum.Valid"/>
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Validation">
+            <ChildContent>
+                <div>
+                    <Checkbox Label="Invalid" Hint="This is required" State="FormFieldStateEnum.Invalid"/>
+                    <Checkbox Label="Valid" Hint="This is okay" State="FormFieldStateEnum.Valid"/>
+                </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Initial">
-    <ChildContent>
-        <div>
-            <Checkbox Label="Initial Value" @bind-Value=@Check1Value />
-            <div>
-                <Badge Color=@(Check1Value ? ColorEnum.Success : ColorEnum.Danger)>@Check1Value</Badge>
-            </div>
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Initial">
+            <ChildContent>
+                <div>
+                    <Checkbox Label="Initial Value" @bind-Value=@Check1Value />
+                    <div>
+                        <Badge Color=@(Check1Value ? ColorEnum.Success : ColorEnum.Danger)>@Check1Value</Badge>
+                    </div>
+                </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Bind Value">
-    <ChildContent>
-        <div>
-            <Checkbox Label="Checkbox 1" @bind-Value=@Check2Value />
-            <Checkbox Label="Checkbox 2" @bind-Value=@Check2Value />
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Bind Value">
+            <ChildContent>
+                <div>
+                    <Checkbox Label="Checkbox 1" @bind-Value=@Check2Value />
+                    <Checkbox Label="Checkbox 2" @bind-Value=@Check2Value />
+                </div>
+            </ChildContent>
+        </Preview>
+    </PageBody>
+</Page>
 
 @code {
     private bool Check1Value;
