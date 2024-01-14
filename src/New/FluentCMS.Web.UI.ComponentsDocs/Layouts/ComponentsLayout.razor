@@ -1,12 +1,15 @@
 ﻿@inherits LayoutComponentBase
 @layout RootLayout
 
+@inject IJSRuntime jsRuntime;
+
 <Grid>
     <GridItem Small="GridItemColumn.Two">
         <Sidebar Secondary="true"
                  Title="Components">
             <SidebarItem> CORE </SidebarItem>
             <SidebarItem href="/components/alert"> Alert </SidebarItem>
+            <SidebarItem href="/components/error-handling"> Error Handler </SidebarItem>
             @* <SidebarItem href="/components/card"> Card </SidebarItem> *@
             <SidebarItem href="/components/icon"> Icon </SidebarItem>
 
@@ -15,6 +18,15 @@
         </Sidebar>
     </GridItem>
     <GridItem Small="GridItemColumn.Ten">
-        @Body
+        <ErrorHandler OnError="OnError">
+            @Body
+        </ErrorHandler>
     </GridItem>
 </Grid>
+
+@code {
+    public async Task OnError(Exception e)
+    {
+        await jsRuntime.InvokeVoidAsync("alert", e.Message.ToString());
+    }
+}
