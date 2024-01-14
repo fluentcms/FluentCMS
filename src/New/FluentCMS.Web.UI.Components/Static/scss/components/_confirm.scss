@@ -10,6 +10,7 @@ $confirm: $prefix + "confirm";
     &-body {
         @apply p-4 md:p-5 text-center;
 
+        /*TODO*/
         & > .#{$prefix + "icon"} {
             @apply block mx-auto mb-4 text-gray-400 w-12 h-12 dark:text-gray-200;
         }
@@ -18,6 +19,7 @@ $confirm: $prefix + "confirm";
     &-content {
         @apply relative bg-white rounded-lg shadow dark:bg-gray-700;
 
+        /*TODO*/
         & > .#{$prefix + "close-button"} {
             @apply absolute top-3 end-2.5;
         }

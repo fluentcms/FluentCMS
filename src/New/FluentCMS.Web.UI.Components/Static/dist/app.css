@@ -99,7 +99,7 @@ body.dark {
 }
 
 .f-button-group {
-  /*TODO*/
+  @apply inline-flex justify-end gap-2;
 }
 
 .f-card {
@@ -118,12 +118,14 @@ body.dark {
 }
 .f-confirm-body {
   @apply p-4 md:p-5 text-center;
+  /*TODO*/
 }
 .f-confirm-body > .f-icon {
   @apply block mx-auto mb-4 text-gray-400 w-12 h-12 dark:text-gray-200;
 }
 .f-confirm-content {
   @apply relative bg-white rounded-lg shadow dark:bg-gray-700;
+  /*TODO*/
 }
 .f-confirm-content > .f-close-button {
   @apply absolute top-3 end-2.5;
@@ -518,6 +520,40 @@ body.dark {
   height: 1.25rem;
 }
 
+.f-modal {
+  @apply hidden fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0 justify-center items-center;
+}
+.f-modal-open-true {
+  @apply flex;
+}
+.f-modal-body {
+  @apply space-y-6 p-6;
+}
+.f-modal-content {
+  @apply relative rounded-lg bg-white shadow dark:bg-gray-700;
+}
+.f-modal-footer {
+  @apply flex items-center rounded-b border-t border-gray-200 p-6 dark:border-gray-600;
+}
+.f-modal-header {
+  @apply flex items-start justify-between rounded-t border-b p-5 dark:border-gray-600;
+}
+.f-modal-title {
+  @apply text-xl font-semibold text-gray-900 dark:text-white lg:text-2xl;
+}
+.f-modal-wrapper {
+  @apply relative max-h-full w-full;
+}
+.f-modal-size-small > .f-modal-wrapper {
+  @apply max-w-md;
+}
+.f-modal-size-medium > .f-modal-wrapper {
+  @apply max-w-lg;
+}
+.f-modal-size-large > .f-modal-wrapper {
+  @apply max-w-4xl;
+}
+
 .f-page {
   @apply px-4;
 }
@@ -541,6 +577,31 @@ body.dark {
 }
 .f-page-header-title {
   @apply text-3xl text-gray-900 dark:text-gray-300;
+}
+
+.f-pagination ul {
+  @apply h-10 text-base inline-flex -space-x-px;
+}
+.f-pagination ul li:not(:first-child):not(:last-child) button {
+  @apply rounded-none;
+}
+.f-pagination ul li:first-child button {
+  @apply ms-0 border-e-0 rounded-e-none;
+}
+.f-pagination ul li:last-child button {
+  @apply me-0 rounded-s-none;
+}
+.f-pagination-info {
+  @apply text-sm font-normal text-gray-500 dark:text-gray-400;
+}
+.f-pagination-info > span {
+  @apply font-semibold text-gray-900 dark:text-white;
+}
+.f-pagination-item button {
+  @apply relative px-4 h-10 flex items-center justify-center leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white;
+}
+.f-pagination-item-active-true button {
+  @apply text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-700 dark:text-white;
 }
 
 .f-sidebar {
@@ -618,29 +679,31 @@ body.dark {
   @apply flex gap-4;
 }
 
-.f-pagination ul {
-  @apply h-10 text-base inline-flex -space-x-px;
+.f-table {
+  @apply rounded shadow border border-gray-200 w-full text-sm text-left text-gray-500 dark:text-gray-400 dark:border-gray-700;
 }
-.f-pagination ul li:not(:first-child):not(:last-child) button {
-  @apply rounded-none;
+.f-table-cell {
+  @apply px-6 py-3;
 }
-.f-pagination ul li:first-child button {
-  @apply ms-0 border-e-0 rounded-e-none;
+.f-table-foot {
+  @apply dark:bg-gray-800;
 }
-.f-pagination ul li:last-child button {
-  @apply me-0 rounded-s-none;
-}
-.f-pagination-info {
-  @apply text-sm font-normal text-gray-500 dark:text-gray-400;
-}
-.f-pagination-info > span {
+.f-table-foot-row {
   @apply font-semibold text-gray-900 dark:text-white;
 }
-.f-pagination-item button {
-  @apply relative px-4 h-10 flex items-center justify-center leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white;
+.f-table-head {
+  @apply text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400;
 }
-.f-pagination-item-active-true button {
-  @apply text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-700 dark:text-white;
+.f-table-parent {
+  @apply relative overflow-x-auto shadow-md;
+}
+@screen sm {
+  .f-table-parent {
+    @apply rounded-lg;
+  }
+}
+.f-table-row {
+  @apply bg-white border-b dark:bg-gray-800 dark:border-gray-700;
 }
 
 /*# sourceMappingURL=app.css.map */

@@ -5,5 +5,5 @@ $button: $prefix + 'button';
 }
 
 .#{$button}-group {
-    /*TODO*/
+    @apply inline-flex justify-end gap-2;
 }
