@@ -2,21 +2,24 @@
 @layout ComponentsLayout
 @rendermode InteractiveServer
 
-<PageHeader HasBack Title="Tab"/>
+<Page>
+    <PageHeader HasBack Title="Tab"/>
 
-<Preview>
-    <ChildContent>
-        <Tabs>
-             <TabPanel Name="General">
-                 General Tab content
-             </TabPanel>
-             <TabPanel Name="Permissions">
-                 Permissions Tab content
-             </TabPanel>
-             <TabPanel Name="seo">
-                 SEO Tab content
-             </TabPanel>
-         </Tabs>
-    </ChildContent>
-</Preview>
-
+    <PageBody>
+        <Preview Title="Default">
+            <ChildContent>
+                <Tabs>
+                     <TabPanel Name="General">
+                         General Tab content
+                     </TabPanel>
+                     <TabPanel Name="Permissions">
+                         Permissions Tab content
+                     </TabPanel>
+                     <TabPanel Name="seo">
+                         SEO Tab content
+                     </TabPanel>
+                 </Tabs>
+            </ChildContent>
+        </Preview>
+    </PageBody>
+</Page>

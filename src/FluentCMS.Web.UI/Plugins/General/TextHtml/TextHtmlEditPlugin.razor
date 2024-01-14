@@ -3,7 +3,7 @@
 
 <InputTextArea @bind-Value="Model.Content" Required rows="5" placeholder="Enter you Text/Html content here"></InputTextArea>
 <br />
-<Button Type="ButtonTypeEnum.Submit" @onclick="Submit">Update</Button>
+<Button Type="ButtonTypes.Submit" @onclick="Submit">Update</Button>
 
 @code {
     public TextHtmlContent Model { get; set; } = new();

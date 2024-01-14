@@ -1,4 +1,4 @@
-public enum GridItemsEnum
+public enum GridItems
 {
     Start,
     End,
@@ -7,14 +7,14 @@ public enum GridItemsEnum
     Stretch,
 }
 
-public enum GridGutterEnum
+public enum GridGutters
 {
     Small,
     Medium,
     Large,
 }
 
-public enum GridJustifyEnum
+public enum GridJustifies
 {
     Normal,
     Start,

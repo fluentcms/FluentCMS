@@ -1,7 +1,6 @@
 
 // Default prefix for component's CSS classes
 $prefix: 'f-';
-$prefix-theme-dark: $prefix + 'theme-dark';
 
 $colors: (
     "primary": "blue",
@@ -20,7 +19,7 @@ body {
     @apply bg-gray-50;
 }
 
-body.#{$prefix-theme-dark} {
+.dark {
     @apply bg-gray-800;
     color-scheme: dark;
 }
@@ -36,7 +35,6 @@ body.#{$prefix-theme-dark} {
 @import './components/close-button';
 @import './components/confirm';
 @import './components/dropdown';
-@import './components/form-check';
 @import './components/page';
 @import './components/layout';
 @import './components/form';
@@ -45,7 +43,6 @@ body.#{$prefix-theme-dark} {
 @import './components/icon';
 @import './components/table';
 @import './components/tabs';
-@import './components/logo';
 @import './components/sidebar';
 @import './components/spinner';
 @import './components/pagination';
@@ -59,8 +56,5 @@ body.#{$prefix-theme-dark} {
 /* #endregion COMPONENTS */
 
 //#region
-
-@import "./pages/login";
-@import "./pages/sites";
 
 //#endregion

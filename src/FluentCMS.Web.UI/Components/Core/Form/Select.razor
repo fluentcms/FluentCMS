@@ -1,14 +1,14 @@
 @inherits InputBaseComponent<string>
 
-<FormField Dense="Dense"
-           Hint="Hint"
-           IconStart="IconStart"
-           Id="Id"
-           Label="Label"
-           Required="Required"
-           State="State">
+<FormField Dense="@Dense"
+           Hint="@Hint"
+           IconStart="@IconStart"
+           Id="@Id"
+           Label="@Label"
+           Required="@Required"
+           State="@State">
     <select @attributes="AdditionalAttributes"
-            @bind="Value"
+            @bind="@Value"
             class="@this.GetClasses()"
             disabled="@Disabled"
             id="@Id"
@@ -34,7 +34,7 @@
     @* TODO: Add IconEnd *@
 
     [Parameter]
-    public IconNameEnum IconStart { get; set; }
+    public IconNames IconStart { get; set; }
 
     [Parameter]
     public string? Id { get; set; }

@@ -5,8 +5,8 @@
 <Page>
     <PageHeader Subtitle="Simple CRUD page for users" Title="Users">
         <PageHeaderActions>
-            <Button Color="ColorEnum.Primary" OnClick=OpenAddUser>
-                <Icon Name="IconNameEnum.Plus"/>
+            <Button Color="Colors.Primary" OnClick=OpenAddUser>
+                <Icon Name="IconNames.Plus"/>
                 Add User
             </Button>
         </PageHeaderActions>
@@ -31,14 +31,14 @@
                         <TableCell>@User.Name</TableCell>
                         <TableCell>@User.Username</TableCell>
                         <TableCell>
-                            <Badge Color=@(User.Status == UserStatusEnum.Active ? ColorEnum.Success : ColorEnum.Danger)>
+                            <Badge Color=@(User.Status == UserStatuses.Active ? Colors.Success : Colors.Danger)>
                                 @User.Status.ToString()
                             </Badge>
                         </TableCell>
                         <TableCell>
                             <ButtonGroup>
-                                <Button OnClick="(e) => OpenEditUser(User)" Ghost Color="ColorEnum.Primary"><Icon Name="IconNameEnum.Edit"/></Button>
-                                <Button OnClick="(e) => OpenRemoveUser(User)" Ghost Color="ColorEnum.Danger"><Icon Name="IconNameEnum.Delete"/></Button>
+                                <Button OnClick="(e) => OpenEditUser(User)" Ghost Color="Colors.Primary"><Icon Name="IconNames.Edit"/></Button>
+                                <Button OnClick="(e) => OpenRemoveUser(User)" Ghost Color="Colors.Danger"><Icon Name="IconNames.Delete"/></Button>
 
                             </ButtonGroup>
                         </TableCell>
@@ -62,14 +62,14 @@
             <ModalHeader Title="Update User" Closable />
         }
         <ModalBody>
-            <Grid Gutter="GridGutterEnum.Medium">
-                <GridItem Small="GridItemColumnEnum.Twelve" Medium="GridItemColumnEnum.Six">
+            <Grid Gutter="GridGutters.Medium">
+                <GridItem Small="GridItemColumns.Twelve" Medium="GridItemColumns.Six">
                     <Input Label="Name" @bind-Value=@CurrentEditingUser.Name/>
                 </GridItem>
-                <GridItem Small="GridItemColumnEnum.Twelve" Medium="GridItemColumnEnum.Six">
+                <GridItem Small="GridItemColumns.Twelve" Medium="GridItemColumns.Six">
                     <Input Label="Username" @bind-Value=@CurrentEditingUser.Username/>
                 </GridItem>
-                <GridItem Small="GridItemColumnEnum.Twelve">
+                <GridItem Small="GridItemColumns.Twelve">
                     <Select @bind-Value=@CurrentStatus Placeholder="Choose a Status" Label="Status">
                         <Option Value=0>Active</Option>
                         <Option Value=1>Disabled</Option>
@@ -85,11 +85,11 @@
             <ButtonGroup>
                 @if (CurrentEditingUser.Id != null)
                 {
-                    <Button OnClick=UpdateUser Color=@ColorEnum.Primary>
+                    <Button OnClick=UpdateUser Color=@Colors.Primary>
                         Update
                     </Button>
                 } else {
-                    <Button OnClick=InsertUser Color=@ColorEnum.Primary>
+                    <Button OnClick=InsertUser Color=@Colors.Primary>
                         Insert
                     </Button>
                 }
@@ -129,7 +129,7 @@
         if (userToUpdate != null)
         {
             userToUpdate.Name = CurrentEditingUser.Name;
-            userToUpdate.Status = CurrentStatus == "0" ? UserStatusEnum.Active : UserStatusEnum.Disabled;
+            userToUpdate.Status = CurrentStatus == "0" ? UserStatuses.Active : UserStatuses.Disabled;
             userToUpdate.Username = CurrentEditingUser.Username;
         }
 
@@ -164,7 +164,7 @@
     }
     public void OpenEditUser(UserType user)
     {
-        CurrentStatus = user.Status == UserStatusEnum.Active ? "0" : "1";
+        CurrentStatus = user.Status == UserStatuses.Active ? "0" : "1";
         CurrentEditingUser = new UserType {
             Id = user.Id,
             Name = user.Name,
@@ -181,7 +181,7 @@
     public string CurrentStatus;
 
     #region User list
-    public enum UserStatusEnum {
+    public enum UserStatuses {
         Active,
         Disabled
     }
@@ -190,7 +190,7 @@
         public string Id;
         public string Username;
         public string Name;
-        public UserStatusEnum Status;
+        public UserStatuses Status;
     }
 
     public List<UserType> UserList = new List<UserType> {

@@ -2,120 +2,124 @@
 @rendermode InteractiveServer
 @layout ComponentsLayout
 
-<PageHeader HasBack Title="Grids" />
+<Page>
+    <PageHeader HasBack Title="Grids" />
 
-<Preview Title="Default">
-    <Description></Description>
-    <ChildContent>
-        <div>
-            <Grid>
-                <GridItem Small=GridItemColumnEnum.Twelve Medium=GridItemColumnEnum.Six Large=GridItemColumnEnum.Three>
-                    <Card><CardBody>Small=12 Medium=6 Large=3</CardBody></Card>
-                </GridItem>
-                <GridItem Small=GridItemColumnEnum.Twelve Medium=GridItemColumnEnum.Six Large=GridItemColumnEnum.Three>
-                    <Card><CardBody>Small=12 Medium=6 Large=3</CardBody></Card>
-                </GridItem>
-                <GridItem Small=GridItemColumnEnum.Twelve Medium=GridItemColumnEnum.Six Large=GridItemColumnEnum.Three>
-                    <Card><CardBody>Small=12 Medium=6 Large=3</CardBody></Card>
-                </GridItem>
-                <GridItem Small=GridItemColumnEnum.Twelve Medium=GridItemColumnEnum.Six Large=GridItemColumnEnum.Three>
-                    <Card><CardBody>Small=12 Medium=6 Large=3</CardBody></Card>
-                </GridItem>
-            </Grid>
-        </div>
-    </ChildContent>
-</Preview>
+    <PageBody>
+        <Preview Title="Default">
+            <Description></Description>
+            <ChildContent>
+                <div>
+                    <Grid>
+                        <GridItem Small=GridItemColumns.Twelve Medium=GridItemColumns.Six Large=GridItemColumns.Three>
+                            <Card><CardBody>Small=12 Medium=6 Large=3</CardBody></Card>
+                        </GridItem>
+                        <GridItem Small=GridItemColumns.Twelve Medium=GridItemColumns.Six Large=GridItemColumns.Three>
+                            <Card><CardBody>Small=12 Medium=6 Large=3</CardBody></Card>
+                        </GridItem>
+                        <GridItem Small=GridItemColumns.Twelve Medium=GridItemColumns.Six Large=GridItemColumns.Three>
+                            <Card><CardBody>Small=12 Medium=6 Large=3</CardBody></Card>
+                        </GridItem>
+                        <GridItem Small=GridItemColumns.Twelve Medium=GridItemColumns.Six Large=GridItemColumns.Three>
+                            <Card><CardBody>Small=12 Medium=6 Large=3</CardBody></Card>
+                        </GridItem>
+                    </Grid>
+                </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Auto Sizing">
-    <Description></Description>
-    <ChildContent>
-        <div>
-            <Grid>
-                <GridItem Small=GridItemColumnEnum.Auto Large=GridItemColumnEnum.Two>
-                    <Card><CardBody>Small=Auto Large=2</CardBody></Card>
-                </GridItem>
-                <GridItem Small=GridItemColumnEnum.Grow>
-                    <Card><CardBody>Small=Grow</CardBody></Card>
-                </GridItem>
-                <GridItem Small=GridItemColumnEnum.Twelve Large=GridItemColumnEnum.Two>
-                    <Card><CardBody>Small=12 Large=2</CardBody></Card>
-                </GridItem>
-            </Grid>
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Auto Sizing">
+            <Description></Description>
+            <ChildContent>
+                <div>
+                    <Grid>
+                        <GridItem Small=GridItemColumns.Auto Large=GridItemColumns.Two>
+                            <Card><CardBody>Small=Auto Large=2</CardBody></Card>
+                        </GridItem>
+                        <GridItem Small=GridItemColumns.Grow>
+                            <Card><CardBody>Small=Grow</CardBody></Card>
+                        </GridItem>
+                        <GridItem Small=GridItemColumns.Twelve Large=GridItemColumns.Two>
+                            <Card><CardBody>Small=12 Large=2</CardBody></Card>
+                        </GridItem>
+                    </Grid>
+                </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Gutter">
-    <Description></Description>
-    <ChildContent>
-        <div>
-            <Grid Gutter=GridGutterEnum.Large>
-                <GridItem Small=GridItemColumnEnum.Twelve Medium=GridItemColumnEnum.Six Large=GridItemColumnEnum.Five>
-                    <Card><CardBody>Small=12 Medium=6 Large=5</CardBody></Card>
-                </GridItem>
-                <GridItem Small=GridItemColumnEnum.Twelve Medium=GridItemColumnEnum.Six Large=GridItemColumnEnum.Four>
-                    <Card><CardBody>Small=12 Medium=6 Large=4</CardBody></Card>
-                </GridItem>
-                <GridItem Small=GridItemColumnEnum.Twelve Medium=GridItemColumnEnum.Seven Large=GridItemColumnEnum.Three>
-                    <Card><CardBody>Small=12 Medium=7 Large=3</CardBody></Card>
-                </GridItem>
-                <GridItem Small=GridItemColumnEnum.Twelve Medium=GridItemColumnEnum.Five Large=GridItemColumnEnum.Three>
-                    <Card><CardBody>Small=12 Medium=5 Large=3</CardBody></Card>
-                </GridItem>
-                <GridItem Small=GridItemColumnEnum.Twelve Medium=GridItemColumnEnum.Five Large=GridItemColumnEnum.Four>
-                    <Card><CardBody>Small=12 Medium=5 Large=4</CardBody></Card>
-                </GridItem>
-                <GridItem Small=GridItemColumnEnum.Twelve Medium=GridItemColumnEnum.Seven Large=GridItemColumnEnum.Five>
-                    <Card><CardBody>Small=12 Medium=7 Large=5</CardBody></Card>
-                </GridItem>
-            </Grid>
-         </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Gutter">
+            <Description></Description>
+            <ChildContent>
+                <div>
+                    <Grid Gutter=GridGutters.Large>
+                        <GridItem Small=GridItemColumns.Twelve Medium=GridItemColumns.Six Large=GridItemColumns.Five>
+                            <Card><CardBody>Small=12 Medium=6 Large=5</CardBody></Card>
+                        </GridItem>
+                        <GridItem Small=GridItemColumns.Twelve Medium=GridItemColumns.Six Large=GridItemColumns.Four>
+                            <Card><CardBody>Small=12 Medium=6 Large=4</CardBody></Card>
+                        </GridItem>
+                        <GridItem Small=GridItemColumns.Twelve Medium=GridItemColumns.Seven Large=GridItemColumns.Three>
+                            <Card><CardBody>Small=12 Medium=7 Large=3</CardBody></Card>
+                        </GridItem>
+                        <GridItem Small=GridItemColumns.Twelve Medium=GridItemColumns.Five Large=GridItemColumns.Three>
+                            <Card><CardBody>Small=12 Medium=5 Large=3</CardBody></Card>
+                        </GridItem>
+                        <GridItem Small=GridItemColumns.Twelve Medium=GridItemColumns.Five Large=GridItemColumns.Four>
+                            <Card><CardBody>Small=12 Medium=5 Large=4</CardBody></Card>
+                        </GridItem>
+                        <GridItem Small=GridItemColumns.Twelve Medium=GridItemColumns.Seven Large=GridItemColumns.Five>
+                            <Card><CardBody>Small=12 Medium=7 Large=5</CardBody></Card>
+                        </GridItem>
+                    </Grid>
+                 </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Align Items">
-    <Description></Description>
-    <ChildContent>
-        <div>
-            <Grid ItemsSmall=GridItemsEnum.Center style="height: 20rem;">
-                <GridItem Small=GridItemColumnEnum.Six>
-                    <Card><CardBody>Item</CardBody></Card>
-                </GridItem>
-                <GridItem Small=GridItemColumnEnum.Three>
-                    <Card><CardBody>Item</CardBody></Card>
-                </GridItem>
-                <GridItem Small=GridItemColumnEnum.Three>
-                    <Card><CardBody>Item</CardBody></Card>
-                </GridItem>
-                <GridItem Small=GridItemColumnEnum.Three>
-                    <Card><CardBody>Item</CardBody></Card>
-                </GridItem>
-                <GridItem Small=GridItemColumnEnum.Three>
-                    <Card><CardBody>Item</CardBody></Card>
-                </GridItem>
-                <GridItem Small=GridItemColumnEnum.Grow>
-                    <Card><CardBody>Item</CardBody></Card>
-                </GridItem>
-            </Grid>
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Align Items">
+            <Description></Description>
+            <ChildContent>
+                <div>
+                    <Grid ItemsSmall=GridItems.Center style="height: 20rem;">
+                        <GridItem Small=GridItemColumns.Six>
+                            <Card><CardBody>Item</CardBody></Card>
+                        </GridItem>
+                        <GridItem Small=GridItemColumns.Three>
+                            <Card><CardBody>Item</CardBody></Card>
+                        </GridItem>
+                        <GridItem Small=GridItemColumns.Three>
+                            <Card><CardBody>Item</CardBody></Card>
+                        </GridItem>
+                        <GridItem Small=GridItemColumns.Three>
+                            <Card><CardBody>Item</CardBody></Card>
+                        </GridItem>
+                        <GridItem Small=GridItemColumns.Three>
+                            <Card><CardBody>Item</CardBody></Card>
+                        </GridItem>
+                        <GridItem Small=GridItemColumns.Grow>
+                            <Card><CardBody>Item</CardBody></Card>
+                        </GridItem>
+                    </Grid>
+                </div>
+            </ChildContent>
+        </Preview>
 
-<Preview Title="Justify">
-    <Description></Description>
-    <ChildContent>
-        <div>
-            <Grid JustifySmall=GridJustifyEnum.Center>
-                <GridItem Small=GridItemColumnEnum.Two>
-                    <Card><CardBody>Item</CardBody></Card>
-                </GridItem>
-                <GridItem Small=GridItemColumnEnum.Two>
-                    <Card><CardBody>Item</CardBody></Card>
-                </GridItem>
-                <GridItem Small=GridItemColumnEnum.Two>
-                    <Card><CardBody>Item</CardBody></Card>
-                </GridItem>
-            </Grid>
-        </div>
-    </ChildContent>
-</Preview>
+        <Preview Title="Justify">
+            <Description></Description>
+            <ChildContent>
+                <div>
+                    <Grid JustifySmall=GridJustifies.Center>
+                        <GridItem Small=GridItemColumns.Two>
+                            <Card><CardBody>Item</CardBody></Card>
+                        </GridItem>
+                        <GridItem Small=GridItemColumns.Two>
+                            <Card><CardBody>Item</CardBody></Card>
+                        </GridItem>
+                        <GridItem Small=GridItemColumns.Two>
+                            <Card><CardBody>Item</CardBody></Card>
+                        </GridItem>
+                    </Grid>
+                </div>
+            </ChildContent>
+        </Preview>
+    </PageBody>
+</Page>
