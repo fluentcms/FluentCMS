@@ -1,0 +1,16 @@
+﻿@page "/components/error-handling"
+@layout ComponentsLayout
+<Page>
+    <PageHeader Title="Error Handling Demo" />
+
+    <ComponentPreview Title="Throw Exception Example">
+        <Button OnClick="ThrowException">Throw Exception</Button>
+    </ComponentPreview>
+</Page>
+
+@code {
+    public void ThrowException()
+    {
+        throw new Exception("Dummy Exception");
+    }
+}
