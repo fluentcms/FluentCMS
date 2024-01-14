@@ -157,6 +157,10 @@ body.dark {
   @apply relative p-4 w-full max-w-md max-h-full;
 }
 
+.f-dropdown {
+  /*TODO*/
+}
+
 .f-grid {
   --grid-gutter-x: 0;
   --grid-gutter-y: 0;
