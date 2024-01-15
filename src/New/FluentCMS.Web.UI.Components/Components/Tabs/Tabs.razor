@@ -5,44 +5,23 @@
 <div @attributes="AdditionalAttributes"
      class="@this.GetClasses()">
     <CascadingValue Value="this">
-        <TabsList>
-            @foreach (int index in Enumerable.Range(0, Items.Count))
-            {
-                <TabsTab Active="index == Current"
-                         Index="index">
-                    @Items[index]
-                </TabsTab>
-            }
-        </TabsList>
-        <TabsPanels>
-            @ChildContent
-        </TabsPanels>
+        @ChildContent
     </CascadingValue>
 </div>
 
 @code {
-    private List<string> Items = new List<string>();
+    [Parameter]
+    public string Value { get; set; }
 
-    public int Current { get; set; }
+    public EventCallback<string> ValueChanged { get; set; }
 
-    public void Activate(int index)
+    public async void Activate(string name)
     {
-        Current = index;
-        StateHasChanged();
-    }
-
-    public int Register(string name)
-    {
-        Items.Add(name);
+        Value = name;
 
         StateHasChanged();
 
-        return Items.Count - 1;
-    }
-
-    public void Unregister(string name)
-    {
-        // TODO
+        await ValueChanged.InvokeAsync(Value);
     }
 }
 

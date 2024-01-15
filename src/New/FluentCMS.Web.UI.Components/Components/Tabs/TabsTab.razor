@@ -4,25 +4,19 @@
 
 <li @attributes="AdditionalAttributes"
     class="@this.GetClasses()">
-    <a  id="tab-@Index"
-       @onclick="() => Parent?.Activate(Index)">
+    <a @onclick="() => Parent?.Activate(Name)">
         @ChildContent
     </a>
 </li>
 
 @code {
-    [Parameter]
     [CssProperty]
-    public bool Active { get; set; }
+    public bool Active => Name == Parent?.Value;
 
     [Parameter]
-    [CssProperty]
-    public bool Disabled { get; set; }
-
-    [Parameter]
-    public int Index { get; set; }
+    public string Name { get; set; } = default!;
 
     [CascadingParameter]
-    protected Tabs? Parent { get; set; }
+    public Tabs? Parent { get; set; }
 }
 

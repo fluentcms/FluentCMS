@@ -1,4 +1,4 @@
- import { computePosition, autoUpdate } from '../../js/floating-ui-dom.js'
+import { computePosition, autoUpdate } from '../../js/floating-ui-dom.js'
 
 const tooltips = new Map();
 
@@ -10,13 +10,13 @@ export function initialize(dotnet, element, config) {
     const target = element.previousElementSibling;
 
     function onMouseEnter() {
-        element.classList.add('f-tooltip-show')
+        element.classList.add('f-tooltip-show');
     }
 
     target.addEventListener('mouseenter', onMouseEnter);
 
     function onMouseLeave() {
-        element.classList.remove('f-tooltip-show')
+        element.classList.remove('f-tooltip-show');
     }
 
     target.addEventListener('mouseleave', onMouseLeave);

@@ -1,4 +1,3 @@
-@implements IDisposable
 @inherits BaseComponent
 
 @namespace FluentCMS.Web.UI.Components
@@ -10,28 +9,12 @@
 
 @code {
     [CssProperty]
-    public bool Active => Index == Parent?.Current;
+    public bool Active => Name == Parent?.Value;
 
     [Parameter]
-    public string Name { get; set; }
+    public string Name { get; set; } = default!;
 
     [CascadingParameter]
     public Tabs? Parent { get; set; }
-
-    private int Index = 0;
-
-    public void Dispose()
-    {
-        Parent?.Unregister(Name);
-    }
-
-    protected override void OnInitialized()
-    {
-        if(Parent == null)
-        {
-            // TODO: throw error...
-        }
-        Index = Parent?.Register(Name) ?? 0;
-    }
 }
 

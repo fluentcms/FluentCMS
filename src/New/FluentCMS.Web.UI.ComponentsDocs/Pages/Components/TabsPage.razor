@@ -5,17 +5,54 @@
     <PageHeader Title="Tabs" />
     <PageBody>
         <ComponentPreview Title="Default">
-            <Tabs>
-                <TabsPanel Name="General">
-                    General Tab content
-                </TabsPanel>
-                <TabsPanel Name="Permissions">
-                    Permissions Tab content
-                </TabsPanel>
-                <TabsPanel Name="seo">
-                    SEO Tab content
-                </TabsPanel>
+            <div>@Value</div>
+            <Button OnClick="() => setTab(1)">111111111</Button>
+            <Button OnClick="() => setTab(2)">222222222</Button>
+            <Button OnClick="() => setTab(3)">333333333</Button>
+            <Tabs @bind-Value="Value">
+                <TabsList>
+                    <TabsTab Name="tab-a">
+                        Tab A
+                    </TabsTab>
+                    <TabsTab Name="tab-b">
+                        Tab B
+                    </TabsTab>
+                    <TabsTab Name="tab-c">
+                        Tab C
+                    </TabsTab>
+                </TabsList>
+                <TabsPanels>
+                    <TabsPanel Name="tab-a">
+                        Content Tab A
+                    </TabsPanel>
+                    <TabsPanel Name="tab-b">
+                        Content Tab  B
+                    </TabsPanel>
+                    <TabsPanel Name="tab-c">
+                        Content Tab  C
+                    </TabsPanel>
+                </TabsPanels>
             </Tabs>
         </ComponentPreview>
     </PageBody>
 </Page>
+
+@code {
+    public string Value { get; set; } = "tab-c";
+
+    void setTab(int tab)
+    {
+        if (tab == 1)
+        {
+            Value = "tab-a";
+        }
+        if (tab == 2)
+        {
+            Value = "tab-b";
+        }
+        if (tab == 3)
+        {
+            Value = "tab-c";
+        }
+    }
+}
