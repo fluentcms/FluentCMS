@@ -1,4 +1,4 @@
-import { computePosition, autoUpdate } from 'https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.4/+esm';
+ import { computePosition, autoUpdate } from '../../js/floating-ui-dom.js'
 
 const tooltips = new Map();
 
