@@ -22,11 +22,15 @@
 
     public void Dispose()
     {
-        // TODO
+        Parent?.Unregister(Name);
     }
 
     protected override void OnInitialized()
     {
+        if(Parent == null)
+        {
+            // TODO: throw error...
+        }
         Index = Parent?.Register(Name) ?? 0;
     }
 }
