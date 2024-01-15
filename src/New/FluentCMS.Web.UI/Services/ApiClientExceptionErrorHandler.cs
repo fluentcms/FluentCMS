@@ -1,4 +1,5 @@
 ﻿using Microsoft.JSInterop;
+using System.Collections.ObjectModel;
 using System.Text.Json;
 
 namespace FluentCMS.Web.UI.Services;
@@ -11,9 +12,9 @@ public class ApiClientExceptionErrorHandler(IJSRuntime jsRuntime) : IErrorHandle
         var response = typedEx.Response;
         var jsonDocument = JsonDocument.Parse(response);
         var errorsProperty = jsonDocument.RootElement.TryGetProperty("errors", out var errors);
+        var appErrors = JsonSerializer.Deserialize<Collection<ApiClients.AppError>>(errors.ToString());
         // todo i18n
-        errors.EnumerateArray().Select(x => x.GetString());
-        await jsRuntime.InvokeVoidAsync("alert", string.Join("\n", errors));
+        await jsRuntime.InvokeVoidAsync("alert", string.Join("\n", appErrors.Select(x => x.Code)));
 
     }
 }

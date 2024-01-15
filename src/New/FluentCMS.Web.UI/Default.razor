@@ -18,7 +18,6 @@
     public ExtendedErrorBoundary ErrorBoundary { get; set; }
     public async Task HandleError(Exception e)
     {
-        ErrorBoundary.Recover();
         await ErrorManager.HandleException(e);
     }
 }
