@@ -1,4 +1,5 @@
 ﻿@page "/{**Route:nonfile}"
+@inject ErrorManager ErrorManager
 
 <PageTitle>@Page?.Title</PageTitle>
 <HeadContent>
@@ -7,4 +8,17 @@
         @((MarkupString)Page.Layout.Head)
     }
 </HeadContent>
-@ChildComponents()
+
+<ExtendedErrorBoundary @ref="ErrorBoundary" OnError="HandleError">
+    @ChildComponents()
+</ExtendedErrorBoundary>
+
+
+@code {
+    public ExtendedErrorBoundary ErrorBoundary { get; set; }
+    public async Task HandleError(Exception e)
+    {
+        ErrorBoundary.Recover();
+        await ErrorManager.HandleException(e);
+    }
+}

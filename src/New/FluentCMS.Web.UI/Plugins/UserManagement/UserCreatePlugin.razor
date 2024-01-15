@@ -1,6 +1,6 @@
 ﻿<h1>Create User</h1>
 <div class="w-full p-4 bg-white border border-gray-200 rounded-lg shadow sm:p-6 md:p-8 dark:bg-gray-800 dark:border-gray-700">
-    <EditForm Model="@Model" OnValidSubmit="Submit" class="space-y-6">
+    <EditForm Model="@Model" FormName="CreateUser" OnValidSubmit="Submit" class="space-y-6">
         <div>
             <label for="username">Username</label>
             <InputText @bind-Value=Model.Username name="username" id="username" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" />
@@ -30,15 +30,15 @@
 
     private async Task Submit()
     {
-        try
-        {
-            var newUser = await UserClient.CreateAsync(Model);
-            Message = "Done!";
-        }
-        catch (Exception)
-        {
+        var newUser = await UserClient.CreateAsync(Model);
+        Message = "Done!";
+        // try
+        // {
+        // }
+        // catch (Exception)
+        // {
 
-            Message = "An error occured!";
-        }
+        //     Message = "An error occured!";
+        // }
     }
 }
