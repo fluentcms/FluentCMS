@@ -13,15 +13,12 @@
     [Parameter]
     public string Value { get; set; }
 
+    [Parameter]
     public EventCallback<string> ValueChanged { get; set; }
 
     public async void Activate(string name)
     {
-        Value = name;
-
-        StateHasChanged();
-
-        await ValueChanged.InvokeAsync(Value);
+        await ValueChanged.InvokeAsync(Value = name);
     }
 }
 

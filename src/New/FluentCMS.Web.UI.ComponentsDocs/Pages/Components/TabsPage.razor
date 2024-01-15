@@ -5,10 +5,6 @@
     <PageHeader Title="Tabs" />
     <PageBody>
         <ComponentPreview Title="Default">
-            <div>@Value</div>
-            <Button OnClick="() => setTab(1)">111111111</Button>
-            <Button OnClick="() => setTab(2)">222222222</Button>
-            <Button OnClick="() => setTab(3)">333333333</Button>
             <Tabs @bind-Value="Value">
                 <TabsList>
                     <TabsTab Name="tab-a">
@@ -38,21 +34,5 @@
 </Page>
 
 @code {
-    public string Value { get; set; } = "tab-c";
-
-    void setTab(int tab)
-    {
-        if (tab == 1)
-        {
-            Value = "tab-a";
-        }
-        if (tab == 2)
-        {
-            Value = "tab-b";
-        }
-        if (tab == 3)
-        {
-            Value = "tab-c";
-        }
-    }
+    public string Value { get; set; } = "tab-a";
 }
