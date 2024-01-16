@@ -1,5 +1,6 @@
 ﻿using FluentCMS.Web.ApiClients;
 using FluentCMS.Web.UI;
+using FluentCMS.Web.UI.ErrorHandling;
 using FluentCMS.Web.UI.Services;
 
 namespace Microsoft.Extensions.DependencyInjection;

@@ -1,4 +1,5 @@
-﻿using Microsoft.JSInterop;
+﻿using FluentCMS.Web.UI.ErrorHandling;
+using Microsoft.JSInterop;
 
 namespace FluentCMS.Web.UI.Services;
 
