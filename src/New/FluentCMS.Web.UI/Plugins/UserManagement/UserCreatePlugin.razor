@@ -30,15 +30,6 @@
 
     private async Task Submit()
     {
-        var newUser = await UserClient.CreateAsync(Model);
-        Message = "Done!";
-        // try
-        // {
-        // }
-        // catch (Exception)
-        // {
-
-        //     Message = "An error occured!";
-        // }
+            var newUser = await UserClient.CreateAsync(Model);
     }
 }
