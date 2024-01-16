@@ -1,4 +1,4 @@
-public enum GridItemColumnEnum
+public enum GridItemColumns
 {
     Auto,
     Grow,

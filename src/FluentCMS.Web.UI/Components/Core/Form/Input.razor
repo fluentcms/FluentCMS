@@ -1,15 +1,15 @@
 @inherits InputBaseComponent<string>
 
-<FormField Dense="Dense"
-           Hint="Hint"
-           IconEnd="IconEnd"
-           IconStart="IconStart"
-           Id="Id"
-           Label="Label"
-           Required="Required"
-           State="State">
+<FormField Dense="@Dense"
+           Hint="@Hint"
+           IconEnd="@IconEnd"
+           IconStart="@IconStart"
+           Id="@Id"
+           Label="@Label"
+           Required="@Required"
+           State="@State">
     <input @attributes="AdditionalAttributes"
-           @bind="Value"
+           @bind="@Value"
            @bind:event="oninput"
            class="@this.GetClasses()"
            disabled="@Disabled"
@@ -28,10 +28,10 @@
     public string Hint { get; set; }
 
     [Parameter]
-    public IconNameEnum IconEnd { get; set; }
+    public IconNames IconEnd { get; set; }
 
     [Parameter]
-    public IconNameEnum IconStart { get; set; }
+    public IconNames IconStart { get; set; }
 
     [Parameter]
     public string Id { get; set; }
@@ -40,5 +40,5 @@
     public string Placeholder { get; set; }
 
     [Parameter]
-    public InputTypeEnum Type { get; set; } = InputTypeEnum.Text;
+    public InputTypes Type { get; set; } = InputTypes.Text;
 }

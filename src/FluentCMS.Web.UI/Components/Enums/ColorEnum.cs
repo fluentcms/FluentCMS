@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public enum ColorEnum
+public enum Colors
 {
     Default,
     Primary,

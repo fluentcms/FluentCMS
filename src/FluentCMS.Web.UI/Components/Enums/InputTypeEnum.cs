@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public enum InputTypeEnum
+public enum InputTypes
 {
     Text,
     Date,

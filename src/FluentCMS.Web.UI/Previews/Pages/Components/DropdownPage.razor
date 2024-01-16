@@ -9,8 +9,8 @@
         <Preview Title="Default">
             <ChildContent>
                 <Dropdown>
-                   <DropdownButton Color="ColorEnum.Primary">Default Dropdown</DropdownButton>
-                   <DropdownMenu Placement="DropdownPlacementEnum.Bottom">
+                   <DropdownButton Color="Colors.Primary">Default Dropdown</DropdownButton>
+                   <DropdownMenu Placement="DropdownPlacements.Bottom">
                        <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
                        <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
                        <DropdownItem Href="/previews/components">Components</DropdownItem>
@@ -26,8 +26,8 @@
             </Description>
             <ChildContent>
                 <Dropdown AutoClose>
-                   <DropdownButton Color="ColorEnum.Primary">AutoClose</DropdownButton>
-                   <DropdownMenu Placement="DropdownPlacementEnum.Bottom">
+                   <DropdownButton Color="Colors.Primary">AutoClose</DropdownButton>
+                   <DropdownMenu Placement="DropdownPlacements.Bottom">
                        <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
                        <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
                        <DropdownItem Href="/previews/components">Components</DropdownItem>
@@ -45,7 +45,7 @@
                 <div class="flex flex-wrap gap-4">
                     <Dropdown AutoClose>
                         <DropdownButton>Bottom</DropdownButton>
-                        <DropdownMenu Placement="DropdownPlacementEnum.Bottom">
+                        <DropdownMenu Placement="DropdownPlacements.Bottom">
                             <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
                             <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
                             <DropdownItem Href="/previews/components">Components</DropdownItem>
@@ -55,7 +55,7 @@
 
                     <Dropdown AutoClose>
                         <DropdownButton>BottomEnd</DropdownButton>
-                        <DropdownMenu Placement="DropdownPlacementEnum.BottomEnd">
+                        <DropdownMenu Placement="DropdownPlacements.BottomEnd">
                             <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
                             <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
                             <DropdownItem Href="/previews/components">Components</DropdownItem>
@@ -65,7 +65,7 @@
 
                     <Dropdown AutoClose>
                         <DropdownButton>Top</DropdownButton>
-                        <DropdownMenu Placement="DropdownPlacementEnum.Top">
+                        <DropdownMenu Placement="DropdownPlacements.Top">
                             <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
                             <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
                             <DropdownItem Href="/previews/components">Components</DropdownItem>
@@ -75,7 +75,7 @@
 
                     <Dropdown AutoClose>
                        <DropdownButton>TopEnd</DropdownButton>
-                       <DropdownMenu Placement="DropdownPlacementEnum.TopEnd">
+                       <DropdownMenu Placement="DropdownPlacements.TopEnd">
                            <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
                            <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
                            <DropdownItem Href="/previews/components">Components</DropdownItem>
@@ -85,7 +85,7 @@
 
                    <Dropdown AutoClose>
                        <DropdownButton>Left</DropdownButton>
-                       <DropdownMenu Placement="DropdownPlacementEnum.Left">
+                       <DropdownMenu Placement="DropdownPlacements.Left">
                            <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
                            <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
                            <DropdownItem Href="/previews/components">Components</DropdownItem>
@@ -95,7 +95,7 @@
 
                    <Dropdown AutoClose>
                        <DropdownButton>LeftEnd</DropdownButton>
-                       <DropdownMenu Placement="DropdownPlacementEnum.LeftEnd">
+                       <DropdownMenu Placement="DropdownPlacements.LeftEnd">
                            <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
                            <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
                            <DropdownItem Href="/previews/components">Components</DropdownItem>
@@ -105,7 +105,7 @@
 
                    <Dropdown AutoClose>
                        <DropdownButton>Right</DropdownButton>
-                       <DropdownMenu Placement="DropdownPlacementEnum.Right">
+                       <DropdownMenu Placement="DropdownPlacements.Right">
                            <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
                            <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
                            <DropdownItem Href="/previews/components">Components</DropdownItem>
@@ -115,7 +115,7 @@
 
                    <Dropdown AutoClose>
                        <DropdownButton>RightEnd</DropdownButton>
-                       <DropdownMenu Placement="DropdownPlacementEnum.RightEnd">
+                       <DropdownMenu Placement="DropdownPlacements.RightEnd">
                            <DropdownItem Href="/previews/content-manager">Content Manager</DropdownItem>
                            <DropdownItem Href="/previews/content-type-builder">Content Type Builder</DropdownItem>
                            <DropdownItem Href="/previews/components">Components</DropdownItem>
@@ -129,15 +129,15 @@
         <Preview Title="Custom Content">
             <ChildContent>
                <Dropdown AutoClose>
-                   <DropdownButton Color="ColorEnum.Warning">Filters</DropdownButton>
-                   <DropdownMenu Placement="DropdownPlacementEnum.TopStart" Class="custom-dropdown-menu">
+                   <DropdownButton Color="Colors.Warning">Filters</DropdownButton>
+                   <DropdownMenu Placement="DropdownPlacements.TopStart" Class="custom-dropdown-menu">
                        <div class="p-4 flex flex-col gap-4">
-                           <Input placeholder="Search..." Icon=IconNameEnum.Search/>
+                           <Input placeholder="Search..." Icon=IconNames.Search/>
                            <ButtonGroup>
-                               <Button Outline Color="ColorEnum.Primary">First</Button>
-                               <Button Outline Color="ColorEnum.Primary">Second</Button>
-                               <Button Outline Color="ColorEnum.Primary">Third</Button>
-                               <Button Color="ColorEnum.Primary">Search</Button>
+                               <Button Outline Color="Colors.Primary">First</Button>
+                               <Button Outline Color="Colors.Primary">Second</Button>
+                               <Button Outline Color="Colors.Primary">Third</Button>
+                               <Button Color="Colors.Primary">Search</Button>
                            </ButtonGroup>
                        </div>
                    </DropdownMenu>

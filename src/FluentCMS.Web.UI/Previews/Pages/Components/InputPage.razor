@@ -45,8 +45,8 @@
         <Preview Title="Icons">
             <ChildContent>
                 <div class="flex flex-col">
-                    <Input IconStart=@IconNameEnum.InformationFilled Label="Start Icon" Placeholder="Type something..."/>
-                    <Input IconEnd=@IconNameEnum.Search  Label="End Icon" Placeholder="Type something..."/>
+                    <Input IconStart=@IconNames.InformationFilled Label="Start Icon" Placeholder="Type something..."/>
+                    <Input IconEnd=@IconNames.Search  Label="End Icon" Placeholder="Type something..."/>
                 </div>
             </ChildContent>
         </Preview>
@@ -55,8 +55,8 @@
             <ChildContent>
                 <div class="flex flex-col">
                     <Input Hint="This is info message" Label="Username" Placeholder="Type something..."/>
-                    <Input Hint="This field is required!" State=FormFieldStateEnum.Invalid Label="Email" Placeholder="Type something..."/>
-                    <Input Hint="This field is okay!" State=FormFieldStateEnum.Valid Label="Name" Placeholder="Type something..."/>
+                    <Input Hint="This field is required!" State=FormFieldStates.Invalid Label="Email" Placeholder="Type something..."/>
+                    <Input Hint="This field is okay!" State=FormFieldStates.Valid Label="Name" Placeholder="Type something..."/>
                 </div>
             </ChildContent>
         </Preview>
@@ -67,7 +67,7 @@
                     <Input @bind-Value=@Input1Value Label="Input 1"/>
 
                     <div class="w-full mx-auto">
-                        <Badge Color="ColorEnum.Primary">@Input1Value</Badge>
+                        <Badge Color="Colors.Primary">@Input1Value</Badge>
                     </div>
                 </div>
             </ChildContent>

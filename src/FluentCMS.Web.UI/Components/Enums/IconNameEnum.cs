@@ -1,7 +1,7 @@
 namespace FluentCMS.Web.UI.Resources;
 
 // Enum Class for Icons
-public enum IconNameEnum
+public enum IconNames
 {
     Default,
     ChevronDown,
