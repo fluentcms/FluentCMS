@@ -1,10 +1,6 @@
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddConfig(builder.Environment);
-AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler((s, e) =>
-{
-    Console.WriteLine("catch from Main Thread");
-});
 #region Services
 
 var services = builder.Services;
