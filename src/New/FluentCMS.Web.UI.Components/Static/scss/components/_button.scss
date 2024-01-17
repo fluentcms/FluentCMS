@@ -9,6 +9,10 @@ $button: $prefix + "button";
         @apply items-center gap-2 text-center inline-flex;
     }
 
+    &-block-true {
+        @apply w-full;
+    }
+
     &-icon {
         @apply w-2.5 h-2.5 ml-2.5;
     }
