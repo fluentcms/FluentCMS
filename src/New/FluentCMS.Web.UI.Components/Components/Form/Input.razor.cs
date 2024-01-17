@@ -4,6 +4,8 @@ public enum InputType
 {
     Date,
     DatetimeLocal,
+    Number,
+    Password,
     Text,
     Time,
 }
