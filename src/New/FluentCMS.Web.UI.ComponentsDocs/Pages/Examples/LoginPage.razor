@@ -2,7 +2,50 @@
 @layout ExamplesLayout
 
 <Page>
-    <PageHeader Title="Login" />
-    <PageBody></PageBody>
+    <PageBody>
+        <Grid class="h-screen" ItemsSmall="GridItems.Center" JustifySmall="GridJustify.Center">
+            <GridItem>
+                <h1 class="text-3xl text-center">Fluent CMS</h1>
+                <Spacer/>
+                <Card Width="CardSize.Medium">
+                    <CardBody>
+                        <CardTitle>Sign in to Platform</CardTitle>
+                        <Spacer/>
+                        <Grid>
+                            <GridItem Small="GridItemColumn.Twelve">
+                                <Input Label="Your Email" 
+                                       Placeholder="name@company.com"/>
+                            </GridItem>
+                            <GridItem Small="GridItemColumn.Twelve">
+                                <Input Type="InputType.Password" 
+                                       Label="Your Password" 
+                                       Placeholder="12345678"/>
+                            </GridItem>
+                            <GridItem Small="GridItemColumn.Grow">
+                                <Checkbox Label="Remember Me" />
+                            </GridItem>
+                            <GridItem Small="GridItemColumn.Auto">
+                                <Button Color="Color.Primary"
+                                        Ghost>
+                                    Lost Password?
+                                </Button>
+                            </GridItem>
+                            <GridItem Small="GridItemColumn.Twelve">
+                                <Button Color="Color.Primary">Login to your Account</Button>
+                            </GridItem>
+                            <Spacer/>
+                            <GridItem>
+                                Not Registered? 
+                                <Button Ghost
+                                        Color="Color.Primary">
+                                    Create Account
+                                </Button>
+                            </GridItem>
+                        </Grid>
+                    </CardBody>
+                </Card>
+            </GridItem>
+        </Grid>
+    </PageBody>
 </Page>
 
