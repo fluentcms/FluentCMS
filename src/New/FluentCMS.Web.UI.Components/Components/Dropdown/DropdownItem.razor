@@ -1,0 +1,37 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+<li @attributes="AdditionalAttributes"
+    class="@this.GetClasses()">
+    @if (!string.IsNullOrEmpty(Href))
+    {
+        <a href="@Href">
+            @ChildContent
+        </a>
+    }
+    else
+    {
+        <span @onclick="OnClicked">
+            @ChildContent
+        </span>
+    }
+</li>
+
+@code {
+    [Parameter]
+    public string? Href { get; set; }
+
+    [CascadingParameter]
+    public Dropdown? Parent { get; set; }
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    private async Task OnClicked()
+    {
+        Parent?.Close();
+
+        await OnClick.InvokeAsync();
+    }
+}

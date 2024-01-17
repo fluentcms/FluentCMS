@@ -6,132 +6,52 @@
     <PageBody>
         <ComponentPreview Title="Default">
             <Dropdown>
-                <DropdownButton Color="Color.Primary">Default Dropdown</DropdownButton>
-                <DropdownMenu Placement="DropdownPlacement.Bottom">
+                <DropdownButton Color="Color.Primary">
+                    Dropdown Button
+                </DropdownButton>
+                <DropdownMenu>
                     <DropdownItem>Item 1</DropdownItem>
                     <DropdownItem>Item 2</DropdownItem>
                     <DropdownItem>Item 3</DropdownItem>
                     <DropdownItem>Item 4</DropdownItem>
+                    <DropdownItem>Item 5</DropdownItem>
                 </DropdownMenu>
             </Dropdown>
         </ComponentPreview>
 
-        <ComponentPreview Title="AutoClose"
-                          Description="Closes Dropdown when clicked outside.">
-            <Dropdown AutoClose="true">
-                <DropdownButton Color="Color.Primary">AutoClose</DropdownButton>
-                <DropdownMenu Placement="DropdownPlacement.Bottom">
-                    <DropdownItem>Item 1</DropdownItem>
-                    <DropdownItem>Item 2</DropdownItem>
-                    <DropdownItem>Item 3</DropdownItem>
-                    <DropdownItem>Item 4</DropdownItem>
-                </DropdownMenu>
-            </Dropdown>
-        </ComponentPreview>
-
-        <ComponentPreview Title="Placement"
-                          Description="Dropdown placement supports various directions">
-            <Stack>
-                <Dropdown>
-                    <DropdownButton>Bottom</DropdownButton>
-                    <DropdownMenu Placement="DropdownPlacement.Bottom">
-                        <DropdownItem>Item 1</DropdownItem>
-                        <DropdownItem>Item 2</DropdownItem>
-                        <DropdownItem>Item 3</DropdownItem>
-                        <DropdownItem>Item 4</DropdownItem>
-                    </DropdownMenu>
-                </Dropdown>
-
-                <Dropdown AutoClose>
-                    <DropdownButton>BottomEnd</DropdownButton>
-                    <DropdownMenu Placement="DropdownPlacement.BottomEnd">
-                        <DropdownItem>Item 1</DropdownItem>
-                        <DropdownItem>Item 2</DropdownItem>
-                        <DropdownItem>Item 3</DropdownItem>
-                        <DropdownItem>Item 4</DropdownItem>
-                    </DropdownMenu>
-                </Dropdown>
-
-                <Dropdown AutoClose>
-                    <DropdownButton>Top</DropdownButton>
-                    <DropdownMenu Placement="DropdownPlacement.Top">
-                        <DropdownItem>Item 1</DropdownItem>
-                        <DropdownItem>Item 2</DropdownItem>
-                        <DropdownItem>Item 3</DropdownItem>
-                        <DropdownItem>Item 4</DropdownItem>
-                    </DropdownMenu>
-                </Dropdown>
-
-                <Dropdown AutoClose>
-                    <DropdownButton>TopEnd</DropdownButton>
-                    <DropdownMenu Placement="DropdownPlacement.TopEnd">
-                        <DropdownItem>Item 1</DropdownItem>
-                        <DropdownItem>Item 2</DropdownItem>
-                        <DropdownItem>Item 3</DropdownItem>
-                        <DropdownItem>Item 4</DropdownItem>
-                    </DropdownMenu>
-                </Dropdown>
-
-                <Dropdown AutoClose>
-                    <DropdownButton>Left</DropdownButton>
-                    <DropdownMenu Placement="DropdownPlacement.Left">
-                        <DropdownItem>Item 1</DropdownItem>
-                        <DropdownItem>Item 2</DropdownItem>
-                        <DropdownItem>Item 3</DropdownItem>
-                        <DropdownItem>Item 4</DropdownItem>
-                    </DropdownMenu>
-                </Dropdown>
-
-                <Dropdown AutoClose>
-                    <DropdownButton>LeftEnd</DropdownButton>
-                    <DropdownMenu Placement="DropdownPlacement.LeftEnd">
-                        <DropdownItem>Item 1</DropdownItem>
-                        <DropdownItem>Item 2</DropdownItem>
-                        <DropdownItem>Item 3</DropdownItem>
-                        <DropdownItem>Item 4</DropdownItem>
-                    </DropdownMenu>
-                </Dropdown>
-
-                <Dropdown AutoClose>
-                    <DropdownButton>Right</DropdownButton>
-                    <DropdownMenu Placement="DropdownPlacement.Right">
-                        <DropdownItem>Item 1</DropdownItem>
-                        <DropdownItem>Item 2</DropdownItem>
-                        <DropdownItem>Item 3</DropdownItem>
-                        <DropdownItem>Item 4</DropdownItem>
-                    </DropdownMenu>
-                </Dropdown>
-
-                <Dropdown AutoClose>
-                    <DropdownButton>RightEnd</DropdownButton>
-                    <DropdownMenu Placement="DropdownPlacement.RightEnd">
-                        <DropdownItem>Item 1</DropdownItem>
-                        <DropdownItem>Item 2</DropdownItem>
-                        <DropdownItem>Item 3</DropdownItem>
-                        <DropdownItem>Item 4</DropdownItem>
-                    </DropdownMenu>
-                </Dropdown>
-            </Stack>
-        </ComponentPreview>
-
-        @* TODO *@
-        <ComponentPreview Title="Custom Content">
+        <ComponentPreview Title="Href">
             <Dropdown>
-                <DropdownButton Color="Color.Warning">Filters</DropdownButton>
-                <DropdownMenu Placement="DropdownPlacement.TopStart" Class="custom-dropdown-menu">
-                    <div class="p-4 flex flex-col gap-4">
-                        <Input Icon="IconNames.Search"
-                               placeholder="Search..." />
-                        <ButtonGroup>
-                            <Button Outline Color="Color.Primary">First</Button>
-                             <Button Outline Color="Color.Primary">Second</Button>
-                             <Button Outline Color="Color.Primary">Third</Button>
-                             <Button Color="Color.Primary">Search</Button>
-                         </ButtonGroup>
-                     </div>
-                 </DropdownMenu>
-             </Dropdown>
-         </ComponentPreview>
-     </PageBody>
- </Page>
+                <DropdownButton Color="Color.Primary">
+                    Dropdown Button
+                </DropdownButton>
+                <DropdownMenu>
+                    <DropdownItem Href="/">Item 1</DropdownItem>
+                    <DropdownItem Href="/">Item 2</DropdownItem>
+                    <DropdownItem Href="/">Item 3</DropdownItem>
+                    <DropdownItem Href="/">Item 4</DropdownItem>
+                    <DropdownItem Href="/">Item 5</DropdownItem>
+                </DropdownMenu>
+            </Dropdown>
+        </ComponentPreview>
 
+        <ComponentPreview Title="Manual Close">
+            <Dropdown @bind-Open="Open"
+                      AutoClose="false">
+                <DropdownButton Color="Color.Primary">
+                    Dropdown Button
+                </DropdownButton>
+                <DropdownMenu>
+                    <DropdownItem>Item 1</DropdownItem>
+                    <DropdownItem>Item 2</DropdownItem>
+                    <DropdownItem>Item 3</DropdownItem>
+                    <DropdownItem>Item 4</DropdownItem>
+                    <DropdownItem OnClick="() => Open = false">Close</DropdownItem>
+                </DropdownMenu>
+            </Dropdown>
+        </ComponentPreview>
+    </PageBody>
+</Page>
+
+@code {
+    public bool Open { get; set; }
+}
