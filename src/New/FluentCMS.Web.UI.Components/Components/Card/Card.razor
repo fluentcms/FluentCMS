@@ -6,3 +6,9 @@
      class="@this.GetClasses()">
     @ChildContent
 </div>
+
+@code {
+    [Parameter]
+    [CssProperty]
+    public CardSize Width {get; set;}
+}
