@@ -1,0 +1,51 @@
+@page "/components/checkbox"
+@layout ComponentsLayout
+
+<Page>
+    <PageHeader Title="Checkboxes" />
+    <PageBody>
+        <ComponentPreview Title="Default">
+            <Checkbox />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Label">
+            <Checkbox Label="Checkbox" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Checked">
+            <Checkbox Value="true" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Dense">
+            <Checkbox Dense="true" />
+            <Checkbox Dense="true" />
+            <Checkbox Dense="true" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Disabled">
+            <Checkbox Disabled="true" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Hint">
+            <Checkbox Hint="This is a hint"
+                      Label="Checkbox" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Initial">
+            <Checkbox @bind-Value="Value1" />
+            <Badge Color="Value1 ? Color.Success : Color.Danger">
+                @Value1
+            </Badge>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Bind Value">
+            <Checkbox @bind-Value="Value2" />
+            <Checkbox @bind-Value="Value2" />
+        </ComponentPreview>
+    </PageBody>
+</Page>
+
+@code {
+    private bool Value1 = true;
+    private bool Value2;
+}

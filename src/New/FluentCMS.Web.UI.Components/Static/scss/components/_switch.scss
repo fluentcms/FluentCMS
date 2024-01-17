@@ -1,0 +1,5 @@
+$switch: $prefix + 'switch';
+
+.#{$switch} {
+    @apply sr-only;
+}

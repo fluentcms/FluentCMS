@@ -1,0 +1,31 @@
+@inherits FormInputsType<string>
+
+@namespace FluentCMS.Web.UI.Components
+
+<FormField Appearance="FormFieldAppearance.Input"
+           Dense="@Dense"
+           Disabled="@Disabled"
+           Hint="@Hint"
+           IconEnd="@IconEnd"
+           IconStart="@IconStart"
+           Id="@Id"
+           Label="@Label"
+           Name="@Name"
+           Required="@Required"
+           State="@State">
+    <input @attributes="AdditionalAttributes"
+           @bind="@Value"
+           @bind:event="oninput"
+           class="@this.GetClasses()"
+           disabled="@Disabled"
+           id="@Id"
+           name="@Name"
+           placeholder="@Placeholder"
+           required="@Required"
+           type="@this.Type.ToString().FromPascalCaseToKebabCase()" />
+</FormField>
+
+@code {
+    [Parameter]
+    public InputType Type { get; set; } = InputType.Text;
+}

@@ -1,0 +1,18 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+<option @attributes="AdditionalAttributes"
+        class="@this.GetClasses()"
+        selected="@this.Selected"
+        value="@this.Value">
+    @ChildContent
+</option>
+
+@code {
+    [Parameter]
+    public bool Selected { get; set; }
+
+    [Parameter]
+    public string? Value { get; set; }
+}

@@ -1,0 +1,51 @@
+@page "/components/radio"
+@layout ComponentsLayout
+
+<Page>
+    <PageHeader Title="Radios" />
+    <PageBody>
+        <ComponentPreview Title="Default">
+            <Radio />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Label">
+            <Radio Label="Radio" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Checked">
+            <Radio Value="true" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Dense">
+            <Radio Dense="true" />
+            <Radio Dense="true" />
+            <Radio Dense="true" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Disabled">
+            <Radio Disabled="true" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Hint">
+            <Radio Hint="This is a hint"
+                   Label="Radio" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Initial">
+            <Radio @bind-Value="Value1" />
+            <Badge Color="Value1 ? Color.Success : Color.Danger">
+                @Value1
+            </Badge>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Bind Value">
+            <Radio @bind-Value="Value2" />
+            <Radio @bind-Value="Value2" />
+        </ComponentPreview>
+    </PageBody>
+</Page>
+
+@code {
+    private bool Value1 = true;
+    private bool Value2;
+}
