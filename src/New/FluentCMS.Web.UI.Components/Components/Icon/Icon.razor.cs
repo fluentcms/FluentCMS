@@ -22,6 +22,7 @@ public enum IconName
     Rocket,
     Search,
     Settings,
+    Squares,
 }
 
 public enum IconSize
