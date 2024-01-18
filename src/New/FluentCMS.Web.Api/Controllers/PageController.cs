@@ -1,6 +1,5 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Web.Api.Filters;
-using FluentCMS.Web.Api.Models.Pages;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Primitives;
 
@@ -67,8 +66,8 @@ public class PageController(
 
         var plugins = await pluginService.GetByPageId(page.Id, cancellationToken);
 
-        var pageResponse = mapper.Map<PageFullDetailModel, PageFullDetailResponse>(
-                new PageFullDetailModel(page, path, site, layouts, plugins, pluginDefinitions, false)
+        var pageResponse = mapper.Map<PageFullDetailResponse>(
+                (page, path, site, layouts, plugins, pluginDefinitions, false)
             );
 
         return Ok(pageResponse);
@@ -97,8 +96,8 @@ public class PageController(
         else
             page = new Page { Path = path, SiteId = site.Id, Title = pluginDefinition.Name };
         IEnumerable<Plugin> plugins = [GetRuntimePlugin(site.Id, page.Id, pluginDefinition.Id)];
-        var pageResponse = mapper.Map<PageFullDetailModel, PageFullDetailResponse>(
-                new PageFullDetailModel(page, path, site, layouts, plugins, new[] { pluginDefinition }.ToDictionary(x => x.Id), true)
+        var pageResponse = mapper.Map<PageFullDetailResponse>(
+                (page, path, site, layouts, plugins, new[] { pluginDefinition }.ToDictionary(x => x.Id), true)
             );
 
         return Ok(pageResponse);

@@ -1,4 +1,4 @@
-﻿using FluentCMS.Web.Api.Models.Pages;
+﻿using FluentCMS.Web.Api.TypeConverters;
 
 namespace FluentCMS.Web.Api;
 
@@ -35,8 +35,18 @@ public class MappingProfile : Profile
         CreateMap<PageCreateRequest, Page>();
         CreateMap<PageUpdateRequest, Page>();
         CreateMap<Page, PageDetailResponse>();
-        CreateMap<PageFullDetailModel, PageFullDetailResponse>()
+
+        #region PageFullDetailResponse
+        CreateMap<(Page page,
+        string path,
+        Site site,
+        IEnumerable<Layout> layouts,
+        IEnumerable<Plugin> plugins,
+        Dictionary<Guid, PluginDefinition> pluginDefinitions,
+        bool forceMainSection),
+        PageFullDetailResponse>()
             .ConvertUsing<PageFullDetailResponseTypeConverter>();
+        #endregion
 
         #endregion
 
