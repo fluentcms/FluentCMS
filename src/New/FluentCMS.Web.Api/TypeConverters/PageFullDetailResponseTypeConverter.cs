@@ -1,11 +1,21 @@
-﻿using FluentCMS.Web.Api.Models.Pages;
+﻿namespace FluentCMS.Web.Api.TypeConverters;
 
-namespace FluentCMS.Web.Api;
-
-public class PageFullDetailResponseTypeConverter : ITypeConverter<PageFullDetailModel, PageFullDetailResponse>
+public class PageFullDetailResponseTypeConverter : ITypeConverter<(Page page,
+    string path,
+    Site site,
+    IEnumerable<Layout> layouts,
+    IEnumerable<Plugin> plugins,
+    Dictionary<Guid, PluginDefinition> pluginDefinitions,
+    bool forceMainSection), PageFullDetailResponse>
 {
     public PageFullDetailResponse Convert(
-    PageFullDetailModel source,
+    (Page page,
+    string path,
+    Site site,
+    IEnumerable<Layout> layouts,
+    IEnumerable<Plugin> plugins,
+    Dictionary<Guid, PluginDefinition> pluginDefinitions,
+    bool forceMainSection) source,
     PageFullDetailResponse destination,
     ResolutionContext context)
     {
