@@ -1,0 +1,152 @@
+@page "/examples/media"
+@layout ExamplesLayout
+
+<Page>
+    <PageHeader HasBack="true"
+                Title="CURD List"
+                Subtitle="Simple CRUD page for a entity">
+        <PageHeaderActions>
+            <ButtonGroup>
+                <Button Outline>
+                    <Icon Name="IconName.Plus" />
+                    Add New Folder
+                </Button>
+                <Button Color="Color.Primary">
+                    <Icon Name="IconName.Plus" />
+                    Add New Asset
+                </Button>
+            </ButtonGroup>
+        </PageHeaderActions>
+    </PageHeader>
+    <PageBody>
+        <Grid ItemsSmall="GridItems.Center"
+              JustifySmall="GridJustify.Between">
+            <GridItem Small="GridItemColumn.Six">
+                <Input Dense="true"
+                       IconStart="IconName.Search"
+                       Placeholder="Search for entities" />
+            </GridItem>
+            <GridItem Small="GridItemColumn.Auto">
+                <Dropdown>
+                    <DropdownButton>Filter Options</DropdownButton>
+                    <DropdownMenu>
+                        Menu
+                    </DropdownMenu>
+                </Dropdown>
+            </GridItem>
+        </Grid>
+        <Spacer/>
+        <Grid Gutter="GridGutter.Medium">
+            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Four" Large="GridItemColumn.Three">
+                <Card>
+                    <CardBody>
+                        <img src="/images/image1.jpeg"/>
+                        <Spacer/>
+                        <Grid>
+                            <GridItem Small="GridItemColumn.Grow">
+                                image1.jpeg
+                            </GridItem>
+                            <GridItem Small="GridItemColumn.Auto">
+                                <Button Color="Color.Danger" 
+                                        Ghost 
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Delete"/>
+                                </Button>
+                            </GridItem>
+                        </Grid>
+                    </CardBody>
+                </Card>
+            </GridItem>
+            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Four" Large="GridItemColumn.Three">
+                <Card>
+                    <CardBody>
+                        <img src="/images/image1.jpeg"/>
+                        <Spacer/>
+                        <Grid>
+                            <GridItem Small="GridItemColumn.Grow">
+                                image1.jpeg
+                            </GridItem>
+                            <GridItem Small="GridItemColumn.Auto">
+                                <Button Color="Color.Danger" 
+                                        Ghost 
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Delete"/>
+                                </Button>
+                            </GridItem>
+                        </Grid>
+                    </CardBody>
+                </Card>
+            </GridItem>
+            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Four" Large="GridItemColumn.Three">
+                <Card>
+                    <CardBody>
+                        <img src="/images/image1.jpeg"/>
+                        <Spacer/>
+                        <Grid>
+                            <GridItem Small="GridItemColumn.Grow">
+                                image1.jpeg
+                            </GridItem>
+                            <GridItem Small="GridItemColumn.Auto">
+                                <Button Color="Color.Danger" 
+                                        Ghost 
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Delete"/>
+                                </Button>
+                            </GridItem>
+                        </Grid>
+                    </CardBody>
+                </Card>
+            </GridItem>
+            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Four" Large="GridItemColumn.Three">
+                <Card>
+                    <CardBody>
+                        <img src="/images/image1.jpeg"/>
+                        <Spacer/>
+                        <Grid>
+                            <GridItem Small="GridItemColumn.Grow">
+                                image1.jpeg
+                            </GridItem>
+                            <GridItem Small="GridItemColumn.Auto">
+                                <Button Color="Color.Danger" 
+                                        Ghost 
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Delete"/>
+                                </Button>
+                            </GridItem>
+                        </Grid>
+                    </CardBody>
+                </Card>
+            </GridItem>
+            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Four" Large="GridItemColumn.Three">
+                <Card>
+                    <CardBody>
+                        <img src="/images/image1.jpeg"/>
+                        <Spacer/>
+                        <Grid>
+                            <GridItem Small="GridItemColumn.Grow">
+                                image1.jpeg
+                            </GridItem>
+                            <GridItem Small="GridItemColumn.Auto">
+                                <Button Color="Color.Danger" 
+                                        Ghost 
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Delete"/>
+                                </Button>
+                            </GridItem>
+                        </Grid>
+                    </CardBody>
+                </Card>
+            </GridItem>
+        </Grid>
+        <Spacer/>
+        <Grid ItemsSmall="GridItems.Center"
+              JustifySmall="GridJustify.Between">
+            <GridItem>
+                <PaginationInfo Total="1000" Current="1" />
+            </GridItem>
+            <GridItem>
+                <Pagination Total="10" Current="5" />
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
