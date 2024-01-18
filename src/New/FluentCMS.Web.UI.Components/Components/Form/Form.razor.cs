@@ -88,7 +88,6 @@ public abstract class FormInputsType<T> : FormElementsValuable<T>
     public FormFieldState State { get; set; } = FormFieldState.Default;
 }
 
-// TODO
 public enum FormFieldState
 {
     Default,
