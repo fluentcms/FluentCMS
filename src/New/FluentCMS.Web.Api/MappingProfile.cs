@@ -78,5 +78,10 @@ public class MappingProfile : Profile
         CreateMap<ContentType, ContentTypeDetailResponse>();
 
         #endregion
+
+        #region Layout
+        CreateMap<Layout, LayoutDetailResponse>();
+
+        #endregion
     }
 }
