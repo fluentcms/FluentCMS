@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Web.Api.Models.Pages;
+﻿namespace FluentCMS.Web.Api.Models;
 
 public record PageFullDetailModel(
     Page page,
