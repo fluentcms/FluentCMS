@@ -1,1 +1,14 @@
+@inherits BaseComponent
+
 @namespace FluentCMS.Web.UI.Components
+
+<form @attributes="AdditionalAttributes"
+      class="@this.GetClasses()"
+      @onsubmit="OnSubmit">
+    @ChildContent
+</form>
+
+@code {
+    [Parameter]
+    public EventCallback<EventArgs> OnSubmit { get; set; }
+}
