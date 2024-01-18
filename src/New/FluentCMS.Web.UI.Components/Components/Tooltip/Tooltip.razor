@@ -16,7 +16,7 @@
     private IJSObjectReference module = default!;
 
     [Parameter]
-    public TooltipPlacement Placement { get; set; } = TooltipPlacement.Default;
+    public TooltipPlacement? Placement { get; set; }
 
     public void Dispose()
     {
@@ -30,6 +30,6 @@
         module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Tooltip/Tooltip.razor.js");
 
         // TODO: handle run time changing properties
-        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { Placement = Placement.ToString().FromPascalCaseToKebabCase() });
+        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { Placement = Placement?.ToString().FromPascalCaseToKebabCase() });
     }
 }

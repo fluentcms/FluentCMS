@@ -1,48 +1,22 @@
-import { computePosition, autoUpdate } from '../../js/floating-ui-dom.js'
-
 const tooltips = new Map();
 
-export function update(dotnet, element, config) { }
+export function update(dotnet, element, config) {
+
+}
 
 export function initialize(dotnet, element, config) {
     dispose(dotnet, element);
 
-    const target = element.previousElementSibling;
+    const target = element;
 
-    function onMouseEnter() {
-        element.classList.add('f-tooltip-show');
-    }
+    const trigger = element.previousElementSibling;
 
-    target.addEventListener('mouseenter', onMouseEnter);
+    const options = {
+        placement: config.placement,
+        triggerType: 'hover',
+    };
 
-    function onMouseLeave() {
-        element.classList.remove('f-tooltip-show');
-    }
-
-    target.addEventListener('mouseleave', onMouseLeave);
-
-    const cleanup = autoUpdate(target, element, () => {
-        const options = {
-            placement: config.placement
-        }
-
-        computePosition(target, element, options)
-            .then(({ x, y }) => {
-                Object.assign(element.style, {
-                    left: `${x}px`,
-                    top: `${y}px`
-                })
-            })
-    });
-
-    const tooltip = {
-        dispose() {
-            target.removeEventListener('mouseenter', onMouseEnter);
-            target.removeEventListener('mouseleave', onMouseLeave);
-
-            cleanup()
-        }
-    }
+    const tooltip = new window.Flowbite.default.Tooltip(target, trigger, options);
 
     tooltips.set(element, tooltip);
 }
@@ -50,8 +24,7 @@ export function initialize(dotnet, element, config) {
 export function dispose(dotnet, element) {
     const tooltip = tooltips.get(element);
 
-    tooltip?.dispose();
+    tooltip?.destroy();
 
     tooltips.delete(element);
 }
-
