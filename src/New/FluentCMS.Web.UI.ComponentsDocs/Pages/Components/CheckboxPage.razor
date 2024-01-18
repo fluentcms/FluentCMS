@@ -42,6 +42,18 @@
             <Checkbox @bind-Value="Value2" />
             <Checkbox @bind-Value="Value2" />
         </ComponentPreview>
+
+        <ComponentPreview Title="Validation">
+            <Checkbox Hint="This is a hint"
+                      Label="Checkbox"
+                      State="FormFieldState.Default" />
+            <Checkbox Hint="This is a hint"
+                      Label="Checkbox"
+                      State="FormFieldState.Invalid" />
+            <Checkbox Hint="This is a hint"
+                      Label="Checkbox"
+                      State="FormFieldState.Valid" />
+        </ComponentPreview>
     </PageBody>
 </Page>
 

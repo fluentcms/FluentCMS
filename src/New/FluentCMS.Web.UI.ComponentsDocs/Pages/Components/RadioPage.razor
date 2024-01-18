@@ -42,6 +42,18 @@
             <Radio @bind-Value="Value2" />
             <Radio @bind-Value="Value2" />
         </ComponentPreview>
+
+        <ComponentPreview Title="Validation">
+            <Radio Hint="This is a hint"
+                   Label="Radio"
+                   State="FormFieldState.Default" />
+            <Radio Hint="This is a hint"
+                   Label="Radio"
+                   State="FormFieldState.Invalid" />
+            <Radio Hint="This is a hint"
+                   Label="Radio"
+                   State="FormFieldState.Valid" />
+        </ComponentPreview>
     </PageBody>
 </Page>
 

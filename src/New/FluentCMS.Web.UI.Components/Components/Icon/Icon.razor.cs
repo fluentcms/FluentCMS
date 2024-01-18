@@ -12,6 +12,7 @@ public enum IconName
     Edit,
     ExclamationCircle,
     Filter,
+    Grid,
     Home,
     Image,
     InfoCircle,
@@ -22,7 +23,6 @@ public enum IconName
     Rocket,
     Search,
     Settings,
-    Squares,
 }
 
 public enum IconSize

@@ -55,6 +55,21 @@
             <Textarea @bind-Value="Value2" />
         </ComponentPreview>
 
+        <ComponentPreview Title="Validation">
+            <Textarea Hint="This is a hint"
+                      Label="Textarea"
+                      Placeholder="Type something..."
+                      State="FormFieldState.Default" />
+            <Textarea Hint="This is a hint"
+                      Label="Textarea"
+                      Placeholder="Type something..."
+                      State="FormFieldState.Invalid" />
+            <Textarea Hint="This is a hint"
+                      Label="Textarea"
+                      Placeholder="Type something..."
+                      State="FormFieldState.Valid" />
+        </ComponentPreview>
+
         <ComponentPreview Title="Rows">
             <Textarea Rows="20" />
         </ComponentPreview>

@@ -54,6 +54,21 @@
             <Input @bind-Value="Value2" />
             <Input @bind-Value="Value2" />
         </ComponentPreview>
+
+        <ComponentPreview Title="Validation">
+            <Input Hint="This is a hint"
+                   Label="Input"
+                   Placeholder="Type something..."
+                   State="FormFieldState.Default" />
+            <Input Hint="This is a hint"
+                   Label="Input"
+                   Placeholder="Type something..."
+                   State="FormFieldState.Invalid" />
+            <Input Hint="This is a hint"
+                   Label="Input"
+                   Placeholder="Type something..."
+                   State="FormFieldState.Valid" />
+        </ComponentPreview>
     </PageBody>
 </Page>
 

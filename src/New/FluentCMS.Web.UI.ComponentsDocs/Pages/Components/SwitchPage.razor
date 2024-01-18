@@ -42,6 +42,18 @@
             <Switch @bind-Value="Value2" />
             <Switch @bind-Value="Value2" />
         </ComponentPreview>
+
+        <ComponentPreview Title="Validation">
+            <Switch Hint="This is a hint"
+                    Label="Switch"
+                    State="FormFieldState.Default" />
+            <Switch Hint="This is a hint"
+                    Label="Switch"
+                    State="FormFieldState.Invalid" />
+            <Switch Hint="This is a hint"
+                    Label="Switch"
+                    State="FormFieldState.Valid" />
+        </ComponentPreview>
     </PageBody>
 </Page>
 

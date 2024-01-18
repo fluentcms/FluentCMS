@@ -109,10 +109,25 @@
                 <Option Value="3">Three</Option>
             </Select>
         </ComponentPreview>
+
+        <ComponentPreview Title="Validation">
+            <Select Hint="This is a hint"
+                    Label="Select"
+                    Placeholder="Choose an option"
+                    State="FormFieldState.Default" />
+            <Select Hint="This is a hint"
+                    Label="Select"
+                    Placeholder="Choose an option"
+                    State="FormFieldState.Invalid" />
+            <Select Hint="This is a hint"
+                    Label="Select"
+                    Placeholder="Choose an option"
+                    State="FormFieldState.Valid" />
+        </ComponentPreview>
     </PageBody>
 </Page>
 
 @code {
     private string Value1 = "Initial";
     private string Value2;
-}  
+}
