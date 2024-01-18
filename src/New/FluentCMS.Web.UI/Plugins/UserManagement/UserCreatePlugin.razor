@@ -35,10 +35,9 @@
             var newUser = await UserClient.CreateAsync(Model);
             Message = "Done!";
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-
-            Message = "An error occured!";
+            Message = ex.ToString();
         }
     }
 }
