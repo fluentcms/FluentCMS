@@ -1,0 +1,22 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+<li @attributes="AdditionalAttributes"
+    class="@this.GetClasses()">
+    <a @onclick="() => Parent?.Activate(Name)">
+        @ChildContent
+    </a>
+</li>
+
+@code {
+    [CssProperty]
+    public bool Active => Name == Parent?.Value;
+
+    [Parameter]
+    public string Name { get; set; } = default!;
+
+    [CascadingParameter]
+    public Tabs? Parent { get; set; }
+}
+

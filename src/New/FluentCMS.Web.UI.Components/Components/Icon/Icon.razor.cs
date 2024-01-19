@@ -12,6 +12,7 @@ public enum IconName
     Edit,
     ExclamationCircle,
     Filter,
+    Grid,
     Home,
     Image,
     InfoCircle,

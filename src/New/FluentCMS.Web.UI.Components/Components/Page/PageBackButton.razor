@@ -1,18 +1,20 @@
 @inherits BaseComponent
 
-@* TODO *@
-@* <Button class="@this.GetClasses()"
-    Ghost
-    OnClick="() => GoBack()">
-    <Icon Name="@IconNameEnum.Previous" />
+@namespace FluentCMS.Web.UI.Components
+
+<Button class="@this.GetClasses()"
+        Ghost="true"
+        OnClick="() => GoBack()">
+    <Icon Name="@IconName.Previous" />
     Back
-</Button> *@
+</Button>
 
 @code {
     [Inject]
-    IJSRuntime JsRuntime {get; set;}
+    IJSRuntime JsRuntime { get; set; }
 
-    public async Task GoBack() {
+    public async Task GoBack()
+    {
         await JsRuntime.InvokeAsync<object>("history.back");
     }
 }

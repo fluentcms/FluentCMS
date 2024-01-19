@@ -1,0 +1,14 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+<span @attributes="AdditionalAttributes"
+      class="@this.GetClasses()">
+    @ChildContent
+</span>
+
+@code {
+    [Parameter]
+    [CssProperty]
+    public Color Color { get; set; } = Color.Default;
+}

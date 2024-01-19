@@ -1,0 +1,24 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+<div @attributes="AdditionalAttributes"
+     class="@this.GetClasses()">
+    <CascadingValue Value="this">
+        @ChildContent
+    </CascadingValue>
+</div>
+
+@code {
+    [Parameter]
+    public string Value { get; set; }
+
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    public async void Activate(string name)
+    {
+        await ValueChanged.InvokeAsync(Value = name);
+    }
+}
+

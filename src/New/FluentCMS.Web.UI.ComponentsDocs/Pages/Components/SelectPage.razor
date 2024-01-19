@@ -1,0 +1,133 @@
+@page "/components/select"
+@layout ComponentsLayout;
+
+<Page>
+    <PageHeader Title="Selects" />
+    <PageBody>
+        <ComponentPreview Title="Default">
+            <Select>
+                <Option>One</Option>
+                <Option>Two</Option>
+                <Option>Three</Option>
+            </Select>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Label">
+            <Select Label="This is a label">
+                <Option>One</Option>
+                <Option>Two</Option>
+                <Option>Three</Option>
+            </Select>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Disabled">
+            <Select Disabled="true">
+                <Option>One</Option>
+                <Option>Two</Option>
+                <Option>Three</Option>
+            </Select>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Required">
+            <Select Required="true">
+                <Option>One</Option>
+                <Option>Two</Option>
+                <Option>Three</Option>
+            </Select>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Readonly">
+            <Select readonly="@true">
+                <Option>One</Option>
+                <Option>Two</Option>
+                <Option>Three</Option>
+            </Select>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Placeholder">
+            <Select Placeholder="Choose an option">
+                <Option>One</Option>
+                <Option>Two</Option>
+                <Option>Three</Option>
+            </Select>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Icon">
+            <Select IconStart="IconName.Search">
+                <Option>One</Option>
+                <Option>Two</Option>
+                <Option>Three</Option>
+            </Select>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Hint">
+            <Select Hint="This is a hint">
+                <Option>One</Option>
+                <Option>Two</Option>
+                <Option>Three</Option>
+            </Select>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Dense">
+            <Select Dense="true">
+                <Option>One</Option>
+                <Option>Two</Option>
+                <Option>Three</Option>
+            </Select>
+            <Select Dense="true">
+                <Option>One</Option>
+                <Option>Two</Option>
+                <Option>Three</Option>
+            </Select>
+            <Select Dense="true">
+                <Option>One</Option>
+                <Option>Two</Option>
+                <Option>Three</Option>
+            </Select>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Initial Value">
+            <Select @bind-Value="Value1">
+                <Option Value="1">One</Option>
+                <Option Value="2">Two</Option>
+                <Option Value="3">Three</Option>
+            </Select>
+            <Badge Color="Color.Primary">
+                @Value1
+            </Badge>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Bind Value">
+            <Select @bind-Value="Value2">
+                <Option Value="1">One</Option>
+                <Option Value="2">Two</Option>
+                <Option Value="3">Three</Option>
+            </Select>
+            <Select @bind-Value="Value2">
+                <Option Value="1">One</Option>
+                <Option Value="2">Two</Option>
+                <Option Value="3">Three</Option>
+            </Select>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Validation">
+            <Select Hint="This is a hint"
+                    Label="Select"
+                    Placeholder="Choose an option"
+                    State="FormFieldState.Default" />
+            <Select Hint="This is a hint"
+                    Label="Select"
+                    Placeholder="Choose an option"
+                    State="FormFieldState.Invalid" />
+            <Select Hint="This is a hint"
+                    Label="Select"
+                    Placeholder="Choose an option"
+                    State="FormFieldState.Valid" />
+        </ComponentPreview>
+    </PageBody>
+</Page>
+
+@code {
+    private string Value1 = "Initial";
+    private string Value2;
+}

@@ -1,0 +1,86 @@
+@page "/examples/form"
+@layout ExamplesLayout
+
+<Page>
+    <PageHeader HasBack="true"
+                Title="CURD Create"
+                Subtitle="Simple CRUD page for a entity">
+        <PageHeaderActions>
+            <ButtonGroup>
+                <Button Color="Color.Primary">
+                    <Icon Name="IconName.Rocket" />
+                    Save
+                </Button>
+            </ButtonGroup>
+        </PageHeaderActions>
+    </PageHeader>
+    <PageBody>
+        <Grid Gutter="GridGutter.Medium">
+            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Nine">
+                <form @onsubmit="OnSubmit" @onsubmit:preventDefault="true">
+                    <Card>
+                        <CardBody>
+                            <Grid GutterX="GridGutter.Large" JustifySmall="GridJustify.End">
+                                <GridItem Small="GridItemColumn.Twelve">
+                                    <Input Label="Title"/>
+                                </GridItem>
+                                <GridItem Small="GridItemColumn.Twelve">
+                                    <Textarea Label="Content"/>
+                                </GridItem>
+                                <GridItem Small="GridItemColumn.Twelve" 
+                                          Medium="GridItemColumn.Six">
+                                    <Input Label="Minimum Value" 
+                                           Type="InputType.Text"/>
+                                </GridItem>
+                                <GridItem Small="GridItemColumn.Twelve" 
+                                          Medium="GridItemColumn.Six">
+                                    <Input Label="Maximum Value" 
+                                           Type="InputType.Text"/>
+                                </GridItem>
+                            </Grid>
+                        </CardBody>
+                    </Card>
+                </form>
+            </GridItem>
+            <GridItem Small="GridItemColumn.Twelve"
+                      Medium="GridItemColumn.Three">
+                <Card>
+                    <CardBody>
+                        <Switch Label="Published"/>
+                        <Spacer />
+                        Information
+                    </CardBody>
+                </Card>
+                <Spacer />
+                <Grid GutterY="GridGutter.Medium">
+                    <GridItem Small="GridItemColumn.Twelve">
+                        <Button Block 
+                                Color="Color.Primary"
+                                Outline>
+                            <Icon Name="IconName.Edit"/>
+                            Edit the Model
+                        </Button>
+                    </GridItem>
+                    <GridItem Small="GridItemColumn.Twelve">
+                        <Button Block 
+                                Color="Color.Primary"
+                                Outline>
+                            <Icon Name="IconName.Settings"/>
+                            Configure the View
+                        </Button>
+                    </GridItem>
+                </Grid>
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
+
+@code {
+    [Inject]
+    public ConfirmService Confirm {get; set;}
+
+    public void OnSubmit() {
+        Confirm.Show("Are you sure you want to submit this form?");
+    }
+
+}

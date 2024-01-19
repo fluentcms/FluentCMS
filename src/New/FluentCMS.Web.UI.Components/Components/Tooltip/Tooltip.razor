@@ -1,0 +1,35 @@
+@implements IDisposable
+@inherits BaseComponent
+@inject IJSRuntime JS
+
+@namespace FluentCMS.Web.UI.Components
+
+<div @attributes="AdditionalAttributes"
+     @ref="element"
+     class="@this.GetClasses()">
+    @ChildContent
+</div>
+
+@code {
+    public ElementReference element;
+
+    private IJSObjectReference module = default!;
+
+    [Parameter]
+    public TooltipPlacement? Placement { get; set; }
+
+    public void Dispose()
+    {
+        module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Tooltip/Tooltip.razor.js");
+
+        // TODO: handle run time changing properties
+        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { Placement = Placement?.ToString().FromPascalCaseToKebabCase() });
+    }
+}

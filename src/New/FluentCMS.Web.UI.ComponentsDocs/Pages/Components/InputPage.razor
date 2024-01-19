@@ -1,0 +1,78 @@
+@page "/components/input"
+@layout ComponentsLayout;
+
+<Page>
+    <PageHeader Title="Inputs" />
+    <PageBody>
+        <ComponentPreview Title="Default">
+            <Input />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Label">
+            <Input Label="This is a label" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Disabled">
+            <Input Disabled="true" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Required">
+            <Input Required="true" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Readonly">
+            <Input readonly="@true" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Placeholder">
+            <Input Placeholder="Type something..." />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Icon">
+            <Input IconStart="IconName.InformationFilled" />
+            <Input IconEnd="IconName.Search" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Hint">
+            <Input Hint="This is a hint" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Dense">
+            <Input Dense="true" />
+            <Input Dense="true" />
+            <Input Dense="true" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Initial Value">
+            <Input @bind-Value="Value1" />
+            <Badge Color="Color.Primary">
+                @Value1
+            </Badge>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Bind Value">
+            <Input @bind-Value="Value2" />
+            <Input @bind-Value="Value2" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Validation">
+            <Input Hint="This is a hint"
+                   Label="Input"
+                   Placeholder="Type something..."
+                   State="FormFieldState.Default" />
+            <Input Hint="This is a hint"
+                   Label="Input"
+                   Placeholder="Type something..."
+                   State="FormFieldState.Invalid" />
+            <Input Hint="This is a hint"
+                   Label="Input"
+                   Placeholder="Type something..."
+                   State="FormFieldState.Valid" />
+        </ComponentPreview>
+    </PageBody>
+</Page>
+
+@code {
+    private string Value1 = "Initial";
+    private string Value2;
+}

@@ -1,0 +1,77 @@
+@page "/examples/detail"
+@layout ExamplesLayout
+
+<Page>
+    <PageHeader HasBack="true"
+                Title="CURD Detail"
+                Subtitle="Simple CRUD detail page for a entity">
+        <PageHeaderActions>
+            <ButtonGroup>
+                <Button Outline Color="Color.Danger">
+                    <Icon Name="IconName.Delete" />
+                    Delete
+                </Button>
+                <Button Color="Color.Primary">
+                    <Icon Name="IconName.Edit" />
+                    Edit
+                </Button>
+            </ButtonGroup>
+        </PageHeaderActions>
+    </PageHeader>
+    <PageBody>
+        <Grid Gutter="GridGutter.Large">
+            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Nine">
+                <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
+                    <GridItem Small="GridItemColumn.Twelve">
+                        <div><strong>Short Description</strong></div>
+                        See it all in sharp, glorious detail on the immersive 24‑inch 4.5K Retina display.2 The P3 wide color gamut brings what you’re watching to life in over a billion colors. Images shine with a brilliant 500 nits of brightness. Industry-leading anti‑reflective coating delivers greater comfort and readability.
+                    </GridItem>
+                    <GridItem Small="GridItemColumn.Twelve">
+                        <div><strong>Image</strong></div>
+                        <img src="/images/image1.jpeg"/>
+                    </GridItem>
+                    <GridItem Small="GridItemColumn.Twelve">
+                        <div><strong>Description</strong></div>
+                        Standard glass ,3.8GHz 8-core 10th-generation Intel Core i7 processor, Turbo Boost up to 5.0GHz, 16GB 2666MHz DDR4 memory, Radeon Pro 5500 XT with 8GB of GDDR6 memory, 256GB SSD storage, Gigabit Ethernet, Magic Mouse 2, Magic Keyboard - US.
+                        <br/>
+                        <br/>
+                        Standard glass ,3.8GHz 8-core 10th-generation Intel Core i7 processor, Turbo Boost up to 5.0GHz, 16GB 2666MHz DDR4 memory, Radeon Pro 5500 XT with 8GB of GDDR6 memory, 256GB SSD storage, Gigabit Ethernet, Magic Mouse 2, Magic Keyboard - US.
+                        <br/>
+                        Standard glass ,3.8GHz 8-core 10th-generation Intel Core i7 processor, Turbo Boost up to 5.0GHz, 16GB 2666MHz DDR4 memory, Radeon Pro 5500 XT with 8GB of GDDR6 memory, 256GB SSD storage, Gigabit Ethernet, Magic Mouse 2, Magic Keyboard - US.
+                    </GridItem>
+                </Grid>
+            </GridItem>
+            <GridItem Small="GridItemColumn.Twelve"
+                      Medium="GridItemColumn.Three">
+                <Card>
+                    <CardBody>
+                        <div><strong>Sold by</strong></div>
+                        <div>Flowbite</div>
+                        <Spacer />
+                        <div><strong>Ships from</strong></div>
+                        <div>Flowbite</div>
+                        <Spacer />
+                        <div><strong>Brand</strong></div>
+                        <div>Apple</div>
+                        <Spacer />
+                        <div><strong>Dimensions (cm)</strong></div>
+                        <div>105 x 15 x 23</div>
+                        <Spacer />
+                        <div><strong>Item weight</strong></div>
+                        <div>12kg</div>
+                    </CardBody>
+                </Card>
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
+
+@code {
+    [Inject]
+    public ConfirmService Confirm {get; set;}
+
+    public void OnSubmit() {
+        Confirm.Show("Are you sure you want to submit this form?");
+    }
+
+}

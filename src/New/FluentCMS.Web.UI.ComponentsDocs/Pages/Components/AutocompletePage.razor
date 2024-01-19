@@ -1,0 +1,75 @@
+@page "/components/autocomplete"
+@layout ComponentsLayout
+
+<Page>
+    <PageHeader Title="Autocompletes" />
+    <PageBody>
+        <ComponentPreview Title="Default">
+            <Autocomplete Options="Options" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Disabled">
+            <Autocomplete Disabled="true"
+                          Options="Options" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Multiple">
+            <Autocomplete Multiple="true"
+                          Options="Options" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Initialize">
+            <Autocomplete @bind-Value="Value"
+                          Options="Options" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Value">
+            <Autocomplete @bind-Value="Value" Multiple
+                           Options=Options />
+             <Spacer />
+             <Stack>
+                 @foreach (var item in Value)
+                {
+                    <Badge @key=item Color=Color.Primary>
+                        @Options.FirstOrDefault(X => X.Id == item).Title
+                    </Badge>
+                }
+            </Stack>
+        </ComponentPreview>
+    </PageBody>
+</Page>
+
+@code {
+    public bool Disabled { get; set; }
+
+    public List<AutocompleteOptions> Options = new()
+    {
+        new AutocompleteOptions
+        {
+            Id = "1",
+            Title = "Item A"
+        },
+        new AutocompleteOptions
+        {
+            Id = "2",
+            Title = "Item B"
+        },
+        new AutocompleteOptions
+        {
+            Id = "3",
+            Title = "Item C"
+        },
+        new AutocompleteOptions
+        {
+            Id = "4",
+            Title = "Item D"
+        },
+        new AutocompleteOptions
+        {
+            Id = "5",
+            Title = "Item E"
+        }
+    };
+
+    public List<string> Value { get; set; } = ["3"];
+}

@@ -1,0 +1,82 @@
+@page "/components/textarea"
+@layout ComponentsLayout;
+
+<Page>
+    <PageHeader Title="Textareas" />
+    <PageBody>
+        <ComponentPreview Title="Default">
+            <Textarea />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Label">
+            <Textarea Label="This is a label" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Disabled">
+            <Textarea Disabled="true" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Required">
+            <Textarea Required="true" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Readonly">
+            <Textarea readonly="@true" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Placeholder">
+            <Textarea Placeholder="Type something..." />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Icon">
+            <Textarea IconStart="IconName.InformationFilled" />
+            <Textarea IconEnd="IconName.Search" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Hint">
+            <Textarea Hint="This is a hint" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Dense">
+            <Textarea Dense="true" />
+            <Textarea Dense="true" />
+            <Textarea Dense="true" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Initial Value">
+            <Textarea @bind-Value="Value1" />
+            <Badge Color="Color.Primary">
+                @Value1
+            </Badge>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Bind Value">
+            <Textarea @bind-Value="Value2" />
+            <Textarea @bind-Value="Value2" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Validation">
+            <Textarea Hint="This is a hint"
+                      Label="Textarea"
+                      Placeholder="Type something..."
+                      State="FormFieldState.Default" />
+            <Textarea Hint="This is a hint"
+                      Label="Textarea"
+                      Placeholder="Type something..."
+                      State="FormFieldState.Invalid" />
+            <Textarea Hint="This is a hint"
+                      Label="Textarea"
+                      Placeholder="Type something..."
+                      State="FormFieldState.Valid" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Rows">
+            <Textarea Rows="20" />
+        </ComponentPreview>
+    </PageBody>
+</Page>
+
+@code {
+    private string Value1 = "Initial";
+    private string Value2;
+}

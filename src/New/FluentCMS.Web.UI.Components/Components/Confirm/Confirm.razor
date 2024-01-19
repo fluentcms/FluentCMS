@@ -1,0 +1,90 @@
+﻿@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+<div @attributes="AdditionalAttributes"
+     class="@this.GetClasses()"
+     tabindex="-1">
+
+    @* TODO: It is removed after enabling the JS invoker *@
+    @if (Open)
+    {
+        <div class="bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0"
+             @onclick="Close" />
+    }
+
+    <div class="@this.ClassName("ConfirmWrapper")">
+        <div class="@this.ClassName("ConfirmContent")">
+            <CloseButton OnClick="Cancel" />
+            <div class="@this.ClassName("ConfirmBody")">
+                <Icon Name="IconName.ExclamationCircle"
+                      Size="IconSize.Large" />
+
+                <h3 class="@this.ClassName("ConfirmMessage")">
+                    @Message
+                </h3>
+
+                <ButtonGroup>
+                    <Button Color="Color.Danger"
+                            OnClick="Confirmation">
+                        Yes, I'm sure
+                    </Button>
+                    <Button OnClick="Cancel">
+                        No, cancel
+                    </Button>
+                </ButtonGroup>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? Message { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public bool Open { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OpenChanged { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public bool Static { get; set; }
+
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnCancel { get; set; }
+
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnConfirm { get; set; }
+
+    public async void Cancel()
+    {
+        Open = false;
+
+        await OpenChanged.InvokeAsync(Open);
+
+        await OnCancel.InvokeAsync();
+    }
+
+    public async void Close()
+    {
+        if (Static) return;
+
+        Open = false;
+
+        await OpenChanged.InvokeAsync(Open);
+
+        await OnCancel.InvokeAsync();
+    }
+
+    public async void Confirmation()
+    {
+        Open = false;
+
+        await OpenChanged.InvokeAsync(Open);
+
+        await OnConfirm.InvokeAsync();
+    }
+}

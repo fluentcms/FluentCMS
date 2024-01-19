@@ -1,0 +1,21 @@
+@inherits FormCheckboxesType<bool>
+
+@namespace FluentCMS.Web.UI.Components
+
+<FormField Appearance="FormFieldAppearance.Checkbox"
+           Dense="@Dense"
+           Disabled="@Disabled"
+           Hint="@Hint"
+           Id="@Id"
+           Label="@Label"
+           Name="@Name"
+           Required="@Required"
+           State="@State">
+    <input @attributes="AdditionalAttributes"
+           @bind="@Value"
+           class="@this.GetClasses()"
+           disabled="@Disabled"
+           id="@Id"
+           name="@Name"
+           type="checkbox" />
+</FormField>

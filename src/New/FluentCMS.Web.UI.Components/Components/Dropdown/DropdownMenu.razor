@@ -1,0 +1,13 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+<div @attributes="AdditionalAttributes"
+     class="@this.GetClasses()">
+    @if (ChildContent != null)
+    {
+        <ul class="@this.ClassName("DropdownMenuBody")">
+            @ChildContent
+        </ul>
+    }
+</div> 

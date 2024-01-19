@@ -1,0 +1,22 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+<span @attributes="AdditionalAttributes"
+      class="@this.GetClasses()">
+    Showing
+    <span>@Current-@Size</span>
+    of
+    <span>@Total</span>
+</span>
+
+@code {
+    [Parameter]
+    public int Current { get; set; }
+
+    [Parameter]
+    public int Size { get; set; } = 10;
+
+    [Parameter]
+    public int Total { get; set; }
+}

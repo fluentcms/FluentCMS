@@ -1,12 +1,13 @@
 @inherits BaseComponent
 
+@namespace FluentCMS.Web.UI.Components
+
 @* TODO: remove extra class *@
 <aside @attributes="AdditionalAttributes"
        class="@this.GetClasses() lg:!translate-x-0">
     <div class="@this.ClassName("SidebarMain")">
         @if (!string.IsNullOrEmpty(Title))
         {
-            @* TODO: move class value to style file *@
             <h4 class="@this.ClassName("SidebarTitle")">
                 @Title
             </h4>

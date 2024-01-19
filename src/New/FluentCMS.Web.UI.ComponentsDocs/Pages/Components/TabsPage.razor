@@ -1,0 +1,38 @@
+@page "/components/tabs"
+@layout ComponentsLayout
+
+<Page>
+    <PageHeader Title="Tabs" />
+    <PageBody>
+        <ComponentPreview Title="Default">
+            <Tabs @bind-Value="Value">
+                <TabsList>
+                    <TabsTab Name="tab-a">
+                        Tab A
+                    </TabsTab>
+                    <TabsTab Name="tab-b">
+                        Tab B
+                    </TabsTab>
+                    <TabsTab Name="tab-c">
+                        Tab C
+                    </TabsTab>
+                </TabsList>
+                <TabsPanels>
+                    <TabsPanel Name="tab-a">
+                        Content Tab A
+                    </TabsPanel>
+                    <TabsPanel Name="tab-b">
+                        Content Tab  B
+                    </TabsPanel>
+                    <TabsPanel Name="tab-c">
+                        Content Tab  C
+                    </TabsPanel>
+                </TabsPanels>
+            </Tabs>
+        </ComponentPreview>
+    </PageBody>
+</Page>
+
+@code {
+    public string Value { get; set; } = "tab-a";
+}

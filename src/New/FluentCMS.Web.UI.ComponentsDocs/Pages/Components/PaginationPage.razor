@@ -1,0 +1,24 @@
+@page "/components/pagination"
+@layout ComponentsLayout
+
+<Page>
+    <PageHeader Title="Paginations" />
+    <PageBody>
+        <ComponentPreview Title="Default">
+            <Pagination Current="5"
+                        ShowIcons="false"
+                        Total="10" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Icons">
+            <Pagination Current="5"
+                        ShowIcons="true"
+                        Total="10" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Info">
+            <PaginationInfo Current="1"
+                            Total="1000" />
+        </ComponentPreview>
+    </PageBody>
+</Page>

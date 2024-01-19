@@ -1,0 +1,75 @@
+@page "/examples/list"
+@layout ExamplesLayout
+
+<Page>
+    <PageHeader HasBack="true"
+                Title="CURD List"
+                Subtitle="Simple CRUD page for a entity">
+        <PageHeaderActions>
+            <ButtonGroup>
+                <Button Color="Color.Primary">
+                    <Icon Name="IconName.Plus" />
+                    Add New
+                </Button>
+            </ButtonGroup>
+        </PageHeaderActions>
+    </PageHeader>
+    <PageBody>
+        <Grid ItemsSmall="GridItems.Center"
+              JustifySmall="GridJustify.Between">
+            <GridItem Small="GridItemColumn.Six">
+                <Input Dense="true"
+                       IconStart="IconName.Search"
+                       Placeholder="Search for entities" />
+            </GridItem>
+            <GridItem Small="GridItemColumn.Auto">
+                <ButtonGroup>
+                    <Button>
+                        <Icon Name="IconName.Cog" />
+                        Table Settings
+                    </Button>
+                </ButtonGroup>
+            </GridItem>
+        </Grid>
+        <Spacer/>
+        <Table>
+            <TableHead>
+                <TableCell>Id</TableCell>
+                <TableCell>Title</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Actions</TableCell>
+            </TableHead>
+            <TableBody>
+                <TableRow>
+                    <TableCell>1</TableCell>
+                    <TableCell>Title of entity</TableCell>
+                    <TableCell>
+                        <Badge Color="Color.Success">Active</Badge>
+                    </TableCell>
+                    <TableCell>
+                        <ButtonGroup>
+                            <Button Color="Color.Danger">
+                                <Icon Name="IconName.Delete" />
+                                Delete
+                            </Button>
+                            <Button Color="Color.Primary" Outline>
+                                <Icon Name="IconName.Edit" />
+                                Edit
+                            </Button>
+                        </ButtonGroup>
+                    </TableCell>
+                </TableRow>
+            </TableBody>
+        </Table>
+        <Spacer/>
+        <Grid ItemsSmall="GridItems.Center"
+              JustifySmall="GridJustify.Between">
+            <GridItem>
+                <PaginationInfo Total="1000" Current="1" />
+            </GridItem>
+            <GridItem>
+                <Pagination Total="10" Current="5" />
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
