@@ -1,13 +1,17 @@
-﻿@using FluentCMS.Web.UI.Components.Core.Confirm
-
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-    <HeadOutlet />
+    @* These lines should be here to avoid ui flickering *@
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FluentCMS</title>
+    <link rel="stylesheet" href="/css/app.min.css">
+    <link rel="icon" type="image/png" href="favicon.png" />
+
+    <HeadOutlet @rendermode="@InteractiveServer" />
 </head>
-<body class="dark">
-    <ConfirmProvider />
-    <Routes />
+<body>
+    <Routes @rendermode="@InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
 </body>
 </html>
