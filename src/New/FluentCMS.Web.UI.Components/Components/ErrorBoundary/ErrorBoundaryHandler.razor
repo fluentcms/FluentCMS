@@ -1,0 +1,18 @@
+﻿@inherits ErrorBoundary
+
+@namespace FluentCMS.Web.UI.Components
+
+<CascadingValue Value="this">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    public Exception? Exception { get; set; }
+
+    protected override async Task OnErrorAsync(Exception exception)
+    {
+        Exception = exception;
+        this.Recover();
+        await Task.CompletedTask;
+    }
+}

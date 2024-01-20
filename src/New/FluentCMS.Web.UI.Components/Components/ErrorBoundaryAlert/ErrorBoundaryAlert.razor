@@ -1,0 +1,15 @@
+﻿@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+<Alert @attributes="AdditionalAttributes" Show="Exception != null">
+    @(ExceptionMessageFactory?.Invoke(Exception) ?? Exception?.Message)
+</Alert>
+
+@code {
+    [CascadingParameter]
+    public Exception? Exception { get; set; }
+
+    [Parameter]
+    public virtual Func<Exception?, string>? ExceptionMessageFactory { get; set; }
+}
