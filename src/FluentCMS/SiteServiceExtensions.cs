@@ -4,9 +4,9 @@ namespace Microsoft.Extensions.DependencyInjection;
 
 public static class SiteServiceExtensions
 {
-    public static IServiceCollection AddSiteServices(this IServiceCollection services)
+    public static IServiceCollection AddSiteServices(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddAdminUIServices();
+        services.AddAdminUIServices(configuration);
 
         // Add services to the container.
         services.AddRazorComponents()
