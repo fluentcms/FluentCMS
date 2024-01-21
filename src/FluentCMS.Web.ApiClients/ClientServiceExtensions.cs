@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Web.ApiClients;
+using Microsoft.Extensions.Configuration;
 using System.Net.Http.Headers;
 using System.Reflection;
 
@@ -6,12 +7,11 @@ namespace Microsoft.Extensions.DependencyInjection;
 
 public static class ClientServiceExtensions
 {
-    public static IServiceCollection AddApiClients(this IServiceCollection services)
+    public static IServiceCollection AddApiClients(this IServiceCollection services , IConfiguration configuration)
     {
         services.AddHttpClient("FluentCMS.Web.Api", client =>
         {
-            // TODO: Move this to configuration
-            client.BaseAddress = new Uri("https://localhost:7230");
+            client.BaseAddress = new Uri(configuration["urls"]);
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         });

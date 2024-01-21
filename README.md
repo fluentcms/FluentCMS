@@ -5,7 +5,6 @@ FluentCMS is a modern Content Management System (CMS) built on the powerful ASP.
 
 ## Features
 
-- **Dual Mode CMS**: Operate as a traditional content-based CMS or as a headless CMS to suit various project needs.
 - **AI-Powered Writing Assistance**: Utilize advanced AI to guide content creation, suggesting optimizations and improving readability.
 - **Blazing Fast**: Built on top of Blazor components for client-side operations.
 - **Extensible**: Easily extend with custom plugins and themes.
@@ -18,7 +17,7 @@ FluentCMS is a modern Content Management System (CMS) built on the powerful ASP.
 ### Prerequisites
 
 - .NET SDK 8.0 or higher
-- SQL Server (or your choice of database)
+- MongoDb
 
 ### Installation
 
@@ -38,7 +37,7 @@ FluentCMS is a modern Content Management System (CMS) built on the powerful ASP.
     dotnet run
     ```
 
-4. Visit `https://localhost:5001` in your browser.
+4. Visit `http://localhost:5000` in your browser.
 
 *(You can expand on more detailed setup instructions, configurations, etc.)*
 

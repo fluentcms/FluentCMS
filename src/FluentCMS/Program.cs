@@ -5,8 +5,9 @@ builder.Configuration.AddConfig(builder.Environment);
 #region Services
 
 var services = builder.Services;
+var configuration = builder.Configuration;
 
-services.AddSiteServices();
+services.AddSiteServices(configuration);
 
 services.AddMongoDbRepositories("MongoDb");
 
