@@ -16,7 +16,7 @@ public static class DependencyExtensions
         services.AddSingleton(configuration);
 
         // setup Clients
-        services.AddApiClients();
+        services.AddApiClients(configuration);
 
         return services;
     }
