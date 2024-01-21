@@ -11,7 +11,7 @@ public static class ClientServiceExtensions
     {
         services.AddHttpClient("FluentCMS.Web.Api", client =>
         {
-            client.BaseAddress = new Uri(configuration["BaseUrl"]?? "http://localhost:5000");
+            client.BaseAddress = new Uri(configuration["urls"]);
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         });
