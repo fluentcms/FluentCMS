@@ -27,12 +27,13 @@
     [Inject]
     private NavigationManager NavigationManager { get; set; } = default!;
 
-    private Type? GetType(PluginDetailResponse plugin)
+    public Type? GetType(PluginDetailResponse plugin)
     {
         var uri = new Uri(NavigationManager.Uri);
         var query = HttpUtility.ParseQueryString(uri.Query);
 
-        var assembly = typeof(Section).Assembly;
+        var uiAssembly = typeof(Section).Assembly;
+        var componentsAssembly = typeof(BaseComponent).Assembly;
         var pluginTypeName = query["typeName"];
         PluginDefinitionType pluginDefType;
 
@@ -41,6 +42,6 @@
         else
             pluginDefType = plugin.Definition?.Types?.Where(p => p.Name.Equals(pluginTypeName, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
 
-        return assembly.DefinedTypes.FirstOrDefault(x => x.Name == pluginDefType.Type);
+        return uiAssembly.DefinedTypes.Union(componentsAssembly.DefinedTypes).FirstOrDefault(x => x.Name == pluginDefType.Type);
     }
 }
