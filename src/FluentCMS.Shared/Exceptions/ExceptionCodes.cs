@@ -2,21 +2,28 @@
 
 public class ExceptionCodes
 {
-    #region General
+    #region Setup
 
-    public const string GeneralPermissionDenied = "General.PermissionDenied";
+    public const string SetupSettingsNotDefined = "SetupSettings.NotDefined";
+    public const string SetupSettingsNotInitialized = "SetupSettings.NotInitialized";
+    public const string SetupSettingsAlreadyInitialized = "SetupSettings.AlreadyInitialized";
+    public const string SetupSettingsAppTemplatesPathNotDefined = "SetupSettings.AppTemplatesPathNotDefined";
+    public const string SetupSettingsAppTemplatesFolderNotFound = "SetupSettings.AppTemplatesFolderNotFound";
+    public const string SetupSettingsSiteTemplatesPathNotDefined = "SetupSettings.SiteTemplatesPathNotDefined";
+    public const string SetupSettingsSiteTemplatesFolderNotFound = "SetupSettings.SiteTemplatesFolderNotFound";
+    public const string SetupSettingsAdminTemplatesPathNotDefined = "SetupSettings.AdminTemplatesPathNotDefined";
+    public const string SetupSettingsAdminTemplatesFolderNotFound = "SetupSettings.AdminTemplatesFolderNotFound";
+    public const string SetupSettingsHostingEnvironmentIsNull = "SetupSettings.HostingEnvironmentIsNull";
 
     #endregion
 
-    #region Host
+    #region GlobalSettings
 
-    public const string HostNotFound = "Host.NotFound";
-    public const string HostAlreadyInitialized = "Host.AlreadyInitialized";
-    public const string HostUnableToCreate = "Host.UnableToCreate";
-    public const string HostUnableToUpdate = "Host.UnableToUpdate";
-    public const string HostUnableToDelete = "Host.UnableToDelete";
-    public const string HostAtLeastOneSuperUser = "Host.AtLeastOneSuperUser";
-    public const string HostUnableToRemoveYourself = "Host.UnableToRemoveYourself";
+    public const string GlobalSettingsUnableToUpdate = "GlobalSettings.UnableToUpdate";
+    public const string GlobalSettingsUnableToInit = "GlobalSettings.UnableToInit";
+    public const string GlobalSettingsAtLeastOneSuperUser = "GlobalSettings.AtLeastOneSuperUser";
+    public const string GlobalSettingsUnableToRemoveYourself = "GlobalSettings.UnableToRemoveYourself";
+    public const string GlobalSettingsNotFound = "GlobalSettings.NotFound";
 
     #endregion
 
@@ -29,29 +36,20 @@ public class ExceptionCodes
 
     #endregion
 
-    #region Page
+    #region App
 
-    public const string PageUnableToCreate = "Page.UnableToCreated";
-    public const string PageUnableToUpdate = "Page.UnableToUpdate";
-    public const string PageUnableToDelete = "Page.UnableToDelete";
-    public const string PagePathMustBeUnique = "Page.PathMustBeUnique";
-    public const string PageNotFound = "Page.NotFound";
-    public const string PageParentPageNotFound = "Page.ParentPageNotFound";
-    public const string PageParentMustBeOnTheSameSite = "Page.ParentMustBeOnTheSameSite";
-    public const string PageViewPermissionsAreNotASubsetOfParent = "Page.ViewPermissionsAreNotASubsetOfParent";
-    public const string PageSiteIdCannotBeChanged = "Page.SiteIdCannotBeChanged";
-    public const string PageHasChildren = "Page.PageHasChildren";
-
+    public const string AppNotFound = "App.NotFound";
+    public const string AppSlugNotUnique = "App.SlugNotUnique";
+    public const string AppUnableToCreate = "App.UnableToCreated";
+    public const string AppUnableToUpdate = "App.UnableToUpdate";
+    public const string AppUnableToDelete = "App.UnableToDelete";
 
     #endregion
 
-    #region Site
+    #region AppTemplate
 
-    public const string SiteNotFound = "Site.NotFound";
-    public const string SiteUrlMustBeUnique = "Site.UrlMustBeUnique";
-    public const string SiteUnableToCreate = "Site.UnableToCreated";
-    public const string SiteUnableToUpdate = "Site.UnableToUpdate";
-    public const string SiteUnableToDelete = "Site.UnableToDelete";
+    public const string AppTemplateNotFound = "AppTemplate.NotFound";
+    public const string AppTemplateUnableToCreate = "AppTemplate.UnableToCreated";
 
     #endregion
 
@@ -63,12 +61,29 @@ public class ExceptionCodes
     public const string RoleUnableToDelete = "Role.UnableToDelete";
     public const string RoleNotFound = "Role.NotFound";
     public const string RoleNameMustBeUnique = "Role.NameMustBeUnique";
+    public const string RoleInvalidAppId = "Role.InvalidAppId";
 
     #endregion
 
-    #region Permission
+    #region Content
+    public const string ContentUnableToCreate = "Content.UnableToCreated";
+    public const string ContentUnableToUpdate = "Content.UnableToUpdate";
+    public const string ContentUnableToDelete = "Content.UnableToDelete";
+    public const string ContentNotFound = "Content.NotFound";
+    public const string ContentTypeMismatch = "Content.TypeMismatch";
+    public const string ContentAppIdMismatch = "Content.AppIdMismatch";
+    #endregion
 
-    public const string PermissionUnableToCreate = "Permission.UnableToCreated";
+    #region ContentType
+
+    public const string ContentTypeUnableToCreate = "ContentType.UnableToCreated";
+    public const string ContentTypeUnableToUpdate = "ContentType.UnableToUpdate";
+    public const string ContentTypeUnableToDelete = "ContentType.UnableToDelete";
+    public const string ContentTypeNotFound = "ContentType.NotFound";
+    public const string ContentTypeNameCannotBeChanged = "ContentType.NameCannotBeChanged";
+    public const string ContentTypeNameMustBeUnique = "ContentType.NameMustBeUnique";
+    public const string ContentTypeFieldNotFound = "ContentType.FieldNotFound";
+    public const string ContentTypeInvalidAppId = "ContentType.ContentTypeInvalidAppId";
 
     #endregion
 
@@ -99,25 +114,28 @@ public class ExceptionCodes
 
     #endregion
 
-    #region Content
-    public const string ContentUnableToCreate = "Content.UnableToCreated";
-    public const string ContentUnableToUpdate = "Content.UnableToUpdate";
-    public const string ContentUnableToDelete = "Content.UnableToDelete";
-    public const string ContentNotFound = "Content.NotFound";
-    public const string ContentTypeMismatch = "Content.TypeMismatch";
-    public const string ContentSiteIdMismatch = "Content.SiteIdMismatch";
-    public const string ContentPluginIdMismatch = "Content.ContentPluginIdMismatch";
+    #region Site
+
+    public const string SiteNotFound = "Site.NotFound";
+    public const string SiteUrlMustBeUnique = "Site.UrlMustBeUnique";
+    public const string SiteUnableToCreate = "Site.UnableToCreated";
+    public const string SiteUnableToUpdate = "Site.UnableToUpdate";
+    public const string SiteUnableToDelete = "Site.UnableToDelete";
+
     #endregion
 
-    #region ContentType
+    #region Page
 
-    public const string ContentTypeUnableToCreate = "ContentType.UnableToCreated";
-    public const string ContentTypeUnableToUpdate = "ContentType.UnableToUpdate";
-    public const string ContentTypeUnableToDelete = "ContentType.UnableToDelete";
-    public const string ContentTypeNotFound = "ContentType.NotFound";
-    public const string ContentTypeNameCannotBeChanged = "ContentType.NameCannotBeChanged";
-    public const string ContentTypeNameMustBeUnique = "ContentType.NameMustBeUnique";
-    public const string ContentTypeFieldNotFound = "ContentType.FieldNotFound";
+    public const string PageUnableToCreate = "Page.UnableToCreated";
+    public const string PageUnableToUpdate = "Page.UnableToUpdate";
+    public const string PageUnableToDelete = "Page.UnableToDelete";
+    public const string PagePathMustBeUnique = "Page.PathMustBeUnique";
+    public const string PageNotFound = "Page.NotFound";
+    public const string PageParentPageNotFound = "Page.ParentPageNotFound";
+    public const string PageParentMustBeOnTheSameSite = "Page.ParentMustBeOnTheSameSite";
+    public const string PageViewPermissionsAreNotASubsetOfParent = "Page.ViewPermissionsAreNotASubsetOfParent";
+    public const string PageSiteIdCannotBeChanged = "Page.SiteIdCannotBeChanged";
+    public const string PageHasChildren = "Page.PageHasChildren";
 
     #endregion
 }

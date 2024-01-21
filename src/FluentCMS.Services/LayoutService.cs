@@ -1,12 +1,9 @@
-﻿using FluentCMS.Entities;
-using FluentCMS.Repositories;
+﻿namespace FluentCMS.Services;
 
-namespace FluentCMS.Services;
-
-public interface ILayoutService
+public interface ILayoutService : IAutoRegisterService
 {
     Task<Layout> Create(Layout layout, CancellationToken cancellationToken = default);
-    Task Delete(Guid id, CancellationToken cancellationToken = default);
+    Task<Layout> Delete(Guid id, CancellationToken cancellationToken = default);
     Task<IEnumerable<Layout>> GetAll(Guid siteId, CancellationToken cancellationToken = default);
     Task<Layout> GetById(Guid siteId, Guid id, CancellationToken cancellationToken = default);
     Task<Layout> Update(Layout layout, CancellationToken cancellationToken);
@@ -40,9 +37,9 @@ public class LayoutService(ILayoutRepository layoutRepository) : ILayoutService
             throw new AppException(ExceptionCodes.LayoutUnableToUpdate);
     }
 
-    public async Task Delete(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Layout> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        _ = await layoutRepository.Delete(id, cancellationToken) ??
+        return await layoutRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.LayoutUnableToDelete);
     }
 }

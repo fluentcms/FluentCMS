@@ -1,3 +1,0 @@
-const Tooltips = new Map();
-
-
