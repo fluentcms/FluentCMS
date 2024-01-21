@@ -1,0 +1,30 @@
+@page "/examples/setup"
+@layout ExamplesLayout
+
+<Page>
+    <PageBody>
+        <Grid class="h-screen"
+              ItemsSmall="GridItems.Center"
+              JustifySmall="GridJustify.Center">
+            <GridItem Small="GridItemColumn.Twelve"
+                      Medium="GridItemColumn.Six"
+                      Large="GridItemColumn.Four">
+                <Card>
+                    <CardBody>
+                        <CardTitle>Setup The Platform</CardTitle>
+                        <Spacer />
+                        <Input Label="Username" />
+                        <Input Label="Email"
+                               Type="InputType.Email" />
+                        <Input Label="Password"
+                               Type="InputType.Password" />
+                        <Button Block="true"
+                            Color="Color.Primary">
+                            Start Setup
+                        </Button>
+                    </CardBody>
+                </Card>
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
