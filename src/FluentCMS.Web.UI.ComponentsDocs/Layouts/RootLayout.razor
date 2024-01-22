@@ -1,0 +1,27 @@
+﻿@inherits LayoutComponentBase
+@layout PanelLayout
+
+<PanelLayoutSidebar>
+    <Sidebar>
+        <Header>
+            @* TODO *@
+            <a href="/" class="items-center pl-2.5 mb-5 hidden lg:flex">
+                <img src="https://flowbite.s3.amazonaws.com/logo.svg" class="h-8 mr-3" alt="FluentCMS Logo" />
+                <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">FluentCMS</span>
+            </a>
+        </Header>
+        <ChildContent>
+            <SidebarItem Href="/components"
+                         Icon="IconName.Rocket">
+                Components
+            </SidebarItem>
+            <SidebarItem Href="/examples"
+                         Icon="IconName.Grid">
+                Examples
+            </SidebarItem>
+        </ChildContent>
+        <Footer></Footer>
+    </Sidebar>
+</PanelLayoutSidebar>
+
+@Body

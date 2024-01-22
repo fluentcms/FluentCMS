@@ -1,23 +1,18 @@
-﻿using FluentCMS.Entities;
-using FluentCMS.Repositories;
+﻿namespace FluentCMS.Services;
 
-namespace FluentCMS.Services;
-
-public interface IPageService
+public interface IPageService : IAutoRegisterService
 {
     Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     Task<Page> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<Page> GetByPath(Guid siteId, string path, CancellationToken cancellationToken = default);
     Task<Page> Create(Page page, CancellationToken cancellationToken = default);
     Task<Page> Update(Page page, CancellationToken cancellationToken = default);
-    Task Delete(Guid id, CancellationToken cancellationToken = default);
+    Task<Page> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
 public class PageService(
     IPageRepository pageRepository,
-    ISiteRepository siteRepository,
-    SitePolicies sitePolicies,
-    IAuthorizationProvider authorizationProvider) : IPageService
+    ISiteRepository siteRepository) : IPageService
 {
 
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
@@ -25,10 +20,6 @@ public class PageService(
         // Check if site id exists
         var site = (await siteRepository.GetById(page.SiteId, cancellationToken)) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
-
-        // check if user is site admin 
-        if (!authorizationProvider.Authorize(site, sitePolicies.Admin))
-            throw new AppPermissionException();
 
         // If Parent Id is assigned
         if (page.ParentId != null)
@@ -44,14 +35,77 @@ public class PageService(
         var newPage = await pageRepository.Create(page, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageUnableToCreate);
 
-        // add admin permission to the page 
-        await authorizationProvider.Create(newPage, Policies.PAGE_ADMIN, cancellationToken);
-
-        // add edit permission to the page
-        await authorizationProvider.Create(newPage, Policies.PAGE_EDITOR, cancellationToken);
-
         return newPage;
     }
+
+    public async Task<Page> Delete(Guid id, CancellationToken cancellationToken = default)
+    {
+        //fetch original page from db
+        var originalPage = await pageRepository.GetById(id, cancellationToken) ??
+            throw new AppException(ExceptionCodes.PageNotFound);
+
+        // fetch site
+        var site = (await siteRepository.GetById(originalPage.SiteId, cancellationToken)) ??
+            throw new AppException(ExceptionCodes.SiteNotFound);
+
+        // check that it does not have any children
+        var pages = (await pageRepository.GetAll(cancellationToken)).ToList();
+        if (pages.Any(x => x.ParentId == id && x.SiteId == originalPage.SiteId))
+            throw new AppException(ExceptionCodes.PageHasChildren);
+
+        return await pageRepository.Delete(id, cancellationToken) ??
+            throw new AppException(ExceptionCodes.PageUnableToDelete);
+    }
+
+    public async Task<Page> GetById(Guid id, CancellationToken cancellationToken = default)
+    {
+        //fetch page from db
+        return await pageRepository.GetById(id, cancellationToken) ??
+            throw new AppException(ExceptionCodes.PageNotFound);
+
+    }
+
+    public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
+    {
+        // fetch pages from db
+        return await pageRepository.GetAllForSite(siteId, cancellationToken);
+    }
+
+    public async Task<Page> Update(Page page, CancellationToken cancellationToken = default)
+    {
+        //fetch original page from db
+        var originalPage = await pageRepository.GetById(page.Id, cancellationToken) ??
+            throw new AppException(ExceptionCodes.PageNotFound);
+
+        // site id cannot be changed
+        if (originalPage.SiteId != page.SiteId)
+            throw new AppException(ExceptionCodes.PageSiteIdCannotBeChanged);
+
+        // fetch list of all pages
+        var pages = (await pageRepository.GetAll(cancellationToken)).ToList();
+
+        //If Parent Id is changed validate again
+        if (page.ParentId != originalPage.ParentId)
+        {
+            //validate parent
+            ValidateParentPage(page, pages);
+        }
+
+        ValidateUrl(page, pages);
+
+        return await pageRepository.Update(page, cancellationToken)
+            ?? throw new AppException(ExceptionCodes.PageUnableToUpdate);
+    }
+
+    public async Task<Page> GetByPath(Guid siteId, string path, CancellationToken cancellationToken = default)
+    {
+        var pages = (await pageRepository.GetAll(cancellationToken)).ToList();
+        var page = pages.Where(x => x.SiteId == siteId && x.Path.ToLowerInvariant() == path.ToLowerInvariant()).SingleOrDefault();
+        return page ??
+            throw new AppException(ExceptionCodes.PageNotFound);
+    }
+
+    #region Private Methods
 
     private static void ValidateUrl(Page page, List<Page> pages)
     {
@@ -107,106 +161,5 @@ public class PageService(
         //    throw new AppException(ExceptionCodes.PageViewPermissionsAreNotASubsetOfParent);
     }
 
-    public async Task Delete(Guid id, CancellationToken cancellationToken = default)
-    {
-        //fetch original page from db
-        var originalPage = await pageRepository.GetById(id, cancellationToken) ??
-            throw new AppException(ExceptionCodes.PageNotFound);
-
-        // fetch site
-        var site = (await siteRepository.GetById(originalPage.SiteId, cancellationToken)) ??
-            throw new AppException(ExceptionCodes.SiteNotFound);
-
-        // check if user is siteAdmin, superAdmin or PageAdmin
-        if (!HasAdminPermission(site, originalPage))
-            throw new AppPermissionException();
-
-        // check that it does not have any children
-        var pages = (await pageRepository.GetAll(cancellationToken)).ToList();
-        if (pages.Any(x => x.ParentId == id && x.SiteId == originalPage.SiteId))
-            throw new AppException(ExceptionCodes.PageHasChildren);
-
-        await pageRepository.Delete(id, cancellationToken);
-    }
-
-    public async Task<Page> GetById(Guid id, CancellationToken cancellationToken = default)
-    {
-        //fetch page from db
-        var page = await pageRepository.GetById(id, cancellationToken) ??
-            throw new AppException(ExceptionCodes.PageNotFound);
-
-        // fetch site
-        var site = (await siteRepository.GetById(page.SiteId, cancellationToken)) ??
-            throw new AppException(ExceptionCodes.SiteNotFound);
-
-        // check current user has permission to view page or is site admin or page admin
-        return HasViewPermission(site, page) ? page : throw new AppPermissionException();
-    }
-
-    public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
-    {
-        //fetch site from db
-        var site = await siteRepository.GetById(siteId, cancellationToken) ??
-            throw new AppException(ExceptionCodes.SiteNotFound);
-
-        // fetch pages from db
-        var pages = await pageRepository.GetAllForSite(siteId, cancellationToken);
-
-        // if current user is page viewer or page admin or site admin
-        return pages.Where(page => HasViewPermission(site, page));
-    }
-
-    public async Task<Page> Update(Page page, CancellationToken cancellationToken = default)
-    {
-        //fetch original page from db
-        var originalPage = await pageRepository.GetById(page.Id, cancellationToken) ??
-            throw new AppException(ExceptionCodes.PageNotFound);
-
-        // Check if site id exists
-        var site = (await siteRepository.GetById(page.SiteId, cancellationToken)) ??
-            throw new AppException(ExceptionCodes.SiteNotFound);
-
-        // check if user is siteAdmin or superAdmin or pageAdmin
-        if (!HasAdminPermission(site, originalPage))
-            throw new AppPermissionException();
-
-        // site id cannot be changed
-        if (originalPage.SiteId != page.SiteId)
-            throw new AppException(ExceptionCodes.PageSiteIdCannotBeChanged);
-
-        // fetch list of all pages
-        var pages = (await pageRepository.GetAll(cancellationToken)).ToList();
-
-        //If Parent Id is changed validate again
-        if (page.ParentId != originalPage.ParentId)
-        {
-            //validate parent
-            ValidateParentPage(page, pages);
-
-            //TODO: we should validate children permissions too!
-        }
-
-        ValidateUrl(page, pages);
-
-        return await pageRepository.Update(page, cancellationToken)
-            ?? throw new AppException(ExceptionCodes.PageUnableToUpdate);
-    }
-
-    public async Task<Page> GetByPath(Guid siteId, string path, CancellationToken cancellationToken = default)
-    {
-        var page = await pageRepository.GetByPath(siteId, path, cancellationToken) ??
-            throw new AppException(ExceptionCodes.PageNotFound);
-
-        return page;
-    }
-
-    private bool HasAdminPermission(Site site, Page page)
-    {
-        return true; // Current.IsInRole(site.AdminRoleIds) || Current.IsInRole(page.AdminRoleIds);
-    }
-
-    private bool HasViewPermission(Site site, Page page)
-    {
-        return true;// HasAdminPermission(site, page) || Current.IsInRole(page.ViewRoleIds);
-    }
+    #endregion
 }
