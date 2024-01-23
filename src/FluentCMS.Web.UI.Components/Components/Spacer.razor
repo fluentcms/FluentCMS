@@ -1,4 +1,13 @@
-﻿@namespace FluentCMS.Web.UI.Components
+﻿@inherits BaseComponent
 
-@* TODO *@
-<br />
+@namespace FluentCMS.Web.UI.Components
+
+<div @attributes="AdditionalAttributes"
+    class="@this.GetClasses()">
+</div>
+
+@code {
+    [Parameter]
+    [CssProperty]
+    public SpacerSize Height {get; set;}
+}
