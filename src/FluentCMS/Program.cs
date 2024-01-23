@@ -2,6 +2,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddConfig(builder.Environment);
 
+builder.Services.AddFluentCmsUiComponents();
+
 #region Services
 
 var services = builder.Services;
