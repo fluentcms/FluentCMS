@@ -123,7 +123,7 @@ public partial class Default : IDisposable
                 var attributes = child.Attributes.Where(x => !x.Name.Equals(ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase));
                 foreach (var attribute in attributes)
                 {
-                    builder.AddComponentParameter(2, attribute.Name, attribute.Value);
+                    builder.AddComponentParameter(2, attribute.OriginalName, attribute.Value);
                     builder.AddComponentParameter(3, "Page", Page);
                 }
                 // add children
@@ -142,8 +142,9 @@ public partial class Default : IDisposable
 
     private static Type? GetType(string typeName)
     {
-        var assembly = typeof(Section).Assembly;
-        var typeInfo = assembly.DefinedTypes.FirstOrDefault(x => x.Name == typeName);
+        var uiAssembly = typeof(Section).Assembly;
+        var componentsAssembly = typeof(BaseComponent).Assembly;
+        var typeInfo = uiAssembly.DefinedTypes.Union(componentsAssembly.DefinedTypes).FirstOrDefault(x => x.Name == typeName);
         return typeInfo?.AsType();
     }
 

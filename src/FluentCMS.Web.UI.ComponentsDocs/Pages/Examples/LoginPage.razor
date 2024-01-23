@@ -3,32 +3,26 @@
 
 <Page>
     <PageBody>
-        <Grid class="h-screen" 
-              ItemsSmall="GridItems.Center" 
+        <Grid class="h-screen"
+              ItemsSmall="GridItems.Center"
               JustifySmall="GridJustify.Center">
-            <GridItem Small="GridItemColumn.Twelve" 
+            <GridItem Small="GridItemColumn.Twelve"
                       Medium="GridItemColumn.Six"
                       Large="GridItemColumn.Four">
-                <h1 class="text-3xl text-center">Fluent CMS</h1>
-                <Spacer/>
                 <Card>
                     <CardBody>
-                        <CardTitle>Sign in to Platform</CardTitle>
-                        <Spacer/>
-                        <Grid>
-                            <GridItem Small="GridItemColumn.Twelve">
-                                <Input Label="Your Email" 
-                                       Placeholder="name@company.com"/>
+                        <Input Label="Email"
+                               Placeholder="Enter your email" />
+                        <Input Label="Password"
+                               Placeholder="Enter your password"
+                               Type="InputType.Password" />
+                        <Grid ItemsSmall="GridItems.Center"
+                              JustifySmall="GridJustify.Between">
+                            <GridItem>
+                                <Checkbox Dense="true"
+                                          Label="Remember Me" />
                             </GridItem>
-                            <GridItem Small="GridItemColumn.Twelve">
-                                <Input Label="Your Password" 
-                                       Placeholder="12345678"
-                                       Type="InputType.Password" />
-                            </GridItem>
-                            <GridItem Small="GridItemColumn.Grow">
-                                <Checkbox Label="Remember Me" />
-                            </GridItem>
-                            <GridItem Small="GridItemColumn.Auto">
+                            <GridItem>
                                 <Button Color="Color.Primary"
                                         Link="true">
                                     Forgot Password?
@@ -44,6 +38,18 @@
                         <Spacer />
                         Don't have an account?
                         <Button Link="true"
+                                Color="Color.Primary">
+                            Sign up
+                        </Button>
+                        <Spacer />
+                        <Button Block="true"
+                                Color="Color.Primary">
+                            Sign in to your account
+                        </Button>
+                        <Spacer />
+                        <Spacer />
+                        Don't have an account?
+                        <Button Ghost="true"
                                 Color="Color.Primary">
                             Sign up
                         </Button>
