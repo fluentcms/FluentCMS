@@ -142,8 +142,9 @@ public partial class Default : IDisposable
 
     private static Type? GetType(string typeName)
     {
-        var assembly = typeof(Section).Assembly;
-        var typeInfo = assembly.DefinedTypes.FirstOrDefault(x => x.Name == typeName);
+        var webUiAssembly = typeof(Section).Assembly;
+        var webUiComponentsAssembly = typeof(BaseComponent).Assembly;
+        var typeInfo = webUiAssembly.DefinedTypes.Union(webUiComponentsAssembly.DefinedTypes).FirstOrDefault(x => x.Name == typeName);
         return typeInfo?.AsType();
     }
 
