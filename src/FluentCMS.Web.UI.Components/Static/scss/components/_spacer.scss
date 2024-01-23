@@ -1,5 +1,15 @@
 $spacer: $prefix + 'spacer';
 
 .#{$spacer} {
-    /*TODO*/
+    &-height-default, &-height-medium {
+        @apply h-4;
+    }
+
+    &-height-small {
+        @apply h-2;
+    }
+
+    &-height-large {
+        @apply h-8;
+    }
 }
