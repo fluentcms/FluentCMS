@@ -1,64 +1,92 @@
-﻿<div class="w-full p-4 bg-white border border-gray-200 rounded-lg shadow sm:p-6 dark:bg-gray-800 dark:border-gray-700">
-    <h5 class="mb-3 text-base font-semibold text-gray-900 md:text-xl dark:text-white">
-        Users List 
-        <a href="?PluginDef=User Management&typeName=Create User" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Add New</a>
-    </h5>
-    <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
-        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-            <tr>
-                <th scope="col" class="px-6 py-3">
-                    Username
-                </th>
-                <th scope="col" class="px-6 py-3">
-                    Email
-                </th>
-                <th scope="col" class="px-6 py-3">
-                    Phone
-                </th>
-                <th scope="col" class="px-6 py-3">
-                    Enable
-                </th>
-                <th scope="col" class="px-6 py-3">
-                    Login Count
-                </th>
-                <th scope="col" class="px-6 py-3">
-                    Last Login
-                </th>
-                <th scope="col" class="px-6 py-3">
-                    Action
-                </th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var user in Users)
-            {
-                <tr class="odd:bg-white odd:dark:bg-gray-900 even:bg-gray-50 even:dark:bg-gray-800 border-b dark:border-gray-700">
-                    <th scope="col" class="px-6 py-3">
-                        @user.Username
-                    </th>
-                    <th scope="col" class="px-6 py-3">
-                        @user.Email
-                    </th>
-                    <th scope="col" class="px-6 py-3">
-                        @user.PhoneNumber
-                    </th>
-                    <th scope="col" class="px-6 py-3">
-                        @* @user.Enabled *@
-                    </th>
-                    <th scope="col" class="px-6 py-3">
-                        @user.LoginCount
-                    </th>
-                    <th scope="col" class="px-6 py-3">
-                        @user.LastLoginAt
-                    </th>
-                    <td class="px-6 py-4">
-                        <a href="?PluginDef=User Management&typeName=Update User&id=@user.Id" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</a>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
+﻿
+
+<Page>
+    <PageHeader HasBack="false"
+                Title="Users List"
+                Subtitle="List of all registered users.">
+        <PageHeaderActions>
+            <ButtonGroup>
+                <Button Color="Color.Primary"
+                        Href="?PluginDef=User Management&typeName=Create User">
+                    <Icon Name="IconName.Plus" />
+                    Add User
+                </Button>
+            </ButtonGroup>
+        </PageHeaderActions>
+    </PageHeader>
+    <PageBody>
+        <Grid ItemsSmall="GridItems.Center"
+              JustifySmall="GridJustify.Between">
+            <GridItem Small="GridItemColumn.Six">
+                <Input Dense="true"
+                       IconStart="IconName.Search"
+                       Placeholder="Search for entities" />
+            </GridItem>
+            <GridItem Small="GridItemColumn.Auto">
+                <ButtonGroup>
+                    <Button>
+                        <Icon Name="IconName.Cog" />
+                        Table Settings
+                    </Button>
+                </ButtonGroup>
+            </GridItem>
+        </Grid>
+        <Spacer/>
+        <Table>
+            <TableHead>
+                <TableCell>Username</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Phone</TableCell>
+                <TableCell>Enable</TableCell>
+                <TableCell>Login Count</TableCell>
+                <TableCell>Last Login</TableCell>
+                <TableCell>Actions</TableCell>
+            </TableHead>
+            <TableBody>
+                @foreach (var user in Users) {
+                    <TableRow>
+                        <TableCell> @user.Username </TableCell>
+                        <TableCell> @user.Email </TableCell>
+                        <TableCell> @user.PhoneNumber </TableCell>
+                        <TableCell> 
+                            @if(user.Enabled) {
+                                <Badge Color="Color.Success">Enabled</Badge>
+                            } else {
+                                <Badge Color="Color.Danger">Disabled</Badge>
+                            } 
+                        </TableCell>
+                        <TableCell> @user.LoginCount </TableCell>
+                        <TableCell> @user.LastLoginAt </TableCell>
+                        <TableCell>
+                            <ButtonGroup>
+                                <Button Color="Color.Danger">
+                                    <Icon Name="IconName.Delete" />
+                                    Delete
+                                </Button>
+                                <Button Color="Color.Primary" 
+                                        Href="@($"?PluginDef=User Management&typeName=Update User&id=@user.Id")"
+                                        Outline="true">
+                                    <Icon Name="IconName.Edit" />
+                                    Edit
+                                </Button>
+                            </ButtonGroup>
+                        </TableCell>
+                    </TableRow>
+                }
+            </TableBody>
+        </Table>
+        <Spacer/>
+        <Grid ItemsSmall="GridItems.Center"
+              JustifySmall="GridJustify.Between">
+            <GridItem>
+                <PaginationInfo Total="1000" Current="1" />
+            </GridItem>
+            <GridItem>
+                <Pagination Total="10" Current="5" />
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
 
 @code {
     [Inject]
