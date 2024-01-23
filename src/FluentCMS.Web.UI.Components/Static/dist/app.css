@@ -955,6 +955,46 @@ body.dark {
   @apply inline-block p-4 border-b-2 cursor-pointer border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300;
 }
 
+.f-text {
+  @apply text-base dark:text-white;
+}
+.f-text-size-h1 {
+  @apply text-5xl font-extrabold;
+}
+.f-text-size-h2 {
+  @apply text-4xl font-bold;
+}
+.f-text-size-h3 {
+  @apply text-3xl font-bold;
+}
+.f-text-size-h4 {
+  @apply text-2xl font-bold;
+}
+.f-text-size-h5 {
+  @apply text-xl font-bold;
+}
+.f-text-size-h6 {
+  @apply text-lg font-bold;
+}
+.f-text-color-primary {
+  @apply text-blue-500 dark:text-blue-400;
+}
+.f-text-color-success {
+  @apply text-green-500 dark:text-green-400;
+}
+.f-text-color-info {
+  @apply text-cyan-500 dark:text-cyan-400;
+}
+.f-text-color-danger {
+  @apply text-red-500 dark:text-red-400;
+}
+.f-text-color-warning {
+  @apply text-yellow-500 dark:text-yellow-400;
+}
+.f-text-color-secondary {
+  @apply text-gray-500 dark:text-gray-400;
+}
+
 .f-textarea {
   @apply block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
 }
