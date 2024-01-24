@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Components.Routing;
 
 namespace FluentCMS.Web.UI;
 
-public partial class Default : IDisposable
+public partial class Default : ComponentBase, IDisposable
 {
     public const string ATTRIBUTE = "FluentCMS";
 
@@ -127,7 +127,10 @@ public partial class Default : IDisposable
                     builder.AddComponentParameter(3, "Page", Page);
                 }
                 // add children
-                AddChildrenToDom(builder, GetChildren(child));
+                if(child.HasChildNodes)
+                    builder.AddComponentParameter(4, "ChildContent", (RenderFragment)((builder) => AddChildrenToDom(builder, child.ChildNodes)));
+
+
                 builder.CloseComponent();
             }
             builder.CloseRegion();
