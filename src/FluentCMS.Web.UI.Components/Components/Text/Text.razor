@@ -1,0 +1,18 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+<div @attributes="AdditionalAttributes"
+    class="@this.GetClasses()">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter]
+    [CssProperty]
+    public Color Color { get; set; } = Color.Default;
+
+    [Parameter]
+    [CssProperty]
+    public TextSize Size { get; set; } = TextSize.Default;
+}
