@@ -1,15 +1,15 @@
 $spacer: $prefix + 'spacer';
 
 .#{$spacer} {
-    &-height-default, &-height-medium {
+    &-size-default, &-size-medium {
         @apply h-4;
     }
 
-    &-height-small {
+    &-size-small {
         @apply h-2;
     }
 
-    &-height-large {
+    &-size-large {
         @apply h-8;
     }
 }
