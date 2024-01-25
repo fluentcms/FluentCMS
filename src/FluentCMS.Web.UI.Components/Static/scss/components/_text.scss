@@ -1,0 +1,35 @@
+$text: $prefix + "text";
+
+.#{$text} {
+    @apply text-base dark:text-white;
+
+    &-size-h1 {
+        @apply text-5xl font-extrabold;
+    }
+
+    &-size-h2 {
+        @apply text-4xl font-bold;
+    }
+
+    &-size-h3 {
+        @apply text-3xl font-bold;
+    }
+
+    &-size-h4 {
+        @apply text-2xl font-bold;
+    }
+
+    &-size-h5 {
+        @apply text-xl font-bold;
+    }
+
+    &-size-h6 {
+        @apply text-lg font-bold;
+    }
+
+    @each $key, $value in $colors {
+        &-color-#{$key} {
+            @apply text-#{$value}-500 dark:text-#{$value}-400;
+        }
+    }
+}
