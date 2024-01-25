@@ -1013,6 +1013,24 @@ body.dark {
 .f-text-size-h6 {
   @apply text-lg font-bold;
 }
+.f-text-align-left {
+  @apply text-left;
+}
+.f-text-align-center {
+  @apply text-center;
+}
+.f-text-align-right {
+  @apply text-right;
+}
+.f-text-align-justify {
+  @apply text-justify;
+}
+.f-text-align-start {
+  @apply text-start;
+}
+.f-text-align-end {
+  @apply text-end;
+}
 .f-text-color-primary {
   @apply text-blue-500 dark:text-blue-400;
 }

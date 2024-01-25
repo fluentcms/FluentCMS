@@ -27,6 +27,12 @@ $text: $prefix + "text";
         @apply text-lg font-bold;
     }
 
+    @each $key in ( left, center, right, justify, start, end) {
+        &-align-#{$key} {
+            @apply text-#{$key};
+        }
+    }
+
     @each $key, $value in $colors {
         &-color-#{$key} {
             @apply text-#{$value}-500 dark:text-#{$value}-400;
