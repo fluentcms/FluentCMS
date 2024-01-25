@@ -1,6 +1,4 @@
-﻿
-
-<Page>
+﻿<Page>
     <PageHeader HasBack="false"
                 Title="Users List"
                 Subtitle="List of all registered users.">
@@ -48,12 +46,12 @@
                         <TableCell> @user.Username </TableCell>
                         <TableCell> @user.Email </TableCell>
                         <TableCell> @user.PhoneNumber </TableCell>
-                        <TableCell> 
+                        <TableCell>
                             @if(user.Enabled) {
                                 <Badge Color="Color.Success">Enabled</Badge>
                             } else {
                                 <Badge Color="Color.Danger">Disabled</Badge>
-                            } 
+                            }
                         </TableCell>
                         <TableCell> @user.LoginCount </TableCell>
                         <TableCell> @user.LastLoginAt </TableCell>
@@ -63,7 +61,7 @@
                                     <Icon Name="IconName.Delete" />
                                     Delete
                                 </Button>
-                                <Button Color="Color.Primary" 
+                                <Button Color="Color.Primary"
                                         Href="@($"?PluginDef=User Management&typeName=Update User&id=@user.Id")"
                                         Outline="true">
                                     <Icon Name="IconName.Edit" />
@@ -76,15 +74,17 @@
             </TableBody>
         </Table>
         <Spacer/>
-        <Grid ItemsSmall="GridItems.Center"
-              JustifySmall="GridJustify.Between">
-            <GridItem>
-                <PaginationInfo Total="1000" Current="1" />
-            </GridItem>
-            <GridItem>
-                <Pagination Total="10" Current="5" />
-            </GridItem>
-        </Grid>
+        @if (TotalPages > 0) {
+            <Grid ItemsSmall="GridItems.Center"
+                  JustifySmall="GridJustify.Between">
+                <GridItem>
+                    <PaginationInfo Total="TotalCount" Current="PageSize" />
+                </GridItem>
+                <GridItem>
+                    <Pagination Total="TotalPages" Current="PageNumber" />
+                </GridItem>
+            </Grid>
+        }
     </PageBody>
 </Page>
 
@@ -94,11 +94,20 @@
 
     private List<UserDetailResponse> Users { get; set; } = [];
 
+    private int TotalPages {get; set;} = 0;
+    private int TotalCount {get; set;} = 0;
+    private int PageNumber {get; set;} = 0;
+    private int PageSize {get; set;} = 0;
+
     protected override async Task OnInitializedAsync()
     {
         var response = await UserClient!.GetAllAsync();
 
         if (response?.Data != null)
+            TotalPages = (int)response.TotalPages;
+            TotalCount = (int)response.TotalCount;
+            PageSize = (int)response.PageSize;
+            PageNumber = (int)response.PageNumber;
             Users = response.Data.ToList();
     }
 }
