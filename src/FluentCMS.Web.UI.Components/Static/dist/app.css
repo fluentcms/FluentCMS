@@ -104,6 +104,9 @@ body.dark {
 .f-button-block-true {
   @apply w-full;
 }
+.f-button-link-true > span {
+  @apply hover:underline;
+}
 .f-button-icon {
   @apply w-2.5 h-2.5 ml-2.5;
 }
@@ -113,129 +116,157 @@ body.dark {
 .f-button-loading-true > * {
   @apply opacity-0;
 }
-.f-button-size-default {
+.f-button-size-default.f-button-link-false {
   @apply px-5 py-2.5 text-sm;
 }
-.f-button-size-small {
+.f-button-size-small.f-button-link-false {
   @apply px-3 py-2 text-xs;
 }
-.f-button-size-medium {
+.f-button-size-medium.f-button-link-false {
   @apply px-5 py-2.5 text-sm;
 }
-.f-button-size-large {
+.f-button-size-large.f-button-link-false {
   @apply px-5 py-3 text-base;
 }
 
-.f-button-color-primary.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
+.f-button-color-primary.f-button-link-false.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
   @apply text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800;
 }
 
-.f-button-color-primary.f-button-disabled-true {
+.f-button-color-primary.f-button-link-false.f-button-disabled-true {
   @apply text-white bg-blue-400 cursor-not-allowed pointer-events-none dark:bg-blue-500;
 }
 
-.f-button-color-primary.f-button-outline-true.f-button-ghost-false {
+.f-button-color-primary.f-button-link-false.f-button-outline-true.f-button-ghost-false {
   @apply text-blue-700 border border-blue-700 hover:text-white hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 dark:border-blue-500 dark:text-blue-500 dark:hover:text-white dark:hover:bg-blue-500 dark:focus:ring-blue-800;
 }
 
-.f-button-color-primary.f-button-ghost-true.f-button-outline-false {
+.f-button-color-primary.f-button-link-false.f-button-ghost-true.f-button-outline-false {
   @apply text-blue-700 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-700;
 }
 
-.f-button-color-success.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
+.f-button-color-primary.f-button-link-true.f-button-ghost-false.f-button-outline-false {
+  @apply text-blue-700 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-700;
+}
+
+.f-button-color-success.f-button-link-false.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
   @apply text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800;
 }
 
-.f-button-color-success.f-button-disabled-true {
+.f-button-color-success.f-button-link-false.f-button-disabled-true {
   @apply text-white bg-green-400 cursor-not-allowed pointer-events-none dark:bg-green-500;
 }
 
-.f-button-color-success.f-button-outline-true.f-button-ghost-false {
+.f-button-color-success.f-button-link-false.f-button-outline-true.f-button-ghost-false {
   @apply text-green-700 border border-green-700 hover:text-white hover:bg-green-800 focus:ring-4 focus:ring-green-300 dark:border-green-500 dark:text-green-500 dark:hover:text-white dark:hover:bg-green-500 dark:focus:ring-green-800;
 }
 
-.f-button-color-success.f-button-ghost-true.f-button-outline-false {
+.f-button-color-success.f-button-link-false.f-button-ghost-true.f-button-outline-false {
   @apply text-green-700 hover:text-green-800 dark:text-green-500 dark:hover:text-green-700;
 }
 
-.f-button-color-info.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
+.f-button-color-success.f-button-link-true.f-button-ghost-false.f-button-outline-false {
+  @apply text-green-700 hover:text-green-800 dark:text-green-500 dark:hover:text-green-700;
+}
+
+.f-button-color-info.f-button-link-false.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
   @apply text-white bg-cyan-700 hover:bg-cyan-800 focus:ring-4 focus:ring-cyan-300 dark:bg-cyan-600 dark:hover:bg-cyan-700 dark:focus:ring-cyan-800;
 }
 
-.f-button-color-info.f-button-disabled-true {
+.f-button-color-info.f-button-link-false.f-button-disabled-true {
   @apply text-white bg-cyan-400 cursor-not-allowed pointer-events-none dark:bg-cyan-500;
 }
 
-.f-button-color-info.f-button-outline-true.f-button-ghost-false {
+.f-button-color-info.f-button-link-false.f-button-outline-true.f-button-ghost-false {
   @apply text-cyan-700 border border-cyan-700 hover:text-white hover:bg-cyan-800 focus:ring-4 focus:ring-cyan-300 dark:border-cyan-500 dark:text-cyan-500 dark:hover:text-white dark:hover:bg-cyan-500 dark:focus:ring-cyan-800;
 }
 
-.f-button-color-info.f-button-ghost-true.f-button-outline-false {
+.f-button-color-info.f-button-link-false.f-button-ghost-true.f-button-outline-false {
   @apply text-cyan-700 hover:text-cyan-800 dark:text-cyan-500 dark:hover:text-cyan-700;
 }
 
-.f-button-color-danger.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
+.f-button-color-info.f-button-link-true.f-button-ghost-false.f-button-outline-false {
+  @apply text-cyan-700 hover:text-cyan-800 dark:text-cyan-500 dark:hover:text-cyan-700;
+}
+
+.f-button-color-danger.f-button-link-false.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
   @apply text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:ring-red-300 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800;
 }
 
-.f-button-color-danger.f-button-disabled-true {
+.f-button-color-danger.f-button-link-false.f-button-disabled-true {
   @apply text-white bg-red-400 cursor-not-allowed pointer-events-none dark:bg-red-500;
 }
 
-.f-button-color-danger.f-button-outline-true.f-button-ghost-false {
+.f-button-color-danger.f-button-link-false.f-button-outline-true.f-button-ghost-false {
   @apply text-red-700 border border-red-700 hover:text-white hover:bg-red-800 focus:ring-4 focus:ring-red-300 dark:border-red-500 dark:text-red-500 dark:hover:text-white dark:hover:bg-red-500 dark:focus:ring-red-800;
 }
 
-.f-button-color-danger.f-button-ghost-true.f-button-outline-false {
+.f-button-color-danger.f-button-link-false.f-button-ghost-true.f-button-outline-false {
   @apply text-red-700 hover:text-red-800 dark:text-red-500 dark:hover:text-red-700;
 }
 
-.f-button-color-warning.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
+.f-button-color-danger.f-button-link-true.f-button-ghost-false.f-button-outline-false {
+  @apply text-red-700 hover:text-red-800 dark:text-red-500 dark:hover:text-red-700;
+}
+
+.f-button-color-warning.f-button-link-false.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
   @apply text-white bg-yellow-700 hover:bg-yellow-800 focus:ring-4 focus:ring-yellow-300 dark:bg-yellow-600 dark:hover:bg-yellow-700 dark:focus:ring-yellow-800;
 }
 
-.f-button-color-warning.f-button-disabled-true {
+.f-button-color-warning.f-button-link-false.f-button-disabled-true {
   @apply text-white bg-yellow-400 cursor-not-allowed pointer-events-none dark:bg-yellow-500;
 }
 
-.f-button-color-warning.f-button-outline-true.f-button-ghost-false {
+.f-button-color-warning.f-button-link-false.f-button-outline-true.f-button-ghost-false {
   @apply text-yellow-700 border border-yellow-700 hover:text-white hover:bg-yellow-800 focus:ring-4 focus:ring-yellow-300 dark:border-yellow-500 dark:text-yellow-500 dark:hover:text-white dark:hover:bg-yellow-500 dark:focus:ring-yellow-800;
 }
 
-.f-button-color-warning.f-button-ghost-true.f-button-outline-false {
+.f-button-color-warning.f-button-link-false.f-button-ghost-true.f-button-outline-false {
   @apply text-yellow-700 hover:text-yellow-800 dark:text-yellow-500 dark:hover:text-yellow-700;
 }
 
-.f-button-color-secondary.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
+.f-button-color-warning.f-button-link-true.f-button-ghost-false.f-button-outline-false {
+  @apply text-yellow-700 hover:text-yellow-800 dark:text-yellow-500 dark:hover:text-yellow-700;
+}
+
+.f-button-color-secondary.f-button-link-false.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
   @apply text-white bg-gray-700 hover:bg-gray-800 focus:ring-4 focus:ring-gray-300 dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-800;
 }
 
-.f-button-color-secondary.f-button-disabled-true {
+.f-button-color-secondary.f-button-link-false.f-button-disabled-true {
   @apply text-white bg-gray-400 cursor-not-allowed pointer-events-none dark:bg-gray-500;
 }
 
-.f-button-color-secondary.f-button-outline-true.f-button-ghost-false {
+.f-button-color-secondary.f-button-link-false.f-button-outline-true.f-button-ghost-false {
   @apply text-gray-700 border border-gray-700 hover:text-white hover:bg-gray-800 focus:ring-4 focus:ring-gray-300 dark:border-gray-500 dark:text-gray-500 dark:hover:text-white dark:hover:bg-gray-500 dark:focus:ring-gray-800;
 }
 
-.f-button-color-secondary.f-button-ghost-true.f-button-outline-false {
+.f-button-color-secondary.f-button-link-false.f-button-ghost-true.f-button-outline-false {
   @apply text-gray-700 hover:text-gray-800 dark:text-gray-500 dark:hover:text-gray-700;
 }
 
-.f-button-color-default.f-button-ghost-false.f-button-outline-false {
+.f-button-color-secondary.f-button-link-true.f-button-ghost-false.f-button-outline-false {
+  @apply text-gray-700 hover:text-gray-800 dark:text-gray-500 dark:hover:text-gray-700;
+}
+
+.f-button-color-default.f-button-link-false.f-button-ghost-false.f-button-outline-false {
   @apply text-gray-900 bg-white border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:ring-4 focus:ring-gray-200 dark:bg-gray-600/10 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700 dark:focus:ring-gray-700;
 }
 
-.f-button-color-default.f-button-ghost-true.f-button-outline-false {
+.f-button-color-default.f-button-link-false.f-button-ghost-true.f-button-outline-false {
   @apply text-gray-600 hover:text-gray-800 dark:text-gray-500 dark:hover:text-gray-700;
 }
 
-.f-button-color-default.f-button-outline-true.f-button-ghost-false {
+.f-button-color-default.f-button-link-false.f-button-outline-true.f-button-ghost-false {
   @apply text-gray-700 border border-gray-700 hover:text-white hover:bg-gray-800 focus:ring-4 focus:ring-gray-300 dark:border-gray-500 dark:text-gray-500 dark:hover:text-white dark:hover:bg-gray-500 dark:focus:ring-gray-800;
 }
 
-.f-button-color-default.f-button-disabled-true {
+.f-button-color-default.f-button-link-false.f-button-disabled-true {
   @apply text-white bg-gray-400 cursor-not-allowed pointer-events-none dark:bg-gray-500;
+}
+
+.f-button-color-default.f-button-link-true.f-button-ghost-false.f-button-outline-false {
+  @apply text-gray-600 hover:text-gray-800 dark:text-gray-500 dark:hover:text-gray-700;
 }
 
 .f-button-group {
@@ -246,11 +277,11 @@ body.dark {
   @apply bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-700/20 dark:border-gray-700;
 }
 .f-card-body {
-  @apply p-6;
+  @apply p-3;
 }
 @screen sm {
   .f-card-body {
-    @apply p-8;
+    @apply p-4;
   }
 }
 .f-card-title {
@@ -872,8 +903,14 @@ body.dark {
   @apply bg-white dark:bg-gray-800;
 }
 
-.f-spacer {
-  /*TODO*/
+.f-spacer-size-default, .f-spacer-size-medium {
+  @apply h-4;
+}
+.f-spacer-size-small {
+  @apply h-2;
+}
+.f-spacer-size-large {
+  @apply h-8;
 }
 
 .f-spinner svg {
