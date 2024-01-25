@@ -4,7 +4,8 @@
 
 <form @attributes="AdditionalAttributes"
       class="@this.GetClasses()"
-      @onsubmit="OnSubmit">
+      @onsubmit="e => OnSubmit.InvokeAsync(e)"
+      @onsubmit:preventDefault="true">
     @ChildContent
 </form>
 

@@ -13,23 +13,25 @@
         </PageHeaderActions>
     </PageHeader>
     <PageBody>
-        <Grid ItemsSmall="GridItems.Center"
-              JustifySmall="GridJustify.Between">
-            <GridItem Small="GridItemColumn.Six">
-                <Input Dense="true"
-                       IconStart="IconName.Search"
-                       Placeholder="Search for entities" />
-            </GridItem>
-            <GridItem Small="GridItemColumn.Auto">
-                <ButtonGroup>
-                    <Button>
-                        <Icon Name="IconName.Cog" />
-                        Table Settings
-                    </Button>
-                </ButtonGroup>
-            </GridItem>
-        </Grid>
-        <Spacer/>
+        @if (false) {
+            <Grid ItemsSmall="GridItems.Center"
+                  JustifySmall="GridJustify.Between">
+                <GridItem Small="GridItemColumn.Six">
+                    <Input Dense="true"
+                           IconStart="IconName.Search"
+                           Placeholder="Search for entities" />
+                </GridItem>
+                <GridItem Small="GridItemColumn.Auto">
+                    <ButtonGroup>
+                        <Button>
+                            <Icon Name="IconName.Cog" />
+                            Table Settings
+                        </Button>
+                    </ButtonGroup>
+                </GridItem>
+            </Grid>
+            <Spacer/>
+        }
         <Table>
             <TableHead>
                 <TableCell>Username</TableCell>
@@ -57,12 +59,12 @@
                         <TableCell> @user.LastLoginAt </TableCell>
                         <TableCell>
                             <ButtonGroup>
-                                <Button Color="Color.Danger">
+                                <Button Color="Color.Danger" OnClick="@(e => OnDelete(user))">
                                     <Icon Name="IconName.Delete" />
                                     Delete
                                 </Button>
                                 <Button Color="Color.Primary"
-                                        Href="@($"?PluginDef=User Management&typeName=Update User&id=@user.Id")"
+                                        Href="@($"?PluginDef=User Management&typeName=Update User&id={user.Id}")"
                                         Outline="true">
                                     <Icon Name="IconName.Edit" />
                                     Edit
@@ -73,8 +75,8 @@
                 }
             </TableBody>
         </Table>
-        <Spacer/>
         @if (TotalPages > 0) {
+            <Spacer/>
             <Grid ItemsSmall="GridItems.Center"
                   JustifySmall="GridJustify.Between">
                 <GridItem>
@@ -92,6 +94,9 @@
     [Inject]
     private UserClient? UserClient { get; set; }
 
+    [Inject]
+    private ConfirmService Confirm { get; set; }
+
     private List<UserDetailResponse> Users { get; set; } = [];
 
     private int TotalPages {get; set;} = 0;
@@ -104,10 +109,22 @@
         var response = await UserClient!.GetAllAsync();
 
         if (response?.Data != null)
+        {
             TotalPages = (int)response.TotalPages;
             TotalCount = (int)response.TotalCount;
             PageSize = (int)response.PageSize;
             PageNumber = (int)response.PageNumber;
             Users = response.Data.ToList();
+        }
+    }
+
+    private async Task OnDelete(UserDetailResponse user) {
+        // var result = await Confirm.Show("Are you sure to remove this user?");
+
+        if(true)
+        {
+            Console.WriteLine("Should delete user");
+            //await UserClient!.DeleteAsync(user.Id);
+        }
     }
 }

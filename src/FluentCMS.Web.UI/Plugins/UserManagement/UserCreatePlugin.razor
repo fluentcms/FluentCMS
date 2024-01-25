@@ -1,20 +1,11 @@
 ﻿<Page>
     <PageHeader HasBack="true"
-                Title="Create User"
-                Subtitle="Create User form">
-        <PageHeaderActions>
-            <ButtonGroup>
-                <Button Color="Color.Primary">
-                    <Icon Name="IconName.Rocket" />
-                    Save
-                </Button>
-            </ButtonGroup>
-        </PageHeaderActions>
+                Title="Create User">
     </PageHeader>
     <PageBody>
         <Grid Gutter="GridGutter.Medium">
-            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Nine">
-                <form @onsubmit="OnSubmit" @onsubmit:preventDefault="true">
+            <GridItem Small="GridItemColumn.Twelve">
+                <Form OnSubmit="OnSubmit">
                     <Card>
                         <CardBody>
                             <Input @bind-Value="Model.Username"
@@ -30,44 +21,17 @@
                                    Placeholder="••••••••••"
                                    Label="Password"
                                    Type="InputType.Password"/>
+                            <Spacer/>
+                            <Text>@Message</Text>
+                            <Spacer/>
                             <ButtonGroup>
-                                <Button Color="Color.Primary">
-                                    <Icon Name="IconName.Rocket" />
+                                <Button Type="ButtonType.Submit" Color="Color.Primary">
                                     Save
                                 </Button>
                             </ButtonGroup>
                         </CardBody>
                     </Card>
-                </form>
-            </GridItem>
-            <GridItem Small="GridItemColumn.Twelve"
-                      Medium="GridItemColumn.Three">
-                <Card>
-                    <CardBody>
-                        <Switch Label="Published"/>
-                        <Spacer />
-                        Information
-                    </CardBody>
-                </Card>
-                <Spacer />
-                <Grid GutterY="GridGutter.Medium">
-                    <GridItem Small="GridItemColumn.Twelve">
-                        <Button Block
-                                Color="Color.Primary"
-                                Outline>
-                            <Icon Name="IconName.Edit"/>
-                            Edit the Model
-                        </Button>
-                    </GridItem>
-                    <GridItem Small="GridItemColumn.Twelve">
-                        <Button Block
-                                Color="Color.Primary"
-                                Outline>
-                            <Icon Name="IconName.Settings"/>
-                            Configure the View
-                        </Button>
-                    </GridItem>
-                </Grid>
+                </Form>
             </GridItem>
         </Grid>
     </PageBody>
