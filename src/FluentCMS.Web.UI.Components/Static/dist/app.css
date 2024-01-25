@@ -372,6 +372,12 @@ body.dark {
 .f-form-field-state-valid p {
   @apply text-green-600 dark:text-green-500;
 }
+.f-form-field-has-icon-end-true input, .f-form-field-has-icon-end-true select, .f-form-field-has-icon-end-true textarea {
+  @apply pe-10;
+}
+.f-form-field-has-icon-start-true input, .f-form-field-has-icon-start-true select, .f-form-field-has-icon-start-true textarea {
+  @apply ps-10;
+}
 
 .f-grid {
   --grid-gutter-x: 0;
@@ -855,7 +861,7 @@ body.dark {
 }
 
 .f-sidebar {
-  @apply h-screen transition-transform -translate-x-full border-r border-gray-200 dark:border-gray-700;
+  @apply h-screen transition-transform -translate-x-full border-r border-gray-200 dark:border-gray-700 min-h-full;
 }
 .f-sidebar-item > span {
   @apply text-xs py-3;

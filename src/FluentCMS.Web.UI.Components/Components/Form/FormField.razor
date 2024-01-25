@@ -89,7 +89,13 @@
 </div>
 
 @code
-{
+{   
+    [CssProperty]
+    public bool HasIconEnd { get => IconEnd != null; }
+
+    [CssProperty]
+    public bool HasIconStart { get => IconStart != null; }
+
     public bool IsInlineLabel
     {
         get => Appearance == FormFieldAppearance.Checkbox || Appearance == FormFieldAppearance.Radio || Appearance == FormFieldAppearance.Switch;
