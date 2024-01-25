@@ -1,30 +1,49 @@
-<Text Size="TextSize.H5">
-    Your Best Work Starts Here
-</Text>
-<Spacer />
-<Input Label="What should we call you?"
-       Placeholder="Enter your name"
-       Required="true" />
-<Input Label="Email"
-       Placeholder="Enter your email"
-       Required="true"
-       Type="InputType.Email" />
-<Input Label="Password"
-       Placeholder="Enter your password"
-       Type="InputType.Password"
-       Required="true" />
-<Checkbox Label="By signing up, you are creating a Sendinblue account, and you agree to FluentCMS’s Terms of Use and Privacy Policy." />
-<Checkbox Label="Email me about product updates and resources." />
-<Button Block="true"
-        Color="Color.Primary"
-        Type="ButtonType.Submit">
-    Sign Up
-</Button>
-<Spacer />
-<Text Color="Color.Secondary">
-    Already have an account?
-    <Button Color="Color.Primary"
-            Link="true">
-        Login here
+@inject AccountClient AccountClient
+@inject NavigationManager NavigationManager
+<EditForm Model="Model" OnValidSubmit="Register">
+    <Text Size="TextSize.H5">
+        Your Best Work Starts Here
+    </Text>
+    <Spacer/>
+    <Input Label="What should we call you?"
+           Placeholder="Enter your name"
+           Required="true"/>
+    <Input Label="Email"
+           Placeholder="Enter your email"
+           Required="true"
+           Type="InputType.Email"/>
+    <Input Label="Password"
+           Placeholder="Enter your password"
+           Type="InputType.Password"
+           Required="true"/>
+    <Checkbox Label="By signing up, you are creating a Sendinblue account, and you agree to FluentCMS’s Terms of Use and Privacy Policy."/>
+    <Checkbox Label="Email me about product updates and resources."/>
+    <Button Block="true"
+            Color="Color.Primary"
+            Type="ButtonType.Submit">
+        Sign Up
     </Button>
-</Text>
+    <Spacer/>
+    <Text Color="Color.Secondary">
+        Already have an account?
+        <Button Color="Color.Primary"
+                Link="true">
+            Login here
+        </Button>
+    </Text>
+</EditForm>
+
+@code{
+
+    public UserRegisterRequest Model { get; set; } = new();
+
+    private async Task Register()
+    {
+        var result = await AccountClient.RegisterAsync(Model);
+        if (result.Errors.Count == 0)
+        {
+            NavigationManager.NavigateTo("/");
+        }
+    }
+
+}
