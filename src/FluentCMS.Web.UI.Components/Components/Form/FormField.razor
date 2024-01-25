@@ -9,14 +9,14 @@
     @if (!IsInlineLabel && !string.IsNullOrEmpty(Label))
     {
         <label for="@Id"
-               class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+               class="@this.ClassName("FormFieldLabel")">
             @Label
         </label>
     }
-    <div class="relative">
+    <div class="@this.ClassName("FormFieldGroup")">
         @if (IconStart != null)
         {
-            <div class="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
+            <div class="@this.ClassName("FormFieldIconStartWrapper")">
                 <Icon Name="IconStart.GetValueOrDefault()" />
             </div>
         }
@@ -25,9 +25,9 @@
             @if (Appearance == FormFieldAppearance.Switch)
             {
 
-                <label class="relative inline-flex items-center cursor-pointer">
+                <label class="@this.ClassName("FormFieldSwitchWrapper")">
                     @ChildContent
-                    <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">@Label</span>
+                    <span class="@this.ClassName("FormFieldLabelInline")">@Label</span>
                 </label>
             }
             else
@@ -36,7 +36,7 @@
                 @if (!string.IsNullOrEmpty(Label))
                 {
                     <label for="@Id"
-                           class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                           class="@this.ClassName("FormFieldLabelInline")">
                         @Label
                     </label>
                 }
@@ -48,14 +48,14 @@
         }
         @if (IconEnd != null)
         {
-            <div class="absolute inset-y-0 end-0 flex items-center pe-3.5 pointer-events-none">
+            <div class="@this.ClassName("FormFieldIconEndWrapper")">
                 <Icon Name="IconEnd.GetValueOrDefault()" />
             </div>
         }
     </div>
     @if (!string.IsNullOrEmpty(Hint))
     {
-        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+        <p class="@this.ClassName("FormFieldHint")">
             @Hint
         </p>
     }
@@ -71,4 +71,10 @@
     {
         get => Appearance == FormFieldAppearance.Checkbox || Appearance == FormFieldAppearance.Radio || Appearance == FormFieldAppearance.Switch;
     }
+
+    [CssProperty]
+    public bool HasIconStart => IconStart != null && IconStart != IconName.Default;
+
+    [CssProperty]
+    public bool HasIconEnd => IconEnd != null && IconEnd != IconName.Default;
 }
