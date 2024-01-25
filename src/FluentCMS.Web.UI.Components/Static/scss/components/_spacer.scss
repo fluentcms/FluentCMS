@@ -1,5 +1,15 @@
 $spacer: $prefix + 'spacer';
 
 .#{$spacer} {
-    /*TODO*/
+    &-size-default, &-size-medium {
+        @apply h-4;
+    }
+
+    &-size-small {
+        @apply h-2;
+    }
+
+    &-size-large {
+        @apply h-8;
+    }
 }

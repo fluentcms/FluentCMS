@@ -4,10 +4,10 @@ $card: $prefix + 'card';
     @apply bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-700/20 dark:border-gray-700;
 
     &-body {
-        @apply p-6;
+        @apply p-3;
 
         @screen sm {
-            @apply p-8;
+            @apply p-4;
         }
     }
 
