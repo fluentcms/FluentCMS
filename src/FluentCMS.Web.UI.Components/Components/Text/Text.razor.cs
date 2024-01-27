@@ -1,5 +1,16 @@
 namespace FluentCMS.Web.UI.Components;
 
+public enum TextAlign
+{
+    Default,
+    Left,
+    Center,
+    Right,
+    Justify,
+    Start,
+    End,
+}
+
 public enum TextSize
 {
     Default,

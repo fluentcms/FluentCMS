@@ -21,6 +21,9 @@ public abstract class FormElements : BaseComponent
     public string? Label { get; set; }
 
     [Parameter]
+    public RenderFragment? LabelFragment { get; set; }
+
+    [Parameter]
     public string? Name { get; set; }
 
     [Parameter]
