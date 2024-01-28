@@ -1,7 +1,7 @@
 $sidebar: $prefix + 'sidebar';
 
 .#{$sidebar} {
-    @apply h-screen transition-transform -translate-x-full border-r border-gray-200 dark:border-gray-700;
+    @apply h-screen transition-transform -translate-x-full border-r border-gray-200 dark:border-gray-700 min-h-full;
 
     &-item {
         & > span {
