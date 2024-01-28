@@ -32,4 +32,16 @@ $form-field: $prefix + "form-field";
     &-state-valid p {
         @apply text-green-600 dark:text-green-500;
     }
+
+    &-has-icon-end-true {
+        input, select, textarea {
+            @apply pe-10;
+        }
+    }
+
+    &-has-icon-start-true {
+        input, select, textarea {
+            @apply ps-10;
+        }
+    }
 }
