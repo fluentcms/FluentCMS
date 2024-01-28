@@ -58,10 +58,13 @@
                         <TableCell> @user.LastLoginAt </TableCell>
                         <TableCell>
                             <ButtonGroup>
-                                <Button Color="Color.Danger" OnClick="@(evt => OnDelete(user))">
-                                    <Icon Name="IconName.Delete" />
-                                    Delete
-                                </Button>
+                                @if(false) 
+                                {
+                                    <Button Color="Color.Danger" OnClick="@(evt => OnDelete(user))">
+                                        <Icon Name="IconName.Delete" />
+                                        Delete
+                                    </Button>
+                                }
                                 <Button Color="Color.Primary"
                                         Href="@($"?PluginDef=User Management&typeName=Update User&id={user.Id}")"
                                         Outline="true">
@@ -120,9 +123,9 @@
     }
 
     private async Task OnDelete(UserDetailResponse user) {
-        // var result = await Confirm.Show("Are you sure to remove this user?");
+        var result = await Confirm.Show("Are you sure to remove this user?");
 
-        if(true)
+        if(result)
         {
             Console.WriteLine("Should delete user");
             //await UserClient!.DeleteAsync(user.Id);
