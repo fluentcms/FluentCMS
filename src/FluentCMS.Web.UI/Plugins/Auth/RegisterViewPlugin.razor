@@ -13,7 +13,22 @@
        Placeholder="Enter your password"
        Type="InputType.Password"
        Required="true" />
-<Checkbox Label="By signing up, you are creating a Sendinblue account, and you agree to FluentCMS’s Terms of Use and Privacy Policy." />
+<Checkbox>
+    <LabelFragment>
+        By signing up, you are creating a Sendinblue account, and you agree to FluentCMS’s
+        <Button Color="Color.Primary"
+                Href="/"
+                Link="true">
+            Terms of Use
+        </Button>
+        and
+        <Button Color="Color.Primary"
+                Href="/"
+                Link="true">
+            Privacy Policy
+        </Button>.
+    </LabelFragment>
+</Checkbox>
 <Checkbox Label="Email me about product updates and resources." />
 <Button Block="true"
         Color="Color.Primary"
@@ -24,6 +39,7 @@
 <Text Color="Color.Secondary">
     Already have an account?
     <Button Color="Color.Primary"
+            Href="/auth/login"
             Link="true">
         Login here
     </Button>

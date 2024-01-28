@@ -6,11 +6,18 @@
 
 <div @attributes="AdditionalAttributes"
      class="@this.GetClasses()">
-    @if (!IsInlineLabel && !string.IsNullOrEmpty(Label))
+    @if (!IsInlineLabel && (!string.IsNullOrEmpty(Label) || LabelFragment != null))
     {
         <label for="@Id"
                class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-            @Label
+            @if (!string.IsNullOrEmpty(Label))
+            {
+                @Label
+            }
+            else
+            {
+                @LabelFragment
+            }
         </label>
     }
     <div class="relative">
@@ -27,17 +34,33 @@
 
                 <label class="relative inline-flex items-center cursor-pointer">
                     @ChildContent
-                    <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">@Label</span>
+                    <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">
+                        @if (LabelFragment == null)
+                        {
+                            @Label
+                        }
+                        else
+                        {
+                            @LabelFragment
+                        }
+                    </span>
                 </label>
             }
             else
             {
                 @ChildContent
-                @if (!string.IsNullOrEmpty(Label))
+                @if (!string.IsNullOrEmpty(Label) || LabelFragment != null)
                 {
                     <label for="@Id"
                            class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                        @Label
+                        @if (!string.IsNullOrEmpty(Label))
+                        {
+                            @Label
+                        }
+                        else
+                        {
+                            @LabelFragment
+                        }
                     </label>
                 }
             }
@@ -66,7 +89,13 @@
 </div>
 
 @code
-{
+{   
+    [CssProperty]
+    public bool HasIconEnd { get => IconEnd != null; }
+
+    [CssProperty]
+    public bool HasIconStart { get => IconStart != null; }
+
     public bool IsInlineLabel
     {
         get => Appearance == FormFieldAppearance.Checkbox || Appearance == FormFieldAppearance.Radio || Appearance == FormFieldAppearance.Switch;
