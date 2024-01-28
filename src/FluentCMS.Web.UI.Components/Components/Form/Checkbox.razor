@@ -11,11 +11,16 @@
            Name="@Name"
            Required="@Required"
            State="@State">
-    <input @attributes="AdditionalAttributes"
-           @bind="@Value"
-           class="@this.GetClasses()"
-           disabled="@Disabled"
-           id="@Id"
-           name="@Name"
-           type="checkbox" />
+    <ChildContent>
+        <input @attributes="AdditionalAttributes"
+               @bind="@Value"
+               class="@this.GetClasses()"
+               disabled="@Disabled"
+               id="@Id"
+               name="@Name"
+               type="checkbox" />
+    </ChildContent>
+    <LabelFragment>
+        @LabelFragment
+    </LabelFragment>
 </FormField>
