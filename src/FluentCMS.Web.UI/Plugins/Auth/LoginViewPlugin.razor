@@ -1,40 +1,60 @@
-﻿<Text Size="TextSize.H5">
-    Welcome back
-</Text>
-<Spacer />
-<Input Label="Email"
-       Placeholder="Enter your email"
-       Required="true"
-       Type="InputType.Email" />
-<Input Label="Password"
-       Placeholder="Enter your password"
-       Required="true"
-       Type="InputType.Password" />
-<Grid ItemsSmall="GridItems.Center"
-      JustifySmall="GridJustify.Between">
-    <GridItem>
-        <Checkbox Dense="true"
-                  Label="Remember Me" />
-    </GridItem>
-    <GridItem>
-        <Button Color="Color.Primary"
-                Href="/auth/forgot-password"
-                Link="true">
-            Forgot Password?
-        </Button>
-    </GridItem>
-</Grid>
-<Spacer />
-<Button Block="true"
-        Color="Color.Primary">
-    Sign In
-</Button>
-<Spacer />
-<Text Color="Color.Secondary">
-    Don't have an account?
-    <Button Color="Color.Primary"
-            Href="/auth/register"
-            Link="true">
-        Sign up
+﻿@inject AccountClient AccountClient
+@inject NavigationManager NavigationManager
+
+<EditForm Model="Model" OnValidSubmit="Login">
+    <Text Size="TextSize.H5">
+        Welcome back
+    </Text>
+    <Spacer/>
+    <Input @bind-Value="Model.Username"
+           Label="Username"
+           Placeholder="Enter your Username"
+           Required="true"/>
+    <Input @bind-Value="Model.Password"
+           Label="Password"
+           Placeholder="Enter your password"
+           Required="true"
+           Type="InputType.Password"/>
+    <Grid ItemsSmall="GridItems.Center"
+          JustifySmall="GridJustify.Between">
+        @* <GridItem> *@
+        @*     <Checkbox Dense="true" *@
+        @*               Label="Remember Me"/> *@
+        @* </GridItem> *@
+        <GridItem>
+            <Button Color="Color.Primary"
+                    Href="/auth/forgot-password"
+                    Link="true">
+                Forgot Password?
+            </Button>
+        </GridItem>
+    </Grid>
+    <Spacer/>
+    <Button Block="true"
+            Color="Color.Primary">
+        Sign In
     </Button>
-</Text>
+    <Spacer/>
+    <Text Color="Color.Secondary">
+        Don't have an account?
+        <Button Color="Color.Primary"
+                Href="/auth/register"
+                Link="true">
+            Sign up
+        </Button>
+    </Text>
+</EditForm>
+
+@code
+{
+    UserLoginRequest Model { get; set; } = new();
+
+    private async Task Login()
+    {
+        var result = await AccountClient.AuthenticateAsync(Model);
+        if (result.Errors!.Count == 0)
+        {
+            NavigationManager.NavigateTo("/");
+        }
+    }
+}
