@@ -17,13 +17,13 @@
     <LabelFragment>
         By signing up, you are creating a Sendinblue account, and you agree to FluentCMS’s
         <Button Color="Color.Primary"
-                Href="/"
+                Href="@Routes.TermsOfUse()"
                 Link="true">
             Terms of Use
         </Button>
         and
         <Button Color="Color.Primary"
-                Href="/"
+                Href="@Routes.PrivacyPolicy()"
                 Link="true">
             Privacy Policy
         </Button>.
@@ -39,7 +39,7 @@
 <Text Color="Color.Secondary">
     Already have an account?
     <Button Color="Color.Primary"
-            Href="/auth/login"
+            Href="@Routes.AuthLogin()"
             Link="true">
         Login here
     </Button>
