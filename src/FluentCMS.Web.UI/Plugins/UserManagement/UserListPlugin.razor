@@ -1,7 +1,6 @@
 ﻿<Page>
     <PageHeader HasBack="false"
-                Title="Users List"
-                Subtitle="List of all registered users.">
+                Title="Users List">
         <PageHeaderActions>
             <ButtonGroup>
                 <Button Color="Color.Primary"
@@ -59,7 +58,7 @@
                         <TableCell> @user.LastLoginAt </TableCell>
                         <TableCell>
                             <ButtonGroup>
-                                <Button Color="Color.Danger" OnClick="@(e => OnDelete(user))">
+                                <Button Color="Color.Danger" OnClick="@(evt => OnDelete(user))">
                                     <Icon Name="IconName.Delete" />
                                     Delete
                                 </Button>
@@ -80,10 +79,12 @@
             <Grid ItemsSmall="GridItems.Center"
                   JustifySmall="GridJustify.Between">
                 <GridItem>
-                    <PaginationInfo Total="TotalCount" Current="PageSize" />
+                    <PaginationInfo Current="PageSize"
+                                    Total="TotalCount" />
                 </GridItem>
                 <GridItem>
-                    <Pagination Total="TotalPages" Current="PageNumber" />
+                    <Pagination Current="PageNumber"
+                                Total="TotalPages" />
                 </GridItem>
             </Grid>
         }
@@ -92,17 +93,17 @@
 
 @code {
     [Inject]
-    private UserClient? UserClient { get; set; }
+    UserClient? UserClient { get; set; }
 
     [Inject]
-    private ConfirmService Confirm { get; set; }
+    ConfirmService Confirm { get; set; }
 
-    private List<UserDetailResponse> Users { get; set; } = [];
+    List<UserDetailResponse> Users { get; set; } = [];
 
-    private int TotalPages {get; set;} = 0;
-    private int TotalCount {get; set;} = 0;
-    private int PageNumber {get; set;} = 0;
-    private int PageSize {get; set;} = 0;
+    long TotalPages {get; set;}
+    long TotalCount {get; set;}
+    long PageNumber {get; set;}
+    long PageSize {get; set;}
 
     protected override async Task OnInitializedAsync()
     {
@@ -110,10 +111,10 @@
 
         if (response?.Data != null)
         {
-            TotalPages = (int)response.TotalPages;
-            TotalCount = (int)response.TotalCount;
-            PageSize = (int)response.PageSize;
-            PageNumber = (int)response.PageNumber;
+            TotalPages = response.TotalPages;
+            TotalCount = response.TotalCount;
+            PageSize = response.PageSize;
+            PageNumber = response.PageNumber;
             Users = response.Data.ToList();
         }
     }

@@ -40,18 +40,18 @@
 
 @code {
     [Parameter]
-    public int Current { get; set; }
+    public long Current { get; set; }
 
     [Parameter]
-    public EventCallback<int> CurrentChanged { get; set; }
+    public EventCallback<long> CurrentChanged { get; set; }
 
     [Parameter]
     public bool ShowIcons { get; set; } = true;
 
     [Parameter]
-    public int Total { get; set; }
+    public long Total { get; set; }
 
-    public IEnumerable<int> Pages()
+    public IEnumerable<long> Pages()
     {
         var BOUNDARY = 1;
         var SIBLING = 1;
@@ -117,7 +117,7 @@
         return Current < Total;
     }
 
-    public void GoTo(int To)
+    public void GoTo(long To)
     {
         if (To == Current) return;
 

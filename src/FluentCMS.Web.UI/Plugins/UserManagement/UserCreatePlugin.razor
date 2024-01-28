@@ -10,22 +10,28 @@
                         <CardBody>
                             <Input @bind-Value="Model.Username"
                                    Label="Username"
-                                   Placeholder="username"
+                                   Placeholder="Enter Username..."
                                    Required="true"/>
                             <Input @bind-Value="Model.Email"
                                    Label="Email"
-                                   Placeholder="name@example.com"
+                                   Placeholder="Enter Email..."
                                    Required="true"
                                    Type="InputType.Email" />
                             <Input @bind-Value="Model.Password"
-                                   Placeholder="••••••••••"
                                    Label="Password"
+                                   Placeholder="Enter Password..."
                                    Type="InputType.Password"/>
                             <Spacer/>
-                            <Text>@Message</Text>
-                            <Spacer/>
+                            @if(!string.IsNullOrEmpty(Message)) 
+                            {
+                                <Text>
+                                    @Message
+                                </Text>
+                                <Spacer/>
+                            }
                             <ButtonGroup>
-                                <Button Type="ButtonType.Submit" Color="Color.Primary">
+                                <Button Color="Color.Primary"
+                                        Type="ButtonType.Submit">
                                     Save
                                 </Button>
                             </ButtonGroup>
@@ -39,15 +45,16 @@
 
 @code {
     [Inject]
-    private UserClient UserClient { get; set; } = default!;
+    NavigationManager NavigationManager { set; get; } = default!;
 
     [Inject]
-    public NavigationManager NavigationManager { set; get; } = default!;
+    UserClient UserClient { get; set; } = default!;
 
-    private UserCreateRequest Model { get; set; } = new();
-    private string Message { get; set; } = string.Empty;
+    string? Message { get; set; }
 
-    private async Task OnSubmit()
+    UserCreateRequest Model { get; set; } = new();
+    
+    async Task OnSubmit()
     {
         try
         {

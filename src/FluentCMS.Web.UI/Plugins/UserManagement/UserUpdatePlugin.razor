@@ -18,9 +18,15 @@
                                    Placeholder="name@example.com"
                                    Required="true"
                                    Type="InputType.Email" />
-        <Spacer/>
-        <Text>@Message</Text>
-        <Spacer/>
+                      
+                            <Spacer/>
+                            @if(!string.IsNullOrEmpty(Message)) 
+                            {
+                                <Text>
+                                    @Message
+                                </Text>
+                                <Spacer/>                            
+                            }
                             <ButtonGroup>
                                 <Button Color="Color.Primary"
                                         Type="ButtonType.Submit" >
@@ -37,15 +43,18 @@
 
 @code {
     [Inject]
-    private UserClient UserClient { get; set; } = default!;
-
-    [Inject]
     public NavigationManager NavigationManager { set; get; } = default!;
 
-    private UserDetailResponse View { get; set; } = new();
-    private UserUpdateRequest Model { get; set; } = new();
-    private string Message { get; set; } = string.Empty;
-    private Guid? Id { get; set; }
+    [Inject]
+    UserClient UserClient { get; set; } = default!;
+
+    Guid? Id { get; set; }
+
+    string Message { get; set; } = string.Empty;
+
+    UserUpdateRequest Model { get; set; } = new();
+
+    UserDetailResponse View { get; set; } = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -64,7 +73,7 @@
             }
     }
 
-    private async Task OnSubmit()
+    async Task OnSubmit()
     {
         await UserClient.UpdateAsync(Model);
         Message = "Done!";
