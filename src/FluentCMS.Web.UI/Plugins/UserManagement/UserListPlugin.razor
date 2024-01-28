@@ -120,9 +120,9 @@
     }
 
     private async Task OnDelete(UserDetailResponse user) {
-        // var result = await Confirm.Show("Are you sure to remove this user?");
+        var result = await Confirm.Show("Are you sure to remove this user?");
 
-        if(true)
+        if(result)
         {
             Console.WriteLine("Should delete user");
             //await UserClient!.DeleteAsync(user.Id);
