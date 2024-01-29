@@ -31,14 +31,14 @@ Sort attributes alphabetically.
 
 ## Boolean Properties
 
-DON'T set `false` to bool properties.
+DON'T set `default` to properties.
 
 ```c#
 // DO
 bool Count { get; set; }
 
 // DON'T
-bool Count { get; set; } = false;
+bool Count { get; set; } = default;
 ```
 
 ## Boolean Attributes
