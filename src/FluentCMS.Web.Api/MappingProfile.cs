@@ -72,7 +72,7 @@ public class MappingProfile : Profile
 
         CreateMap<ContentTypeCreateRequest, ContentType>();
         CreateMap<ContentTypeUpdateRequest, ContentType>();
-        CreateMap<ContentType, ContentTypeDetailResponse>(); 
+        CreateMap<ContentType, ContentTypeDetailResponse>();
 
         #endregion
     }
