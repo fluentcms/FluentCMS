@@ -1,6 +1,7 @@
 namespace FluentCMS.Web.UI.Components;
 
-public enum CardSize {
+public enum CardSize
+{
     Default,
     Small,
     Medium,

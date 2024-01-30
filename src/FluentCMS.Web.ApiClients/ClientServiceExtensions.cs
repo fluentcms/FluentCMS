@@ -7,7 +7,7 @@ namespace Microsoft.Extensions.DependencyInjection;
 
 public static class ClientServiceExtensions
 {
-    public static IServiceCollection AddApiClients(this IServiceCollection services , IConfiguration configuration)
+    public static IServiceCollection AddApiClients(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddHttpClient("FluentCMS.Web.Api", client =>
         {
