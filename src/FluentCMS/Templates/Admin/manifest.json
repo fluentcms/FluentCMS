@@ -74,9 +74,12 @@
                 {
                     "Name": "Update User",
                     "Type": "UserUpdatePlugin"
+                },
+                {
+                    "Name": "User Detail",
+                    "Type": "UserDetailPlugin"
                 }
             ]
-
         },
         {
             "Name": "Counter",
