@@ -47,8 +47,8 @@
 </Page>
 
 @code {
-    // [Inject]
-    // IJSRuntime JsRuntime { set; get; } = default!;
+    [Inject]
+    IJSRuntime JsRuntime { set; get; } = default!;
 
     [Inject]
     NavigationManager NavigationManager { set; get; } = default!;
@@ -62,7 +62,7 @@
 
     async Task GoBack()
     {
-//        await JsRuntime.InvokeAsync<object>("history.back");
+        await JsRuntime.InvokeVoidAsync("history.back");
     }
 
     async Task OnSubmit()
