@@ -45,9 +45,8 @@
 </Page>
 
 @code {
-    // TODO: Why this doesn't work?
-    // [Inject]
-    // IJSRuntime JsRuntime { set; get; } = default!;
+    [Inject]
+    IJSRuntime JsRuntime { set; get; } = default!;
 
     [Inject]
     NavigationManager NavigationManager { set; get; } = default!;
@@ -65,8 +64,7 @@
 
     async Task GoBack()
     {
-        // TODO: Enable after fixing JSRuntime problem
-        // await JsRuntime.InvokeAsync<object>("history.back");
+        await JsRuntime.InvokeAsync<object>("history.back");
     }
 
     protected override async Task OnInitializedAsync()
@@ -88,7 +86,16 @@
 
     async Task OnSubmit()
     {
-        await UserClient.UpdateAsync(Model);
-        Message = "Done!";
+        try
+        {
+            await UserClient.UpdateAsync(Model);
+            Message = "Done!";
+            GoBack();
+        }
+        catch (Exception exception)
+        {
+            Message = exception.ToString();
+        }
+
     }
 }

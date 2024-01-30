@@ -4,7 +4,9 @@
     </PageHeader>
     <PageBody>
         <Grid Gutter="GridGutter.Large">
-            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Nine">
+            <GridItem Small="GridItemColumn.Twelve"
+                      Medium="GridItemColumn.Seven"
+                      Large="GridItemColumn.Nine">
                 <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
                     <GridItem Small="GridItemColumn.Twelve">
                         <Typography><strong>Username:</strong></Typography>
@@ -18,10 +20,20 @@
                             @View.Email
                         </Typography>
                     </GridItem>
+                    <GridItem Small="GridItemColumn.Twelve">
+                        <ButtonGroup>
+                            <Button Color="Color.Primary"
+                                    Href="@($"?PluginDef=User Management&typeName=Update User&id={View.Id}")">
+                                <Icon Name="IconName.Edit" />
+                                Edit
+                            </Button>
+                        </ButtonGroup>
+                    </GridItem>
                 </Grid>
             </GridItem>
             <GridItem Small="GridItemColumn.Twelve"
-                      Medium="GridItemColumn.Three">
+                      Medium="GridItemColumn.Five"
+                      Large="GridItemColumn.Three">
                 <Card>
                     <CardBody>
                         @if(!string.IsNullOrEmpty(View.CreatedBy))

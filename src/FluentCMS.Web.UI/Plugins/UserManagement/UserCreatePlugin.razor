@@ -71,6 +71,7 @@
         {
             var newUser = await UserClient.CreateAsync(Model);
             Message = "Done!";
+            GoBack();
         }
         catch (Exception ex)
         {
