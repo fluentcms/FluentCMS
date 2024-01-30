@@ -35,10 +35,6 @@
             <TableHead>
                 <TableCell>Username</TableCell>
                 <TableCell>Email</TableCell>
-                <TableCell>Phone</TableCell>
-                <TableCell>Enable</TableCell>
-                <TableCell>Login Count</TableCell>
-                <TableCell>Last Login</TableCell>
                 <TableCell>Actions</TableCell>
             </TableHead>
             <TableBody>
@@ -46,30 +42,29 @@
                     <TableRow>
                         <TableCell> @user.Username </TableCell>
                         <TableCell> @user.Email </TableCell>
-                        <TableCell> @user.PhoneNumber </TableCell>
-                        <TableCell>
-                            @if(user.Enabled) {
-                                <Badge Color="Color.Success">Enabled</Badge>
-                            } else {
-                                <Badge Color="Color.Danger">Disabled</Badge>
-                            }
-                        </TableCell>
-                        <TableCell> @user.LoginCount </TableCell>
-                        <TableCell> @user.LastLoginAt </TableCell>
                         <TableCell>
                             <ButtonGroup>
-                                @if(false) 
+                                @if(false)
                                 {
-                                    <Button Color="Color.Danger" OnClick="@(evt => OnDelete(user))">
+                                    <Button Color="Color.Danger"
+                                            Size="ButtonSize.Small"
+                                            OnClick="@(evt => OnDelete(user))">
+
+
                                         <Icon Name="IconName.Delete" />
                                         Delete
                                     </Button>
                                 }
                                 <Button Color="Color.Primary"
                                         Href="@($"?PluginDef=User Management&typeName=Update User&id={user.Id}")"
-                                        Outline="true">
+                                        Size="ButtonSize.Small">
                                     <Icon Name="IconName.Edit" />
                                     Edit
+                                </Button>
+                                <Button Href="@($"?PluginDef=User Management&typeName=User Detail&id={user.Id}")"
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Eye" />
+                                    Preview
                                 </Button>
                             </ButtonGroup>
                         </TableCell>

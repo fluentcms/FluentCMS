@@ -1,0 +1,84 @@
+﻿<Page>
+    <PageHeader HasBack="true"
+                Title="User Detail">
+    </PageHeader>
+    <PageBody>
+        <Grid Gutter="GridGutter.Large">
+            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Nine">
+                <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
+                    <GridItem Small="GridItemColumn.Twelve">
+                        <Typography><strong>Username:</strong></Typography>
+                        <Typography>
+                            @View.Username
+                        </Typography>
+                    </GridItem>
+                    <GridItem Small="GridItemColumn.Twelve">
+                        <Typography><strong>Email:</strong></Typography>
+                        <Typography>
+                            @View.Email
+                        </Typography>
+                    </GridItem>
+                </Grid>
+            </GridItem>
+            <GridItem Small="GridItemColumn.Twelve"
+                      Medium="GridItemColumn.Three">
+                <Card>
+                    <CardBody>
+                        @if(!string.IsNullOrEmpty(View.CreatedBy))
+                        {
+                            <Typography><strong>Created By</strong></Typography>
+                            <Typography>@View.CreatedBy</Typography>
+                            <Spacer />
+                        }
+                        @if(!string.IsNullOrEmpty(View.CreatedAt.ToString()))
+                        {
+                            <Typography><strong>Created At</strong></Typography>
+                            <Typography>@View.CreatedAt</Typography>
+                            <Spacer />
+                        }
+                        @if(!string.IsNullOrEmpty(View.ModifiedBy))
+                        {
+                            <Typography><strong>Modified By</strong></Typography>
+                            <Typography>@View.ModifiedBy</Typography>
+                            <Spacer />
+                        }
+                        @if(!string.IsNullOrEmpty(View.ModifiedAt.ToString()))
+                        {
+                            <Typography><strong>Modified At</strong></Typography>
+                            <Typography>@View.ModifiedAt</Typography>
+                        }
+                    </CardBody>
+                </Card>
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
+
+@code {
+    [Inject]
+    NavigationManager NavigationManager { set; get; } = default!;
+
+    [Inject]
+    UserClient UserClient { get; set; } = default!;
+
+    Guid? Id { get; set; }
+
+    string? Message { get; set; }
+
+    UserDetailResponse View { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        var userId = NavigationManager.GetIdFromQuery();
+        if (userId != null)
+            try
+            {
+                View = (await UserClient.GetAsync(userId.Value)).Data;
+            }
+            catch (Exception)
+            {
+                Message = "An error occured!";
+            }
+    }
+}
