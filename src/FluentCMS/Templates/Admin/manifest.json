@@ -59,6 +59,17 @@
             ]
         },
         {
+            "Name": "Logout",
+            "Description": "Logout Plugin",
+            "Types": [
+                {
+                    "Name": "Logout",
+                    "Type": "LogoutViewPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
             "Name": "User Management",
             "Description": "Users Management Plugin",
             "Types": [
@@ -183,6 +194,17 @@
                     "Plugins": [
                         {
                             "Definition": "Forgot Password",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Logout",
+                    "Path": "/logout",
+                    "Layout": "AuthLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "Logout",
                             "Section": "Main"
                         }
                     ]
