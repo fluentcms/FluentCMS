@@ -139,6 +139,16 @@
             "Plugins": [],
             "Children": [
                 {
+                    "Title": "Content Type Builder",
+                    "Path": "/content-types",
+                    "Plugins": [
+                        {
+                            "Definition": "ContentType Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
                     "Title": "Users",
                     "Path": "/users",
                     "Plugins": [

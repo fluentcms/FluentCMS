@@ -35,6 +35,9 @@ public abstract class FormElementsValuable<T> : FormElements
     protected T? CurrentValue { get; set; }
 
     [Parameter]
+    public EventCallback<T> OnChange { get; set; }
+
+    [Parameter]
     public T? Value
     {
         get => CurrentValue;

@@ -3,6 +3,12 @@
                 Title="Content Types List">
         <PageHeaderActions>
             <ButtonGroup>
+                <Select @bind-Value="AppSlug" OnChange="OnAppSlugChanged">
+                    @foreach (var app in Apps)
+                    {
+                        <Option Value="app.id">@app.Title</Option>
+                    }
+                </Select>
                 <Button Color="Color.Primary"
                         Href="?PluginDef=ContentType Management&typeName=Create ContentType">
                     <Icon Name="IconName.Plus" />
@@ -49,24 +55,42 @@
 
 @code {
     [Inject]
+    AppClient? AppClient { get; set; }
+
+    [Inject]
     ContentTypeClient? ContentTypeClient { get; set; }
 
     [Inject]
     ConfirmService Confirm { get; set; }
 
-    Guid? AppId {get; set;}
+    string? AppSlug {get; set;}
+
+    List<AppDetailResponse> Apps { get; set; } = [];
 
     List<ContentTypeDetailResponse> ContentTypes { get; set; } = [];
 
     protected override async Task OnInitializedAsync()
     {
-        // set AppId from NavigationManager
+        var appResponse = await AppClient!.GetAllAsync();
 
-        var response = await ContentTypeClient!.GetAllAsync(AppId);
+        if(appResponse?.Data != null)
+        {
+            Apps = appResponse.Data.ToList();
+        }
+    }
+
+    async Task LoadData()
+    {
+        var response = await ContentTypeClient!.GetAllAsync(AppSlug);
 
         if (response?.Data != null)
         {
             ContentTypes = response.Data.ToList();
         }
+    }
+
+    async Task OnAppSlugChanged(string slug) {
+        AppSlug = slug;
+        await LoadData();
     }
 }
