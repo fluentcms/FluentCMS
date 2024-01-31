@@ -1,6 +1,6 @@
 ﻿<Page>
     <PageHeader HasBack="true"
-                Title="User Detail">
+                Title="ContentType Detail">
     </PageHeader>
     <PageBody>
         <Grid Gutter="GridGutter.Large">
@@ -9,24 +9,28 @@
                       Large="GridItemColumn.Nine">
                 <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
                     <GridItem Small="GridItemColumn.Twelve">
-                        <Typography><strong>Username:</strong></Typography>
+                        <Typography><strong>Title:</strong></Typography>
                         <Typography>
-                            @View.Username
+                            @View.Title
                         </Typography>
                     </GridItem>
                     <GridItem Small="GridItemColumn.Twelve">
-                        <Typography><strong>Email:</strong></Typography>
+                        <Typography><strong>Slug:</strong></Typography>
                         <Typography>
-                            @View.Email
+                            @View.Slug
                         </Typography>
                     </GridItem>
                     <GridItem Small="GridItemColumn.Twelve">
                         <ButtonGroup>
-                            <Button Color="Color.Primary"
-                                    Href="@($"?PluginDef=User Management&typeName=Update User&id={View.Id}")">
-                                <Icon Name="IconName.Edit" />
-                                Edit
-                            </Button>
+                            @if (View != null && App != null)
+                            {
+                                <p>Delete</p>
+                                <Button Color="Color.Primary"
+                                        Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={View.Id}&appSlug={App?.Slug}")">
+                                    <Icon Name="IconName.Edit" />
+                                    Edit
+                                </Button>
+                            }
                         </ButtonGroup>
                     </GridItem>
                 </Grid>
@@ -68,25 +72,34 @@
 
 @code {
     [Inject]
-    NavigationManager NavigationManager { set; get; } = default!;
+    AppClient AppClient { get; set; } = default!;
 
     [Inject]
-    UserClient UserClient { get; set; } = default!;
+    ContentTypeClient ContentTypeClient { get; set; } = default!;
+
+    [Inject]
+    NavigationManager NavigationManager { set; get; } = default!;
 
     Guid? Id { get; set; }
 
     string? Message { get; set; }
 
-    UserDetailResponse View { get; set; } = new();
+    AppDetailResponse App { get; set; } = new();
+
+    ContentTypeDetailResponse View { get; set; } = new();
 
     protected override async Task OnInitializedAsync()
     {
 
-        var userId = NavigationManager.GetIdFromQuery();
-        if (userId != null)
+        var appSlug = NavigationManager.GetAppSlugFromQuery();
+
+        var contentTypeId = NavigationManager.GetIdFromQuery();
+        if (contentTypeId != null)
             try
             {
-                View = (await UserClient.GetAsync(userId.Value)).Data;
+                // View = (await ContentTypeClient.GetAsync(appSlug, contentTypeId.Value)).Data;
+                View = (await ContentTypeClient.GetAllAsync(appSlug))?.Data.ToList().Find(x => x.Id == contentTypeId);
+                App = (await AppClient.GetBySlugAsync(appSlug)).Data;
             }
             catch (Exception)
             {

@@ -3,17 +3,20 @@
                 Title="Content Types List">
         <PageHeaderActions>
             <ButtonGroup>
-                <Select @bind-Value="AppSlug" OnChange="OnAppSlugChanged">
+                <Select @bind-Value="AppSlug" Dense Placeholder="Choose an App..." OnChange="OnAppSlugChanged">
                     @foreach (var app in Apps)
                     {
-                        <Option Value="app.id">@app.Title</Option>
+                        <Option Value="@app.Slug">@app.Title</Option>
                     }
                 </Select>
-                <Button Color="Color.Primary"
-                        Href="?PluginDef=ContentType Management&typeName=Create ContentType">
-                    <Icon Name="IconName.Plus" />
-                    Add Content Type
-                </Button>
+                @if (!string.IsNullOrEmpty(AppSlug))
+                {
+                    <Button Color="Color.Primary"
+                            Href="@($"?PluginDef=ContentType Management&typeName=Create ContentType&appSlug={AppSlug}")">
+                        <Icon Name="IconName.Plus" />
+                        Add Content Type
+                    </Button>
+                }
             </ButtonGroup>
         </PageHeaderActions>
     </PageHeader>
@@ -33,13 +36,19 @@
                         <TableCell> @contentType.Description </TableCell>
                         <TableCell>
                             <ButtonGroup>
+                                <Button Color="Color.Danger"
+                                        Size="ButtonSize.Small"
+                                        OnClick="(evt) => OnDelete(contentType)">
+                                    <Icon Name="IconName.Delete" />
+                                    Delete
+                                </Button>
                                 <Button Color="Color.Primary"
-                                        Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={contentType.Id}")"
+                                        Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={contentType.Id}&appSlug={AppSlug}")"
                                         Size="ButtonSize.Small">
                                     <Icon Name="IconName.Edit" />
                                     Edit
                                 </Button>
-                                <Button Href="@($"?PluginDef=ContentType Management&typeName=ContentType Detail&id={contentType.Id}")"
+                                <Button Href="@($"?PluginDef=ContentType Management&typeName=ContentType Detail&id={contentType.Id}&appSlug={AppSlug}")"
                                         Size="ButtonSize.Small">
                                     <Icon Name="IconName.Eye" />
                                     Preview
@@ -58,7 +67,10 @@
     AppClient? AppClient { get; set; }
 
     [Inject]
-    ContentTypeClient? ContentTypeClient { get; set; }
+    ContentTypeClient ContentTypeClient { get; set; } = default!;
+
+    [Inject]
+    NavigationManager NavigationManager { get; set; } = default!;
 
     [Inject]
     ConfirmService Confirm { get; set; }
@@ -71,6 +83,14 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var appSlug = NavigationManager.GetAppSlugFromQuery();
+
+        if(!string.IsNullOrEmpty(appSlug))
+        {
+            AppSlug = appSlug;
+            await LoadData();
+        }
+
         var appResponse = await AppClient!.GetAllAsync();
 
         if(appResponse?.Data != null)
@@ -81,7 +101,7 @@
 
     async Task LoadData()
     {
-        var response = await ContentTypeClient!.GetAllAsync(AppSlug);
+        var response = await ContentTypeClient.GetAllAsync(AppSlug);
 
         if (response?.Data != null)
         {
@@ -90,7 +110,17 @@
     }
 
     async Task OnAppSlugChanged(string slug) {
-        AppSlug = slug;
         await LoadData();
+    }
+
+    async Task OnDelete(ContentTypeDetailResponse contentType)
+    {
+        var result = await Confirm.Show("Are you sure you want to remove this contentType?");
+
+        if(result)
+        {
+            await ContentTypeClient.DeleteAsync(AppSlug, contentType.Id);
+            await LoadData();
+        }
     }
 }

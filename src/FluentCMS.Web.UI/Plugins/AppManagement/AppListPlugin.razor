@@ -36,12 +36,12 @@
                                     Delete
                                 </Button>
                                 <Button Color="Color.Primary"
-                                        Href="@($"?PluginDef=App Management&typeName=Update App&slug={app.Slug}")"
+                                        Href="@($"?PluginDef=App Management&typeName=Update App&appSlug={app.Slug}")"
                                         Size="ButtonSize.Small">
                                     <Icon Name="IconName.Edit" />
                                     Edit
                                 </Button>
-                                <Button Href="@($"?PluginDef=App Management&typeName=App Detail&slug={app.Slug}")"
+                                <Button Href="@($"?PluginDef=App Management&typeName=App Detail&appSlug={app.Slug}")"
                                         Size="ButtonSize.Small">
                                     <Icon Name="IconName.Eye" />
                                     Preview

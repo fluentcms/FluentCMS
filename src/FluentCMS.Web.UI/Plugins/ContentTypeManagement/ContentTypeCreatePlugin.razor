@@ -1,6 +1,6 @@
 ﻿<Page>
     <PageHeader HasBack="true"
-                Title="Create User">
+                Title="Create ContentType">
     </PageHeader>
     <PageBody>
         <Grid Gutter="GridGutter.Medium">
@@ -8,19 +8,26 @@
                 <Form OnSubmit="OnSubmit">
                     <Card>
                         <CardBody>
-                            <Input @bind-Value="Model.Username"
-                                   Label="Username"
-                                   Placeholder="Enter Username..."
+                            <Select @bind-Value="AppSlug"
+                                   Label="App"
+                                   Placeholder="Choose App..."
+                                   Readonly="true"
+                                   Required="true">
+                                @foreach (var app in Apps)
+                                {
+                                    <Option Value="@app.Slug">@app.Title</Option>
+                                }
+                            </Select>
+                            <Input @bind-Value="Model.Title"
+                                   Label="Title"
+                                   Placeholder="Enter Title..."
                                    Required="true"/>
-                            <Input @bind-Value="Model.Email"
-                                   Label="Email"
-                                   Placeholder="Enter Email..."
-                                   Required="true"
-                                   Type="InputType.Email" />
-                            <Input @bind-Value="Model.Password"
-                                   Label="Password"
-                                   Placeholder="Enter Password..."
-                                   Type="InputType.Password"/>
+                            <Input @bind-Value="Model.Slug"
+                                   Label="Slug"
+                                   Placeholder="Enter Slug..." />
+                            <Textarea @bind-Value="Model.Description"
+                                   Label="Description"
+                                   Placeholder="Enter Description..." />
                             <Spacer/>
                             @if(!string.IsNullOrEmpty(Message))
                             {
@@ -48,30 +55,56 @@
 
 @code {
     [Inject]
+    AppClient AppClient { get; set; } = default!;
+
+    [Inject]
+    ContentTypeClient ContentTypeClient { get; set; } = default!;
+
+    [Inject]
     IJSRuntime JsRuntime { set; get; } = default!;
 
     [Inject]
     NavigationManager NavigationManager { set; get; } = default!;
 
-    [Inject]
-    UserClient UserClient { get; set; } = default!;
+    List<AppDetailResponse> Apps { get; set; } = [];
+
+    string? AppSlug { get; set; }
 
     string? Message { get; set; }
 
-    UserCreateRequest Model { get; set; } = new();
+    ContentTypeCreateRequest Model { get; set; } = new();
 
-    async Task GoBack()
+    void GoToUpdatePage(Guid? id)
     {
-        await JsRuntime.InvokeVoidAsync("history.back");
+        NavigationManager.NavigateTo($"?PluginDef=ContentType Management&typeName=Update ContentType&id={id.Value}&appSlug={AppSlug}");
+    }
+
+    void GoBack()
+    {
+        NavigationManager.NavigateTo("/admin/content-types?appSlug=" + AppSlug);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppSlug = NavigationManager.GetAppSlugFromQuery();
+        var response = await AppClient.GetAllAsync();
+
+        if(response?.Data != null)
+        {
+            Apps = response.Data.ToList();
+        }
     }
 
     async Task OnSubmit()
     {
         try
         {
-            var newUser = await UserClient.CreateAsync(Model);
+            var newContentType = await ContentTypeClient.CreateAsync(AppSlug, Model);
             Message = "Done!";
-            GoBack();
+            if(newContentType?.Data?.Id != null)
+            {
+                GoToUpdatePage(newContentType?.Data?.Id!);
+            }
         }
         catch (Exception ex)
         {

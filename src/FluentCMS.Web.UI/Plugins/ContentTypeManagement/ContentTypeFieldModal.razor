@@ -1,0 +1,93 @@
+<Modal @bind-Open="Open"
+       Size="ModalSize.Large">
+    <div class="dark:bg-gray-800">
+        <ModalHeader>
+            <ModalTitle>@Title</ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+            <Form OnSubmit="OnFormSubmit">
+                <Tabs @bind-Value="ActiveTab">
+                    <TabsList>
+                        <TabsTab Name="tab-general">General</TabsTab>
+                        <TabsTab Name="tab-advanced">Advanced</TabsTab>
+                    </TabsList>
+                    <TabsPanels>
+                        <TabsPanel Name="tab-general">
+                            <Grid GutterX="GridGutter.Large">
+                                <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
+                                    <Input @bind-Value="Model.Slug"
+                                           Label="Slug"
+                                           Placeholder="Enter Slug..."
+                                           Required="true"/>
+                                </GridItem>
+                                <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
+                                    <Input @bind-Value="Model.Title"
+                                           Label="Title"
+                                           Placeholder="Enter Title..."
+                                           Required="true"/>
+                                </GridItem>
+                            </Grid>
+                            <Textarea @bind-Value="Model.Description"
+                                      Label="Description"
+                                      Placeholder="Enter Description..."
+                                      Required="true" />
+                        </TabsPanel>
+                        <TabsPanel Name="tab-advanced">
+                            <Input @bind-Value="Model.Label"
+                                   Label="Label"
+                                   Placeholder="Enter Label..."
+                                   Required="true"/>
+                            <Switch @bind-Value="Model.IsRequired"
+                                   Label="Is Required?" />
+                            <Input @bind-Value="Model.Placeholder"
+                                   Label="Placeholder"
+                                   Placeholder="Enter Placeholder..."/>
+                            <Input @bind-Value="Model.Hint"
+                                   Label="Hint"
+                                   Placeholder="Enter Hint..."/>
+
+                            <Input @bind-Value="Model.DefaultValue"
+                                   Label="Default Value"
+                                   Placeholder="Enter Default Value..."/>
+                        </TabsPanel>
+                    </TabsPanels>
+                </Tabs>
+
+                <ButtonGroup>
+                    <Button OnClick="() => OnCancel.InvokeAsync()">
+                        Cancel
+                    </Button>
+                    <Button Color="Color.Primary"
+                            Type="ButtonType.Submit">
+                        Submit
+                    </Button>
+                </ButtonGroup>
+            </Form>
+        </ModalBody>
+    </div>
+</Modal>
+
+@code {
+    [Parameter]
+    public string ActiveTab {get; set; } = "tab-general";
+
+    [Parameter]
+    public bool Open {get; set;} = false;
+
+    [Parameter]
+    public EventCallback<bool> OnCancel {get; set;}
+
+    [Parameter]
+    public EventCallback<ContentTypeField> OnSubmit {get; set;}
+
+    [Parameter]
+    public ContentTypeField Model {get; set;} = new();
+
+    [Parameter]
+    public string Title {get; set; }
+
+    void OnFormSubmit()
+    {
+        OnSubmit.InvokeAsync(Model);
+    }
+}

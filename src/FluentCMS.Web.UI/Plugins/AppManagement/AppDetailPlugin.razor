@@ -85,7 +85,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var appSlug = NavigationManager.GetSlugFromQuery();
+        var appSlug = NavigationManager.GetAppSlugFromQuery();
         if (appSlug != null)
         {
             try

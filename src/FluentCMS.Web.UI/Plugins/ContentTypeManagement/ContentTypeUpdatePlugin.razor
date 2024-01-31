@@ -1,6 +1,6 @@
 ﻿<Page>
     <PageHeader HasBack="true"
-                Title="Update User">
+                Title="Update ContentType">
     </PageHeader>
     <PageBody>
         <Grid Gutter="GridGutter.Medium">
@@ -8,18 +8,75 @@
                 <Form OnSubmit="OnSubmit">
                     <Card>
                         <CardBody>
-                            <Input Value="@View.Username"
-                                   Label="Username"
-                                   Placeholder="username"
-                                   Readonly="true"
+                            <Select @bind-Value="AppSlug"
+                                   Disabled="true"
+                                   Label="App"
+                                   Placeholder="Choose App..."
+                                   Required="true">
+                                @foreach (var app in Apps)
+                                {
+                                    <Option Value="@app.Slug">@app.Title</Option>
+                                }
+                            </Select>
+                            <Input @bind-Value="@View.Slug"
+                                   Disabled="true"
+                                   Label="Slug"
+                                   Placeholder="Enter Slug..." />
+                            <Input @bind-Value="Model.Title"
+                                   Label="Title"
+                                   Placeholder="Enter Title..."
                                    Required="true"/>
-                            <Input @bind-Value="Model.Email"
-                                   Label="Email"
-                                   Placeholder="name@example.com"
-                                   Required="true"
-                                   Type="InputType.Email" />
-
+                            <Textarea @bind-Value="Model.Description"
+                                   Label="Description"
+                                   Placeholder="Enter Description..." />
                             <Spacer/>
+                            <FormField Appearance="FormFieldAppearance.Input" Label="Fields">
+                                <Table>
+                                    <TableHead>
+                                        <TableCell>Slug</TableCell>
+                                        <TableCell>Title</TableCell>
+                                        <TableCell>Type</TableCell>
+                                        <TableCell>Actions</TableCell>
+                                    </TableHead>
+                                    <TableBody>
+                                        @foreach (var field in Fields)
+                                        {
+                                            <TableRow>
+                                                <TableCell>@field.Slug</TableCell>
+                                                <TableCell>@field.Title</TableCell>
+                                                <TableCell>Text</TableCell>
+                                                <TableCell>
+                                                    <ButtonGroup>
+                                                        <Button Color="Color.Danger"
+                                                                Size="ButtonSize.Small"
+                                                                OnClick="() => OnDeleteField(field.Slug)">
+                                                            <Icon Name="IconName.Delete" />
+                                                            Delete
+                                                        </Button>
+                                                        <Button Color="Color.Primary"
+                                                                Size="ButtonSize.Small"
+                                                                OnClick="() => OnEditField(field)">
+                                                            <Icon Name="IconName.Edit" />
+                                                            Edit
+                                                        </Button>
+                                                    </ButtonGroup>
+                                                </TableCell>
+                                            </TableRow>
+                                        }
+                                        <TableRow>
+                                            <TableCell colspan="4">
+                                                <Button Color="Color.Primary"
+                                                        Ghost="true"
+                                                        OnClick="OpenAddFieldModal">
+                                                    <Icon Name="IconName.Plus" />
+                                                    Add Field
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    </TableBody>
+                                </Table>
+
+                            </FormField>
                             @if(!string.IsNullOrEmpty(Message))
                             {
                                 <Typography>
@@ -32,8 +89,8 @@
                                     Cancel
                                 </Button>
                                 <Button Color="Color.Primary"
-                                        Type="ButtonType.Submit" >
-                                    Submit
+                                        Type="ButtonType.Submit">
+                                    Save
                                 </Button>
                             </ButtonGroup>
                         </CardBody>
@@ -44,58 +101,158 @@
     </PageBody>
 </Page>
 
+<ContentTypeFieldModal ActiveTab="tab-general"
+                       Model="FieldModel"
+                       Open="FieldModalOpen"
+                       Title="@FieldModalTitle"
+                       OnCancel="CloseFieldModal"
+                       OnSubmit="OnSubmitField"/>
+
 @code {
+    [Inject]
+    AppClient AppClient { get; set; } = default!;
+
+    [Inject]
+    ContentTypeClient ContentTypeClient { get; set; } = default!;
+
+    [Inject]
+    ConfirmService Confirm { set; get; } = default!;
+
     [Inject]
     IJSRuntime JsRuntime { set; get; } = default!;
 
     [Inject]
     NavigationManager NavigationManager { set; get; } = default!;
 
-    [Inject]
-    UserClient UserClient { get; set; } = default!;
+    List<AppDetailResponse> Apps { get; set; } = [];
+
+    List<ContentTypeField> Fields { get; set; } = [];
+
+    string? AppSlug { get; set; }
+
+    bool FieldModalOpen = false;
+
+    ContentTypeField FieldModel = new();
+
+    string FieldModalTitle;
 
     Guid? Id { get; set; }
 
-    string Message { get; set; } = string.Empty;
+    string? Message { get; set; }
 
-    UserUpdateRequest Model { get; set; } = new();
+    ContentTypeDetailResponse View { get; set; } = new();
 
-    UserDetailResponse View { get; set; } = new();
+    ContentTypeUpdateRequest Model { get; set; } = new();
 
     async Task GoBack()
     {
-        await JsRuntime.InvokeAsync<object>("history.back");
+        NavigationManager.NavigateTo("/admin/content-types?appSlug=" + AppSlug);
+    }
+
+    async Task OnEditField(ContentTypeField field)
+    {
+        FieldModel = new ContentTypeField {
+            Slug = field.Slug,
+            Title = field.Title,
+            Description = field.Description,
+
+            IsRequired = field.IsRequired,
+            Label = field.Label,
+            Hint = field.Hint,
+            Placeholder = field.Placeholder,
+            DefaultValue = field.DefaultValue,
+
+        };
+        FieldModalTitle = "Edit Field";
+        FieldModalOpen = true;
+    }
+
+    async Task OnDeleteField(string fieldName)
+    {
+        var result = await Confirm.Show("Are you sure to remove this Field?");
+
+        if(result)
+        {
+            var response = await ContentTypeClient.DeleteFieldAsync(AppSlug, View.Id, fieldName);
+
+            if(response?.Data != null)
+            {
+                Fields = response.Data.Fields.ToList();
+            }
+        }
+    }
+
+    void OpenAddFieldModal()
+    {
+        FieldModel = new ContentTypeField {
+            Slug = "",
+            Title = "",
+            Description = "",
+
+            IsRequired = false,
+            Label = "",
+            Hint = "",
+            Placeholder = "",
+            DefaultValue = "",
+        };
+
+        FieldModalTitle = "Add Field";
+        FieldModalOpen = true;
+    }
+
+    void CloseFieldModal()
+    {
+        FieldModalOpen = false;
+    }
+
+    async Task OnSubmitField(ContentTypeField field)
+    {
+        FieldModalOpen = false;
+        var response = await ContentTypeClient.SetFieldAsync(AppSlug, View.Id, field);
+
+        if (response?.Data != null)
+        {
+            Fields = response.Data.Fields.ToList();
+        }
     }
 
     protected override async Task OnInitializedAsync()
     {
+        Id = NavigationManager.GetIdFromQuery();
+        AppSlug = NavigationManager.GetAppSlugFromQuery();
 
-        var userId = NavigationManager.GetIdFromQuery();
-        if (userId != null)
-            try
-            {
-                View = (await UserClient.GetAsync(userId.Value)).Data;
-                Model.Id = userId.Value;
-                Model.Email = View.Email;
-            }
-            catch (Exception)
-            {
-                Message = "An error occured!";
-            }
+        var appResponse = await AppClient.GetAllAsync();
+
+        if(appResponse?.Data != null)
+        {
+            Apps = appResponse.Data.ToList();
+        }
+
+        var response = await ContentTypeClient.GetAllAsync(AppSlug);
+
+        if(response?.Data != null)
+        {
+            View = response.Data.ToList().Find(x => x.Id == Id);
+            Fields = View.Fields.ToList();
+
+            Model.Id = View.Id;
+            Model.Title = View.Title;
+            Model.AppId = View.AppId;
+            Model.Description = View.Description;
+        }
     }
 
     async Task OnSubmit()
     {
         try
         {
-            await UserClient.UpdateAsync(Model);
+            var updatedContentType = await ContentTypeClient.UpdateAsync(AppSlug, Model);
             Message = "Done!";
             GoBack();
         }
-        catch (Exception exception)
+        catch (Exception ex)
         {
-            Message = exception.ToString();
+            Message = ex.ToString();
         }
-
     }
 }
