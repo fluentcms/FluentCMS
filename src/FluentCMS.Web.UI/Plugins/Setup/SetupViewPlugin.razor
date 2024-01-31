@@ -8,21 +8,22 @@
         <Text Size="TextSize.H5">
             Welcome To FluentCMS
         </Text>
-        <Spacer />
+        <Spacer/>
         <Input @bind-Value="SetupModel.Username"
                Label="Username"
                Placeholder="username"
-               Required="true" />
+               Required="true"/>
         <Input @bind-Value="SetupModel.Email"
                Label="Email"
                Placeholder="name@example.com"
                Required="true"
-               Type="InputType.Email" />
-        <Input Label="Password"
+               Type="InputType.Email"/>
+        <Input @bind-Value="SetupModel.Password"
+               Label="Password"
                Placeholder="••••••••••"
                Required="true"
-               Type="InputType.Password" />
-        <Spacer />
+               Type="InputType.Password"/>
+        <Spacer/>
         <Button Block="true"
                 Color="Color.Primary"
                 Type="ButtonType.Submit">
@@ -36,17 +37,18 @@ else
         <p>Setup is already done!</p>
     </div>
 }
+
 @code {
     public bool Initialized { get; set; } = false;
 
     public SetupRequest SetupModel { get; set; } = new SetupRequest
-        {
-            Username = "admin",
-            Email = "admin@example.com",
-            Password = "Passw0rd!",
-            AppTemplateName = "Blank",
-            SiteTemplateName = "Blank"
-        };
+    {
+        Username = "admin",
+        Email = "admin@example.com",
+        Password = "Passw0rd!",
+        AppTemplateName = "Blank",
+        SiteTemplateName = "Blank"
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -59,4 +61,5 @@ else
         if (await SetupManager.Start(SetupModel))
             NavigationManager.NavigateTo("/", true);
     }
+
 }
