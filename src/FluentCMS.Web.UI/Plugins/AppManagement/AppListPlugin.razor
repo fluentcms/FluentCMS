@@ -1,0 +1,91 @@
+﻿<Page>
+    <PageHeader HasBack="false"
+                Title="Apps List">
+        <PageHeaderActions>
+            <ButtonGroup>
+                <Button Color="Color.Primary"
+                        Href="?PluginDef=App Management&typeName=Create App">
+                    <Icon Name="IconName.Plus" />
+                    Add App
+                </Button>
+            </ButtonGroup>
+        </PageHeaderActions>
+    </PageHeader>
+    <PageBody>
+        <Table>
+            <TableHead>
+                <TableCell>Title</TableCell>
+                <TableCell>Slug</TableCell>
+                <TableCell>Description</TableCell>
+                <TableCell>Actions</TableCell>
+            </TableHead>
+            <TableBody>
+                @foreach (var app in Apps) {
+                    <TableRow>
+                        <TableCell> @app.Title </TableCell>
+                        <TableCell> @app.Slug </TableCell>
+                        <TableCell> @app.Description </TableCell>
+                        <TableCell>
+                            <ButtonGroup>
+                                <Button Color="Color.Danger"
+                                        Size="ButtonSize.Small"
+                                        OnClick="@(evt => OnDelete(app))">
+
+
+                                    <Icon Name="IconName.Delete" />
+                                    Delete
+                                </Button>
+                                <Button Color="Color.Primary"
+                                        Href="@($"?PluginDef=App Management&typeName=Update App&slug={app.Slug}")"
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Edit" />
+                                    Edit
+                                </Button>
+                                <Button Href="@($"?PluginDef=App Management&typeName=App Detail&slug={app.Slug}")"
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Eye" />
+                                    Preview
+                                </Button>
+                            </ButtonGroup>
+                        </TableCell>
+                    </TableRow>
+                }
+            </TableBody>
+        </Table>
+    </PageBody>
+</Page>
+
+@code {
+    [Inject]
+    AppClient? AppClient { get; set; }
+
+    [Inject]
+    ConfirmService Confirm { get; set; }
+
+    List<AppDetailResponse> Apps { get; set; } = [];
+
+    async Task LoadData()
+    {
+        var response = await AppClient!.GetAllAsync();
+
+        if (response?.Data != null)
+        {
+            Apps = response.Data.ToList();
+        }
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task OnDelete(AppDetailResponse app) {
+        var result = await Confirm.Show("Are you sure to remove this app?");
+
+        if(result)
+        {
+            Console.WriteLine("Should delete app");
+            await AppClient!.DeleteAsync(app.Id);
+            await LoadData();
+        }
+    }
+}

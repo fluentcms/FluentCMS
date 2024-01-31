@@ -17,4 +17,17 @@ public static class Helper
 
         return default;
     }
+
+    public static string? GetSlugFromQuery(this NavigationManager? navigation)
+    {
+        if (navigation == null)
+            return default;
+
+        var uri = new Uri(navigation.Uri);
+        var query = HttpUtility.ParseQueryString(uri.Query);
+        if (!string.IsNullOrEmpty(query["slug"]))
+            return query["slug"];
+
+        return default;
+    }
 }

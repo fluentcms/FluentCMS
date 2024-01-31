@@ -82,6 +82,29 @@
             ]
         },
         {
+            "Name": "App Management",
+            "Description": "App Management Plugin",
+            "Types": [
+                {
+                    "Name": "Apps List",
+                    "Type": "AppListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create App",
+                    "Type": "AppCreatePlugin"
+                },
+                {
+                    "Name": "Update App",
+                    "Type": "AppUpdatePlugin"
+                },
+                {
+                    "Name": "App Detail",
+                    "Type": "AppDetailPlugin"
+                }
+            ]
+        },
+        {
             "Name": "Counter",
             "Description": "Counter Plugin",
             "Types": [
@@ -110,6 +133,16 @@
                     "Plugins": [
                         {
                             "Definition": "User Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Apps",
+                    "Path": "/apps",
+                    "Plugins": [
+                        {
+                            "Definition": "App Management",
                             "Section": "Main"
                         }
                     ]
