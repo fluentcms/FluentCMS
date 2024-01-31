@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using System.Linq.Expressions;
 
 namespace FluentCMS.Web.UI.Components;
 
@@ -28,6 +29,10 @@ public abstract class FormElements : BaseComponent
 
     [Parameter]
     public bool Required { get; set; }
+
+    // TODO
+    [Parameter]
+    public Expression<Func<dynamic>>? ValidationFor { get; set; }
 }
 
 public abstract class FormElementsValuable<T> : FormElements

@@ -2,13 +2,34 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<form @attributes="AdditionalAttributes"
-      class="@this.GetClasses()"
-      @onsubmit="OnSubmit">
+<EditForm @attributes="AdditionalAttributes"
+          class="@this.GetClasses()"
+          novalidate
+          EditContext="@context"
+          OnValidSubmit="@OnValidSubmit">
+    <DataAnnotationsValidator />
     @ChildContent
-</form>
+</EditForm>
 
 @code {
+    EditContext? context;
+
     [Parameter]
-    public EventCallback<EventArgs> OnSubmit { get; set; }
+    public object? Model { get; set; }
+
+    [Parameter]
+    public EventCallback OnSubmit { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Model != null)
+        {
+            context = new EditContext(Model);
+        }
+    }
+
+    async Task OnValidSubmit()
+    {
+        await OnSubmit.InvokeAsync();
+    }
 }
