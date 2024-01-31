@@ -93,6 +93,7 @@
             ]
         },
         {
+<<<<<<< HEAD
             "Name": "ContentType Management",
             "Description": "ContentTypes Management Plugin",
             "Types": [
@@ -112,6 +113,29 @@
                 {
                     "Name": "ContentType Detail",
                     "Type": "ContentTypeDetailPlugin"
+                }
+            ]
+        },
+        {
+            "Name": "App Management",
+            "Description": "App Management Plugin",
+            "Types": [
+                {
+                    "Name": "Apps List",
+                    "Type": "AppListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create App",
+                    "Type": "AppCreatePlugin"
+                },
+                {
+                    "Name": "Update App",
+                    "Type": "AppUpdatePlugin"
+                },
+                {
+                    "Name": "App Detail",
+                    "Type": "AppDetailPlugin"
                 }
             ]
         },
@@ -154,6 +178,16 @@
                     "Plugins": [
                         {
                             "Definition": "User Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Apps",
+                    "Path": "/apps",
+                    "Plugins": [
+                        {
+                            "Definition": "App Management",
                             "Section": "Main"
                         }
                     ]
