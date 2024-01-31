@@ -12,25 +12,6 @@
         </PageHeaderActions>
     </PageHeader>
     <PageBody>
-        @if (false) {
-            <Grid ItemsSmall="GridItems.Center"
-                  JustifySmall="GridJustify.Between">
-                <GridItem Small="GridItemColumn.Six">
-                    <Input Dense="true"
-                           IconStart="IconName.Search"
-                           Placeholder="Search for entities" />
-                </GridItem>
-                <GridItem Small="GridItemColumn.Auto">
-                    <ButtonGroup>
-                        <Button>
-                            <Icon Name="IconName.Cog" />
-                            Table Settings
-                        </Button>
-                    </ButtonGroup>
-                </GridItem>
-            </Grid>
-            <Spacer/>
-        }
         <Table>
             <TableHead>
                 <TableCell>Username</TableCell>
@@ -44,17 +25,6 @@
                         <TableCell> @user.Email </TableCell>
                         <TableCell>
                             <ButtonGroup>
-                                @if(false)
-                                {
-                                    <Button Color="Color.Danger"
-                                            Size="ButtonSize.Small"
-                                            OnClick="@(evt => OnDelete(user))">
-
-
-                                        <Icon Name="IconName.Delete" />
-                                        Delete
-                                    </Button>
-                                }
                                 <Button Color="Color.Primary"
                                         Href="@($"?PluginDef=User Management&typeName=Update User&id={user.Id}")"
                                         Size="ButtonSize.Small">
@@ -72,20 +42,6 @@
                 }
             </TableBody>
         </Table>
-        @if (TotalPages > 0) {
-            <Spacer/>
-            <Grid ItemsSmall="GridItems.Center"
-                  JustifySmall="GridJustify.Between">
-                <GridItem>
-                    <PaginationInfo Current="PageSize"
-                                    Total="TotalCount" />
-                </GridItem>
-                <GridItem>
-                    <Pagination Current="PageNumber"
-                                Total="TotalPages" />
-                </GridItem>
-            </Grid>
-        }
     </PageBody>
 </Page>
 
@@ -98,32 +54,13 @@
 
     List<UserDetailResponse> Users { get; set; } = [];
 
-    long TotalPages {get; set;}
-    long TotalCount {get; set;}
-    long PageNumber {get; set;}
-    long PageSize {get; set;}
-
     protected override async Task OnInitializedAsync()
     {
         var response = await UserClient!.GetAllAsync();
 
         if (response?.Data != null)
         {
-            TotalPages = response.TotalPages;
-            TotalCount = response.TotalCount;
-            PageSize = response.PageSize;
-            PageNumber = response.PageNumber;
             Users = response.Data.ToList();
-        }
-    }
-
-    private async Task OnDelete(UserDetailResponse user) {
-        var result = await Confirm.Show("Are you sure to remove this user?");
-
-        if(result)
-        {
-            Console.WriteLine("Should delete user");
-            //await UserClient!.DeleteAsync(user.Id);
         }
     }
 }
