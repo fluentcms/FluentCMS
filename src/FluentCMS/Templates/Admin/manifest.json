@@ -82,6 +82,29 @@
             ]
         },
         {
+            "Name": "ContentType Management",
+            "Description": "ContentTypes Management Plugin",
+            "Types": [
+                {
+                    "Name": "ContentTypes List",
+                    "Type": "ContentTypeListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create ContentType",
+                    "Type": "ContentTypeCreatePlugin"
+                },
+                {
+                    "Name": "Update ContentType",
+                    "Type": "ContentTypeUpdatePlugin"
+                },
+                {
+                    "Name": "ContentType Detail",
+                    "Type": "ContentTypeDetailPlugin"
+                }
+            ]
+        },
+        {
             "Name": "Counter",
             "Description": "Counter Plugin",
             "Types": [

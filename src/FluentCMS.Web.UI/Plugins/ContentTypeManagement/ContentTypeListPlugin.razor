@@ -1,0 +1,72 @@
+﻿<Page>
+    <PageHeader HasBack="false"
+                Title="Content Types List">
+        <PageHeaderActions>
+            <ButtonGroup>
+                <Button Color="Color.Primary"
+                        Href="?PluginDef=ContentType Management&typeName=Create ContentType">
+                    <Icon Name="IconName.Plus" />
+                    Add Content Type
+                </Button>
+            </ButtonGroup>
+        </PageHeaderActions>
+    </PageHeader>
+    <PageBody>
+        <Table>
+            <TableHead>
+                <TableCell>Slug</TableCell>
+                <TableCell>Title</TableCell>
+                <TableCell>Description</TableCell>
+                <TableCell>Actions</TableCell>
+            </TableHead>
+            <TableBody>
+                @foreach (var contentType in ContentTypes) {
+                    <TableRow>
+                        <TableCell> @contentType.Slug </TableCell>
+                        <TableCell> @contentType.Title </TableCell>
+                        <TableCell> @contentType.Description </TableCell>
+                        <TableCell>
+                            <ButtonGroup>
+                                <Button Color="Color.Primary"
+                                        Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={contentType.Id}")"
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Edit" />
+                                    Edit
+                                </Button>
+                                <Button Href="@($"?PluginDef=ContentType Management&typeName=ContentType Detail&id={contentType.Id}")"
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Eye" />
+                                    Preview
+                                </Button>
+                            </ButtonGroup>
+                        </TableCell>
+                    </TableRow>
+                }
+            </TableBody>
+        </Table>
+    </PageBody>
+</Page>
+
+@code {
+    [Inject]
+    ContentTypeClient? ContentTypeClient { get; set; }
+
+    [Inject]
+    ConfirmService Confirm { get; set; }
+
+    Guid? AppId {get; set;}
+
+    List<ContentTypeDetailResponse> ContentTypes { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        // set AppId from NavigationManager
+
+        var response = await ContentTypeClient!.GetAllAsync(AppId);
+
+        if (response?.Data != null)
+        {
+            ContentTypes = response.Data.ToList();
+        }
+    }
+}
