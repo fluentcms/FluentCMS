@@ -1,9 +1,9 @@
 @inject AccountClient AccountClient
 @inject NavigationManager NavigationManager
 <EditForm Model="Model" OnValidSubmit="Register">
-    <Text Size="TextSize.H5">
+    <Typography Size="TextSize.H5">
         Your Best Work Starts Here
-    </Text>
+    </Typography>
     <Spacer/>
     <Input @bind-Value="Model.Username"
            Label="What should we call you?"
@@ -42,14 +42,14 @@
         Sign Up
     </Button>
     <Spacer/>
-    <Text Color="Color.Secondary">
+    <Typography Color="Color.Secondary">
         Already have an account?
         <Button Color="Color.Primary"
                 Href="/auth/login"
                 Link="true">
             Login here
         </Button>
-    </Text>
+    </Typography>
 </EditForm>
 
 @code{

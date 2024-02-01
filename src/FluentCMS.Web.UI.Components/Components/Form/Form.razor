@@ -4,11 +4,16 @@
 
 <form @attributes="AdditionalAttributes"
       class="@this.GetClasses()"
-      @onsubmit="OnSubmit">
+      @onsubmit="evt => OnSubmit.InvokeAsync(evt)"
+      @onsubmit:preventDefault="@PreventDefault">
     @ChildContent
 </form>
 
 @code {
     [Parameter]
     public EventCallback<EventArgs> OnSubmit { get; set; }
+
+    [Parameter]
+    public bool PreventDefault {get; set;} = false;
+
 }
