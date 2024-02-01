@@ -1,5 +1,6 @@
 @* TODO *@
 
+@implements IDisposable
 @inherits FormElementsField
 
 @namespace FluentCMS.Web.UI.Components
@@ -18,6 +19,7 @@
             {
                 @LabelFragment
             }
+            @(Required ? "\u00A0*" : "")
         </label>
     }
     <div class="relative">
@@ -43,6 +45,7 @@
                         {
                             @LabelFragment
                         }
+                        @(Required ? "\u00A0*" : "")
                     </span>
                 </label>
             }
@@ -61,6 +64,7 @@
                         {
                             @LabelFragment
                         }
+                        @(Required ? "\u00A0*" : "")
                     </label>
                 }
             }
@@ -76,14 +80,9 @@
             </div>
         }
     </div>
-    @if (!string.IsNullOrEmpty(Hint))
-    {
-        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            @Hint
-        </p>
-    }
-    @* TODO *@
-    <ValidationMessage For="@ValidationFor" />
+    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+        @(Errors.FirstOrDefault() ?? Hint ?? "\u00A0")
+    </p>
     @if (!Dense)
     {
         <Spacer />
@@ -91,15 +90,70 @@
 </div>
 
 @code
-{   
+{
     [CssProperty]
     public bool HasIconEnd { get => IconEnd != null; }
 
     [CssProperty]
     public bool HasIconStart { get => IconStart != null; }
 
-    public bool IsInlineLabel
+    [CssProperty]
+    public FormFieldState State { get; set; }
+
+    [CascadingParameter]
+    EditContext? Context { get; set; }
+
+    bool IsInlineLabel
     {
         get => Appearance == FormFieldAppearance.Checkbox || Appearance == FormFieldAppearance.Radio || Appearance == FormFieldAppearance.Switch;
+    }
+
+    IEnumerable<string> Errors
+    {
+        get
+        {
+            if (Context == null || Identifier == null)
+            {
+                return new List<string> { };
+            }
+
+            return Context.GetValidationMessages(Identifier.GetValueOrDefault());
+        }
+    }
+
+    FieldIdentifier? Identifier
+    {
+        get
+        {
+            if (Context == null || Name == null)
+            {
+                return null;
+            }
+
+            return Context.Field(Name);
+        }
+    }
+
+    void OnValidationRequested(object sender, ValidationRequestedEventArgs args)
+    {
+        if (Context == null || Identifier == null) return;
+
+        var IsValid = Context.IsValid(Identifier.GetValueOrDefault());
+
+        State = IsValid ? FormFieldState.Valid : FormFieldState.Invalid;
+    }
+
+    public void Dispose()
+    {
+        if (Context == null) return;
+
+        Context.OnValidationRequested -= OnValidationRequested;
+    }
+
+    protected override void OnInitialized()
+    {
+        if (Context == null) return;
+
+        Context.OnValidationRequested += OnValidationRequested;
     }
 }

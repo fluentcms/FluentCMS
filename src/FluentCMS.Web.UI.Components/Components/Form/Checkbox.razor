@@ -9,16 +9,14 @@
            Id="@Id"
            Label="@Label"
            Name="@Name"
-           Required="@Required"
-           State="@State">
+           Required="@Required">
     <ChildContent>
-        <input @attributes="AdditionalAttributes"
-               @bind="@Value"
-               class="@this.GetClasses()"
-               disabled="@Disabled"
-               id="@Id"
-               name="@Name"
-               type="checkbox" />
+        <InputCheckbox @attributes="AdditionalAttributes"
+                       @bind-Value="Value"
+                       class="@this.GetClasses()"
+                       disabled="@Disabled"
+                       id="@Id"
+                       name="@Name" />
     </ChildContent>
     <LabelFragment>
         @LabelFragment

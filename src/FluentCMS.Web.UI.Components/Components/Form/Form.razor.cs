@@ -29,10 +29,6 @@ public abstract class FormElements : BaseComponent
 
     [Parameter]
     public bool Required { get; set; }
-
-    // TODO
-    [Parameter]
-    public Expression<Func<dynamic>>? ValidationFor { get; set; }
 }
 
 public abstract class FormElementsValuable<T> : FormElements
@@ -67,17 +63,10 @@ public abstract class FormElementsField : FormElements
 
     [Parameter]
     public IconName? IconStart { get; set; }
-
-    [Parameter]
-    [CssProperty]
-    public FormFieldState State { get; set; } = FormFieldState.Default;
 }
 
 public abstract class FormCheckboxesType<T> : FormElementsValuable<T>
 {
-    [Parameter]
-    [CssProperty]
-    public FormFieldState State { get; set; } = FormFieldState.Default;
 }
 
 public abstract class FormInputsType<T> : FormElementsValuable<T>
@@ -90,10 +79,6 @@ public abstract class FormInputsType<T> : FormElementsValuable<T>
 
     [Parameter]
     public string? Placeholder { get; set; }
-
-    [Parameter]
-    [CssProperty]
-    public FormFieldState State { get; set; } = FormFieldState.Default;
 }
 
 public enum FormFieldState

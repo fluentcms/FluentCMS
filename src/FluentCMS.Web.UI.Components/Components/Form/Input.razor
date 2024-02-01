@@ -11,9 +11,7 @@
            Id="@Id"
            Label="@Label"
            Name="@Name"
-           Required="@Required"
-           State="@State"
-           ValidationFor="@ValidationFor">
+           Required="@Required">
     <InputText @attributes="AdditionalAttributes"
                @bind-Value="Value"
                class="@this.GetClasses()"
@@ -21,7 +19,6 @@
                id="@Id"
                name="@Name"
                placeholder="@Placeholder"
-               required="@Required"
                type="@this.Type.ToString().FromPascalCaseToKebabCase()" />
 </FormField>
 

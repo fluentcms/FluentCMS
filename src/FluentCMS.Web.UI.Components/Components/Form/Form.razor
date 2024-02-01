@@ -5,26 +5,26 @@
 <EditForm @attributes="AdditionalAttributes"
           class="@this.GetClasses()"
           novalidate
-          EditContext="@context"
+          EditContext="@Context"
           OnValidSubmit="@OnValidSubmit">
     <DataAnnotationsValidator />
     @ChildContent
 </EditForm>
 
 @code {
-    EditContext? context;
-
     [Parameter]
     public object? Model { get; set; }
 
     [Parameter]
     public EventCallback OnSubmit { get; set; }
 
+    EditContext? Context;
+
     protected override void OnInitialized()
     {
         if (Model != null)
         {
-            context = new EditContext(Model);
+            Context = new EditContext(Model);
         }
     }
 
