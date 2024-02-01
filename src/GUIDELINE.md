@@ -87,7 +87,7 @@ UserClient? UserClient { get; set; }
 
 ## Multiple Attributes
 
-Split attributes into multiple lines for tags with more than two attributes.
+Split attributes into multiple lines for tags with more than one attribute.
 
 ```c#
 // DO
