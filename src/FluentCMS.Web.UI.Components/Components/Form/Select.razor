@@ -15,6 +15,7 @@
            State="@State">
     <select @attributes="AdditionalAttributes"
             @bind="@Value"
+            @bind:after="() => OnChange.InvokeAsync(Value)"
             class="@this.GetClasses()"
             disabled="@Disabled"
             id="@Id"

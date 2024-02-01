@@ -1,0 +1,172 @@
+﻿<Page>
+    <PageHeader HasBack="true"
+                Title="ContentType Detail">
+    </PageHeader>
+    <PageBody>
+        <Grid Gutter="GridGutter.Large">
+            <GridItem Small="GridItemColumn.Twelve"
+                      Medium="GridItemColumn.Seven"
+                      Large="GridItemColumn.Nine">
+                <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
+                    <GridItem Small="GridItemColumn.Twelve">
+                        <Typography><strong>Title:</strong></Typography>
+                        <Typography>
+                            @View.Title
+                        </Typography>
+                    </GridItem>
+                    <GridItem Small="GridItemColumn.Twelve">
+                        <Typography><strong>Slug:</strong></Typography>
+                        <Typography>
+                            @View.Slug
+                        </Typography>
+                    </GridItem>
+                    <GridItem Small="GridItemColumn.Twelve">
+                        <Typography><strong>Description:</strong></Typography>
+                        <Typography>
+                            @View.Description
+                        </Typography>
+                    </GridItem>
+                    <GridItem Small="GridItemColumn.Twelve">
+                        <Typography><strong>Fields:</strong></Typography>
+                        <Table>
+                            <TableHead>
+                                <TableCell>
+                                    Slug
+                                </TableCell>
+                                <TableCell>
+                                    Title
+                                </TableCell>
+                                <TableCell>
+                                    Type
+                                </TableCell>
+                            </TableHead>
+                            <TableBody>
+                                @foreach (var field in Fields)
+                                {
+                                    <TableRow>
+                                        <TableCell>@field.Slug</TableCell>
+                                        <TableCell>@field.Title</TableCell>
+                                        <TableCell>Text</TableCell>
+                                    </TableRow>
+                                }
+                            </TableBody>
+
+                        </Table>
+
+                    </GridItem>
+                    <GridItem Small="GridItemColumn.Twelve">
+                        <ButtonGroup>
+                            @if (View != null && App != null)
+                            {
+                                <Button Color="Color.Danger"
+                                        OnClick="OnDelete">
+                                    <Icon Name="IconName.Delete" />
+                                    Delete
+                                </Button>
+                                <Button Color="Color.Primary"
+                                        Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={View.Id}&appSlug={App?.Slug}")">
+                                    <Icon Name="IconName.Edit" />
+                                    Edit
+                                </Button>
+                            }
+                        </ButtonGroup>
+                    </GridItem>
+                </Grid>
+            </GridItem>
+            <GridItem Small="GridItemColumn.Twelve"
+                      Medium="GridItemColumn.Five"
+                      Large="GridItemColumn.Three">
+                <Card>
+                    <CardBody>
+                        @if(!string.IsNullOrEmpty(View.CreatedBy))
+                        {
+                            <Typography><strong>Created By</strong></Typography>
+                            <Typography>@View.CreatedBy</Typography>
+                            <Spacer />
+                        }
+                        @if(!string.IsNullOrEmpty(View.CreatedAt.ToString()))
+                        {
+                            <Typography><strong>Created At</strong></Typography>
+                            <Typography>@View.CreatedAt</Typography>
+                            <Spacer />
+                        }
+                        @if(!string.IsNullOrEmpty(View.ModifiedBy))
+                        {
+                            <Typography><strong>Modified By</strong></Typography>
+                            <Typography>@View.ModifiedBy</Typography>
+                            <Spacer />
+                        }
+                        @if(!string.IsNullOrEmpty(View.ModifiedAt.ToString()))
+                        {
+                            <Typography><strong>Modified At</strong></Typography>
+                            <Typography>@View.ModifiedAt</Typography>
+                        }
+                    </CardBody>
+                </Card>
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
+
+@code {
+    [Inject]
+    AppClient AppClient { get; set; } = default!;
+
+    [Inject]
+    ConfirmService Confirm { set; get; } = default!;
+
+    [Inject]
+    ContentTypeClient ContentTypeClient { get; set; } = default!;
+
+    [Inject]
+    NavigationManager NavigationManager { set; get; } = default!;
+
+    AppDetailResponse App { get; set; } = new();
+
+    Guid? ContentTypeId { get; set; }
+
+    List<ContentTypeField> Fields { get; set; } = [];
+
+    Guid? Id { get; set; }
+
+    string? Message { get; set; }
+
+    ContentTypeDetailResponse View { get; set; } = new();
+
+    async Task LoadData()
+    {
+        // TODO: View = (await ContentTypeClient.GetAsync(appSlug, contentTypeId.Value)).Data;
+        View = (await ContentTypeClient.GetAllAsync(App.Slug))?.Data.ToList().Find(x => x.Id == ContentTypeId);
+        Fields = View.Fields.ToList();
+    }
+
+    async Task OnDelete()
+    {
+        var result = await Confirm.Show("Are you sure to remove this ContentType?");
+        if(result && ContentTypeId != null)
+        {
+            await ContentTypeClient.DeleteAsync(App.Slug, View.Id);
+            LoadData();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var appSlug = NavigationManager.GetAppSlugFromQuery();
+        ContentTypeId = NavigationManager.GetIdFromQuery();
+
+        if(!string.IsNullOrEmpty(appSlug))
+        {
+            App = (await AppClient.GetBySlugAsync(appSlug)).Data;
+        }
+        if (ContentTypeId != null && App != null)
+            try
+            {
+                await LoadData();
+            }
+            catch (Exception)
+            {
+                Message = "An error occured!";
+            }
+    }
+}

@@ -1,0 +1,104 @@
+﻿<Page>
+    <PageHeader HasBack="true"
+                Title="Update App">
+    </PageHeader>
+    <PageBody>
+        <Grid Gutter="GridGutter.Medium">
+            <GridItem Small="GridItemColumn.Twelve">
+                <Form OnSubmit="OnSubmit">
+                    <Card>
+                        <CardBody>
+                            <Input @bind-Value="Model.Slug"
+                                   Label="Slug"
+                                   Placeholder="Enter App Slug..."
+                                   Readonly="true"
+                                   Required="true" />
+                            <Input @bind-Value="Model.Title"
+                                   Label="Title"
+                                   Placeholder="Enter App Title..."
+                                   Required="true"/>
+                            <Textarea @bind-Value="Model.Description"
+                                   Label="Description"
+                                   Placeholder="Enter App Description..." />
+                            <Spacer/>
+                            @if(!string.IsNullOrEmpty(Message))
+                            {
+                                <Typography>
+                                    @Message
+                                </Typography>
+                                <Spacer/>
+                            }
+                            <ButtonGroup>
+                                <Button OnClick="GoBack">
+                                    Cancel
+                                </Button>
+                                <Button Color="Color.Primary"
+                                        Type="ButtonType.Submit" >
+                                    Submit
+                                </Button>
+                            </ButtonGroup>
+                        </CardBody>
+                    </Card>
+                </Form>
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
+
+@code {
+    [Inject]
+    IJSRuntime JsRuntime { set; get; } = default!;
+
+    [Inject]
+    NavigationManager NavigationManager { set; get; } = default!;
+
+    [Inject]
+    AppClient AppClient { get; set; } = default!;
+
+    string Message { get; set; } = string.Empty;
+
+    AppUpdateRequest Model { get; set; } = new();
+
+    AppDetailResponse View { get; set; } = new();
+
+    async Task GoBack()
+    {
+        await JsRuntime.InvokeAsync<object>("history.back");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        var appSlug = NavigationManager.GetAppSlugFromQuery();
+        if (appSlug != null)
+            try
+            {
+                View = (await AppClient.GetBySlugAsync(appSlug)).Data;
+                Console.WriteLine(View.Title);
+                Console.WriteLine(View.Slug);
+                Console.WriteLine(View.Description);
+                Model.Title = View.Title;
+                Model.Slug = View.Slug;
+                Model.Description = View.Description;
+            }
+            catch (Exception)
+            {
+                Message = "An error occured!";
+            }
+    }
+
+    async Task OnSubmit()
+    {
+        try
+        {
+            await AppClient.UpdateAsync(Model);
+            Message = "Done!";
+            GoBack();
+        }
+        catch (Exception exception)
+        {
+            Message = exception.ToString();
+        }
+
+    }
+}

@@ -93,6 +93,52 @@
             ]
         },
         {
+            "Name": "ContentType Management",
+            "Description": "ContentTypes Management Plugin",
+            "Types": [
+                {
+                    "Name": "ContentTypes List",
+                    "Type": "ContentTypeListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create ContentType",
+                    "Type": "ContentTypeCreatePlugin"
+                },
+                {
+                    "Name": "Update ContentType",
+                    "Type": "ContentTypeUpdatePlugin"
+                },
+                {
+                    "Name": "ContentType Detail",
+                    "Type": "ContentTypeDetailPlugin"
+                }
+            ]
+        },
+        {
+            "Name": "App Management",
+            "Description": "App Management Plugin",
+            "Types": [
+                {
+                    "Name": "Apps List",
+                    "Type": "AppListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create App",
+                    "Type": "AppCreatePlugin"
+                },
+                {
+                    "Name": "Update App",
+                    "Type": "AppUpdatePlugin"
+                },
+                {
+                    "Name": "App Detail",
+                    "Type": "AppDetailPlugin"
+                }
+            ]
+        },
+        {
             "Name": "Counter",
             "Description": "Counter Plugin",
             "Types": [
@@ -116,11 +162,31 @@
             "Plugins": [],
             "Children": [
                 {
+                    "Title": "Content Type Builder",
+                    "Path": "/content-types",
+                    "Plugins": [
+                        {
+                            "Definition": "ContentType Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
                     "Title": "Users",
                     "Path": "/users",
                     "Plugins": [
                         {
                             "Definition": "User Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Apps",
+                    "Path": "/apps",
+                    "Plugins": [
+                        {
+                            "Definition": "App Management",
                             "Section": "Main"
                         }
                     ]

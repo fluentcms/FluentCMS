@@ -1,0 +1,114 @@
+﻿<Page>
+    <PageHeader HasBack="true"
+                Title="Create ContentType">
+    </PageHeader>
+    <PageBody>
+        <Grid Gutter="GridGutter.Medium">
+            <GridItem Small="GridItemColumn.Twelve">
+                <Form OnSubmit="OnSubmit">
+                    <Card>
+                        <CardBody>
+                            <Select @bind-Value="AppSlug"
+                                   Label="App"
+                                   Placeholder="Choose App..."
+                                   Readonly="true"
+                                   Required="true">
+                                @foreach (var app in Apps)
+                                {
+                                    <Option Value="@app.Slug">@app.Title</Option>
+                                }
+                            </Select>
+                            <Input @bind-Value="Model.Title"
+                                   Label="Title"
+                                   Placeholder="Enter Title..."
+                                   Required="true"/>
+                            <Input @bind-Value="Model.Slug"
+                                   Label="Slug"
+                                   Placeholder="Enter Slug..." />
+                            <Textarea @bind-Value="Model.Description"
+                                   Label="Description"
+                                   Placeholder="Enter Description..." />
+                            <Spacer/>
+                            @if(!string.IsNullOrEmpty(Message))
+                            {
+                                <Typography>
+                                    @Message
+                                </Typography>
+                                <Spacer/>
+                            }
+                            <ButtonGroup>
+                                <Button OnClick="GoBack">
+                                    Cancel
+                                </Button>
+                                <Button Color="Color.Primary"
+                                        Type="ButtonType.Submit">
+                                    Save
+                                </Button>
+                            </ButtonGroup>
+                        </CardBody>
+                    </Card>
+                </Form>
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
+
+@code {
+    [Inject]
+    AppClient AppClient { get; set; } = default!;
+
+    [Inject]
+    ContentTypeClient ContentTypeClient { get; set; } = default!;
+
+    [Inject]
+    IJSRuntime JsRuntime { set; get; } = default!;
+
+    [Inject]
+    NavigationManager NavigationManager { set; get; } = default!;
+
+    List<AppDetailResponse> Apps { get; set; } = [];
+
+    string? AppSlug { get; set; }
+
+    string? Message { get; set; }
+
+    ContentTypeCreateRequest Model { get; set; } = new();
+
+    void GoBack()
+    {
+        NavigationManager.NavigateTo("/admin/content-types?appSlug=" + AppSlug);
+    }
+
+    void GoToUpdatePage(Guid? id)
+    {
+        NavigationManager.NavigateTo($"?PluginDef=ContentType Management&typeName=Update ContentType&id={id.Value}&appSlug={AppSlug}");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppSlug = NavigationManager.GetAppSlugFromQuery();
+        var response = await AppClient.GetAllAsync();
+
+        if(response?.Data != null)
+        {
+            Apps = response.Data.ToList();
+        }
+    }
+
+    async Task OnSubmit()
+    {
+        try
+        {
+            var newContentType = await ContentTypeClient.CreateAsync(AppSlug, Model);
+            Message = "Done!";
+            if(newContentType?.Data?.Id != null)
+            {
+                GoToUpdatePage(newContentType?.Data?.Id!);
+            }
+        }
+        catch (Exception ex)
+        {
+            Message = ex.ToString();
+        }
+    }
+}
