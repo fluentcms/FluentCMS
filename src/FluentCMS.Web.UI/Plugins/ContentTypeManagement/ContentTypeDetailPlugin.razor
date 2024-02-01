@@ -21,10 +21,48 @@
                         </Typography>
                     </GridItem>
                     <GridItem Small="GridItemColumn.Twelve">
+                        <Typography><strong>Description:</strong></Typography>
+                        <Typography>
+                            @View.Description
+                        </Typography>
+                    </GridItem>
+                    <GridItem Small="GridItemColumn.Twelve">
+                        <Typography><strong>Fields:</strong></Typography>
+                        <Table>
+                            <TableHead>
+                                <TableCell>
+                                    Slug
+                                </TableCell>
+                                <TableCell>
+                                    Title
+                                </TableCell>
+                                <TableCell>
+                                    Type
+                                </TableCell>
+                            </TableHead>
+                            <TableBody>
+                                @foreach (var field in Fields)
+                                {
+                                    <TableRow>
+                                        <TableCell>@field.Slug</TableCell>
+                                        <TableCell>@field.Title</TableCell>
+                                        <TableCell>Text</TableCell>
+                                    </TableRow>
+                                }
+                            </TableBody>
+
+                        </Table>
+
+                    </GridItem>
+                    <GridItem Small="GridItemColumn.Twelve">
                         <ButtonGroup>
                             @if (View != null && App != null)
                             {
-                                <p>Delete</p>
+                                <Button Color="Color.Danger"
+                                        OnClick="OnDelete">
+                                    <Icon Name="IconName.Delete" />
+                                    Delete
+                                </Button>
                                 <Button Color="Color.Primary"
                                         Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={View.Id}&appSlug={App?.Slug}")">
                                     <Icon Name="IconName.Edit" />
@@ -75,31 +113,56 @@
     AppClient AppClient { get; set; } = default!;
 
     [Inject]
+    ConfirmService Confirm { set; get; } = default!;
+
+    [Inject]
     ContentTypeClient ContentTypeClient { get; set; } = default!;
 
     [Inject]
     NavigationManager NavigationManager { set; get; } = default!;
 
+    AppDetailResponse App { get; set; } = new();
+
+    Guid? ContentTypeId { get; set; }
+
+    List<ContentTypeField> Fields { get; set; } = [];
+
     Guid? Id { get; set; }
 
     string? Message { get; set; }
 
-    AppDetailResponse App { get; set; } = new();
-
     ContentTypeDetailResponse View { get; set; } = new();
+
+    async Task LoadData()
+    {
+        // TODO: View = (await ContentTypeClient.GetAsync(appSlug, contentTypeId.Value)).Data;
+        View = (await ContentTypeClient.GetAllAsync(App.Slug))?.Data.ToList().Find(x => x.Id == ContentTypeId);
+        Fields = View.Fields.ToList();
+    }
+
+    async Task OnDelete()
+    {
+        var result = await Confirm.Show("Are you sure to remove this ContentType?");
+        if(result && ContentTypeId != null)
+        {
+            await ContentTypeClient.DeleteAsync(App.Slug, View.Id);
+            LoadData();
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
-
         var appSlug = NavigationManager.GetAppSlugFromQuery();
+        ContentTypeId = NavigationManager.GetIdFromQuery();
 
-        var contentTypeId = NavigationManager.GetIdFromQuery();
-        if (contentTypeId != null)
+        if(!string.IsNullOrEmpty(appSlug))
+        {
+            App = (await AppClient.GetBySlugAsync(appSlug)).Data;
+        }
+        if (ContentTypeId != null && App != null)
             try
             {
-                // View = (await ContentTypeClient.GetAsync(appSlug, contentTypeId.Value)).Data;
-                View = (await ContentTypeClient.GetAllAsync(appSlug))?.Data.ToList().Find(x => x.Id == contentTypeId);
-                App = (await AppClient.GetBySlugAsync(appSlug)).Data;
+                await LoadData();
             }
             catch (Exception)
             {

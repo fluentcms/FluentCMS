@@ -134,7 +134,7 @@
 
     ContentTypeField FieldModel = new();
 
-    string FieldModalTitle;
+    string? FieldModalTitle;
 
     Guid? Id { get; set; }
 
@@ -143,6 +143,11 @@
     ContentTypeDetailResponse View { get; set; } = new();
 
     ContentTypeUpdateRequest Model { get; set; } = new();
+
+    void CloseFieldModal()
+    {
+        FieldModalOpen = false;
+    }
 
     async Task GoBack()
     {
@@ -200,22 +205,6 @@
         FieldModalOpen = true;
     }
 
-    void CloseFieldModal()
-    {
-        FieldModalOpen = false;
-    }
-
-    async Task OnSubmitField(ContentTypeField field)
-    {
-        FieldModalOpen = false;
-        var response = await ContentTypeClient.SetFieldAsync(AppSlug, View.Id, field);
-
-        if (response?.Data != null)
-        {
-            Fields = response.Data.Fields.ToList();
-        }
-    }
-
     protected override async Task OnInitializedAsync()
     {
         Id = NavigationManager.GetIdFromQuery();
@@ -239,6 +228,17 @@
             Model.Title = View.Title;
             Model.AppId = View.AppId;
             Model.Description = View.Description;
+        }
+    }
+
+    async Task OnSubmitField(ContentTypeField field)
+    {
+        FieldModalOpen = false;
+        var response = await ContentTypeClient.SetFieldAsync(AppSlug, View.Id, field);
+
+        if (response?.Data != null)
+        {
+            Fields = response.Data.Fields.ToList();
         }
     }
 

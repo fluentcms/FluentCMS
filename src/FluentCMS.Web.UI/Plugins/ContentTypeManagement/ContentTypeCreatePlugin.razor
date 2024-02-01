@@ -74,14 +74,14 @@
 
     ContentTypeCreateRequest Model { get; set; } = new();
 
-    void GoToUpdatePage(Guid? id)
-    {
-        NavigationManager.NavigateTo($"?PluginDef=ContentType Management&typeName=Update ContentType&id={id.Value}&appSlug={AppSlug}");
-    }
-
     void GoBack()
     {
         NavigationManager.NavigateTo("/admin/content-types?appSlug=" + AppSlug);
+    }
+
+    void GoToUpdatePage(Guid? id)
+    {
+        NavigationManager.NavigateTo($"?PluginDef=ContentType Management&typeName=Update ContentType&id={id.Value}&appSlug={AppSlug}");
     }
 
     protected override async Task OnInitializedAsync()

@@ -72,6 +72,9 @@
     public string ActiveTab {get; set; } = "tab-general";
 
     [Parameter]
+    public ContentTypeField Model {get; set;} = new();
+
+    [Parameter]
     public bool Open {get; set;} = false;
 
     [Parameter]
@@ -79,9 +82,6 @@
 
     [Parameter]
     public EventCallback<ContentTypeField> OnSubmit {get; set;}
-
-    [Parameter]
-    public ContentTypeField Model {get; set;} = new();
 
     [Parameter]
     public string Title {get; set; }

@@ -64,7 +64,7 @@
 
 @code {
     [Inject]
-    AppClient? AppClient { get; set; }
+    AppClient AppClient { get; set; } = default!;
 
     [Inject]
     ContentTypeClient ContentTypeClient { get; set; } = default!;
@@ -73,7 +73,7 @@
     NavigationManager NavigationManager { get; set; } = default!;
 
     [Inject]
-    ConfirmService Confirm { get; set; }
+    ConfirmService Confirm { get; set; } = default!;
 
     string? AppSlug {get; set;}
 
