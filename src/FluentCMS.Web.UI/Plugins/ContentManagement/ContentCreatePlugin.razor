@@ -1,7 +1,6 @@
 <ContentLayout>
     <Page>
-        <PageHeader Title="@PageTitle">
-        </PageHeader>
+        <PageHeader Title="@PageTitle" />
 
         <PageBody>
             <Form OnSubmit="OnSubmit">
@@ -32,6 +31,9 @@
 </ContentLayout>
 
 @code {
+    [Inject]
+    AppClient AppClient { get; set; } = default!;
+
     [Inject]
     ContentClient ContentClient { get; set; } = default!;
 
@@ -75,8 +77,6 @@
                 ContentType = response.Data.ToList().Find(x => x.Slug == contentTypeSlug);
                 Fields = ContentType.Fields.ToList();
                 PageTitle = "Create " + ContentType.Title;
-
-                Model.AppId = App.Id;
             }
         }
     }
