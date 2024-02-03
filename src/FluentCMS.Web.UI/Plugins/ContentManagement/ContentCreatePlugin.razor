@@ -1,0 +1,101 @@
+<ContentLayout>
+    <Page>
+        <PageHeader Title="@PageTitle">
+        </PageHeader>
+
+        <PageBody>
+            <Form OnSubmit="OnSubmit">
+                <Card>
+                    <CardBody>
+                        @foreach (var field in Fields)
+                        {
+                            // @bind-Value="@Model.Value[field.Label]"
+                            <Input Label="@field.Label"
+                                   Placeholder="@field.Placeholder"
+                                   Required="@field.IsRequired" />
+                        }
+
+                        <ButtonGroup>
+                            <Button OnClick="GoBack">
+                                Cancel
+                            </Button>
+                            <Button Color="Color.Primary"
+                                    Type="ButtonType.Submit">
+                                Save
+                            </Button>
+                        </ButtonGroup>
+                    </CardBody>
+                </Card>
+            </Form>
+        </PageBody>
+    </Page>
+</ContentLayout>
+
+@code {
+    [Inject]
+    ContentClient ContentClient { get; set; } = default!;
+
+    [Inject]
+    ContentTypeClient ContentTypeClient { get; set; } = default!;
+
+    [Inject]
+    NavigationManager NavigationManager { set; get; } = default!;
+
+    string PageTitle = "Create Content";
+
+    AppDetailResponse App { get; set; } = new();
+
+    ContentTypeDetailResponse ContentType { get; set; } = new();
+
+    List<ContentTypeField> Fields = [];
+
+    ContentCreateRequest Model = new();
+
+    void GoBack()
+    {
+        NavigationManager.NavigateTo($"?pluginDef=Content Management&typeName=Content List&contentTypeSlug={ContentType.Slug}&appSlug={App.Slug}");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var appSlug = NavigationManager.GetStringFromQuery("appSlug");
+        var contentTypeSlug = NavigationManager.GetStringFromQuery("contentTypeSlug");
+
+        if(!string.IsNullOrEmpty(contentTypeSlug) && !string.IsNullOrEmpty(appSlug))
+        {
+            var appResponse = await AppClient.GetBySlugAsync(appSlug);
+            if(appResponse?.Data != null)
+            {
+                App = appResponse?.Data;
+            }
+
+            var response = await ContentTypeClient.GetAllAsync(appSlug);
+            if(response?.Data != null)
+            {
+                ContentType = response.Data.ToList().Find(x => x.Slug == contentTypeSlug);
+                Fields = ContentType.Fields.ToList();
+                PageTitle = "Create " + ContentType.Title;
+
+                Model.AppId = App.Id;
+            }
+        }
+    }
+
+    async Task OnSubmit()
+    {
+        Console.WriteLine("OnSubmit");
+        try
+        {
+            var response = await ContentClient.CreateAsync(App.Slug, ContentType.Slug, Model);
+
+            if(response?.Data != null)
+            {
+                GoBack();
+            }
+        }
+        catch(Exception exception)
+        {
+
+        }
+    }
+}

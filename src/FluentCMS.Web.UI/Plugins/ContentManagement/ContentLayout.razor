@@ -1,0 +1,77 @@
+@inherits BaseComponent
+<Grid>
+    <GridItem Small="GridItemColumn.Auto">
+        <Sidebar Title="Collections"
+                 Secondary="true">
+            <ChildContent>
+                <Select Dense
+                        Placeholder="Choose an App..."
+                        OnChange="OnChangeApp">
+                    @foreach (var app in Apps)
+                    {
+                        <Option Value="@app.Slug">@app.Title</Option>
+                    }
+                </Select>
+                @foreach (var collection in Collections)
+                {
+                    <SidebarItem Href="@($"?pluginDef=Content Management&typeName=Content List&appSlug={AppSlug}&contentTypeSlug={collection.Slug}")">@collection.Title</SidebarItem>
+                }
+            </ChildContent>
+        </Sidebar>
+    </GridItem>
+    <GridItem Small="GridItemColumn.Grow">
+        @ChildContent
+    </GridItem>
+</Grid>
+
+@code {
+    [Inject]
+    AppClient AppClient {get; set;} = default!;
+
+    [Inject]
+    ContentTypeClient ContentTypeClient {get; set;} = default!;
+
+    [Inject]
+    NavigationManager NavigationManager {get; set;} = default!;
+
+    string? AppSlug {get; set;}
+
+    List<AppDetailResponse> Apps {get; set;} = [];
+
+    List<ContentTypeDetailResponse> Collections {get; set;} = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        AppSlug = NavigationManager.GetStringFromQuery("appSlug");
+
+        var response = await AppClient.GetAllAsync();
+
+        if(response?.Data != null)
+        {
+            Apps = response.Data.ToList();
+            // TODO: No hardcode..
+            if(string.IsNullOrEmpty(AppSlug) && Apps.Count > 0) {
+                AppSlug = Apps[0].Slug;
+
+                LoadData();
+            }
+        }
+    }
+
+    async Task LoadData()
+    {
+        var response = await ContentTypeClient.GetAllAsync(AppSlug);
+
+        if(response?.Data != null)
+        {
+            Collections = response.Data.ToList();
+        }
+    }
+
+    async Task OnChangeApp(string slug)
+    {
+        AppSlug = slug;
+        await LoadData();
+    }
+
+}
