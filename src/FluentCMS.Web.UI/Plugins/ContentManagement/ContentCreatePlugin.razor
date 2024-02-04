@@ -8,7 +8,7 @@
                     <CardBody>
                         @foreach (var field in Fields)
                         {
-                            // @bind-Value="@Model.Value[field.Label]"
+                            // TODO: @bind-Value="@Model.Value[field.Label]"
                             <Input Label="@field.Label"
                                    Placeholder="@field.Placeholder"
                                    Required="@field.IsRequired" />
@@ -43,8 +43,6 @@
     [Inject]
     NavigationManager NavigationManager { set; get; } = default!;
 
-    string PageTitle = "Create Content";
-
     AppDetailResponse App { get; set; } = new();
 
     ContentTypeDetailResponse ContentType { get; set; } = new();
@@ -52,6 +50,8 @@
     List<ContentTypeField> Fields = [];
 
     ContentCreateRequest Model = new();
+
+    string PageTitle = "Create Content";
 
     void GoBack()
     {
@@ -83,9 +83,9 @@
 
     async Task OnSubmit()
     {
-        Console.WriteLine("OnSubmit");
         try
         {
+            // TODO: Doesn't work
             var response = await ContentClient.CreateAsync(App.Slug, ContentType.Slug, Model);
 
             if(response?.Data != null)

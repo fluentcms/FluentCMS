@@ -1,17 +1,122 @@
-
 <ContentLayout>
-
     <Page>
-
-        <PageHeader Title="@PageTitle">
-        </PageHeader>
+        <PageHeader Title="@PageTitle" />
         <PageBody>
-            Form
-
+            <Form OnSubmit="OnSubmit">
+                <Card>
+                    <CardBody>
+                        @foreach (var field in Fields)
+                        {
+                            // @bind-Value="@Model.Value[field.Label]"
+                            <Input Label="@field.Label"
+                                   Placeholder="@field.Placeholder"
+                                   Required="@field.IsRequired" />
+                        }
+                        <ButtonGroup>
+                            <Button OnClick="GoBack">
+                                Cancel
+                            </Button>
+                            <Button Color="Color.Primary"
+                                    Type="ButtonType.Submit">
+                                Save
+                            </Button>
+                        </ButtonGroup>
+                    </CardBody>
+                </Card>
+            </Form>
         </PageBody>
     </Page>
 </ContentLayout>
 
 @code {
+    [Inject]
+    AppClient AppClient { get; set; } = default!;
+
+    [Inject]
+    ContentClient ContentClient { get; set; } = default!;
+
+    [Inject]
+    ContentTypeClient ContentTypeClient { get; set; } = default!;
+
+    [Inject]
+    NavigationManager NavigationManager { set; get; } = default!;
+
+    AppDetailResponse App { get; set; } = new();
+
+    Guid? ContentId;
+
+    ContentTypeDetailResponse ContentType { get; set; } = new();
+
+    List<ContentTypeField> Fields = [];
+
+    ContentUpdateRequest Model = new();
+
     string PageTitle = "Update Content";
+
+    ContentResponse View = new();
+
+    void GoBack()
+    {
+        NavigationManager.NavigateTo($"?pluginDef=Content Management&typeName=Content List&contentTypeSlug={ContentType.Slug}&appSlug={App.Slug}");
+    }
+
+    async Task LoadData()
+    {
+        var response = await ContentClient.GetAllAsync(App.Slug, ContentType.Slug);
+
+        if(response?.Data != null)
+        {
+            View = response.Data.ToList().Find(x => x.Id == ContentId);
+
+            Model.Id = View.Id;
+            Model.Value = View.Value;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var appSlug = NavigationManager.GetStringFromQuery("appSlug");
+        var contentTypeSlug = NavigationManager.GetStringFromQuery("contentTypeSlug");
+        // TODO: GetIdFromQuery("id");
+        ContentId = NavigationManager.GetIdFromQuery();
+
+        if(!string.IsNullOrEmpty(contentTypeSlug) && !string.IsNullOrEmpty(appSlug))
+        {
+            var appResponse = await AppClient.GetBySlugAsync(appSlug);
+            if(appResponse?.Data != null)
+            {
+                App = appResponse?.Data;
+            }
+
+            var response = await ContentTypeClient.GetAllAsync(appSlug);
+            if(response?.Data != null)
+            {
+                ContentType = response.Data.ToList().Find(x => x.Slug == contentTypeSlug);
+                Fields = ContentType.Fields.ToList();
+                PageTitle = "Update " + ContentType.Title;
+
+                if(ContentId != null)
+                {
+                    LoadData();
+                }
+            }
+        }
+    }
+
+    async Task OnSubmit()
+    {
+        try
+        {
+            var response = await ContentClient.UpdateAsync(App.Slug, ContentType.Slug, Model);
+
+            if(response?.Data != null)
+            {
+                GoBack();
+            }
+        }
+        catch(Exception exception)
+        {
+
+        }
+    }
 }

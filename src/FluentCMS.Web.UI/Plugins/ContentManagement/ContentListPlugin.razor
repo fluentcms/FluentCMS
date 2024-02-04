@@ -82,14 +82,15 @@
     [Inject]
     NavigationManager NavigationManager {get; set;} = default!;
 
-    ContentTypeDetailResponse ContentType {get; set;} = new();
+    string? AppSlug;
 
-    List<ContentTypeField> Fields {get; set;} = [];
+    string? ContentTypeSlug;
+
+    ContentTypeDetailResponse ContentType {get; set;} = new();
 
     List<ContentResponse> Data {get; set;} = [];
 
-    string? AppSlug;
-    string? ContentTypeSlug;
+    List<ContentTypeField> Fields {get; set;} = [];
 
     string PageTitle = "Content List";
 
@@ -116,6 +117,12 @@
             {
                 PageTitle = ContentType.Title + " List";
                 Fields = ContentType.Fields.ToList();
+
+                var response = await ContentClient.GetAllAsync(AppSlug, ContentTypeSlug);
+                if(response?.Data != null)
+                {
+                    Data = response.Data.ToList();
+                }
             }
         }
     }

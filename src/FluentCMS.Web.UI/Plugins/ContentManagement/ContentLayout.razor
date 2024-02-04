@@ -1,14 +1,16 @@
 @inherits BaseComponent
+
 <Grid>
     <GridItem Small="GridItemColumn.Auto">
         <Sidebar Title="Collections"
                  Secondary="true">
             <ChildContent>
+                @* TODO: remove this button in production *@
                 @if (Apps.Count == 0)
                 {
                     <Button Block="true"
-                        Color="Color.Primary"
-                        OnClick="SeedData">
+                            Color="Color.Primary"
+                            OnClick="SeedData">
                         Seed Data
                     </Button>
                 }
@@ -41,6 +43,9 @@
     AppClient AppClient {get; set;} = default!;
 
     [Inject]
+    ContentClient ContentClient {get; set;} = default!;
+
+    [Inject]
     ContentTypeClient ContentTypeClient {get; set;} = default!;
 
     [Inject]
@@ -51,6 +56,22 @@
     List<AppDetailResponse> Apps {get; set;} = [];
 
     List<ContentTypeDetailResponse> Collections {get; set;} = [];
+
+    async Task LoadData()
+    {
+        var response = await ContentTypeClient.GetAllAsync(AppSlug);
+
+        if(response?.Data != null)
+        {
+            Collections = response.Data.ToList();
+        }
+    }
+
+    async Task OnChangeApp(string slug)
+    {
+        AppSlug = slug;
+        await LoadData();
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -68,22 +89,6 @@
                 LoadData();
             }
         }
-    }
-
-    async Task LoadData()
-    {
-        var response = await ContentTypeClient.GetAllAsync(AppSlug);
-
-        if(response?.Data != null)
-        {
-            Collections = response.Data.ToList();
-        }
-    }
-
-    async Task OnChangeApp(string slug)
-    {
-        AppSlug = slug;
-        await LoadData();
     }
 
     async Task SeedData()
@@ -129,6 +134,27 @@
         {
             await ContentTypeClient.SetFieldAsync(App1.Data.Slug, ContentType1.Data.Id, field);
         }
+
+        var firstPost = new ContentCreateRequest() {
+            Value = new Dictionary<string,object> {
+                {"title", "Title of first post"},
+                {"content", "Content of first post"}
+            }
+        };
+
+        await ContentClient.CreateAsync(App1.Data.Slug, ContentType1.Data.Slug, firstPost);
+
+        var secondPost = new ContentCreateRequest() {
+            Value = new Dictionary<string,object> {
+                {"title", "Title of second post"},
+                {"content", "Content of second post"}
+            }
+        };
+
+        await ContentClient.CreateAsync(App1.Data.Slug, ContentType1.Data.Slug, secondPost);
+
+        StateHasChanged();
     }
+
 }
 
