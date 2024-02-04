@@ -1,6 +1,7 @@
+@using System.Text.Json
 <ContentLayout>
     <Page>
-        <PageHeader Title="@PageTitle" />
+        <PageHeader Title="@PageTitle"/>
 
         <PageBody>
             <Form OnSubmit="OnSubmit">
@@ -8,10 +9,12 @@
                     <CardBody>
                         @foreach (var field in Fields)
                         {
-                            // TODO: @bind-Value="@Model.Value[field.Label]"
+                            // TODO: Cleanup this
                             <Input Label="@field.Label"
                                    Placeholder="@field.Placeholder"
-                                   Required="@field.IsRequired" />
+                                   Required="@field.IsRequired"
+                                   Value="@(Model?.Value![field.Slug!] as string)"
+                                   ValueChanged="s => Model.Value[field.Slug] = s"/>
                         }
 
                         <ButtonGroup>
@@ -29,19 +32,18 @@
         </PageBody>
     </Page>
 </ContentLayout>
+<pre>
+@JsonSerializer.Serialize(Model)
+</pre>
 
 @code {
-    [Inject]
-    AppClient AppClient { get; set; } = default!;
+    [Inject] AppClient AppClient { get; set; } = default!;
 
-    [Inject]
-    ContentClient ContentClient { get; set; } = default!;
+    [Inject] ContentClient ContentClient { get; set; } = default!;
 
-    [Inject]
-    ContentTypeClient ContentTypeClient { get; set; } = default!;
+    [Inject] ContentTypeClient ContentTypeClient { get; set; } = default!;
 
-    [Inject]
-    NavigationManager NavigationManager { set; get; } = default!;
+    [Inject] NavigationManager NavigationManager { set; get; } = default!;
 
     AppDetailResponse App { get; set; } = new();
 
@@ -49,7 +51,7 @@
 
     List<ContentTypeField> Fields = [];
 
-    ContentCreateRequest Model = new();
+    ContentCreateRequest Model = new() { Value = new Dictionary<string, object?>() };
 
     string PageTitle = "Create Content";
 
@@ -63,19 +65,23 @@
         var appSlug = NavigationManager.GetStringFromQuery("appSlug");
         var contentTypeSlug = NavigationManager.GetStringFromQuery("contentTypeSlug");
 
-        if(!string.IsNullOrEmpty(contentTypeSlug) && !string.IsNullOrEmpty(appSlug))
+        if (!string.IsNullOrEmpty(contentTypeSlug) && !string.IsNullOrEmpty(appSlug))
         {
             var appResponse = await AppClient.GetBySlugAsync(appSlug);
-            if(appResponse?.Data != null)
+            if (appResponse?.Data != null)
             {
                 App = appResponse?.Data;
             }
 
             var response = await ContentTypeClient.GetAllAsync(appSlug);
-            if(response?.Data != null)
+            if (response?.Data != null)
             {
                 ContentType = response.Data.ToList().Find(x => x.Slug == contentTypeSlug);
                 Fields = ContentType.Fields.ToList();
+                foreach (var field in Fields)
+                {
+                    Model.Value.Add(field.Slug, "");
+                }
                 PageTitle = "Create " + ContentType.Title;
             }
         }
@@ -88,14 +94,14 @@
             // TODO: Doesn't work
             var response = await ContentClient.CreateAsync(App.Slug, ContentType.Slug, Model);
 
-            if(response?.Data != null)
+            if (response?.Data != null)
             {
                 GoBack();
             }
         }
-        catch(Exception exception)
+        catch (Exception exception)
         {
-
         }
     }
+
 }
