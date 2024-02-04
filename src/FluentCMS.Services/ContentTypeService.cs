@@ -9,6 +9,7 @@ public interface IContentTypeService : IAutoRegisterService
     Task<ContentType> Delete(Guid appId, Guid contentTypeId, CancellationToken cancellationToken = default);
     Task<ContentType> SetField(Guid appId, Guid contentTypeId, ContentTypeField field, CancellationToken cancellationToken = default);
     Task<ContentType> DeleteField(Guid appId, Guid contentTypeId, string fieldSlug, CancellationToken cancellationToken = default);
+    Task<ContentType> GetById(Guid id, CancellationToken cancellationToken);
 }
 
 public class ContentTypeService(IContentTypeRepository contentTypeRepository) : IContentTypeService
@@ -98,5 +99,11 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
         //apply changes
         return await contentTypeRepository.Update(contentType, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);
+    }
+
+    public async Task<ContentType> GetById(Guid id, CancellationToken cancellationToken)
+    {
+        return await contentTypeRepository.GetById(id, cancellationToken) ??
+               throw new AppException(ExceptionCodes.ContentTypeNotFound);
     }
 }
