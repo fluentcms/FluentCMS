@@ -199,16 +199,6 @@
                     ]
                 },
                 {
-                    "Title": "Content Management",
-                    "Path": "/content/{id}",
-                    "Plugins": [
-                        {
-                            "Definition": "Content Management",
-                            "Section": "Main"
-                        }
-                    ]
-                },
-                {
                     "Title": "Content Type Builder",
                     "Path": "/content-types",
                     "Plugins": [
