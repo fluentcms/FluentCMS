@@ -1,0 +1,22 @@
+@page "/components/toast"
+@layout ComponentsLayout
+
+<Page>
+    <PageHeader Title="Toasts" />
+    <PageBody>
+        <ComponentPreview Title="Service" >
+            <Button OnClick="Info">Info</Button>
+        </ComponentPreview>
+     </PageBody>
+ </Page>
+
+
+ @code {
+    [Inject]
+    ToastService Toast { get; set; } = default!;     
+
+    void Info()
+    {
+        Toast.Info("TODO");
+    }
+}

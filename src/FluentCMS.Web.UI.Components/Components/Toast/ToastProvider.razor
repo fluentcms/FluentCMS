@@ -1,0 +1,13 @@
+﻿@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+<div @attributes="AdditionalAttributes"
+     class="@this.GetClasses()">
+    @foreach (var toast in toasts)
+    {
+        <Alert>
+            @toast
+        </Alert>
+    }
+</div>
