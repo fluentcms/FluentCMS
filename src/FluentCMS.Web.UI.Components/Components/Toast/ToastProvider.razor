@@ -16,19 +16,38 @@
 @code
 {
     [Inject]
-    public ToastService ToastService { get; set; } = default!;
+    ToastService toastService { get; set; } = default!;
 
-    public List<ToastModel> toasts = new List<ToastModel>();
+    List<ToastModel> toasts = new List<ToastModel>();
 
-        Timeout = new Timer(_ =>
+    public void Show(string message, ToastType? type)
     {
-        toasts.Add(Model);
-        StateHasChanged();
+        var toast = new ToastModel()
+            {
+                Duration = 5000,
+                Message = message,
+                Type = type ?? ToastType.Default
+            };
+
+        toasts.Add(toast);
+
+        InvokeAsync(StateHasChanged);
+
+        Timer? timer = null;
+
+        timer = new Timer((_) =>
+        {
+            timer?.Dispose();
+
+            toasts.Remove(toast);
+
+            InvokeAsync(StateHasChanged);
+        }, null, toast.Duration, -1);
     }
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        ToastService.ToastProvider = this;
+        toastService.ToastProvider = this;
     }
 }
