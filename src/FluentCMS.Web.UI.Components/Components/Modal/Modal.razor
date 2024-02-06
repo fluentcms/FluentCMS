@@ -48,6 +48,9 @@
     [CssProperty]
     public ModalSize Size { get; set; } = ModalSize.Medium;
 
+    [Parameter]
+    public bool Static { get; set; }
+
     [JSInvokable]
     public async void Close()
     {
@@ -60,6 +63,6 @@
 
         module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Modal/Modal.razor.js");
 
-        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element);
+        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { Static });
     }
 }
