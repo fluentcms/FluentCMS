@@ -6,8 +6,29 @@
      class="@this.GetClasses()">
     @foreach (var toast in toasts)
     {
-        <Alert>
-            @toast
-        </Alert>
+        <Toast Dismissible="true"
+               Type="toast.Type">
+            @toast.Message
+        </Toast>
     }
 </div>
+
+@code
+{
+    [Inject]
+    public ToastService ToastService { get; set; } = default!;
+
+    public List<ToastModel> toasts = new List<ToastModel>();
+
+        Timeout = new Timer(_ =>
+    {
+        toasts.Add(Model);
+        StateHasChanged();
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        ToastService.ToastProvider = this;
+    }
+}

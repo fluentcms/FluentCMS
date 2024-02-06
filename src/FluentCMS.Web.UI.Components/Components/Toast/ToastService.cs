@@ -4,8 +4,13 @@ public class ToastService
 {
     public ToastProvider ToastProvider { get; set; } = default!;
 
-    public void Info(string Message)
+    public void Show(string Message)
     {
-        ToastProvider.Info(Message);
+        ToastProvider.Show(Message, null);
+    }
+
+    public void Show(string Message, ToastType Type)
+    {
+        ToastProvider.Show(Message, Type);
     }
 }
