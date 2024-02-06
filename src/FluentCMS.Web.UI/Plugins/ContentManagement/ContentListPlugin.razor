@@ -88,13 +88,13 @@
 
     ContentTypeDetailResponse ContentType {get; set;} = new();
 
-    List<ContentResponse> Data {get; set;} = [];
+    List<ContentDetailResponse> Data {get; set;} = [];
 
     List<ContentTypeField> Fields {get; set;} = [];
 
     string PageTitle = "Content List";
 
-    async Task OnDelete(ContentResponse content)
+    async Task OnDelete(ContentDetailResponse content)
     {
         var result = await Confirm.Show("Are you sure to remove this row?");
 
