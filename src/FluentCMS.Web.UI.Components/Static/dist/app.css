@@ -945,10 +945,6 @@ body.dark {
   @apply flex gap-4 items-center;
 }
 
-.f-switch {
-  @apply sr-only;
-}
-
 .f-table {
   @apply rounded shadow border border-gray-200 w-full text-sm text-left text-gray-500 dark:text-gray-400 dark:border-gray-700;
 }
