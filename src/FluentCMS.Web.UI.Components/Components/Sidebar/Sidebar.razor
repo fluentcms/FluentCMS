@@ -21,7 +21,12 @@
             </li>
         </ul>
     </div>
-    @Footer
+    @if (Footer != null)
+    {
+        <div class="@this.ClassName("SidebarFooter")">
+            @Footer
+        </div>
+    }
 </aside>
 
 @code {

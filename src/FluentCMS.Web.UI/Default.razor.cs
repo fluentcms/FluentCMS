@@ -12,23 +12,17 @@ public partial class Default : IDisposable
 
     public PageFullDetailResponse? Page { get; set; }
 
-    [Inject]
-    public NavigationManager NavigationManager { set; get; } = default!;
+    [Inject] public NavigationManager NavigationManager { set; get; } = default!;
 
-    [Inject]
-    public SetupManager SetupManager { set; get; } = default!;
+    [Inject] public SetupManager SetupManager { set; get; } = default!;
 
-    [Inject]
-    public PageClient PageClient { set; get; } = default!;
+    [Inject] public PageClient PageClient { set; get; } = default!;
 
-    [Inject]
-    public SiteClient SiteClient { set; get; } = default!;
+    [Inject] public SiteClient SiteClient { set; get; } = default!;
 
-    [Inject]
-    public PluginDefinitionClient PluginDefinitionClient { set; get; } = default!;
+    [Inject] public PluginDefinitionClient PluginDefinitionClient { set; get; } = default!;
 
-    [Parameter]
-    public string? Route { get; set; }
+    [Parameter] public string? Route { get; set; }
 
     protected override void OnInitialized()
     {
@@ -91,7 +85,9 @@ public partial class Default : IDisposable
                 builder.AddContent(0, child.InnerHtml);
                 continue;
             }
-            var isDynamicNode = child.Attributes.Any(x => x.Name.Equals(ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase));
+
+            var isDynamicNode =
+                child.Attributes.Any(x => x.Name.Equals(ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase));
             // render static node
             if (child.NodeType == HtmlNodeType.Element && !isDynamicNode)
             {
@@ -102,6 +98,7 @@ public partial class Default : IDisposable
                 {
                     builder.AddAttribute(2, attribute.Name, attribute.Value);
                 }
+
                 // add children
                 if (child.HasChildNodes)
                     AddChildrenToDom(builder, child.ChildNodes);
@@ -111,6 +108,7 @@ public partial class Default : IDisposable
                 builder.CloseRegion();
                 continue;
             }
+
             // render dynamic node
             builder.OpenRegion(0);
             // get component Type from Node tag name
@@ -120,16 +118,26 @@ public partial class Default : IDisposable
                 builder.OpenComponent(1, type);
                 // add attributes
                 // filter out FluentCMS
-                var attributes = child.Attributes.Where(x => !x.Name.Equals(ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase));
+                var attributes = child.Attributes.Where(x =>
+                    !x.Name.Equals(ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase));
                 foreach (var attribute in attributes)
                 {
                     builder.AddComponentParameter(2, attribute.Name, attribute.Value);
                     builder.AddComponentParameter(3, "Page", Page);
                 }
+
                 // add children
-                AddChildrenToDom(builder, GetChildren(child));
+                // AddChildrenToDom(builder, GetChildren(child));
+                // check if has children
+                if (child.HasChildNodes)
+                {
+                    builder.AddAttribute(2, "ChildContent",
+                        (RenderFragment)((b) => AddChildrenToDom(b, child.ChildNodes)));
+                }
+
                 builder.CloseComponent();
             }
+
             builder.CloseRegion();
         }
     }
@@ -142,9 +150,13 @@ public partial class Default : IDisposable
 
     private static Type? GetType(string typeName)
     {
-        var assembly = typeof(Section).Assembly;
-        var typeInfo = assembly.DefinedTypes.FirstOrDefault(x => x.Name == typeName);
+        // FluentCMS.Web.UI
+        var uiAssembly = typeof(Section).Assembly;
+        // FluentCMS.Web.UI.Components
+        var componentsAssembly = typeof(BaseComponent).Assembly;
+
+        var typeInfo = uiAssembly.DefinedTypes.Union(componentsAssembly.DefinedTypes)
+            .FirstOrDefault(x => x.Name == typeName);
         return typeInfo?.AsType();
     }
-
 }
