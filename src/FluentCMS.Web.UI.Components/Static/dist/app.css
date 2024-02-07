@@ -861,7 +861,7 @@ body.dark {
 }
 
 .f-sidebar {
-  @apply h-screen transition-transform -translate-x-full border-r border-gray-200 dark:border-gray-700 min-h-full;
+  @apply h-screen transition-transform border-r border-gray-200 dark:border-gray-700 min-h-full;
 }
 .f-sidebar-footer {
   @apply hidden absolute bottom-0 left-0 justify-center p-4 space-x-4 w-full lg:flex bg-white dark:bg-gray-800 z-20;
@@ -894,7 +894,7 @@ body.dark {
   @apply py-1 px-2 text-base;
 }
 .f-sidebar-secondary-true .f-sidebar-main {
-  @apply pt-0;
+  @apply w-52 pt-0;
 }
 .f-sidebar-secondary-false {
   @apply fixed top-0 left-0 z-40 w-64 pt-14 lg:pt-0 bg-white dark:bg-gray-800;
@@ -910,6 +910,10 @@ body.dark {
 }
 .f-sidebar-secondary-false .f-sidebar-main {
   @apply bg-white dark:bg-gray-800;
+}
+
+.-translate-x-full .f-sidebar-main {
+  @apply -ml-52 lg:ml-0;
 }
 
 .f-spacer-size-default, .f-spacer-size-medium {
