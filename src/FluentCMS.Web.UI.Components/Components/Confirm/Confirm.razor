@@ -1,35 +1,27 @@
 ﻿@inherits BaseComponent
+@inject IJSRuntime JS
 
 @namespace FluentCMS.Web.UI.Components
 
 <div @attributes="AdditionalAttributes"
+     @ref="element"
      class="@this.GetClasses()"
      tabindex="-1">
-
-    @* TODO: It is removed after enabling the JS invoker *@
-    @if (Open)
-    {
-        <div class="bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0"
-             @onclick="Close" />
-    }
-
     <div class="@this.ClassName("ConfirmWrapper")">
         <div class="@this.ClassName("ConfirmContent")">
-            <CloseButton OnClick="Cancel" />
+            <CloseButton OnClick="Close" />
             <div class="@this.ClassName("ConfirmBody")">
                 <Icon Name="IconName.ExclamationCircle"
                       Size="IconSize.Large" />
-
                 <h3 class="@this.ClassName("ConfirmMessage")">
                     @Message
                 </h3>
-
                 <ButtonGroup>
                     <Button Color="Color.Danger"
                             OnClick="Confirmation">
                         Yes, I'm sure
                     </Button>
-                    <Button OnClick="Cancel">
+                    <Button OnClick="Close">
                         No, cancel
                     </Button>
                 </ButtonGroup>
@@ -39,15 +31,41 @@
 </div>
 
 @code {
+    public ElementReference element;
+
+    private IJSObjectReference module = default!;
+
     [Parameter]
     public string? Message { get; set; }
 
+    private bool open;
+
     [Parameter]
     [CssProperty]
-    public bool Open { get; set; }
+    public bool Open
+    {
+        get
+        {
+            return open;
+        }
+        set
+        {
+            if (value == open) return;
+
+            open = value;
+
+            OpenChanged.InvokeAsync(Open);
+
+            module.InvokeVoidAsync(open ? "open" : "close", DotNetObjectReference.Create(this), element);
+        }
+    }
 
     [Parameter]
     public EventCallback<bool> OpenChanged { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public ModalSize Size { get; set; } = ModalSize.Medium;
 
     [Parameter]
     [CssProperty]
@@ -59,32 +77,31 @@
     [Parameter]
     public EventCallback<MouseEventArgs> OnConfirm { get; set; }
 
-    public async void Cancel()
-    {
-        Open = false;
-
-        await OpenChanged.InvokeAsync(Open);
-
-        await OnCancel.InvokeAsync();
-    }
-
+    [JSInvokable]
     public async void Close()
     {
-        if (Static) return;
+        if (!Open) return;
 
         Open = false;
-
-        await OpenChanged.InvokeAsync(Open);
 
         await OnCancel.InvokeAsync();
     }
 
     public async void Confirmation()
     {
+        if (!Open) return;
+
         Open = false;
 
-        await OpenChanged.InvokeAsync(Open);
-
         await OnConfirm.InvokeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Confirm/Confirm.razor.js");
+
+        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { Static });
     }
 }
