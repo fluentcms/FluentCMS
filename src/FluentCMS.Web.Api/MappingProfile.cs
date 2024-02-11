@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Web.Api;
+﻿using FluentCMS.Web.Api.ValueConverters;
+
+namespace FluentCMS.Web.Api;
 
 public class MappingProfile : Profile
 {
@@ -78,8 +80,10 @@ public class MappingProfile : Profile
 
         #region Content
 
-        CreateMap<ContentCreateRequest, Content>();
-        CreateMap<ContentUpdateRequest, Content>();
+        CreateMap<ContentCreateRequest, Content>().ForMember(x => x.Value,
+            expression => expression.ConvertUsing(new ObjectDictionaryValueConverter()!));
+        CreateMap<ContentUpdateRequest, Content>().ForMember(x => x.Value,
+            expression => expression.ConvertUsing(new ObjectDictionaryValueConverter()!));
         CreateMap<Content, ContentDetailResponse>();
 
         #endregion
