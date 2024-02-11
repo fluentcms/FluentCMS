@@ -11,18 +11,15 @@
            Id="@Id"
            Label="@Label"
            Name="@Name"
-           Required="@Required"
-           State="@State">
-    <textarea @attributes="AdditionalAttributes"
-              @bind="@Value"
-              @bind:event="oninput"
-              class="@this.GetClasses()"
-              disabled="@Disabled"
-              id="@Id"
-              name="@Name"
-              placeholder="@Placeholder"
-              required="@Required"
-              rows="@Rows" />
+           Required="@Required">
+    <InputTextArea @attributes="AdditionalAttributes"
+                   @bind-Value="Value"
+                   class="@this.GetClasses()"
+                   disabled="@Disabled"
+                   id="@Id"
+                   name="@Name"
+                   placeholder="@Placeholder"
+                   rows="@Rows" />
 </FormField>
 
 @code {

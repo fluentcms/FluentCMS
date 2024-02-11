@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using System.Linq.Expressions;
 
 namespace FluentCMS.Web.UI.Components;
 
@@ -65,17 +66,10 @@ public abstract class FormElementsField : FormElements
 
     [Parameter]
     public IconName? IconStart { get; set; }
-
-    [Parameter]
-    [CssProperty]
-    public FormFieldState State { get; set; } = FormFieldState.Default;
 }
 
 public abstract class FormCheckboxesType<T> : FormElementsValuable<T>
 {
-    [Parameter]
-    [CssProperty]
-    public FormFieldState State { get; set; } = FormFieldState.Default;
 }
 
 public abstract class FormInputsType<T> : FormElementsValuable<T>
@@ -88,10 +82,6 @@ public abstract class FormInputsType<T> : FormElementsValuable<T>
 
     [Parameter]
     public string? Placeholder { get; set; }
-
-    [Parameter]
-    [CssProperty]
-    public FormFieldState State { get; set; } = FormFieldState.Default;
 }
 
 public enum FormFieldState
