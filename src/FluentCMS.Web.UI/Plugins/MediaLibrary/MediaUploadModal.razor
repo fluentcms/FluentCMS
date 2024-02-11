@@ -4,7 +4,7 @@
         <ModalTitle>Upload File</ModalTitle>
     </ModalHeader>
     <ModalBody>
-        <Form>
+        <Form Model="@model">
             <Grid>
                 <GridItem Small="GridItemColumn.Twelve">
                     <Card>
@@ -59,6 +59,8 @@
 
     [Parameter]
     public string Title {get; set; }
+
+    object model {get; set;} = new();
 
     void OnFormSubmit()
     {

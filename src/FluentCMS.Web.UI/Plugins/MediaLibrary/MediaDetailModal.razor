@@ -13,7 +13,8 @@
             </GridItem>
             <GridItem Small="GridItemColumn.Twelve"
                       Large="GridItemColumn.Five">
-                <Form OnSubmit="OnFormSubmit">
+                <Form Model="model"
+                      OnSubmit="OnFormSubmit">
                     <Grid GutterX="GridGutter.Large">
                         <GridItem Small="GridItemColumn.Twelve"
                                   Medium="GridItemColumn.Six"
@@ -73,6 +74,8 @@
 
     [Parameter]
     public string Title {get; set; }
+
+    object model {get; set;} = new();
 
     void OnFormSubmit()
     {

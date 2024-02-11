@@ -14,7 +14,8 @@
                 </CardBody>
             </Card>
         }
-        <Form OnSubmit="OnFormSubmit">
+        <Form Model="@model"
+              OnSubmit="OnFormSubmit">
             <Grid Gutter="GridGutter.Large">
                 <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
                     <Input Label="Folder"/>
@@ -58,6 +59,8 @@
 
     [Parameter]
     public string Title {get; set; }
+
+    object model {get; set;} = new();
 
     void OnFormSubmit()
     {
