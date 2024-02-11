@@ -1,14 +1,21 @@
-<Modal @bind-Open="Open">
+<Modal @bind-Open="Open"
+       Size="ModalSize.Large">
     <ModalHeader>
         <ModalTitle>@Title</ModalTitle>
     </ModalHeader>
     <ModalBody>
         @if (EditMode)
         {
-            <div class="bg-gray-100 dark:bg-gray-800">Details</div>
+            <Card class="bg-gray-100 dark:bg-gray-800">
+                <CardBody>
+                    <Typography>
+                        Details...
+                    </Typography>
+                </CardBody>
+            </Card>
         }
         <Form OnSubmit="OnFormSubmit">
-            <Grid GutterX="GridGutter.Large">
+            <Grid Gutter="GridGutter.Large">
                 <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
                     <Input Label="Folder"/>
                 </GridItem>

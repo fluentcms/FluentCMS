@@ -1,17 +1,19 @@
 <Page>
     <PageHeader Title="Media Library" >
-        <ButtonGroup>
-            <Button Outline="true"
-                    OnClick="OpenAddFolder">
-                <Icon Name="IconName.Plus" />
-                Add New Folder
-            </Button>
-            <Button Color="Color.Primary"
-                    OnClick="OpenUploadModal">
-                <Icon Name="IconName.Plus" />
-                Add New Asset
-            </Button>
-        </ButtonGroup>
+        <PageHeaderActions>
+            <ButtonGroup>
+                <Button Outline="true"
+                        OnClick="OpenAddFolder">
+                    <Icon Name="IconName.Plus" />
+                    Add New Folder
+                </Button>
+                <Button Color="Color.Primary"
+                        OnClick="OpenUploadModal">
+                    <Icon Name="IconName.Plus" />
+                    Add New Asset
+                </Button>
+            </ButtonGroup>
+        </PageHeaderActions>
     </PageHeader>
 
     <PageBody>
@@ -20,18 +22,27 @@
             Folders
         </Typography>
         <Spacer/>
-        <Grid GutterX="GridGutter.Large">
+        <Grid Gutter="GridGutter.Large">
             <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six" Large="GridItemColumn.Four">
                 <Card>
                     <CardBody>
                         <Grid>
                             <GridItem Small="GridItemColumn.Grow">
-                               Folder 1
+                                <Typography Size="TextSize.H6">
+                                   Folder 1
+                                </Typography>
                             </GridItem>
                             <GridItem Small="GridItemColumn.Auto">
+                                <Button Color="Color.Primary"
+                                        Outline="true"
+                                        Size="ButtonSize.Small"
+                                        OnClick="() => OnOpenEditFolder(123)">
+                                    <Icon Name="IconName.Edit"/>
+                                </Button>
                                 <Button Color="Color.Danger"
-                                        Ghost
-                                        Size="ButtonSize.Small">
+                                        Outline="true"
+                                        Size="ButtonSize.Small"
+                                        OnClick="() => OnDeleteFolder(123)">
                                     <Icon Name="IconName.Delete"/>
                                 </Button>
                             </GridItem>
@@ -43,16 +54,23 @@
             <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six" Large="GridItemColumn.Four">
                 <Card>
                     <CardBody>
-                        <img src="/images/image1.jpeg"/>
-                        <Spacer/>
                         <Grid>
                             <GridItem Small="GridItemColumn.Grow">
-                                image1.jpeg
+                                <Typography Size="TextSize.H6">
+                                   Folder 2
+                                </Typography>
                             </GridItem>
                             <GridItem Small="GridItemColumn.Auto">
+                                <Button Color="Color.Primary"
+                                        Outline="true"
+                                        Size="ButtonSize.Small"
+                                        OnClick="() => OnOpenEditFolder(123)">
+                                    <Icon Name="IconName.Edit"/>
+                                </Button>
                                 <Button Color="Color.Danger"
-                                        Ghost
-                                        Size="ButtonSize.Small">
+                                        Outline="true"
+                                        Size="ButtonSize.Small"
+                                        OnClick="() => OnDeleteFolder(123)">
                                     <Icon Name="IconName.Delete"/>
                                 </Button>
                             </GridItem>
@@ -67,23 +85,144 @@
             Files
         </Typography>
         <Spacer/>
+        <Grid Gutter="GridGutter.Large">
+            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six" Large="GridItemColumn.Four">
+                <Card>
+                    <CardBody>
+                        <img src="https://flowbite.s3.amazonaws.com/blocks/application-ui/products/imac-front-image.png" class="w-full object-contain h-[240px]"/>
+                        <Spacer/>
+                        <Grid>
+                            <GridItem Small="GridItemColumn.Grow">
+                                <Typography Size="TextSize.H6">
+                                   Image 1
+                                </Typography>
+                            </GridItem>
+                            <GridItem Small="GridItemColumn.Auto">
+                                <Button Color="Color.Primary"
+                                        Outline="true"
+                                        Size="ButtonSize.Small"
+                                        OnClick="() => OnOpenFile(123)">
+                                    <Icon Name="IconName.Edit"/>
+                                </Button>
+                                <Button Color="Color.Danger"
+                                        Outline="true"
+                                        Size="ButtonSize.Small"
+                                        OnClick="() => OnDeleteFile(123)">
+                                    <Icon Name="IconName.Delete"/>
+                                </Button>
+                            </GridItem>
+                        </Grid>
+                    </CardBody>
+                </Card>
+            </GridItem>
+
+            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six" Large="GridItemColumn.Four">
+                <Card>
+                    <CardBody>
+                        <img src="https://flowbite.s3.amazonaws.com/blocks/application-ui/products/imac-front-image.png" class="w-full object-contain h-[240px]"/>
+                        <Spacer/>
+                        <Grid>
+                            <GridItem Small="GridItemColumn.Grow">
+                                <Typography Size="TextSize.H6">
+                                   Image 2
+                                </Typography>
+                            </GridItem>
+                            <GridItem Small="GridItemColumn.Auto">
+                                <Button Color="Color.Primary"
+                                        Outline="true"
+                                        Size="ButtonSize.Small"
+                                        OnClick="() => OnOpenFile(123)">
+                                    <Icon Name="IconName.Edit"/>
+                                </Button>
+                                <Button Color="Color.Danger"
+                                        Outline="true"
+                                        Size="ButtonSize.Small"
+                                        OnClick="() => OnDeleteFile(123)">
+                                    <Icon Name="IconName.Delete"/>
+                                </Button>
+                            </GridItem>
+                        </Grid>
+                    </CardBody>
+                </Card>
+            </GridItem>
+        </Grid>
     </PageBody>
 </Page>
 
-<MediaDetailModal/>
+<MediaUploadModal Open="UploadModalOpen"
+                  OnCancel="OnUploadModalCancel"
+                  OnSubmit="OnUploadModalSubmit"/>
+<MediaDetailModal Open="FileModalOpen"
+                  OnCancel="OnFileModalCancel"
+                  OnSubmit="OnFileModalSubmit"/>
 
-<MediaFolderModal Open="FolderModalOpen"
-                  Title="FolderModalTitle"
+<MediaFolderModal EditMode="FolderModalEditMode"
+                  Open="FolderModalOpen"
+                  Title="@FolderModalTitle"
                   OnCancel="OnFolderModalCancel"
                   OnSubmit="OnFolderModalSubmit"/>
 
 @code {
 
+    [Inject]
+    ConfirmService Confirm {get; set;} = default!;
+
     bool FolderModalOpen = false;
+
+    bool FolderModalEditMode = false;
 
     bool UploadModalOpen = false;
 
+    bool FileModalOpen = false;
+
     string FolderModalTitle;
+
+    void OnUploadModalCancel()
+    {
+        UploadModalOpen = false;
+    }
+
+    void OnUploadModalSubmit(string value)
+    {
+        UploadModalOpen = false;
+    }
+
+
+    void OnFileModalCancel()
+    {
+        FileModalOpen = false;
+    }
+
+    void OnFileModalSubmit(string value)
+    {
+        FileModalOpen = false;
+    }
+
+    async Task OnDeleteFile(int id)
+    {
+        var result = await Confirm.Show("Are you sure to remove this file?");
+
+        // TODO:
+    }
+
+    void OnOpenFile(int id)
+    {
+        FileModalOpen = true;
+    }
+
+    async Task OnDeleteFolder(int id)
+    {
+        var result = await Confirm.Show("Are you sure to remove this folder?");
+
+        // TODO:
+    }
+
+    void OnOpenEditFolder(int id)
+    {
+        FolderModalOpen = true;
+        FolderModalTitle = "Edit Folder";
+        FolderModalEditMode = true;
+    }
 
     void OnFolderModalCancel()
     {
@@ -94,6 +233,7 @@
     {
         FolderModalTitle = "Add Folder";
         FolderModalOpen = true;
+        FolderModalEditMode = false;
     }
 
     void OpenUploadModal()
@@ -103,6 +243,7 @@
 
     async Task OnFolderModalSubmit(string value)
     {
+        FolderModalOpen = false;
         Console.WriteLine(value);
     }
 }
