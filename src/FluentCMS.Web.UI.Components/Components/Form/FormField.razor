@@ -80,14 +80,11 @@
             </div>
         }
     </div>
-    @if (!string.IsNullOrEmpty(Hint) || Errors.Count() > 0)
+    @if (!Dense)
     {
         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
             @(Errors.FirstOrDefault() ?? Hint ?? "\u00A0")
         </p>
-    }
-    @if (!Dense)
-    {
         <Spacer />
     }
 </div>
