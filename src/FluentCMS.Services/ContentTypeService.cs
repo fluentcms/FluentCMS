@@ -74,7 +74,10 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
         if (original == null)
             contentType.Fields.Add(field);
         else
+        {
+            contentType.Fields.Add(field);
             contentType.Fields.Remove(original);
+        }
 
         return await contentTypeRepository.Update(contentType, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);

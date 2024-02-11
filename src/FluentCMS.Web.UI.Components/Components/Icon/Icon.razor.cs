@@ -17,12 +17,14 @@ public enum IconName
     Image,
     InfoCircle,
     InformationFilled,
+    Moon,
     Next,
     Plus,
     Previous,
     Rocket,
     Search,
     Settings,
+    Sun,
 }
 
 public enum IconSize

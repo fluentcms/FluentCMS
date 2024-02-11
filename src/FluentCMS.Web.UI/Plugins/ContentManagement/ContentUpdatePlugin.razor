@@ -9,7 +9,7 @@
                         {
                             <Input Label="@field.Label"
                                    Placeholder="@field.Placeholder"
-                                   Required="@field.IsRequired" 
+                                   Required="@field.IsRequired"
                                    Value="@(Model.Value![field.Slug!] as string)"
                                    ValueChanged="str => Model.Value![field.Slug!] = str"/>
                         }
@@ -54,7 +54,7 @@
 
     string PageTitle = "Update Content";
 
-    ContentResponse View = new();
+    ContentDetailResponse View = new();
 
     void GoBack()
     {

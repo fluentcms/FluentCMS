@@ -11,18 +11,15 @@
            Id="@Id"
            Label="@Label"
            Name="@Name"
-           Required="@Required"
-           State="@State">
-    <input @attributes="AdditionalAttributes"
-           @bind="@Value"
-           @bind:event="oninput"
-           class="@this.GetClasses()"
-           disabled="@Disabled"
-           id="@Id"
-           name="@Name"
-           placeholder="@Placeholder"
-           required="@Required"
-           type="@this.Type.ToString().FromPascalCaseToKebabCase()" />
+           Required="@Required">
+    <InputText @attributes="AdditionalAttributes"
+               @bind-Value="Value"
+               class="@this.GetClasses()"
+               disabled="@Disabled"
+               id="@Id"
+               name="@Name"
+               placeholder="@Placeholder"
+               type="@this.Type.ToString().FromPascalCaseToKebabCase()" />
 </FormField>
 
 @code {

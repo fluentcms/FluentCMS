@@ -1,15 +1,15 @@
-const modals = new Map();
+﻿const confirms = new Map();
 
 export function close(dotnet, element) {
-    const modal = modals.get(element);
+    const confirm = confirms.get(element);
 
-    modal.hide();
+    confirm.hide();
 }
 
 export function open(dotnet, element) {
-    const modal = modals.get(element);
+    const confirm = confirms.get(element);
 
-    modal.show();
+    confirm.show();
 }
 
 export function initialize(dotnet, element, config) {
@@ -17,20 +17,20 @@ export function initialize(dotnet, element, config) {
 
     const Modal = window.Flowbite.default.Modal;
 
-    const modal = new Modal(element, {
+    const confirm = new Modal(element, {
         backdrop: config.static ? 'static' : 'dynamic',
         onHide: () => {
             dotnet.invokeMethodAsync("Close");
         },
     });
 
-    modals.set(element, modal);
+    confirms.set(element, confirm);
 }
 
 export function dispose(dotnet, element) {
-    const modal = modals.get(element);
+    const confirm = confirms.get(element);
 
-    modal?.destroy();
+    confirm?.destroy();
 
-    modals.delete(element);
+    confirms.delete(element);
 }

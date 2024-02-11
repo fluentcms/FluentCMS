@@ -11,23 +11,20 @@
            Id="@Id"
            Label="@Label"
            Name="@Name"
-           Required="@Required"
-           State="@State">
-    <select @attributes="AdditionalAttributes"
-            @bind="@Value"
-            @bind:after="() => OnChange.InvokeAsync(Value)"
-            class="@this.GetClasses()"
-            disabled="@Disabled"
-            id="@Id"
-            multiple="@Multiple"
-            name="@Name"
-            required="@Required">
+           Required="@Required">
+    <InputSelect @attributes="AdditionalAttributes"
+                 @bind-Value="Value"
+                 class="@this.GetClasses()"
+                 disabled="@Disabled"
+                 id="@Id"
+                 multiple="@Multiple"
+                 name="@Name">
         @if (!string.IsNullOrEmpty(this.Placeholder))
         {
             <Option Selected>@Placeholder</Option>
         }
         @ChildContent
-    </select>
+    </InputSelect>
 </FormField>
 
 @code {
