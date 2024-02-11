@@ -1,0 +1,129 @@
+@using FluentCMS.Web.UI.Plugins.ContentManagement
+
+<ContentLayout>
+    <Page>
+        <PageHeader Title="@PageTitle">
+            <PageHeaderActions>
+                <ButtonGroup>
+                    <Button Color="Color.Primary"
+                            Href="@($"?pluginDef=Content Management&typeName=Create Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}")">
+                        <Icon Name="IconName.Plus" />
+                        Insert
+                    </Button>
+                </ButtonGroup>
+            </PageHeaderActions>
+
+        </PageHeader>
+        <PageBody>
+            <ChildContent>
+                @if (ContentType != null)
+                {
+                    <Table>
+                        <TableHead>
+                            @foreach (var field in Fields)
+                            {
+                                <TableCell>
+                                    @field.Title
+                                </TableCell>
+                            }
+                            <TableCell>
+                                Actions
+                            </TableCell>
+                        </TableHead>
+                        <TableBody>
+                            @foreach (var item in Data)
+                            {
+                                <TableRow>
+                                    @foreach (var field in ContentType.Fields.ToList())
+                                    {
+                                        <TableCell>
+                                            @(item.Value[field.Slug])
+                                        </TableCell>
+                                    }
+                                    <TableCell>
+                                        <ButtonGroup>
+                                            <Button Color="Color.Danger"
+                                                    Size="ButtonSize.Small"
+                                                    OnClick="() => OnDelete(item)">
+                                                <Icon Name="IconName.Delete" />
+                                                Delete
+                                            </Button>
+                                            <Button Color="Color.Primary"
+                                                    Href="@($"?pluginDef=Content Management&typeName=Update Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}&id={item.Id}")"
+                                                    Size="ButtonSize.Small">
+                                                <Icon Name="IconName.Edit" />
+                                                Edit
+                                            </Button>
+                                        </ButtonGroup>
+                                    </TableCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                }
+            </ChildContent>
+        </PageBody>
+    </Page>
+</ContentLayout>
+
+@code {
+    [Inject]
+    AppClient AppClient {get; set;} = default!;
+
+    [Inject]
+    ConfirmService Confirm {get; set;} = default!;
+
+    [Inject]
+    ContentClient ContentClient {get; set;} = default!;
+
+    [Inject]
+    ContentTypeClient ContentTypeClient {get; set;} = default!;
+
+    [Inject]
+    NavigationManager NavigationManager {get; set;} = default!;
+
+    string? AppSlug;
+
+    string? ContentTypeSlug;
+
+    ContentTypeDetailResponse ContentType {get; set;} = new();
+
+    List<ContentDetailResponse> Data {get; set;} = [];
+
+    List<ContentTypeField> Fields {get; set;} = [];
+
+    string PageTitle = "Content List";
+
+    async Task OnDelete(ContentDetailResponse content)
+    {
+        var result = await Confirm.Show("Are you sure to remove this row?");
+
+        if(result)
+        {
+            await ContentClient.DeleteAsync(AppSlug, ContentTypeSlug, content.Id);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppSlug = NavigationManager.GetStringFromQuery("appSlug");
+        ContentTypeSlug = NavigationManager.GetStringFromQuery("contentTypeSlug");
+
+        if(!string.IsNullOrEmpty(AppSlug) && !string.IsNullOrEmpty(ContentTypeSlug))
+        {
+            ContentType = (await ContentTypeClient.GetAllAsync(AppSlug))?.Data?.ToList().Find(x => x.Slug == ContentTypeSlug);
+
+            if(ContentType != null)
+            {
+                PageTitle = ContentType.Title + " List";
+                Fields = ContentType.Fields.ToList();
+
+                var response = await ContentClient.GetAllAsync(AppSlug, ContentTypeSlug);
+                if(response?.Data != null)
+                {
+                    Data = response.Data.ToList();
+                }
+            }
+        }
+    }
+}

@@ -8,7 +8,7 @@
             <Button OnClick="() => Open1 = !Open1">
                 Open
             </Button>
-            <Modal @bind-Open=@Open1>
+            <Modal @bind-Open="Open1">
                 <ModalHeader Closable="false"
                              Title="Terms of Service" />
                 <ModalBody>
@@ -32,7 +32,7 @@
             <Button OnClick="() => Open2 = !Open2">
                 Open
             </Button>
-            <Modal @bind-Open=@Open2>
+            <Modal @bind-Open="Open2">
                 <ModalHeader Closable="true"
                              Title="Terms of Service" />
                 <ModalBody>
@@ -56,10 +56,34 @@
             <Button OnClick="() => Open3 = !Open3">
                 Open
             </Button>
-            <Modal @bind-Open=@Open3
+            <Modal @bind-Open="Open3"
                    Size="ModalSize.Large">
                 <ModalHeader Closable="false"
                              Title="Terms of Service" />
+                <ModalBody>
+                    With less than a month to go before the European Union enacts new consumer privacy laws for its
+                    citizens, companies around the world are updating their terms of service agreements to comply.
+                </ModalBody>
+                <ModalFooter>
+                    <ButtonGroup>
+                        <Button Color="Color.Primary">
+                            I accept
+                        </Button>
+                        <Button>
+                            Decline
+                        </Button>
+                    </ButtonGroup>
+                </ModalFooter>
+            </Modal>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Static">
+            <Button OnClick="() => Open4 = !Open4">
+                Open
+            </Button>
+            <Modal @bind-Open="Open4"
+                   Static="true">
+                <ModalHeader Title="Terms of Service" />
                 <ModalBody>
                     With less than a month to go before the European Union enacts new consumer privacy laws for its
                     citizens, companies around the world are updating their terms of service agreements to comply.
@@ -85,4 +109,6 @@
     private bool Open2 { get; set; }
 
     private bool Open3 { get; set; }
+
+    private bool Open4 { get; set; }
 }

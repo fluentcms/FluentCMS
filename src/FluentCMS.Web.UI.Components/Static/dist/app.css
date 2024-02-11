@@ -806,7 +806,7 @@ body.dark {
   @apply px-4;
 }
 .f-page-back-button {
-  @apply p-0;
+  @apply mb-1 p-0;
 }
 .f-page-back-button svg {
   @apply w-full h-full;
@@ -861,7 +861,10 @@ body.dark {
 }
 
 .f-sidebar {
-  @apply h-screen transition-transform -translate-x-full border-r border-gray-200 dark:border-gray-700 min-h-full;
+  @apply h-screen transition-transform border-r border-gray-200 dark:border-gray-700 min-h-full;
+}
+.f-sidebar-footer {
+  @apply hidden absolute bottom-0 left-0 justify-center p-4 space-x-4 w-full lg:flex bg-white dark:bg-gray-800 z-20;
 }
 .f-sidebar-item > span {
   @apply text-xs py-3;
@@ -891,7 +894,7 @@ body.dark {
   @apply py-1 px-2 text-base;
 }
 .f-sidebar-secondary-true .f-sidebar-main {
-  @apply pt-0;
+  @apply w-52 pt-0;
 }
 .f-sidebar-secondary-false {
   @apply fixed top-0 left-0 z-40 w-64 pt-14 lg:pt-0 bg-white dark:bg-gray-800;
@@ -907,6 +910,10 @@ body.dark {
 }
 .f-sidebar-secondary-false .f-sidebar-main {
   @apply bg-white dark:bg-gray-800;
+}
+
+.-translate-x-full .f-sidebar-main {
+  @apply -ml-52 lg:ml-0;
 }
 
 .f-spacer-size-default, .f-spacer-size-medium {
@@ -994,66 +1001,49 @@ body.dark {
   @apply inline-block p-4 border-b-2 cursor-pointer border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300;
 }
 
-.f-text {
-  @apply text-base dark:text-white;
-}
-.f-text-size-h1 {
-  @apply text-5xl font-extrabold;
-}
-.f-text-size-h2 {
-  @apply text-4xl font-bold;
-}
-.f-text-size-h3 {
-  @apply text-3xl font-bold;
-}
-.f-text-size-h4 {
-  @apply text-2xl font-bold;
-}
-.f-text-size-h5 {
-  @apply text-xl font-bold;
-}
-.f-text-size-h6 {
-  @apply text-lg font-bold;
-}
-.f-text-align-left {
-  @apply text-left;
-}
-.f-text-align-center {
-  @apply text-center;
-}
-.f-text-align-right {
-  @apply text-right;
-}
-.f-text-align-justify {
-  @apply text-justify;
-}
-.f-text-align-start {
-  @apply text-start;
-}
-.f-text-align-end {
-  @apply text-end;
-}
-.f-text-color-primary {
-  @apply text-blue-500 dark:text-blue-400;
-}
-.f-text-color-success {
-  @apply text-green-500 dark:text-green-400;
-}
-.f-text-color-info {
-  @apply text-cyan-500 dark:text-cyan-400;
-}
-.f-text-color-danger {
-  @apply text-red-500 dark:text-red-400;
-}
-.f-text-color-warning {
-  @apply text-yellow-500 dark:text-yellow-400;
-}
-.f-text-color-secondary {
-  @apply text-gray-500 dark:text-gray-400;
-}
-
 .f-textarea {
   @apply block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
+}
+
+.f-toast {
+  @apply flex items-center p-4 text-sm rounded-lg w-full;
+}
+.f-toast-type-info {
+  @apply text-blue-800 bg-blue-50 dark:bg-gray-800 dark:text-blue-400;
+}
+.f-toast-type-info .f-toast-close {
+  @apply bg-blue-50 text-blue-500 hover:bg-blue-200 hover:text-blue-500 focus:ring-2 focus:ring-blue-400 dark:hover:bg-gray-700 dark:bg-gray-800 dark:text-blue-400;
+}
+.f-toast-type-danger {
+  @apply text-red-800 bg-red-50 dark:bg-gray-800 dark:text-red-400;
+}
+.f-toast-type-danger .f-toast-close {
+  @apply bg-red-50 text-red-500 hover:bg-red-200 hover:text-red-500 focus:ring-2 focus:ring-red-400 dark:hover:bg-gray-700 dark:bg-gray-800 dark:text-red-400;
+}
+.f-toast-type-warning {
+  @apply text-yellow-800 bg-yellow-50 dark:bg-gray-800 dark:text-yellow-400;
+}
+.f-toast-type-warning .f-toast-close {
+  @apply bg-yellow-50 text-yellow-500 hover:bg-yellow-200 hover:text-yellow-500 focus:ring-2 focus:ring-yellow-400 dark:hover:bg-gray-700 dark:bg-gray-800 dark:text-yellow-400;
+}
+.f-toast-type-success {
+  @apply text-green-800 bg-green-50 dark:bg-gray-800 dark:text-green-400;
+}
+.f-toast-type-success .f-toast-close {
+  @apply bg-green-50 text-green-500 hover:bg-green-200 hover:text-green-500 focus:ring-2 focus:ring-green-400 dark:hover:bg-gray-700 dark:bg-gray-800 dark:text-green-400;
+}
+.f-toast-type-default {
+  @apply text-gray-800 bg-gray-50 dark:bg-gray-800 dark:text-gray-400;
+}
+.f-toast-type-default .f-toast-close {
+  @apply bg-gray-50 text-gray-500 hover:bg-gray-200 hover:text-gray-500 focus:ring-2 focus:ring-gray-400 dark:hover:bg-gray-700 dark:bg-gray-800 dark:text-gray-400;
+}
+.f-toast-provider {
+  @apply absolute right-0 top-0 p-5 flex flex-col gap-3 z-40;
+}
+
+.f-theme-switcher {
+  @apply inline-flex justify-center p-2 text-gray-500 rounded cursor-pointer dark:text-gray-400 dark:hover:text-white hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-600;
 }
 
 .f-tooltip {
@@ -1061,6 +1051,64 @@ body.dark {
 }
 .f-tooltip:not(.visible) {
   @apply invisible opacity-0;
+}
+
+.f-typography {
+  @apply text-base dark:text-white;
+}
+.f-typography-size-h1 {
+  @apply text-5xl font-extrabold;
+}
+.f-typography-size-h2 {
+  @apply text-4xl font-bold;
+}
+.f-typography-size-h3 {
+  @apply text-3xl font-bold;
+}
+.f-typography-size-h4 {
+  @apply text-2xl font-bold;
+}
+.f-typography-size-h5 {
+  @apply text-xl font-bold;
+}
+.f-typography-size-h6 {
+  @apply text-lg font-bold;
+}
+.f-typography-align-left {
+  @apply text-left;
+}
+.f-typography-align-center {
+  @apply text-center;
+}
+.f-typography-align-right {
+  @apply text-right;
+}
+.f-typography-align-justify {
+  @apply text-justify;
+}
+.f-typography-align-start {
+  @apply text-start;
+}
+.f-typography-align-end {
+  @apply text-end;
+}
+.f-typography-color-primary {
+  @apply text-blue-500 dark:text-blue-400;
+}
+.f-typography-color-success {
+  @apply text-green-500 dark:text-green-400;
+}
+.f-typography-color-info {
+  @apply text-cyan-500 dark:text-cyan-400;
+}
+.f-typography-color-danger {
+  @apply text-red-500 dark:text-red-400;
+}
+.f-typography-color-warning {
+  @apply text-yellow-500 dark:text-yellow-400;
+}
+.f-typography-color-secondary {
+  @apply text-gray-500 dark:text-gray-400;
 }
 
 /*# sourceMappingURL=app.css.map */

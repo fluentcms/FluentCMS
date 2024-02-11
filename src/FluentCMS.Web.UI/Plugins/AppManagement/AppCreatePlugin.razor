@@ -1,0 +1,79 @@
+﻿<Page>
+    <PageHeader HasBack="true"
+                Title="Create App">
+    </PageHeader>
+    <PageBody>
+        <Grid Gutter="GridGutter.Medium">
+            <GridItem Small="GridItemColumn.Twelve">
+                <Form OnSubmit="OnSubmit">
+                    <Card>
+                        <CardBody>
+                            <Input @bind-Value="Model.Title"
+                                   Label="Title"
+                                   Placeholder="Enter App Title..."
+                                   Required="true"/>
+                            <Input @bind-Value="Model.Slug"
+                                   Label="Slug"
+                                   Placeholder="Enter App Slug..."
+                                   Required="true" />
+                            <Textarea @bind-Value="Model.Description"
+                                   Label="Description"
+                                   Placeholder="Enter Textarea..." />
+                            <Spacer/>
+                            @if(!string.IsNullOrEmpty(Message))
+                            {
+                                <Typography>
+                                    @Message
+                                </Typography>
+                                <Spacer/>
+                            }
+                            <ButtonGroup>
+                                <Button OnClick="GoBack">
+                                    Cancel
+                                </Button>
+                                <Button Color="Color.Primary"
+                                        Type="ButtonType.Submit">
+                                    Save
+                                </Button>
+                            </ButtonGroup>
+                        </CardBody>
+                    </Card>
+                </Form>
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
+
+@code {
+    [Inject]
+    IJSRuntime JsRuntime { set; get; } = default!;
+
+    [Inject]
+    NavigationManager NavigationManager { set; get; } = default!;
+
+    [Inject]
+    AppClient AppClient { get; set; } = default!;
+
+    string? Message { get; set; }
+
+    AppCreateRequest Model { get; set; } = new();
+
+    async Task GoBack()
+    {
+        await JsRuntime.InvokeVoidAsync("history.back");
+    }
+
+    async Task OnSubmit()
+    {
+        try
+        {
+            var newApp = await AppClient.CreateAsync(Model);
+            Message = "Done!";
+            GoBack();
+        }
+        catch (Exception ex)
+        {
+            Message = ex.ToString();
+        }
+    }
+}

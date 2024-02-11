@@ -59,6 +59,17 @@
             ]
         },
         {
+            "Name": "Logout",
+            "Description": "Logout Plugin",
+            "Types": [
+                {
+                    "Name": "Logout",
+                    "Type": "LogoutViewPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
             "Name": "User Management",
             "Description": "Users Management Plugin",
             "Types": [
@@ -74,9 +85,85 @@
                 {
                     "Name": "Update User",
                     "Type": "UserUpdatePlugin"
+                },
+                {
+                    "Name": "User Detail",
+                    "Type": "UserDetailPlugin"
                 }
             ]
-
+        },
+        {
+            "Name": "Content Management",
+            "Description": "Content Management Plugin",
+            "Types": [
+                {
+                    "Name": "Content Index",
+                    "Type": "ContentIndexPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Content List",
+                    "Type": "ContentListPlugin"
+                },
+                {
+                    "Name": "Create Content",
+                    "Type": "ContentCreatePlugin"
+                },
+                {
+                    "Name": "Update Content",
+                    "Type": "ContentUpdatePlugin"
+                },
+                {
+                    "Name": "Content Detail",
+                    "Type": "ContentDetailPlugin"
+                }
+            ]
+        },
+        {
+            "Name": "ContentType Management",
+            "Description": "ContentTypes Management Plugin",
+            "Types": [
+                {
+                    "Name": "ContentTypes List",
+                    "Type": "ContentTypeListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create ContentType",
+                    "Type": "ContentTypeCreatePlugin"
+                },
+                {
+                    "Name": "Update ContentType",
+                    "Type": "ContentTypeUpdatePlugin"
+                },
+                {
+                    "Name": "ContentType Detail",
+                    "Type": "ContentTypeDetailPlugin"
+                }
+            ]
+        },
+        {
+            "Name": "App Management",
+            "Description": "App Management Plugin",
+            "Types": [
+                {
+                    "Name": "Apps List",
+                    "Type": "AppListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create App",
+                    "Type": "AppCreatePlugin"
+                },
+                {
+                    "Name": "Update App",
+                    "Type": "AppUpdatePlugin"
+                },
+                {
+                    "Name": "App Detail",
+                    "Type": "AppDetailPlugin"
+                }
+            ]
         },
         {
             "Name": "Counter",
@@ -102,11 +189,41 @@
             "Plugins": [],
             "Children": [
                 {
+                    "Title": "Content Management",
+                    "Path": "/content",
+                    "Plugins": [
+                        {
+                            "Definition": "Content Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Content Type Builder",
+                    "Path": "/content-types",
+                    "Plugins": [
+                        {
+                            "Definition": "ContentType Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
                     "Title": "Users",
                     "Path": "/users",
                     "Plugins": [
                         {
                             "Definition": "User Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Apps",
+                    "Path": "/apps",
+                    "Plugins": [
+                        {
+                            "Definition": "App Management",
                             "Section": "Main"
                         }
                     ]
@@ -157,6 +274,17 @@
                     "Plugins": [
                         {
                             "Definition": "Forgot Password",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Logout",
+                    "Path": "/logout",
+                    "Layout": "AuthLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "Logout",
                             "Section": "Main"
                         }
                     ]

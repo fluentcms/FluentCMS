@@ -1,39 +1,77 @@
-﻿<h1>Create User</h1>
-<div class="w-full p-4 bg-white border border-gray-200 rounded-lg shadow sm:p-6 md:p-8 dark:bg-gray-800 dark:border-gray-700">
-    <EditForm Model="@Model" OnValidSubmit="Submit" class="space-y-6">
-        <div>
-            <label for="username">Username</label>
-            <InputText @bind-Value=Model.Username name="username" id="username" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" />
-        </div>
-        <div>
-            <label for="email">Email</label>
-            <InputText @bind-Value=Model.Email type="email" name="email" id="email" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" />
-        </div>
-        <div>
-            <label for="password">Password</label>
-            <InputText @bind-Value=Model.Password name="password" id="password" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" />
-        </div>
-        <button type="submit" class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Submit</button>
-    </EditForm>
-    Message: @Message
-</div>
+﻿<Page>
+    <PageHeader HasBack="true"
+                Title="Create User">
+    </PageHeader>
+    <PageBody>
+        <Grid Gutter="GridGutter.Medium">
+            <GridItem Small="GridItemColumn.Twelve">
+                <Form OnSubmit="OnSubmit">
+                    <Card>
+                        <CardBody>
+                            <Input @bind-Value="Model.Username"
+                                   Label="Username"
+                                   Placeholder="Enter Username..."
+                                   Required="true"/>
+                            <Input @bind-Value="Model.Email"
+                                   Label="Email"
+                                   Placeholder="Enter Email..."
+                                   Required="true"
+                                   Type="InputType.Email" />
+                            <Input @bind-Value="Model.Password"
+                                   Label="Password"
+                                   Placeholder="Enter Password..."
+                                   Type="InputType.Password"/>
+                            <Spacer/>
+                            @if(!string.IsNullOrEmpty(Message))
+                            {
+                                <Typography>
+                                    @Message
+                                </Typography>
+                                <Spacer/>
+                            }
+                            <ButtonGroup>
+                                <Button OnClick="GoBack">
+                                    Cancel
+                                </Button>
+                                <Button Color="Color.Primary"
+                                        Type="ButtonType.Submit">
+                                    Save
+                                </Button>
+                            </ButtonGroup>
+                        </CardBody>
+                    </Card>
+                </Form>
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
 
 @code {
     [Inject]
-    private UserClient UserClient { get; set; } = default!;
+    IJSRuntime JsRuntime { set; get; } = default!;
 
     [Inject]
-    public NavigationManager NavigationManager { set; get; } = default!;
+    NavigationManager NavigationManager { set; get; } = default!;
 
-    private UserCreateRequest Model { get; set; } = new();
-    private string Message { get; set; } = string.Empty;
+    [Inject]
+    UserClient UserClient { get; set; } = default!;
 
-    private async Task Submit()
+    string? Message { get; set; }
+
+    UserCreateRequest Model { get; set; } = new();
+
+    async Task GoBack()
+    {
+        await JsRuntime.InvokeVoidAsync("history.back");
+    }
+
+    async Task OnSubmit()
     {
         try
         {
             var newUser = await UserClient.CreateAsync(Model);
             Message = "Done!";
+            GoBack();
         }
         catch (Exception ex)
         {

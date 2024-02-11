@@ -10,6 +10,8 @@ public static class UIServiceExtensions
     {
         services.AddScoped<ConfirmService>();
 
+        services.AddScoped<ToastService>();
+
         services.AddKeyedScoped(
             typeof(Icons).FullName,
             (_, _) =>

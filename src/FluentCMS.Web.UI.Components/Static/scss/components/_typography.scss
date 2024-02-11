@@ -1,6 +1,6 @@
-$text: $prefix + "text";
+$typography: $prefix + "typography";
 
-.#{$text} {
+.#{$typography} {
     @apply text-base dark:text-white;
 
     &-size-h1 {

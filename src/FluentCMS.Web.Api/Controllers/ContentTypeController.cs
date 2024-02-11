@@ -2,6 +2,23 @@
 
 public class ContentTypeController(IMapper mapper, IContentTypeService contentTypeService, IAppService appService) : BaseAppController
 {
+    [HttpGet("{slug}")]
+    public async Task<IApiPagingResult<ContentTypeDetailResponse>> GetBySlug([FromRoute] string slug, [FromRoute] string appSlug, CancellationToken cancellationToken = default)
+    {
+        var app = await appService.GetBySlug(appSlug, cancellationToken);
+        var contentTypes = await contentTypeService.GetBySlug(app.Id, slug, cancellationToken);
+        var contentTypeResponses = mapper.Map<List<ContentTypeDetailResponse>>(contentTypes);
+        return OkPaged(contentTypeResponses);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IApiPagingResult<ContentTypeDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    {
+        var contentTypes = await contentTypeService.GetById(id, cancellationToken);
+        var contentTypeResponses = mapper.Map<List<ContentTypeDetailResponse>>(contentTypes);
+        return OkPaged(contentTypeResponses);
+    }
+
     [HttpGet]
     public async Task<IApiPagingResult<ContentTypeDetailResponse>> GetAll([FromRoute] string appSlug, CancellationToken cancellationToken = default)
     {

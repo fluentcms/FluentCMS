@@ -1,0 +1,126 @@
+﻿<Page>
+    <PageHeader HasBack="false"
+                Title="Content Types List">
+        <PageHeaderActions>
+            <ButtonGroup>
+                <Select @bind-Value="AppSlug" Dense Placeholder="Choose an App..." OnChange="OnAppSlugChanged">
+                    @foreach (var app in Apps)
+                    {
+                        <Option Value="@app.Slug">@app.Title</Option>
+                    }
+                </Select>
+                @if (!string.IsNullOrEmpty(AppSlug))
+                {
+                    <Button Color="Color.Primary"
+                            Href="@($"?PluginDef=ContentType Management&typeName=Create ContentType&appSlug={AppSlug}")">
+                        <Icon Name="IconName.Plus" />
+                        Add Content Type
+                    </Button>
+                }
+            </ButtonGroup>
+        </PageHeaderActions>
+    </PageHeader>
+    <PageBody>
+        <Table>
+            <TableHead>
+                <TableCell>Slug</TableCell>
+                <TableCell>Title</TableCell>
+                <TableCell>Description</TableCell>
+                <TableCell>Actions</TableCell>
+            </TableHead>
+            <TableBody>
+                @foreach (var contentType in ContentTypes) {
+                    <TableRow>
+                        <TableCell> @contentType.Slug </TableCell>
+                        <TableCell> @contentType.Title </TableCell>
+                        <TableCell> @contentType.Description </TableCell>
+                        <TableCell>
+                            <ButtonGroup>
+                                <Button Color="Color.Danger"
+                                        Size="ButtonSize.Small"
+                                        OnClick="(evt) => OnDelete(contentType)">
+                                    <Icon Name="IconName.Delete" />
+                                    Delete
+                                </Button>
+                                <Button Color="Color.Primary"
+                                        Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={contentType.Id}&appSlug={AppSlug}")"
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Edit" />
+                                    Edit
+                                </Button>
+                                <Button Href="@($"?PluginDef=ContentType Management&typeName=ContentType Detail&id={contentType.Id}&appSlug={AppSlug}")"
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Eye" />
+                                    Preview
+                                </Button>
+                            </ButtonGroup>
+                        </TableCell>
+                    </TableRow>
+                }
+            </TableBody>
+        </Table>
+    </PageBody>
+</Page>
+
+@code {
+    [Inject]
+    AppClient AppClient { get; set; } = default!;
+
+    [Inject]
+    ContentTypeClient ContentTypeClient { get; set; } = default!;
+
+    [Inject]
+    NavigationManager NavigationManager { get; set; } = default!;
+
+    [Inject]
+    ConfirmService Confirm { get; set; } = default!;
+
+    string? AppSlug {get; set;}
+
+    List<AppDetailResponse> Apps { get; set; } = [];
+
+    List<ContentTypeDetailResponse> ContentTypes { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var appSlug = NavigationManager.GetAppSlugFromQuery();
+
+        if(!string.IsNullOrEmpty(appSlug))
+        {
+            AppSlug = appSlug;
+            await LoadData();
+        }
+
+        var appResponse = await AppClient!.GetAllAsync();
+
+        if(appResponse?.Data != null)
+        {
+            Apps = appResponse.Data.ToList();
+        }
+    }
+
+    async Task LoadData()
+    {
+        var response = await ContentTypeClient.GetAllAsync(AppSlug);
+
+        if (response?.Data != null)
+        {
+            ContentTypes = response.Data.ToList();
+        }
+    }
+
+    async Task OnAppSlugChanged(string slug) {
+        await LoadData();
+    }
+
+    async Task OnDelete(ContentTypeDetailResponse contentType)
+    {
+        var result = await Confirm.Show("Are you sure you want to remove this contentType?");
+
+        if(result)
+        {
+            await ContentTypeClient.DeleteAsync(AppSlug, contentType.Id);
+            await LoadData();
+        }
+    }
+}
