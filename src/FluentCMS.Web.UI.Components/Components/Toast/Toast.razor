@@ -1,0 +1,36 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+@if (Show)
+{
+    <div @attributes="AdditionalAttributes"
+         class="@this.GetClasses()"
+         role="alert">
+        <div>
+            @ChildContent
+        </div>
+        @if (Dismissible)
+        {
+            <CloseButton class="@this.ClassName("ToastClose")"
+                         OnClick="Close" />
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool Dismissible { get; set; } = false;
+
+    [Parameter]
+    public bool Show { get; set; } = true;
+
+    [Parameter]
+    [CssProperty]
+    public ToastType Type { get; set; }
+
+    public void Close()
+    {
+        Show = false;
+    }
+}
