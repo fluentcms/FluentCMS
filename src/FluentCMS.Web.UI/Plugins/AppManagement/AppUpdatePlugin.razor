@@ -5,20 +5,24 @@
     <PageBody>
         <Grid Gutter="GridGutter.Medium">
             <GridItem Small="GridItemColumn.Twelve">
-                <Form OnSubmit="OnSubmit">
+                <Form Model="@Model"
+                      OnSubmit="OnSubmit">
                     <Card>
                         <CardBody>
                             <Input @bind-Value="Model.Slug"
                                    Label="Slug"
+                                   Name="Slug"
                                    Placeholder="Enter App Slug..."
                                    Readonly="true"
                                    Required="true" />
                             <Input @bind-Value="Model.Title"
                                    Label="Title"
+                                   Name="Slug"
                                    Placeholder="Enter App Title..."
                                    Required="true"/>
                             <Textarea @bind-Value="Model.Description"
                                    Label="Description"
+                                   Name="Description"
                                    Placeholder="Enter App Description..." />
                             <Spacer/>
                             @if(!string.IsNullOrEmpty(Message))
