@@ -131,3 +131,37 @@ In areas with technical debt or uncertainty, utilize the term `TODO` as a commen
 [Parameter]
 public bool Sub { get; set; }
 ```
+
+## Naming
+
+use `PascalCase` for public members (Properties, Methods) and `camelCase` for private members, local variables and arguments.
+
+```csharp
+// public property
+public string Foo {get; set;}
+
+// public method
+public void Foo(){
+    ...
+}
+
+// private field
+private string foo;
+
+// private method
+private void foo(){
+    ...
+}
+
+// local variable
+var foo = ...;
+
+// arguments
+public void Foo(string bar){
+    ...
+}
+
+private void foo(string bar){
+    ...
+}
+```
