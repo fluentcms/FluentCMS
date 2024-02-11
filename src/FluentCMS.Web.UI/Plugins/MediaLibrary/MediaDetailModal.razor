@@ -1,0 +1,13 @@
+<Modal @bind-Open="Open">
+    Media Detail
+
+</Modal>
+
+@code {
+    [Parameter]
+    public bool Open {get; set;} = false;
+
+    [Parameter]
+    public EventCallback<bool> OpenChanged {get; set;}
+
+}

@@ -1,0 +1,108 @@
+<Page>
+    <PageHeader Title="Media Library" >
+        <ButtonGroup>
+            <Button Outline="true"
+                    OnClick="OpenAddFolder">
+                <Icon Name="IconName.Plus" />
+                Add New Folder
+            </Button>
+            <Button Color="Color.Primary"
+                    OnClick="OpenUploadModal">
+                <Icon Name="IconName.Plus" />
+                Add New Asset
+            </Button>
+        </ButtonGroup>
+    </PageHeader>
+
+    <PageBody>
+        <Spacer/>
+        <Typography Size="TextSize.H4">
+            Folders
+        </Typography>
+        <Spacer/>
+        <Grid GutterX="GridGutter.Large">
+            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six" Large="GridItemColumn.Four">
+                <Card>
+                    <CardBody>
+                        <Grid>
+                            <GridItem Small="GridItemColumn.Grow">
+                               Folder 1
+                            </GridItem>
+                            <GridItem Small="GridItemColumn.Auto">
+                                <Button Color="Color.Danger"
+                                        Ghost
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Delete"/>
+                                </Button>
+                            </GridItem>
+                        </Grid>
+                    </CardBody>
+                </Card>
+            </GridItem>
+
+            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six" Large="GridItemColumn.Four">
+                <Card>
+                    <CardBody>
+                        <img src="/images/image1.jpeg"/>
+                        <Spacer/>
+                        <Grid>
+                            <GridItem Small="GridItemColumn.Grow">
+                                image1.jpeg
+                            </GridItem>
+                            <GridItem Small="GridItemColumn.Auto">
+                                <Button Color="Color.Danger"
+                                        Ghost
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Delete"/>
+                                </Button>
+                            </GridItem>
+                        </Grid>
+                    </CardBody>
+                </Card>
+            </GridItem>
+        </Grid>
+        <Spacer/>
+
+        <Typography Size="TextSize.H4">
+            Files
+        </Typography>
+        <Spacer/>
+    </PageBody>
+</Page>
+
+<MediaDetailModal/>
+
+<MediaFolderModal Open="FolderModalOpen"
+                  Title="FolderModalTitle"
+                  OnCancel="OnFolderModalCancel"
+                  OnSubmit="OnFolderModalSubmit"/>
+
+@code {
+
+    bool FolderModalOpen = false;
+
+    bool UploadModalOpen = false;
+
+    string FolderModalTitle;
+
+    void OnFolderModalCancel()
+    {
+        FolderModalOpen = false;
+    }
+
+    void OpenAddFolder()
+    {
+        FolderModalTitle = "Add Folder";
+        FolderModalOpen = true;
+    }
+
+    void OpenUploadModal()
+    {
+        UploadModalOpen = true;
+    }
+
+    async Task OnFolderModalSubmit(string value)
+    {
+        Console.WriteLine(value);
+    }
+}
