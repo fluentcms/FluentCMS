@@ -413,7 +413,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -1004,7 +1004,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -1231,7 +1231,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -1771,7 +1771,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -1807,12 +1807,12 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetByIdAsync(System.Guid id, string appSlug);
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetByIdAsync(System.Guid id, string appSlug);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetByIdAsync(System.Guid id, string appSlug, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetByIdAsync(System.Guid id, string appSlug, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -1985,7 +1985,7 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetByIdAsync(System.Guid id, string appSlug)
+        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetByIdAsync(System.Guid id, string appSlug)
         {
             return GetByIdAsync(id, appSlug, System.Threading.CancellationToken.None);
         }
@@ -1993,7 +1993,7 @@ namespace FluentCMS.Web.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetByIdAsync(System.Guid id, string appSlug, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetByIdAsync(System.Guid id, string appSlug, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -2043,7 +2043,7 @@ namespace FluentCMS.Web.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<ContentTypeDetailResponseIApiPagingResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<ContentTypeDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -2684,7 +2684,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -3002,7 +3002,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -3298,12 +3298,12 @@ namespace FluentCMS.Web.ApiClients
 
                     // Operation Path: "api/global/Page/GetByUrl"
                     urlBuilder_.Append("api/global/Page/GetByUrl");
-            urlBuilder_.Append('?');
-            if (url != null)
-            {
-                urlBuilder_.Append(System.Uri.EscapeDataString("url")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(url, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
-            }
-            urlBuilder_.Length--;
+                    urlBuilder_.Append('?');
+                    if (url != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("url")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(url, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -3690,7 +3690,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -4285,7 +4285,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -4603,7 +4603,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -5123,7 +5123,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -5616,7 +5616,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -6298,7 +6298,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -6798,7 +6798,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -8554,10 +8554,10 @@ namespace FluentCMS.Web.ApiClients
 
 }
 
-#pragma warning restore  108
-#pragma warning restore  114
-#pragma warning restore  472
-#pragma warning restore  612
+#pragma warning restore 108
+#pragma warning restore 114
+#pragma warning restore 472
+#pragma warning restore 612
 #pragma warning restore 1573
 #pragma warning restore 1591
 #pragma warning restore 8073
