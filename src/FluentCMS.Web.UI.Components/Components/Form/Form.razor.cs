@@ -48,6 +48,7 @@ public abstract class FormElementsValuable<T> : FormElements
             {
                 CurrentValue = value;
                 ValueChanged.InvokeAsync(value);
+                OnChange.InvokeAsync(value);
             }
         }
     }
