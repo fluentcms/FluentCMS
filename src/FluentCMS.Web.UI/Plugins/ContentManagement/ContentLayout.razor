@@ -16,9 +16,9 @@
                 }
                 else
                 {
-                    <Select Dense
+                    <Select Dense="true"
                             Placeholder="Choose an App..."
-                            OnChange="OnChangeApp">
+                            ValueChanged="OnChangeApp">
                         @foreach (var app in Apps)
                         {
                             <Option Value="@app.Slug">@app.Title</Option>

@@ -2,7 +2,9 @@
     <Page>
         <PageHeader Title="@PageTitle" />
         <PageBody>
-            <Form OnSubmit="OnSubmit">
+            @* TODO: Model.Value*@
+            <Form Model="@Model"
+                  OnSubmit="OnSubmit">
                 <Card>
                     <CardBody>
                         @foreach (var field in Fields)
