@@ -17,7 +17,7 @@
                     <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">FluentCMS</span>
                 </a>
             </div>
-            
+
         </div>
     </nav>
     <div class="relative flex h-full w-full flex-1">
@@ -50,6 +50,11 @@
                     <li>
                         <a href="/admin/content-types" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
                             <span class="ml-3">Content-Type Builder</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/media" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
+                            <span class="ml-3">Media Library</span>
                         </a>
                     </li>
                     <li>
@@ -103,7 +108,7 @@
 <script>
     document.querySelector('[data-drawer-target="drawer-navigation"]').addEventListener('click', () => {
         document.getElementById('drawer-navigation').classList.toggle('-translate-x-full');
-    })    
+    })
     document.getElementById('drawer-navigation').addEventListener('click', () => {
         document.getElementById('drawer-navigation').classList.add('-translate-x-full');
     })

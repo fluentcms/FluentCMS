@@ -5,7 +5,8 @@
     <PageBody>
         <Grid Gutter="GridGutter.Medium">
             <GridItem Small="GridItemColumn.Twelve">
-                <Form OnSubmit="OnSubmit">
+                <Form Model="@Model"
+                      OnSubmit="OnSubmit">
                     <Card>
                         <CardBody>
                             <Input @bind-Value="Model.Username"

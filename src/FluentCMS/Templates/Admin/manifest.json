@@ -70,6 +70,17 @@
             ]
         },
         {
+            "Name": "Media Library",
+            "Description": "Media Library Plugin",
+            "Types": [
+                {
+                    "Name": "Media List",
+                    "Type": "MediaListPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
             "Name": "User Management",
             "Description": "Users Management Plugin",
             "Types": [
@@ -204,6 +215,16 @@
                     "Plugins": [
                         {
                             "Definition": "ContentType Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Media Library",
+                    "Path": "/media",
+                    "Plugins": [
+                        {
+                            "Definition": "Media Library",
                             "Section": "Main"
                         }
                     ]

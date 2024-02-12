@@ -5,7 +5,8 @@
             <ModalTitle>@Title</ModalTitle>
         </ModalHeader>
         <ModalBody>
-            <Form OnSubmit="OnFormSubmit">
+            <Form Model="@Model"
+                  OnSubmit="OnFormSubmit">
                 <Tabs @bind-Value="ActiveTab">
                     <TabsList>
                         <TabsTab Name="tab-general">General</TabsTab>
