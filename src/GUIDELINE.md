@@ -134,9 +134,7 @@ public bool Sub { get; set; }
 
 ## Naming
 
-microsoft already has a set of well established naming conventions [Naming rules](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/identifier-names#naming-rules) 
-
-# C# Naming Conventions
+Microsoft already has a set of well established naming conventions [Naming rules](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/identifier-names#naming-rules) 
 
 When writing C# code, following consistent naming conventions is essential for readability, maintainability, and collaboration within a development team. Here are the key guidelines for naming identifiers:
 
