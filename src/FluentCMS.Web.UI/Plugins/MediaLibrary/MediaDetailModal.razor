@@ -1,0 +1,84 @@
+<Modal @bind-Open="Open"
+       Size="ModalSize.Large">
+    <ModalHeader>
+        <ModalTitle>File Details</ModalTitle>
+    </ModalHeader>
+    <ModalBody>
+        <Grid Gutter="GridGutter.Large">
+            <GridItem Small="GridItemColumn.Twelve"
+                      Large="GridItemColumn.Seven">
+                <img src="https://flowbite.s3.amazonaws.com/blocks/application-ui/products/imac-front-image.png"
+                     class="w-full h-[240px] lg:h-[540px] object-contain"/>
+
+            </GridItem>
+            <GridItem Small="GridItemColumn.Twelve"
+                      Large="GridItemColumn.Five">
+                <Form Model="model"
+                      OnSubmit="OnFormSubmit">
+                    <Grid GutterX="GridGutter.Large">
+                        <GridItem Small="GridItemColumn.Twelve"
+                                  Medium="GridItemColumn.Six"
+                                  Large="GridItemColumn.Twelve">
+                            <Input Label="Name"/>
+                        </GridItem>
+                        <GridItem Small="GridItemColumn.Twelve"
+                                  Medium="GridItemColumn.Six"
+                                  Large="GridItemColumn.Twelve">
+                            <Input Label="Alt text"/>
+                        </GridItem>
+                        <GridItem Small="GridItemColumn.Twelve"
+                                  Medium="GridItemColumn.Six"
+                                  Large="GridItemColumn.Twelve">
+                            <Input Label="Caption"/>
+                        </GridItem>
+
+                        <GridItem Small="GridItemColumn.Twelve"
+                                  Medium="GridItemColumn.Six"
+                                  Large="GridItemColumn.Twelve">
+                            <Select Label="Location">
+                                <Option>Folder 1</Option>
+                                <Option>Folder 2</Option>
+                                <Option>Folder 3</Option>
+                            </Select>
+                        </GridItem>
+                    </Grid>
+
+                    <Spacer/>
+                    <ButtonGroup>
+                        <Button OnClick="() => OnCancel.InvokeAsync()">
+                            Cancel
+                        </Button>
+                        <Button Color="Color.Primary"
+                                Type="ButtonType.Submit">
+                            Submit
+                        </Button>
+                    </ButtonGroup>
+                </Form>
+            </GridItem>
+        </Grid>
+    </ModalBody>
+</Modal>
+
+@code {
+    [Parameter]
+    public bool EditMode {get; set;}
+
+    [Parameter]
+    public bool Open {get; set;}
+
+    [Parameter]
+    public EventCallback<bool> OnCancel {get; set;}
+
+    [Parameter]
+    public EventCallback<string> OnSubmit {get; set;}
+
+    [Parameter]
+    public string Title {get; set; }
+
+    object model {get; set;} = new();
+
+    void OnFormSubmit()
+    {
+        OnSubmit.InvokeAsync("value");
+    }
+}

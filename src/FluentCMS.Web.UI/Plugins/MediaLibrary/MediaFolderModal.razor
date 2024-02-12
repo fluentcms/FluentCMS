@@ -1,0 +1,69 @@
+<Modal @bind-Open="Open"
+       Size="ModalSize.Large">
+    <ModalHeader>
+        <ModalTitle>@Title</ModalTitle>
+    </ModalHeader>
+    <ModalBody>
+        @if (EditMode)
+        {
+            <Card class="bg-gray-100 dark:bg-gray-800">
+                <CardBody>
+                    <Typography>
+                        Details...
+                    </Typography>
+                </CardBody>
+            </Card>
+        }
+        <Form Model="@model"
+              OnSubmit="OnFormSubmit">
+            <Grid Gutter="GridGutter.Large">
+                <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
+                    <Input Label="Folder"/>
+                </GridItem>
+
+                <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
+                    <Select Label="Location">
+                        <Option>Folder 1</Option>
+                        <Option>Folder 2</Option>
+                        <Option>Folder 3</Option>
+                    </Select>
+                </GridItem>
+            </Grid>
+
+                <ButtonGroup>
+                    <Button OnClick="() => OnCancel.InvokeAsync()">
+                        Cancel
+                    </Button>
+                    <Button Color="Color.Primary"
+                            Type="ButtonType.Submit">
+                        Submit
+                    </Button>
+                </ButtonGroup>
+        </Form>
+    </ModalBody>
+
+</Modal>
+
+@code {
+    [Parameter]
+    public bool EditMode {get; set;}
+
+    [Parameter]
+    public bool Open {get; set;}
+
+    [Parameter]
+    public EventCallback<bool> OnCancel {get; set;}
+
+    [Parameter]
+    public EventCallback<string> OnSubmit {get; set;}
+
+    [Parameter]
+    public string Title {get; set; }
+
+    object model {get; set;} = new();
+
+    void OnFormSubmit()
+    {
+        OnSubmit.InvokeAsync("value");
+    }
+}
