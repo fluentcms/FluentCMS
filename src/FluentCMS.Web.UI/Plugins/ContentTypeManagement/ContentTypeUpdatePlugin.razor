@@ -43,26 +43,32 @@
                                         @foreach (var field in Fields)
                                         {
                                             <TableRow>
-                                                <TableCell>@field.Slug</TableCell>
-                                                    <TableCell>@field.Title</TableCell>
-                                                    <TableCell>Text</TableCell>
-                                                    <TableCell>
-                                                        <ButtonGroup>
-                                                            <Button Color="Color.Danger"
-                                                                    Size="ButtonSize.Small"
-                                                                    OnClick="() => OnDeleteField(field.Slug)">
-                                                                <Icon Name="IconName.Delete" />
-                                                                Delete
-                                                            </Button>
-                                                            <Button Color="Color.Primary"
-                                                                    Size="ButtonSize.Small"
-                                                                    OnClick="() => OnEditField(field)">
-                                                                <Icon Name="IconName.Edit" />
-                                                                Edit
-                                                            </Button>
-                                                        </ButtonGroup>
-                                                    </TableCell>
-                                                </TableRow>
+                                                <TableCell>
+                                                    @field.Slug
+                                                </TableCell>
+                                                <TableCell>
+                                                    @field.Title
+                                                </TableCell>
+                                                <TableCell>
+                                                    Text
+                                                </TableCell>
+                                                <TableCell>
+                                                    <ButtonGroup>
+                                                        <Button Color="Color.Danger"
+                                                                Size="ButtonSize.Small"
+                                                                OnClick="() => OnDeleteField(field.Slug)">
+                                                            <Icon Name="IconName.Delete" />
+                                                            Delete
+                                                        </Button>
+                                                        <Button Color="Color.Primary"
+                                                                Size="ButtonSize.Small"
+                                                                OnClick="() => OnEditField(field)">
+                                                            <Icon Name="IconName.Edit" />
+                                                            Edit
+                                                        </Button>
+                                                    </ButtonGroup>
+                                                </TableCell>
+                                            </TableRow>
                                         }
                                         <TableRow>
                                             <TableCell colspan="4">
