@@ -1798,12 +1798,12 @@ namespace FluentCMS.Web.ApiClients
     {
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetBySlugAsync(string slug, string appSlug);
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetBySlugAsync(string slug, string appSlug);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetBySlugAsync(string slug, string appSlug, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetBySlugAsync(string slug, string appSlug, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -1898,7 +1898,7 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetBySlugAsync(string slug, string appSlug)
+        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetBySlugAsync(string slug, string appSlug)
         {
             return GetBySlugAsync(slug, appSlug, System.Threading.CancellationToken.None);
         }
@@ -1906,7 +1906,7 @@ namespace FluentCMS.Web.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetBySlugAsync(string slug, string appSlug, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetBySlugAsync(string slug, string appSlug, System.Threading.CancellationToken cancellationToken)
         {
             if (slug == null)
                 throw new System.ArgumentNullException("slug");
@@ -1956,7 +1956,7 @@ namespace FluentCMS.Web.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<ContentTypeDetailResponseIApiPagingResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<ContentTypeDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
