@@ -33,7 +33,6 @@
         {
             @if (Appearance == FormFieldAppearance.Switch)
             {
-
                 <label class="relative inline-flex items-center cursor-pointer">
                     @ChildContent
                     <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">
@@ -82,9 +81,19 @@
     </div>
     @if (!Dense)
     {
-        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            @(Errors.FirstOrDefault() ?? Hint ?? "\u00A0")
-        </p>
+        @if (string.IsNullOrEmpty(Errors.FirstOrDefault()))
+        {
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                @(Hint ?? "\u00A0")
+            </p>
+        }
+        else
+        {
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400"
+               id="@(Id)Error">
+                @Errors.FirstOrDefault()
+            </p>
+        }
         <Spacer />
     }
 </div>
