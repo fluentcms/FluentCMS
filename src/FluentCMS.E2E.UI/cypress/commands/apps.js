@@ -1,6 +1,4 @@
 Cypress.Commands.add('cleanApp', () => {
-    cy.navigateToAppListPage()
-
     cy.get('.f-table-body').then(value => {
         console.log(value)
         if (value.children().length > 0) {
@@ -14,9 +12,7 @@ Cypress.Commands.add('cleanApp', () => {
 })
 
 Cypress.Commands.add('navigateToAppCreatePage', () => {
-    cy.visit('/').shortWait()
-
-    cy.get('#adminSidebarAppsLink').click()
+    cy.navigateToAppListPage()
     cy.get('#appCreateButton').click()
 
     cy.contains('Create App').should('be.visible')
@@ -37,10 +33,7 @@ Cypress.Commands.add('navigateToAppListPage', () => {
 })
 
 Cypress.Commands.add('checkAppCreateCancel', () => {
-    cy.navigateToAppCreatePage();
-
     cy.get('#appCreateTitleInput').type('something')
-
     cy.get('#appCreateCancelButton').click()
 
     // TODO: redirect
@@ -49,9 +42,6 @@ Cypress.Commands.add('checkAppCreateCancel', () => {
 })
 
 Cypress.Commands.add('checkAppCreate', () => {
-    cy.navigateToAppCreatePage()
-
-    // fill form
     cy.get('#appCreateTitleInput').type('First App')
     cy.get('#appCreateSlugInput').type('first-app')
     cy.get('#appCreateDescriptionInput').type('Description of first app')
@@ -67,8 +57,6 @@ Cypress.Commands.add('checkAppCreate', () => {
 })
 
 Cypress.Commands.add('checkAppUpdateCancel', () => {
-    cy.navigateToAppListPage()
-
     cy.get('.f-table-body .f-table-row').each(($el, index, $list) => {
         cy.wrap($el).find('.f-table-cell').contains('first-app').then($column => {
             if ($column.length > 0) {
@@ -86,8 +74,6 @@ Cypress.Commands.add('checkAppUpdateCancel', () => {
 })
 
 Cypress.Commands.add('checkAppUpdate', () => {
-    cy.navigateToAppListPage()
-
     cy.get('.f-table-body .f-table-row').each(($el, index, $list) => {
         cy.wrap($el).find('.f-table-cell').contains('first-app').then($column => {
             if ($column.length > 0) {
@@ -105,15 +91,10 @@ Cypress.Commands.add('checkAppUpdate', () => {
 })
 
 Cypress.Commands.add('checkAppList', () => {
-    // check list of apps should work
-    cy.navigateToAppListPage()
-
     cy.get('.f-table-body .f-table-row').contains('Updated title')
 })
 
 Cypress.Commands.add('checkAppDeleteCancel', () => {
-    cy.navigateToAppListPage()
-
     cy.get('.f-table-body .f-table-row').each(($el, index, $list) => {
         cy.wrap($el).find('.f-table-cell').contains('first-app').then($column => {
             if ($column.length > 0) {
@@ -130,8 +111,6 @@ Cypress.Commands.add('checkAppDeleteCancel', () => {
 })
 
 Cypress.Commands.add('checkAppDelete', () => {
-    cy.navigateToAppListPage()
-
     cy.get('.f-table-body .f-table-row').each(($el, index, $list) => {
         cy.wrap($el).find('.f-table-cell').contains('first-app').then($column => {
             if ($column.length > 0) {
