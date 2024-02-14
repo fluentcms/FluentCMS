@@ -23,8 +23,8 @@
         </div>
     </nav>
     <div class="relative flex h-full w-full flex-1">
-        <aside class="fixed top-0 left-0 z-40 w-64 h-screen pt-14 lg:pt-0 transition-transform -translate-x-full bg-white border-r border-gray-200 lg:translate-x-0 dark:bg-gray-800 dark:border-gray-700" aria-label="Sidenav" id="adminSidebar">
-            <div class="overflow-y-auto py-5 px-3 h-full bg-white dark:bg-gray-800">
+        <aside class="fixed top-0 left-0 z-40 w-64 h-screen pt-14 lg:pt-0 transition-transform -translate-x-full bg-white border-r border-gray-200 lg:translate-x-0 dark:bg-gray-800 dark:border-gray-700 flex flex-col overflow-y-auto " aria-label="Sidenav" id="adminSidebar">
+            <div class="py-5 px-3 bg-white dark:bg-gray-800 grow">
                 <a href="/" class="items-center pl-2.5 mb-5 hidden lg:flex" id="adminSidebarLogoLink">
                     <img src="https://flowbite.s3.amazonaws.com/logo.svg" class="h-8 mr-3" alt="FluentCMS Logo" />
                     <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">FluentCMS</span>
@@ -95,7 +95,7 @@
                     </li>
                 </ul>
             </div>
-            <div class="hidden absolute bottom-0 left-0 justify-center p-4 space-x-4 w-full lg:flex bg-white dark:bg-gray-800 z-20">
+            <div class="justify-center p-4 space-x-4 w-full flex bg-white dark:bg-gray-800 z-20">
                 <ThemeSwitcher id="adminThemeButton" fluentcms />
             </div>
         </aside>
