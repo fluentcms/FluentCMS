@@ -10,32 +10,35 @@
                     <Card>
                         <CardBody>
                             <Input @bind-Value="Model.Title"
+                                   Id="appCreateTitleInput"
                                    Label="Title"
                                    Name="Title"
                                    Placeholder="Enter App Title..."
-                                   Required="true"/>
+                                   Required="true" />
                             <Input @bind-Value="Model.Slug"
+                                   Id="appCreateSlugInput"
                                    Label="Slug"
                                    Name="Slug"
                                    Placeholder="Enter App Slug..."
                                    Required="true" />
                             <Textarea @bind-Value="Model.Description"
-                                   Label="Description"
-                                   Name="Description"
-                                   Placeholder="Enter Textarea..." />
-                            <Spacer/>
-                            @if(!string.IsNullOrEmpty(Message))
+                                      Id="appCreateDescriptionInput"
+                                      Label="Description"
+                                      Name="Description"
+                                      Placeholder="Enter Textarea..." />
+                            <Spacer />
+                            @if (!string.IsNullOrEmpty(Message))
                             {
                                 <Typography>
                                     @Message
                                 </Typography>
-                                <Spacer/>
+                                <Spacer />
                             }
                             <ButtonGroup>
-                                <Button OnClick="GoBack">
+                                <Button Id="appCreateCancelButton" OnClick="GoBack">
                                     Cancel
                                 </Button>
-                                <Button Color="Color.Primary"
+                                <Button Id="appCreateSubmitButton" Color="Color.Primary"
                                         Type="ButtonType.Submit">
                                     Save
                                 </Button>
