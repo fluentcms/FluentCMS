@@ -10,10 +10,10 @@
                     <Card>
                         <CardBody>
                             <Select @bind-Value="AppSlug"
-                                   Disabled="true"
-                                   Label="App"
-                                   Placeholder="Choose App..."
-                                   Required="true">
+                                    Disabled="true"
+                                    Label="App"
+                                    Placeholder="Choose App..."
+                                    Required="true">
                                 @foreach (var app in Apps)
                                 {
                                     <Option Value="@app.Slug">@app.Title</Option>
@@ -26,11 +26,11 @@
                             <Input @bind-Value="Model.Title"
                                    Label="Title"
                                    Placeholder="Enter Title..."
-                                   Required="true"/>
+                                   Required="true" />
                             <Textarea @bind-Value="Model.Description"
-                                   Label="Description"
-                                   Placeholder="Enter Description..." />
-                            <Spacer/>
+                                      Label="Description"
+                                      Placeholder="Enter Description..." />
+                            <Spacer />
                             <FormField Appearance="FormFieldAppearance.Input" Label="Fields">
                                 <Table>
                                     <TableHead>
@@ -43,9 +43,15 @@
                                         @foreach (var field in Fields)
                                         {
                                             <TableRow>
-                                                <TableCell>@field.Slug</TableCell>
-                                                <TableCell>@field.Title</TableCell>
-                                                <TableCell>Text</TableCell>
+                                                <TableCell>
+                                                    @field.Slug
+                                                </TableCell>
+                                                <TableCell>
+                                                    @field.Title
+                                                </TableCell>
+                                                <TableCell>
+                                                    Text
+                                                </TableCell>
                                                 <TableCell>
                                                     <ButtonGroup>
                                                         <Button Color="Color.Danger"
@@ -78,12 +84,12 @@
                                 </Table>
 
                             </FormField>
-                            @if(!string.IsNullOrEmpty(Message))
+                            @if (!string.IsNullOrEmpty(Message))
                             {
                                 <Typography>
                                     @Message
                                 </Typography>
-                                <Spacer/>
+                                <Spacer />
                             }
                             <ButtonGroup>
                                 <Button OnClick="GoBack">
@@ -107,7 +113,7 @@
                        Open="FieldModalOpen"
                        Title="@FieldModalTitle"
                        OnCancel="CloseFieldModal"
-                       OnSubmit="OnSubmitField"/>
+                       OnSubmit="OnSubmitField" />
 
 @code {
     [Inject]
@@ -157,18 +163,19 @@
 
     async Task OnEditField(ContentTypeField field)
     {
-        FieldModel = new ContentTypeField {
-            Slug = field.Slug,
-            Title = field.Title,
-            Description = field.Description,
+        FieldModel = new ContentTypeField
+            {
+                Slug = field.Slug,
+                Title = field.Title,
+                Description = field.Description,
 
-            IsRequired = field.IsRequired,
-            Label = field.Label,
-            Hint = field.Hint,
-            Placeholder = field.Placeholder,
-            DefaultValue = field.DefaultValue,
+                IsRequired = field.IsRequired,
+                Label = field.Label,
+                Hint = field.Hint,
+                Placeholder = field.Placeholder,
+                DefaultValue = field.DefaultValue,
 
-        };
+            };
         FieldModalTitle = "Edit Field";
         FieldModalOpen = true;
     }
@@ -177,30 +184,31 @@
     {
         var result = await Confirm.Show("Are you sure to remove this Field?");
 
-        if(result)
+        if (result)
         {
             var response = await ContentTypeClient.DeleteFieldAsync(AppSlug, View.Id, fieldName);
 
-            if(response?.Data != null)
+            if (response?.Data != null)
             {
-                Fields = response.Data.Fields.ToList();
+                Fields = (response.Data.Fields ?? []).ToList();
             }
         }
     }
 
     void OpenAddFieldModal()
     {
-        FieldModel = new ContentTypeField {
-            Slug = "",
-            Title = "",
-            Description = "",
+        FieldModel = new ContentTypeField
+            {
+                Slug = "",
+                Title = "",
+                Description = "",
 
-            IsRequired = false,
-            Label = "",
-            Hint = "",
-            Placeholder = "",
-            DefaultValue = "",
-        };
+                IsRequired = false,
+                Label = "",
+                Hint = "",
+                Placeholder = "",
+                DefaultValue = "",
+            };
 
         FieldModalTitle = "Add Field";
         FieldModalOpen = true;
@@ -213,17 +221,17 @@
 
         var appResponse = await AppClient.GetAllAsync();
 
-        if(appResponse?.Data != null)
+        if (appResponse?.Data != null)
         {
             Apps = appResponse.Data.ToList();
         }
 
-        var response = await ContentTypeClient.GetAllAsync(AppSlug);
+        var response = await ContentTypeClient.GetByIdAsync(Id!.Value, AppSlug!);
 
-        if(response?.Data != null)
+        if (response?.Data != null)
         {
-            View = response.Data.ToList().Find(x => x.Id == Id);
-            Fields = View.Fields.ToList();
+            View = response.Data;
+            Fields = (View.Fields ?? []).ToList();
 
             Model.Id = View.Id;
             Model.Title = View.Title;
@@ -249,7 +257,7 @@
         {
             var updatedContentType = await ContentTypeClient.UpdateAsync(AppSlug, Model);
             Message = "Done!";
-            GoBack();
+            await GoBack();
         }
         catch (Exception ex)
         {

@@ -12,11 +12,11 @@ public class ContentTypeController(IMapper mapper, IContentTypeService contentTy
     }
 
     [HttpGet("{id}")]
-    public async Task<IApiPagingResult<ContentTypeDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<ContentTypeDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var contentTypes = await contentTypeService.GetById(id, cancellationToken);
-        var contentTypeResponses = mapper.Map<List<ContentTypeDetailResponse>>(contentTypes);
-        return OkPaged(contentTypeResponses);
+        var contentTypeResponses = mapper.Map<ContentTypeDetailResponse>(contentTypes);
+        return Ok(contentTypeResponses);
     }
 
     [HttpGet]
