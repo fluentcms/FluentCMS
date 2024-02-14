@@ -37,3 +37,10 @@ Cypress.Commands.add('elementShouldAvailable', (selector) => {
 Cypress.Commands.add('elementShouldUnavailable', (selector) => {
     cy.get(selector).should('not.exist')
 })
+
+Cypress.Commands.add('dashboardShouldAvailable', () => {
+    cy.get('main')
+        .invoke('text')
+        .then(text => text.trim())
+        .should('be.empty')
+})
