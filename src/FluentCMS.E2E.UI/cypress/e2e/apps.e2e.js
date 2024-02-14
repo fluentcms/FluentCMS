@@ -3,6 +3,10 @@ describe('Apps CRUD', () => {
     // TODO: cy.doSetup() [submit setup form if didn't submitted before]
     cy.cleanApp()
   })
+
+  it('Should not create app', () => {
+    cy.checkAppCreateCancel();
+  })
   
   it('Should create app', () => {
     cy.checkAppCreate();
@@ -12,6 +16,14 @@ describe('Apps CRUD', () => {
     cy.checkAppList();
   })
 
+  it('Should not update app', () => {
+    cy.checkAppUpdateCancel();
+  })
+
+  it('Should update app', () => {
+    cy.checkAppUpdate();
+  })
+
   it('Should not delete app', () => {
     cy.checkAppDeleteCancel();
   })
@@ -19,9 +31,4 @@ describe('Apps CRUD', () => {
   it('Should delete app', () => {
     cy.checkAppDelete();
   })
-
-  it('Cancel button should work', () => {
-    cy.checkAppCreateCancel();
-  })
-
 })
