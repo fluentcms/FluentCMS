@@ -1,0 +1,9 @@
+{
+    "name": "fluentcms.e2e.ui",
+    "scripts": {
+        "test": "cypress open"
+    },
+    "devDependencies": {
+        "cypress": "^13.6.4"
+    }
+}
