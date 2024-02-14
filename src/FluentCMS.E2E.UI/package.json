@@ -1,5 +1,5 @@
 {
-    "name": "fluentcms.e2e.ui",
+    "name": "fluentcms.e2e",
     "scripts": {
         "test": "cypress open"
     },
