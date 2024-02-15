@@ -1,4 +1,5 @@
 Cypress.Commands.add('cleanApp', () => {
+    cy.navigateToAppListPage()
     cy.get('.f-table-body').then(value => {
         console.log(value)
         if (value.children().length > 0) {
@@ -41,6 +42,11 @@ Cypress.Commands.add('createApp', (title, slug, description) => {
     cy.get('#appCreateSubmitButton').click()
     
     cy.go('back')
+})
+
+Cypress.Commands.add('createSampleApps', () => {
+    cy.createApp("First", 'first', 'First App')
+    cy.createApp("Second", 'second', 'Second App')
 })
 
 Cypress.Commands.add('checkAppCreateCancel', () => {

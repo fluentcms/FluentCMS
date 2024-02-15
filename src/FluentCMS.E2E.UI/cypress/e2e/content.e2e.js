@@ -1,7 +1,6 @@
 describe('Content CRUD', () => {
   before(() => {
     cy.doSetup()
-    cy.navigateToContentList()
     cy.cleanContent()
   })
 
