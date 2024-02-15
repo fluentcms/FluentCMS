@@ -3,6 +3,8 @@ using HtmlAgilityPack;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.AspNetCore.Components.Sections;
+using System.Reflection;
 
 namespace FluentCMS.Web.UI;
 
@@ -98,7 +100,6 @@ public partial class Default : IDisposable
                 {
                     builder.AddAttribute(2, attribute.Name, attribute.Value);
                 }
-
                 // add children
                 if (child.HasChildNodes)
                     AddChildrenToDom(builder, child.ChildNodes);
@@ -120,9 +121,10 @@ public partial class Default : IDisposable
                     builder.OpenComponent(1, typeof(LayoutView));
                     // add layout attribute
                     builder.AddComponentParameter(2, "Layout", type);
-                    // add children
-                    builder.AddAttribute(3, "ChildContent",
+
+                    builder.AddAttribute(4, "ChildContent",
                         (RenderFragment)((b) => AddChildrenToDom(b, child.ChildNodes)));
+
                     builder.CloseComponent();
                 }
                 else
@@ -132,10 +134,18 @@ public partial class Default : IDisposable
                     // filter out FluentCMS
                     var attributes = child.Attributes.Where(x =>
                         !x.Name.Equals(ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase));
+
+
+
                     foreach (var attribute in attributes)
                     {
-                        builder.AddComponentParameter(2, attribute.Name, attribute.Value);
-                        builder.AddComponentParameter(3, "Page", Page);
+                        // cast attributeTypes
+
+                        builder.AddComponentParameter(2, attribute.OriginalName, CastToProperty(attribute.Value, attribute.OriginalName, type));
+                        if (type.GetProperties().Any(x => x.Name == "Page"))
+                        {
+                            builder.AddComponentParameter(3, "Page", Page);
+                        }
                     }
 
                     // add children
@@ -143,8 +153,25 @@ public partial class Default : IDisposable
                     // check if has children
                     if (child.HasChildNodes)
                     {
-                        builder.AddAttribute(2, "ChildContent",
-                            (RenderFragment)((b) => AddChildrenToDom(b, child.ChildNodes)));
+                        var fragments = type.GetProperties().Where(x => x.PropertyType == typeof(RenderFragment)).Select(x => x.Name).ToList();
+                        if (!fragments.Any())
+                        {
+                            fragments = ["ChildContent"];
+                        }
+                        foreach (var fragment in fragments)
+                        {
+                            HtmlNodeCollection nodes;
+                            if (child.ChildNodes.Any(x => x.OriginalName == fragment))
+                            {
+                                nodes = child.ChildNodes.Single(x => x.OriginalName == fragment).ChildNodes;
+                            }
+                            else
+                            {
+                                nodes = child.ChildNodes;
+                            }
+                            builder.AddAttribute(2, fragment, (RenderFragment)((b) => AddChildrenToDom(b, nodes)));
+
+                        }
                     }
 
                     builder.CloseComponent();
@@ -154,6 +181,18 @@ public partial class Default : IDisposable
 
             builder.CloseRegion();
         }
+    }
+
+    private object? CastToProperty(string value, string originalName, Type type)
+    {
+        var originalType = type.GetProperty(originalName)?.PropertyType?.FullName ?? "";
+        return originalType switch
+        {
+            "" => value,
+            "System.String" => value,
+            "FluentCMS.Web.UI.Components.IconName" => Enum.Parse(typeof(IconName), value),
+            _ => throw new NotSupportedException($"We Dont support \"{originalType}\" yet")
+        };
     }
 
     private static IEnumerable<HtmlNode> GetChildren(HtmlNode doc)
@@ -169,7 +208,9 @@ public partial class Default : IDisposable
         // FluentCMS.Web.UI.Components
         var componentsAssembly = typeof(BaseComponent).Assembly;
 
-        var typeInfo = uiAssembly.DefinedTypes.Union(componentsAssembly.DefinedTypes)
+        var types = uiAssembly.DefinedTypes.Union(componentsAssembly.DefinedTypes).ToList();
+        types.Add(typeof(SectionContent).GetTypeInfo());
+        var typeInfo = types
             .FirstOrDefault(x => x.Name == typeName);
         return typeInfo?.AsType();
     }

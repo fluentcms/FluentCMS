@@ -1,20 +1,22 @@
 ﻿<PanelLayout fluentcms>
-    <PanelLayoutSidebar fluentcms>
+    <SectionContent SectionName="PanelLayoutSidebar">
         <Sidebar fluentcms>
             <Header fluentcms>
                 @* TODO *@
                 <a href="/" class="items-center pl-2.5 mb-5 hidden lg:flex">
-                    <Logo fluentcms/>
+                    <Logo fluentcms />
                     <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">FluentCMS</span>
                 </a>
             </Header>
             <ChildContent fluentcms>
+                <!--todo fix fragmetns-->
                 <SidebarItem fluentcms Href="/components"
-                             Icon="IconName.Rocket">
+                             Icon="Rocket">
                     Components
                 </SidebarItem>
                 <SidebarItem fluentcms Href="/examples"
-                             Icon="IconName.Grid">
+                             Icon="Grid">
+                    <!--todo enums-->
                     Examples
                 </SidebarItem>
             </ChildContent>
@@ -22,7 +24,9 @@
                 <ThemeSwitcher fluentcms />
             </Footer>
         </Sidebar>
-    </PanelLayoutSidebar>
-    <Section Name="main" fluentcms />
+    </SectionContent>
+    <ChildContent>
+        <Section Name="main" fluentcms />
+    </ChildContent>
 </PanelLayout>
 <script src="/js/flowbite.min.js"></script>

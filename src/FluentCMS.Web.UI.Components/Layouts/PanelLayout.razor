@@ -1,8 +1,8 @@
 ﻿@* TODO *@
-
 @inherits LayoutComponentBase
 
 @namespace FluentCMS.Web.UI.Components
+
 
 <div class="antialiased bg-gray-50 dark:bg-gray-900 dark:text-white">
     <nav class="bg-white border-b border-gray-200 px-4 py-2.5 dark:bg-gray-800 dark:border-gray-700 fixed lg:hidden left-0 right-0 top-0 z-50">
@@ -128,7 +128,8 @@
         </div>
     </nav>
     <div class="relative flex h-full w-full flex-1 overflow-auto">
-        @PanelLayoutSidebar
+        <SectionOutlet SectionName="PanelLayoutSidebar">
+        </SectionOutlet>
         <main class="h-screen overflow-auto dark:bg-gray-900 w-full flex-1 flex flex-col items-stretch h-full lg:ml-64 pt-20 lg:pt-0">
             @Body
         </main>
@@ -136,8 +137,3 @@
 </div>
 
 <script src="/_content/FluentCMS.Web.UI.Components/js/flowbite.min.js"></script>
-
-@code {
-    [Parameter]
-    public RenderFragment? PanelLayoutSidebar { get; set; }
-}
