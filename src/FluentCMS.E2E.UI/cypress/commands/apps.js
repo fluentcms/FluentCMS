@@ -32,6 +32,17 @@ Cypress.Commands.add('navigateToAppListPage', () => {
     })
 })
 
+Cypress.Commands.add('createApp', (title, slug, description) => {
+    cy.navigateToAppCreatePage()
+    cy.get('#appCreateTitleInput').type(title)
+    cy.get('#appCreateSlugInput').type(slug)
+    cy.get('#appCreateDescriptionInput').type(description)
+
+    cy.get('#appCreateSubmitButton').click()
+    
+    cy.go('back')
+})
+
 Cypress.Commands.add('checkAppCreateCancel', () => {
     cy.get('#appCreateTitleInput').type('something')
     cy.get('#appCreateCancelButton').click()
@@ -42,15 +53,7 @@ Cypress.Commands.add('checkAppCreateCancel', () => {
 })
 
 Cypress.Commands.add('checkAppCreate', () => {
-    cy.get('#appCreateTitleInput').type('First App')
-    cy.get('#appCreateSlugInput').type('first-app')
-    cy.get('#appCreateDescriptionInput').type('Description of first app')
-
-    cy.get('#appCreateSubmitButton').click()
-    
-    // TODO: should redirect
-    cy.go('back')
-    // cy.url().should('eq', Cypress.config().baseUrl + '/admin/apps')
+    cy.createApp('First App', 'first-app', 'Description of first app')
 
     // TODO: Use id
     cy.get('.f-table-body').contains('First App')

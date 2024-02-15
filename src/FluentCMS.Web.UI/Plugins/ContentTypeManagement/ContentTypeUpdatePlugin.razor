@@ -24,10 +24,12 @@
                                    Label="Slug"
                                    Placeholder="Enter Slug..." />
                             <Input @bind-Value="Model.Title"
+                                   id="contentTypeUpdateTitleInput"
                                    Label="Title"
                                    Placeholder="Enter Title..."
                                    Required="true" />
                             <Textarea @bind-Value="Model.Description"
+                                      id="contentTypeUpdateDescriptionInput"
                                       Label="Description"
                                       Placeholder="Enter Description..." />
                             <Spacer />
@@ -92,10 +94,12 @@
                                 <Spacer />
                             }
                             <ButtonGroup>
-                                <Button OnClick="GoBack">
+                                <Button id="contentTypeUpdateCancelButton" 
+                                        OnClick="GoBack">
                                     Cancel
                                 </Button>
                                 <Button Color="Color.Primary"
+                                        id="contentTypeUpdateSubmitButton"
                                         Type="ButtonType.Submit">
                                     Save
                                 </Button>
