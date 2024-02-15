@@ -1,35 +1,38 @@
+@using System.Text.Json
 <ContentLayout>
     <Page>
         <PageHeader Title="@PageTitle" />
         <PageBody>
-            @* TODO: Model.Value*@
-            <Form Model="@Model"
-                  OnSubmit="OnSubmit">
-                <Card>
-                    <CardBody>
-                        @foreach (var field in Fields)
-                        {
-                            <Input id="@($"contentUpdate{field.Slug}Input")"
-                                   Label="@field.Label"
-                                   Placeholder="@field.Placeholder"
-                                   Required="@field.IsRequired"
-                                   Value="@(Model.Value![field.Slug!] as string)"
-                                   ValueChanged="str => Model.Value![field.Slug!] = str"/>
-                        }
-                        <ButtonGroup>
-                            <Button id="contentUpdateCancelButton"
-                                    OnClick="GoBack">
-                                Cancel
-                            </Button>
-                            <Button Color="Color.Primary"
-                                    id="contentUpdateSubmitButton"
-                                    Type="ButtonType.Submit">
-                                Save
-                            </Button>
-                        </ButtonGroup>
-                    </CardBody>
-                </Card>
-            </Form>
+            @if (Model != null)
+            {
+                <Form Model="@Model"
+                      OnSubmit="OnSubmit">
+                    <Card>
+                        <CardBody>
+                            @foreach (var field in Fields)
+                            {
+                                <Input id="@($"contentUpdate{field.Slug}Input")"
+                                       Label="@field.Label"
+                                       Placeholder="@field.Placeholder"
+                                       Required="@field.IsRequired"
+                                       Value="@(ParseValue(Model.Value![field.Slug!]) as string)"
+                                       ValueChanged="str => Model.Value![field.Slug!] = str" />
+                            }
+                            <ButtonGroup>
+                                <Button id="contentUpdateCancelButton"
+                                        OnClick="GoBack">
+                                    Cancel
+                                </Button>
+                                <Button Color="Color.Primary"
+                                        id="contentUpdateSubmitButton"
+                                        Type="ButtonType.Submit">
+                                    Save
+                                </Button>
+                            </ButtonGroup>
+                        </CardBody>
+                    </Card>
+                </Form>
+            }
         </PageBody>
     </Page>
 </ContentLayout>
@@ -68,14 +71,17 @@
 
     async Task LoadData()
     {
-        var response = await ContentClient.GetAllAsync(App.Slug, ContentType.Slug);
+        var response = await ContentClient.GetAllAsync(App.Slug!, ContentType.Slug!);
 
-        if(response?.Data != null)
+        if (response?.Data != null)
         {
             View = response.Data.ToList().Find(x => x.Id == ContentId);
 
-            Model.Id = View.Id;
-            Model.Value = View.Value;
+            Model = new()
+                {
+                    Id = View!.Id,
+                    Value = View!.Value
+                };
         }
     }
 
@@ -86,27 +92,47 @@
         // TODO: GetGuidFromQuery("id");
         ContentId = NavigationManager.GetIdFromQuery();
 
-        if(!string.IsNullOrEmpty(contentTypeSlug) && !string.IsNullOrEmpty(appSlug))
+        if (!string.IsNullOrEmpty(contentTypeSlug) && !string.IsNullOrEmpty(appSlug))
         {
             var appResponse = await AppClient.GetBySlugAsync(appSlug);
-            if(appResponse?.Data != null)
+            if (appResponse?.Data != null)
             {
                 App = appResponse?.Data;
             }
 
             var response = await ContentTypeClient.GetAllAsync(appSlug);
-            if(response?.Data != null)
+            if (response?.Data != null)
             {
                 ContentType = response.Data.ToList().Find(x => x.Slug == contentTypeSlug);
                 Fields = ContentType.Fields.ToList();
                 PageTitle = "Update " + ContentType.Title;
 
-                if(ContentId != null)
+                if (ContentId != null)
                 {
-                    LoadData();
+                    await LoadData();
                 }
             }
         }
+    }
+
+    object? ParseValue(object value)
+    {
+        if (value is JsonElement jsonElement)
+        {
+            return jsonElement.ValueKind switch
+            {
+                JsonValueKind.Null => null,
+                JsonValueKind.Undefined => null,
+                JsonValueKind.String => jsonElement.GetString() as object,
+                JsonValueKind.Number => jsonElement.GetDecimal() as object,
+                JsonValueKind.True => true as object,
+                JsonValueKind.False => false as object,
+                JsonValueKind.Array => jsonElement.EnumerateArray().Select(x => ParseValue(x)).ToList() as object,
+                JsonValueKind.Object => jsonElement.EnumerateObject().ToDictionary(x => x.Name, x => ParseValue(x.Value)) as object,
+                _ => null
+            };
+        }
+        return value;
     }
 
     async Task OnSubmit()
@@ -115,12 +141,12 @@
         {
             var response = await ContentClient.UpdateAsync(App.Slug, ContentType.Slug, Model);
 
-            if(response?.Data != null)
+            if (response?.Data != null)
             {
                 GoBack();
             }
         }
-        catch(Exception exception)
+        catch (Exception exception)
         {
 
         }
