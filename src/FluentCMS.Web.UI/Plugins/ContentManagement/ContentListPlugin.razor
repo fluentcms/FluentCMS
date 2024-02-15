@@ -6,7 +6,8 @@
             <PageHeaderActions>
                 <ButtonGroup>
                     <Button Color="Color.Primary"
-                            Href="@($"?pluginDef=Content Management&typeName=Create Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}")">
+                            Href="@($"?pluginDef=Content Management&typeName=Create Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}")"
+                            id="contentCreateButton">
                         <Icon Name="IconName.Plus" />
                         Insert
                     </Button>
@@ -30,7 +31,7 @@
                                 Actions
                             </TableCell>
                         </TableHead>
-                        <TableBody>
+                        <TableBody id="contentListTable">
                             @foreach (var item in Data)
                             {
                                 <TableRow>
@@ -101,29 +102,35 @@
         if(result)
         {
             await ContentClient.DeleteAsync(AppSlug, ContentTypeSlug, content.Id);
+            await FetchData();
         }
     }
 
-    protected override async Task OnInitializedAsync()
+    protected async Task FetchData()
     {
         AppSlug = NavigationManager.GetStringFromQuery("appSlug");
         ContentTypeSlug = NavigationManager.GetStringFromQuery("contentTypeSlug");
 
-        if(!string.IsNullOrEmpty(AppSlug) && !string.IsNullOrEmpty(ContentTypeSlug))
+        if (!string.IsNullOrEmpty(AppSlug) && !string.IsNullOrEmpty(ContentTypeSlug))
         {
-            ContentType = (await ContentTypeClient.GetAllAsync(AppSlug))?.Data?.ToList().Find(x => x.Slug == ContentTypeSlug);
+            ContentType = (await ContentTypeClient.GetBySlugAsync(ContentTypeSlug, AppSlug)).Data;
 
-            if(ContentType != null)
+            if (ContentType != null)
             {
                 PageTitle = ContentType.Title + " List";
                 Fields = ContentType.Fields.ToList();
-
+                
                 var response = await ContentClient.GetAllAsync(AppSlug, ContentTypeSlug);
-                if(response?.Data != null)
+                if (response?.Data != null)
                 {
                     Data = response.Data.ToList();
                 }
             }
         }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await FetchData();
     }
 }

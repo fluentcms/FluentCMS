@@ -5,30 +5,22 @@
         <Sidebar Title="Collections"
                  Secondary="true">
             <ChildContent>
-                @* TODO: remove this button in production *@
-                @if (Apps.Count == 0)
-                {
-                    <Button Block="true"
-                            Color="Color.Primary"
-                            OnClick="SeedData">
-                        Seed Data
-                    </Button>
-                }
-                else
-                {
-                    <Select Dense="true"
-                            Placeholder="Choose an App..."
-                            ValueChanged="OnChangeApp">
-                        @foreach (var app in Apps)
-                        {
-                            <Option Value="@app.Slug">@app.Title</Option>
-                        }
-                    </Select>
-                }
+                <Select Dense="true"
+                        Id="contentAppSelect"
+                        Placeholder="Choose an App..."
+                        ValueChanged="OnChangeApp">
+                    @foreach (var app in Apps)
+                    {
+                        <Option Value="@app.Slug">@app.Title</Option>
+                    }
+                </Select>
 
                 @foreach (var collection in Collections)
                 {
-                    <SidebarItem Href="@($"?pluginDef=Content Management&typeName=Content List&appSlug={AppSlug}&contentTypeSlug={collection.Slug}")">@collection.Title</SidebarItem>
+                    <SidebarItem Href="@($"?pluginDef=Content Management&typeName=Content List&appSlug={AppSlug}&contentTypeSlug={collection.Slug}")" 
+                                 id="@($"contentSidebar{@collection.Slug}Link")">
+                        @collection.Title
+                    </SidebarItem>
                 }
             </ChildContent>
         </Sidebar>
@@ -90,71 +82,5 @@
             }
         }
     }
-
-    async Task SeedData()
-    {
-        var App1Body = new AppCreateRequest() {
-            Title = "App1",
-            Slug = "app1",
-            Description = "Description of App1"
-        };
-
-        var App1 = await AppClient.CreateAsync(App1Body);
-
-        var ContentType1Body = new ContentTypeCreateRequest() {
-            Title = "Posts",
-            Slug = "posts",
-            Description = "Description of Posts",
-        };
-
-        var ContentType1 = await ContentTypeClient.CreateAsync(App1.Data.Slug, ContentType1Body);
-
-        var fields = new List<ContentTypeField> {
-            new ContentTypeField {
-                Title = "Title",
-                Slug = "title",
-                Description = "description of title",
-                Label = "Title",
-                Placeholder = "Enter Title...",
-                IsRequired = true,
-                Hint = "Enter title (hint)..."
-            },
-            new ContentTypeField {
-                Title = "Content",
-                Slug = "content",
-                Description = "description of content",
-                Label = "Content",
-                Placeholder = "Enter content...",
-                IsRequired = false,
-                Hint = "Enter content (hint)..."
-            },
-        };
-
-        foreach (var field in fields)
-        {
-            await ContentTypeClient.SetFieldAsync(App1.Data.Slug, ContentType1.Data.Id, field);
-        }
-
-        var firstPost = new ContentCreateRequest() {
-            Value = new Dictionary<string,object> {
-                {"title", "Title of first post"},
-                {"content", "Content of first post"}
-            }
-        };
-
-        await ContentClient.CreateAsync(App1.Data.Slug, ContentType1.Data.Slug, firstPost);
-
-        var secondPost = new ContentCreateRequest() {
-            Value = new Dictionary<string,object> {
-                {"title", "Title of second post"},
-                {"content", "Content of second post"}
-            }
-        };
-
-        await ContentClient.CreateAsync(App1.Data.Slug, ContentType1.Data.Slug, secondPost);
-
-        StateHasChanged();
-    }
-
 }
 

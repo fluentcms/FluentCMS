@@ -1,21 +1,20 @@
 describe('Content CRUD', () => {
   before(() => {
     cy.doSetup()
-    cy.navigateToContentList()
     cy.cleanContent()
   })
 
-  it.skip('Should not create Content', () => {
-    cy.checkContentCreateCancel()
-  })
+  // it.skip('Should not create Content', () => {
+  //   cy.checkContentCreateCancel()
+  // })
 
   it('Should create Content', () => {
     cy.checkContentCreate()
   })
 
-  it.skip('Should not update Content', () => {
-    cy.checkContentUpdateCancel()
-  })
+  // it.skip('Should not update Content', () => {
+  //   cy.checkContentUpdateCancel()
+  // })
 
   it('Should update Content', () => {
     cy.checkContentUpdate()
@@ -25,9 +24,9 @@ describe('Content CRUD', () => {
     cy.checkContentList()
   })
 
-  it.skip('Should not delete Content', () => {
-    cy.checkContentDeleteCancel()
-  })
+  // it.skip('Should not delete Content', () => {
+  //   cy.checkContentDeleteCancel()
+  // })
 
   it('Should delete Content', () => {
     cy.checkContentDelete()

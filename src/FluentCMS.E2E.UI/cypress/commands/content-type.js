@@ -3,7 +3,8 @@ Cypress.Commands.add('navigateToContentTypeListPage', (appTitle) => {
     cy.get('#adminSidebarContentTypeLink').click()
 
     cy.contains('Content Types List').should('be.visible')
-    cy.get('#contentTypeAppSelect').select(appTitle)
+    cy.shortWait()
+    cy.get('#contentTypeAppSelect').select(appTitle).shortWait()
 })
 
 Cypress.Commands.add('navigateToContentTypeCreatePage', (appTitle) => {
@@ -68,14 +69,24 @@ Cypress.Commands.add('createContentType', (appTitle, title, slug, description, f
 Cypress.Commands.add('cleanContentType', () => {
     cy.navigateToAppListPage()
     cy.cleanApp()
+})
 
-    cy.createApp("First", 'first', 'First App')
-    cy.createApp("Second", 'second', 'Second App')
-
+Cypress.Commands.add('createSampleContentTypes', () => {
+    cy.createContentType('First', 'Posts', 'posts', 'Posts content type', [
+        {title: 'Title', slug: 'title', description: 'Description of title field', required: true, hint: 'title field', label: 'Title', placeholder: 'Enter Title...', defaultValue: ''},
+        {title: 'Content', slug: 'content', description: 'Description of Content field', required: true, hint: 'Content field', label: 'Content', placeholder: 'Enter Content...', defaultValue: ''},
+    ])
+    cy.createContentType('Second', 'Users', 'users', 'Users content type', [
+        {title: 'Name', slug: 'name', description: 'Description of name field', required: true, hint: 'name field', label: 'Name', placeholder: 'Enter Name...', defaultValue: ''},
+        {title: 'LastName', slug: 'last-name', description: 'Description of LastName field', required: false, hint: 'Last Name field', label: 'LastName', placeholder: 'Enter Last Name...', defaultValue: ''},
+    ])
+    cy.createContentType('Second', 'Books', 'books', 'Books content type', [
+        {title: 'Title', slug: 'title', description: 'Description of title field', required: true, hint: 'title field', label: 'Title', placeholder: 'Enter Title...', defaultValue: ''}
+    ])
 })
 
 Cypress.Commands.add('checkContentTypeList', () => {
-
+    // check app switch
 })
 
 Cypress.Commands.add('checkContentTypeCreateCancel', () => {
@@ -87,8 +98,6 @@ Cypress.Commands.add('checkContentTypeCreate', () => {
         {title: 'Title', slug: 'title', description: 'Description of title field', required: true, hint: 'title field', label: 'Title', placeholder: 'Enter Title...', defaultValue: ''},
         {title: 'Content', slug: 'content', description: 'Description of Content field', required: true, hint: 'Content field', label: 'Content', placeholder: 'Enter Content...', defaultValue: ''},
     ])
-    // cy.createContentType('First', 'Posts', 'posts', 'Posts content type')
-
 })
 
 Cypress.Commands.add('checkContentTypeUpdateCancel', () => {

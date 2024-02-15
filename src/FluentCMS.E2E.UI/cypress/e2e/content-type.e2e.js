@@ -1,7 +1,7 @@
 describe('Content Type CRUD', () => {
   before(() => {
     cy.doSetup()
-    cy.navigateToContentTypeList()
+    cy.navigateToContentTypeListPage()
     cy.cleanContentType()
   })
 
