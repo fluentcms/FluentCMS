@@ -115,27 +115,41 @@ public partial class Default : IDisposable
             var type = GetType(child.OriginalName);
             if (type != null)
             {
-                builder.OpenComponent(1, type);
-                // add attributes
-                // filter out FluentCMS
-                var attributes = child.Attributes.Where(x =>
-                    !x.Name.Equals(ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase));
-                foreach (var attribute in attributes)
+                if (type.IsSubclassOf(typeof(LayoutComponentBase)))
                 {
-                    builder.AddComponentParameter(2, attribute.Name, attribute.Value);
-                    builder.AddComponentParameter(3, "Page", Page);
-                }
-
-                // add children
-                // AddChildrenToDom(builder, GetChildren(child));
-                // check if has children
-                if (child.HasChildNodes)
-                {
-                    builder.AddAttribute(2, "ChildContent",
+                    builder.OpenComponent(1, typeof(LayoutView));
+                    // add layout attribute
+                    builder.AddComponentParameter(2, "Layout", type);
+                    // add children
+                    builder.AddAttribute(3, "ChildContent",
                         (RenderFragment)((b) => AddChildrenToDom(b, child.ChildNodes)));
+                    builder.CloseComponent();
+                }
+                else
+                {
+                    builder.OpenComponent(1, type);
+                    // add attributes
+                    // filter out FluentCMS
+                    var attributes = child.Attributes.Where(x =>
+                        !x.Name.Equals(ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase));
+                    foreach (var attribute in attributes)
+                    {
+                        builder.AddComponentParameter(2, attribute.Name, attribute.Value);
+                        builder.AddComponentParameter(3, "Page", Page);
+                    }
+
+                    // add children
+                    // AddChildrenToDom(builder, GetChildren(child));
+                    // check if has children
+                    if (child.HasChildNodes)
+                    {
+                        builder.AddAttribute(2, "ChildContent",
+                            (RenderFragment)((b) => AddChildrenToDom(b, child.ChildNodes)));
+                    }
+
+                    builder.CloseComponent();
                 }
 
-                builder.CloseComponent();
             }
 
             builder.CloseRegion();
