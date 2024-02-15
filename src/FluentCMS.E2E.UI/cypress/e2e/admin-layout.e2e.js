@@ -2,7 +2,7 @@
 
 describe('Admin Panel', () => {
     before(() => {
-        cy.visit('/')
+        cy.doSetup()
     })
 
     it('Check Navbar', () => {

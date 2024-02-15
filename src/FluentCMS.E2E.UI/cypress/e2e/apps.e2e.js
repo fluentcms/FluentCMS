@@ -1,8 +1,7 @@
 describe('Apps CRUD', () => {
-  it('Should clean apps', () => {
+  before(() => {
+    cy.doSetup()
     cy.navigateToAppListPage()
-
-    // TODO: cy.doSetup() [submit setup form if didn't submitted before]
     cy.cleanApp()
   })
 

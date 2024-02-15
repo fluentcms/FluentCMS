@@ -65,7 +65,7 @@ Cypress.Commands.add('createContentType', (appTitle, title, slug, description, f
     //
 })
 
-Cypress.Commands.add('cleanContentTypes', () => {
+Cypress.Commands.add('cleanContentType', () => {
     cy.navigateToAppListPage()
     cy.cleanApp()
 

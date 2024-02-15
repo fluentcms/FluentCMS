@@ -18,3 +18,25 @@ Cypress.Commands.add('checkSetup', (username, email, password) => {
 
     cy.dashboardShouldAvailable();
 })
+
+Cypress.Commands.add('doSetup', (username, email, password) => {
+    cy.visit('/')
+    cy.get('#setupUsernameInput').then(($el) => {
+        if($el) {
+            if(username) {
+                cy.get('#setupUsernameInput').clear().type(username)
+            }
+            if(email) {
+                cy.get('#setupEmailInput').clear().type(email)
+            }
+            if(password) {
+                cy.get('#setupPasswordInput').clear().type(password)
+            }
+
+            cy.get('#setupSubmitButton').click()
+            cy.dashboardShouldAvailable()
+        } else {
+            // project is already set up!
+        }
+    })
+})

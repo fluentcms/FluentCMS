@@ -1,6 +1,8 @@
 describe('Content Type CRUD', () => {
-  it('Cleanup', () => {
-    cy.cleanContentTypes()
+  before(() => {
+    cy.doSetup()
+    cy.navigateToContentTypeList()
+    cy.cleanContentType()
   })
 
   it('Should not create Content type', () => {
