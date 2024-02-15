@@ -1,10 +1,10 @@
 Cypress.Commands.add('cleanContent', () => {
-    // cy.cleanApp()
-    // cy.cleanContentType()
+    cy.cleanApp()
+    cy.cleanContentType()
 
 
-    // cy.createSampleApps()
-    // cy.createSampleContentTypes()
+    cy.createSampleApps()
+    cy.createSampleContentTypes()
 
     cy.deleteContents("First", "Posts")
     cy.deleteContents("Second", "Users")
@@ -89,12 +89,12 @@ Cypress.Commands.add('checkContentDelete', () => {
     cy.navigateToContentListPage('First', 'Posts')
 
     cy.get('#contentListTable').then($el => {
-        cy.wrap($el).find('.f-table-row').contains('First post').then($row => {
+        cy.wrap($el).find('.f-table-row').contains('First post updated').then($row => {
             cy.wrap($el).contains('Delete').click()
             cy.get('.f-confirm-content').should('be.visible')
             cy.contains('Yes, I\'m sure').click()
 
-            cy.get('#contentListTable').contains('First post').should('not.exist')
+            cy.get('#contentListTable').contains('First post updated').should('not.exist')
         })
     })
 })
@@ -104,5 +104,18 @@ Cypress.Commands.add('checkContentUpdateCancel', () => {
 })
 
 Cypress.Commands.add('checkContentUpdate', () => {
+    cy.navigateToContentListPage('First', 'Posts')
 
+    cy.get('#contentListTable').then($el => {
+        cy.wrap($el).find('.f-table-row').contains('First post').then($row => {
+            cy.wrap($el).contains('Edit').click()
+            cy.get('#contentUpdatetitleInput').clear().type('First post updated')
+            cy.get('#contentUpdatecontentInput').clear().type('First post content updated')
+            cy.get('#contentUpdateSubmitButton').click()
+            
+            cy.contains('Posts List').should('be.visible')
+            
+            cy.get('#contentListTable').contains('First post updated').should('be.visible')
+        })
+    })
 })
