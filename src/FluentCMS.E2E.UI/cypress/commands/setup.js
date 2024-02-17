@@ -3,20 +3,24 @@
 import config from '../../config'
 
 Cypress.Commands.add('checkSetup', (username, email, password) => {
-    cy.get('#setupUsernameInput').clear()
-    cy.get('#setupUsernameInput').type(username || config.setupUsername)
+    cy.get('body').then($body => {
+        if($body[0].querySelector('#setupUsernameInput')) {
+            cy.get('#setupUsernameInput').clear()
+            cy.get('#setupUsernameInput').type(username || config.setupUsername)
 
-    cy.get('#setupEmailInput').clear()
-    cy.get('#setupEmailInput').type(email || config.setupEmail)
+            cy.get('#setupEmailInput').clear()
+            cy.get('#setupEmailInput').type(email || config.setupEmail)
 
-    cy.get('#setupPasswordInput').clear()
-    cy.get('#setupPasswordInput').type(password || config.setupPassword)
+            cy.get('#setupPasswordInput').clear()
+            cy.get('#setupPasswordInput').type(password || config.setupPassword)
 
-    cy.get('#setupSubmitButton').click()
+            cy.get('#setupSubmitButton').click()
 
-    cy.shortWait()
+            cy.shortWait()
 
-    cy.dashboardShouldAvailable();
+            cy.dashboardShouldAvailable();
+        }
+    })
 })
 
 Cypress.Commands.add('doSetup', (username, email, password) => {

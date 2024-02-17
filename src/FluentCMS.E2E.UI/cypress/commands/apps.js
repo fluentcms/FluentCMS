@@ -3,7 +3,7 @@ Cypress.Commands.add('cleanApp', () => {
     cy.get('.f-table-body').then(value => {
         console.log(value)
         if (value.children().length > 0) {
-            cy.get('.f-table-body .f-table-row').each($el => {
+            cy.wrap(value).get('.f-table-row').each($el => {
                 cy.wrap($el).contains('Delete').click();
                 cy.get('.f-confirm-content').should('be.visible')
                 cy.get('.f-confirm-content').contains('Yes, I\'m sure').click()
