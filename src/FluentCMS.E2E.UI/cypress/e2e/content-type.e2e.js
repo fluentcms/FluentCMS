@@ -1,8 +1,8 @@
 describe('Content Type CRUD', () => {
   before(() => {
     cy.doSetup()
-    cy.navigateToContentTypeListPage()
     cy.cleanContentType()
+    cy.createSampleApps()
   })
 
   it('Should not create Content type', () => {

@@ -20,9 +20,8 @@ Cypress.Commands.add('checkSetup', (username, email, password) => {
 })
 
 Cypress.Commands.add('doSetup', (username, email, password) => {
-    cy.visit('/')
+    cy.visit('/').shortWait()
     cy.get('body').then($body => {
-        console.log($body[0])
         if($body[0].querySelector('#setupUsernameInput')) {
             if(username) {
                 cy.get('#setupUsernameInput').clear().type(username)
@@ -35,6 +34,7 @@ Cypress.Commands.add('doSetup', (username, email, password) => {
             }
 
             cy.get('#setupSubmitButton').click()
+            cy.shortWait()
             cy.dashboardShouldAvailable()
         }
 

@@ -15,20 +15,20 @@ Cypress.Commands.add("checkAdminSidebarNavigations", () => {
     cy.get('#adminSidebarLoginLink').click()
     cy.contains('Welcome back').should('be.visible')
 
-    cy.go('back')
+    cy.go('back').shortWait()
     cy.get('#adminSidebarRegisterLink').click()
     cy.contains('Your Best Work Starts Here').should('be.visible')
 
-    cy.go('back')
+    cy.go('back').shortWait()
     cy.get('#adminSidebarForgotLink').click()
     cy.contains('Reset your Password').should('be.visible')
 
-    cy.go('back')
+    cy.go('back').shortWait()
     cy.get('#adminSidebarResetLink').click()
     // TODO: Typo (your)
     cy.contains('Reset you Password').should('be.visible')
 
-    cy.go('back')
+    cy.go('back').shortWait()
     cy.get('#adminSidebarDocsLink').should('have.attr', 'target', '_blank')
     cy.get('#adminSidebarDocsLink').invoke('removeAttr', 'target').scrollIntoView().click()
     cy.url().should('include', '/doc/index.html')
@@ -80,6 +80,7 @@ Cypress.Commands.add('adminSidebarShouldAvailable', () => {
 
 Cypress.Commands.add('checkAdminNavbar', () => {
     cy.viewport(600, 800)
+    cy.shortWait()
     cy.elementShouldAvailable('#adminNavbar')
 
     cy.elementShouldAvailable('#adminNavbarLogoLink')

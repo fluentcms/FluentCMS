@@ -4,7 +4,9 @@ Cypress.Commands.add('navigateToContentTypeListPage', (appTitle) => {
 
     cy.contains('Content Types List').should('be.visible')
     cy.shortWait()
-    cy.get('#contentTypeAppSelect').select(appTitle).shortWait()
+    if(appTitle) {
+        cy.get('#contentTypeAppSelect').select(appTitle).shortWait()
+    }
 })
 
 Cypress.Commands.add('navigateToContentTypeCreatePage', (appTitle) => {
