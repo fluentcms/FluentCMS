@@ -1,12 +1,12 @@
 Cypress.Commands.add('cleanApp', () => {
     cy.navigateToAppListPage()
-    cy.get('.f-table-body').then(value => {
-        console.log(value)
-        if (value.children().length > 0) {
-            cy.wrap(value).get('.f-table-row').each($el => {
+
+    cy.get('main .f-table-body').then(value => {
+        if (value[0].querySelector('.f-table-row')) {
+            cy.wrap(value).get('.f-table-row').first().then($el => {
                 cy.wrap($el).contains('Delete').click();
                 cy.get('.f-confirm-content').should('be.visible')
-                cy.get('.f-confirm-content').contains('Yes, I\'m sure').click()
+                cy.get('.f-confirm-content').contains('Yes, I\'m sure').click().shortWait()    
             })
         }
     })

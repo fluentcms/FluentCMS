@@ -2,7 +2,6 @@ Cypress.Commands.add('cleanContent', () => {
     cy.cleanApp()
     cy.cleanContentType()
 
-
     cy.createSampleApps()
     cy.createSampleContentTypes()
 
