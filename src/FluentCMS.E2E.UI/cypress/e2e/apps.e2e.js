@@ -1,7 +1,6 @@
 describe('Apps CRUD', () => {
   before(() => {
     cy.doSetup()
-    cy.navigateToAppListPage()
     cy.cleanApp()
   })
 
@@ -13,6 +12,11 @@ describe('Apps CRUD', () => {
   it('Should create app', () => {
     cy.navigateToAppCreatePage();
     cy.checkAppCreate();
+  })
+
+  it('Should show app', () => {
+    cy.navigateToAppListPage();
+    cy.checkAppDetail()
   })
 
   it('Should not update app', () => {

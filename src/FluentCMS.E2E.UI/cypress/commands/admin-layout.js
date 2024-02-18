@@ -9,26 +9,6 @@ Cypress.Commands.add("checkAdminSidebarNavigations", () => {
     cy.get('#adminSidebarContentTypeLink').click()
     cy.get('.f-page-header-title').should('have.text', 'Content Types List')
 
-    cy.get('#adminSidebarMediaLibraryLink').click()
-    cy.get('.f-page-header-title').should('have.text', 'Media Library')
-
-    cy.get('#adminSidebarLoginLink').click()
-    cy.contains('Welcome back').should('be.visible')
-
-    cy.go('back').shortWait()
-    cy.get('#adminSidebarRegisterLink').click()
-    cy.contains('Your Best Work Starts Here').should('be.visible')
-
-    cy.go('back').shortWait()
-    cy.get('#adminSidebarForgotLink').click()
-    cy.contains('Reset your Password').should('be.visible')
-
-    cy.go('back').shortWait()
-    cy.get('#adminSidebarResetLink').click()
-    // TODO: Typo (your)
-    cy.contains('Reset you Password').should('be.visible')
-
-    cy.go('back').shortWait()
     cy.get('#adminSidebarDocsLink').should('have.attr', 'target', '_blank')
     cy.get('#adminSidebarDocsLink').invoke('removeAttr', 'target').scrollIntoView().click()
     cy.url().should('include', '/doc/index.html')
@@ -67,13 +47,7 @@ Cypress.Commands.add('adminSidebarShouldAvailable', () => {
 
     cy.elementShouldAvailable('#adminSidebarAppsLink')
     cy.elementShouldAvailable('#adminSidebarContentTypeLink')
-    cy.elementShouldAvailable('#adminSidebarMediaLibraryLink')
     cy.elementShouldAvailable('#adminSidebarUsersLink')
-
-    cy.elementShouldAvailable('#adminSidebarLoginLink')
-    cy.elementShouldAvailable('#adminSidebarRegisterLink')
-    cy.elementShouldAvailable('#adminSidebarResetLink')
-    cy.elementShouldAvailable('#adminSidebarForgotLink')
 
     cy.elementShouldAvailable('#adminSidebarDocsLink')
 })

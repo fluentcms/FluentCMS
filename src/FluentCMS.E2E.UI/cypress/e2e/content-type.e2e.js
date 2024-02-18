@@ -13,6 +13,11 @@ describe('Content Type CRUD', () => {
     cy.checkContentTypeCreate()
   })
 
+  it('Should show Content type', () => {
+    cy.navigateToContentTypeListPage('First');
+    cy.checkContentTypeDetail()
+  })
+
   it('Should not update Content type', () => {
     cy.checkContentTypeUpdateCancel()
   })

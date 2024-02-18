@@ -73,6 +73,21 @@ Cypress.Commands.add('cleanContentType', () => {
     cy.cleanApp()
 })
 
+Cypress.Commands.add('checkContentTypeDetail', () => {
+    cy.get('#contentTypeListTable .f-table-row').each(($el) => {
+        cy.wrap($el).find('.f-table-cell').contains('posts').then($column => {
+            if ($column.length > 0) {
+                cy.wrap($el).contains('Preview').click()
+
+                cy.contains('ContentType Detail').should('be.visible')
+                cy.contains('Posts').should('be.visible')
+                cy.contains('posts').should('be.visible')
+                cy.contains('Posts content type').should('be.visible')
+            }
+        })
+    })
+})
+
 Cypress.Commands.add('createSampleContentTypes', () => {
     cy.createContentType('First', 'Posts', 'posts', 'Posts content type', [
         {title: 'Title', slug: 'title', description: 'Description of title field', required: true, hint: 'title field', label: 'Title', placeholder: 'Enter Title...', defaultValue: ''},
