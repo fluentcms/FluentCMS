@@ -20,13 +20,16 @@
                                 }
                             </Select>
                             <Input @bind-Value="Model.Title"
+                                   Name="Title"
                                    Label="Title"
                                    Placeholder="Enter Title..."
                                    Required="true"/>
                             <Input @bind-Value="Model.Slug"
+                                    Name="Slug"
                                    Label="Slug"
                                    Placeholder="Enter Slug..." />
                             <Textarea @bind-Value="Model.Description"
+                                   Name="Description"
                                    Label="Description"
                                    Placeholder="Enter Description..." />
                             <Spacer/>

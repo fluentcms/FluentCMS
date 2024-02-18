@@ -10,15 +10,18 @@
         </Typography>
         <Spacer />
         <Input @bind-Value="SetupModel.Username"
+               Name="Username"
                Label="Username"
                Placeholder="username"
                Required="true"/>
         <Input @bind-Value="SetupModel.Email"
+               Name="Email"
                Label="Email"
                Placeholder="name@example.com"
                Required="true"
                Type="InputType.Email"/>
         <Input @bind-Value="SetupModel.Password"
+               Name="Password"
                Label="Password"
                Placeholder="••••••••••"
                Required="true"

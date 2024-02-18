@@ -1,10 +1,10 @@
 @using System.Text.Json
 <ContentLayout>
     <Page>
-        <PageHeader Title="@PageTitle"/>
+        <PageHeader HasBack="true"
+                    Title="@PageTitle"/>
 
         <PageBody>
-            @* TODO: Model.Value*@
             <Form Model="@Model"
                   OnSubmit="OnSubmit">
                 <Card>
@@ -13,10 +13,11 @@
                         {
                             // TODO: Cleanup this
                             <Input Label="@field.Label"
+                                   Name="@field.Slug"
                                    Placeholder="@field.Placeholder"
                                    Required="@field.IsRequired"
-                                   Value="@(Model.Value![field.Slug!] as string)"
-                                   ValueChanged="str => Model.Value![field.Slug!] = str"/>
+                                   Value="@(Model[field.Slug!] as string)"
+                                   ValueChanged="str => Model[field.Slug!] = str"/>
                         }
 
                         <ButtonGroup>
@@ -50,7 +51,7 @@
 
     List<ContentTypeField> Fields = [];
 
-    ContentCreateRequest Model = new();
+    Dictionary<string, object?> Model = new();
 
     string PageTitle = "Create Content";
 
@@ -78,10 +79,10 @@
                 ContentType = response.Data.ToList().Find(x => x.Slug == contentTypeSlug);
                 Fields = ContentType.Fields.ToList();
 
-                Model.Value = new Dictionary<string, object?>();
+                Model = new Dictionary<string, object?>();
                 foreach (var field in Fields)
                 {
-                    Model.Value.Add(field.Slug, "");
+                    Model.Add(field.Slug, "");
                 }
                 PageTitle = "Create " + ContentType.Title;
             }
@@ -93,7 +94,9 @@
         try
         {
             // TODO: Doesn't work
-            var response = await ContentClient.CreateAsync(App.Slug, ContentType.Slug, Model);
+            var response = await ContentClient.CreateAsync(App.Slug, ContentType.Slug, new ContentCreateRequest {
+                Value = Model
+            });
 
             if (response?.Data != null)
             {

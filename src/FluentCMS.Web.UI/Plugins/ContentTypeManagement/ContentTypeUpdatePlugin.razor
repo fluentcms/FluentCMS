@@ -20,14 +20,17 @@
                                 }
                             </Select>
                             <Input @bind-Value="@View.Slug"
+                                   Name="Slug"
                                    Disabled="true"
                                    Label="Slug"
                                    Placeholder="Enter Slug..." />
                             <Input @bind-Value="Model.Title"
+                                   Name="Slug"
                                    Label="Title"
                                    Placeholder="Enter Title..."
                                    Required="true" />
                             <Textarea @bind-Value="Model.Description"
+                                      Name="Description"
                                       Label="Description"
                                       Placeholder="Enter Description..." />
                             <Spacer />

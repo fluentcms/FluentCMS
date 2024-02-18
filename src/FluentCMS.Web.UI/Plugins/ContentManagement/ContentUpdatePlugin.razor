@@ -1,7 +1,8 @@
 @using System.Text.Json
 <ContentLayout>
-    <Page>
-        <PageHeader Title="@PageTitle" />
+    <Page>       
+        <PageHeader HasBack="true"
+                    Title="@PageTitle"/>
         <PageBody>
             @if (Model != null)
             {
