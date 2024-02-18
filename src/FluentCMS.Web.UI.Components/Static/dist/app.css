@@ -104,6 +104,9 @@ body.dark {
 .f-button-block-true {
   @apply w-full;
 }
+.f-button-icon-true {
+  @apply text-center inline-flex items-center;
+}
 .f-button-link-true > span {
   @apply hover:underline;
 }
@@ -119,14 +122,26 @@ body.dark {
 .f-button-size-default.f-button-link-false {
   @apply px-5 py-2.5 text-sm;
 }
+.f-button-size-default.f-button-link-false.f-button-icon-true {
+  @apply p-0;
+}
 .f-button-size-small.f-button-link-false {
   @apply px-3 py-2 text-xs;
+}
+.f-button-size-small.f-button-link-false.f-button-icon-true {
+  @apply p-2 text-base;
 }
 .f-button-size-medium.f-button-link-false {
   @apply px-5 py-2.5 text-sm;
 }
+.f-button-size-medium.f-button-link-false.f-button-icon-true {
+  @apply p-2.5 text-xl;
+}
 .f-button-size-large.f-button-link-false {
   @apply px-5 py-3 text-base;
+}
+.f-button-size-large.f-button-link-false.f-button-icon-true {
+  @apply p-3 text-2xl;
 }
 
 .f-button-color-primary.f-button-link-false.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
@@ -766,6 +781,9 @@ body.dark {
   @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
   /*TODO: use this for padding when we use icon in start*/
   /*@apply ps-10;*/
+}
+.f-input-disabled-true {
+  @apply cursor-not-allowed opacity-70;
 }
 
 .f-modal {
