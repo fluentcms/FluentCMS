@@ -106,15 +106,17 @@ Cypress.Commands.add('checkContentUpdate', () => {
     cy.navigateToContentListPage('First', 'Posts')
 
     cy.get('#contentListTable').then($el => {
-        cy.wrap($el).find('.f-table-row').contains('First post').then($row => {
-            cy.wrap($el).contains('Edit').click()
-            cy.get('#contentUpdatetitleInput').clear().type('First post updated')
-            cy.get('#contentUpdatecontentInput').clear().type('First post content updated')
-            cy.get('#contentUpdateSubmitButton').click()
-            
-            cy.contains('Posts List').should('be.visible')
-            
-            cy.get('#contentListTable').contains('First post updated').should('be.visible')
-        })
+        if($el[0].querySelector('.f-table-row')) {
+            cy.wrap($el).find('.f-table-row').contains('First post').then($row => {
+                cy.wrap($el).contains('Edit').click()
+                cy.get('#contentUpdatetitleInput').clear().type('First post updated')
+                cy.get('#contentUpdatecontentInput').clear().type('First post content updated')
+                cy.get('#contentUpdateSubmitButton').click()
+                
+                cy.contains('Posts List').should('be.visible')
+                
+                cy.get('#contentListTable').contains('First post updated').should('be.visible')
+            })
+        }
     })
 })

@@ -1,15 +1,28 @@
+const clearTable = (attempt = 0) => {
+    if (attempt === 100) throw 'Too many attempts' 
+  
+    cy.get('.f-table-body').then($tbody => {
+      if($tbody.find('.f-table-row').length === 0 ) return;
+  
+      cy.get('.f-table-row').then($rows => {
+        cy.wrap($rows).first().contains('Delete').click();            
+
+        cy.get('.f-confirm-content').should('be.visible')
+        cy.get('.f-confirm-content').contains('Yes, I\'m sure').click()
+        cy.shortWait()    
+  
+        cy.then(() => {
+          clearTable(++attempt)                        // next step queued using then()
+        })
+      })
+    })
+  }
+  
+  
 Cypress.Commands.add('cleanApp', () => {
     cy.navigateToAppListPage()
 
-    cy.get('main .f-table-body').then(value => {
-        if (value[0].querySelector('.f-table-row')) {
-            cy.wrap(value).get('.f-table-row').first().then($el => {
-                cy.wrap($el).contains('Delete').click();
-                cy.get('.f-confirm-content').should('be.visible')
-                cy.get('.f-confirm-content').contains('Yes, I\'m sure').click().shortWait()    
-            })
-        }
-    })
+    clearTable()
 })
 
 Cypress.Commands.add('navigateToAppCreatePage', () => {
@@ -100,17 +113,15 @@ Cypress.Commands.add('checkAppUpdate', () => {
 })
 
 Cypress.Commands.add('checkAppDetail', () => {
-    cy.get('.f-table-body .f-table-row').each(($el, index, $list) => {
-        cy.wrap($el).find('.f-table-cell').contains('First App').then($column => {
-            if ($column.length > 0) {
-                cy.wrap($el).contains('Preview').click()
+	cy.get('.f-table-body').find('.f-table-row').then($row => {
+		cy.wrap($row).contains('First App').then($column => {
+			cy.wrap($row).contains('Preview').click()
 
-                cy.contains('First App').should('be.visible')
-                cy.contains('first-app').should('be.visible')
-                cy.contains('Description of first app').should('be.visible')
-            }
-        });
-    });
+			cy.contains('First App').should('be.visible')
+			cy.contains('first-app').should('be.visible')
+			cy.contains('Description of first app').should('be.visible')
+		})
+	})
 })
 
 Cypress.Commands.add('checkAppList', () => {
