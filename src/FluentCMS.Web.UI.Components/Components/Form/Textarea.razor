@@ -12,14 +12,14 @@
            Label="@Label"
            Name="@Name"
            Required="@Required">
-    <InputTextArea @attributes="AdditionalAttributes"
-                   @bind-Value="Value"
-                   class="@this.GetClasses()"
-                   disabled="@Disabled"
-                   id="@Id"
-                   name="@Name"
-                   placeholder="@Placeholder"
-                   rows="@Rows" />
+    <Microsoft.AspNetCore.Components.Forms.InputTextArea @attributes="AdditionalAttributes"
+                                                         @bind-Value="Value"
+                                                         class="@this.GetClasses()"
+                                                         disabled="@Disabled"
+                                                         id="@Id"
+                                                         name="@Name"
+                                                         placeholder="@Placeholder"
+                                                         rows="@Rows" />
 </FormField>
 
 @code {

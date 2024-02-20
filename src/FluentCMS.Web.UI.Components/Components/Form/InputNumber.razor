@@ -1,8 +1,8 @@
-@inherits FormInputsType<string>
+@inherits FormInputsType<int?>
 
 @namespace FluentCMS.Web.UI.Components
 
-<FormField Appearance="FormFieldAppearance.Select"
+<FormField Appearance="FormFieldAppearance.Input"
            Dense="@Dense"
            Disabled="@Disabled"
            Hint="@Hint"
@@ -12,22 +12,11 @@
            Label="@Label"
            Name="@Name"
            Required="@Required">
-    <Microsoft.AspNetCore.Components.Forms.InputSelect @attributes="AdditionalAttributes"
+    <Microsoft.AspNetCore.Components.Forms.InputNumber @attributes="AdditionalAttributes"
                                                        @bind-Value="Value"
                                                        class="@this.GetClasses()"
                                                        disabled="@Disabled"
                                                        id="@Id"
-                                                       multiple="@Multiple"
-                                                       name="@Name">
-        @if (!string.IsNullOrEmpty(this.Placeholder))
-        {
-            <Option Selected>@Placeholder</Option>
-        }
-        @ChildContent
-    </Microsoft.AspNetCore.Components.Forms.InputSelect>
+                                                       name="@Name"
+                                                       placeholder="@Placeholder" />
 </FormField>
-
-@code {
-    [Parameter]
-    public bool Multiple { get; set; }
-}

@@ -1,4 +1,4 @@
-@inherits FormInputsType<string>
+@inherits FormInputsType<DateTime?>
 
 @namespace FluentCMS.Web.UI.Components
 
@@ -12,17 +12,11 @@
            Label="@Label"
            Name="@Name"
            Required="@Required">
-    <Microsoft.AspNetCore.Components.Forms.InputText @attributes="AdditionalAttributes"
+    <Microsoft.AspNetCore.Components.Forms.InputDate @attributes="AdditionalAttributes"
                                                      @bind-Value="Value"
                                                      class="@this.GetClasses()"
                                                      disabled="@Disabled"
                                                      id="@Id"
-                                                     name="@Name"    
-                                                     placeholder="@Placeholder"
-                                                     type="@this.Type.ToString().FromPascalCaseToKebabCase()" />
+                                                     name="@Name"
+                                                     placeholder="@Placeholder" />
 </FormField>
-
-@code {
-    [Parameter]
-    public InputType Type { get; set; } = InputType.Text;
-}
