@@ -1,6 +1,4 @@
-@using System.Globalization
-
-@typeparam TValue
+﻿@typeparam TValue
 
 @inherits FormInputsType<TValue>
 
@@ -19,12 +17,12 @@
     <input @attributes="AdditionalAttributes"
            class="@this.GetClasses()"
            value="@value"
-           @oninput="OnInput"
            disabled="@Disabled"
            id="@Id"
            name="@Name"
            placeholder="@Placeholder"
-           type="@this.Type.ToString().FromPascalCaseToKebabCase()" />
+           type="@this.Type.ToString().FromPascalCaseToKebabCase()"
+           @oninput="OnInput" />
 </FormField>
 
 @code {
@@ -68,7 +66,7 @@
 
         TValue val = default!;
 
-        if (!BindConverter.TryConvertTo<TValue>(evt.Value, CultureInfo.InvariantCulture, out val)) return;
+        if (!BindConverter.TryConvertTo<TValue>(evt.Value, System.Globalization.CultureInfo.InvariantCulture, out val)) return;
 
         Value = val;
     }
