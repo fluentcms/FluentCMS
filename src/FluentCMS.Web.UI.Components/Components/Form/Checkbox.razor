@@ -11,12 +11,12 @@
            Name="@Name"
            Required="@Required">
     <ChildContent>
-        <Microsoft.AspNetCore.Components.Forms.InputCheckbox @attributes="AdditionalAttributes"
-                                                             @bind-Value="Value"
-                                                             class="@this.GetClasses()"
-                                                             disabled="@Disabled"
-                                                             id="@Id"
-                                                             name="@Name" />
+        <InputCheckbox @attributes="AdditionalAttributes"
+                       @bind-Value="Value"
+                       class="@this.GetClasses()"
+                       disabled="@Disabled"
+                       id="@Id"
+                       name="@Name" />
     </ChildContent>
     <LabelFragment>
         @LabelFragment

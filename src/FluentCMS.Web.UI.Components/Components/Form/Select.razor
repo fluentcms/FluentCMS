@@ -12,19 +12,19 @@
            Label="@Label"
            Name="@Name"
            Required="@Required">
-    <Microsoft.AspNetCore.Components.Forms.InputSelect @attributes="AdditionalAttributes"
-                                                       @bind-Value="Value"
-                                                       class="@this.GetClasses()"
-                                                       disabled="@Disabled"
-                                                       id="@Id"
-                                                       multiple="@Multiple"
-                                                       name="@Name">
+    <InputSelect @attributes="AdditionalAttributes"
+                 @bind-Value="Value"
+                 class="@this.GetClasses()"
+                 disabled="@Disabled"
+                 id="@Id"
+                 multiple="@Multiple"
+                 name="@Name">
         @if (!string.IsNullOrEmpty(this.Placeholder))
         {
             <Option Selected>@Placeholder</Option>
         }
         @ChildContent
-    </Microsoft.AspNetCore.Components.Forms.InputSelect>
+    </InputSelect>
 </FormField>
 
 @code {
