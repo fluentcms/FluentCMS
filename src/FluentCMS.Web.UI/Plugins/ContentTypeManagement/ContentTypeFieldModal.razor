@@ -17,46 +17,46 @@
                             <Grid GutterX="GridGutter.Large">
                                 <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
                                     <Input @bind-Value="Model.Slug"
-                                           Name="Slug"
                                            Label="Slug"
+                                           Name="Slug"
                                            Placeholder="Enter Slug..."
                                            Required="true"/>
                                 </GridItem>
                                 <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
                                     <Input @bind-Value="Model.Title"
-                                           Name="Title"
                                            Label="Title"
+                                           Name="Title"
                                            Placeholder="Enter Title..."
                                            Required="true"/>
                                 </GridItem>
                             </Grid>
                             <Textarea @bind-Value="Model.Description"
-                                      Name="Description"
                                       Label="Description"
+                                      Name="Description"
                                       Placeholder="Enter Description..."
                                       Required="true" />
                         </TabsPanel>
                         <TabsPanel Name="tab-advanced">
                             <Input @bind-Value="Model.Label"
-                                   Name="Label"
                                    Label="Label"
+                                   Name="Label"
                                    Placeholder="Enter Label..."
                                    Required="true"/>
                             <Switch @bind-Value="Model.IsRequired"
-                                    Name="IsRequired" 
-                                   Label="Is Required?" />
+                                    Label="Is Required?" 
+                                    Name="IsRequired" />
                             <Input @bind-Value="Model.Placeholder"
-                                   Name="Placeholder"
                                    Label="Placeholder"
+                                   Name="Placeholder"
                                    Placeholder="Enter Placeholder..."/>
                             <Input @bind-Value="Model.Hint"
-                                   Name="Hint"
                                    Label="Hint"
+                                   Name="Hint"
                                    Placeholder="Enter Hint..."/>
 
                             <Input @bind-Value="Model.DefaultValue"
-                                   Name="DefaultValue"
                                    Label="Default Value"
+                                   Name="DefaultValue"
                                    Placeholder="Enter Default Value..."/>
                         </TabsPanel>
                     </TabsPanels>

@@ -12,6 +12,7 @@
                             <Select @bind-Value="AppSlug"
                                     Disabled="true"
                                     Label="App"
+                                    Name="App"
                                     Placeholder="Choose App..."
                                     Required="true">
                                 @foreach (var app in Apps)
@@ -20,18 +21,18 @@
                                 }
                             </Select>
                             <Input @bind-Value="@View.Slug"
-                                   Name="Slug"
                                    Disabled="true"
                                    Label="Slug"
+                                   Name="Slug"
                                    Placeholder="Enter Slug..." />
                             <Input @bind-Value="Model.Title"
-                                   Name="Slug"
                                    Label="Title"
+                                   Name="Slug"
                                    Placeholder="Enter Title..."
                                    Required="true" />
                             <Textarea @bind-Value="Model.Description"
-                                      Name="Description"
                                       Label="Description"
+                                      Name="Description"
                                       Placeholder="Enter Description..." />
                             <Spacer />
                             <FormField Appearance="FormFieldAppearance.Input" Label="Fields">
