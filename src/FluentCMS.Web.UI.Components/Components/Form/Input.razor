@@ -1,4 +1,8 @@
-@inherits FormInputsType<string>
+@using System.Globalization
+
+@typeparam TValue
+
+@inherits FormInputsType<TValue>
 
 @namespace FluentCMS.Web.UI.Components
 
@@ -12,17 +16,60 @@
            Label="@Label"
            Name="@Name"
            Required="@Required">
-    <Microsoft.AspNetCore.Components.Forms.InputText @attributes="AdditionalAttributes"
-                                                     @bind-Value="Value"
-                                                     class="@this.GetClasses()"
-                                                     disabled="@Disabled"
-                                                     id="@Id"
-                                                     name="@Name"    
-                                                     placeholder="@Placeholder"
-                                                     type="@this.Type.ToString().FromPascalCaseToKebabCase()" />
+    <input @attributes="AdditionalAttributes"
+           class="@this.GetClasses()"
+           value="@value"
+           @oninput="OnInput"
+           disabled="@Disabled"
+           id="@Id"
+           name="@Name"
+           placeholder="@Placeholder"
+           type="@this.Type.ToString().FromPascalCaseToKebabCase()" />
 </FormField>
 
 @code {
     [Parameter]
     public InputType Type { get; set; } = InputType.Text;
+
+    public string value
+    {
+        get
+        {
+            if (Value == null) return "";
+
+            var type = Nullable.GetUnderlyingType(typeof(TValue)) ?? typeof(TValue);
+
+            if (type == typeof(DateTime))
+            {
+                return ((DateTime)(object)Value).ToString("yyyy-MM-ddTHH:mm:ss");
+            }
+            else if (type == typeof(DateTimeOffset))
+            {
+                return ((DateTimeOffset)(object)Value).ToString("yyyy-MM-dd");
+            }
+            else if (type == typeof(DateOnly))
+            {
+                return ((DateOnly)(object)Value).ToString("yyyy-MM-dd");
+            }
+            else if (type == typeof(TimeOnly))
+            {
+                return ((TimeOnly)(object)Value).ToString("HH:mm:ss");
+            }
+            else
+            {
+                return Value.ToString();
+            }
+        }
+    }
+
+    private void OnInput(ChangeEventArgs evt)
+    {
+        if (evt.Value == null) return;
+
+        TValue val = default!;
+
+        if (!BindConverter.TryConvertTo<TValue>(evt.Value, CultureInfo.InvariantCulture, out val)) return;
+
+        Value = val;
+    }
 }
