@@ -17,6 +17,14 @@ public abstract class BaseComponent : ComponentBase
 
     public BaseComponent()
     {
-        ComponentName = GetType().Name.FromPascalCaseToKebabCase();
+        var type = GetType();
+        if (type.IsGenericType)
+        {
+            ComponentName = type.Name.Split("`").First().FromPascalCaseToKebabCase();
+        }
+        else
+        {
+            ComponentName = type.Name.FromPascalCaseToKebabCase();
+        }
     }
 }
