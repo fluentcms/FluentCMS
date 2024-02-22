@@ -16,6 +16,12 @@ body.dark {
     color-scheme: dark;
 }
 
+// TODO
+
+.f-theme-switcher.hidden {
+    display: none;
+}
+
 // COMPONENTS
 
 @import './components/alert';
