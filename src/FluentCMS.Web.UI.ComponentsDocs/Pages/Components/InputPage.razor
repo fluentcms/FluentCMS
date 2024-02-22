@@ -5,42 +5,53 @@
     <PageHeader Title="Inputs" />
     <PageBody>
         <ComponentPreview Title="Default">
-            <Input />
+            <Input Value="@("")" />
         </ComponentPreview>
 
         <ComponentPreview Title="Label">
-            <Input Label="This is a label" />
+            <Input Label="This is a label"
+                   Value="@("")" />
         </ComponentPreview>
 
         <ComponentPreview Title="Disabled">
-            <Input Disabled="true" />
+            <Input Disabled="true"
+                   Value="@("")" />
         </ComponentPreview>
 
         <ComponentPreview Title="Required">
-            <Input Required="true" />
+            <Input Required="true"
+                   Value="@("")" />
         </ComponentPreview>
 
         <ComponentPreview Title="Readonly">
-            <Input readonly="@true" />
+            <Input readonly="@true"
+                   Value="@("")" />
         </ComponentPreview>
 
         <ComponentPreview Title="Placeholder">
-            <Input Placeholder="Type something..." />
+            <Input Placeholder="Type something..."
+                   Value="@("")" />
         </ComponentPreview>
 
         <ComponentPreview Title="Icon">
-            <Input IconStart="IconName.InformationFilled" />
-            <Input IconEnd="IconName.Search" />
+            <Input IconStart="IconName.InformationFilled"
+                   Value="@("")" />
+            <Input IconEnd="IconName.Search"
+                   Value="@("")" />
         </ComponentPreview>
 
         <ComponentPreview Title="Hint">
-            <Input Hint="This is a hint" />
+            <Input Hint="This is a hint"
+                   Value="@("")" />
         </ComponentPreview>
 
         <ComponentPreview Title="Dense">
-            <Input Dense="true" />
-            <Input Dense="true" />
-            <Input Dense="true" />
+            <Input Dense="true"
+                   Value="@("")" />
+            <Input Dense="true"
+                   Value="@("")" />
+            <Input Dense="true"
+                   Value="@("")" />
         </ComponentPreview>
 
         <ComponentPreview Title="Initial Value">
@@ -59,15 +70,32 @@
             <Input Hint="This is a hint"
                    Label="Input"
                    Placeholder="Type something..."
-                   State="FormFieldState.Default" />
+                   State="FormFieldState.Default"
+                   Value="@("")" />
             <Input Hint="This is a hint"
                    Label="Input"
                    Placeholder="Type something..."
-                   State="FormFieldState.Invalid" />
+                   State="FormFieldState.Invalid"
+                   Value="@("")" />
             <Input Hint="This is a hint"
                    Label="Input"
                    Placeholder="Type something..."
-                   State="FormFieldState.Valid" />
+                   State="FormFieldState.Valid"
+                   Value="@("")" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Types">
+            <Input Label="Text"
+                   Value="@("")" />
+            <Input Label="Password"
+                   Type="InputType.Password"
+                   Value="@("")" />
+            <Input Label="Number"
+                   Type="InputType.Number"
+                   Value="0" />
+            <Input Label="Date"
+                   Type="InputType.DatetimeLocal"
+                   Value="DateTime.Now" />
         </ComponentPreview>
     </PageBody>
 </Page>
