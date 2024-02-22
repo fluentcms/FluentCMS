@@ -37,11 +37,11 @@
 
         timer = new Timer((_) =>
         {
-            timer?.Dispose();
-
             toasts.Remove(toast);
 
             InvokeAsync(StateHasChanged);
+
+            timer?.Dispose();
         }, null, toast.Duration, -1);
     }
 

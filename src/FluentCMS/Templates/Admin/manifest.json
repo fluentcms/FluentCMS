@@ -220,16 +220,6 @@
                     ]
                 },
                 {
-                    "Title": "Media Library",
-                    "Path": "/media",
-                    "Plugins": [
-                        {
-                            "Definition": "Media Library",
-                            "Section": "Main"
-                        }
-                    ]
-                },
-                {
                     "Title": "Users",
                     "Path": "/users",
                     "Plugins": [
