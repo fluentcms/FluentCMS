@@ -10,6 +10,7 @@ public static class AdminUIServiceExtensions
         services.AddLocalStorage();
         services.AddApiClients(configuration);
         services.AddScoped<SetupManager>();
+        services.AddErrorMessageFactory();
 
         return services;
     }
