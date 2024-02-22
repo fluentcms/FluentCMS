@@ -1,20 +1,22 @@
-@inject AccountClient AccountClient
-@inject NavigationManager NavigationManager
-
-<EditForm Model="Model" OnValidSubmit="Login">
+<Form Model="@Model"
+      OnSubmit="OnSubmit">
     <Typography Size="TextSize.H5">
         Welcome back
     </Typography>
-    <Spacer/>
+    <Spacer />
     <Input @bind-Value="Model.Username"
+           Id="loginUsernameInput"
            Label="Username"
-           Placeholder="Enter your Username"
-           Required="true"/>
+           Name="Username"
+           Placeholder="Enter your username"
+           Required="true" />
     <Input @bind-Value="Model.Password"
+           Id="loginPasswordInput"
            Label="Password"
+           Name="Password"
            Placeholder="Enter your password"
            Required="true"
-           Type="InputType.Password"/>
+           Type="InputType.Password" />
     <Grid ItemsSmall="GridItems.Center"
           JustifySmall="GridJustify.Between">
         @* <GridItem> *@
@@ -29,13 +31,14 @@
             </Button>
         </GridItem>
     </Grid>
-    <Spacer/>
+    <Spacer />
     <Button Block="true"
             Color="Color.Primary"
+            id="loginSubmitButton"
             Type="ButtonType.Submit">
         Sign In
     </Button>
-    <Spacer/>
+    <Spacer />
     <Typography Color="Color.Secondary">
         Don't have an account?
         <Button Color="Color.Primary"
@@ -44,13 +47,19 @@
             Sign up
         </Button>
     </Typography>
-</EditForm>
+</Form>
 
 @code
 {
+    [Inject]
+    AccountClient AccountClient { get; set; } = default!;
+
+    [Inject]
+    NavigationManager NavigationManager { get; set; } = default!;
+
     UserLoginRequest Model { get; set; } = new();
 
-    private async Task Login()
+    private async Task OnSubmit()
     {
         var result = await AccountClient.AuthenticateAsync(Model);
         if (result.Errors!.Count == 0)
