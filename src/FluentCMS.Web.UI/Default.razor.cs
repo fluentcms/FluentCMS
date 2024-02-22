@@ -3,6 +3,7 @@ using HtmlAgilityPack;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Web.UI;
 
@@ -21,6 +22,11 @@ public partial class Default : IDisposable
     [Inject] public SiteClient SiteClient { set; get; } = default!;
 
     [Inject] public PluginDefinitionClient PluginDefinitionClient { set; get; } = default!;
+
+    [Inject] public ToastService ToastService { set; get; }
+
+    [Inject] public ILogger<Default> Logger { get; set; }
+    [Inject(Key = ErrorMessageExtension.ErrorMessageFactoryKey)] public required Func<Exception, string[]> ErrorMessageFactory { get; set; }
 
     [Parameter] public string? Route { get; set; }
 
@@ -158,5 +164,19 @@ public partial class Default : IDisposable
         var typeInfo = uiAssembly.DefinedTypes.Union(componentsAssembly.DefinedTypes)
             .FirstOrDefault(x => x.Name == typeName);
         return typeInfo?.AsType();
+    }
+
+    private async Task OnError(Exception ex)
+    {
+        if (ToastService == null || ToastService.ToastProvider == null)
+        {
+            Logger.LogError(ex, "Toast Not Initialized");
+            return;
+        }
+        var message = ErrorMessageFactory.Invoke(ex);
+        foreach (var error in message)
+        {
+            ToastService!.ToastProvider!.Show(error, ToastType.Danger);
+        }
     }
 }
