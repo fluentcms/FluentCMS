@@ -12,11 +12,10 @@
                         @foreach (var field in Fields)
                         {
                             // TODO: Cleanup this
-                            <Input Label="@field.Label"
+                            <Input @bind-Value="Model.Value![field.Slug!]"
+                                   Label="@field.Label"
                                    Placeholder="@field.Placeholder"
-                                   Required="@field.IsRequired"
-                                   Value="@(Model.Value![field.Slug!] as string)"
-                                   ValueChanged="str => Model.Value![field.Slug!] = str"/>
+                                   Required="@field.IsRequired" />
                         }
 
                         <ButtonGroup>

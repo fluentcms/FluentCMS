@@ -11,12 +11,14 @@
                         <CardBody>
                             @foreach (var field in Fields)
                             {
-                                <Input Label="@field.Label"
+                                <Input @bind-Value="Model.Value![field.Slug!]"
+                                       Label="@field.Label"
                                        Placeholder="@field.Placeholder"
-                                       Required="@field.IsRequired"
-                                       Value="@(ParseValue(Model.Value![field.Slug!]) as string)"
-                                       ValueChanged="str => Model.Value![field.Slug!] = str" />
+                                       Required="@field.IsRequired"/>
                             }
+
+                                       @* Value="@(ParseValue(Model.Value![field.Slug!]))"
+                                       ValueChanged="x => Model.Value![field.Slug!] = x"  *@
                             <ButtonGroup>
                                 <Button OnClick="GoBack">
                                     Cancel
