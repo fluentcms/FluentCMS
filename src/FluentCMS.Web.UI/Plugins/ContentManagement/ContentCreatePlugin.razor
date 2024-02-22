@@ -13,16 +13,19 @@
                         {
                             // TODO: Cleanup this
                             <Input @bind-Value="Model.Value![field.Slug!]"
+                                   Id="@($"contentCreate{@field.Slug}Input")"
                                    Label="@field.Label"
                                    Placeholder="@field.Placeholder"
                                    Required="@field.IsRequired" />
                         }
 
                         <ButtonGroup>
-                            <Button OnClick="GoBack">
+                            <Button id="contentCreateCancelButton"
+                                    OnClick="GoBack">
                                 Cancel
                             </Button>
                             <Button Color="Color.Primary"
+                                    id="contentCreateSubmitButton"
                                     Type="ButtonType.Submit">
                                 Save
                             </Button>

@@ -12,6 +12,7 @@
                             @foreach (var field in Fields)
                             {
                                 <Input @bind-Value="Model.Value![field.Slug!]"
+                                       Id="@($"contentUpdate{field.Slug}Input")"
                                        Label="@field.Label"
                                        Placeholder="@field.Placeholder"
                                        Required="@field.IsRequired"/>
@@ -20,10 +21,12 @@
                                        @* Value="@(ParseValue(Model.Value![field.Slug!]))"
                                        ValueChanged="x => Model.Value![field.Slug!] = x"  *@
                             <ButtonGroup>
-                                <Button OnClick="GoBack">
+                                <Button id="contentUpdateCancelButton"
+                                        OnClick="GoBack">
                                     Cancel
                                 </Button>
                                 <Button Color="Color.Primary"
+                                        id="contentUpdateSubmitButton"
                                         Type="ButtonType.Submit">
                                     Save
                                 </Button>

@@ -4,7 +4,8 @@
         <PageHeaderActions>
             <ButtonGroup>
                 <Button Color="Color.Primary"
-                        Href="?PluginDef=App Management&typeName=Create App">
+                        Href="?PluginDef=App Management&typeName=Create App"
+                        Id="appCreateButton">
                     <Icon Name="IconName.Plus" />
                     Add App
                 </Button>
@@ -20,35 +21,36 @@
                 <TableCell>Actions</TableCell>
             </TableHead>
             <TableBody>
-                @foreach (var app in Apps) {
+                @foreach (var app in Apps)
+                {
                     <TableRow>
                         <TableCell> @app.Title </TableCell>
-                        <TableCell> @app.Slug </TableCell>
-                        <TableCell> @app.Description </TableCell>
-                        <TableCell>
-                            <ButtonGroup>
-                                <Button Color="Color.Danger"
-                                        Size="ButtonSize.Small"
-                                        OnClick="@(evt => OnDelete(app))">
+                            <TableCell> @app.Slug </TableCell>
+                            <TableCell> @app.Description </TableCell>
+                            <TableCell>
+                                <ButtonGroup>
+                                    <Button Color="Color.Danger"
+                                            Size="ButtonSize.Small"
+                                            OnClick="@(evt => OnDelete(app))">
 
 
-                                    <Icon Name="IconName.Delete" />
-                                    Delete
-                                </Button>
-                                <Button Color="Color.Primary"
-                                        Href="@($"?PluginDef=App Management&typeName=Update App&appSlug={app.Slug}")"
-                                        Size="ButtonSize.Small">
-                                    <Icon Name="IconName.Edit" />
-                                    Edit
-                                </Button>
-                                <Button Href="@($"?PluginDef=App Management&typeName=App Detail&appSlug={app.Slug}")"
-                                        Size="ButtonSize.Small">
-                                    <Icon Name="IconName.Eye" />
-                                    Preview
-                                </Button>
-                            </ButtonGroup>
-                        </TableCell>
-                    </TableRow>
+                                        <Icon Name="IconName.Delete" />
+                                        Delete
+                                    </Button>
+                                    <Button Color="Color.Primary"
+                                            Href="@($"?PluginDef=App Management&typeName=Update App&appSlug={app.Slug}")"
+                                            Size="ButtonSize.Small">
+                                        <Icon Name="IconName.Edit" />
+                                        Edit
+                                    </Button>
+                                    <Button Href="@($"?PluginDef=App Management&typeName=App Detail&appSlug={app.Slug}")"
+                                            Size="ButtonSize.Small">
+                                        <Icon Name="IconName.Eye" />
+                                        Preview
+                                    </Button>
+                                </ButtonGroup>
+                            </TableCell>
+                        </TableRow>
                 }
             </TableBody>
         </Table>
@@ -78,10 +80,11 @@
         await LoadData();
     }
 
-    private async Task OnDelete(AppDetailResponse app) {
+    private async Task OnDelete(AppDetailResponse app)
+    {
         var result = await Confirm.Show("Are you sure to remove this app?");
 
-        if(result)
+        if (result)
         {
             Console.WriteLine("Should delete app");
             await AppClient!.DeleteAsync(app.Id);
