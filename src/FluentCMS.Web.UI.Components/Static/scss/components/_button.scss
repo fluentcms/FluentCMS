@@ -13,6 +13,10 @@ $button: $prefix + "button";
         @apply w-full;
     }
 
+    &-icon-true {
+        @apply text-center inline-flex items-center;
+    }
+
     &-link-true > span {
         @apply hover:underline;
     }
@@ -31,18 +35,34 @@ $button: $prefix + "button";
 
     &-size-default.#{$button}-link-false {
         @apply px-5 py-2.5 text-sm;
+
+        &.#{$button}-icon-true {
+            @apply p-0;
+        }
     }
 
     &-size-small.#{$button}-link-false {
         @apply px-3 py-2 text-xs;
+
+        &.#{$button}-icon-true {
+            @apply p-2 text-base;
+        }
     }
 
     &-size-medium.#{$button}-link-false {
         @apply px-5 py-2.5 text-sm;
+
+        &.#{$button}-icon-true {
+            @apply p-2.5 text-xl;
+        }
     }
 
     &-size-large.#{$button}-link-false {
         @apply px-5 py-3 text-base;
+
+        &.#{$button}-icon-true {
+            @apply p-3 text-2xl;
+        }
     }
 }
 
@@ -83,10 +103,10 @@ $button: $prefix + "button";
 .#{$button}-color-default.#{$button}-link-false.#{$button}-disabled-true {
     @apply text-white bg-gray-400 cursor-not-allowed pointer-events-none dark:bg-gray-500;
 }
+
 .#{$button}-color-default.#{$button}-link-true.#{$button}-ghost-false.#{$button}-outline-false {
     @apply text-gray-600 hover:text-gray-800 dark:text-gray-500 dark:hover:text-gray-700;
 }
-
 
 .#{$button}-group {
     @apply inline-flex justify-end gap-2;
