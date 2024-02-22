@@ -1,8 +1,10 @@
-﻿<div class="antialiased h-screen bg-gray-50 dark:bg-gray-900">
-    <nav class="bg-white border-b border-gray-200 px-4 py-2.5 dark:bg-gray-800 dark:border-gray-700 fixed lg:hidden left-0 right-0 top-0 z-50">
+﻿
+
+<div class="antialiased h-screen bg-gray-50 dark:bg-gray-900">
+    <nav class="bg-white border-b border-gray-200 px-4 py-2.5 dark:bg-gray-800 dark:border-gray-700 fixed lg:hidden left-0 right-0 top-0 z-50" id="adminNavbar">
         <div class="flex flex-wrap justify-between items-center">
             <div class="flex justify-start items-center">
-                <button data-drawer-target="drawer-navigation" data-drawer-toggle="drawer-navigation" aria-controls="drawer-navigation" class="p-2 mr-2 text-gray-600 rounded-lg cursor-pointer lg:hidden hover:text-gray-900 hover:bg-gray-100 focus:bg-gray-100 dark:focus:bg-gray-700 focus:ring-2 focus:ring-gray-100 dark:focus:ring-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                <button data-drawer-target="adminSidebar" class="p-2 mr-2 text-gray-600 rounded-lg cursor-pointer lg:hidden hover:text-gray-900 hover:bg-gray-100 focus:bg-gray-100 dark:focus:bg-gray-700 focus:ring-2 focus:ring-gray-100 dark:focus:ring-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white" id="adminNavbarToggleButton">
                     <svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
                     </svg>
@@ -11,7 +13,7 @@
                     </svg>
                     <span class="sr-only">Toggle sidebar</span>
                 </button>
-                <a href="/" class="flex items-center">
+                <a href="/" class="flex items-center" id="adminNavbarLogoLink">
                     <img src="https://flowbite.s3.amazonaws.com/logo.svg" class="h-8
 		  mr-3" alt="FluentCMS Logo" />
                     <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">FluentCMS</span>
@@ -21,53 +23,53 @@
         </div>
     </nav>
     <div class="relative flex h-full w-full flex-1">
-        <aside class="fixed top-0 left-0 z-40 w-64 h-screen pt-14 lg:pt-0 transition-transform -translate-x-full bg-white border-r border-gray-200 lg:translate-x-0 dark:bg-gray-800 dark:border-gray-700" aria-label="Sidenav" id="drawer-navigation">
-            <div class="overflow-y-auto py-5 px-3 h-full bg-white dark:bg-gray-800">
-                <a href="/" class="items-center pl-2.5 mb-5 hidden lg:flex">
+        <aside class="fixed top-0 left-0 z-40 w-64 h-screen pt-14 lg:pt-0 transition-transform -translate-x-full bg-white border-r border-gray-200 lg:translate-x-0 dark:bg-gray-800 dark:border-gray-700 flex flex-col overflow-y-auto " aria-label="Sidenav" id="adminSidebar">
+            <div class="py-5 px-3 bg-white dark:bg-gray-800 grow">
+                <a href="/" class="items-center pl-2.5 mb-5 hidden lg:flex" id="adminSidebarLogoLink">
                     <img src="https://flowbite.s3.amazonaws.com/logo.svg" class="h-8 mr-3" alt="FluentCMS Logo" />
                     <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">FluentCMS</span>
                 </a>
                 <ul class="space-y-2">
                     <li>
-                        <a href="/" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
+                        <a href="/" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" id="adminSidebarHomeLink">
                             <span class="ml-3">Home</span>
                         </a>
                     </li>
                 </ul>
                 <ul class="pt-5 mt-5 space-y-2 border-t border-gray-200 dark:border-gray-700">
                     <li>
-                        <a href="/admin/content" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
+                        <a href="/admin/content" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" id="adminSidebarContentManagementLink">
                             <span class="ml-3">Content Management</span>
                         </a>
                     </li>
                 </ul>
                 <ul class="pt-5 mt-5 space-y-2 border-t border-gray-200 dark:border-gray-700">
                     <li>
-                        <a href="/admin/apps" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
+                        <a href="/admin/apps" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" id="adminSidebarAppsLink">
                             <span class="ml-3">Apps</span>
                         </a>
                     </li>
                     <li>
-                        <a href="/admin/content-types" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
+                        <a href="/admin/content-types" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" id="adminSidebarContentTypeLink">
                             <span class="ml-3">Content-Type Builder</span>
                         </a>
                     </li>
                     <li>
-                        <a href="/admin/users" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
+                        <a href="/admin/users" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" id="adminSidebarUsersLink">
                             <span class="ml-3">Users</span>
                         </a>
                     </li>
                 </ul>
                 <ul class="pt-5 mt-5 space-y-2 border-t border-gray-200 dark:border-gray-700">
                     <li>
-                        <a href="/api/doc" target="_blank" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg transition duration-75 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-white group">
+                        <a href="/api/doc/index.html" target="_blank" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg transition duration-75 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-white group" id="adminSidebarDocsLink">
                             <span class="ml-3">Docs</span>
                         </a>
                     </li>
                 </ul>
             </div>
-            <div class="hidden absolute bottom-0 left-0 justify-center p-4 space-x-4 w-full lg:flex bg-white dark:bg-gray-800 z-20">
-                <ThemeSwitcher fluentcms />
+            <div class="justify-center p-4 space-x-4 w-full flex bg-white dark:bg-gray-800 z-20">
+                <ThemeSwitcher id="adminThemeButton" fluentcms />
             </div>
         </aside>
         <main class="dark:bg-gray-900 overflow-auto w-full flex-1 flex flex-col items-stretch h-full lg:ml-64 pt-20 lg:pt-4">
@@ -77,12 +79,5 @@
 </div>
 
 <script src="/js/flowbite.min.js"></script>
+<script src="/js/admin-sidebar.js"></script>
 
-<script>
-    document.querySelector('[data-drawer-target="drawer-navigation"]').addEventListener('click', () => {
-        document.getElementById('drawer-navigation').classList.toggle('-translate-x-full');
-    })
-    document.getElementById('drawer-navigation').addEventListener('click', () => {
-        document.getElementById('drawer-navigation').classList.add('-translate-x-full');
-    })
-</script>

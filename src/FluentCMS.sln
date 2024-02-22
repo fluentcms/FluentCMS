@@ -31,6 +31,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.ApiClients", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.UI.ComponentsDocs", "FluentCMS.Web.UI.ComponentsDocs\FluentCMS.Web.UI.ComponentsDocs.csproj", "{52B55216-80A2-4B41-9661-CD93FB5AB7B6}"
 EndProject
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "FluentCMS.E2E.UI", "FluentCMS.E2E.UI\FluentCMS.E2E.UI.esproj", "{6430AFBE-EA3B-458F-8BCA-44F80E4073BF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -89,12 +91,19 @@ Global
 		{52B55216-80A2-4B41-9661-CD93FB5AB7B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{52B55216-80A2-4B41-9661-CD93FB5AB7B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{52B55216-80A2-4B41-9661-CD93FB5AB7B6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6430AFBE-EA3B-458F-8BCA-44F80E4073BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6430AFBE-EA3B-458F-8BCA-44F80E4073BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6430AFBE-EA3B-458F-8BCA-44F80E4073BF}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{6430AFBE-EA3B-458F-8BCA-44F80E4073BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6430AFBE-EA3B-458F-8BCA-44F80E4073BF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6430AFBE-EA3B-458F-8BCA-44F80E4073BF}.Release|Any CPU.Deploy.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{FC3F30D9-C10C-4605-A9D8-0A56623EB109} = {C33EE73F-0D2F-4112-8E25-D14470690CC4}
+		{6430AFBE-EA3B-458F-8BCA-44F80E4073BF} = {C33EE73F-0D2F-4112-8E25-D14470690CC4}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2E9F4217-7A58-48A4-9850-84CD0CDA31DA}

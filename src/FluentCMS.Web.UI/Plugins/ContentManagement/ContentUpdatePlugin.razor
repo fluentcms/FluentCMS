@@ -11,17 +11,20 @@
                         <CardBody>
                             @foreach (var field in Fields)
                             {
-                                <Input Label="@field.Label"
+                                <Input id="@($"contentUpdate{field.Slug}Input")"
+                                       Label="@field.Label"
                                        Placeholder="@field.Placeholder"
                                        Required="@field.IsRequired"
                                        Value="@(ParseValue(Model.Value![field.Slug!]) as string)"
                                        ValueChanged="str => Model.Value![field.Slug!] = str" />
                             }
                             <ButtonGroup>
-                                <Button OnClick="GoBack">
+                                <Button id="contentUpdateCancelButton"
+                                        OnClick="GoBack">
                                     Cancel
                                 </Button>
                                 <Button Color="Color.Primary"
+                                        id="contentUpdateSubmitButton"
                                         Type="ButtonType.Submit">
                                     Save
                                 </Button>
