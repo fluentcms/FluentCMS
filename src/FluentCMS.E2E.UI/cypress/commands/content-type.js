@@ -130,7 +130,7 @@ Cypress.Commands.add('checkContentTypeUpdate', () => {
             if ($column.length > 0) {
                 cy.wrap($el).contains('Edit').click()
                 cy.contains('Update ContentType').should('be.visible')
-                cy.get('#contentTypeUpdateTitleInput').clear().type('Posts2', {delay: 10})
+                cy.get('#contentTypeUpdateTitleInput').clear().type('Posts2', {delay: 100})
                 cy.get('#contentTypeUpdateDescriptionInput').clear().type('Updated Description', {delay: 10})
                 cy.get('#contentTypeUpdateSubmitButton').click()
 
