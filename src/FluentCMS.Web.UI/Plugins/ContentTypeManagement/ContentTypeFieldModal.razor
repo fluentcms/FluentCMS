@@ -2,21 +2,28 @@
        Size="ModalSize.Large">
     <div class="dark:bg-gray-800">
         <ModalHeader>
-            <ModalTitle>@Title</ModalTitle>
+            <ModalTitle id="contentTypeFieldModalTitle">@Title</ModalTitle>
         </ModalHeader>
         <ModalBody>
             <Form Model="@Model"
                   OnSubmit="OnFormSubmit">
                 <Tabs @bind-Value="ActiveTab">
                     <TabsList>
-                        <TabsTab Name="tab-general">General</TabsTab>
-                        <TabsTab Name="tab-advanced">Advanced</TabsTab>
+                        <TabsTab id="contentTypeFieldModalGeneralTab" 
+                                 Name="tab-general">
+                            General
+                        </TabsTab>
+                        <TabsTab id="contentTypeFieldModalAdvancedTab" 
+                                 Name="tab-advanced">
+                            Advanced
+                        </TabsTab>
                     </TabsList>
                     <TabsPanels>
                         <TabsPanel Name="tab-general">
                             <Grid GutterX="GridGutter.Large">
                                 <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
                                     <Input @bind-Value="Model.Slug"
+                                           Id="contentTypeFieldModalSlugInput" 
                                            Label="Slug"
                                            Name="Slug"
                                            Placeholder="Enter Slug..."
@@ -24,6 +31,7 @@
                                 </GridItem>
                                 <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
                                     <Input @bind-Value="Model.Title"
+                                           Id="contentTypeFieldModalTitleInput"
                                            Label="Title"
                                            Name="Title"
                                            Placeholder="Enter Title..."
@@ -31,6 +39,7 @@
                                 </GridItem>
                             </Grid>
                             <Textarea @bind-Value="Model.Description"
+                                      Id="contentTypeFieldModalDescriptionInput"
                                       Label="Description"
                                       Name="Description"
                                       Placeholder="Enter Description..."
@@ -38,23 +47,28 @@
                         </TabsPanel>
                         <TabsPanel Name="tab-advanced">
                             <Input @bind-Value="Model.Label"
+                                   Id="contentTypeFieldModalLabelInput"
                                    Label="Label"
                                    Name="Label"
                                    Placeholder="Enter Label..."
                                    Required="true"/>
                             <Switch @bind-Value="Model.IsRequired"
-                                    Label="Is Required?" 
+                                    Id="contentTypeFieldModalRequiredInput"
+                                    Label="Is Required?"
                                     Name="IsRequired" />
                             <Input @bind-Value="Model.Placeholder"
+                                   Id="contentTypeFieldModalPlaceholderInput"
                                    Label="Placeholder"
                                    Name="Placeholder"
                                    Placeholder="Enter Placeholder..."/>
                             <Input @bind-Value="Model.Hint"
+                                   Id="contentTypeFieldModalHintInput"
                                    Label="Hint"
                                    Name="Hint"
                                    Placeholder="Enter Hint..."/>
 
                             <Input @bind-Value="Model.DefaultValue"
+                                   Id="contentTypeFieldModalDefaultValueInput"
                                    Label="Default Value"
                                    Name="DefaultValue"
                                    Placeholder="Enter Default Value..."/>
@@ -63,10 +77,12 @@
                 </Tabs>
 
                 <ButtonGroup>
-                    <Button OnClick="() => OnCancel.InvokeAsync()">
+                    <Button id="contentTypeFieldModalCancelButton"
+                            OnClick="() => OnCancel.InvokeAsync()">
                         Cancel
                     </Button>
                     <Button Color="Color.Primary"
+                            id="contentTypeFieldModalSubmitButton"
                             Type="ButtonType.Submit">
                         Submit
                     </Button>

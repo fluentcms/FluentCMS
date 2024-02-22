@@ -1,68 +1,74 @@
-﻿@inject SetupManager SetupManager
-@inject NavigationManager NavigationManager
-
-@if (!Initialized)
+﻿@if (!Initialized)
 {
-    <EditForm Model="@SetupModel"
-              OnValidSubmit="SetupStart">
+    <Form Model="@Model"
+          OnSubmit="OnSubmit">
         <Typography Size="TextSize.H5">
             Welcome To FluentCMS
         </Typography>
         <Spacer />
-        <Input @bind-Value="SetupModel.Username"
-               Name="Username"
+        <Input @bind-Value="Model.Username"
+               Id="setupUsernameInput"
                Label="Username"
-               Placeholder="username"
-               Required="true"/>
-        <Input @bind-Value="SetupModel.Email"
-               Name="Email"
+               Name="Username"
+               Placeholder="Enter your username"
+               Required="true" />
+        <Input @bind-Value="Model.Email"
+               Id="setupEmailInput"
                Label="Email"
-               Placeholder="name@example.com"
+               Name="Email"
+               Placeholder="Enter your email"
                Required="true"
-               Type="InputType.Email"/>
-        <Input @bind-Value="SetupModel.Password"
-               Name="Password"
+               Type="InputType.Email" />
+        <Input @bind-Value="Model.Password"
+               Id="setupPasswordInput"
                Label="Password"
-               Placeholder="••••••••••"
+               Name="Password"
+               Placeholder="Enter your password"
                Required="true"
-               Type="InputType.Password"/>
-        <Spacer/>
+               Type="InputType.Password" />
+        <Spacer />
         <Button Block="true"
                 Color="Color.Primary"
+                id="setupSubmitButton"
                 Type="ButtonType.Submit">
             Setup
         </Button>
-    </EditForm>
+    </Form>
 }
 else
 {
-    <div>
-        <p>Setup is already done!</p>
-    </div>
+    <Typography>
+        Setup is already done!
+    </Typography>
 }
 
 @code {
-    public bool Initialized { get; set; } = false;
+    [Inject]
+    SetupManager SetupManager { get; set; } = default!;
 
-    public SetupRequest SetupModel { get; set; } = new SetupRequest
-    {
-        Username = "admin",
-        Email = "admin@example.com",
-        Password = "Passw0rd!",
-        AppTemplateName = "Blank",
-        SiteTemplateName = "Blank"
-    };
+    [Inject]
+    NavigationManager NavigationManager { get; set; } = default!;
+
+    bool Initialized { get; set; }
+
+    SetupRequest Model { get; set; } = new SetupRequest
+        {
+            Username = "admin",
+            Email = "admin@example.com",
+            Password = "Passw0rd!",
+            AppTemplateName = "Blank",
+            SiteTemplateName = "Blank"
+        };
 
     protected override async Task OnInitializedAsync()
     {
         Initialized = await SetupManager.IsInitialized();
-        SetupModel.AdminDomain = new Uri(NavigationManager.BaseUri).Authority;
+        Model.AdminDomain = new Uri(NavigationManager.BaseUri).Authority;
     }
 
-    private async Task SetupStart()
+    private async Task OnSubmit()
     {
-        if (await SetupManager.Start(SetupModel))
+        if (await SetupManager.Start(Model))
             NavigationManager.NavigateTo("/", true);
     }
-
 }

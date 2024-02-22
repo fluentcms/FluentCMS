@@ -12,7 +12,8 @@
                         @foreach (var field in Fields)
                         {
                             // TODO: Cleanup this
-                            <Input Label="@field.Label"
+                            <Input Id="@($"contentCreate{@field.Slug}Input")"
+                                   Label="@field.Label"
                                    Name="@field.Slug"
                                    Placeholder="@field.Placeholder"
                                    Required="@field.IsRequired"
@@ -21,10 +22,12 @@
                         }
 
                         <ButtonGroup>
-                            <Button OnClick="GoBack">
+                            <Button id="contentCreateCancelButton"
+                                    OnClick="GoBack">
                                 Cancel
                             </Button>
                             <Button Color="Color.Primary"
+                                    id="contentCreateSubmitButton"
                                     Type="ButtonType.Submit">
                                 Save
                             </Button>

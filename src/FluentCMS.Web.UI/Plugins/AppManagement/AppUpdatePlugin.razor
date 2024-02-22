@@ -10,17 +10,20 @@
                     <Card>
                         <CardBody>
                             <Input @bind-Value="Model.Slug"
+                                   Id="appUpdateSlugInput"
                                    Label="Slug"
                                    Name="Slug"
                                    Placeholder="Enter App Slug..."
                                    Disabled="true"
                                    Required="true" />
                             <Input @bind-Value="Model.Title"
+                                   Id="appUpdateTitleInput"
                                    Label="Title"
                                    Name="Title"
                                    Placeholder="Enter App Title..."
                                    Required="true"/>
                             <Textarea @bind-Value="Model.Description"
+                                   Id="appUpdateDescriptionInput"
                                    Label="Description"
                                    Name="Description"
                                    Placeholder="Enter App Description..." />
@@ -33,10 +36,12 @@
                                 <Spacer/>
                             }
                             <ButtonGroup>
-                                <Button OnClick="GoBack">
+                                <Button id="appUpdateCancelButton" 
+                                        OnClick="GoBack">
                                     Cancel
                                 </Button>
                                 <Button Color="Color.Primary"
+                                        id="appUpdateSubmitButton"
                                         Type="ButtonType.Submit" >
                                     Submit
                                 </Button>
