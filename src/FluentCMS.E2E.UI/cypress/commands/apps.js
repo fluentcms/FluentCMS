@@ -48,9 +48,9 @@ Cypress.Commands.add('navigateToAppListPage', () => {
 
 Cypress.Commands.add('createApp', (title, slug, description) => {
     cy.navigateToAppCreatePage()
-    cy.get('#appCreateTitleInput').type(title)
-    cy.get('#appCreateSlugInput').type(slug)
-    cy.get('#appCreateDescriptionInput').type(description)
+    cy.get('#appCreateTitleInput').type(title, {delay: 10})
+    cy.get('#appCreateSlugInput').type(slug, {delay: 10})
+    cy.get('#appCreateDescriptionInput').type(description, {delay: 10})
 
     cy.get('#appCreateSubmitButton').click()
     
@@ -63,7 +63,7 @@ Cypress.Commands.add('createSampleApps', () => {
 })
 
 Cypress.Commands.add('checkAppCreateCancel', () => {
-    cy.get('#appCreateTitleInput').type('something')
+    cy.get('#appCreateTitleInput').type('something', {delay: 10})
     cy.get('#appCreateCancelButton').click()
 
     // TODO: redirect
@@ -84,8 +84,8 @@ Cypress.Commands.add('checkAppUpdateCancel', () => {
             if ($column.length > 0) {
                 cy.wrap($el).contains('Edit').click()
                 cy.contains('Update App')
-                cy.get('#appUpdateTitleInput').clear().type('Updated title')
-                cy.get('#appUpdateDescriptionInput').clear().type('Updated Description')
+                cy.get('#appUpdateTitleInput').clear().type('Updated title', {delay: 10})
+                cy.get('#appUpdateDescriptionInput').clear().type('Updated Description', {delay: 10})
                 cy.get('#appUpdateCancelButton').click()
 
                 cy.navigateToAppListPage()
@@ -101,8 +101,8 @@ Cypress.Commands.add('checkAppUpdate', () => {
             if ($column.length > 0) {
                 cy.wrap($el).contains('Edit').click()
                 cy.contains('Update App')
-                cy.get('#appUpdateTitleInput').clear().type('Updated title')
-                cy.get('#appUpdateDescriptionInput').clear().type('Updated Description')
+                cy.get('#appUpdateTitleInput').clear().type('Updated title', {delay: 10})
+                cy.get('#appUpdateDescriptionInput').clear().type('Updated Description', {delay: 10})
                 cy.get('#appUpdateSubmitButton').click()
 
                 cy.go(-1).wait(1000)
