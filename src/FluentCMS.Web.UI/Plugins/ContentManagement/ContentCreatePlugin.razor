@@ -12,16 +12,15 @@
                         @foreach (var field in Fields)
                         {
                             // TODO: Cleanup this
-                            <Input Id="@($"contentCreate{@field.Slug}Input")"
+                            <Input @bind-Value="Model.Value![field.Slug!]"
+                                   Id="@($"contentCreate{@field.Slug}Input")"
                                    Label="@field.Label"
                                    Name="@field.Slug"
                                    Placeholder="@field.Placeholder"
                                    Required="@field.IsRequired"
-                                   TValue="string"
                                    Value="@(Model[field.Slug!] as string)"
                                    ValueChanged="str => Model[field.Slug!] = str"/>
                         }
-
                         <ButtonGroup>
                             <Button id="contentCreateCancelButton"
                                     OnClick="GoBack">
