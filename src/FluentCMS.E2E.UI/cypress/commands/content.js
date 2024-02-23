@@ -46,7 +46,7 @@ Cypress.Commands.add('createContent', (appTitle, contentTypeTitle, value) => {
     cy.navigateToContentCreatePage(appTitle, contentTypeTitle)
 
     for(let field in value) {
-        cy.get(`#contentCreate${field}Input`).type(value[field])
+        cy.get(`#contentCreate${field}Input`).type(value[field], {delay: 10})
     }
 
     cy.get('#contentCreateSubmitButton').click()
@@ -109,8 +109,8 @@ Cypress.Commands.add('checkContentUpdate', () => {
         if($el[0].querySelector('.f-table-row')) {
             cy.wrap($el).find('.f-table-row').contains('First post').then($row => {
                 cy.wrap($el).contains('Edit').click()
-                cy.get('#contentUpdatetitleInput').clear().type('First post updated')
-                cy.get('#contentUpdatecontentInput').clear().type('First post content updated')
+                cy.get('#contentUpdatetitleInput').clear().type('First post updated', {delay: 10})
+                cy.get('#contentUpdatecontentInput').clear().type('First post content updated', {delay: 10})
                 cy.get('#contentUpdateSubmitButton').click()
                 
                 cy.contains('Posts List').should('be.visible')

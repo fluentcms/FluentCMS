@@ -22,27 +22,27 @@ Cypress.Commands.add('createContentTypeField', (value) => {
     cy.contains('Add Field').click()
     cy.get('#contentTypeFieldModalTitle').should('contain', 'Add Field')
 
-    cy.get('#contentTypeFieldModalTitleInput').type(value.title)
-    cy.get('#contentTypeFieldModalSlugInput').type(value.slug)
-    cy.get('#contentTypeFieldModalDescriptionInput').type(value.description)
+    cy.get('#contentTypeFieldModalTitleInput').type(value.title, {delay: 10})
+    cy.get('#contentTypeFieldModalSlugInput').type(value.slug, {delay: 10})
+    cy.get('#contentTypeFieldModalDescriptionInput').type(value.description, {delay: 10})
 
     cy.get('#contentTypeFieldModalAdvancedTab').click()
     
     if(value.label) {
-        cy.get('#contentTypeFieldModalLabelInput').type(value.label)
+        cy.get('#contentTypeFieldModalLabelInput').type(value.label, {delay: 10})
     }
     
     if(value.required) {
         cy.get('#contentTypeFieldModalRequiredInput').click({force: true})
     }
     if(value.placeholder) {
-        cy.get('#contentTypeFieldModalPlaceholderInput').type(value.placeholder)
+        cy.get('#contentTypeFieldModalPlaceholderInput').type(value.placeholder, {delay: 10})
     }
     if(value.hint) {
-        cy.get('#contentTypeFieldModalHintInput').type(value.hint)
+        cy.get('#contentTypeFieldModalHintInput').type(value.hint, {delay: 10})
     }
     if(value.defaultValue) {
-        cy.get('#contentTypeFieldModalDefaultValueInput').type(value.defaultValue)
+        cy.get('#contentTypeFieldModalDefaultValueInput').type(value.defaultValue, {delay: 10})
     }
   
     cy.get('#contentTypeFieldModalSubmitButton').click()
@@ -53,9 +53,9 @@ Cypress.Commands.add('createContentTypeField', (value) => {
 
 Cypress.Commands.add('createContentType', (appTitle, title, slug, description, fields = []) => {
     cy.navigateToContentTypeCreatePage(appTitle)
-    cy.get('#contentTypeCreateTitleInput').type(title)
-    cy.get('#contentTypeCreateSlugInput').type(slug)
-    cy.get('#contentTypeCreateDescriptionInput').type(description)
+    cy.get('#contentTypeCreateTitleInput').type(title, {delay: 10})
+    cy.get('#contentTypeCreateSlugInput').type(slug, {delay: 10})
+    cy.get('#contentTypeCreateDescriptionInput').type(description, {delay: 10})
 
     cy.get('#contentTypeCreateSubmitButton').click()
 
@@ -130,8 +130,8 @@ Cypress.Commands.add('checkContentTypeUpdate', () => {
             if ($column.length > 0) {
                 cy.wrap($el).contains('Edit').click()
                 cy.contains('Update ContentType').should('be.visible')
-                cy.get('#contentTypeUpdateTitleInput').clear().type('Posts2')
-                cy.get('#contentTypeUpdateDescriptionInput').clear().type('Updated Description')
+                cy.get('#contentTypeUpdateTitleInput').clear().type('Posts2', {delay: 100})
+                cy.get('#contentTypeUpdateDescriptionInput').clear().type('Updated Description', {delay: 10})
                 cy.get('#contentTypeUpdateSubmitButton').click()
 
                 cy.navigateToContentTypeListPage('First')

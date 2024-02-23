@@ -1,7 +1,7 @@
 describe('Content CRUD', () => {
   before(() => {
-    cy.doSetup()
-    cy.cleanContent()
+    // cy.doSetup()
+    // cy.cleanContent()
   })
 
   it('Should create Content', () => {
