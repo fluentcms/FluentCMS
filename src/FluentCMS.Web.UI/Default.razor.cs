@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.Logging;
+using System;
 
 namespace FluentCMS.Web.UI;
 
@@ -119,7 +120,7 @@ public partial class Default : IDisposable
             builder.OpenRegion(0);
             // get component Type from Node tag name
             var type = GetType(child.OriginalName);
-            if (type != null)
+            if (type != null && !type.IsSubclassOf(typeof(LayoutComponentBase)))
             {
                 builder.OpenComponent(1, type);
                 // add attributes
@@ -141,6 +142,13 @@ public partial class Default : IDisposable
                         (RenderFragment)((b) => AddChildrenToDom(b, child.ChildNodes)));
                 }
 
+                builder.CloseComponent();
+            }
+            else
+            {
+                builder.OpenComponent(1, typeof(LayoutView));
+                builder.AddComponentParameter(2, "Layout", type);
+                builder.AddComponentParameter(2, "ChildContent", (RenderFragment)((b) => AddChildrenToDom(b, child.ChildNodes)));
                 builder.CloseComponent();
             }
 
