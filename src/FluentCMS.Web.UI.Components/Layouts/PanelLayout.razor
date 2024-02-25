@@ -128,7 +128,7 @@
         </div>
     </nav>
     <div class="relative flex h-full w-full flex-1 overflow-auto">
-        @PanelLayoutSidebar
+        <SectionOutlet SectionName="sidebar" />
         <main class="h-screen overflow-auto dark:bg-gray-900 w-full flex-1 flex flex-col items-stretch h-full lg:ml-64 pt-20 lg:pt-0">
             @Body
         </main>
@@ -136,8 +136,3 @@
 </div>
 
 <script src="/_content/FluentCMS.Web.UI.Components/js/flowbite.min.js"></script>
-
-@code {
-    [Parameter]
-    public RenderFragment? PanelLayoutSidebar { get; set; }
-}
