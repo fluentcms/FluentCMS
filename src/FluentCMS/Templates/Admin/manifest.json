@@ -186,18 +186,39 @@
                     "IsDefault": true
                 }
             ]
+        },
+        {
+            "Name": "User Info",
+            "Description": "User Info Plugin",
+            "Types": [
+                {
+                    "Name": "User Info",
+                    "Type": "UserInfoViewPlugin",
+                    "IsDefault": true
+                }
+            ]
         }
     ],
     "Pages": [
         {
             "Title": "Home",
             "Path": "/",
-            "Plugins": []
+            "Plugins": [
+                {
+                    "Definition": "User Info",
+                    "Section": "UserInfo"
+                }
+            ]
         },
         {
             "Title": "Admin",
             "Path": "/admin",
-            "Plugins": [],
+            "Plugins": [
+                {
+                    "Definition": "User Info",
+                    "Section": "UserInfo"
+                }
+            ],
             "Children": [
                 {
                     "Title": "Content Management",
@@ -206,6 +227,10 @@
                         {
                             "Definition": "Content Management",
                             "Section": "Main"
+                        },
+                        {
+                            "Definition": "User Info",
+                            "Section": "UserInfo"
                         }
                     ]
                 },
@@ -216,6 +241,10 @@
                         {
                             "Definition": "ContentType Management",
                             "Section": "Main"
+                        },
+                        {
+                            "Definition": "User Info",
+                            "Section": "UserInfo"
                         }
                     ]
                 },
@@ -226,6 +255,10 @@
                         {
                             "Definition": "User Management",
                             "Section": "Main"
+                        },
+                        {
+                            "Definition": "User Info",
+                            "Section": "UserInfo"
                         }
                     ]
                 },
@@ -236,6 +269,10 @@
                         {
                             "Definition": "App Management",
                             "Section": "Main"
+                        },
+                        {
+                            "Definition": "User Info",
+                            "Section": "UserInfo"
                         }
                     ]
                 }
@@ -253,6 +290,10 @@
                         {
                             "Definition": "Login",
                             "Section": "Main"
+                        },
+                        {
+                            "Definition": "User Info",
+                            "Section": "UserInfo"
                         }
                     ]
                 },
@@ -264,6 +305,10 @@
                         {
                             "Definition": "Register",
                             "Section": "Main"
+                        },
+                        {
+                            "Definition": "User Info",
+                            "Section": "UserInfo"
                         }
                     ]
                 },
@@ -275,6 +320,10 @@
                         {
                             "Definition": "Reset Password",
                             "Section": "Main"
+                        },
+                        {
+                            "Definition": "User Info",
+                            "Section": "UserInfo"
                         }
                     ]
                 },
@@ -286,6 +335,10 @@
                         {
                             "Definition": "Forgot Password",
                             "Section": "Main"
+                        },
+                        {
+                            "Definition": "User Info",
+                            "Section": "UserInfo"
                         }
                     ]
                 },
@@ -297,6 +350,10 @@
                         {
                             "Definition": "Logout",
                             "Section": "Main"
+                        },
+                        {
+                            "Definition": "User Info",
+                            "Section": "UserInfo"
                         }
                     ]
                 }
