@@ -203,22 +203,12 @@
         {
             "Title": "Home",
             "Path": "/",
-            "Plugins": [
-                {
-                    "Definition": "User Info",
-                    "Section": "UserInfo"
-                }
-            ]
+            "Plugins": []
         },
         {
             "Title": "Admin",
             "Path": "/admin",
-            "Plugins": [
-                {
-                    "Definition": "User Info",
-                    "Section": "UserInfo"
-                }
-            ],
+            "Plugins": [],
             "Children": [
                 {
                     "Title": "Content Management",
@@ -227,10 +217,6 @@
                         {
                             "Definition": "Content Management",
                             "Section": "Main"
-                        },
-                        {
-                            "Definition": "User Info",
-                            "Section": "UserInfo"
                         }
                     ]
                 },
@@ -241,10 +227,6 @@
                         {
                             "Definition": "ContentType Management",
                             "Section": "Main"
-                        },
-                        {
-                            "Definition": "User Info",
-                            "Section": "UserInfo"
                         }
                     ]
                 },
@@ -255,10 +237,6 @@
                         {
                             "Definition": "User Management",
                             "Section": "Main"
-                        },
-                        {
-                            "Definition": "User Info",
-                            "Section": "UserInfo"
                         }
                     ]
                 },
@@ -269,10 +247,6 @@
                         {
                             "Definition": "App Management",
                             "Section": "Main"
-                        },
-                        {
-                            "Definition": "User Info",
-                            "Section": "UserInfo"
                         }
                     ]
                 }
@@ -290,10 +264,6 @@
                         {
                             "Definition": "Login",
                             "Section": "Main"
-                        },
-                        {
-                            "Definition": "User Info",
-                            "Section": "UserInfo"
                         }
                     ]
                 },
@@ -305,10 +275,6 @@
                         {
                             "Definition": "Register",
                             "Section": "Main"
-                        },
-                        {
-                            "Definition": "User Info",
-                            "Section": "UserInfo"
                         }
                     ]
                 },
@@ -320,10 +286,6 @@
                         {
                             "Definition": "Reset Password",
                             "Section": "Main"
-                        },
-                        {
-                            "Definition": "User Info",
-                            "Section": "UserInfo"
                         }
                     ]
                 },
@@ -335,10 +297,6 @@
                         {
                             "Definition": "Forgot Password",
                             "Section": "Main"
-                        },
-                        {
-                            "Definition": "User Info",
-                            "Section": "UserInfo"
                         }
                     ]
                 },
@@ -350,10 +308,6 @@
                         {
                             "Definition": "Logout",
                             "Section": "Main"
-                        },
-                        {
-                            "Definition": "User Info",
-                            "Section": "UserInfo"
                         }
                     ]
                 }
