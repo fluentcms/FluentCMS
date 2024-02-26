@@ -1,7 +1,7 @@
 ﻿<PanelLayout fluentcms>
-    <SectionContent SectionName="sidebar">
-        <Sidebar>
-            <Header>
+    <SectionContent SectionName="sidebar" fluentcms>
+        <Sidebar fluentcms>
+            <Header fluentcms-slot>
                 <a href="/" class="items-center pl-2.5 mb-5 hidden lg:flex">
                     <Logo />
                     <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">FluentCMS</span>
@@ -52,26 +52,26 @@
                 </ul>
             </div>
             <!--<ChildContent>
-                <SidebarItem Href="/">
-                    Home
-                </SidebarItem>
-                <SidebarItem Href="/admin/content">
-                    Content Management
-                </SidebarItem>
-                <SidebarItem Href="/admin/apps">
-                    Apps
-                </SidebarItem>
-                <SidebarItem Href="/admin/content-types">
-                    Content-Type Builder
-                </SidebarItem>
-                <SidebarItem Href="/admin/users">
-                    Users
-                </SidebarItem>
-                <SidebarItem Href="/api/doc/index.html">
-                    Docs
-                </SidebarItem>
-            </ChildContent>-->
-            <Footer>
+        <SidebarItem Href="/">
+            Home
+        </SidebarItem>
+        <SidebarItem Href="/admin/content">
+            Content Management
+        </SidebarItem>
+        <SidebarItem Href="/admin/apps">
+            Apps
+        </SidebarItem>
+        <SidebarItem Href="/admin/content-types">
+            Content-Type Builder
+        </SidebarItem>
+        <SidebarItem Href="/admin/users">
+            Users
+        </SidebarItem>
+        <SidebarItem Href="/api/doc/index.html">
+            Docs
+        </SidebarItem>
+    </ChildContent>-->
+            <Footer fluentcms-slot>
                 <ThemeSwitcher id="adminThemeButton" fluentcms />
                 <div class="flex items-center px-5 py-3 border-t border-gray-200 dark:border-gray-700">
                     <div class="relative inline-flex items-center justify-center w-10 h-10 overflow-hidden bg-gray-100 rounded-full dark:bg-gray-600">
@@ -85,9 +85,10 @@
                     </div>
                 </div>
             </Footer>
+            <Section Name="UserInfo" fluentcms />
         </Sidebar>
     </SectionContent>
-    <Section Name="main" fluentcms />
+    <Section Name="Main" fluentcms />
 </PanelLayout>
 
 <script src="/js/flowbite.min.js"></script>

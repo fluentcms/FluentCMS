@@ -5,12 +5,15 @@ using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Reflection;
+using Microsoft.AspNetCore.Components.Sections;
 
 namespace FluentCMS.Web.UI;
 
 public partial class Default : IDisposable
 {
     public const string ATTRIBUTE = "FluentCMS";
+    public const string SLOT_ATTRIBUTE = "FluentCMS-Slot";
 
     public PageFullDetailResponse? Page { get; set; }
 
@@ -129,8 +132,11 @@ public partial class Default : IDisposable
                     !x.Name.Equals(ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase));
                 foreach (var attribute in attributes)
                 {
-                    builder.AddComponentParameter(2, attribute.Name, attribute.Value);
-                    builder.AddComponentParameter(3, "Page", Page);
+                    builder.AddComponentParameter(2, attribute.OriginalName, attribute.Value);
+                    if (type.GetProperty("Page") != null)
+                    {
+                        builder.AddComponentParameter(3, "Page", Page);
+                    }
                 }
 
                 // add children
@@ -138,8 +144,15 @@ public partial class Default : IDisposable
                 // check if has children
                 if (child.HasChildNodes)
                 {
-                    builder.AddAttribute(2, "ChildContent",
-                        (RenderFragment)((b) => AddChildrenToDom(b, child.ChildNodes)));
+                    var slots = child.ChildNodes.Where(x => x.Attributes.Any(x => x.Name.Equals(SLOT_ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase)));
+
+                    foreach (var slot in slots)
+                    {
+                        builder.AddAttribute(2, slot.OriginalName, (RenderFragment)((b) => AddChildrenToDom(b, slot.ChildNodes)));
+                    }
+
+                    builder.AddAttribute(3, "ChildContent",
+                        (RenderFragment)((b) => AddChildrenToDom(b, child.ChildNodes.Where(x => x.Attributes.All(x => !x.Name.Equals(SLOT_ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase))))));
                 }
 
                 builder.CloseComponent();
@@ -170,8 +183,9 @@ public partial class Default : IDisposable
         var componentsAssembly = typeof(BaseComponent).Assembly;
 
         var typeInfo = uiAssembly.DefinedTypes.Union(componentsAssembly.DefinedTypes)
+            .Union([typeof(SectionContent)])
             .FirstOrDefault(x => x.Name == typeName);
-        return typeInfo?.AsType();
+        return typeInfo;
     }
 
     private async Task OnError(Exception ex)
