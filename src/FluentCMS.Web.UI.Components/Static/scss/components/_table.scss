@@ -5,6 +5,10 @@ $table: $prefix + "table";
 
     &-cell {
         @apply px-6 py-3;
+
+        &-width-small {
+            @apply w-0;
+        }
     }
 
     &-foot {

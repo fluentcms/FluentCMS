@@ -4,7 +4,8 @@
         <PageHeaderActions>
             <ButtonGroup>
                 <Button Color="Color.Primary"
-                        Href="?PluginDef=User Management&typeName=Create User">
+                        Href="?PluginDef=User Management&typeName=Create User"
+                        Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
                     Add User
                 </Button>
@@ -16,7 +17,7 @@
             <TableHead>
                 <TableCell>Username</TableCell>
                 <TableCell>Email</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell Width="TableColumnWidth.Small"></TableCell>
             </TableHead>
             <TableBody>
                 @foreach (var user in Users) {
@@ -25,17 +26,19 @@
                         <TableCell> @user.Email </TableCell>
                         <TableCell>
                             <ButtonGroup>
-                                <Button Color="Color.Primary"
+                                <Button Ghost="true"
+                                        Href="@($"?PluginDef=User Management&typeName=User Detail&id={user.Id}")"
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Eye" />
+                                </Button>
+                                <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
+
+                                <Button Ghost="true"
                                         Href="@($"?PluginDef=User Management&typeName=Update User&id={user.Id}")"
                                         Size="ButtonSize.Small">
                                     <Icon Name="IconName.Edit" />
-                                    Edit
                                 </Button>
-                                <Button Href="@($"?PluginDef=User Management&typeName=User Detail&id={user.Id}")"
-                                        Size="ButtonSize.Small">
-                                    <Icon Name="IconName.Eye" />
-                                    Preview
-                                </Button>
+                                <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
                             </ButtonGroup>
                         </TableCell>
                     </TableRow>

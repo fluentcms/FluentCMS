@@ -43,7 +43,7 @@
                                         <TableCell>Slug</TableCell>
                                         <TableCell>Title</TableCell>
                                         <TableCell>Type</TableCell>
-                                        <TableCell>Actions</TableCell>
+                                        <TableCell Width="TableColumnWidth.Small"></TableCell>
                                     </TableHead>
                                     <TableBody>
                                         @foreach (var field in Fields)
@@ -60,18 +60,19 @@
                                                 </TableCell>
                                                 <TableCell>
                                                     <ButtonGroup>
-                                                        <Button Color="Color.Danger"
+                                                        <Button Ghost="true"
                                                                 Size="ButtonSize.Small"
                                                                 OnClick="() => OnDeleteField(field.Slug)">
                                                             <Icon Name="IconName.Delete" />
-                                                            Delete
                                                         </Button>
-                                                        <Button Color="Color.Primary"
+                                                        <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
+
+                                                        <Button Ghost="true"
                                                                 Size="ButtonSize.Small"
                                                                 OnClick="() => OnEditField(field)">
                                                             <Icon Name="IconName.Edit" />
-                                                            Edit
                                                         </Button>
+                                                        <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
                                                     </ButtonGroup>
                                                 </TableCell>
                                             </TableRow>
