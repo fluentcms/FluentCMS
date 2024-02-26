@@ -3,89 +3,37 @@
         <Sidebar fluentcms>
             <Header fluentcms-slot>
                 <a href="/" class="items-center pl-2.5 mb-5 hidden lg:flex">
-                    <Logo />
+                    <Logo fluentcms />
                     <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">FluentCMS</span>
                 </a>
             </Header>
-            <div class="py-5 px-3 bg-white dark:bg-gray-800 grow">
-                <a href="/" class="items-center pl-2.5 mb-5 hidden lg:flex" id="adminSidebarLogoLink">
-                    <img src="https://flowbite.s3.amazonaws.com/logo.svg" class="h-8 mr-3" alt="FluentCMS Logo" />
-                    <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">FluentCMS</span>
-                </a>
-                <ul class="space-y-2">
-                    <li>
-                        <a href="/" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" id="adminSidebarHomeLink">
-                            <span class="ml-3">Home</span>
-                        </a>
-                    </li>
-                </ul>
-                <ul class="pt-5 mt-5 space-y-2 border-t border-gray-200 dark:border-gray-700">
-                    <li>
-                        <a href="/admin/content" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" id="adminSidebarContentManagementLink">
-                            <span class="ml-3">Content Management</span>
-                        </a>
-                    </li>
-                </ul>
-                <ul class="pt-5 mt-5 space-y-2 border-t border-gray-200 dark:border-gray-700">
-                    <li>
-                        <a href="/admin/apps" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" id="adminSidebarAppsLink">
-                            <span class="ml-3">Apps</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/admin/content-types" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" id="adminSidebarContentTypeLink">
-                            <span class="ml-3">Content-Type Builder</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/admin/users" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" id="adminSidebarUsersLink">
-                            <span class="ml-3">Users</span>
-                        </a>
-                    </li>
-                </ul>
-                <ul class="pt-5 mt-5 space-y-2 border-t border-gray-200 dark:border-gray-700">
-                    <li>
-                        <a href="/api/doc/index.html" target="_blank" class="flex items-center p-2 text-base font-medium text-gray-900 rounded-lg transition duration-75 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-white group" id="adminSidebarDocsLink">
-                            <span class="ml-3">Docs</span>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-            <!--<ChildContent>
-        <SidebarItem Href="/">
-            Home
-        </SidebarItem>
-        <SidebarItem Href="/admin/content">
-            Content Management
-        </SidebarItem>
-        <SidebarItem Href="/admin/apps">
-            Apps
-        </SidebarItem>
-        <SidebarItem Href="/admin/content-types">
-            Content-Type Builder
-        </SidebarItem>
-        <SidebarItem Href="/admin/users">
-            Users
-        </SidebarItem>
-        <SidebarItem Href="/api/doc/index.html">
-            Docs
-        </SidebarItem>
-    </ChildContent>-->
+            <ChildContent>
+                <SidebarItem fluentcms Href="/">
+                    Home
+                </SidebarItem>
+                <ul class="pt-5 mt-5 space-y-2 border-t border-gray-200 dark:border-gray-700"></ul>
+                <SidebarItem fluentcms Href="/admin/content">
+                    Content Management
+                </SidebarItem>
+                <ul class="pt-5 mt-5 space-y-2 border-t border-gray-200 dark:border-gray-700"></ul>
+                <SidebarItem fluentcms Href="/admin/apps">
+                    Apps
+                </SidebarItem>
+                <SidebarItem fluentcms Href="/admin/content-types">
+                    Content-Type Builder
+                </SidebarItem>
+                <SidebarItem fluentcms Href="/admin/users">
+                    Users
+                </SidebarItem>
+                <ul class="pt-5 mt-5 space-y-2 border-t border-gray-200 dark:border-gray-700"></ul>
+                <SidebarItem fluentcms Href="/api/doc/index.html">
+                    Docs
+                </SidebarItem>
+            </ChildContent>
             <Footer fluentcms-slot>
                 <ThemeSwitcher id="adminThemeButton" fluentcms />
-                <div class="flex items-center px-5 py-3 border-t border-gray-200 dark:border-gray-700">
-                    <div class="relative inline-flex items-center justify-center w-10 h-10 overflow-hidden bg-gray-100 rounded-full dark:bg-gray-600">
-                        <span class="font-medium text-gray-600 dark:text-gray-300">
-                            SA
-                        </span>
-                    </div>
-                    <div class="font-semibold leading-none text-gray-900 dark:text-white ml-3">
-                        <!--TODO: Parsa please add current user display name here-->
-                        Super Admin
-                    </div>
-                </div>
+                <Section Name="UserInfo" fluentcms />
             </Footer>
-            <Section Name="UserInfo" fluentcms />
         </Sidebar>
     </SectionContent>
     <Section Name="Main" fluentcms />
