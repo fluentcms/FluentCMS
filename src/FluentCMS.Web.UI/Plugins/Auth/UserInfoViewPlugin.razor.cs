@@ -23,6 +23,6 @@ public partial class UserInfoViewPlugin
     {
         await base.OnAfterRenderAsync(firstRender);
         Model = await AuthStateProvider.GetAuthenticationStateAsync();
-        StateHasChanged();
+        //StateHasChanged();
     }
 }
