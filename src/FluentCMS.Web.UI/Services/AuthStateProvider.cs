@@ -30,7 +30,7 @@ public class AuthStateProvider(NavigationManager navigationManager, IHttpContext
 
     private async Task<UserDetailResponseIApiResult> FetchUserDetail()
     {
-        var json = httpContextAccessor.HttpContext.Request.Cookies[LocalStorageKeys.UserLoginResponse];
+        var json = httpContextAccessor.HttpContext.Request.Cookies["UserLoginResponse"];
         var loginResponse =
             JsonSerializer.Deserialize<UserLoginResponse>(json);
         var user = await userClient.GetAsync(loginResponse.UserId);
