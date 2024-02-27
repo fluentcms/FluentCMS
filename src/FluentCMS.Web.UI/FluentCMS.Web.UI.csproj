@@ -1,25 +1,30 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+	</PropertyGroup>
 
 
-  <ItemGroup>
-    <SupportedPlatform Include="browser" />
-  </ItemGroup>
+	<ItemGroup>
+		<SupportedPlatform Include="browser" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="HtmlAgilityPack" Version="1.11.58" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.1" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="HtmlAgilityPack" Version="1.11.58" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="8.0.2" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.1" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\FluentCMS.Shared\FluentCMS.Shared.csproj" />
-    <ProjectReference Include="..\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj" />
-    <ProjectReference Include="..\FluentCMS.Web.UI.Components\FluentCMS.Web.UI.Components.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\FluentCMS.Shared\FluentCMS.Shared.csproj" />
+		<ProjectReference Include="..\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj" />
+		<ProjectReference Include="..\FluentCMS.Web.UI.Components\FluentCMS.Web.UI.Components.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
 
 </Project>

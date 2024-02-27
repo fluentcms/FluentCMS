@@ -48,23 +48,3 @@
         </Button>
     </Typography>
 </Form>
-
-@code
-{
-    [Inject]
-    AccountClient AccountClient { get; set; } = default!;
-
-    [Inject]
-    NavigationManager NavigationManager { get; set; } = default!;
-
-    UserLoginRequest Model { get; set; } = new();
-
-    private async Task OnSubmit()
-    {
-        var result = await AccountClient.AuthenticateAsync(Model);
-        if (result.Errors!.Count == 0)
-        {
-            NavigationManager.NavigateTo("/");
-        }
-    }
-}

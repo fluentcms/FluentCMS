@@ -4,7 +4,7 @@ $sidebar: $prefix + 'sidebar';
     @apply h-screen transition-transform border-r border-gray-200 dark:border-gray-700 min-h-full flex flex-col overflow-y-auto;
 
     &-footer {
-        @apply justify-center p-4 space-x-4 w-full flex bg-white dark:bg-gray-800;
+        @apply justify-center w-full flex flex-col bg-white dark:bg-gray-800;
     }
 
     &-item {

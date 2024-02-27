@@ -99,7 +99,7 @@ public class JwtUserTokenProvider : IUserTokenProvider
         return await Task.Run(() =>
         {
             var jwtTokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.UTF8.GetBytes(_options.Secret);
+            var key = SHA512.Create().ComputeHash(Encoding.UTF8.GetBytes(_options.Secret));
             var principal = jwtTokenHandler.ValidateToken(accessToken, new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
@@ -124,7 +124,7 @@ public class JwtUserTokenProvider : IUserTokenProvider
         return await Task.Run(() =>
         {
             var jwtTokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.UTF8.GetBytes(_options.Secret);
+            var key = SHA512.Create().ComputeHash(Encoding.UTF8.GetBytes(_options.Secret));
             var principal = jwtTokenHandler.ValidateToken(accessToken, new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,

@@ -889,7 +889,7 @@ body.dark {
   @apply h-screen transition-transform border-r border-gray-200 dark:border-gray-700 min-h-full flex flex-col overflow-y-auto;
 }
 .f-sidebar-footer {
-  @apply justify-center p-4 space-x-4 w-full flex bg-white dark:bg-gray-800;
+  @apply justify-center w-full flex flex-col bg-white dark:bg-gray-800;
 }
 .f-sidebar-item > span {
   @apply text-xs py-3;
@@ -1071,7 +1071,7 @@ body.dark {
 }
 
 .f-theme-switcher {
-  @apply inline-flex justify-center p-2 text-gray-500 rounded cursor-pointer dark:text-gray-400 dark:hover:text-white hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-600;
+  @apply inline-flex self-center justify-center p-2 m-2 text-gray-500 rounded cursor-pointer dark:text-gray-400 dark:hover:text-white hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-600;
 }
 
 .f-tooltip {
