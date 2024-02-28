@@ -3,10 +3,10 @@
                 Title="Content Types List">
         <PageHeaderActions>
             <ButtonGroup>
-                <Select @bind-Value="AppSlug" 
-                        Dense="true" 
+                <Select @bind-Value="AppSlug"
+                        Dense="true"
                         Id="contentTypeAppSelect"
-                        Placeholder="Choose an App..." 
+                        Placeholder="Choose an App..."
                         OnChange="OnAppSlugChanged">
                     @foreach (var app in Apps)
                     {
@@ -35,11 +35,18 @@
                 <TableCell Width="TableColumnWidth.Small"></TableCell>
             </TableHead>
             <TableBody id="contentTypeListTable">
-                @foreach (var contentType in ContentTypes) {
+                @foreach (var contentType in ContentTypes)
+                {
                     <TableRow>
-                        <TableCell> @contentType.Slug </TableCell>
-                        <TableCell> @contentType.Title </TableCell>
-                        <TableCell> @contentType.Description </TableCell>
+                        <TableCell>
+                            @contentType.Slug
+                        </TableCell>
+                        <TableCell>
+                            @contentType.Title
+                        </TableCell>
+                        <TableCell>
+                            @contentType.Description
+                        </TableCell>
                         <TableCell>
                             <ButtonGroup>
                                 <Button Ghost="true" 
@@ -76,60 +83,84 @@
     AppClient AppClient { get; set; } = default!;
 
     [Inject]
+    ConfirmService Confirm { get; set; } = default!;
+
+    [Inject]
     ContentTypeClient ContentTypeClient { get; set; } = default!;
+
+    [CascadingParameter]
+    public System.Net.Http.HttpContent? HttpContext { get; set; }
+
+    [Inject]
+    ILocalStorageService LocalStorageService { get; set; } = default!;
 
     [Inject]
     NavigationManager NavigationManager { get; set; } = default!;
 
-    [Inject]
-    ConfirmService Confirm { get; set; } = default!;
-
-    string? AppSlug {get; set;}
+    string? AppSlug { get; set; }
 
     List<AppDetailResponse> Apps { get; set; } = [];
 
     List<ContentTypeDetailResponse> ContentTypes { get; set; } = [];
 
-    protected override async Task OnInitializedAsync()
-    {
-        var appSlug = NavigationManager.GetAppSlugFromQuery();
-
-        if(!string.IsNullOrEmpty(appSlug))
-        {
-            AppSlug = appSlug;
-            await LoadData();
-        }
-
-        var appResponse = await AppClient!.GetAllAsync();
-
-        if(appResponse?.Data != null)
-        {
-            Apps = appResponse.Data.ToList();
-        }
-    }
-
-    async Task LoadData()
+    async Task Load()
     {
         var response = await ContentTypeClient.GetAllAsync(AppSlug);
 
-        if (response?.Data != null)
-        {
-            ContentTypes = response.Data.ToList();
-        }
+        if (response?.Data == null) return;
+
+        ContentTypes = response.Data.ToList();
     }
 
-    async Task OnAppSlugChanged(string slug) {
-        await LoadData();
+    async Task OnAppSlugChanged()
+    {
+        await LocalStorageService.SetItemAsStringAsync("APP_SLUG", AppSlug);
+
+        await Load();
     }
 
     async Task OnDelete(ContentTypeDetailResponse contentType)
     {
         var result = await Confirm.Show("Are you sure you want to remove this contentType?");
 
-        if(result)
+        if (!result) return;
+
+        await ContentTypeClient.DeleteAsync(AppSlug, contentType.Id);
+
+        await Load();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        AppSlug = NavigationManager.GetAppSlugFromQuery();
+
+        if (!string.IsNullOrEmpty(AppSlug))
         {
-            await ContentTypeClient.DeleteAsync(AppSlug, contentType.Id);
-            await LoadData();
+            await Load();
         }
+
+        var response = await AppClient!.GetAllAsync();
+
+        if (response?.Data == null) return;
+
+        Apps = response.Data.ToList();
+
+        StateHasChanged();
+
+        if (!string.IsNullOrEmpty(AppSlug)) return;
+
+        if (Apps.Count() == 0) return;
+
+        var slug = await LocalStorageService.GetItemAsStringAsync("APP_SLUG");
+
+        AppSlug = Apps.Exists(x => x.Slug == slug) ? slug : Apps.First().Slug;
+
+        StateHasChanged();
+
+        await LocalStorageService.SetItemAsStringAsync("APP_SLUG", AppSlug);
+
+        await Load();
     }
 }

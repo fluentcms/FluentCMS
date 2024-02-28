@@ -7,10 +7,11 @@
         @((MarkupString)Page.Layout.Head)
     }
 </HeadContent>
-
-<ExtendedErrorBoundary OnError="OnError">
-@ChildComponents()
-</ExtendedErrorBoundary>
+<CascadingAuthenticationState>
+    <ExtendedErrorBoundary OnError="OnError">
+        @ChildComponents()
+    </ExtendedErrorBoundary>
+</CascadingAuthenticationState>
 
 <ConfirmProvider></ConfirmProvider>
 <ToastProvider></ToastProvider>

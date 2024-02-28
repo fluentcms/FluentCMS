@@ -6,3 +6,9 @@
      class="@this.GetClasses()">
     @ChildContent
 </div>
+
+@code {
+    [Parameter]
+    [CssProperty]
+    public bool Vertical { get; set; }
+}
