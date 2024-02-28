@@ -13,7 +13,7 @@ $sidebar: $prefix + 'sidebar';
         }
 
         & > a {
-            @apply text-sm flex items-center font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700;
+            @apply text-xs flex items-center font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700;
 
             & > span {
                 @apply ml-3;
