@@ -230,7 +230,7 @@
 
         <ComponentPreview Title="Icon buttons"
                           Description="Sometimes you need a button to indicate an action using only an icon.">
-            <Stack>    
+            <Stack>
                 <Button Icon="true"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.InformationFilled" />
@@ -242,6 +242,28 @@
                 <Button Icon="true"
                         Size="ButtonSize.Large">
                     <Icon Name="IconName.InformationFilled" />
+                </Button>
+            </Stack>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Item">
+            <Stack Vertical="true">
+                <Button Block="true"
+                        Item="true">
+                    <Icon Name="IconName.Edit" />
+                    Edit
+                </Button>
+                <Button Block="true"
+                        Item="true">
+                    <Icon Name="IconName.Eye" />
+                    Preview
+                </Button>
+                <Button Block="true"
+                        Color="Color.Danger"
+                        Item="true"
+                        Outline="true">
+                    <Icon Name="IconName.Delete" />
+                    Delete
                 </Button>
             </Stack>
         </ComponentPreview>

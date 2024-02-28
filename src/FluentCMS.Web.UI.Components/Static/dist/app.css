@@ -111,6 +111,9 @@ body.dark {
 .f-button-icon-true {
   @apply text-center inline-flex items-center;
 }
+.f-button-item-true {
+  @apply text-start;
+}
 .f-button-link-true > span {
   @apply hover:underline;
 }
@@ -972,6 +975,9 @@ body.dark {
 
 .f-stack {
   @apply flex gap-4 items-center;
+}
+.f-stack-vertical-true {
+  @apply flex-col;
 }
 
 .f-table {

@@ -3050,6 +3050,10 @@ body.dark {
   text-align: center;
 }
 
+.f-button-item-true {
+  text-align: start;
+}
+
 .f-button-link-true > span:hover {
   text-decoration-line: underline;
 }
@@ -5773,6 +5777,10 @@ body.dark {
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+.f-stack-vertical-true {
+  flex-direction: column;
 }
 
 .f-table {
