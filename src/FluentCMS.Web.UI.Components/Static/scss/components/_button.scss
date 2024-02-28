@@ -17,6 +17,10 @@ $button: $prefix + "button";
         @apply text-center inline-flex items-center;
     }
 
+    &-item-true {
+        @apply text-start;
+    }
+
     &-link-true > span {
         @apply hover:underline;
     }
