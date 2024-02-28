@@ -7,7 +7,8 @@
                 Subtitle="Simple CRUD page for a entity">
         <PageHeaderActions>
             <ButtonGroup>
-                <Button Color="Color.Primary">
+                <Button Color="Color.Primary"
+                        Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
                     Add New
                 </Button>
@@ -38,7 +39,7 @@
                 <TableCell>Id</TableCell>
                 <TableCell>Title</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell Width="TableColumnWidth.Small"></TableCell>
             </TableHead>
             <TableBody>
                 <TableRow>
@@ -49,14 +50,16 @@
                     </TableCell>
                     <TableCell>
                         <ButtonGroup>
-                            <Button Color="Color.Danger">
+                            <Button Ghost="true">
                                 <Icon Name="IconName.Delete" />
-                                Delete
                             </Button>
-                            <Button Color="Color.Primary" Outline>
+                            <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
+
+                            <Button Ghost="true">
                                 <Icon Name="IconName.Edit" />
                                 Edit
                             </Button>
+                            <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
                         </ButtonGroup>
                     </TableCell>
                 </TableRow>

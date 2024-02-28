@@ -6,3 +6,9 @@
     class="@this.GetClasses()">
     @ChildContent
 </th>
+
+@code {
+    [Parameter]
+    [CssProperty]
+    public TableColumnWidth Width { get; set; }
+}

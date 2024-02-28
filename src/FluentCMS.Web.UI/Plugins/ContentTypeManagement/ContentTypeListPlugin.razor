@@ -17,7 +17,8 @@
                 {
                     <Button Color="Color.Primary"
                             Href="@($"?PluginDef=ContentType Management&typeName=Create ContentType&appSlug={AppSlug}")"
-                            id="contentTypeCreateButton">
+                            id="contentTypeCreateButton"
+                            Size="ButtonSize.Small">
                         <Icon Name="IconName.Plus" />
                         Add Content Type
                     </Button>
@@ -31,7 +32,7 @@
                 <TableCell>Slug</TableCell>
                 <TableCell>Title</TableCell>
                 <TableCell>Description</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell Width="TableColumnWidth.Small"></TableCell>
             </TableHead>
             <TableBody id="contentTypeListTable">
                 @foreach (var contentType in ContentTypes)
@@ -48,23 +49,26 @@
                         </TableCell>
                         <TableCell>
                             <ButtonGroup>
-                                <Button Color="Color.Danger"
-                                        Size="ButtonSize.Small"
-                                        OnClick="(evt) => OnDelete(contentType)">
-                                    <Icon Name="IconName.Delete" />
-                                    Delete
+                                <Button Ghost="true" 
+                                        Href="@($"?PluginDef=ContentType Management&typeName=ContentType Detail&id={contentType.Id}&appSlug={AppSlug}")"
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Eye" />
                                 </Button>
-                                <Button Color="Color.Primary"
+                                <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
+                                
+                                <Button Ghost="true"
                                         Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={contentType.Id}&appSlug={AppSlug}")"
                                         Size="ButtonSize.Small">
                                     <Icon Name="IconName.Edit" />
-                                    Edit
                                 </Button>
-                                <Button Href="@($"?PluginDef=ContentType Management&typeName=ContentType Detail&id={contentType.Id}&appSlug={AppSlug}")"
-                                        Size="ButtonSize.Small">
-                                    <Icon Name="IconName.Eye" />
-                                    Preview
+                                <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
+
+                                <Button Ghost="true"
+                                        Size="ButtonSize.Small"
+                                        OnClick="@(evt => OnDelete(contentType))">
+                                    <Icon Name="IconName.Delete" />
                                 </Button>
+                                <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
                             </ButtonGroup>
                         </TableCell>
                     </TableRow>

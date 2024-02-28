@@ -7,7 +7,8 @@
                 <ButtonGroup>
                     <Button Color="Color.Primary"
                             Href="@($"?pluginDef=Content Management&typeName=Create Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}")"
-                            id="contentCreateButton">
+                            id="contentCreateButton"
+                            Size="ButtonSize.Small">
                         <Icon Name="IconName.Plus" />
                         Insert
                     </Button>
@@ -27,9 +28,7 @@
                                     @field.Title
                                 </TableCell>
                             }
-                            <TableCell>
-                                Actions
-                            </TableCell>
+                            <TableCell Width="TableColumnWidth.Small"></TableCell>
                         </TableHead>
                         <TableBody id="contentListTable">
                             @foreach (var item in Data)
@@ -43,18 +42,19 @@
                                     }
                                     <TableCell>
                                         <ButtonGroup>
-                                            <Button Color="Color.Danger"
-                                                    Size="ButtonSize.Small"
-                                                    OnClick="() => OnDelete(item)">
-                                                <Icon Name="IconName.Delete" />
-                                                Delete
-                                            </Button>
-                                            <Button Color="Color.Primary"
+                                            <Button Ghost="true"
                                                     Href="@($"?pluginDef=Content Management&typeName=Update Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}&id={item.Id}")"
                                                     Size="ButtonSize.Small">
                                                 <Icon Name="IconName.Edit" />
-                                                Edit
                                             </Button>
+                                            <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
+
+                                            <Button Ghost="true"
+                                                    Size="ButtonSize.Small"
+                                                    OnClick="@(evt => OnDelete(item))">
+                                                <Icon Name="IconName.Delete" />
+                                            </Button>
+                                            <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
                                         </ButtonGroup>
                                     </TableCell>
                                 </TableRow>
