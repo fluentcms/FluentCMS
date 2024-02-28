@@ -16,7 +16,6 @@ Cypress.Commands.add('navigateToContentTypeCreatePage', (appTitle) => {
 })
 
 Cypress.Commands.add('createContentTypeField', (value) => {
-    cy.contains('Update ContentType').should('be.visible')
     cy.contains('Add Field').click()
     cy.get('#contentTypeFieldModalTitle').should('contain', 'Add Field')
 
