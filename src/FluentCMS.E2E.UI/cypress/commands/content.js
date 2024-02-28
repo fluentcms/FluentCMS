@@ -12,16 +12,10 @@ Cypress.Commands.add('cleanContent', () => {
 
 Cypress.Commands.add('deleteContents', (appTitle, contentTypeTitle) => {
     cy.navigateToContentListPage(appTitle, contentTypeTitle)
-    cy.get('#contentListTable').then($el => {
-        if($el[0].querySelector('.f-table-row')) {
-            cy.wrap($el).get('.f-table-row').each($row => {
-                cy.wrap($el).contains('Delete').click()
-                cy.get('.f-confirm-content').should('be.visible')
-                cy.contains('Yes, I\'m sure').click()
-            })
-        }
-    })
+    
+    cy.get('#contentListTable').deleteTableRows()
 })
+
 Cypress.Commands.add('navigateToContentListPage', (appTitle, contentTypeTitle) => {
     cy.visit('/')
 
@@ -46,7 +40,7 @@ Cypress.Commands.add('createContent', (appTitle, contentTypeTitle, value) => {
     cy.navigateToContentCreatePage(appTitle, contentTypeTitle)
 
     for(let field in value) {
-        cy.get(`#contentCreate${field}Input`).type(value[field], {delay: 10})
+        cy.get(`#contentCreate${field}Input`).type(value[field], {delay: 50})
     }
 
     cy.get('#contentCreateSubmitButton').click()
@@ -88,11 +82,8 @@ Cypress.Commands.add('checkContentDelete', () => {
     cy.navigateToContentListPage('First', 'Posts')
 
     cy.get('#contentListTable').then($el => {
-        cy.wrap($el).find('.f-table-row').contains('First post updated').then($row => {
-            cy.wrap($el).contains('Delete').click()
-            cy.get('.f-confirm-content').should('be.visible')
-            cy.contains('Yes, I\'m sure').click()
-
+        cy.get('#contentListTable').rows('First post updated').each($row => {
+            cy.wrap($row).deleteRow()
             cy.get('#contentListTable').contains('First post updated').should('not.exist')
         })
     })
@@ -105,18 +96,14 @@ Cypress.Commands.add('checkContentUpdateCancel', () => {
 Cypress.Commands.add('checkContentUpdate', () => {
     cy.navigateToContentListPage('First', 'Posts')
 
-    cy.get('#contentListTable').then($el => {
-        if($el[0].querySelector('.f-table-row')) {
-            cy.wrap($el).find('.f-table-row').contains('First post').then($row => {
-                cy.wrap($el).contains('Edit').click()
-                cy.get('#contentUpdatetitleInput').clear().type('First post updated', {delay: 10})
-                cy.get('#contentUpdatecontentInput').clear().type('First post content updated', {delay: 10})
-                cy.get('#contentUpdateSubmitButton').click()
-                
-                cy.contains('Posts List').should('be.visible')
-                
-                cy.get('#contentListTable').contains('First post updated').should('be.visible')
-            })
-        }
+    cy.get('#contentListTable').rows('First post').each($row => {
+        cy.wrap($row).get('[data-test="edit-btn"]').click()
+        cy.get('#contentUpdatetitleInput').clear().type('First post updated', {delay: 50})
+        cy.get('#contentUpdatecontentInput').clear().type('First post content updated', {delay: 50})
+        cy.get('#contentUpdateSubmitButton').click()
+        
+        cy.contains('Posts List').should('be.visible')
+        
+        cy.get('#contentListTable').contains('First post updated').should('be.visible')
     })
 })

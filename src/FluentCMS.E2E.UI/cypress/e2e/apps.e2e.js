@@ -1,3 +1,5 @@
+/// <reference types="cypress" />
+
 describe('Apps CRUD', () => {
   before(() => {
     cy.doSetup()

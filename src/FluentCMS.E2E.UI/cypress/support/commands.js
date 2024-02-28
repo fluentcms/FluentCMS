@@ -1,3 +1,5 @@
+/// <reference types="cypress" />
+
 // ***********************************************
 // This example commands.js shows you how to
 // create various custom commands and overwrite
@@ -44,3 +46,41 @@ Cypress.Commands.add('dashboardShouldAvailable', () => {
         .then(text => text.trim())
         .should('be.empty')
 })
+
+Cypress.Commands.add('deleteRow', {prevSubject: 'element'}, ($el, confirm = true) => {
+    cy.wrap($el).find('[data-test="delete-btn"]').click()
+    cy.get('.f-confirm-content').should('be.visible')
+    if(confirm) {
+        cy.get('.f-confirm-content').contains('Yes, I\'m sure').click()
+    } else {
+        cy.get('.f-confirm-content').contains('No, cancel').click()
+    }
+    
+})
+
+Cypress.Commands.add('deleteTableRows', {prevSubject: 'element'}, ($table) => {
+    function removeRows() {
+        return cy.wrap($table).then(async $rows => {
+            if($rows[0].querySelector('.f-table-row')) {
+                await cy.wrap($rows).rows().first().deleteRow()
+
+                removeRows()
+            }
+        })
+    }
+    removeRows()
+})
+
+Cypress.Commands.add('rows', { prevSubject: 'element' }, ($table, filter) => {
+    let $rows = $table.find('.f-table-row');
+
+    if($rows.length && filter) {
+        return cy.wrap($rows).filter(`:contains("${filter}")`)
+    }
+
+    if($rows.length) {
+        return $rows
+    } else {
+        return []
+    }
+});

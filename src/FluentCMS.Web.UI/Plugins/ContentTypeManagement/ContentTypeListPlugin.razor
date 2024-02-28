@@ -42,18 +42,21 @@
                         <TableCell>
                             <ButtonGroup>
                                 <Button Color="Color.Danger"
+                                        data-test="delete-btn"
                                         Size="ButtonSize.Small"
                                         OnClick="(evt) => OnDelete(contentType)">
                                     <Icon Name="IconName.Delete" />
                                     Delete
                                 </Button>
                                 <Button Color="Color.Primary"
+                                        data-test="edit-btn"
                                         Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={contentType.Id}&appSlug={AppSlug}")"
                                         Size="ButtonSize.Small">
                                     <Icon Name="IconName.Edit" />
                                     Edit
                                 </Button>
-                                <Button Href="@($"?PluginDef=ContentType Management&typeName=ContentType Detail&id={contentType.Id}&appSlug={AppSlug}")"
+                                <Button data-test="preview-btn"
+                                        Href="@($"?PluginDef=ContentType Management&typeName=ContentType Detail&id={contentType.Id}&appSlug={AppSlug}")"
                                         Size="ButtonSize.Small">
                                     <Icon Name="IconName.Eye" />
                                     Preview

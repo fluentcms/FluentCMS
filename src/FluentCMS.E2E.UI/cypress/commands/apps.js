@@ -1,28 +1,17 @@
-const clearTable = (attempt = 0) => {
-    if (attempt === 100) throw 'Too many attempts' 
-  
-    cy.get('.f-table-body').then($tbody => {
-      if($tbody.find('.f-table-row').length === 0 ) return;
-  
-      cy.get('.f-table-row').then($rows => {
-        cy.wrap($rows).first().contains('Delete').click();            
+/// <reference types="cypress" />
 
-        cy.get('.f-confirm-content').should('be.visible')
-        cy.get('.f-confirm-content').contains('Yes, I\'m sure').click()
-        cy.shortWait()    
-  
-        cy.then(() => {
-          clearTable(++attempt)                        // next step queued using then()
-        })
-      })
+Cypress.Commands.add('deleteApp', (titleOrSlug) => {
+    cy.get('#appListTable').rows(titleOrSlug).each($row => {
+        cy.wrap($row).deleteRow(confirm);
     })
-  }
-  
-  
+
+    cy.get('#appListTable').should('not.contain', titleOrSlug)
+})
+
 Cypress.Commands.add('cleanApp', () => {
     cy.navigateToAppListPage()
 
-    clearTable()
+    cy.get('#appListTable').deleteTableRows()
 })
 
 Cypress.Commands.add('navigateToAppCreatePage', () => {
@@ -48,12 +37,12 @@ Cypress.Commands.add('navigateToAppListPage', () => {
 
 Cypress.Commands.add('createApp', (title, slug, description) => {
     cy.navigateToAppCreatePage()
-    cy.get('#appCreateTitleInput').type(title, {delay: 10})
-    cy.get('#appCreateSlugInput').type(slug, {delay: 10})
-    cy.get('#appCreateDescriptionInput').type(description, {delay: 10})
+    cy.get('#appCreateTitleInput').type(title, { delay: 50 })
+    cy.get('#appCreateSlugInput').type(slug, { delay: 50 })
+    cy.get('#appCreateDescriptionInput').type(description, { delay: 50 })
 
     cy.get('#appCreateSubmitButton').click()
-    
+
     cy.go('back')
 })
 
@@ -63,7 +52,7 @@ Cypress.Commands.add('createSampleApps', () => {
 })
 
 Cypress.Commands.add('checkAppCreateCancel', () => {
-    cy.get('#appCreateTitleInput').type('something', {delay: 10})
+    cy.get('#appCreateTitleInput').type('something', { delay: 50 })
     cy.get('#appCreateCancelButton').click()
 
     // TODO: redirect
@@ -74,88 +63,57 @@ Cypress.Commands.add('checkAppCreateCancel', () => {
 Cypress.Commands.add('checkAppCreate', () => {
     cy.createApp('First App', 'first-app', 'Description of first app')
 
-    // TODO: Use id
-    cy.get('.f-table-body').contains('First App')
+    cy.get('#appListTable').contains('First App')
 })
 
 Cypress.Commands.add('checkAppUpdateCancel', () => {
-    cy.get('.f-table-body .f-table-row').each(($el, index, $list) => {
-        cy.wrap($el).find('.f-table-cell').contains('first-app').then($column => {
-            if ($column.length > 0) {
-                cy.wrap($el).contains('Edit').click()
-                cy.contains('Update App')
-                cy.get('#appUpdateTitleInput').clear().type('Updated title', {delay: 10})
-                cy.get('#appUpdateDescriptionInput').clear().type('Updated Description', {delay: 10})
-                cy.get('#appUpdateCancelButton').click()
+    cy.get('#appListTable').rows('first-app').each(($row) => {
+        cy.wrap($row).contains('Edit').click()
+        cy.contains('Update App')
+        cy.get('#appUpdateTitleInput').clear().type('Updated title', { delay: 50 })
+        cy.get('#appUpdateDescriptionInput').clear().type('Updated Description', { delay: 50 })
+        cy.get('#appUpdateCancelButton').click()
 
-                cy.navigateToAppListPage()
-                cy.contains('Updated title').should('not.exist')
-            }
-        });
+        cy.navigateToAppListPage()
+        cy.contains('Updated title').should('not.exist')
     });
 })
 
 Cypress.Commands.add('checkAppUpdate', () => {
-    cy.get('.f-table-body .f-table-row').each(($el, index, $list) => {
-        cy.wrap($el).find('.f-table-cell').contains('first-app').then($column => {
-            if ($column.length > 0) {
-                cy.wrap($el).contains('Edit').click()
-                cy.contains('Update App')
-                cy.get('#appUpdateTitleInput').clear().type('Updated title', {delay: 10})
-                cy.get('#appUpdateDescriptionInput').clear().type('Updated Description', {delay: 10})
-                cy.get('#appUpdateSubmitButton').click()
+    cy.get('#appListTable').rows('first-app').each(($row) => {
+        cy.wrap($row).get('[data-test="edit-btn"]').click()
+        cy.contains('Update App')
+        cy.get('#appUpdateTitleInput').clear().type('Updated title', { delay: 50 })
+        cy.get('#appUpdateDescriptionInput').clear().type('Updated Description', { delay: 50 })
+        cy.get('#appUpdateSubmitButton').click()
 
-                cy.go(-1).wait(1000)
-                cy.contains('Updated title').should('be.visible')
-            }
-        });
+        cy.go(-1).shortWait()
+        cy.contains('Updated title').should('be.visible')
     });
 })
 
 Cypress.Commands.add('checkAppDetail', () => {
-	cy.get('.f-table-body').find('.f-table-row').then($row => {
-		cy.wrap($row).contains('First App').then($column => {
-			cy.wrap($row).contains('Preview').click()
+    cy.get('#appListTable').rows('First App').each($row => {
+        cy.wrap($row).get('[data-test="preview-btn"]').click()
 
-			cy.contains('First App').should('be.visible')
-			cy.contains('first-app').should('be.visible')
-			cy.contains('Description of first app').should('be.visible')
-		})
-	})
+        cy.contains('First App').should('be.visible')
+        cy.contains('first-app').should('be.visible')
+        cy.contains('Description of first app').should('be.visible')
+    })
 })
 
 Cypress.Commands.add('checkAppList', () => {
-    cy.get('.f-table-body .f-table-row').contains('Updated title')
+    cy.get('#appListTable').contains('Updated title')
 })
 
 Cypress.Commands.add('checkAppDeleteCancel', () => {
-    cy.get('.f-table-body .f-table-row').each(($el, index, $list) => {
-        cy.wrap($el).find('.f-table-cell').contains('first-app').then($column => {
-            if ($column.length > 0) {
-                cy.wrap($el).contains('Delete').click()
+    cy.get('#appListTable').rows('first-app').each(($row) => {
+        cy.wrap($row).deleteRow(false)
 
-                cy.get('.f-confirm-content').should('be.visible')
-
-                cy.get('.f-confirm-content').contains('No, cancel').click()
-
-                cy.get('.f-table-body .f-table-row').should('contain', 'first-app')
-            }
-        });
+        cy.get('#appListTable .f-table-row').should('contain', 'first-app')
     })
 })
 
 Cypress.Commands.add('checkAppDelete', () => {
-    cy.get('.f-table-body .f-table-row').each(($el, index, $list) => {
-        cy.wrap($el).find('.f-table-cell').contains('first-app').then($column => {
-            if ($column.length > 0) {
-                cy.wrap($el).contains('Delete').click()
-
-                cy.get('.f-confirm-content').should('be.visible')
-
-                cy.get('.f-confirm-content').contains('Yes, I\'m sure').click()
-
-                cy.get('.f-table-body').should('not.contain', 'first-app')
-            }
-        });
-    });
+    cy.deleteApp('first-app')
 })

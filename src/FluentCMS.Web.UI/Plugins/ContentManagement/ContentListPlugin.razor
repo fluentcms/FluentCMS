@@ -44,12 +44,14 @@
                                     <TableCell>
                                         <ButtonGroup>
                                             <Button Color="Color.Danger"
+                                                    data-test="delete-btn"
                                                     Size="ButtonSize.Small"
                                                     OnClick="() => OnDelete(item)">
                                                 <Icon Name="IconName.Delete" />
                                                 Delete
                                             </Button>
                                             <Button Color="Color.Primary"
+                                                    data-test="edit-btn"
                                                     Href="@($"?pluginDef=Content Management&typeName=Update Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}&id={item.Id}")"
                                                     Size="ButtonSize.Small">
                                                 <Icon Name="IconName.Edit" />

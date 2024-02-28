@@ -20,7 +20,7 @@
                 <TableCell>Description</TableCell>
                 <TableCell>Actions</TableCell>
             </TableHead>
-            <TableBody>
+            <TableBody id="appListTable">
                 @foreach (var app in Apps)
                 {
                     <TableRow>
@@ -30,6 +30,7 @@
                             <TableCell>
                                 <ButtonGroup>
                                     <Button Color="Color.Danger"
+                                            data-test="delete-btn"
                                             Size="ButtonSize.Small"
                                             OnClick="@(evt => OnDelete(app))">
 
@@ -38,12 +39,14 @@
                                         Delete
                                     </Button>
                                     <Button Color="Color.Primary"
+                                            data-test="edit-btn"
                                             Href="@($"?PluginDef=App Management&typeName=Update App&appSlug={app.Slug}")"
                                             Size="ButtonSize.Small">
                                         <Icon Name="IconName.Edit" />
                                         Edit
                                     </Button>
                                     <Button Href="@($"?PluginDef=App Management&typeName=App Detail&appSlug={app.Slug}")"
+                                            data-test="preview-btn"
                                             Size="ButtonSize.Small">
                                         <Icon Name="IconName.Eye" />
                                         Preview

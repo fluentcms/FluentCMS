@@ -22,27 +22,27 @@ Cypress.Commands.add('createContentTypeField', (value) => {
     cy.contains('Add Field').click()
     cy.get('#contentTypeFieldModalTitle').should('contain', 'Add Field')
 
-    cy.get('#contentTypeFieldModalTitleInput').type(value.title, {delay: 10})
-    cy.get('#contentTypeFieldModalSlugInput').type(value.slug, {delay: 10})
-    cy.get('#contentTypeFieldModalDescriptionInput').type(value.description, {delay: 10})
+    cy.get('#contentTypeFieldModalTitleInput').type(value.title, {delay: 50})
+    cy.get('#contentTypeFieldModalSlugInput').type(value.slug, {delay: 50})
+    cy.get('#contentTypeFieldModalDescriptionInput').type(value.description, {delay: 50})
 
     cy.get('#contentTypeFieldModalAdvancedTab').click()
     
     if(value.label) {
-        cy.get('#contentTypeFieldModalLabelInput').type(value.label, {delay: 10})
+        cy.get('#contentTypeFieldModalLabelInput').type(value.label, {delay: 50})
     }
     
     if(value.required) {
         cy.get('#contentTypeFieldModalRequiredInput').click({force: true})
     }
     if(value.placeholder) {
-        cy.get('#contentTypeFieldModalPlaceholderInput').type(value.placeholder, {delay: 10})
+        cy.get('#contentTypeFieldModalPlaceholderInput').type(value.placeholder, {delay: 50})
     }
     if(value.hint) {
-        cy.get('#contentTypeFieldModalHintInput').type(value.hint, {delay: 10})
+        cy.get('#contentTypeFieldModalHintInput').type(value.hint, {delay: 50})
     }
     if(value.defaultValue) {
-        cy.get('#contentTypeFieldModalDefaultValueInput').type(value.defaultValue, {delay: 10})
+        cy.get('#contentTypeFieldModalDefaultValueInput').type(value.defaultValue, {delay: 50})
     }
   
     cy.get('#contentTypeFieldModalSubmitButton').click()
@@ -53,9 +53,9 @@ Cypress.Commands.add('createContentTypeField', (value) => {
 
 Cypress.Commands.add('createContentType', (appTitle, title, slug, description, fields = []) => {
     cy.navigateToContentTypeCreatePage(appTitle)
-    cy.get('#contentTypeCreateTitleInput').type(title, {delay: 10})
-    cy.get('#contentTypeCreateSlugInput').type(slug, {delay: 10})
-    cy.get('#contentTypeCreateDescriptionInput').type(description, {delay: 10})
+    cy.get('#contentTypeCreateTitleInput').type(title, {delay: 50})
+    cy.get('#contentTypeCreateSlugInput').type(slug, {delay: 50})
+    cy.get('#contentTypeCreateDescriptionInput').type(description, {delay: 50})
 
     cy.get('#contentTypeCreateSubmitButton').click()
 
@@ -74,17 +74,13 @@ Cypress.Commands.add('cleanContentType', () => {
 })
 
 Cypress.Commands.add('checkContentTypeDetail', () => {
-    cy.get('#contentTypeListTable .f-table-row').each(($el) => {
-        cy.wrap($el).find('.f-table-cell').contains('posts').then($column => {
-            if ($column.length > 0) {
-                cy.wrap($el).contains('Preview').click()
+    cy.get('#contentTypeListTable').rows('posts').each(($row) => {
+        cy.wrap($row).get('[data-test="preview-btn"]').click()
 
-                cy.contains('ContentType Detail').should('be.visible')
-                cy.contains('Posts').should('be.visible')
-                cy.contains('posts').should('be.visible')
-                cy.contains('Posts content type').should('be.visible')
-            }
-        })
+        cy.contains('ContentType Detail').should('be.visible')
+        cy.contains('Posts').should('be.visible')
+        cy.contains('posts').should('be.visible')
+        cy.contains('Posts content type').should('be.visible')
     })
 })
 
@@ -124,21 +120,17 @@ Cypress.Commands.add('checkContentTypeUpdateCancel', () => {
 Cypress.Commands.add('checkContentTypeUpdate', () => {
     cy.navigateToContentTypeListPage('First')
 
-    cy.get('#contentTypeListTable .f-table-row').each(($el) => {
+    cy.get('#contentTypeListTable').rows('posts').each(($el) => {
+        cy.wrap($el).get('[data-test="edit-btn"]').click()
 
-        cy.wrap($el).find('.f-table-cell').contains('posts').then($column => {
-            if ($column.length > 0) {
-                cy.wrap($el).contains('Edit').click()
-                cy.contains('Update ContentType').should('be.visible')
-                cy.get('#contentTypeUpdateTitleInput').clear().type('Posts2', {delay: 100})
-                cy.get('#contentTypeUpdateDescriptionInput').clear().type('Updated Description', {delay: 10})
-                cy.get('#contentTypeUpdateSubmitButton').click()
+        cy.contains('Update ContentType').should('be.visible')
+        cy.get('#contentTypeUpdateTitleInput').clear().type('Posts2', {delay: 50})
+        cy.get('#contentTypeUpdateDescriptionInput').clear().type('Updated Description', {delay: 50})
+        cy.get('#contentTypeUpdateSubmitButton').click()
 
-                cy.navigateToContentTypeListPage('First')
+        cy.navigateToContentTypeListPage('First')
 
-                cy.contains('Posts2').should('be.visible')
-            }
-        })
+        cy.contains('Posts2').should('be.visible')
     })
 })
 
@@ -149,15 +141,9 @@ Cypress.Commands.add('checkContentTypeDeleteCancel', () => {
 Cypress.Commands.add('checkContentTypeDelete', () => {
     cy.navigateToContentTypeListPage('First')
 
-    cy.get('#contentTypeListTable .f-table-row').each(($el) => {
-        cy.wrap($el).find('.f-table-cell').contains('posts').then($column => {
-            if ($column.length > 0) {
-                cy.wrap($el).contains('Delete').click()
-                cy.get('.f-confirm-content').should('be.visible')
-                cy.contains('Yes, I\'m sure').click()
-                
-                cy.contains('Posts2').should('not.exist')
-            }
-        })
+    cy.get('#contentTypeListTable').rows('posts').each(($el) => {
+        cy.wrap($el).deleteRow();
+
+        cy.contains('Posts2').should('not.exist')
     })
 })

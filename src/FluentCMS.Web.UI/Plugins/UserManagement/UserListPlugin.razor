@@ -26,12 +26,14 @@
                         <TableCell>
                             <ButtonGroup>
                                 <Button Color="Color.Primary"
+                                        data-test="edit-btn"
                                         Href="@($"?PluginDef=User Management&typeName=Update User&id={user.Id}")"
                                         Size="ButtonSize.Small">
                                     <Icon Name="IconName.Edit" />
                                     Edit
                                 </Button>
-                                <Button Href="@($"?PluginDef=User Management&typeName=User Detail&id={user.Id}")"
+                                <Button data-test="preview-btn"
+                                        Href="@($"?PluginDef=User Management&typeName=User Detail&id={user.Id}")"
                                         Size="ButtonSize.Small">
                                     <Icon Name="IconName.Eye" />
                                     Preview
