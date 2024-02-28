@@ -68,7 +68,7 @@ Cypress.Commands.add('checkAppCreate', () => {
 
 Cypress.Commands.add('checkAppUpdateCancel', () => {
     cy.get('#appListTable').rows('first-app').each(($row) => {
-        cy.wrap($row).contains('Edit').click()
+        cy.wrap($row).contains('[data-test="edit-btn"]').click()
         cy.contains('Update App')
         cy.get('#appUpdateTitleInput').clear().type('Updated title', { delay: 50 })
         cy.get('#appUpdateDescriptionInput').clear().type('Updated Description', { delay: 50 })

@@ -49,7 +49,7 @@
                         </TableCell>
                         <TableCell>
                             <ButtonGroup>
-                                <Button data-test="delete-btn"
+                                <Button data-test="preview-btn"
                                         Ghost="true" 
                                         Href="@($"?PluginDef=ContentType Management&typeName=ContentType Detail&id={contentType.Id}&appSlug={AppSlug}")"
                                         Size="ButtonSize.Small">
@@ -65,7 +65,7 @@
                                 </Button>
                                 <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
 
-                                <Button data-test="preview-btn"
+                                <Button data-test="delete-btn"
                                         Ghost="true"
                                         Size="ButtonSize.Small"
                                         OnClick="@(evt => OnDelete(contentType))">
