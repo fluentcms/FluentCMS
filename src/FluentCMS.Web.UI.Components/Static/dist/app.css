@@ -100,7 +100,7 @@ body.dark {
 
 /*TODO*/
 .f-button {
-  @apply font-medium rounded-lg relative focus:z-10 focus:outline-none;
+  @apply inline-block font-medium rounded-lg relative focus:z-10 focus:outline-none;
 }
 .f-button > span {
   @apply items-center gap-2 text-center inline-flex;
@@ -1140,6 +1140,42 @@ body.dark {
 }
 .f-typography-size-h6 {
   @apply text-lg font-bold;
+}
+.f-typography-size-extra-small {
+  @apply text-xs;
+}
+.f-typography-size-small {
+  @apply text-sm;
+}
+.f-typography-size-large {
+  @apply text-lg;
+}
+.f-typography-size-extra-large {
+  @apply text-xl;
+}
+.f-typography-weight-thin {
+  @apply font-thin;
+}
+.f-typography-weight-extra-light {
+  @apply font-extralight;
+}
+.f-typography-weight-normal {
+  @apply font-normal;
+}
+.f-typography-weight-medium {
+  @apply font-medium;
+}
+.f-typography-weight-semi-bold {
+  @apply font-semibold;
+}
+.f-typography-weight-bold {
+  @apply font-bold;
+}
+.f-typography-weight-extra-bold {
+  @apply font-extrabold;
+}
+.f-typography-weight-black {
+  @apply font-black;
 }
 .f-typography-align-left {
   @apply text-left;
