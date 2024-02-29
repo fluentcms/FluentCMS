@@ -5,7 +5,8 @@
             <ButtonGroup>
                 <Button Color="Color.Primary"
                         Href="?PluginDef=App Management&typeName=Create App"
-                        Id="appCreateButton">
+                        Id="appCreateButton"
+                        Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
                     Add App
                 </Button>
@@ -18,39 +19,42 @@
                 <TableCell>Title</TableCell>
                 <TableCell>Slug</TableCell>
                 <TableCell>Description</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell Width="TableColumnWidth.Small"></TableCell>
             </TableHead>
             <TableBody>
                 @foreach (var app in Apps)
                 {
                     <TableRow>
                         <TableCell> @app.Title </TableCell>
-                            <TableCell> @app.Slug </TableCell>
-                            <TableCell> @app.Description </TableCell>
-                            <TableCell>
-                                <ButtonGroup>
-                                    <Button Color="Color.Danger"
-                                            Size="ButtonSize.Small"
-                                            OnClick="@(evt => OnDelete(app))">
+                        <TableCell> @app.Slug </TableCell>
+                        <TableCell> @app.Description </TableCell>
+                        <TableCell>
+                            <ButtonGroup>
+                                <Button Href="@($"?PluginDef=App Management&typeName=App Detail&appSlug={app.Slug}")"
+                                        Ghost="true"
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Eye" />
+                                </Button>
+                                <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
 
+                                <Button Href="@($"?PluginDef=App Management&typeName=Update App&appSlug={app.Slug}")"
+                                        Ghost="true"
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Edit" />
+                                </Button>
+                                <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
 
-                                        <Icon Name="IconName.Delete" />
-                                        Delete
-                                    </Button>
-                                    <Button Color="Color.Primary"
-                                            Href="@($"?PluginDef=App Management&typeName=Update App&appSlug={app.Slug}")"
-                                            Size="ButtonSize.Small">
-                                        <Icon Name="IconName.Edit" />
-                                        Edit
-                                    </Button>
-                                    <Button Href="@($"?PluginDef=App Management&typeName=App Detail&appSlug={app.Slug}")"
-                                            Size="ButtonSize.Small">
-                                        <Icon Name="IconName.Eye" />
-                                        Preview
-                                    </Button>
-                                </ButtonGroup>
-                            </TableCell>
-                        </TableRow>
+                                <Button Ghost="true"
+                                        Size="ButtonSize.Small"
+                                        OnClick="@(evt => OnDelete(app))">
+
+                                    <Icon Name="IconName.Delete" />
+                                </Button>
+                                <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
+
+                            </ButtonGroup>
+                        </TableCell>
+                    </TableRow>
                 }
             </TableBody>
         </Table>
@@ -66,29 +70,28 @@
 
     List<AppDetailResponse> Apps { get; set; } = [];
 
-    async Task LoadData()
+    async Task Load()
     {
         var response = await AppClient!.GetAllAsync();
 
-        if (response?.Data != null)
-        {
-            Apps = response.Data.ToList();
-        }
+        if (response?.Data == null) return;
+
+        Apps = response.Data.ToList();
     }
+
     protected override async Task OnInitializedAsync()
     {
-        await LoadData();
+        await Load();
     }
 
     private async Task OnDelete(AppDetailResponse app)
     {
         var result = await Confirm.Show("Are you sure to remove this app?");
 
-        if (result)
-        {
-            Console.WriteLine("Should delete app");
-            await AppClient!.DeleteAsync(app.Id);
-            await LoadData();
-        }
+        if (!result) return;
+
+        await AppClient!.DeleteAsync(app.Id);
+
+        await Load();
     }
 }

@@ -9,28 +9,28 @@
         <PageBackButton />
     }
 
-    <h1 class="@this.ClassName("PageHeaderTitle")">
-        @Title
-    </h1>
-
+    <div class="@this.ClassName("PageHeaderBody")">
+        <h1 class="@this.ClassName("PageHeaderTitle")">
+            @Title
+        </h1>
+        @if (PageHeaderActions != null)
+        {
+            <div class="@this.ClassName("PageHeaderActions")">
+                @PageHeaderActions
+            </div>
+        }
+    </div>
+     
     @if (PageHeaderActions != null || PageHeaderSubtitle != null || !string.IsNullOrEmpty(SubTitle))
     {
-        <div class="@this.ClassName("PageHeaderBody")">
-            <div class="@this.ClassName("PageHeaderSubtitle")">
-                @if (PageHeaderSubtitle != null)
-                {
-                    @PageHeaderSubtitle
-                }
-                else
-                {
-                    @SubTitle
-                }
-            </div>
-            @if (PageHeaderActions != null)
+        <div class="@this.ClassName("PageHeaderSubtitle")">
+            @if (PageHeaderSubtitle != null)
             {
-                <div class="@this.ClassName("PageHeaderActions")">
-                    @PageHeaderActions
-                </div>
+                @PageHeaderSubtitle
+            }
+            else
+            {
+                @SubTitle
             }
         </div>
     }

@@ -1,20 +1,17 @@
-﻿@if (Page?.Sections != null)
+﻿@if (Page.Sections.ContainsKey(Name))
 {
-    @foreach (var section in Page.Sections)
+<div class="f-section">
+    @foreach (var Plugin in Page.Sections[Name].OrderBy(p => p.Order))
     {
-        <div class="f-section">
-            @foreach (var Plugin in section.Value.OrderBy(p => p.Order))
-            {
-                <CascadingValue Value="@Page">
-                    <CascadingValue Value="@Plugin">
-                        <PluginContainer>
-                            <DynamicComponent Type=@GetType(Plugin) />
-                        </PluginContainer>
-                    </CascadingValue>
-                </CascadingValue>
-            }
-        </div>
+        <CascadingValue Value="@Page">
+            <CascadingValue Value="@Plugin">
+                <PluginContainer>
+                    <DynamicComponent Type=@GetType(Plugin) />
+                </PluginContainer>
+            </CascadingValue>
+        </CascadingValue>
     }
+</div>
 }
 
 @code {

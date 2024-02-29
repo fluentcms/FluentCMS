@@ -3,12 +3,14 @@
 public class SetupManager
 {
     private readonly SetupClient _setupClient;
+    private readonly AuthStateProvider _authStateProvider;
 
     private static bool _initialized = false;
 
-    public SetupManager(SetupClient setupClient)
+    public SetupManager(SetupClient setupClient, AuthStateProvider authStateProvider)
     {
         _setupClient = setupClient;
+        _authStateProvider = authStateProvider;
     }
 
     public async Task<bool> IsInitialized()
@@ -37,6 +39,12 @@ public class SetupManager
             return _initialized;
 
         var response = await _setupClient.StartAsync(request);
+
+        await _authStateProvider.LoginAsync(new UserLoginRequest()
+        {
+            Username = request.Username,
+            Password = request.Password,
+        });
 
         _initialized = response.Data;
         return response.Data;

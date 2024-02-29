@@ -111,6 +111,9 @@ body.dark {
 .f-button-icon-true {
   @apply text-center inline-flex items-center;
 }
+.f-button-item-true {
+  @apply text-start;
+}
 .f-button-link-true > span {
   @apply hover:underline;
 }
@@ -780,6 +783,42 @@ body.dark {
   width: 1.25rem;
   height: 1.25rem;
 }
+.f-icon-size-x1 {
+  width: 1rem;
+  height: 1rem;
+}
+.f-icon-size-x2 {
+  width: 2rem;
+  height: 2rem;
+}
+.f-icon-size-x3 {
+  width: 3rem;
+  height: 3rem;
+}
+.f-icon-size-x4 {
+  width: 4rem;
+  height: 4rem;
+}
+.f-icon-size-x5 {
+  width: 5rem;
+  height: 5rem;
+}
+.f-icon-size-x6 {
+  width: 6rem;
+  height: 6rem;
+}
+.f-icon-size-x7 {
+  width: 7rem;
+  height: 7rem;
+}
+.f-icon-size-x8 {
+  width: 8rem;
+  height: 8rem;
+}
+.f-icon-size-x9 {
+  width: 9rem;
+  height: 9rem;
+}
 
 .f-input {
   @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
@@ -840,7 +879,7 @@ body.dark {
   @apply flex-shrink-0 flex flex-col items-start md:flex-row md:items-center lg:justify-end space-y-3 md:space-y-0 md:space-x-3;
 }
 .f-page-header-body {
-  @apply flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 md:space-x-4 p-4 px-0;
+  @apply flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 md:space-x-4 pb-4 px-0;
 }
 .f-page-header-subtitle {
   @apply flex-1 flex items-center space-x-2;
@@ -886,16 +925,16 @@ body.dark {
   @apply h-screen transition-transform border-r border-gray-200 dark:border-gray-700 min-h-full flex flex-col overflow-y-auto;
 }
 .f-sidebar-footer {
-  @apply justify-center p-4 space-x-4 w-full flex bg-white dark:bg-gray-800;
+  @apply justify-center w-full flex flex-col bg-white dark:bg-gray-800;
 }
 .f-sidebar-item > span {
   @apply text-xs py-3;
 }
 .f-sidebar-item > a {
-  @apply text-sm flex items-center font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700;
+  @apply text-xs flex items-center font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700;
 }
 .f-sidebar-item > a > span {
-  @apply ml-3;
+  @apply flex items-center gap-3 ml-3;
 }
 .f-sidebar-main {
   @apply py-5 px-3 grow;
@@ -973,12 +1012,18 @@ body.dark {
 .f-stack {
   @apply flex gap-4 items-center;
 }
+.f-stack-vertical-true {
+  @apply flex-col;
+}
 
 .f-table {
   @apply rounded shadow border border-gray-200 w-full text-sm text-left text-gray-500 dark:text-gray-400 dark:border-gray-700;
 }
 .f-table-cell {
   @apply px-6 py-3;
+}
+.f-table-cell-width-small {
+  @apply w-0;
 }
 .f-table-foot {
   @apply dark:bg-gray-800;
@@ -1065,7 +1110,7 @@ body.dark {
 }
 
 .f-theme-switcher {
-  @apply inline-flex justify-center p-2 text-gray-500 rounded cursor-pointer dark:text-gray-400 dark:hover:text-white hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-600;
+  @apply inline-flex self-center justify-center p-2 m-2 text-gray-500 rounded cursor-pointer dark:text-gray-400 dark:hover:text-white hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-600;
 }
 
 .f-tooltip {

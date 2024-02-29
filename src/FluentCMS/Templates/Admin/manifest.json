@@ -197,6 +197,17 @@
                     "IsDefault": true
                 }
             ]
+        },
+        {
+            "Name": "User Info",
+            "Description": "User Info Plugin",
+            "Types": [
+                {
+                    "Name": "User Info",
+                    "Type": "UserInfoViewPlugin",
+                    "IsDefault": true
+                }
+            ]
         }
     ],
     "Pages": [
