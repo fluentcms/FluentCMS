@@ -6,6 +6,8 @@ public enum IconName
     ChevronDown,
     Clipboard,
     ClipboardList,
+    Clock,
+    Code,
     Cog,
     Delete,
     Discord,

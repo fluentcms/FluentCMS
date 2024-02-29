@@ -217,4 +217,12 @@
     <value>&lt;svg aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"&gt;&lt;path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"&gt;&lt;/path&gt;&lt;path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"&gt;&lt;/path&gt;&lt;/svg&gt;</value>
     <comment/>
   </data>
+  <data name="Clock" xml:space="preserve">
+    <value>&lt;svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"&gt;     &lt;path fill-rule="evenodd" d="M2 12a10 10 0 1 1 20 0 10 10 0 0 1-20 0Zm11-4a1 1 0 1 0-2 0v4c0 .3.1.5.3.7l3 3a1 1 0 0 0 1.4-1.4L13 11.6V8Z" clip-rule="evenodd"/&gt;   &lt;/svg&gt;   </value>
+    <comment/>
+  </data>
+  <data name="Code" xml:space="preserve">
+    <value>&lt;svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"&gt;     &lt;path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m8 8-4 4 4 4m8 0 4-4-4-4m-2-3-4 14"/&gt;   &lt;/svg&gt;</value>
+    <comment/>
+  </data>
 </root>
