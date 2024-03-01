@@ -13,9 +13,9 @@
                         {
                             // TODO: Cleanup this
                             <Input Id="@($"contentCreate{@field.Slug}Input")"
-                                   Label="@field.Label"
+                                   Label="@(String.IsNullOrEmpty(field.Label) ? field.Title : field.Label)"
                                    Name="@field.Slug"
-                                   Placeholder="@field.Placeholder"
+                                   Placeholder="@(String.IsNullOrEmpty(field.Placeholder) ? $"Enter {field.Title}..." : field.Placeholder)"
                                    Required="@field.IsRequired"
                                    TValue="string"
                                    Value="@(Model[field.Slug!] as string)"

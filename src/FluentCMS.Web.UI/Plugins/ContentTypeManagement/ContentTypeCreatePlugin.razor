@@ -13,7 +13,7 @@
                                    Label="App"
                                    Name="App"
                                    Placeholder="Choose App..."
-                                   Disabled="true"
+                                   Disabled="@(AppSlug != null)"
                                    Required="true">
                                 @foreach (var app in Apps)
                                 {

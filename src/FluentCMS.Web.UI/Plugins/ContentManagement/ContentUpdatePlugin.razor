@@ -13,9 +13,9 @@
                             @foreach (var field in Fields)
                             {
                                 <Input Id="@($"contentUpdate{field.Slug}Input")"
-                                       Label="@field.Label"
-                                       Placeholder="@field.Placeholder"
-                                       Required="@field.IsRequired"
+                                       Label="@(String.IsNullOrEmpty(field.Label) ? field.Title : field.Label)"
+                                       Name="@field.Slug"
+                                       Placeholder="@(String.IsNullOrEmpty(field.Placeholder) ? $"Enter {field.Title}..." : field.Placeholder)"
                                        TValue="string"
                                        Value="@((string) ParseValue(Model.Value![field.Slug!]!)!)"
                                        ValueChanged="x => Model.Value![field.Slug!] = x"
