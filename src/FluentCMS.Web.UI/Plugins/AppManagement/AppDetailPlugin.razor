@@ -26,15 +26,6 @@
                             @View.Description
                         </Typography>
                     </GridItem>
-                    <GridItem Small="GridItemColumn.Twelve">
-                        <ButtonGroup>
-                            <Button Color="Color.Primary"
-                                    Href="@($"?PluginDef=App Management&typeName=Update App&slug={View.Slug}")">
-                                <Icon Name="IconName.Edit" />
-                                Edit
-                            </Button>
-                        </ButtonGroup>
-                    </GridItem>
                 </Grid>
             </GridItem>
             <GridItem Small="GridItemColumn.Twelve"
@@ -67,12 +58,37 @@
                         }
                     </CardBody>
                 </Card>
+                <Spacer/>
+                <Button Block="true"
+                        Color="Color.Primary"
+                        Href="@($"?PluginDef=App Management&typeName=Update App&appSlug={View.Slug}")"
+                        Item="true"
+                        Outline="true">
+                    <Icon Name="IconName.Edit" />
+                    Edit
+                </Button>
+                <Spacer Size="SpacerSize.Small" />
+                <Button Block="true"
+                        Color="Color.Danger"
+                        Item="true"
+                        Outline="true"
+                        OnClick="OnDelete">
+                    <Icon Name="IconName.Edit" />
+                    Delete
+                </Button>
             </GridItem>
+            
         </Grid>
     </PageBody>
 </Page>
 
 @code {
+    [Inject]
+    ConfirmService Confirm { set; get; } = default!;
+
+    [Inject]
+    IJSRuntime JsRuntime { set; get; } = default!;
+
     [Inject]
     NavigationManager NavigationManager { set; get; } = default!;
 
@@ -83,6 +99,20 @@
 
     AppDetailResponse View { get; set; } = new();
 
+    async Task GoBack()
+    {
+        await JsRuntime.InvokeVoidAsync("history.back");
+    }
+
+    async Task OnDelete() 
+    {
+        var result = await Confirm.Show("Are you sure to remove this app?");
+
+        if(result) {
+            await AppClient.DeleteAsync(View.Id);  
+            await GoBack(); 
+        }
+    }
     protected override async Task OnInitializedAsync()
     {
         var appSlug = NavigationManager.GetAppSlugFromQuery();

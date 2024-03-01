@@ -10,7 +10,7 @@ $button: $prefix + "button";
     }
 
     &-block-true {
-        @apply w-full;
+        @apply inline-block w-full;
     }
 
     &-icon-true {
