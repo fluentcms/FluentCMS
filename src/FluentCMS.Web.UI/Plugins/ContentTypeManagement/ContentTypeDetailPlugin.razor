@@ -54,23 +54,6 @@
                         </Table>
 
                     </GridItem>
-                    <GridItem Small="GridItemColumn.Twelve">
-                        <ButtonGroup>
-                            @if (View != null && App != null)
-                            {
-                                <Button Color="Color.Danger"
-                                        OnClick="OnDelete">
-                                    <Icon Name="IconName.Delete" />
-                                    Delete
-                                </Button>
-                                <Button Color="Color.Primary"
-                                        Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={View.Id}&appSlug={App?.Slug}")">
-                                    <Icon Name="IconName.Edit" />
-                                    Edit
-                                </Button>
-                            }
-                        </ButtonGroup>
-                    </GridItem>
                 </Grid>
             </GridItem>
             <GridItem Small="GridItemColumn.Twelve"
@@ -103,6 +86,24 @@
                         }
                     </CardBody>
                 </Card>
+                  <Spacer/>
+                <Button Block="true"
+                        Color="Color.Primary"
+                        Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={View.Id}&appSlug={NavigationManager.GetAppSlugFromQuery()}")"
+                        Item="true"
+                        Outline="true">
+                    <Icon Name="IconName.Edit" />
+                    Edit
+                </Button>
+                <Spacer Size="SpacerSize.Small" />
+                <Button Block="true"
+                        Color="Color.Danger"
+                        Item="true"
+                        Outline="true"
+                        OnClick="OnDelete">
+                    <Icon Name="IconName.Edit" />
+                    Delete
+                </Button>
             </GridItem>
         </Grid>
     </PageBody>
@@ -146,8 +147,12 @@
         if(result && ContentTypeId != null)
         {
             await ContentTypeClient.DeleteAsync(App.Slug, View.Id);
-            LoadData();
+            GoBack();
         }
+    }
+    void GoBack()
+    {
+        NavigationManager.NavigateTo("/admin/content-types");
     }
 
     protected override async Task OnInitializedAsync()
