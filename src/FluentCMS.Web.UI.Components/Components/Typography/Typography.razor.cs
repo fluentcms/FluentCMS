@@ -20,4 +20,21 @@ public enum TextSize
     H4,
     H5,
     H6,
+    ExtraSmall,
+    Small,
+    Large,
+    ExtraLarge,
 }
+
+public enum TextWeight
+{
+    Default,
+    Thin,
+    ExtraLight,
+    Normal,
+    Medium,
+    SemiBold,
+    Bold,
+    ExtraBold,
+    Black,
+} 

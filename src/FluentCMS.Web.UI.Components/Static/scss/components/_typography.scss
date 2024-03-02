@@ -27,6 +27,54 @@ $typography: $prefix + "typography";
         @apply text-lg font-bold;
     }
 
+    &-size-extra-small {
+        @apply text-xs;
+    }
+
+    &-size-small {
+        @apply text-sm;
+    }
+
+    &-size-large {
+        @apply text-lg;
+    }
+
+    &-size-extra-large {
+        @apply text-xl;
+    }
+
+    &-weight-thin {
+        @apply font-thin;
+    }
+
+    &-weight-extra-light {
+        @apply font-extralight;
+    }
+
+    &-weight-normal {
+        @apply font-normal;
+    }
+
+    &-weight-medium {
+        @apply font-medium;
+    }
+
+    &-weight-semi-bold {
+        @apply font-semibold;
+    }
+
+    &-weight-bold {
+        @apply font-bold;
+    }
+
+    &-weight-extra-bold {
+        @apply font-extrabold;
+    }
+
+    &-weight-black {
+        @apply font-black;
+    }
+
     @each $key in ( left, center, right, justify, start, end) {
         &-align-#{$key} {
             @apply text-#{$key};
