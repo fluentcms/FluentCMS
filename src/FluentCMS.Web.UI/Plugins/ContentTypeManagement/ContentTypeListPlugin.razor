@@ -1,13 +1,9 @@
 ﻿<Page>
-    <PageHeader HasBack="false"
-                Title="Content Types List">
+    <PageHeader HasBack="false" Title="Content Types List">
         <PageHeaderActions>
             <ButtonGroup>
-                <Select @bind-Value="AppSlug"
-                        Dense="true"
-                        Id="contentTypeAppSelect"
-                        Placeholder="Choose an App..."
-                        OnChange="OnAppSlugChanged">
+                <Select @bind-Value="AppSlug" Dense="true" Id="contentTypeAppSelect" Placeholder="Choose an App..."
+                    OnChange="OnAppSlugChanged">
                     @foreach (var app in Apps)
                     {
                         <Option Value="@app.Slug">@app.Title</Option>
@@ -16,9 +12,8 @@
                 @if (!string.IsNullOrEmpty(AppSlug))
                 {
                     <Button Color="Color.Primary"
-                            Href="@($"?PluginDef=ContentType Management&typeName=Create ContentType&appSlug={AppSlug}")"
-                            id="contentTypeCreateButton"
-                            Size="ButtonSize.Small">
+                        Href="@($"?PluginDef=ContentType Management&typeName=Create ContentType&appSlug={AppSlug}")"
+                        id="contentTypeCreateButton" Size="ButtonSize.Small">
                         <Icon Name="IconName.Plus" />
                         Add Content Type
                     </Button>
@@ -27,54 +22,76 @@
         </PageHeaderActions>
     </PageHeader>
     <PageBody>
-        <Table>
-            <TableHead>
-                <TableCell>Slug</TableCell>
-                <TableCell>Title</TableCell>
-                <TableCell>Description</TableCell>
-                <TableCell Width="TableColumnWidth.Small"></TableCell>
-            </TableHead>
-            <TableBody id="contentTypeListTable">
-                @foreach (var contentType in ContentTypes)
-                {
-                    <TableRow>
-                        <TableCell>
-                            @contentType.Slug
-                        </TableCell>
-                        <TableCell>
-                            @contentType.Title
-                        </TableCell>
-                        <TableCell>
-                            @contentType.Description
-                        </TableCell>
-                        <TableCell>
-                            <ButtonGroup>
-                                <Button Ghost="true" 
+        <Card>
+
+            <Table>
+                <TableHead>
+                    <TableCell>Slug</TableCell>
+                    <TableCell>Title</TableCell>
+                    <TableCell>Description</TableCell>
+                    <TableCell Width="TableColumnWidth.Small"></TableCell>
+                </TableHead>
+                <TableBody id="contentTypeListTable">
+                    @foreach (var contentType in ContentTypes)
+                    {
+                        <TableRow>
+                            <TableCell>
+                                @contentType.Slug
+                            </TableCell>
+                            <TableCell>
+                                @contentType.Title
+                            </TableCell>
+                            <TableCell>
+                                @contentType.Description
+                            </TableCell>
+                            <TableCell>
+                                <ButtonGroup>
+                                    <Button Ghost="true"
                                         Href="@($"?PluginDef=ContentType Management&typeName=ContentType Detail&id={contentType.Id}&appSlug={AppSlug}")"
                                         Size="ButtonSize.Small">
-                                    <Icon Name="IconName.Eye" />
-                                </Button>
-                                <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
-                                
-                                <Button Ghost="true"
+                                        <Icon Name="IconName.Eye" />
+                                    </Button>
+                                    <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
+
+                                    <Button Ghost="true"
                                         Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={contentType.Id}&appSlug={AppSlug}")"
                                         Size="ButtonSize.Small">
-                                    <Icon Name="IconName.Edit" />
-                                </Button>
-                                <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
+                                        <Icon Name="IconName.Edit" />
+                                    </Button>
+                                    <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
 
-                                <Button Ghost="true"
-                                        Size="ButtonSize.Small"
-                                        OnClick="@(evt => OnDelete(contentType))">
-                                    <Icon Name="IconName.Delete" />
-                                </Button>
-                                <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
-                            </ButtonGroup>
-                        </TableCell>
-                    </TableRow>
-                }
-            </TableBody>
-        </Table>
+                                    <Button Ghost="true" Size="ButtonSize.Small" OnClick="@(evt => OnDelete(contentType))">
+                                        <Icon Name="IconName.Delete" />
+                                    </Button>
+                                    <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
+                                </ButtonGroup>
+                            </TableCell>
+                        </TableRow>
+                    }
+                </TableBody>
+            </Table>
+            @if (ContentTypes.Count == 0)
+            {
+                <EmptyTable Message="No Content Types Found!">
+                    @if(!String.IsNullOrEmpty(AppSlug))
+                    {
+                        <Button Color="Color.Primary"
+                        Href="@($"?PluginDef=ContentType Management&typeName=Create ContentType&appSlug={AppSlug}")"
+                        id="contentTypeCreateButton" Size="ButtonSize.Small">
+                        <Icon Name="IconName.Plus" />
+                        Add Content Type
+                    </Button>
+                    } else {
+                        <Button Color="Color.Primary" Href="?PluginDef=App Management&typeName=Create App"
+                                Id="appEmptyCreateButton" Size="ButtonSize.Small">
+                                <Icon Name="IconName.Plus" />
+                                First Add an App
+                        </Button>
+                    }
+                </EmptyTable>
+            }
+        </Card>
+
     </PageBody>
 </Page>
 

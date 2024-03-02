@@ -1,11 +1,9 @@
 ﻿<Page>
-    <PageHeader HasBack="false"
-                Title="Users List">
+    <PageHeader HasBack="false" Title="Users List">
         <PageHeaderActions>
             <ButtonGroup>
-                <Button Color="Color.Primary"
-                        Href="?PluginDef=User Management&typeName=Create User"
-                        Size="ButtonSize.Small">
+                <Button Color="Color.Primary" Href="?PluginDef=User Management&typeName=Create User"
+                    Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
                     Add User
                 </Button>
@@ -13,38 +11,51 @@
         </PageHeaderActions>
     </PageHeader>
     <PageBody>
-        <Table>
-            <TableHead>
-                <TableCell>Username</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell Width="TableColumnWidth.Small"></TableCell>
-            </TableHead>
-            <TableBody>
-                @foreach (var user in Users) {
-                    <TableRow>
-                        <TableCell> @user.Username </TableCell>
-                        <TableCell> @user.Email </TableCell>
-                        <TableCell>
-                            <ButtonGroup>
-                                <Button Ghost="true"
+        <Card>
+            <Table>
+                <TableHead>
+                    <TableCell>Username</TableCell>
+                    <TableCell>Email</TableCell>
+                    <TableCell Width="TableColumnWidth.Small"></TableCell>
+                </TableHead>
+                <TableBody>
+                    @foreach (var user in Users)
+                    {
+                        <TableRow>
+                            <TableCell> @user.Username </TableCell>
+                            <TableCell> @user.Email </TableCell>
+                            <TableCell>
+                                <ButtonGroup>
+                                    <Button Ghost="true"
                                         Href="@($"?PluginDef=User Management&typeName=User Detail&id={user.Id}")"
                                         Size="ButtonSize.Small">
-                                    <Icon Name="IconName.Eye" />
-                                </Button>
-                                <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
+                                        <Icon Name="IconName.Eye" />
+                                    </Button>
+                                    <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
 
-                                <Button Ghost="true"
+                                    <Button Ghost="true"
                                         Href="@($"?PluginDef=User Management&typeName=Update User&id={user.Id}")"
                                         Size="ButtonSize.Small">
-                                    <Icon Name="IconName.Edit" />
-                                </Button>
-                                <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
-                            </ButtonGroup>
-                        </TableCell>
-                    </TableRow>
-                }
-            </TableBody>
-        </Table>
+                                        <Icon Name="IconName.Edit" />
+                                    </Button>
+                                    <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
+                                </ButtonGroup>
+                            </TableCell>
+                        </TableRow>
+                    }
+                </TableBody>
+            </Table>
+            @if (Users.Count == 0)
+            {
+                <EmptyTable Message="No Apps Found!">
+                    <Button Color="Color.Primary" Href="?PluginDef=User Management&typeName=Create User"
+                        Size="ButtonSize.Small">
+                        <Icon Name="IconName.Plus" />
+                        Add User
+                    </Button>
+                </EmptyTable>
+            }
+        </Card>
     </PageBody>
 </Page>
 
