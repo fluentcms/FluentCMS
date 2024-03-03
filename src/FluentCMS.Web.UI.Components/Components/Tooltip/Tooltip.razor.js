@@ -9,6 +9,8 @@ export function initialize(dotnet, element, config) {
 
     const target = element;
 
+    if (!element) return;
+
     const trigger = element.previousElementSibling;
 
     const options = {
