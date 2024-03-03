@@ -70,6 +70,17 @@
             ]
         },
         {
+            "Name": "Home",
+            "Description": "Home Plugin",
+            "Types": [
+                {
+                    "Name": "Home",
+                    "Type": "HomeViewPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
             "Name": "Media Library",
             "Description": "Media Library Plugin",
             "Types": [
@@ -203,7 +214,12 @@
         {
             "Title": "Home",
             "Path": "/",
-            "Plugins": []
+            "Plugins": [
+                {
+                    "Definition": "Home",
+                    "Section": "Main"
+                }
+            ]
         },
         {
             "Title": "Admin",

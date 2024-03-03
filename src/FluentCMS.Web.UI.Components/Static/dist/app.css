@@ -100,7 +100,7 @@ body.dark {
 
 /*TODO*/
 .f-button {
-  @apply font-medium rounded-lg relative focus:z-10 focus:outline-none;
+  @apply inline-block font-medium rounded-lg relative focus:z-10 focus:outline-none;
 }
 .f-button > span {
   @apply items-center gap-2 text-center inline-flex;
@@ -783,6 +783,42 @@ body.dark {
   width: 1.25rem;
   height: 1.25rem;
 }
+.f-icon-size-x1 {
+  width: 1rem;
+  height: 1rem;
+}
+.f-icon-size-x2 {
+  width: 2rem;
+  height: 2rem;
+}
+.f-icon-size-x3 {
+  width: 3rem;
+  height: 3rem;
+}
+.f-icon-size-x4 {
+  width: 4rem;
+  height: 4rem;
+}
+.f-icon-size-x5 {
+  width: 5rem;
+  height: 5rem;
+}
+.f-icon-size-x6 {
+  width: 6rem;
+  height: 6rem;
+}
+.f-icon-size-x7 {
+  width: 7rem;
+  height: 7rem;
+}
+.f-icon-size-x8 {
+  width: 8rem;
+  height: 8rem;
+}
+.f-icon-size-x9 {
+  width: 9rem;
+  height: 9rem;
+}
 
 .f-input {
   @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
@@ -843,7 +879,7 @@ body.dark {
   @apply flex-shrink-0 flex flex-col items-start md:flex-row md:items-center lg:justify-end space-y-3 md:space-y-0 md:space-x-3;
 }
 .f-page-header-body {
-  @apply flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 md:space-x-4 p-4 px-0;
+  @apply flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 md:space-x-4 pb-4 px-0;
 }
 .f-page-header-subtitle {
   @apply flex-1 flex items-center space-x-2;
@@ -895,10 +931,10 @@ body.dark {
   @apply text-xs py-3;
 }
 .f-sidebar-item > a {
-  @apply text-sm flex items-center font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700;
+  @apply text-xs flex items-center font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700;
 }
 .f-sidebar-item > a > span {
-  @apply ml-3;
+  @apply flex items-center gap-3 ml-3;
 }
 .f-sidebar-main {
   @apply py-5 px-3 grow;
@@ -985,6 +1021,9 @@ body.dark {
 }
 .f-table-cell {
   @apply px-6 py-3;
+}
+.f-table-cell-width-small {
+  @apply w-0;
 }
 .f-table-foot {
   @apply dark:bg-gray-800;
@@ -1101,6 +1140,42 @@ body.dark {
 }
 .f-typography-size-h6 {
   @apply text-lg font-bold;
+}
+.f-typography-size-extra-small {
+  @apply text-xs;
+}
+.f-typography-size-small {
+  @apply text-sm;
+}
+.f-typography-size-large {
+  @apply text-lg;
+}
+.f-typography-size-extra-large {
+  @apply text-xl;
+}
+.f-typography-weight-thin {
+  @apply font-thin;
+}
+.f-typography-weight-extra-light {
+  @apply font-extralight;
+}
+.f-typography-weight-normal {
+  @apply font-normal;
+}
+.f-typography-weight-medium {
+  @apply font-medium;
+}
+.f-typography-weight-semi-bold {
+  @apply font-semibold;
+}
+.f-typography-weight-bold {
+  @apply font-bold;
+}
+.f-typography-weight-extra-bold {
+  @apply font-extrabold;
+}
+.f-typography-weight-black {
+  @apply font-black;
 }
 .f-typography-align-left {
   @apply text-left;

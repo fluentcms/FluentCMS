@@ -6,9 +6,8 @@
             <PageHeaderActions>
                 <ButtonGroup>
                     <Button Color="Color.Primary"
-                            Href="@($"?pluginDef=Content Management&typeName=Create Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}")"
-                            id="contentCreateButton"
-                            Size="ButtonSize.Small">
+                        Href="@($"?pluginDef=Content Management&typeName=Create Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}")"
+                        id="contentCreateButton" Size="ButtonSize.Small">
                         <Icon Name="IconName.Plus" />
                         Insert
                     </Button>
@@ -18,6 +17,39 @@
         </PageHeader>
         <PageBody>
             <ChildContent>
+                <Card>
+                    <ChildContent>
+
+                        @if (ContentType != null && ContentType.Fields?.Count > 0)
+                        {
+                            <Table>
+                                <TableHead>
+                                    @foreach (var field in Fields)
+                                    {
+                                        <TableCell>
+                                            @field.Title
+                                        </TableCell>
+                                    }
+                                    <TableCell Width="TableColumnWidth.Small"></TableCell>
+                                </TableHead>
+                                <TableBody id="contentListTable">
+                                    @foreach (var item in Data)
+                                    {
+                                        <TableRow>
+                                            @foreach (var field in ContentType.Fields.ToList())
+                                            {
+                                                <TableCell>
+                                                    @(item.Value[field.Slug])
+                                                </TableCell>
+                                            }
+                                            <TableCell>
+                                                <ButtonGroup>
+                                                    <Button Ghost="true"
+                                                        Href="@($"?pluginDef=Content Management&typeName=Update Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}&id={item.Id}")"
+                                                        Size="ButtonSize.Small">
+                                                        <Icon Name="IconName.Edit" />
+                                                    </Button>
+                                                    <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
                 @if (ContentType != null)
                 {
                     <Table>
@@ -71,29 +103,29 @@
 
 @code {
     [Inject]
-    AppClient AppClient {get; set;} = default!;
+    AppClient AppClient { get; set; } = default!;
 
     [Inject]
-    ConfirmService Confirm {get; set;} = default!;
+    ConfirmService Confirm { get; set; } = default!;
 
     [Inject]
-    ContentClient ContentClient {get; set;} = default!;
+    ContentClient ContentClient { get; set; } = default!;
 
     [Inject]
-    ContentTypeClient ContentTypeClient {get; set;} = default!;
+    ContentTypeClient ContentTypeClient { get; set; } = default!;
 
     [Inject]
-    NavigationManager NavigationManager {get; set;} = default!;
+    NavigationManager NavigationManager { get; set; } = default!;
 
     string? AppSlug;
 
     string? ContentTypeSlug;
 
-    ContentTypeDetailResponse ContentType {get; set;} = new();
+    ContentTypeDetailResponse ContentType { get; set; } = new();
 
-    List<ContentDetailResponse> Data {get; set;} = [];
+    List<ContentDetailResponse> Data { get; set; } = [];
 
-    List<ContentTypeField> Fields {get; set;} = [];
+    List<ContentTypeField> Fields { get; set; } = [];
 
     string PageTitle = "Content List";
 
@@ -101,7 +133,7 @@
     {
         var result = await Confirm.Show("Are you sure to remove this row?");
 
-        if(result)
+        if (result)
         {
             await ContentClient.DeleteAsync(AppSlug, ContentTypeSlug, content.Id);
             await FetchData();
@@ -121,7 +153,7 @@
             {
                 PageTitle = ContentType.Title + " List";
                 Fields = ContentType.Fields.ToList();
-                
+
                 var response = await ContentClient.GetAllAsync(AppSlug, ContentTypeSlug);
                 if (response?.Data != null)
                 {

@@ -18,10 +18,12 @@
                 </h3>
                 <ButtonGroup>
                     <Button Color="Color.Danger"
+                            id="@(string.IsNullOrEmpty(Id) ? null : Id + "ConfirmButton")"
                             OnClick="Confirmation">
                         Yes, I'm sure
                     </Button>
-                    <Button OnClick="Close">
+                    <Button id="@(string.IsNullOrEmpty(Id) ? null : Id + "CancelButton")"
+                            OnClick="Close">
                         No, cancel
                     </Button>
                 </ButtonGroup>
@@ -34,6 +36,9 @@
     public ElementReference element;
 
     private IJSObjectReference module = default!;
+
+    [Parameter]
+    public string? Id { get; set; }
 
     [Parameter]
     public string? Message { get; set; }

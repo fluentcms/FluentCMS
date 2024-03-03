@@ -1,12 +1,9 @@
 ﻿<Page>
-    <PageHeader HasBack="false"
-                Title="Apps List">
+    <PageHeader HasBack="false" Title="Apps List">
         <PageHeaderActions>
             <ButtonGroup>
-                <Button Color="Color.Primary"
-                        Href="?PluginDef=App Management&typeName=Create App"
-                        Id="appCreateButton"
-                        Size="ButtonSize.Small">
+                <Button Color="Color.Primary" Href="?PluginDef=App Management&typeName=Create App" Id="appCreateButton"
+                    Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
                     Add App
                 </Button>
@@ -14,53 +11,68 @@
         </PageHeaderActions>
     </PageHeader>
     <PageBody>
-        <Table>
-            <TableHead>
-                <TableCell>Title</TableCell>
-                <TableCell>Slug</TableCell>
-                <TableCell>Description</TableCell>
-                <TableCell Width="TableColumnWidth.Small"></TableCell>
-            </TableHead>
-            <TableBody id="appListTable">
-                @foreach (var app in Apps)
-                {
-                    <TableRow>
-                        <TableCell> @app.Title </TableCell>
-                        <TableCell> @app.Slug </TableCell>
-                        <TableCell> @app.Description </TableCell>
-                        <TableCell>
-                            <ButtonGroup>
-                                <Button data-test="preview-btn"
-                                        Href="@($"?PluginDef=App Management&typeName=App Detail&appSlug={app.Slug}")"
-                                        Ghost="true"
-                                        Size="ButtonSize.Small">
-                                    <Icon Name="IconName.Eye" />
-                                </Button>
-                                <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
+        <Card>
+            <Table>
+                <TableHead>
+                    <TableCell>Title</TableCell>
+                    <TableCell>Slug</TableCell>
+                    <TableCell>Description</TableCell>
+                    <TableCell Width="TableColumnWidth.Small"></TableCell>
+                </TableHead>
+                <TableBody id="appListTable">
+                    @foreach (var app in Apps)
+                    {
+                        <TableRow>
+                            <TableCell> @app.Title </TableCell>
+                            <TableCell> @app.Slug </TableCell>
+                            <TableCell> @app.Description </TableCell>
+                            <TableCell>
+                                <ButtonGroup>
+                                    <Button data-test="preview-btn"
+                                            Href="@($"?PluginDef=App Management&typeName=App Detail&appSlug={app.Slug}")"
+                                            Ghost="true"
+                                            Size="ButtonSize.Small">
+                                        <Icon Name="IconName.Eye" />
+                                    </Button>
+                                    <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
 
-                                <Button data-test="edit-btn"
-                                        Ghost="true"
-                                        Href="@($"?PluginDef=App Management&typeName=Update App&appSlug={app.Slug}")"
-                                        Size="ButtonSize.Small">
-                                    <Icon Name="IconName.Edit" />
-                                </Button>
-                                <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
+                                    <Button data-test="edit-btn"
+                                            Ghost="true"
+                                            Href="@($"?PluginDef=App Management&typeName=Update App&appSlug={app.Slug}")"
+                                            Size="ButtonSize.Small">
+                                        <Icon Name="IconName.Edit" />
+                                    </Button>
+                                    <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
 
-                                <Button data-test="delete-btn"
-                                        Ghost="true"
-                                        Size="ButtonSize.Small"
-                                        OnClick="@(evt => OnDelete(app))">
+                                    <Button data-test="delete-btn"
+                                            Ghost="true"
+                                            Size="ButtonSize.Small"
+                                            OnClick="@(evt => OnDelete(app))">
 
-                                    <Icon Name="IconName.Delete" />
-                                </Button>
-                                <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
+                                        <Icon Name="IconName.Delete" />
+                                    </Button>
+                                    <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
 
-                            </ButtonGroup>
-                        </TableCell>
-                    </TableRow>
-                }
-            </TableBody>
-        </Table>
+                                </ButtonGroup>
+                            </TableCell>
+                        </TableRow>
+                    }
+
+                </TableBody>
+            </Table>
+
+            @if (Apps.Count == 0)
+            {
+                <EmptyTable Message="No Apps Found!">
+                    <Button Color="Color.Primary" Href="?PluginDef=App Management&typeName=Create App"
+                        Id="appEmptyCreateButton" Size="ButtonSize.Small">
+                        <Icon Name="IconName.Plus" />
+                        Add App
+                    </Button>
+                </EmptyTable>
+            }
+        </Card>
+
     </PageBody>
 </Page>
 

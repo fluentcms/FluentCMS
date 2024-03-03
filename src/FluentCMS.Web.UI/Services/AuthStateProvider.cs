@@ -1,10 +1,13 @@
 ﻿using System.Reflection;
 using System.Security.Claims;
+using System.Text.Json;
 using FluentCMS.Web.UI.Services.LocalStorage;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Http;
 
 namespace FluentCMS.Web.UI.Services;
-public class AuthStateProvider(ILocalStorageService localStorageService, UserClient userClient, AccountClient accountClient) : AuthenticationStateProvider
+public class AuthStateProvider(NavigationManager navigationManager, IHttpContextAccessor  httpContextAccessor, UserClient userClient, AccountClient accountClient) : AuthenticationStateProvider
 {
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
@@ -27,8 +30,9 @@ public class AuthStateProvider(ILocalStorageService localStorageService, UserCli
 
     private async Task<UserDetailResponseIApiResult> FetchUserDetail()
     {
+        var json = httpContextAccessor.HttpContext.Request.Cookies["UserLoginResponse"];
         var loginResponse =
-            await localStorageService.GetItemAsync<UserLoginResponse>(LocalStorageKeys.UserLoginResponse);
+            JsonSerializer.Deserialize<UserLoginResponse>(json);
         var user = await userClient.GetAsync(loginResponse.UserId);
         return user;
     }
@@ -39,7 +43,7 @@ public class AuthStateProvider(ILocalStorageService localStorageService, UserCli
 
         if (result.Errors!.Count == 0)
         {
-            await localStorageService.SetItemAsync(LocalStorageKeys.UserLoginResponse, result.Data);
+            navigationManager.NavigateTo($"/api/auth?user-id={result.Data.UserId}&token={result.Data.Token}&role-ids={JsonSerializer.Serialize(result.Data.RoleIds)}",true);
             var user = await FetchUserDetail();
             NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(GetClaimsPricipal(user.Data))));
         }
@@ -48,7 +52,7 @@ public class AuthStateProvider(ILocalStorageService localStorageService, UserCli
 
     public async Task Logout()
     {
-        await localStorageService.ClearAsync();
+        navigationManager.NavigateTo($"/api/auth/logout", true);
         NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(new ClaimsPrincipal()))); // not authorized
     }
 

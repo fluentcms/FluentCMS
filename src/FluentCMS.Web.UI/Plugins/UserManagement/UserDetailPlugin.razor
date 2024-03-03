@@ -1,12 +1,9 @@
 ﻿<Page>
-    <PageHeader HasBack="true"
-                Title="User Detail">
+    <PageHeader HasBack="true" Title="User Detail">
     </PageHeader>
     <PageBody>
         <Grid Gutter="GridGutter.Large">
-            <GridItem Small="GridItemColumn.Twelve"
-                      Medium="GridItemColumn.Seven"
-                      Large="GridItemColumn.Nine">
+            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Seven" Large="GridItemColumn.Nine">
                 <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
                     <GridItem Small="GridItemColumn.Twelve">
                         <Typography><strong>Username:</strong></Typography>
@@ -20,47 +17,43 @@
                             @View.Email
                         </Typography>
                     </GridItem>
-                    <GridItem Small="GridItemColumn.Twelve">
-                        <ButtonGroup>
-                            <Button Color="Color.Primary"
-                                    Href="@($"?PluginDef=User Management&typeName=Update User&id={View.Id}")">
-                                <Icon Name="IconName.Edit" />
-                                Edit
-                            </Button>
-                        </ButtonGroup>
-                    </GridItem>
                 </Grid>
             </GridItem>
-            <GridItem Small="GridItemColumn.Twelve"
-                      Medium="GridItemColumn.Five"
-                      Large="GridItemColumn.Three">
+            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Five" Large="GridItemColumn.Three">
                 <Card>
                     <CardBody>
-                        @if(!string.IsNullOrEmpty(View.CreatedBy))
+                        @if (!string.IsNullOrEmpty(View.CreatedBy))
                         {
                             <Typography><strong>Created By</strong></Typography>
                             <Typography>@View.CreatedBy</Typography>
                             <Spacer />
                         }
-                        @if(!string.IsNullOrEmpty(View.CreatedAt.ToString()))
+                        @if (!string.IsNullOrEmpty(View.CreatedAt.ToString()))
                         {
                             <Typography><strong>Created At</strong></Typography>
                             <Typography>@View.CreatedAt</Typography>
                             <Spacer />
                         }
-                        @if(!string.IsNullOrEmpty(View.ModifiedBy))
+                        @if (!string.IsNullOrEmpty(View.ModifiedBy))
                         {
                             <Typography><strong>Modified By</strong></Typography>
                             <Typography>@View.ModifiedBy</Typography>
                             <Spacer />
                         }
-                        @if(!string.IsNullOrEmpty(View.ModifiedAt.ToString()))
+                        @if (!string.IsNullOrEmpty(View.ModifiedAt.ToString()))
                         {
                             <Typography><strong>Modified At</strong></Typography>
                             <Typography>@View.ModifiedAt</Typography>
                         }
                     </CardBody>
                 </Card>
+                <Spacer />
+                <Button Block="true" Color="Color.Primary"
+                    Href="@($"?PluginDef=User Management&typeName=Update User&id={View.Id}")" Item="true"
+                    Outline="true">
+                    <Icon Name="IconName.Edit" />
+                    Edit
+                </Button>
             </GridItem>
         </Grid>
     </PageBody>

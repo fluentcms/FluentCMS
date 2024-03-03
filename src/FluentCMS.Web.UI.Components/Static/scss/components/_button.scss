@@ -3,14 +3,14 @@
 $button: $prefix + "button";
 
 .#{$button} {
-    @apply font-medium rounded-lg relative focus:z-10 focus:outline-none;
+    @apply inline-block font-medium rounded-lg relative focus:z-10 focus:outline-none;
 
     & > span {
         @apply items-center gap-2 text-center inline-flex;
     }
 
     &-block-true {
-        @apply w-full;
+        @apply inline-block w-full;
     }
 
     &-icon-true {
