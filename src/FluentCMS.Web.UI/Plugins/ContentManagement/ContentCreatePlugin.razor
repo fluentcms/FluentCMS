@@ -9,17 +9,17 @@
                   OnSubmit="OnSubmit">
                 <Card>
                     <CardBody>
-                        @foreach (var field in Fields)
+                        @foreach (var field in Fields.Select((value,i) => new {i, value}))
                         {
-                            // TODO: Cleanup this
-                            <Input Id="@($"contentCreate{@field.Slug}Input")"
-                                   Label="@(String.IsNullOrEmpty(field.Label) ? field.Title : field.Label)"
-                                   Name="@field.Slug"
-                                   Placeholder="@(String.IsNullOrEmpty(field.Placeholder) ? $"Enter {field.Title}..." : field.Placeholder)"
-                                   Required="@field.IsRequired"
-                                   TValue="string"
-                                   Value="@(Model[field.Slug!] as string)"
-                                   ValueChanged="str => Model[field.Slug!] = str"/>
+                            <Input autofocus="@(field.i == 0)"
+                                Id="@($"contentCreate{@field.value.Slug}Input")"
+                                Label="@(String.IsNullOrEmpty(field.value.Label) ? field.value.Title : field.value.Label)"
+                                Name="@field.value.Slug"
+                                Placeholder="@(String.IsNullOrEmpty(field.value.Placeholder) ? $"Enter {field.value.Title}..." : field.value.Placeholder)"
+                                Required="@field.value.IsRequired"
+                                TValue="string"
+                                Value="@(Model[field.value.Slug!] as string)"
+                                ValueChanged="str => Model[field.value.Slug!] = str"/>
                         }
 
                         <ButtonGroup>
