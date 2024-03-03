@@ -41,10 +41,7 @@ Cypress.Commands.add('elementShouldUnavailable', (selector) => {
 })
 
 Cypress.Commands.add('dashboardShouldAvailable', () => {
-    cy.get('main')
-        .invoke('text')
-        .then(text => text.trim())
-        .should('be.empty')
+    cy.get('main').contains('Welcome').should('be.visible')
 })
 
 Cypress.Commands.add('deleteRow', {prevSubject: 'element'}, ($el, confirm = true) => {
