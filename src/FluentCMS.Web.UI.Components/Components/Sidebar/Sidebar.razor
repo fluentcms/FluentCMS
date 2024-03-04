@@ -4,7 +4,7 @@
 
 @* TODO: remove extra class *@
 <aside @attributes="AdditionalAttributes"
-       class="@this.GetClasses() -translate-x-full lg:!translate-x-0" id="adminSidebar">
+       class="@this.GetClasses() -translate-x-full lg:!translate-x-0" id="@Id">
     <div class="@this.ClassName("SidebarMain")">
         @if (!string.IsNullOrEmpty(Title))
         {
@@ -32,6 +32,9 @@
 @code {
     [Parameter]
     public RenderFragment? Header { get; set; }
+
+    [Parameter]
+    public string? Id { get; set; }
 
     [Parameter]
     public RenderFragment? Footer { get; set; }
