@@ -1,3 +1,5 @@
+@using Version = FluentCMS.Web.UI.Components.Version
+@using System.Reflection
 <Page>
     <Spacer />
     <PageHeader Title="Welcome" />
@@ -63,7 +65,7 @@
                 </a>
 
                 <Spacer Size="SpacerSize.Small" />
-                <Typography Size="TextSize.ExtraSmall">v0.0.1</Typography>
+                <Version Assembly="Assembly.GetEntryAssembly()"></Version>
 
             </GridItem>
             <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Four">
