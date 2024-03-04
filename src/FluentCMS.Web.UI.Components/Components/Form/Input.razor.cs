@@ -12,7 +12,7 @@ public enum InputType
     Week
 }
 
-public enum FormFieldSize
+public enum InputSize
 {
     Default,
     Small,
