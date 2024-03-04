@@ -1,0 +1,103 @@
+<Page>
+    <PageHeader HasBack="true"
+                Title="Update Profile">
+    </PageHeader>
+    <PageBody>
+        <Grid Gutter="GridGutter.Medium">
+            <GridItem Small="GridItemColumn.Twelve">
+                <Form Model="@Model"
+                      OnSubmit="OnSubmit">
+                    <Card>
+                        <CardBody>
+                            <Input @bind-Value="Model.Email"
+                                   Id="appUpdateEmailInput"
+                                   Label="Email"
+                                   Name="Email"
+                                   Placeholder="Enter Profile Email..."
+                                   Disabled="true"
+                                   Required="true" />
+                            
+                            <Spacer/>
+                            @if(!string.IsNullOrEmpty(Message))
+                            {
+                                <Typography>
+                                    @Message
+                                </Typography>
+                                <Spacer/>
+                            }
+                            <ButtonGroup>
+                                <Button id="appUpdateCancelButton" 
+                                        OnClick="GoBack">
+                                    Cancel
+                                </Button>
+                                <Button Color="Color.Primary"
+                                        id="appUpdateSubmitButton"
+                                        Type="ButtonType.Submit" >
+                                    Submit
+                                </Button>
+                            </ButtonGroup>
+                        </CardBody>
+                    </Card>
+                </Form>
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
+
+@code {
+    [Inject]
+    IJSRuntime JsRuntime { set; get; } = default!;
+
+    [Inject]
+    NavigationManager NavigationManager { set; get; } = default!;
+
+    [Inject]
+    UserClient UserClient { get; set; } = default!;
+
+    string Message { get; set; } = string.Empty;
+
+    UserUpdateRequest Model { get; set; } = new();
+
+    UserDetailResponse View { get; set; } = new();
+
+    async Task GoBack()
+    {
+        await JsRuntime.InvokeAsync<object>("history.back");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        View = new UserDetailResponse {
+            Email = "test@gmail.com",
+            Enabled = true,
+            Id = Guid.NewGuid(),
+            LoginCount = 4,
+            PhoneNumber = "1234567890",
+            CreatedAt = DateTime.Now,
+            ModifiedAt = default,
+            CreatedBy = "admin",
+            ModifiedBy = "admin",
+            LastLoginAt = DateTime.Now,
+            Username = "test"
+        };
+        
+        Model.Email = View.Email;
+        @* Model.Username = View.Username; *@
+        @* Model.PhoneNumber = View.PhoneNumber; *@
+    }
+
+    async Task OnSubmit()
+    {
+        try
+        {
+            await UserClient.UpdateAsync(Model);
+            Message = "Done!";
+            GoBack();
+        }
+        catch (Exception exception)
+        {
+            Message = exception.ToString();
+        }
+    }
+}
