@@ -1,4 +1,5 @@
-﻿@inherits BaseComponent
+﻿@implements IAsyncDisposable
+@inherits BaseComponent
 @inject IJSRuntime JS
 
 @namespace FluentCMS.Web.UI.Components
@@ -99,6 +100,11 @@
         Open = false;
 
         await OnConfirm.InvokeAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await module.InvokeVoidAsync("close", DotNetObjectReference.Create(this), element);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

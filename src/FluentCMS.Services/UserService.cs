@@ -12,7 +12,12 @@ public interface IUserService : IAutoRegisterService
     Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default);
     Task ChangePassword(User user, string newPassword, CancellationToken cancellationToken = default);
     Task<User> ChangePassword(Guid id, string oldPassword, string newPassword, CancellationToken cancellationToken = default);
+    Task<string> GenerateToken(string purpose, User user, CancellationToken cancellationToken = default);
+    Task<bool> ValidateToken(string token, string purpose, User user, CancellationToken cancellationToken = default);
+    Task<string> GeneratePasswordResetToken(string email, CancellationToken cancellationToken = default);
+    Task<bool> ValidatePasswordResetToken(string token, string email, string newPassword, CancellationToken cancellationToken = default);
     Task<bool> Any(CancellationToken cancellationToken = default);
+    Task<User?> GetByEmail(string requestEmail);
 }
 
 public class UserService(
@@ -22,7 +27,8 @@ public class UserService(
     IAuthContext authContext) : IUserService
 {
     public const string LOCAL_LOGIN_PROVIDER = "local";
-    public string REFRESH_TOKEN_NAME = "refreshToken";
+    public const string REFRESH_TOKEN_NAME = "refreshToken";
+    public const string PASSWORD_RESET_PURPOSE = "passwordReset";
 
     public async Task<User> Create(User user, string password, CancellationToken cancellationToken = default)
     {
@@ -136,9 +142,46 @@ public class UserService(
         return user;
     }
 
+    public async Task<string> GenerateToken(string purpose, User user, CancellationToken cancellationToken = default)
+    {
+        return await userManager.GenerateUserTokenAsync(user, GetTokenProvider(purpose), purpose);
+    }
+
+    public static string GetTokenProvider(string purpose)
+    {
+        return $"{purpose}Provider";
+    }
+
+    public async Task<bool> ValidateToken(string token, string purpose, User user, CancellationToken cancellationToken = default)
+    {
+        return await userManager.VerifyUserTokenAsync(user, GetTokenProvider(purpose), purpose, token);
+    }
+
+    public async Task<string> GeneratePasswordResetToken(string email, CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByEmailAsync(email) ?? throw new AppException(ExceptionCodes.UserNotFound);
+        return await GenerateToken(PASSWORD_RESET_PURPOSE, user);
+    }
+
+    public async Task<bool> ValidatePasswordResetToken(string token, string email, string newPassword, CancellationToken cancellationToke = default)
+    {
+        var user = await userManager.FindByEmailAsync(email) ?? throw new AppException(ExceptionCodes.UserNotFound);
+        var result = await ValidateToken(token, PASSWORD_RESET_PURPOSE, user);
+        if (result)
+        {
+            await ChangePassword(user, newPassword, cancellationToke);
+        }
+        return result;
+    }
+
     public Task<bool> Any(CancellationToken cancellationToken = default)
     {
         return Task.Run(() => userManager.Users.Any(), cancellationToken);
+    }
+
+    public Task<User?> GetByEmail(string requestEmail)
+    {
+        return userManager.FindByEmailAsync(requestEmail);
     }
 
     public static T Merge<T>(T target, T source)

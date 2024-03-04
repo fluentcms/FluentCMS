@@ -1,0 +1,18 @@
+﻿@using System.Reflection
+
+@if (GetVersion() != null)
+{
+    <Typography Size="TextSize.ExtraSmall">@GetVersion()</Typography>
+}
+
+@code {
+    [Parameter]
+    public Assembly? Assembly { get; set; }
+
+    public string? GetVersion()
+    {
+        var versionAttribute = Assembly?.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+        var version = new System.Version(versionAttribute.InformationalVersion.Split("+").First());
+        return versionAttribute == null ? null : "v" + version.ToString(3);
+    }
+}

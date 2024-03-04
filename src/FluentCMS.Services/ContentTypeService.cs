@@ -27,6 +27,8 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
 
     public async Task<ContentType> Create(ContentType contentType, CancellationToken cancellationToken = default)
     {
+        await CheckDuplicateSlug(contentType);
+
         return await contentTypeRepository.Create(contentType, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeUnableToCreate);
     }
@@ -45,6 +47,8 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
 
     public async Task<ContentType> Update(ContentType contentType, CancellationToken cancellationToken = default)
     {
+        await CheckDuplicateSlug(contentType);
+
         // only allow name and description to be updated
         var original = await contentTypeRepository.GetById(contentType.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeNotFound);
@@ -57,6 +61,12 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
 
         return await contentTypeRepository.Update(original, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);
+    }
+
+    private async Task CheckDuplicateSlug(ContentType contentType)
+    {
+        var originalBySlug = await contentTypeRepository.GetBySlug(contentType.AppId, contentType.Slug);
+        if (originalBySlug != null && originalBySlug.Id != contentType.Id) throw new AppException(ExceptionCodes.ContentTypeDuplicateSlug);
     }
 
     public async Task<ContentType> SetField(Guid appId, Guid contentTypeId, ContentTypeField field, CancellationToken cancellationToken = default)
