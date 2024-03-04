@@ -10,16 +10,15 @@
                       OnSubmit="OnSubmit">
                     <Card>
                         <CardBody>
-                            @foreach (var field in Fields.Select((value,i) => new {i, value}))
+                            @foreach (var field in Fields)
                             {
-                                <Input autofocus="@(field.i == 0)"
-                                       Id="@($"contentUpdate{field.value.Slug}Input")"
-                                       Label="@(String.IsNullOrEmpty(field.value.Label) ? field.value.Title : field.value.Label)"
-                                       Name="@field.value.Slug"
-                                       Placeholder="@(String.IsNullOrEmpty(field.value.Placeholder) ? $"Enter {field.value.Title}..." : field.value.Placeholder)"
+                                <Input Id="@($"contentUpdate{field.Slug}Input")"
+                                       Label="@(String.IsNullOrEmpty(field.Label) ? field.Title : field.Label)"
+                                       Name="@field.Slug"
+                                       Placeholder="@(String.IsNullOrEmpty(field.Placeholder) ? $"Enter {field.Title}..." : field.Placeholder)"
                                        TValue="string"
-                                       Value="@((string) ParseValue(Model.Value![field.value.Slug!]!)!)"
-                                       ValueChanged="x => Model.Value![field.value.Slug!] = x"
+                                       Value="@((string) ParseValue(Model.Value![field.Slug!]!)!)"
+                                       ValueChanged="x => Model.Value![field.Slug!] = x"
                                        />
                             }
 
