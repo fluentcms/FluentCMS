@@ -2,7 +2,7 @@
     <PageHeader HasBack="false" Title="Apps List">
         <PageHeaderActions>
             <ButtonGroup>
-                <Button autofocus 
+                <Button autofocus="true" 
                         Color="Color.Primary" 
                         Href="?PluginDef=App Management&typeName=Create App" 
                         Id="appCreateButton"
@@ -60,7 +60,7 @@
             @if (Apps.Count == 0)
             {
                 <EmptyTable Message="No Apps Found!">
-                    <Button autofocus 
+                    <Button autofocus="true"
                             Color="Color.Primary" 
                             Href="?PluginDef=App Management&typeName=Create App"
                             Id="appEmptyCreateButton" 
