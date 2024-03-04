@@ -11,3 +11,11 @@ public enum InputType
     Time,
     Week
 }
+
+public enum FormFieldSize
+{
+    Default,
+    Small,
+    Medium,
+    Large
+}

@@ -27,6 +27,10 @@
 
 @code {
     [Parameter]
+    [CssProperty]
+    public FormFieldSize? Size { get; set; }
+
+    [Parameter]
     public InputType Type { get; set; } = InputType.Text;
 
     public string value
