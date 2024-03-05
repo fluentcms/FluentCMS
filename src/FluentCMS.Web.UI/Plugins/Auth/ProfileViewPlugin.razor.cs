@@ -7,12 +7,13 @@ namespace FluentCMS.Web.UI.Plugins.Auth;
 public partial class ProfileViewPlugin
 {
     [Inject] public AccountClient AccountClient { get; set; } = default!;
-    
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    public UserDetailResponse? View { get; set; }
+
+
+    protected override async Task OnInitializedAsync()
     {
-        await base.OnAfterRenderAsync(firstRender);
-        View = await AccountClient.GetDetails();
-        //StateHasChanged();
+        await base.OnInitializedAsync();
+        View = (await AccountClient.GetUserDetailAsync()).Data;
     }
 }

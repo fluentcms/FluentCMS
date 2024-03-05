@@ -14,25 +14,24 @@
                                    Label="Email"
                                    Name="Email"
                                    Placeholder="Enter Profile Email..."
-                                   Disabled="true"
                                    Required="true" />
-                            
-                            <Spacer/>
-                            @if(!string.IsNullOrEmpty(Message))
+                            @*Disabled="true"*@
+                            <Spacer />
+                            @if (!string.IsNullOrEmpty(Message))
                             {
                                 <Typography>
                                     @Message
                                 </Typography>
-                                <Spacer/>
+                                <Spacer />
                             }
                             <ButtonGroup>
-                                <Button id="appUpdateCancelButton" 
+                                <Button id="appUpdateCancelButton"
                                         OnClick="GoBack">
                                     Cancel
                                 </Button>
                                 <Button Color="Color.Primary"
                                         id="appUpdateSubmitButton"
-                                        Type="ButtonType.Submit" >
+                                        Type="ButtonType.Submit">
                                     Submit
                                 </Button>
                             </ButtonGroup>
@@ -52,11 +51,11 @@
     NavigationManager NavigationManager { set; get; } = default!;
 
     [Inject]
-    UserClient UserClient { get; set; } = default!;
+    AccountClient AccountClient { get; set; } = default!;
 
     string Message { get; set; } = string.Empty;
 
-    UserUpdateRequest Model { get; set; } = new();
+    UserUpdateProfileRequest Model { get; set; } = new();
 
     UserDetailResponse View { get; set; } = new();
 
@@ -68,19 +67,7 @@
     protected override async Task OnInitializedAsync()
     {
 
-        View = new UserDetailResponse {
-            Email = "test@gmail.com",
-            Enabled = true,
-            Id = Guid.NewGuid(),
-            LoginCount = 4,
-            PhoneNumber = "1234567890",
-            CreatedAt = DateTime.Now,
-            ModifiedAt = default,
-            CreatedBy = "admin",
-            ModifiedBy = "admin",
-            LastLoginAt = DateTime.Now,
-            Username = "test"
-        };
+        View = (await AccountClient.GetUserDetailAsync()).Data;
         
         Model.Email = View.Email;
         @* Model.Username = View.Username; *@
@@ -91,9 +78,9 @@
     {
         try
         {
-            await UserClient.UpdateAsync(Model);
+            await AccountClient.SetUserDetailAsync(Model);
             Message = "Done!";
-            GoBack();
+            await GoBack();
         }
         catch (Exception exception)
         {
