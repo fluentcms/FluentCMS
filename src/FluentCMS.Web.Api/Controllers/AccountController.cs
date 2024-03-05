@@ -1,4 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.Authorization;
+
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Threading;
 using FluentCMS.Web.Api.Models.Users;
@@ -32,6 +34,7 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<IApiResult<bool>> ChangePassword([FromBody] UserChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
         await userService.ChangePassword(request.UserId, request.OldPassword, request.NewPassword, cancellationToken);

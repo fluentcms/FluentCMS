@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Web.Api.Controllers;
+﻿using Microsoft.AspNetCore.Authorization;
+
+namespace FluentCMS.Web.Api.Controllers;
 
 public class GlobalSettingsController(IGlobalSettingsService service, IMapper mapper) : BaseGlobalController
 {
@@ -12,6 +14,7 @@ public class GlobalSettingsController(IGlobalSettingsService service, IMapper ma
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<IApiResult<GlobalSettings>> Update(GlobalSettingsUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var settings = mapper.Map<GlobalSettings>(request);
