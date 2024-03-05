@@ -5,9 +5,10 @@
         <PageHeader Title="@PageTitle">
             <PageHeaderActions>
                 <ButtonGroup>
-                    <Button Color="Color.Primary"
-                        Href="@($"?pluginDef=Content Management&typeName=Create Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}")"
-                        id="contentCreateButton" Size="ButtonSize.Small">
+                    <Button autofocus="true"
+                            Color="Color.Primary"
+                            Href="@($"?pluginDef=Content Management&typeName=Create Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}")"
+                            id="contentCreateButton" Size="ButtonSize.Small">
                         <Icon Name="IconName.Plus" />
                         Insert
                     </Button>
@@ -79,9 +80,11 @@
                         else if (Data.Count == 0)
                         {
                             <EmptyTable Message="There is no Content yet!">
-                                <Button Color="Color.Primary"
-                                    Href="@($"?pluginDef=Content Management&typeName=Create Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}")"
-                                    id="contentCreateButton" Size="ButtonSize.Small">
+                                <Button autofocus="true"
+                                        Color="Color.Primary"
+                                        Href="@($"?pluginDef=Content Management&typeName=Create Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}")"
+                                        id="contentCreateButton" 
+                                        Size="ButtonSize.Small">
                                     <Icon Name="IconName.Plus" />
                                     Add First @ContentType.Title
                                 </Button>

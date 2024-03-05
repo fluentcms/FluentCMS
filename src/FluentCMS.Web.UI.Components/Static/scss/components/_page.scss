@@ -9,6 +9,10 @@ $page: $prefix + 'page';
         svg {
             @apply w-full h-full;
         }
+
+        &:focus > span {
+            @apply underline;
+        }
     }
 
     &-header {

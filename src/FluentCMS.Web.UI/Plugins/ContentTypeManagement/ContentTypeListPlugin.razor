@@ -3,6 +3,7 @@
         <PageHeaderActions>
             <ButtonGroup>
                 <Select @bind-Value="AppSlug" 
+                        autofocus="true"
                         Dense="true" 
                         Id="contentTypeAppSelect" 
                         Placeholder="Choose an App..."
@@ -16,8 +17,9 @@
                 @if (!string.IsNullOrEmpty(AppSlug))
                 {
                     <Button Color="Color.Primary"
-                        Href="@($"?PluginDef=ContentType Management&typeName=Create ContentType&appSlug={AppSlug}")"
-                        id="contentTypeCreateButton" Size="ButtonSize.Small">
+                            Href="@($"?PluginDef=ContentType Management&typeName=Create ContentType&appSlug={AppSlug}")"
+                            id="contentTypeCreateButton" 
+                            Size="ButtonSize.Small">
                         <Icon Name="IconName.Plus" />
                         Add Content Type
                     </Button>
@@ -79,17 +81,22 @@
                 <EmptyTable Message="No Content Types Found!">
                     @if(!String.IsNullOrEmpty(AppSlug))
                     {
-                        <Button Color="Color.Primary"
-                        Href="@($"?PluginDef=ContentType Management&typeName=Create ContentType&appSlug={AppSlug}")"
-                        id="contentTypeCreateButton" Size="ButtonSize.Small">
-                        <Icon Name="IconName.Plus" />
-                        Add Content Type
-                    </Button>
+                        <Button autofocus="true"
+                                Color="Color.Primary"
+                                Href="@($"?PluginDef=ContentType Management&typeName=Create ContentType&appSlug={AppSlug}")"
+                                id="contentTypeCreateButton" 
+                                Size="ButtonSize.Small">
+                            <Icon Name="IconName.Plus" />
+                            Add Content Type
+                        </Button>
                     } else {
-                        <Button Color="Color.Primary" Href="?PluginDef=App Management&typeName=Create App"
-                                Id="appEmptyCreateButton" Size="ButtonSize.Small">
-                                <Icon Name="IconName.Plus" />
-                                First Add an App
+                        <Button autofocus="true"
+                                Color="Color.Primary" 
+                                Href="?PluginDef=App Management&typeName=Create App"
+                                Id="appEmptyCreateButton" 
+                                Size="ButtonSize.Small">
+                            <Icon Name="IconName.Plus" />
+                            First Add an App
                         </Button>
                     }
                 </EmptyTable>
