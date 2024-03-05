@@ -11,15 +11,14 @@
                     <CardBody>
                         @foreach (var field in Fields)
                         {
-                            // TODO: Cleanup this
                             <Input Id="@($"contentCreate{@field.Slug}Input")"
-                                   Label="@(String.IsNullOrEmpty(field.Label) ? field.Title : field.Label)"
-                                   Name="@field.Slug"
-                                   Placeholder="@(String.IsNullOrEmpty(field.Placeholder) ? $"Enter {field.Title}..." : field.Placeholder)"
-                                   Required="@field.IsRequired"
-                                   TValue="string"
-                                   Value="@(Model[field.Slug!] as string)"
-                                   ValueChanged="str => Model[field.Slug!] = str"/>
+                                Label="@(String.IsNullOrEmpty(field.Label) ? field.Title : field.Label)"
+                                Name="@field.Slug"
+                                Placeholder="@(String.IsNullOrEmpty(field.Placeholder) ? $"Enter {field.Title}..." : field.Placeholder)"
+                                Required="@field.IsRequired"
+                                TValue="string"
+                                Value="@(Model[field.Slug!] as string)"
+                                ValueChanged="str => Model[field.Slug!] = str"/>
                         }
 
                         <ButtonGroup>

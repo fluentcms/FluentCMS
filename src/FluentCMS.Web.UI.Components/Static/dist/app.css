@@ -106,7 +106,7 @@ body.dark {
   @apply items-center gap-2 text-center inline-flex;
 }
 .f-button-block-true {
-  @apply w-full;
+  @apply inline-block w-full;
 }
 .f-button-icon-true {
   @apply text-center inline-flex items-center;
@@ -871,6 +871,9 @@ body.dark {
 }
 .f-page-back-button svg {
   @apply w-full h-full;
+}
+.f-page-back-button:focus > span {
+  @apply underline;
 }
 .f-page-header {
   @apply border-gray-200 px-0 py-2.5 pt-2 text-gray-700;
