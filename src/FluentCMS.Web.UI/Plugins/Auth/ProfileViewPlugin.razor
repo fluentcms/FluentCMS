@@ -33,32 +33,32 @@
                       Large="GridItemColumn.Three">
                 <Card>
                     <CardBody>
-                        @if(!string.IsNullOrEmpty(View.CreatedBy))
+                        @if (!string.IsNullOrEmpty(View.CreatedBy))
                         {
                             <Typography><strong>Created By</strong></Typography>
                             <Typography>@View.CreatedBy</Typography>
                             <Spacer />
                         }
-                        @if(!string.IsNullOrEmpty(View.CreatedAt.ToString()))
+                        @if (!string.IsNullOrEmpty(View.CreatedAt.ToString()))
                         {
                             <Typography><strong>Created At</strong></Typography>
                             <Typography>@View.CreatedAt</Typography>
                             <Spacer />
                         }
-                        @if(!string.IsNullOrEmpty(View.ModifiedBy))
+                        @if (!string.IsNullOrEmpty(View.ModifiedBy))
                         {
                             <Typography><strong>Modified By</strong></Typography>
                             <Typography>@View.ModifiedBy</Typography>
                             <Spacer />
                         }
-                        @if(!string.IsNullOrEmpty(View.ModifiedAt.ToString()))
+                        @if (!string.IsNullOrEmpty(View.ModifiedAt.ToString()))
                         {
                             <Typography><strong>Modified At</strong></Typography>
                             <Typography>@View.ModifiedAt</Typography>
                         }
                     </CardBody>
                 </Card>
-                <Spacer/>
+                <Spacer />
                 <Button Block="true"
                         Color="Color.Primary"
                         Href="@($"?PluginDef=Profile&typeName=Update")"
@@ -71,25 +71,3 @@
         </Grid>
     </PageBody>
 </Page>
-
-@code {
-    UserDetailResponse? View {get; set;} = new();
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        View = new UserDetailResponse {
-            Email = "test@gmail.com",
-            Enabled = true,
-            Id = Guid.NewGuid(),
-            LoginCount = 4,
-            PhoneNumber = "1234567890",
-            CreatedAt = DateTime.Now,
-            ModifiedAt = default,
-            CreatedBy = "admin",
-            ModifiedBy = "admin",
-            LastLoginAt = DateTime.Now,
-            Username = "test"
-        };
-    }
-    
-}

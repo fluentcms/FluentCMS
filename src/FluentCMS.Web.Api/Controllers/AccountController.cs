@@ -1,8 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-
-using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
-using System.Threading;
 using FluentCMS.Web.Api.Models.Users;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -57,6 +54,7 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IApiResult<UserDetailResponse>> GetUserDetail()
     {
         var userId = Guid.Parse(httpContextAccessor!.HttpContext!.User.FindFirst(ClaimTypes.Sid)!.Value);
@@ -64,6 +62,7 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
         return Ok(mapper.Map<UserDetailResponse>(user));
     }
     [HttpGet]
+    [Authorize]
     public async Task<IApiResult<UserDetailResponse>> SetUserDetail(UserUpdateProfileRequest request, CancellationToken cancellationToken = default)
     {
         var userId = Guid.Parse(httpContextAccessor!.HttpContext!.User.FindFirst(ClaimTypes.Sid)!.Value);
@@ -73,11 +72,4 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
         var userResponse = mapper.Map<UserDetailResponse>(updated);
         return Ok(userResponse);
     }
-}
-
-public class UserUpdateProfileRequest
-{
-    [Required]
-    [EmailAddress]
-    public string Email { get; set; }
 }
