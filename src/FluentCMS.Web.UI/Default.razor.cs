@@ -132,6 +132,14 @@ public partial class Default : IDisposable
                     !x.Name.Equals(ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase));
                 foreach (var attribute in attributes)
                 {
+                    // handle enums
+                    if (type.GetProperty(attribute.OriginalName) is var property && property != null && property.PropertyType.IsEnum)
+                    {
+                        var selectedEnum = Enum.Parse(property.PropertyType,attribute.Value.Split(".").Last(),true);
+                        builder.AddComponentParameter(2, attribute.OriginalName, selectedEnum);
+                        continue;
+                    }
+
                     builder.AddComponentParameter(2, attribute.OriginalName, attribute.Value);
                     if (type.GetProperty("Page") != null)
                     {
