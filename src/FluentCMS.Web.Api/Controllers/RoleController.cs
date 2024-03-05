@@ -1,5 +1,8 @@
-﻿namespace FluentCMS.Web.Api.Controllers;
+﻿using Microsoft.AspNetCore.Authorization;
 
+namespace FluentCMS.Web.Api.Controllers;
+
+[Authorize]
 public class RoleController(
     IMapper mapper,
     IRoleService roleService,

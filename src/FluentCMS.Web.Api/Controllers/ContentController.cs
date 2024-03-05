@@ -1,4 +1,8 @@
-﻿namespace FluentCMS.Web.Api.Controllers;
+﻿using Microsoft.AspNetCore.Authorization;
+
+namespace FluentCMS.Web.Api.Controllers;
+
+[Authorize]
 
 [Route("api/app/{appSlug}/[controller]/{contentTypeSlug}/[action]")]
 public class ContentController(

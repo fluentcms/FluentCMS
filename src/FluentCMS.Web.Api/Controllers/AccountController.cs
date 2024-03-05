@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Web.Api.Controllers;
+﻿using Microsoft.AspNetCore.Authorization;
+
+namespace FluentCMS.Web.Api.Controllers;
 
 public class AccountController(IMapper mapper, IUserService userService) : BaseGlobalController
 {
@@ -25,6 +27,7 @@ public class AccountController(IMapper mapper, IUserService userService) : BaseG
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<IApiResult<bool>> ChangePassword([FromBody] UserChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
         await userService.ChangePassword(request.UserId, request.OldPassword, request.NewPassword, cancellationToken);
