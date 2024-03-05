@@ -26,6 +26,7 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 
+Cypress.Commands.add('waitForNavigate', () => cy.wait(250))
 Cypress.Commands.add('shortWait', () => cy.wait(2500))
 Cypress.Commands.add('mediumWait', () => cy.wait(5000))
 Cypress.Commands.add('longWait', () => cy.wait(7500))
