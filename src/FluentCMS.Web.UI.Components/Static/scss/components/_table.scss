@@ -1,7 +1,7 @@
 $table: $prefix + "table";
 
 .#{$table} {
-    @apply rounded shadow border border-gray-200 w-full text-sm text-left text-gray-500 dark:text-gray-400 dark:border-gray-700;
+    @apply w-full text-sm text-left text-gray-500 dark:text-gray-400 dark:border-gray-700;
 
     &-cell {
         @apply px-6 py-3;
@@ -24,7 +24,7 @@ $table: $prefix + "table";
     }
 
     &-parent {
-        @apply relative overflow-x-auto shadow-md;
+        @apply rounded relative overflow-x-auto;
 
         @screen sm {
             @apply rounded-lg;

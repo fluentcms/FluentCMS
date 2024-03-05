@@ -20,17 +20,17 @@
                                     <Option Value="@app.Slug">@app.Title</Option>
                                 }
                             </Select>
+                            <Input @bind-Value="Model.Slug"
+                                   Id="contentTypeCreateSlugInput"
+                                   Label="Slug"
+                                   Name="Slug"
+                                   Placeholder="Enter Slug..." />
                             <Input @bind-Value="Model.Title"
                                    Id="contentTypeCreateTitleInput"
                                    Label="Title"
                                    Name="Title"
                                    Placeholder="Enter Title..."
                                    Required="true"/>
-                            <Input @bind-Value="Model.Slug"
-                                   Id="contentTypeCreateSlugInput"
-                                   Label="Slug"
-                                   Name="Slug"
-                                   Placeholder="Enter Slug..." />
                             <Textarea @bind-Value="Model.Description"
                                    Id="contentTypeCreateDescriptionInput"
                                    Label="Description"
