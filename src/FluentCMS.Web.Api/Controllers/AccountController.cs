@@ -57,7 +57,7 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
     [Authorize]
     public async Task<IApiResult<UserDetailResponse>> GetUserDetail()
     {
-        var userId = Guid.Parse(httpContextAccessor!.HttpContext!.User.FindFirst(ClaimTypes.Sid)!.Value);
+        var userId = Guid.Parse(httpContextAccessor!.HttpContext!.User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var user = await userService.GetById(userId);
         return Ok(mapper.Map<UserDetailResponse>(user));
     }
@@ -65,7 +65,7 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
     [Authorize]
     public async Task<IApiResult<UserDetailResponse>> SetUserDetail(UserUpdateProfileRequest request, CancellationToken cancellationToken = default)
     {
-        var userId = Guid.Parse(httpContextAccessor!.HttpContext!.User.FindFirst(ClaimTypes.Sid)!.Value);
+        var userId = Guid.Parse(httpContextAccessor!.HttpContext!.User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var user = mapper.Map<User>(request);
         user.Id = userId;
         var updated = await userService.Update(user, cancellationToken);
