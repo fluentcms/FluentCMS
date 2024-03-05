@@ -16,7 +16,7 @@ public static class ErrorMessageExtension
     {
         if (ex is ApiClientException clientException)
         {
-            return clientException!.Data!.Errors!.Select(x => x.Code).DefaultIfEmpty(clientException.Message).ToArray()!;
+            return clientException.Data?.Errors?.Select(x => x.Code).DefaultIfEmpty(clientException.Message).ToArray() ?? [clientException.Message];
         }
         else
         {
