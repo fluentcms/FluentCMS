@@ -46,6 +46,13 @@
                                             <TableCell>
                                                 <ButtonGroup>
                                                     <Button Ghost="true"
+                                                        Href="@($"?pluginDef=Content Management&typeName=Content Detail&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}&id={item.Id}")"
+                                                        Size="ButtonSize.Small">
+                                                        <Icon Name="IconName.Eye" />
+                                                    </Button>
+                                                    <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
+
+                                                    <Button Ghost="true"
                                                         Href="@($"?pluginDef=Content Management&typeName=Update Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}&id={item.Id}")"
                                                         Size="ButtonSize.Small">
                                                         <Icon Name="IconName.Edit" />
@@ -132,7 +139,7 @@
         if (result)
         {
             await ContentClient.DeleteAsync(AppSlug, ContentTypeSlug, content.Id);
-            await FetchData();
+            FetchData();
         }
     }
 
