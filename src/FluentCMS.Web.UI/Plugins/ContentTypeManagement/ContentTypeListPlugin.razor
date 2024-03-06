@@ -75,7 +75,7 @@
                     }
                 </TableBody>
             </Table>
-            @if (ContentTypes.Count == 0)
+            @if (Loaded && ContentTypes.Count == 0)
             {
                 <EmptyTable Message="No Content Types Found!">
                     @if(!String.IsNullOrEmpty(AppSlug))
@@ -126,6 +126,8 @@
 
     string? AppSlug { get; set; }
 
+    bool Loaded { get; set; }
+
     List<AppDetailResponse> Apps { get; set; } = [];
 
     List<ContentTypeDetailResponse> ContentTypes { get; set; } = [];
@@ -137,6 +139,8 @@
         if (response?.Data == null) return;
 
         ContentTypes = response.Data.ToList();
+
+        Loaded = true;
     }
 
     async Task OnAppSlugChanged()
