@@ -16,7 +16,7 @@ $page: $prefix + 'page';
     }
 
     &-header {
-        @apply border-gray-200 px-0 py-2.5 pt-2 text-gray-700;
+        @apply border-gray-200 px-0 py-4 text-gray-700;
 
         &-actions {
             @apply flex-shrink-0 flex flex-col items-start md:flex-row md:items-center lg:justify-end space-y-3 md:space-y-0 md:space-x-3;
