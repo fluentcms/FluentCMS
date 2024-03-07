@@ -1,13 +1,10 @@
 ﻿@namespace FluentCMS.Web.UI.Components
 
-@if (Open)
-{
-    <Confirm @bind-Open="Open"
-             Message="@Message"
-             Static="true"
-             OnCancel="OnCancel"
-             OnConfirm="OnConfirm" />
-}
+<Confirm @bind-Open="Open"
+         Message="@Message"
+         Static="true"
+         OnCancel="OnCancel"
+         OnConfirm="OnConfirm" />
 
 @code {
     [Inject]
@@ -32,6 +29,7 @@
         await Wating.Task;
 
         return Wating.Task.Result;
+
     }
 
     protected override void OnInitialized()

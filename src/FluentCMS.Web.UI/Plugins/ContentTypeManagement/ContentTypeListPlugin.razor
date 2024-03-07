@@ -52,26 +52,21 @@
                             </TableCell>
                             <TableCell>
                                 <ButtonGroup>
-                                    <Button data-test="preview-btn"
-                                            Ghost="true"
-                                            Href="@($"?PluginDef=ContentType Management&typeName=ContentType Detail&id={contentType.Id}&appSlug={AppSlug}")"
-                                            Size="ButtonSize.Small">
+                                    <Button Ghost="true"
+                                        Href="@($"?PluginDef=ContentType Management&typeName=ContentType Detail&id={contentType.Id}&appSlug={AppSlug}")"
+                                        Size="ButtonSize.Small">
                                         <Icon Name="IconName.Eye" />
                                     </Button>
                                     <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
 
-                                    <Button data-test="edit-btn" 
-                                            Ghost="true"
-                                            Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={contentType.Id}&appSlug={AppSlug}")"
-                                            Size="ButtonSize.Small">
+                                    <Button Ghost="true"
+                                        Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={contentType.Id}&appSlug={AppSlug}")"
+                                        Size="ButtonSize.Small">
                                         <Icon Name="IconName.Edit" />
                                     </Button>
                                     <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
 
-                                    <Button data-test="delete-btn" 
-                                            Ghost="true" 
-                                            Size="ButtonSize.Small" 
-                                            OnClick="@(evt => OnDelete(contentType))">
+                                    <Button Ghost="true" Size="ButtonSize.Small" OnClick="@(evt => OnDelete(contentType))">
                                         <Icon Name="IconName.Delete" />
                                     </Button>
                                     <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>

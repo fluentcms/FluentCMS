@@ -22,7 +22,7 @@
                     <TableCell>Description</TableCell>
                     <TableCell Width="TableColumnWidth.Small"></TableCell>
                 </TableHead>
-                <TableBody id="appListTable">
+                <TableBody>
                     @foreach (var app in Apps)
                     {
                         <TableRow>
@@ -31,26 +31,19 @@
                             <TableCell> @app.Description </TableCell>
                             <TableCell>
                                 <ButtonGroup>
-                                    <Button data-test="preview-btn"
-                                            Href="@($"?PluginDef=App Management&typeName=App Detail&appSlug={app.Slug}")"
-                                            Ghost="true"
-                                            Size="ButtonSize.Small">
+                                    <Button Href="@($"?PluginDef=App Management&typeName=App Detail&appSlug={app.Slug}")"
+                                        Ghost="true" Size="ButtonSize.Small">
                                         <Icon Name="IconName.Eye" />
                                     </Button>
                                     <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
 
-                                    <Button data-test="edit-btn"
-                                            Ghost="true"
-                                            Href="@($"?PluginDef=App Management&typeName=Update App&appSlug={app.Slug}")"
-                                            Size="ButtonSize.Small">
+                                    <Button Href="@($"?PluginDef=App Management&typeName=Update App&appSlug={app.Slug}")"
+                                        Ghost="true" Size="ButtonSize.Small">
                                         <Icon Name="IconName.Edit" />
                                     </Button>
                                     <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
 
-                                    <Button data-test="delete-btn"
-                                            Ghost="true"
-                                            Size="ButtonSize.Small"
-                                            OnClick="@(evt => OnDelete(app))">
+                                    <Button Ghost="true" Size="ButtonSize.Small" OnClick="@(evt => OnDelete(app))">
 
                                         <Icon Name="IconName.Delete" />
                                     </Button>
