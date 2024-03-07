@@ -52,10 +52,15 @@
     [Parameter]
     public bool Static { get; set; }
 
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
     [JSInvokable]
     public async void Close()
     {
         await OpenChanged.InvokeAsync(Open = false);
+
+        await OnClose.InvokeAsync();
     }
 
     public async ValueTask DisposeAsync()

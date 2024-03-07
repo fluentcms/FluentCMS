@@ -839,7 +839,7 @@ body.dark {
   @apply space-y-6 p-6;
 }
 .f-modal-content {
-  @apply relative rounded-lg bg-white shadow dark:bg-gray-700;
+  @apply relative rounded-lg bg-white shadow dark:bg-gray-800;
 }
 .f-modal-footer {
   @apply flex items-center rounded-b border-t border-gray-200 p-6 dark:border-gray-600;
@@ -1020,7 +1020,7 @@ body.dark {
 }
 
 .f-table {
-  @apply rounded shadow border border-gray-200 w-full text-sm text-left text-gray-500 dark:text-gray-400 dark:border-gray-700;
+  @apply w-full text-sm text-left text-gray-500 dark:text-gray-400 dark:border-gray-700;
 }
 .f-table-cell {
   @apply px-6 py-3;
@@ -1038,7 +1038,7 @@ body.dark {
   @apply text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400;
 }
 .f-table-parent {
-  @apply relative overflow-x-auto shadow-md;
+  @apply rounded relative overflow-x-auto;
 }
 @screen sm {
   .f-table-parent {
