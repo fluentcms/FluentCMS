@@ -28,6 +28,7 @@ Cypress.Commands.add('appClean', () => {
     cy.get('#appListTable').deleteTableRows()
 
     cy.get('#appListTable').should('be.empty')
+    cy.contains('No Apps Found!').should('be.visible')
 })
 
 Cypress.Commands.add('appCreate', ({title, slug, description} ={}) => {
