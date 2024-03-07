@@ -99,7 +99,7 @@
                                 <Spacer />
                             }
                             <ButtonGroup>
-                                <Button id="contentTypeUpdateCancelButton" 
+                                <Button id="contentTypeUpdateCancelButton"
                                         OnClick="GoBack">
                                     Cancel
                                 </Button>
@@ -117,11 +117,9 @@
     </PageBody>
 </Page>
 
-<ContentTypeFieldModal ActiveTab="tab-general"
+<ContentTypeFieldModal Open="FieldModalOpen"
                        Model="FieldModel"
-                       Open="FieldModalOpen"
-                       Title="@FieldModalTitle"
-                       OnCancel="CloseFieldModal"
+                       OnCancel="OnCancelField"
                        OnSubmit="OnSubmitField" />
 
 @code {
@@ -148,7 +146,7 @@
 
     bool FieldModalOpen = false;
 
-    ContentTypeField FieldModel = new();
+    ContentTypeField? FieldModel;
 
     string? FieldModalTitle;
 
@@ -160,11 +158,6 @@
 
     ContentTypeUpdateRequest Model { get; set; } = new();
 
-    void CloseFieldModal()
-    {
-        FieldModalOpen = false;
-    }
-
     async Task GoBack()
     {
         NavigationManager.NavigateTo("/admin/content-types?appSlug=" + AppSlug);
@@ -174,18 +167,16 @@
     {
         FieldModel = new ContentTypeField
             {
-                Slug = field.Slug,
-                Title = field.Title,
+                DefaultValue = field.DefaultValue,
                 Description = field.Description,
-
+                Hint = field.Hint,
                 IsRequired = field.IsRequired,
                 Label = field.Label,
-                Hint = field.Hint,
                 Placeholder = field.Placeholder,
-                DefaultValue = field.DefaultValue,
-
+                Slug = field.Slug,
+                Title = field.Title,
+  
             };
-        FieldModalTitle = "Edit Field";
         FieldModalOpen = true;
     }
 
@@ -206,20 +197,7 @@
 
     void OpenAddFieldModal()
     {
-        FieldModel = new ContentTypeField
-            {
-                Slug = "",
-                Title = "",
-                Description = "",
-
-                IsRequired = false,
-                Label = "",
-                Hint = "",
-                Placeholder = "",
-                DefaultValue = "",
-            };
-
-        FieldModalTitle = "Add Field";
+        FieldModel = null;
         FieldModalOpen = true;
     }
 
@@ -241,12 +219,16 @@
         {
             View = response.Data;
             Fields = (View.Fields ?? []).ToList();
-
             Model.Id = View.Id;
             Model.Title = View.Title;
             Model.AppId = View.AppId;
             Model.Description = View.Description;
         }
+    }
+
+    void OnCancelField()
+    {
+        FieldModalOpen = false;
     }
 
     async Task OnSubmitField(ContentTypeField field)

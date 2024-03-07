@@ -1,119 +1,274 @@
-<Modal @bind-Open="Open"
-       Size="ModalSize.Large">
-    <div class="dark:bg-gray-800">
-        <ModalHeader>
-            <ModalTitle id="contentTypeFieldModalTitle">@Title</ModalTitle>
-        </ModalHeader>
-        <ModalBody>
-            <Form Model="@Model"
-                  OnSubmit="OnFormSubmit">
-                <Tabs @bind-Value="ActiveTab">
-                    <TabsList>
-                        <TabsTab id="contentTypeFieldModalGeneralTab" 
-                                 Name="tab-general">
-                            General
-                        </TabsTab>
-                        <TabsTab id="contentTypeFieldModalAdvancedTab" 
-                                 Name="tab-advanced">
-                            Advanced
-                        </TabsTab>
-                    </TabsList>
-                    <TabsPanels>
-                        <TabsPanel Name="tab-general">
-                            <Grid GutterX="GridGutter.Large">
-                                <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
-                                    <Input @bind-Value="Model.Slug"
-                                           autofocus="true"
-                                           Id="contentTypeFieldModalSlugInput" 
-                                           Label="Slug"
-                                           Name="Slug"
-                                           Placeholder="Enter Slug..."
-                                           Required="true"/>
-                                </GridItem>
-                                <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
-                                    <Input @bind-Value="Model.Title"
-                                           Id="contentTypeFieldModalTitleInput"
-                                           Label="Title"
-                                           Name="Title"
-                                           Placeholder="Enter Title..."
-                                           Required="true"/>
-                                </GridItem>
-                            </Grid>
-                            <Textarea @bind-Value="Model.Description"
-                                      Id="contentTypeFieldModalDescriptionInput"
-                                      Label="Description"
-                                      Name="Description"
-                                      Placeholder="Enter Description..."
-                                      Required="true" />
-                        </TabsPanel>
-                        <TabsPanel Name="tab-advanced">
-                            <Input @bind-Value="Model.Label"
-                                   Id="contentTypeFieldModalLabelInput"
-                                   Label="Label"
-                                   Name="Label"
-                                   Placeholder="Enter Label..."
-                                   Required="true"/>
-                            <Switch @bind-Value="Model.IsRequired"
-                                    Id="contentTypeFieldModalRequiredInput"
-                                    Label="Is Required?"
-                                    Name="IsRequired" />
-                            <Input @bind-Value="Model.Placeholder"
-                                   Id="contentTypeFieldModalPlaceholderInput"
-                                   Label="Placeholder"
-                                   Name="Placeholder"
-                                   Placeholder="Enter Placeholder..."/>
-                            <Input @bind-Value="Model.Hint"
-                                   Id="contentTypeFieldModalHintInput"
-                                   Label="Hint"
-                                   Name="Hint"
-                                   Placeholder="Enter Hint..."/>
-
-                            <Input @bind-Value="Model.DefaultValue"
-                                   Id="contentTypeFieldModalDefaultValueInput"
-                                   Label="Default Value"
-                                   Name="DefaultValue"
-                                   Placeholder="Enter Default Value..."/>
-                        </TabsPanel>
-                    </TabsPanels>
-                </Tabs>
-
-                <ButtonGroup>
-                    <Button id="contentTypeFieldModalCancelButton"
-                            OnClick="() => OnCancel.InvokeAsync()">
-                        Cancel
-                    </Button>
+<Modal Open="Open"
+       Size="ModalSize.Large"
+       OnClose="() => OnCancel.InvokeAsync()">
+    @if (Model != null)
+    {
+        <Form Model="@Model"
+              OnSubmit="OnFormSubmit">
+            <ModalHeader Closable="true">
+                @if (!editing && !string.IsNullOrEmpty(type))
+                {
                     <Button Color="Color.Primary"
-                            id="contentTypeFieldModalSubmitButton"
-                            Type="ButtonType.Submit">
-                        Submit
+                            Ghost="true"
+                            Icon="true"
+                            Size="ButtonSize.Small"
+                            OnClick="Back">
+                        <Icon Name="IconName.Previous" />
                     </Button>
-                </ButtonGroup>
-            </Form>
-        </ModalBody>
-    </div>
+                    <span>&nbsp;&nbsp;</span>
+                }
+                <ModalTitle id="contentTypeFieldModalTitle">
+                    @if (editing)
+                    {
+                        <text>Edit Field</text>
+                    }
+                    else if (string.IsNullOrEmpty(type))
+                    {
+                        <text>Article</text>
+                    }
+                    else
+                    {
+                        <text>Add Field</text>
+                    }
+                </ModalTitle>
+            </ModalHeader>
+            @if (string.IsNullOrEmpty(type))
+            {
+                <ModalBody>
+                    <Typography Size="TextSize.Large">
+                        Select a field for your collection type
+                    </Typography>
+                    <Grid Gutter="GridGutter.Large">
+                        @foreach (var type in types)
+                        {
+                            <GridItem Small="GridItemColumn.Six">
+                                <Button Block="true"
+                                        Item="true"
+                                        style="height: 100%;"
+                                        OnClick="() => Select(type.Key)">
+                                    <Icon Name="type.Icon" />
+                                    <span>
+                                        &nbsp;
+                                    </span>
+                                    <div>
+                                        <Typography Align="TextAlign.Start"
+                                                    Size="TextSize.Default"
+                                                    Weight="TextWeight.SemiBold">
+                                            @type.Title
+                                        </Typography>
+                                        <Typography Align="TextAlign.Start"
+                                                    Size="TextSize.Small"
+                                                    Weight="TextWeight.Thin">
+                                            @type.Description
+                                        </Typography>
+                                    </div>
+                                </Button>
+                            </GridItem>
+                        }
+                    </Grid>
+                </ModalBody>
+            }
+            else
+            {
+                <ModalBody>
+                    <Tabs @bind-Value="tab">
+                        <TabsList>
+                            <TabsTab id="contentTypeFieldModalGeneralTab"
+                                     Name="tab-general">
+                                General
+                            </TabsTab>
+                            <TabsTab id="contentTypeFieldModalAdvancedTab"
+                                     Name="tab-advanced">
+                                Advanced
+                            </TabsTab>
+                        </TabsList>
+                        <TabsPanels>
+                            <TabsPanel Name="tab-general">
+                                <Grid GutterX="GridGutter.Large">
+                                    <GridItem Small="GridItemColumn.Twelve"
+                                              Medium="GridItemColumn.Six">
+                                        <Input @bind-Value="Model.Slug"
+                                               autofocus="true"
+                                               Id="contentTypeFieldModalSlugInput"
+                                               Label="Slug"
+                                               Name="Slug"
+                                               Placeholder="Enter Slug..."
+                                               Required="true" />
+                                    </GridItem>
+                                    <GridItem Small="GridItemColumn.Twelve"
+                                              Medium="GridItemColumn.Six">
+                                        <Input @bind-Value="Model.Title"
+                                               Id="contentTypeFieldModalTitleInput"
+                                               Label="Title"
+                                               Name="Title"
+                                               Placeholder="Enter Title..."
+                                               Required="true" />
+                                    </GridItem>
+                                </Grid>
+                                <Textarea @bind-Value="Model.Description"
+                                          Id="contentTypeFieldModalDescriptionInput"
+                                          Label="Description"
+                                          Name="Description"
+                                          Placeholder="Enter Description..."
+                                          Required="true" />
+                            </TabsPanel>
+                            <TabsPanel Name="tab-advanced">
+                                <Input @bind-Value="Model.Label"
+                                       Id="contentTypeFieldModalLabelInput"
+                                       Label="Label"
+                                       Name="Label"
+                                       Placeholder="Enter Label..."
+                                       Required="true" />
+                                <Switch @bind-Value="Model.IsRequired"
+                                        Id="contentTypeFieldModalRequiredInput"
+                                        Label="Is Required?"
+                                        Name="IsRequired" />
+                                <Input @bind-Value="Model.Placeholder"
+                                       Id="contentTypeFieldModalPlaceholderInput"
+                                       Label="Placeholder"
+                                       Name="Placeholder"
+                                       Placeholder="Enter Placeholder..." />
+                                <Input @bind-Value="Model.Hint"
+                                       Id="contentTypeFieldModalHintInput"
+                                       Label="Hint"
+                                       Name="Hint"
+                                       Placeholder="Enter Hint..." />
+
+                                <Input @bind-Value="Model.DefaultValue"
+                                       Id="contentTypeFieldModalDefaultValueInput"
+                                       Label="Default Value"
+                                       Name="DefaultValue"
+                                       Placeholder="Enter Default Value..." />
+                            </TabsPanel>
+                        </TabsPanels>
+                    </Tabs>
+                </ModalBody>
+                <ModalFooter>
+                    <ButtonGroup>
+                        <Button Color="Color.Primary"
+                                id="contentTypeFieldModalSubmitButton"
+                                Type="ButtonType.Submit">
+                            Submit
+                        </Button>
+                        <Button id="contentTypeFieldModalCancelButton"
+                                OnClick="() => OnCancel.InvokeAsync()">
+                            Cancel
+                        </Button>
+                    </ButtonGroup>
+                </ModalFooter>
+            }
+        </Form>
+    }
 </Modal>
 
 @code {
     [Parameter]
-    public string ActiveTab {get; set; } = "tab-general";
+    public ContentTypeField? Model { get; set; }
 
     [Parameter]
-    public ContentTypeField Model {get; set;} = new();
+    public bool Open { get; set; } = false;
 
     [Parameter]
-    public bool Open {get; set;} = false;
+    public EventCallback OnCancel { get; set; }
 
     [Parameter]
-    public EventCallback<bool> OnCancel {get; set;}
+    public EventCallback<ContentTypeField> OnSubmit { get; set; }
 
-    [Parameter]
-    public EventCallback<ContentTypeField> OnSubmit {get; set;}
+    bool editing;
 
-    [Parameter]
-    public string Title {get; set; }
+    string tab = "tab-general";
+
+    string? type;
+
+    Type[] types = {
+        new() {
+            Key = "text",
+            Icon= IconName.Text,
+            Title = "Text",
+            Description = "Small or long text like title or description"
+        },
+        new() {
+            Key = "email",
+            Icon= IconName.AtSign,
+            Title = "Email",
+            Description = "Email field with validations format"
+        },
+        new() {
+            Key = "rich-text",
+            Icon= IconName.Paragraph,
+            Title = "Rich text",
+            Description = "A rich text editor with formatting options"
+        },
+        new() {
+            Key = "password",
+            Icon= IconName.Lock,
+            Title = "Password",
+            Description = "Password field with encryption"
+        },
+        new() {
+            Key = "enumeration",
+            Icon= IconName.List,
+            Title = "Enumeration",
+            Description = "List of values, then pick one"
+        },
+        new() {
+            Key = "date",
+            Icon= IconName.CalendarWeek,
+            Title = "Date",
+            Description = "A date picker with hours, minutes and seconds"
+        },
+        new()
+        {
+            Key = "boolean",  
+            Icon= IconName.Boolean,
+            Title = "Boolean",
+            Description = "Yes or no, 1 or 0, true or false"
+        }
+    };
+
+    void Back()
+    {
+        type = "";
+    }
+
+    void Select(string key)
+    {
+        type = key;
+    }
 
     void OnFormSubmit()
     {
         OnSubmit.InvokeAsync(Model);
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!Open) return;
+
+        editing = Model != null;
+
+        tab = "tab-general";
+
+        type = "";
+
+        Model ??= new()
+            {
+                DefaultValue = "",
+                Description = "",
+                Hint = "",
+                IsRequired = false,
+                Label = "",
+                Placeholder = "",
+                Slug = "",
+                Title = ""
+            };
+    }
+
+    class Type
+    {
+        public string Key { get; set; }
+        public IconName Icon { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
     }
 }
