@@ -21,8 +21,6 @@
                                        ValueChanged="x => Model.Value![field.Slug!] = x"
                                        />
                             }
-
-                                       
                             <ButtonGroup>
                                 <Button id="contentUpdateCancelButton"
                                         OnClick="GoBack">
@@ -53,6 +51,9 @@
     ContentTypeClient ContentTypeClient { get; set; } = default!;
 
     [Inject]
+    IJSRuntime JsRuntime { set; get; } = default!;
+
+    [Inject]
     NavigationManager NavigationManager { set; get; } = default!;
 
     AppDetailResponse App { get; set; } = new();
@@ -69,9 +70,9 @@
 
     ContentDetailResponse View = new();
 
-    void GoBack()
+    async Task GoBack()
     {
-        NavigationManager.NavigateTo($"?pluginDef=Content Management&typeName=Content List&contentTypeSlug={ContentType.Slug}&appSlug={App.Slug}");
+        await JsRuntime.InvokeAsync<object>("history.back");
     }
 
     async Task LoadData()
@@ -148,7 +149,7 @@
 
             if (response?.Data != null)
             {
-                GoBack();
+                await GoBack();
             }
         }
         catch (Exception exception)

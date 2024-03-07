@@ -2,8 +2,10 @@
     <PageHeader HasBack="false" Title="Users List">
         <PageHeaderActions>
             <ButtonGroup>
-                <Button Color="Color.Primary" Href="?PluginDef=User Management&typeName=Create User"
-                    Size="ButtonSize.Small">
+                <Button autofocus="true"
+                        Color="Color.Primary" 
+                        Href="?PluginDef=User Management&typeName=Create User"
+                        Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
                     Add User
                 </Button>
@@ -48,9 +50,11 @@
             </Table>
             @if (Users.Count == 0)
             {
-                <EmptyTable Message="No Apps Found!">
-                    <Button Color="Color.Primary" Href="?PluginDef=User Management&typeName=Create User"
-                        Size="ButtonSize.Small">
+                <EmptyTable Message="No Users Found!">
+                    <Button autofocus="true"
+                            Color="Color.Primary" 
+                            Href="?PluginDef=User Management&typeName=Create User"
+                            Size="ButtonSize.Small">
                         <Icon Name="IconName.Plus" />
                         Add User
                     </Button>

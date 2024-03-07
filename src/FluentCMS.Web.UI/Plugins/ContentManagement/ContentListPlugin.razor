@@ -5,9 +5,10 @@
         <PageHeader Title="@PageTitle">
             <PageHeaderActions>
                 <ButtonGroup>
-                    <Button Color="Color.Primary"
-                        Href="@($"?pluginDef=Content Management&typeName=Create Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}")"
-                        id="contentCreateButton" Size="ButtonSize.Small">
+                    <Button autofocus="true"
+                            Color="Color.Primary"
+                            Href="@($"?pluginDef=Content Management&typeName=Create Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}")"
+                            id="contentCreateButton" Size="ButtonSize.Small">
                         <Icon Name="IconName.Plus" />
                         Insert
                     </Button>
@@ -43,6 +44,13 @@
                                         }
                                         <TableCell>
                                             <ButtonGroup>
+                                                <Button data-test="preview-btn"
+                                                        Ghost="true"
+                                                        Href="@($"?pluginDef=Content Management&typeName=Content Detail&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}&id={item.Id}")"
+                                                        Size="ButtonSize.Small">
+                                                        <Icon Name="IconName.Eye" />
+                                                </Button>
+                                                <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
                                                 <Button data-test="edit-btn"
                                                         Ghost="true"
                                                         Href="@($"?pluginDef=Content Management&typeName=Update Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}&id={item.Id}")"
@@ -55,18 +63,45 @@
                                                         Ghost="true"
                                                         Size="ButtonSize.Small"
                                                         OnClick="@(evt => OnDelete(item))">
-                                                    <Icon Name="IconName.Delete" />
-                                                </Button>
-                                                <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
-                                            </ButtonGroup>
-                                        </TableCell>
-                                    </TableRow>
-                                }
-                            </TableBody>
-                        </Table>
-                    }
-                </ChildContent>
-            </Card>
+                                                        <Icon Name="IconName.Delete" />
+                                                    </Button>
+                                                    <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
+                                                </ButtonGroup>
+                                            </TableCell>
+                                        </TableRow>
+                                    }
+                                </TableBody>
+                            </Table>
+                        }
+
+                        @if (ContentType.Fields?.Count == 0)
+                        {
+                            <EmptyTable Message="This Content Type doesn't have any field">
+                                <Button Color="Color.Primary"
+                                    Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={ContentType.Id}&appSlug={AppSlug}")">
+
+                                    <Icon Name="IconName.Edit" />
+                                    Edit @ContentType.Title
+                                </Button>
+
+                            </EmptyTable>
+                        }
+                        else if (Data.Count == 0)
+                        {
+                            <EmptyTable Message="There is no Content yet!">
+                                <Button autofocus="true"
+                                        Color="Color.Primary"
+                                        Href="@($"?pluginDef=Content Management&typeName=Create Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}")"
+                                        id="contentCreateButton" 
+                                        Size="ButtonSize.Small">
+                                    <Icon Name="IconName.Plus" />
+                                    Add First @ContentType.Title
+                                </Button>
+                            </EmptyTable>
+                        }
+                    </ChildContent>
+                </Card>
+            </ChildContent>
         </PageBody>
     </Page>
 </ContentLayout>
@@ -106,7 +141,7 @@
         if (result)
         {
             await ContentClient.DeleteAsync(AppSlug, ContentTypeSlug, content.Id);
-            await FetchData();
+            FetchData();
         }
     }
 

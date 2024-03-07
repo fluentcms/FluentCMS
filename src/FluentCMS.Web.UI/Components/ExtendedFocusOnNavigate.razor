@@ -1,0 +1,12 @@
+@inherits FocusOnNavigate
+
+@code {
+    [Inject]
+    IJSRuntime JSRuntime { get; set; }
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JSRuntime.InvokeVoidAsync("Blazor._internal.domWrapper.focusBySelector", Selector);
+    }
+}

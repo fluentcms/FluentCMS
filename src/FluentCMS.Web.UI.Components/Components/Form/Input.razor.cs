@@ -11,3 +11,11 @@ public enum InputType
     Time,
     Week
 }
+
+public enum InputSize
+{
+    Default,
+    Small,
+    Medium,
+    Large
+}

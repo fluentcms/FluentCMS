@@ -2,8 +2,10 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<Button class="@this.GetClasses()"
+<Button autofocus="true"
+        class="@this.GetClasses()"
         Link="true"
+        tabindex="0"
         OnClick="() => GoBack()">
     <Icon Name="@IconName.Previous" />
     Back

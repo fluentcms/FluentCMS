@@ -8,4 +8,18 @@ $input: $prefix + 'input';
     &-disabled-true {
         @apply cursor-not-allowed opacity-70;
     }
+    
+    &-size-small {
+        @apply py-2 text-xs;
+    }
+
+    &-size-medium,
+    &-size-default {
+        @apply py-2.5  text-sm;
+    }
+
+    &-size-large {
+        @apply py-3 text-base;
+    }
+
 }
