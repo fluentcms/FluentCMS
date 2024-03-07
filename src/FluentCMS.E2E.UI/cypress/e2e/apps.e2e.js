@@ -1,35 +1,46 @@
 /// <reference types="cypress" />
 
 describe('Apps CRUD', () => {
+    const app = {
+        title: 'First App',
+        slug: 'first-app',
+        description: 'First App Description'
+    }
+
     before(() => {
         cy.doSetup()
+        cy.appClean()
     })
 
     it('Cancel create app', () => {
-        cy.checkAppCreateCancel()
+        cy.appCreateCancel()
     })
 
     it('Create app', () => {
-        cy.checkAppCreate()
+        cy.appCreate(app)
     })
 
     it('Show app detail', () => {
-        cy.checkAppDetail()
+        cy.appDetail(app)
     })
 
     it('Cancel update app', () => {
-        cy.checkAppUpdateCancel()
+        cy.appUpdateCancel(app.slug)
     })
 
     it('Update app', () => {
-        cy.checkAppUpdate()
+        cy.appUpdate(app.slug, {
+            title: 'New title',
+            slug: 'new-slug',
+            description: 'new-description'
+        })
     })
 
     it('Cancel delete app', () => {
-        cy.checkAppDeleteCancel()
+        cy.appDeleteCancel(app.slug)
     })
 
     it('Delete app', () => {
-        cy.checkAppDelete()
+        cy.appDelete(app.slug)
     })
 })

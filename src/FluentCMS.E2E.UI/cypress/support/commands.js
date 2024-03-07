@@ -46,6 +46,8 @@ Cypress.Commands.add('dashboardShouldAvailable', () => {
 })
 
 Cypress.Commands.add('deleteRow', {prevSubject: 'element'}, ($el, confirm = true) => {
+    cy.get('.f-confirm').should('not.exist')
+  
     cy.wrap($el).find('[data-test="delete-btn"]').click()
     cy.get('.f-confirm-content').should('be.visible')
     if(confirm) {
@@ -53,7 +55,8 @@ Cypress.Commands.add('deleteRow', {prevSubject: 'element'}, ($el, confirm = true
     } else {
         cy.get('.f-confirm-content').contains('No, cancel').click()
     }
-    
+
+    cy.waitForNavigate()
 })
 
 Cypress.Commands.add('deleteTableRows', {prevSubject: 'element'}, ($table) => {
@@ -82,3 +85,7 @@ Cypress.Commands.add('rows', { prevSubject: 'element' }, ($table, filter) => {
         return []
     }
 });
+
+Cypress.Commands.add('shot', (name) => {
+    console.log('SHOT: ', name)
+})
