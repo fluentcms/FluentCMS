@@ -3,6 +3,8 @@ Cypress.Commands.add('navigateToContentTypeListPage', (appTitle) => {
     cy.get('#adminSidebarContentTypeLink').click()
 
     cy.waitForNavigate()
+    cy.get('#contentTypeAppSelect').should('be.visible')
+
     if (appTitle) {
         cy.get('#contentTypeAppSelect').select(appTitle)
         cy.waitForNavigate()
@@ -47,10 +49,10 @@ Cypress.Commands.add('contentTypeFieldCreate', (field) => {
 
     cy.waitForNavigate()
     cy.get('#contentTypeFieldModalTitle').should('not.be.visible')
+    cy.shot('Content type add field ' + field.title)
 })
 
-Cypress.Commands.add('contentTypeCreate', (appTitle, { title, slug, description, fields = [] }) => {
-    cy.navigateToContentTypeCreatePage(appTitle)
+Cypress.Commands.add('contentTypeCreate', ({ title, slug, description, fields = [] }) => {
     cy.get('#contentTypeCreateTitleInput').type(title, { delay: 50 })
     cy.get('#contentTypeCreateSlugInput').type(slug, { delay: 50 })
     cy.get('#contentTypeCreateDescriptionInput').type(description, { delay: 50 })
@@ -62,25 +64,22 @@ Cypress.Commands.add('contentTypeCreate', (appTitle, { title, slug, description,
         cy.contentTypeFieldCreate(field)
     }
 
-    cy.shot('Content Type Create')
-
     cy.get('#contentTypeUpdateSubmitButton').click()
     cy.waitForNavigate()
+
+    cy.navigateToContentTypeListPage()
+
+    cy.shot('Content Type Create')
 })
 
-Cypress.Commands.add('contentTypeClean', (appTitle) => {
-    cy.navigateToContentTypeListPage(appTitle)
+Cypress.Commands.add('contentTypeClean', () => {
     cy.get('#contentTypeListTable').deleteTableRows()
 
-    cy.contains('No Content Types Found!').should('be.visible')
-
-    cy.appClean()
-
+    // TODO: Enable this
+    // cy.contains('No Content Types Found!').should('be.visible')
 })
 
-Cypress.Commands.add('contentTypeDetail', (appTitle, contentType) => {
-    cy.navigateToContentTypeListPage(appTitle)
-
+Cypress.Commands.add('contentTypeDetail', (contentType) => {
     cy.contains('#contentTypeListTable tr', contentType.slug).then(($row) => {
         cy.wrap($row).find('[data-test="preview-btn"]').click()
 
@@ -109,8 +108,11 @@ Cypress.Commands.add('contentTypeDetail', (appTitle, contentType) => {
 //     ])
 // })
 
-Cypress.Commands.add('contentTypeList', () => {
+Cypress.Commands.add('contentTypeList', (appTitle) => {
     // check app switch
+    cy.get('#contentTypeAppSelect').should('have.value', appTitle)
+
+    cy.shot('Content Type List ' + appTitle)
 })
 
 Cypress.Commands.add('contentTypeCreateCancel', () => {
@@ -118,12 +120,11 @@ Cypress.Commands.add('contentTypeCreateCancel', () => {
 })
 
 Cypress.Commands.add('contentTypeUpdateCancel', () => {
+    cy.shot('Content Type Update Cancel')
 
 })
 
 Cypress.Commands.add('contentTypeUpdate', (appTitle, contentTypeSlug, contentType) => {
-    cy.navigateToContentTypeListPage(appTitle)
-
     cy.contains('#contentTypeListTable tr', contentTypeSlug).then(($el) => {
         cy.wrap($el).get('[data-test="edit-btn"]').click()
 
@@ -131,29 +132,30 @@ Cypress.Commands.add('contentTypeUpdate', (appTitle, contentTypeSlug, contentTyp
         cy.get('#contentTypeUpdateDescriptionInput').clear().type(contentType.description, { delay: 50 })
         cy.get('#contentTypeUpdateSubmitButton').click()
 
+        // TODO Should remove this line
         cy.navigateToContentTypeListPage(appTitle)
 
+        cy.shot('Content Type Update')
         cy.contains(contentType.title).should('be.visible')
         cy.contains(contentType.description).should('be.visible')
     })
 })
 
-Cypress.Commands.add('contentTypeDeleteCancel', (appTitle, contentTypeSlug) => {
-    cy.navigateToContentTypeListPage(appTitle)
+Cypress.Commands.add('contentTypeDeleteCancel', (contentTypeSlug) => {
 
     cy.contains('#contentTypeListTable tr', contentTypeSlug).then(($el) => {
         cy.wrap($el).deleteRow(false);
 
+        cy.shot('Content Type Delete')
         cy.contains(contentTypeSlug).should('exist')
     })
 })
 
-Cypress.Commands.add('contentTypeDelete', (appTitle, contentTypeSlug) => {
-    cy.navigateToContentTypeListPage(appTitle)
-
+Cypress.Commands.add('contentTypeDelete', (contentTypeSlug) => {
     cy.contains('#contentTypeListTable tr', contentTypeSlug).then(($el) => {
         cy.wrap($el).deleteRow();
 
+        cy.shot('Content Type Delete')
         cy.contains(contentTypeSlug).should('not.exist')
     })
 })

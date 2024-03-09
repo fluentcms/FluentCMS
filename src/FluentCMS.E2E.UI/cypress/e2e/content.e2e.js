@@ -1,79 +1,67 @@
+import config from "../../config"
+
 describe('Content CRUD', () => {
-  const app = {
-    title: 'First',
-    slug: 'first',
-    description: 'first description'
-  }
+  const app = config.apps[0]
 
-  const contentType = {
-    title: 'Posts',
-    slug: 'posts',
-    description: 'description of posts content type',
-    fields: [
-      {
-        title: 'Title',
-        slug: 'title',
-        description: 'Description of title field',
-        required: true,
-        hint: 'title field',
-        label: 'Title',
-        placeholder: 'Enter Title...',
-        defaultValue: ''
-      },
-      {
-        title: 'Content',
-        slug: 'content',
-        description: 'Description of Content field',
-        required: true,
-        hint: 'Content field',
-        label: 'Content',
-        placeholder: 'Enter Content...',
-        defaultValue: ''
-      },
-    ]
-  }
+  const contentType = config.contentTypes[0]
 
-  const content = {
-    title: 'Title of post',
-    content: 'content of post'
-  }
+  const content = config.contents[0]
 
   before(() => {
     cy.doSetup()
-    cy.cleanContent()
+
+    cy.navigateToContentTypeListPage()
+    cy.contentTypeClean()
+
+
+    cy.navigateToAppListPage()
+    cy.appClean()
+
+    cy.navigateToAppCreatePage()
 
     cy.appCreate(app)
-    cy.contentTypeCreate(app.title, contentType)
+
+    cy.navigateToContentTypeCreatePage(app.title)
+    cy.contentTypeCreate(contentType)
   })
 
   it('Should not create Content', () => {
-    cy.contentCreateCancel(app.title, contentType.title)
+    cy.navigateToContentListPage(app.title, contentType.title)
+    
+    cy.contentCreateCancel(contentType.title)
   })
 
   it('Should create Content', () => {
+    cy.navigateToContentCreatePage(app.title, contentType.title)
+
     cy.contentCreate(app.title, contentType.title, content)
   })
 
   it('Should not update Content', () => {
-    cy.contentUpdateCancel(app.title, contentType.title, content.title)
+    cy.navigateToContentListPage(app.title, contentType.title)
+
+    cy.contentUpdateCancel(contentType.title, content.title)
   })
 
   it('Should update Content', () => {
-    cy.contentUpdate(app.title, contentType.title, content.title, {
-      title: 'updated title',
-      content: 'updated content'
-    })
+    cy.navigateToContentListPage(app.title, contentType.title)
+
+    cy.contentUpdate(app.title, contentType.title, content.title, config.contents[1])
   })
 
-  it('Should show Contents', () => {
+  it('Should show Content List', () => {
+    cy.navigateToContentListPage(app.title, contentType.title)
+
     cy.contentList(app.title, contentType.title)
   })
 
   it('Should not delete Content', () => {
-    cy.contentDeleteCancel(app.title, contentType.title, 'updated title')
+    cy.navigateToContentListPage(app.title, contentType.title)
+    cy.contentDeleteCancel(config.contents[1].title)
   })
 
   it('Should delete Content', () => {
-    cy.contentDelete(app.title, contentType.title, 'updated title')
+    cy.navigateToContentListPage(app.title, contentType.title)
+    cy.contentDelete(config.contents[1].title)
   })
 })

@@ -23,7 +23,6 @@ Cypress.Commands.add('navigateToAppListPage', () => {
 })
 
 Cypress.Commands.add('appClean', () => {
-    cy.navigateToAppListPage()
 
     cy.get('#appListTable').deleteTableRows()
 
@@ -32,7 +31,6 @@ Cypress.Commands.add('appClean', () => {
 })
 
 Cypress.Commands.add('appCreate', ({title, slug, description} ={}) => {
-    cy.navigateToAppCreatePage()
 
     cy.get('#appCreateTitleInput').type(title, { delay: 0 })
     cy.get('#appCreateSlugInput').type(slug, { delay: 0 })
@@ -51,7 +49,6 @@ Cypress.Commands.add('appCreate', ({title, slug, description} ={}) => {
 })
 
 Cypress.Commands.add('appCreateCancel', () => {
-    cy.navigateToAppCreatePage()
 
     const url = window.location.href
 
@@ -66,7 +63,6 @@ Cypress.Commands.add('appCreateCancel', () => {
 })
 
 Cypress.Commands.add('appDetail', ({title, slug, description}) => {
-    cy.navigateToAppListPage()
 
     cy.contains('#appListTable tr', slug).then(($row) => {
         cy.wrap($row).find('[data-test="preview-btn"]').click()
@@ -82,8 +78,6 @@ Cypress.Commands.add('appDetail', ({title, slug, description}) => {
 })
 
 Cypress.Commands.add('appUpdate', (appSlug, {title, slug, description} = {}) => {
-    cy.navigateToAppListPage()
-    
     cy.contains('#appListTable tr', appSlug).then(($row) => {
         
         cy.wrap($row).find('[data-test="edit-btn"]').click()
@@ -109,8 +103,6 @@ Cypress.Commands.add('appUpdate', (appSlug, {title, slug, description} = {}) => 
 })
 
 Cypress.Commands.add('appUpdateCancel', (appSlug) => {
-   
-    cy.navigateToAppListPage()
     const url = window.location.href
 
     cy.contains('#appListTable tr', appSlug).then(($row) => {
@@ -130,7 +122,6 @@ Cypress.Commands.add('appUpdateCancel', (appSlug) => {
 })
 
 Cypress.Commands.add('appDelete', (appSlug) => {
-    cy.navigateToAppListPage()
     cy.contains('#appListTable tr', appSlug).then(($row) => { 
 
         cy.wrap($row).deleteRow(true)
@@ -142,9 +133,6 @@ Cypress.Commands.add('appDelete', (appSlug) => {
 })
 
 Cypress.Commands.add('appDeleteCancel', (appSlug) => {
-
-    cy.navigateToAppListPage()
-
     cy.contains('#appListTable tr', appSlug).then(($row) => {
 
         cy.wrap($row).deleteRow(false)

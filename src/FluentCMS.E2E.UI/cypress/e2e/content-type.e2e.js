@@ -1,75 +1,77 @@
-describe('Content Type CRUD', () => {
-  const app = {
-    title: 'First',
-    slug: 'first',
-    description: 'first description'
-  }
+import config from "../../config"
 
-  const contentType = {
-    title: 'Posts',
-    slug: 'posts',
-    description: 'description of posts content type',
-    fields: [
-      {
-        title: 'Title',
-        slug: 'title',
-        description: 'Description of title field',
-        required: true,
-        hint: 'title field',
-        label: 'Title',
-        placeholder: 'Enter Title...',
-        defaultValue: ''
-      },
-      {
-        title: 'Content',
-        slug: 'content',
-        description: 'Description of Content field',
-        required: true,
-        hint: 'Content field',
-        label: 'Content',
-        placeholder: 'Enter Content...',
-        defaultValue: ''
-      },
-    ]
-  }
+describe('Content Type CRUD', () => {
+  const app = config.apps[0]
+
+  const contentType = config.contentTypes[0]
 
   before(() => {
     cy.doSetup()
+  
+    cy.navigateToContentTypeListPage()
     cy.contentTypeClean()
 
+    cy.navigateToAppListPage()
+    cy.appClean()
+
+    cy.navigateToAppCreatePage()
     cy.appCreate(app)
-    // cy.createSampleApps()
   })
 
   it('Should not create Content type', () => {
+    cy.navigateToContentTypeCreatePage(app.title)
+
     cy.contentTypeCreateCancel()
   })
 
   it('Should create Content type', () => {
-    cy.contentTypeCreate(app.title, contentType)
+    cy.navigateToContentTypeCreatePage(app.title)
+
+    cy.contentTypeCreate(contentType)
   })
 
   it('Should show Content type', () => {
-    cy.contentTypeDetail(app.title, contentType)
+
+    cy.navigateToContentTypeListPage(app.title)
+    cy.contentTypeDetail(contentType)
   })
 
   it('Should not update Content type', () => {
-    cy.contentTypeUpdateCancel(app.title, contentType.slug)
+    cy.navigateToContentTypeListPage(app.title)
+
+    cy.contentTypeUpdateCancel(contentType.slug)
   })
 
   it('Should update Content type', () => {
+    cy.navigateToContentTypeListPage(app.title)
+
     cy.contentTypeUpdate(app.title, contentType.slug, contentType)
   })
 
-  it('Should show Content types', () => {
-    cy.contentTypeList()
+  it('Should show Content type List', () => {
+    cy.navigateToAppCreatePage()
+    cy.appCreate(config.apps[1])
+    
+    cy.navigateToContentTypeListPage(app.title)
+    cy.shortWait()
+    cy.contentTypeList(app.slug)
+
+    cy.get('#contentTypeAppSelect').select(config.apps[1].title)
+    cy.contentTypeList(config.apps[1].slug)
+
+    cy.navigateToAppListPage()
+    cy.appDelete(config.apps[1].slug)
   })
 
   it('Should not delete Content type', () => {
-    cy.contentTypeDeleteCancel(app.title, contentType.slug)
+    cy.navigateToContentTypeListPage(app.title)
+
+    cy.contentTypeDeleteCancel(contentType.slug)
   })
 
   it('Should delete Content type', () => {
-    cy.contentTypeDelete(app.title, contentType.slug)
+    cy.navigateToContentTypeListPage(app.title)
+
+    cy.contentTypeDelete(contentType.slug)
   })
 })
