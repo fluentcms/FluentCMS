@@ -9,8 +9,8 @@ Cypress.Commands.add("checkAdminSidebarNavigations", () => {
     cy.get('#adminSidebarContentTypeLink').click()
     cy.get('.f-page-header-title').should('have.text', 'Content Types List')
 
-    cy.get('#adminSidebarDocsLink').should('have.attr', 'target', '_blank')
-    cy.get('#adminSidebarDocsLink').invoke('removeAttr', 'target').scrollIntoView().click()
+    cy.get('#adminSidebarDocsLink a').should('have.attr', 'target', '_blank')
+    cy.get('#adminSidebarDocsLink a').invoke('removeAttr', 'target').scrollIntoView().click()
     cy.url().should('include', '/doc/index.html')
 
     cy.go('back')
@@ -41,15 +41,15 @@ Cypress.Commands.add('adminSidebarLogoShouldAvailable', () => {
 Cypress.Commands.add('adminSidebarShouldAvailable', () => {
     cy.elementShouldAvailable('#adminSidebar')
 
-    cy.elementShouldAvailable('#adminSidebarHomeLink')
+    cy.elementShouldAvailable('#adminSidebarHomeLink a')
 
-    cy.elementShouldAvailable('#adminSidebarContentManagementLink')
+    cy.elementShouldAvailable('#adminSidebarContentManagementLink a')
 
-    cy.elementShouldAvailable('#adminSidebarAppsLink')
-    cy.elementShouldAvailable('#adminSidebarContentTypeLink')
-    cy.elementShouldAvailable('#adminSidebarUsersLink')
+    cy.elementShouldAvailable('#adminSidebarAppsLink a')
+    cy.elementShouldAvailable('#adminSidebarContentTypeLink a')
+    cy.elementShouldAvailable('#adminSidebarUsersLink a')
 
-    cy.elementShouldAvailable('#adminSidebarDocsLink')
+    cy.elementShouldAvailable('#adminSidebarDocsLink a')
 })
 
 Cypress.Commands.add('checkAdminNavbar', () => {

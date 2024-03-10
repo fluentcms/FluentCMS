@@ -1,46 +1,54 @@
+/// <reference types="cypress" />
+
+import config from "../../config"
+
 describe('Apps CRUD', () => {
-  before(() => {
-    cy.doSetup()
-    cy.cleanApp()
-  })
+    const app = config.apps[0]
 
-  it('Should not create app', () => {
-    cy.navigateToAppCreatePage();
-    cy.checkAppCreateCancel();
-  })
-  
-  it('Should create app', () => {
-    cy.navigateToAppCreatePage();
-    cy.checkAppCreate();
-  })
+    before(() => {
+        cy.doSetup()
 
-  it('Should show app', () => {
-    cy.navigateToAppListPage();
-    cy.checkAppDetail()
-  })
+        cy.navigateToAppListPage()
+        cy.appClean()
+    })
 
-  it('Should not update app', () => {
-    cy.navigateToAppListPage()
-    cy.checkAppUpdateCancel();
-  })
+    it('Cancel create app', () => {
+        cy.navigateToAppCreatePage()
 
-  it('Should update app', () => {
-    cy.navigateToAppListPage()
-    cy.checkAppUpdate();
-  })
+        cy.appCreateCancel()
+    })
 
-  it('Should show apps', () => {
-    cy.navigateToAppListPage()
-    cy.checkAppList();
-  })
-  
-  it('Should not delete app', () => {
-    cy.navigateToAppListPage()
-    cy.checkAppDeleteCancel();
-  })
+    it('Create app', () => {
+        cy.navigateToAppCreatePage()
 
-  it('Should delete app', () => {
-    cy.navigateToAppListPage()
-    cy.checkAppDelete();
-  })
+        cy.appCreate(app)
+    })
+
+    it('Show app detail', () => {
+        cy.navigateToAppListPage()
+
+        cy.appDetail(app)
+    })
+
+    it('Cancel update app', () => {
+        cy.navigateToAppListPage()
+
+        cy.appUpdateCancel(app.slug)
+    })
+
+    it('Update app', () => {
+        cy.navigateToAppListPage()
+
+        cy.appUpdate(app.slug, config.apps[1])
+    })
+
+    it('Cancel delete app', () => {
+        cy.navigateToAppListPage()
+        cy.appDeleteCancel(app.slug)
+    })
+
+    it('Delete app', () => {
+        cy.navigateToAppListPage()
+        cy.appDelete(app.slug)
+    })
 })
