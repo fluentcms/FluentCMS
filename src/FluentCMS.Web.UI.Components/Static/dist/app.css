@@ -376,11 +376,20 @@ body.dark {
 }
 
 /*TODO*/
+.f-form-field-size-small {
+  @apply py-2 text-xs;
+}
+.f-form-field-size-medium, .f-form-field-size-default {
+  @apply py-2.5  text-sm;
+}
+.f-form-field-size-large {
+  @apply py-3 text-base;
+}
 .f-form-field-state-invalid label, .f-form-field-state-invalid span {
   @apply text-red-700 dark:text-red-500;
 }
 .f-form-field-state-invalid input, .f-form-field-state-invalid select, .f-form-field-state-invalid textarea {
-  @apply bg-red-50 border border-red-500 text-red-900 placeholder-red-700 focus:ring-red-500 focus:border-red-500 dark:bg-red-100 dark:border-red-400 dark:text-gray-900;
+  @apply bg-red-50 border border-red-500 text-red-900 placeholder-red-700 focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:border-red-400 dark:text-red-500;
 }
 .f-form-field-state-invalid p {
   @apply text-red-600 dark:text-red-500;
@@ -389,7 +398,7 @@ body.dark {
   @apply text-green-700 dark:text-green-500;
 }
 .f-form-field-state-valid input, .f-form-field-state-valid select, .f-form-field-state-valid textarea {
-  @apply bg-green-50 border border-green-500 text-green-900 placeholder-green-700 focus:ring-green-500 focus:border-green-500 dark:bg-green-100 dark:border-green-400 dark:text-gray-900;
+  @apply bg-green-50 border border-green-500 text-green-900 placeholder-green-700 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-green-400 dark:text-green-500;
 }
 .f-form-field-state-valid p {
   @apply text-green-600 dark:text-green-500;
@@ -828,6 +837,15 @@ body.dark {
 .f-input-disabled-true {
   @apply cursor-not-allowed opacity-70;
 }
+.f-input-size-small {
+  @apply py-2 text-xs;
+}
+.f-input-size-medium, .f-input-size-default {
+  @apply py-2.5  text-sm;
+}
+.f-input-size-large {
+  @apply py-3 text-base;
+}
 
 .f-modal {
   @apply hidden fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0 justify-center items-center;
@@ -922,6 +940,18 @@ body.dark {
 
 .f-select {
   @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
+}
+.f-select-disabled-true {
+  @apply cursor-not-allowed opacity-70;
+}
+.f-select-size-small {
+  @apply py-2 text-xs;
+}
+.f-select-size-medium, .f-select-size-default {
+  @apply py-2.5  text-sm;
+}
+.f-select-size-large {
+  @apply py-3 text-base;
 }
 
 .f-sidebar {
@@ -1073,6 +1103,9 @@ body.dark {
 
 .f-textarea {
   @apply block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
+}
+.f-textarea-disabled-true {
+  @apply cursor-not-allowed opacity-70;
 }
 
 .f-toast {

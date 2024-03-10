@@ -4,6 +4,12 @@ using FluentCMS.Web.Api.Filters;
 using FluentCMS.Web.Api.Middleware;
 using FluentCMS.Web.Api.Setup;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -19,7 +25,25 @@ public static class ApiServiceExtensions
             config.Filters.Add<ApiResultExceptionFilter>();
         });
 
-        services.AddAuthentication();
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer((c) =>
+            {
+                var serviceProvider = services.BuildServiceProvider();
+                var options = serviceProvider.GetRequiredService<IOptions<JwtOptions>>().Value;
+                var key = SHA512.Create().ComputeHash(Encoding.UTF8.GetBytes(options.Secret));
+                c.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    RequireExpirationTime = true,
+                    ValidateLifetime = true,
+                    SaveSigninToken = true,
+                    ValidAudience = options.Audience,
+                    ValidIssuer = options.Issuer
+                };
+            });
 
         services.AddAuthorization();
 

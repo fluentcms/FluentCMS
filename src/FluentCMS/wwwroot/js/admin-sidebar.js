@@ -1,7 +1,15 @@
-document.querySelector('[data-drawer-target="adminSidebar"]').addEventListener('click', () => {
-    document.getElementById('adminSidebar').classList.toggle('-translate-x-full');
-})
+var toggleBtn = document.querySelector('[data-drawer-target="adminSidebar"]')
+var sidebar = document.getElementById('adminSidebar')
 
-document.getElementById('adminSidebar').addEventListener('click', () => {
-    document.getElementById('adminSidebar').classList.add('-translate-x-full');
-})
+if(sidebar) {
+    if(toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('-translate-x-full');
+        })    
+    }
+
+    sidebar.addEventListener('click', () => {
+        sidebar.classList.add('-translate-x-full');
+    })    
+}
+

@@ -17,49 +17,51 @@
 
         </PageHeader>
         <PageBody>
-            <ChildContent>
-                <Card>
-                    <ChildContent>
+            <Card>
+                <ChildContent>
 
-                        @if (ContentType != null && ContentType.Fields?.Count > 0)
-                        {
-                            <Table>
-                                <TableHead>
-                                    @foreach (var field in Fields)
-                                    {
-                                        <TableCell>
-                                            @field.Title
-                                        </TableCell>
-                                    }
-                                    <TableCell Width="TableColumnWidth.Small"></TableCell>
-                                </TableHead>
-                                <TableBody id="contentListTable">
-                                    @foreach (var item in Data)
-                                    {
-                                        <TableRow>
-                                            @foreach (var field in ContentType.Fields.ToList())
-                                            {
-                                                <TableCell>
-                                                    @(item.Value[field.Slug])
-                                                </TableCell>
-                                            }
+                    @if (ContentType != null && ContentType.Fields?.Count > 0)
+                    {
+                        <Table>
+                            <TableHead>
+                                @foreach (var field in Fields)
+                                {
+                                    <TableCell>
+                                        @field.Title
+                                    </TableCell>
+                                }
+                                <TableCell Width="TableColumnWidth.Small"></TableCell>
+                            </TableHead>
+                            <TableBody id="contentListTable">
+                                @foreach (var item in Data)
+                                {
+                                    <TableRow>
+                                        @foreach (var field in ContentType.Fields.ToList())
+                                        {
                                             <TableCell>
-                                                <ButtonGroup>
-                                                    <Button Ghost="true"
+                                                @(item.Value[field.Slug])
+                                            </TableCell>
+                                        }
+                                        <TableCell>
+                                            <ButtonGroup>
+                                                <Button data-test="preview-btn"
+                                                        Ghost="true"
                                                         Href="@($"?pluginDef=Content Management&typeName=Content Detail&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}&id={item.Id}")"
                                                         Size="ButtonSize.Small">
                                                         <Icon Name="IconName.Eye" />
-                                                    </Button>
-                                                    <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
-
-                                                    <Button Ghost="true"
+                                                </Button>
+                                                <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
+                                                <Button data-test="edit-btn"
+                                                        Ghost="true"
                                                         Href="@($"?pluginDef=Content Management&typeName=Update Content&appSlug={AppSlug}&contentTypeSlug={ContentTypeSlug}&id={item.Id}")"
                                                         Size="ButtonSize.Small">
-                                                        <Icon Name="IconName.Edit" />
-                                                    </Button>
-                                                    <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
+                                                    <Icon Name="IconName.Edit" />
+                                                </Button>
+                                                <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
 
-                                                    <Button Ghost="true" Size="ButtonSize.Small"
+                                                <Button data-test="delete-btn"
+                                                        Ghost="true"
+                                                        Size="ButtonSize.Small"
                                                         OnClick="@(evt => OnDelete(item))">
                                                         <Icon Name="IconName.Delete" />
                                                     </Button>
@@ -98,8 +100,7 @@
                             </EmptyTable>
                         }
                     </ChildContent>
-                </Card>
-            </ChildContent>
+            </Card>
         </PageBody>
     </Page>
 </ContentLayout>

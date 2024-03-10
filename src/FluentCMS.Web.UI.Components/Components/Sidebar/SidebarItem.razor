@@ -13,7 +13,9 @@
     else
     {
         @* TODO: checked the usage of class *@
-        <a class="group" href="@Href">
+        <a class="group" 
+           href="@Href"
+           target="@Target">
             @if (this.Icon != IconName.Default)
             {
                 <Icon Name="Icon" />
@@ -36,4 +38,7 @@
     [Parameter]
     [CssProperty]
     public bool Sub { get; set; }
+
+    [Parameter]
+    public string Target { get; set; }
 }
