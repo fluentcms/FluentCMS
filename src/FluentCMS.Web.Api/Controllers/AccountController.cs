@@ -1,9 +1,12 @@
-﻿using FluentCMS.Web.Api.Models.Users;
+﻿using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using FluentCMS.Web.Api.Models.Users;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class AccountController(IMapper mapper, IUserService userService, ILogger<AccountController> logger) : BaseGlobalController
+public class AccountController(IMapper mapper, IUserService userService, ILogger<AccountController> logger, IHttpContextAccessor httpContextAccessor) : BaseGlobalController
 {
     [HttpPost]
     public async Task<IApiResult<UserDetailResponse>> Register([FromBody] UserRegisterRequest request, CancellationToken cancellationToken = default)
@@ -28,6 +31,7 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<IApiResult<bool>> ChangePassword([FromBody] UserChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
         await userService.ChangePassword(request.UserId, request.OldPassword, request.NewPassword, cancellationToken);
@@ -47,5 +51,25 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
     {
         var result = await userService.ValidatePasswordResetToken(request.Token, request.Email, request.NewPassword);
         return Ok(true);
+    }
+
+    [HttpGet]
+    [Authorize]
+    public async Task<IApiResult<UserDetailResponse>> GetUserDetail()
+    {
+        var userId = Guid.Parse(httpContextAccessor!.HttpContext!.User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var user = await userService.GetById(userId);
+        return Ok(mapper.Map<UserDetailResponse>(user));
+    }
+    [HttpGet]
+    [Authorize]
+    public async Task<IApiResult<UserDetailResponse>> SetUserDetail(UserUpdateProfileRequest request, CancellationToken cancellationToken = default)
+    {
+        var userId = Guid.Parse(httpContextAccessor!.HttpContext!.User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var user = mapper.Map<User>(request);
+        user.Id = userId;
+        var updated = await userService.Update(user, cancellationToken);
+        var userResponse = mapper.Map<UserDetailResponse>(updated);
+        return Ok(userResponse);
     }
 }

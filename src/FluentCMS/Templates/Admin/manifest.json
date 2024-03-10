@@ -208,6 +208,21 @@
                     "IsDefault": true
                 }
             ]
+        },
+        {
+            "Name": "Profile",
+            "Description": "Profile Plugin",
+            "Types": [
+                {
+                    "Name": "Profile",
+                    "Type": "ProfileViewPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Update",
+                    "Type": "ProfileUpdatePlugin"
+                }
+            ]
         }
     ],
     "Pages": [
@@ -312,6 +327,16 @@
                     "Plugins": [
                         {
                             "Definition": "Forgot Password",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Profile",
+                    "Path": "/profile",
+                    "Plugins": [
+                        {
+                            "Definition": "Profile",
                             "Section": "Main"
                         }
                     ]

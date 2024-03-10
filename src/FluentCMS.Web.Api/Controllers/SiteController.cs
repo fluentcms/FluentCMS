@@ -1,7 +1,11 @@
-﻿namespace FluentCMS.Web.Api.Controllers;
+﻿using Microsoft.AspNetCore.Authorization;
 
+namespace FluentCMS.Web.Api.Controllers;
+
+[Authorize]
 public class SiteController(ISiteService siteService, ILayoutService layoutService, IPageService pageService, IMapper mapper) : BaseGlobalController
 {
+    [AllowAnonymous]
     [HttpGet("{siteUrl}")]
     public async Task<IApiResult<SiteFullDetailResponse>> GetByUrl([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
     {
