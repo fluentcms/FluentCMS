@@ -186,9 +186,15 @@
 
         StateHasChanged();
 
-        if (!string.IsNullOrEmpty(AppSlug)) return;
+        if (!string.IsNullOrEmpty(AppSlug)) {
+            Loaded = true;
+            return;
+        };
 
-        if (Apps.Count() == 0) return;
+        if (Apps.Count() == 0) {
+            Loaded = true;
+            return;
+        }
 
         var slug = await LocalStorageService.GetItemAsStringAsync("APP_SLUG");
 
