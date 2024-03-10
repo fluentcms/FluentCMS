@@ -10,11 +10,11 @@
                   OnSubmit="OnFormSubmit">
                 <Tabs @bind-Value="ActiveTab">
                     <TabsList>
-                        <TabsTab id="contentTypeFieldModalGeneralTab" 
+                        <TabsTab id="contentTypeFieldModalGeneralTab"
                                  Name="tab-general">
                             General
                         </TabsTab>
-                        <TabsTab id="contentTypeFieldModalAdvancedTab" 
+                        <TabsTab id="contentTypeFieldModalAdvancedTab"
                                  Name="tab-advanced">
                             Advanced
                         </TabsTab>
@@ -25,11 +25,11 @@
                                 <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
                                     <Input @bind-Value="Model.Slug"
                                            autofocus="true"
-                                           Id="contentTypeFieldModalSlugInput" 
+                                           Id="contentTypeFieldModalSlugInput"
                                            Label="Slug"
                                            Name="Slug"
                                            Placeholder="Enter Slug..."
-                                           Required="true"/>
+                                           Required="true" />
                                 </GridItem>
                                 <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
                                     <Input @bind-Value="Model.Title"
@@ -37,7 +37,7 @@
                                            Label="Title"
                                            Name="Title"
                                            Placeholder="Enter Title..."
-                                           Required="true"/>
+                                           Required="true" />
                                 </GridItem>
                             </Grid>
                             <Textarea @bind-Value="Model.Description"
@@ -53,7 +53,7 @@
                                    Label="Label"
                                    Name="Label"
                                    Placeholder="Enter Label..."
-                                   Required="true"/>
+                                   Required="true" />
                             <Switch @bind-Value="Model.IsRequired"
                                     Id="contentTypeFieldModalRequiredInput"
                                     Label="Is Required?"
@@ -62,18 +62,18 @@
                                    Id="contentTypeFieldModalPlaceholderInput"
                                    Label="Placeholder"
                                    Name="Placeholder"
-                                   Placeholder="Enter Placeholder..."/>
+                                   Placeholder="Enter Placeholder..." />
                             <Input @bind-Value="Model.Hint"
                                    Id="contentTypeFieldModalHintInput"
                                    Label="Hint"
                                    Name="Hint"
-                                   Placeholder="Enter Hint..."/>
+                                   Placeholder="Enter Hint..." />
 
                             <Input @bind-Value="Model.DefaultValue"
                                    Id="contentTypeFieldModalDefaultValueInput"
                                    Label="Default Value"
                                    Name="DefaultValue"
-                                   Placeholder="Enter Default Value..."/>
+                                   Placeholder="Enter Default Value..." />
                         </TabsPanel>
                     </TabsPanels>
                 </Tabs>
@@ -93,25 +93,25 @@
         </ModalBody>
     </div>
 </Modal>
-
-    @code {
+<DynamicComponent Type="Props[0].Item3"></DynamicComponent>
+@code {
     [Parameter]
-    public string ActiveTab {get; set; } = "tab-general";
-
-    [Parameter]
-    public ContentTypeField Model {get; set;} = new();
+    public string ActiveTab { get; set; } = "tab-general";
 
     [Parameter]
-    public bool Open {get; set;} = false;
+    public ContentTypeField Model { get; set; } = new();
 
     [Parameter]
-    public EventCallback<bool> OnCancel {get; set;}
+    public bool Open { get; set; } = false;
 
     [Parameter]
-    public EventCallback<ContentTypeField> OnSubmit {get; set;}
+    public EventCallback<bool> OnCancel { get; set; }
 
     [Parameter]
-    public string Title {get; set; }
+    public EventCallback<ContentTypeField> OnSubmit { get; set; }
+
+    [Parameter]
+    public string Title { get; set; }
 
     void OnFormSubmit()
     {
@@ -126,10 +126,23 @@
 
         var components = assemblies
             .SelectMany(a => a.GetTypes())
-            .Where(t => typeof(FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields.Base).IsAssignableFrom(t) && !t.IsAbstract );
+            .Where(t => typeof(FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields.Base).IsAssignableFrom(t) && !t.IsAbstract).ToList();
 
-        var props = components.Select(x => x.GetField("Description").GetValue(x));
+        Props = components.Select(x =>
+        {
+
+            return (
+                x.GetField("Description").GetValue(null),
+                x.GetField("Name").GetValue(null),
+                (Type) x.GetField("Preview").GetValue(null),
+                (Type) x.GetField("AdvancedSettingsView").GetValue(null),
+                (Type) x.GetField("BasicSettingsView").GetValue(null)
+                );
+        }).ToList();
         //.Where(t => t.Namespace == "FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields" && typeof(ComponentBase).IsAssignableFrom(t));
 
     }
+
+    public List<(object?, object?, Type?, Type?, Type?)> Props { get; set; } = new();
+
 }

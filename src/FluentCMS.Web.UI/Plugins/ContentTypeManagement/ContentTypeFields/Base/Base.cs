@@ -2,4 +2,5 @@
 
 public abstract class Base
 {
+
 }
