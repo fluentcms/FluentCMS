@@ -1,3 +1,4 @@
+@using System.Reflection
 <Modal @bind-Open="Open"
        Size="ModalSize.Large">
     <div class="dark:bg-gray-800">
@@ -93,7 +94,7 @@
     </div>
 </Modal>
 
-@code {
+    @code {
     [Parameter]
     public string ActiveTab {get; set; } = "tab-general";
 
@@ -115,5 +116,20 @@
     void OnFormSubmit()
     {
         OnSubmit.InvokeAsync(Model);
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+
+        var components = assemblies
+            .SelectMany(a => a.GetTypes())
+            .Where(t => typeof(FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields.Base).IsAssignableFrom(t) && !t.IsAbstract );
+
+        var props = components.Select(x => x.GetField("Description").GetValue(x));
+        //.Where(t => t.Namespace == "FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields" && typeof(ComponentBase).IsAssignableFrom(t));
+
     }
 }
