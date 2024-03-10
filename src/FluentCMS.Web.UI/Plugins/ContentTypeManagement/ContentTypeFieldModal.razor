@@ -32,7 +32,7 @@
                     }
                 </ModalTitle>
             </ModalHeader>
-            @if (string.IsNullOrEmpty(type))
+            @if (string.IsNullOrEmpty(type) && !editing)
             {
                 <ModalBody>
                     <Typography Size="TextSize.Large">
@@ -187,43 +187,43 @@
             Title = "Text",
             Description = "Small or long text like title or description"
         },
-        new() {
-            Key = "email",
-            Icon= IconName.AtSign,
-            Title = "Email",
-            Description = "Email field with validations format"
-        },
-        new() {
-            Key = "rich-text",
-            Icon= IconName.Paragraph,
-            Title = "Rich text",
-            Description = "A rich text editor with formatting options"
-        },
-        new() {
-            Key = "password",
-            Icon= IconName.Lock,
-            Title = "Password",
-            Description = "Password field with encryption"
-        },
-        new() {
-            Key = "enumeration",
-            Icon= IconName.List,
-            Title = "Enumeration",
-            Description = "List of values, then pick one"
-        },
-        new() {
-            Key = "date",
-            Icon= IconName.CalendarWeek,
-            Title = "Date",
-            Description = "A date picker with hours, minutes and seconds"
-        },
-        new()
-        {
-            Key = "boolean",  
-            Icon= IconName.Boolean,
-            Title = "Boolean",
-            Description = "Yes or no, 1 or 0, true or false"
-        }
+        // new() {
+        //     Key = "email",
+        //     Icon= IconName.AtSign,
+        //     Title = "Email",
+        //     Description = "Email field with validations format"
+        // },
+        // new() {
+        //     Key = "rich-text",
+        //     Icon= IconName.Paragraph,
+        //     Title = "Rich text",
+        //     Description = "A rich text editor with formatting options"
+        // },
+        // new() {
+        //     Key = "password",
+        //     Icon= IconName.Lock,
+        //     Title = "Password",
+        //     Description = "Password field with encryption"
+        // },
+        // new() {
+        //     Key = "enumeration",
+        //     Icon= IconName.List,
+        //     Title = "Enumeration",
+        //     Description = "List of values, then pick one"
+        // },
+        // new() {
+        //     Key = "date",
+        //     Icon= IconName.CalendarWeek,
+        //     Title = "Date",
+        //     Description = "A date picker with hours, minutes and seconds"
+        // },
+        // new()
+        // {
+        //     Key = "boolean",  
+        //     Icon= IconName.Boolean,
+        //     Title = "Boolean",
+        //     Description = "Yes or no, 1 or 0, true or false"
+        // }
     };
 
     void Back()
