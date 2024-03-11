@@ -1,7 +1,7 @@
 /// <reference types="cypress" />
 
 describe('Admin Panel', () => {
-    before(() => {
+    beforeEach(() => {
         cy.doSetup()
     })
 

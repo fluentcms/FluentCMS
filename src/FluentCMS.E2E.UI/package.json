@@ -5,6 +5,7 @@
         "test": "cypress run"
     },
     "devDependencies": {
+        "cypress-mochawesome-reporter": "^3.8.2",
         "cypress": "^13.6.4"
     }
 }

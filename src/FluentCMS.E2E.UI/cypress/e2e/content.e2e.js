@@ -6,6 +6,10 @@ describe('Content CRUD', () => {
   const contentType = config.contentTypes[0]
 
   const content = config.contents[0]
+  
+  beforeEach(() => {
+    cy.doSetup()
+  })
 
   before(() => {
     cy.doSetup()
