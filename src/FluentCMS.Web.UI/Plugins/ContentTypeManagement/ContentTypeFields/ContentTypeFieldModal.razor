@@ -3,7 +3,7 @@
 <Modal Open="Open"
        Size="ModalSize.Large"
        OnClose="() => OnCancel.InvokeAsync()">
-    @if (Model != null)
+    @if (Open && Model != null)
     {
         <Form Model="@Model"
               OnSubmit="OnFormSubmit">
@@ -49,9 +49,6 @@
                             </TabsList>
                             <TabsPanels>
                                 <TabsPanel Name="tab-basic">
-                                    <h1>
-                                        @Model.Slug
-                                    </h1>
                                     <DynamicComponent Type="type.BasicSettings"></DynamicComponent>
                                 </TabsPanel>
                                 <TabsPanel Name="tab-advanced">

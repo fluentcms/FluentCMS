@@ -14,7 +14,7 @@ public class TextInfo: Base
 
     public static Type BasicSettings = typeof(BasicSettings);
 
-    public static Type AdvancedSettings = typeof(AdvancedSettings);
+    public static Type AdvancedSettings = typeof(TextAdvancedSettings);
 
     public static Type Preview = typeof(TextPreview);
 }
