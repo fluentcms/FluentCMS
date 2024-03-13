@@ -1,0 +1,32 @@
+﻿@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields
+
+<Input @bind-Value="Model.Label"
+       Id="contentTypeFieldModalLabelInput"
+       Label="Label"
+       Name="Label"
+       Placeholder="Enter Label..."
+       Required="true" />
+<Switch @bind-Value="Model.IsRequired"
+        Id="contentTypeFieldModalRequiredInput"
+        Label="Is Required?"
+        Name="IsRequired" />
+<Input @bind-Value="Model.Placeholder"
+       Id="contentTypeFieldModalPlaceholderInput"
+       Label="Placeholder"
+       Name="Placeholder"
+       Placeholder="Enter Placeholder..." />
+<Input @bind-Value="Model.Hint"
+       Id="contentTypeFieldModalHintInput"
+       Label="Hint"
+       Name="Hint"
+       Placeholder="Enter Hint..." />
+<Input @bind-Value="Model.DefaultValue"
+       Id="contentTypeFieldModalDefaultValueInput"
+       Label="Default Value"
+       Name="DefaultValue"
+       Placeholder="Enter Default Value..." />
+
+@code {
+    [CascadingParameter]
+    public ContentTypeField? Model { get; set; }
+}

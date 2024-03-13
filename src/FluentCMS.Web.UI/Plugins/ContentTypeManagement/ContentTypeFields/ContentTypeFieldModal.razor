@@ -1,0 +1,143 @@
+@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields
+
+<Modal Open="Open"
+       Size="ModalSize.Large"
+       OnClose="() => OnCancel.InvokeAsync()">
+    @if (Model != null)
+    {
+        <Form Model="@Model"
+              OnSubmit="OnFormSubmit">
+            <ModalHeader Closable="true">
+                @if (!editing && type != null)
+                {
+                    <Button Color="Color.Primary"
+                            Ghost="true"
+                            Icon="true"
+                            Size="ButtonSize.Small"
+                            OnClick="Back">
+                        <Icon Name="IconName.Previous" />
+                    </Button>
+                    <span>&nbsp;&nbsp;</span>
+                }
+                <ModalTitle id="contentTypeFieldModalTitle">
+                    @title
+                </ModalTitle>
+            </ModalHeader>
+            @if (type == null && !editing)
+            {
+                <ModalBody>
+                    <Typography Size="TextSize.Large">
+                        Select a field for your collection type
+                    </Typography>
+                    <ContentTypeFieldSelector @bind-Type="type" />
+                </ModalBody>
+            }
+            else
+            {
+                <ModalBody>
+                    <CascadingValue Value="Model">
+                        <Tabs @bind-Value="tab">
+                            <TabsList>
+                                <TabsTab id="contentTypeFieldModalBasicTab"
+                                         Name="tab-basic">
+                                    Basic
+                                </TabsTab>
+                                <TabsTab id="contentTypeFieldModalAdvancedTab"
+                                         Name="tab-advanced">
+                                    Advanced
+                                </TabsTab>
+                            </TabsList>
+                            <TabsPanels>
+                                <TabsPanel Name="tab-basic">
+                                    <h1>
+                                        @Model.Slug
+                                    </h1>
+                                    <DynamicComponent Type="type.BasicSettings"></DynamicComponent>
+                                </TabsPanel>
+                                <TabsPanel Name="tab-advanced">
+                                    <DynamicComponent Type="type.AdvancedSettings"></DynamicComponent>
+                                </TabsPanel>
+                            </TabsPanels>
+                        </Tabs>
+                    </CascadingValue>
+                </ModalBody>
+                <ModalFooter>
+                    <ButtonGroup>
+                        <Button Color="Color.Primary"
+                                id="contentTypeFieldModalSubmitButton"
+                                Type="ButtonType.Submit">
+                            Submit
+                        </Button>
+                        <Button id="contentTypeFieldModalCancelButton"
+                                OnClick="() => OnCancel.InvokeAsync()">
+                            Cancel
+                        </Button>
+                    </ButtonGroup>
+                </ModalFooter>
+            }
+        </Form>
+    }
+</Modal>
+
+@code {
+    [Parameter]
+    public ContentTypeField? Model { get; set; }
+
+    [Parameter]
+    public bool Open { get; set; } = false;
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public EventCallback<ContentTypeField> OnSubmit { get; set; }
+
+    bool editing;
+
+    string tab = "tab-basic";
+
+    Base? type;
+
+    string title
+    {
+        get
+        {
+            if (editing) return "Edit Field";
+            if (type == null) return "Article";
+            return "Add Field";
+        }
+    }
+
+    void Back()
+    {
+        type = null;
+    }
+
+    void OnFormSubmit()
+    {
+        OnSubmit.InvokeAsync(Model);
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!Open) return;
+
+        editing = Model != null;
+
+        tab = "tab-basic";
+
+        type = editing ? ContentTypeFieldExplorer.Load().First() : null;
+
+        Model ??= new()
+            {
+                DefaultValue = "",
+                Description = "",
+                Hint = "",
+                IsRequired = false,
+                Label = "",
+                Placeholder = "",
+                Slug = "",
+                Title = ""
+            };
+    }
+}

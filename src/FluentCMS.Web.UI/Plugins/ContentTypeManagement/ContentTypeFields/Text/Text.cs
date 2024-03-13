@@ -2,9 +2,19 @@
 
 public class TextInfo: Base
 {
-    public static string Name = "Text";
+    public static string Key = "text";
+
+    public static string Title = "Text";
+
     public static string Description = "Small or long text like title or description";
-    public static Type BasicSettingsView = typeof(TextBasicSettings);
-    public static Type AdvancedSettingsView = typeof(TextBasicSettings);
+
+    public static IconName Icon = IconName.Text;
+
+    public static int Order = 1;
+
+    public static Type BasicSettings = typeof(BasicSettings);
+
+    public static Type AdvancedSettings = typeof(AdvancedSettings);
+
     public static Type Preview = typeof(TextPreview);
 }

@@ -118,10 +118,10 @@
     </PageBody>
 </Page>
 
-<ContentTypeFieldModal Open="FieldModalOpen"
-                       Model="FieldModel"
-                       OnCancel="OnCancelField"
-                       OnSubmit="OnSubmitField" />
+<FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields.ContentTypeFieldModal Open="FieldModalOpen"
+                                                                                        Model="FieldModel"
+                                                                                        OnCancel="OnCancelField"
+                                                                                        OnSubmit="OnSubmitField" />
 
 @code {
     [Inject]
@@ -176,7 +176,7 @@
                 Placeholder = field.Placeholder,
                 Slug = field.Slug,
                 Title = field.Title,
-  
+
             };
         FieldModalOpen = true;
     }
