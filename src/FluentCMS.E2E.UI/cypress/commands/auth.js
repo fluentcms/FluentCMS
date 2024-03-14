@@ -3,6 +3,8 @@
 import config from '../../config'
 
 Cypress.Commands.add('checkLogin', (username, password) => {
+    cy.shot('Login')
+
     cy.get('#loginUsernameInput').clear()
     cy.get('#loginUsernameInput').type(username || config.setupUsername, {delay: 50})
 
@@ -18,6 +20,8 @@ Cypress.Commands.add('checkLogin', (username, password) => {
 
 
 Cypress.Commands.add('checkRegister', (username, email, password) => {
+    cy.shot('Register')
+
     cy.get('#registerUsernameInput').clear()
     cy.get('#registerUsernameInput').type(username || config.registerUsername, {delay: 50})
 
@@ -30,6 +34,6 @@ Cypress.Commands.add('checkRegister', (username, email, password) => {
     cy.get('#registerSubmitButton').click()
 
     cy.shortWait()
-
+    
     cy.dashboardShouldAvailable();
 })

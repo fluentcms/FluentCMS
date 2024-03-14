@@ -7,23 +7,30 @@ Cypress.Commands.add('checkSetup', (username, email, password) => {
 })
 
 Cypress.Commands.add('doSetup', (username, email, password) => {
-    cy.visit('/').shortWait()
+    email ??= config.setupEmail
+    username ??= config.setupUsername
+    password ??= config.setupPassword
+
+    cy.visit('/').waitForNavigate()
     
     cy.get('body').then($body => {
         if($body[0].querySelector('#setupUsernameInput')) {
             if(username) {
-                cy.get('#setupUsernameInput').clear().type(username || config.setupUsername)
+                cy.get('#setupUsernameInput').clear().type(username)
             }
             if(email) {
-                cy.get('#setupEmailInput').clear().type(email || config.setupEmail)
+                cy.get('#setupEmailInput').clear().type(email)
             }
             if(password) {
-                cy.get('#setupPasswordInput').clear().type(password || config.setupPassword)
+                cy.get('#setupPasswordInput').clear().type(password)
             }
 
             cy.get('#setupSubmitButton').click()
-            cy.shortWait()
+            cy.waitForNavigate()
             cy.dashboardShouldAvailable()
-        }
+        } 
+
+        cy.visit('/auth/login').waitForNavigate()
+        cy.checkLogin(username, password)        
     })
 })

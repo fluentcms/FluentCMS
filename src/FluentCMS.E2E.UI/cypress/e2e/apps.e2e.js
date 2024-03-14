@@ -4,6 +4,10 @@ import config from "../../config"
 
 describe('Apps CRUD', () => {
     const app = config.apps[0]
+ 
+    beforeEach(() => {
+        cy.doSetup()
+    })
 
     before(() => {
         cy.doSetup()

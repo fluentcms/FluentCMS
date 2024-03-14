@@ -4,10 +4,13 @@ describe('Content Type CRUD', () => {
   const app = config.apps[0]
 
   const contentType = config.contentTypes[0]
+  
+  beforeEach(() => {
+    cy.doSetup()
+  })
 
   before(() => {
     cy.doSetup()
-  
     cy.navigateToContentTypeListPage()
     cy.contentTypeClean()
 

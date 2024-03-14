@@ -87,5 +87,5 @@ Cypress.Commands.add('rows', { prevSubject: 'element' }, ($table, filter) => {
 });
 
 Cypress.Commands.add('shot', (name) => {
-    console.log('SHOT: ', name)
+    cy.screenshot(name)
 })
