@@ -6,27 +6,63 @@
        Name="Label"
        Placeholder="Enter Label..."
        Required="true" />
+
 <Switch @bind-Value="Model.IsRequired"
         Id="contentTypeFieldModalRequiredInput"
         Label="Is Required?"
         Name="IsRequired" />
+
 <Input @bind-Value="Model.Placeholder"
        Id="contentTypeFieldModalPlaceholderInput"
        Label="Placeholder"
        Name="Placeholder"
        Placeholder="Enter Placeholder..." />
+
 <Input @bind-Value="Model.Hint"
        Id="contentTypeFieldModalHintInput"
        Label="Hint"
        Name="Hint"
        Placeholder="Enter Hint..." />
+
 <Input @bind-Value="Model.DefaultValue"
        Id="contentTypeFieldModalDefaultValueInput"
        Label="Default Value"
        Name="DefaultValue"
        Placeholder="Enter Default Value..." />
 
+@if (Range)
+{
+    <Grid GutterX="GridGutter.Large">
+        <GridItem Small="GridItemColumn.Twelve"
+                  Medium="GridItemColumn.Six">
+            <Checkbox @bind-Value="maximum"
+                      Label="Maximum length" />
+            @if (maximum)
+            {
+                <Input Dense="true"
+                       Value="@(0)" />
+            }
+        </GridItem>
+        <GridItem Small="GridItemColumn.Twelve"
+                  Medium="GridItemColumn.Six">
+            <Checkbox @bind-Value="minimum"
+                      Label="Minimum length" />
+            @if (minimum)
+            {
+                <Input Dense="true"
+                       Value="@(0)" />
+            }
+        </GridItem>
+    </Grid>
+}
+
 @code {
+    [Parameter]
+    public bool Range { get; set; }
+
     [CascadingParameter]
     public ContentTypeField? Model { get; set; }
+
+    bool maximum;
+    bool minimum;
 }
