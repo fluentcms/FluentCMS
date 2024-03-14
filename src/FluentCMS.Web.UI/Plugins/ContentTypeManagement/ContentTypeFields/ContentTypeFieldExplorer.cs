@@ -22,7 +22,6 @@ public class ContentTypeFieldExplorer
                     Order = (int)f.GetField("Order").GetValue(null),
                     BasicSettings = (Type)f.GetField("BasicSettings").GetValue(null),
                     AdvancedSettings = (Type)f.GetField("AdvancedSettings").GetValue(null),
-                    Preview = (Type)f.GetField("Preview").GetValue(null)
                 }
                 )
                 .OrderBy(f => f.Order)

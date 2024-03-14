@@ -1,0 +1,14 @@
+﻿@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields
+
+<Input @bind-Value="Model.Slug"
+       autofocus="true"
+       Id="contentTypeFieldModalSlugInput"
+       Label="Slug"
+       Name="Slug"
+       Placeholder="Enter Slug..."
+       Required="true" />
+
+@code {
+    [CascadingParameter]
+    public ContentTypeField Model { get; set; }   
+}

@@ -15,6 +15,4 @@ public class Base
     public Type BasicSettings { get; set; }
 
     public Type AdvancedSettings { get; set; }
-
-    public Type Preview { get; set; }
 }

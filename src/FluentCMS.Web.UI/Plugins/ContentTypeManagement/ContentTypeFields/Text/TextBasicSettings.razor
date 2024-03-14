@@ -3,17 +3,20 @@
 <Grid GutterX="GridGutter.Large">
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <FieldDefaultValue />
+        <FieldName />
     </GridItem>
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Input Value="@("")"
-               Label="RegExp pattern"
-               Hint="The text of the regular expression" />
+        <Select Label="Type">
+            <Option>
+                Short text
+            </Option>
+            <Option>
+                Long text
+            </Option>
+        </Select>
     </GridItem>
 </Grid>
-
-<FieldAdvancedSettings />
 
 @code {
     [CascadingParameter]

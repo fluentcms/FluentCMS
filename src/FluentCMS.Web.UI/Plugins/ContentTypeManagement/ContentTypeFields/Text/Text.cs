@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields;
 
-public class TextInfo: Base
+public class TextInfo : Base
 {
     public static string Key = "text";
 
@@ -12,9 +12,7 @@ public class TextInfo: Base
 
     public static int Order = 1;
 
-    public static Type BasicSettings = typeof(BasicSettings);
+    public static Type BasicSettings = typeof(TextBasicSettings);
 
     public static Type AdvancedSettings = typeof(TextAdvancedSettings);
-
-    public static Type Preview = typeof(TextPreview);
 }
