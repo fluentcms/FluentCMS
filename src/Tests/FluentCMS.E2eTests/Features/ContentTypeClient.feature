@@ -1,5 +1,6 @@
 @RequiresFreshSetup
 @RequiresTestApp
+@RequiresAuthenticatedAdmin
 Feature: Content Type Client
 
 Background:
