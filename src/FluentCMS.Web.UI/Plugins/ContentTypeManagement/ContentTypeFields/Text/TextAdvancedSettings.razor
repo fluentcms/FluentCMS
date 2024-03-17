@@ -1,0 +1,21 @@
+﻿@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields
+
+<Grid GutterX="GridGutter.Large">
+    <GridItem Small="GridItemColumn.Twelve"
+              Medium="GridItemColumn.Six">
+        <FieldDefaultValue />
+    </GridItem>
+    <GridItem Small="GridItemColumn.Twelve"
+              Medium="GridItemColumn.Six">
+        <Input Value="@("")"
+               Label="RegExp pattern"
+               Hint="The text of the regular expression" />
+    </GridItem>
+</Grid>
+
+<FieldAdvancedSettings />
+
+@code {
+    [CascadingParameter]
+    public ContentTypeField Model { get; set; }
+}

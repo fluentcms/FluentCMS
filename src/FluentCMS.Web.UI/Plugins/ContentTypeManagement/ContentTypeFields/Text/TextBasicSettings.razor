@@ -1,0 +1,25 @@
+﻿@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields
+
+<Grid GutterX="GridGutter.Large">
+    <GridItem Small="GridItemColumn.Twelve"
+              Medium="GridItemColumn.Six">
+        <FieldName />
+    </GridItem>
+    <GridItem Small="GridItemColumn.Twelve"
+              Medium="GridItemColumn.Six">
+        <Select Label="Type"
+                Value="@("")">
+            <Option>
+                Short text
+            </Option>
+            <Option>
+                Long text
+            </Option>
+        </Select>
+    </GridItem>
+</Grid>
+
+@code {
+    [CascadingParameter]
+    public ContentTypeField Model { get; set; }
+}

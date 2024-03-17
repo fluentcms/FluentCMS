@@ -3,6 +3,9 @@ namespace FluentCMS.Web.UI.Components;
 public enum IconName
 {
     Default,
+    AtSign,
+    Boolean,
+    CalendarWeek,
     ChevronDown,
     Clipboard,
     ClipboardList,
@@ -22,14 +25,18 @@ public enum IconName
     Image,
     InfoCircle,
     InformationFilled,
+    List,
+    Lock,
     Moon,
     Next,
+    Paragraph,
     Plus,
     Previous,
     Rocket,
     Search,
     Settings,
     Sun,
+    Text
 }
 
 public enum IconSize
