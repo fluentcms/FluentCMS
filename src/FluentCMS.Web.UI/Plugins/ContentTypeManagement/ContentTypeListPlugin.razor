@@ -8,7 +8,7 @@
                         Id="contentTypeAppSelect" 
                         Placeholder="Choose an App..."
                         Size="InputSize.Small"
-                        OnChange="OnAppSlugChanged">
+                        OnChange="(string value) => OnAppSlugChanged()">
                     @foreach (var app in Apps)
                     {
                         <Option Value="@app.Slug">@app.Title</Option>
