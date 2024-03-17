@@ -1,4 +1,5 @@
 @RequiresFreshSetup
+@RequiresAuthenticatedAdmin
 Feature: App Client
 
 Background:

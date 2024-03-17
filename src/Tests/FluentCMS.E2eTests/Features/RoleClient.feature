@@ -1,5 +1,6 @@
 @RequiresFreshSetup
 @RequiresTestApp
+@RequiresAuthenticatedAdmin
 Feature: Role Client
 Background:
 	Given I have a "RoleClient"
