@@ -1,4 +1,5 @@
 @RequiresFreshSetup
+@RequiresAuthenticatedAdmin
 Feature: Basic User Client functionality
 
 Background:
