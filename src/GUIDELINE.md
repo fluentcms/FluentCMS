@@ -216,3 +216,59 @@ public class MyClass
 11- Single-Letter Names:
 
 -   Avoid using single-letter names except for simple loop counters.
+
+## Field Types
+
+Do the following steps to create a new field type.
+
+### Field type directory
+
+Create a directory named `Foo` in `FluentCMS.Web.UI\Plugins\ContentTypeManagement\ContentTypeFields` path.
+
+### Field type information
+
+Create a file `Foo.cs` with this content to define type information.
+
+```csharp
+namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields;
+
+public class FooInfo : Base
+{
+    public static string Key = "foo";
+
+    public static string Title = "Foo";
+
+    public static string Description = "Foo description";
+
+    public static IconName Icon = IconName.Foo;
+
+    public static int Order = 0;
+
+    public static Type BasicSettings = typeof(FooBasicSettings);
+
+    public static Type AdvancedSettings = typeof(FooAdvancedSettings);
+}
+```
+
+### Settings files
+
+Create `FooAdvancedSettings.razor` and `FooAdvancedSettings.razor` files in the `Foo` directory to create views of filed type's settings.
+
+### Structure of view files
+
+Each file should contain these logics.
+
+```razor
+@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields
+
+@* View *@
+
+@code {
+    [CascadingParameter]
+    public ContentTypeField Model { get; set; }
+}
+```
+
+### View content
+
+Complete the views based on razor components that are available in the `Base` directory.

@@ -57,7 +57,8 @@ public class JwtUserTokenProvider : IUserTokenProvider
             Issuer = _options.Issuer,
             Audience = _options.Audience,
             Subject = new ClaimsIdentity(claims),
-            Expires = _options.TokenExpiry == -1 ? null : DateTime.UtcNow.AddSeconds(_options.TokenExpiry),
+            //todo : Fix this
+            Expires = _options.TokenExpiry == -1 ? DateTime.MaxValue : DateTime.UtcNow.AddSeconds(_options.TokenExpiry),
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha512Signature),
             NotBefore = DateTime.UtcNow,
             IssuedAt = DateTime.UtcNow

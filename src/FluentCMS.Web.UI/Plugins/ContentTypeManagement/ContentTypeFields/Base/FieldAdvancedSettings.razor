@@ -1,0 +1,70 @@
+﻿@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields
+
+<Grid GutterX="GridGutter.Large">
+    <GridItem Small="GridItemColumn.Twelve"
+              Medium="GridItemColumn.Six">
+        <Checkbox @bind-Value="Model.IsRequired"
+                  Label="Required field"
+                  Hint="You won't be able to create an entry if this field is empty" />
+    </GridItem>
+    @if (Unique)
+    {
+        <GridItem Small="GridItemColumn.Twelve"
+                  Medium="GridItemColumn.Six">
+            <Checkbox Label="Unique field"
+                      Hint="You won't be able to create an entry if there is an existing entry with identical content" />
+        </GridItem>
+    }
+    @if (Range)
+    {
+        <GridItem Small="GridItemColumn.Twelve"
+                  Medium="GridItemColumn.Six">
+            <Checkbox @bind-Value="maximum"
+                      Dense="maximum"
+                      Label="Maximum length" />
+            @if (maximum)
+            {
+                <Spacer />
+                <Input Type="InputType.Number"
+                       Value="@(0)" />
+            }
+        </GridItem>
+        <GridItem Small="GridItemColumn.Twelve"
+                  Medium="GridItemColumn.Six">
+            <Checkbox @bind-Value="minimum"
+                      Dense="minimum"
+                      Label="Minimum length" />
+            @if (minimum)
+            {
+                <Spacer />
+                <Input Type="InputType.Number"
+                       Value="@(0)" />
+            }
+        </GridItem>
+    }
+    <GridItem Small="GridItemColumn.Twelve"
+              Medium="GridItemColumn.Six">
+        <Checkbox Label="Private field"
+                  Hint="This field will not show up in the API response" />
+    </GridItem>
+    <GridItem Small="GridItemColumn.Twelve"
+              Medium="GridItemColumn.Six">
+        <Checkbox Label="Enable localization for this field"
+                  Hint="The field can have different values in each language" />
+    </GridItem>
+</Grid>
+
+
+@code {
+    [Parameter]
+    public bool Range { get; set; } = true;
+
+    [Parameter]
+    public bool Unique { get; set; } = true;
+
+    [CascadingParameter]
+    public ContentTypeField Model { get; set; }
+
+    bool maximum;
+    bool minimum;
+}

@@ -12,14 +12,14 @@
                 @Title
             </ModalTitle>
         }
-        @if (Closable)
-        {
-            <CloseButton OnClick="Modal.Close" />
-        }
     }
     else
     {
         @ChildContent
+    }
+    @if (Closable)
+    {
+        <CloseButton OnClick="Modal.Close" />
     }
 </div>
 

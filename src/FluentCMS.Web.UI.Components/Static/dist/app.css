@@ -857,7 +857,7 @@ body.dark {
   @apply space-y-6 p-6;
 }
 .f-modal-content {
-  @apply relative rounded-lg bg-white shadow dark:bg-gray-700;
+  @apply relative rounded-lg bg-white shadow dark:bg-gray-800;
 }
 .f-modal-footer {
   @apply flex items-center rounded-b border-t border-gray-200 p-6 dark:border-gray-600;
@@ -894,7 +894,7 @@ body.dark {
   @apply underline;
 }
 .f-page-header {
-  @apply border-gray-200 px-0 py-2.5 pt-2 text-gray-700;
+  @apply border-gray-200 px-0 py-4 text-gray-700;
 }
 .f-page-header-actions {
   @apply flex-shrink-0 flex flex-col items-start md:flex-row md:items-center lg:justify-end space-y-3 md:space-y-0 md:space-x-3;
