@@ -4,10 +4,12 @@ using System.Text.Json;
 using FluentCMS.Web.UI.Services.LocalStorage;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Web.UI.Services;
-public class AuthStateProvider(NavigationManager navigationManager, IHttpContextAccessor httpContextAccessor, UserClient userClient, AccountClient accountClient) : AuthenticationStateProvider
+public class AuthStateProvider(NavigationManager navigationManager, IHttpContextAccessor httpContextAccessor, UserClient userClient, AccountClient accountClient, ILoggerFactory factory) : RevalidatingServerAuthenticationStateProvider(factory)
 {
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
@@ -30,7 +32,7 @@ public class AuthStateProvider(NavigationManager navigationManager, IHttpContext
 
     private async Task<UserDetailResponseIApiResult> FetchUserDetail()
     {
-        var json = httpContextAccessor.HttpContext.Request.Cookies["UserLoginResponse"];
+        var json = httpContextAccessor.HttpContext?.Request?.Cookies["UserLoginResponse"];
         var loginResponse =
             JsonSerializer.Deserialize<UserLoginResponse>(json);
         var user = await userClient.GetAsync(loginResponse.UserId);
@@ -82,4 +84,11 @@ public class AuthStateProvider(NavigationManager navigationManager, IHttpContext
             if (value != null) yield return new Claim(propertyInfo.Name, value);
         }
     }
+
+    protected override async Task<bool> ValidateAuthenticationStateAsync(AuthenticationState authenticationState, CancellationToken cancellationToken)
+    {
+        return true;
+    }
+
+    protected override TimeSpan RevalidationInterval { get; } = TimeSpan.FromMinutes(30);
 }
