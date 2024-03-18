@@ -1,21 +1,24 @@
-﻿@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields
+@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields
 
 <Grid GutterX="GridGutter.Large">
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
         <Input @bind-Value="Model.DefaultValue"
+               Id="contentTypeFieldModalDefaultValueInput"
                Label="Default Value"
-               Name="DefaultValue" />
+               Name="DefaultValue"
+               Placeholder="Enter Default Value..." 
+               Type="InputType.DatetimeLocal"/>
+
     </GridItem>
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Input Value="@("")"
-               Hint="The text of the regular expression"
-               Label="RegExp pattern" />
+              
     </GridItem>
 </Grid>
 
-<FieldAdvancedSettings />
+<FieldAdvancedSettings Localization="false"
+                       Range="false"/>
 
 @code {
     [CascadingParameter]

@@ -1,4 +1,4 @@
-﻿@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields
+@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields
 
 <Grid GutterX="GridGutter.Large">
     <GridItem Small="GridItemColumn.Twelve"
@@ -8,17 +8,21 @@
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
         <Select Label="Type"
-                Name="TODO"
+                Placeholder="Choose Date type..."
                 Value="@("")">
             <Option>
-                Short text
+                Date (ex: 01/01/2024)
             </Option>
             <Option>
-                Long text
+                DateTime (ex: 01/01/2024 00:00 AM)
+            </Option>
+            <Option>
+                Time (ex: 00:00 AM)
             </Option>
         </Select>
     </GridItem>
 </Grid>
+
 
 @code {
     [CascadingParameter]

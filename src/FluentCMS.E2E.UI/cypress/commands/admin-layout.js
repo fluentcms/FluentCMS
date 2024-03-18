@@ -54,7 +54,7 @@ Cypress.Commands.add('adminSidebarShouldAvailable', () => {
 
 Cypress.Commands.add('checkAdminNavbar', () => {
     cy.viewport(600, 800)
-    cy.shortWait()
+    cy.mediumWait()
     cy.elementShouldAvailable('#adminNavbar')
 
     cy.elementShouldAvailable('#adminNavbarLogoLink')
