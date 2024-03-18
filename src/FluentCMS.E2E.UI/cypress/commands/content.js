@@ -1,14 +1,27 @@
 Cypress.Commands.add('navigateToContentListPage', (appTitle, contentTypeTitle) => {
     cy.visit('/')
 
-    cy.get('#adminSidebarContentManagementLink').click()
+    cy.getSidebarItem('#adminSidebarContentManagementLink').click()
     cy.waitForNavigate()
     if(appTitle) {
-        cy.get('#contentAppSelect').select(appTitle)
+        cy.get('#contentIndexAppSelect').then($el => {
+            if($el.length > 0) {
+                cy.wrap($el).select(appTitle)
+            } else {
+                cy.get('#contentAppSelect').select(appTitle)
+            }
+            
+        })
         cy.waitForNavigate()
     }
-    cy.get('.f-sidebar-secondary-true').contains(contentTypeTitle).click().waitForNavigate()
+    cy.get('#contentIndexCollectionList').then($el => {
+        if($el.length > 0) {
+            cy.wrap($el).contains(contentTypeTitle).click().waitForNavigate()
 
+        } else {
+            cy.get('main').contains(contentTypeTitle).click().waitForNavigate()
+        }
+    })
     // TODO: Enable this test
     cy.contains(contentTypeTitle + " List").should('be.visible')
 })

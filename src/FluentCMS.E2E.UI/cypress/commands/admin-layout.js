@@ -1,16 +1,28 @@
-Cypress.Commands.add("checkAdminSidebarNavigations", () => {
+Cypress.Commands.add('getSidebarItem', (id) => {
+    cy.waitForNavigate()
+    cy.waitForNavigate()
+    cy.get('#adminNavbarToggleButton').then($el => {
+        if($el) {
+            cy.wrap($el).click()
+            cy.waitForNavigate( )
+        }
+    }).then(() => {
+        return cy.get(id)
+    })
+})
 
-    cy.get('#adminSidebarAppsLink').click()
+Cypress.Commands.add("checkAdminSidebarNavigations", () => {
+    cy.getSidebarItem('#adminSidebarAppsLink').click()
     cy.get('.f-page-header-title').should('have.text', 'Apps List')
 
-    cy.get('#adminSidebarUsersLink').click()
+    cy.getSidebarItem('#adminSidebarUsersLink').click()
     cy.get('.f-page-header-title').should('have.text', 'Users List')
 
-    cy.get('#adminSidebarContentTypeLink').click()
+    cy.getSidebarItem('#adminSidebarContentTypeLink').click()
     cy.get('.f-page-header-title').should('have.text', 'Content Types List')
 
-    cy.get('#adminSidebarDocsLink a').should('have.attr', 'target', '_blank')
-    cy.get('#adminSidebarDocsLink a').invoke('removeAttr', 'target').scrollIntoView().click()
+    cy.getSidebarItem('#adminSidebarDocsLink a').should('have.attr', 'target', '_blank')
+    cy.getSidebarItem('#adminSidebarDocsLink a').invoke('removeAttr', 'target').scrollIntoView().click()
     cy.url().should('include', '/doc/index.html')
 
     cy.go('back')
@@ -19,27 +31,28 @@ Cypress.Commands.add("checkAdminSidebarNavigations", () => {
 Cypress.Commands.add('checkAdminSidebarThemeToggle', () => {
     cy.get('body').should('not.have.class', 'dark')
 
-    cy.get('#adminThemeButton').click().shortWait()
+    cy.getSidebarItem('#adminThemeButton').click().shortWait()
     cy.get('body').should('have.class', 'dark')
 
-    cy.get('#adminThemeButton').click().shortWait()
+    cy.getSidebarItem('#adminThemeButton').click().shortWait()
     cy.get('body').should('not.have.class', 'dark')
 })
 
 Cypress.Commands.add('checkAdminHomeLinks', () => {
-    cy.get('#adminSidebarLogoLink').click()
+    cy.getSidebarItem('#adminSidebarLogoLink').click()
     cy.url().should('eq', Cypress.config().baseUrl + '/')
 
-    cy.get('#adminSidebarLogoLink').click()
+    cy.getSidebarItem('#adminSidebarLogoLink').click()
     cy.url().should('eq', Cypress.config().baseUrl + '/')
 })
 
 Cypress.Commands.add('adminSidebarLogoShouldAvailable', () => {
-    cy.elementShouldAvailable('#adminSidebarLogoLink')
+    cy.getSidebarItem('#adminSidebarLogoLink').should('be.visible')
 })
 
 Cypress.Commands.add('adminSidebarShouldAvailable', () => {
-    cy.elementShouldAvailable('#adminSidebar')
+
+    cy.getSidebarItem('#adminSidebar').should('be.visible')
 
     cy.elementShouldAvailable('#adminSidebarHomeLink a')
 

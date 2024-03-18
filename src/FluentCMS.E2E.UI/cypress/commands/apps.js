@@ -15,7 +15,7 @@ Cypress.Commands.add('navigateToAppListPage', () => {
 
     cy.waitForNavigate()
 
-    cy.get('#adminSidebarAppsLink').click()
+    cy.getSidebarItem('#adminSidebarAppsLink').click()
 
     cy.waitForNavigate()
 
