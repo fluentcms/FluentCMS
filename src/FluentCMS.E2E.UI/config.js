@@ -26,6 +26,7 @@ export default {
             description: 'description of posts content type',
             fields: [
                 {
+                    type: 'Text',
                     title: 'Title',
                     slug: 'title',
                     description: 'Description of title field',
@@ -36,6 +37,7 @@ export default {
                     defaultValue: ''
                 },
                 {
+                    type: 'Text',
                     title: 'Content',
                     slug: 'content',
                     description: 'Description of Content field',

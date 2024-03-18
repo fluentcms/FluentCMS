@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-describe('basic', () => {
+describe('Basic', () => {
     before(() => {
         cy.visit('/')
     })

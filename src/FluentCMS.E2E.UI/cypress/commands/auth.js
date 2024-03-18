@@ -6,14 +6,14 @@ Cypress.Commands.add('checkLogin', (username, password) => {
     cy.shot('Login')
 
     cy.get('#loginUsernameInput').clear()
-    cy.get('#loginUsernameInput').type(username || config.setupUsername, {delay: 50})
+    cy.get('#loginUsernameInput').type(username || config.setupUsername, {delay: 0})
 
     cy.get('#loginPasswordInput').clear()
-    cy.get('#loginPasswordInput').type(password || config.setupPassword, {delay: 50})
+    cy.get('#loginPasswordInput').type(password || config.setupPassword, {delay: 0})
 
     cy.get('#loginSubmitButton').click()
 
-    cy.shortWait()
+    cy.waitForNavigate()
 
     cy.dashboardShouldAvailable();
 })
