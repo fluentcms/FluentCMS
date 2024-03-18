@@ -81,8 +81,7 @@ Cypress.Commands.add('contentDelete', (text) => {
 
         cy.waitForNavigate()
 
-        // TODO: fix this
-        // cy.get('#contentListTable').contains(text).should('not.exist')
+        cy.get('#contentListTable').contains(text).should('not.exist')
         cy.shot('Content Delete ' + text)
     })
 })
