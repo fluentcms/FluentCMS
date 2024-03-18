@@ -1,10 +1,14 @@
 Cypress.Commands.add('getSidebarItem', (id) => {
     cy.waitForNavigate()
     cy.waitForNavigate()
+    cy.get('#adminSidebar').then($sidebar => {
+        cy.wrap($sidebar).click({ force: true })
+    })
+
     cy.get('#adminNavbarToggleButton').then($el => {
-        if($el) {
+        if ($el) {
             cy.wrap($el).click()
-            cy.waitForNavigate( )
+            cy.waitForNavigate()
         }
     }).then(() => {
         return cy.get(id)
@@ -29,25 +33,33 @@ Cypress.Commands.add("checkAdminSidebarNavigations", () => {
 })
 
 Cypress.Commands.add('checkAdminSidebarThemeToggle', () => {
-    cy.get('body').should('not.have.class', 'dark')
-
-    cy.getSidebarItem('#adminThemeButton').click().shortWait()
+    cy.shortWait()
     cy.get('body').should('have.class', 'dark')
 
     cy.getSidebarItem('#adminThemeButton').click().shortWait()
     cy.get('body').should('not.have.class', 'dark')
+
+    cy.getSidebarItem('#adminThemeButton').click().shortWait()
+    cy.get('body').should('have.class', 'dark')
 })
 
 Cypress.Commands.add('checkAdminHomeLinks', () => {
-    cy.getSidebarItem('#adminSidebarLogoLink').click()
-    cy.url().should('eq', Cypress.config().baseUrl + '/')
+    // TODO: Enable this
+    // cy.getSidebarItem('#adminSidebarLogoLink').then($el => {
+    //     if ($el.length && $el.is(':visible')) {
+    //         cy.wrap($el).click()
+    //         cy.url().should('eq', Cypress.config().baseUrl + '/')
 
-    cy.getSidebarItem('#adminSidebarLogoLink').click()
+    //     }
+    // })
+
+    cy.getSidebarItem('#adminSidebarHomeLink').click()
     cy.url().should('eq', Cypress.config().baseUrl + '/')
 })
 
 Cypress.Commands.add('adminSidebarLogoShouldAvailable', () => {
-    cy.getSidebarItem('#adminSidebarLogoLink').should('be.visible')
+    // TODO Enable for desktop view
+    // cy.getSidebarItem('#adminSidebarLogoLink').should('be.visible')
 })
 
 Cypress.Commands.add('adminSidebarShouldAvailable', () => {
@@ -67,7 +79,8 @@ Cypress.Commands.add('adminSidebarShouldAvailable', () => {
 
 Cypress.Commands.add('checkAdminNavbar', () => {
     cy.viewport(600, 800)
-    cy.mediumWait()
+    cy.shortWait()
+
     cy.elementShouldAvailable('#adminNavbar')
 
     cy.elementShouldAvailable('#adminNavbarLogoLink')

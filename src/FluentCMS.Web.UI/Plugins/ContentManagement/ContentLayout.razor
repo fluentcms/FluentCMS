@@ -1,9 +1,9 @@
 @inherits BaseComponent
 
 <Grid>
-    <GridItem Small="GridItemColumn.Auto">
-        <Sidebar class="hidden lg:flex" 
-                 Title="Collections"
+    <GridItem class="hidden lg:flex" 
+              Small="GridItemColumn.Auto">
+        <Sidebar Title="Collections"
                  Secondary="true">
             <ChildContent>
                 <Select @bind-Value="AppSlug"
