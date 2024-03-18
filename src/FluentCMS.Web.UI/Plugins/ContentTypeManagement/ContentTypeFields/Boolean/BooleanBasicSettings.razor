@@ -3,19 +3,22 @@
 <Grid GutterX="GridGutter.Large">
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Input @bind-Value="Model.DefaultValue"
-               Label="Default Value"
-               Name="DefaultValue" />
+        <FieldName />
     </GridItem>
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Input Value="@("")"
-               Hint="The text of the regular expression"
-               Label="RegExp pattern"
+        <Select Label="Type"
+                Name="TODO"
+                Value="@("")">
+            <Option>
+                Checkbox
+            </Option>
+            <Option>
+                Switch
+            </Option>
+        </Select>
     </GridItem>
 </Grid>
-
-<FieldAdvancedSettings />
 
 @code {
     [CascadingParameter]

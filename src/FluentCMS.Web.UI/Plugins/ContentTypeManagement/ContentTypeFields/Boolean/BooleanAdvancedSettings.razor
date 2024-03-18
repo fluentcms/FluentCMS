@@ -1,0 +1,28 @@
+﻿@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields
+
+<Grid GutterX="GridGutter.Large">
+    <GridItem Small="GridItemColumn.Twelve"
+              Medium="GridItemColumn.Six">
+        <Select @bind-Value="Model.DefaultValue"
+                Label="Default Value"
+                Name="DefaultValue">
+            <Option Value="null">
+                null
+            </Option>
+            <Option Value="false">
+                false
+            </Option>
+            <Option Value="true">
+                true
+            </Option>
+        </Select>
+    </GridItem>
+</Grid>
+
+<FieldAdvancedSettings Range="false"
+                       Unique="false" />
+
+@code {
+    [CascadingParameter]
+    public ContentTypeField Model { get; set; }
+}
