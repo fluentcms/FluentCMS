@@ -48,15 +48,21 @@
         <Checkbox Label="Private field"
                   Hint="This field will not show up in the API response" />
     </GridItem>
-    <GridItem Small="GridItemColumn.Twelve"
+    @if(Localization) 
+    {
+        <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Checkbox Label="Enable localization for this field"
-                  Hint="The field can have different values in each language" />
-    </GridItem>
+            <Checkbox Label="Enable localization for this field"
+                      Hint="The field can have different values in each language" />
+        </GridItem>
+    }
 </Grid>
 
 
 @code {
+    [Parameter]
+    public bool Localization { get; set; } = true;
+
     [Parameter]
     public bool Range { get; set; } = true;
 
