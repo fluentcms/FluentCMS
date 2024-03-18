@@ -4,6 +4,7 @@
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
         <Checkbox @bind-Value="Model.IsRequired"
+                  Id="contentTypeFieldModalRequiredInput"
                   Label="Required field"
                   Hint="You won't be able to create an entry if this field is empty" />
     </GridItem>
@@ -53,6 +54,7 @@
                   Hint="The field can have different values in each language" />
     </GridItem>
 </Grid>
+
 
 @code {
     [Parameter]
