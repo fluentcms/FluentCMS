@@ -10,7 +10,7 @@
                         Dense="true"
                         Id="contentAppSelect"
                         Placeholder="Choose an App..."
-                        OnChange="OnChangeApp">
+                        OnChange="(string value) => OnChangeApp()">
                     @foreach (var app in Apps)
                     {
                         <Option Value="@app.Slug">@app.Title</Option>

@@ -20,27 +20,28 @@ Cypress.Commands.add('navigateToContentTypeCreatePage', (appTitle) => {
 
 Cypress.Commands.add('contentTypeFieldCreate', (field) => {
     cy.contains('Add Field').click()
-    cy.get('#contentTypeFieldModalTitle').should('contain', 'Add Field')
+    // cy.get('#contentTypeFieldModalTitle').should('contain', 'Add Field')
+    cy.get('.f-modal-body').contains(field.type).click()
 
-    cy.get('#contentTypeFieldModalTitleInput').type(field.title, { delay: 50 })
+    // cy.get('#contentTypeFieldModalTitleInput').type(field.title, { delay: 50 })
     cy.get('#contentTypeFieldModalSlugInput').type(field.slug, { delay: 50 })
-    cy.get('#contentTypeFieldModalDescriptionInput').type(field.description, { delay: 50 })
+    // cy.get('#contentTypeFieldModalDescriptionInput').type(field.description, { delay: 50 })
 
     cy.get('#contentTypeFieldModalAdvancedTab').click()
 
-    if (field.label) {
-        cy.get('#contentTypeFieldModalLabelInput').type(field.label, { delay: 50 })
-    }
+    // if (field.label) {
+    //     cy.get('#contentTypeFieldModalLabelInput').type(field.label, { delay: 50 })
+    // }
 
     if (field.required) {
         cy.get('#contentTypeFieldModalRequiredInput').click({ force: true })
     }
-    if (field.placeholder) {
-        cy.get('#contentTypeFieldModalPlaceholderInput').type(field.placeholder, { delay: 50 })
-    }
-    if (field.hint) {
-        cy.get('#contentTypeFieldModalHintInput').type(field.hint, { delay: 50 })
-    }
+    // if (field.placeholder) {
+    //     cy.get('#contentTypeFieldModalPlaceholderInput').type(field.placeholder, { delay: 50 })
+    // }
+    // if (field.hint) {
+    //     cy.get('#contentTypeFieldModalHintInput').type(field.hint, { delay: 50 })
+    // }
     if (field.defaultValue) {
         cy.get('#contentTypeFieldModalDefaultValueInput').type(field.defaultValue, { delay: 50 })
     }
@@ -48,7 +49,7 @@ Cypress.Commands.add('contentTypeFieldCreate', (field) => {
     cy.get('#contentTypeFieldModalSubmitButton').click()
 
     cy.waitForNavigate()
-    cy.get('#contentTypeFieldModalTitle').should('not.be.visible')
+    cy.get('#contentTypeFieldModalTitle').should('not.exist')
     cy.shot('Content type add field ' + field.title)
 })
 

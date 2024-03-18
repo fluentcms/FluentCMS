@@ -13,7 +13,7 @@ Cypress.Commands.add('navigateToAppCreatePage', () => {
 Cypress.Commands.add('navigateToAppListPage', () => {
     cy.visit('/')
 
-    cy.waitForNavigate()
+    cy.shortWait()
 
     cy.getSidebarItem('#adminSidebarAppsLink').click()
 
