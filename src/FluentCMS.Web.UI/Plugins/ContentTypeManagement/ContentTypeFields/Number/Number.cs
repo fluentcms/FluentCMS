@@ -8,7 +8,7 @@ public class NumberInfo : Base
 
     public static string Description = "Numbers (integer, float, decimal)";
 
-    public static IconName Icon = IconName.Moon;
+    public static IconName Icon = IconName.Number;
 
     public static int Order = 3;
 
