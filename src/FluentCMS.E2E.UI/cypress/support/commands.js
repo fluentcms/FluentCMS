@@ -27,9 +27,9 @@
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 
 Cypress.Commands.add('waitForNavigate', () => cy.wait(250))
-Cypress.Commands.add('shortWait', () => cy.wait(2500))
-Cypress.Commands.add('mediumWait', () => cy.wait(5000))
-Cypress.Commands.add('longWait', () => cy.wait(7500))
+Cypress.Commands.add('shortWait', () => cy.wait(500))
+Cypress.Commands.add('mediumWait', () => cy.wait(750))
+Cypress.Commands.add('longWait', () => cy.wait(1000))
 
 Cypress.Commands.add('elementShouldAvailable', (selector) => {
     cy.get(selector).should('exist')
@@ -56,7 +56,8 @@ Cypress.Commands.add('deleteRow', {prevSubject: 'element'}, ($el, confirm = true
         cy.get('.f-confirm-content').contains('No, cancel').click()
     }
 
-    cy.waitForNavigate()
+    cy.shortWait()
+    cy.get('.f-confirm').should('not.exist')
 })
 
 Cypress.Commands.add('deleteTableRows', {prevSubject: 'element'}, ($table) => {
