@@ -15,6 +15,10 @@ $page: $prefix + 'page';
         }
     }
 
+    &-body {
+        @apply mb-12;
+    }
+
     &-header {
         @apply border-gray-200 px-0 py-4 text-gray-700;
 
