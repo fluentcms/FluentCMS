@@ -2,9 +2,9 @@
        Size="ModalSize.Large">
     <ModalHeader>
         <ModalTitle>@Title</ModalTitle>
-    </ModalHeader>
-    <ModalBody>
-        @if (EditMode)
+        </ModalHeader>
+        <ModalBody>
+            @if (EditMode)
         {
             <Card class="bg-gray-100 dark:bg-gray-800">
                 <CardBody>
@@ -19,11 +19,12 @@
             <Grid Gutter="GridGutter.Large">
                 <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
                     <Input Label="Folder"
-                           Value="@("")"/>
+                           Value="@("")" />
                 </GridItem>
 
                 <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
-                    <Select Label="Location">
+                    <Select Label="Location"
+                            Value="@("")">
                         <Option>Folder 1</Option>
                         <Option>Folder 2</Option>
                         <Option>Folder 3</Option>
@@ -31,15 +32,15 @@
                 </GridItem>
             </Grid>
 
-                <ButtonGroup>
-                    <Button OnClick="() => OnCancel.InvokeAsync()">
-                        Cancel
-                    </Button>
-                    <Button Color="Color.Primary"
-                            Type="ButtonType.Submit">
-                        Submit
-                    </Button>
-                </ButtonGroup>
+            <ButtonGroup>
+                <Button OnClick="() => OnCancel.InvokeAsync()">
+                    Cancel
+                </Button>
+                <Button Color="Color.Primary"
+                        Type="ButtonType.Submit">
+                    Submit
+                </Button>
+            </ButtonGroup>
         </Form>
     </ModalBody>
 
@@ -47,21 +48,21 @@
 
 @code {
     [Parameter]
-    public bool EditMode {get; set;}
+    public bool EditMode { get; set; }
 
     [Parameter]
-    public bool Open {get; set;}
+    public bool Open { get; set; }
 
     [Parameter]
-    public EventCallback<bool> OnCancel {get; set;}
+    public EventCallback<bool> OnCancel { get; set; }
 
     [Parameter]
-    public EventCallback<string> OnSubmit {get; set;}
+    public EventCallback<string> OnSubmit { get; set; }
 
     [Parameter]
-    public string Title {get; set; }
+    public string Title { get; set; }
 
-    object model {get; set;} = new();
+    object model { get; set; } = new();
 
     void OnFormSubmit()
     {

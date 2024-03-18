@@ -5,7 +5,7 @@
     <PageHeader Title="Selects" />
     <PageBody>
         <ComponentPreview Title="Default">
-            <Select>
+            <Select Value="@("")">
                 <Option>One</Option>
                 <Option>Two</Option>
                 <Option>Three</Option>
@@ -13,7 +13,8 @@
         </ComponentPreview>
 
         <ComponentPreview Title="Label">
-            <Select Label="This is a label">
+            <Select Label="This is a label"
+                    Value="@("")">
                 <Option>One</Option>
                 <Option>Two</Option>
                 <Option>Three</Option>
@@ -21,7 +22,8 @@
         </ComponentPreview>
 
         <ComponentPreview Title="Disabled">
-            <Select Disabled="true">
+            <Select Disabled="true"
+                    Value="@("")">
                 <Option>One</Option>
                 <Option>Two</Option>
                 <Option>Three</Option>
@@ -29,7 +31,8 @@
         </ComponentPreview>
 
         <ComponentPreview Title="Required">
-            <Select Required="true">
+            <Select Required="true"
+                    Value="@("")">
                 <Option>One</Option>
                 <Option>Two</Option>
                 <Option>Three</Option>
@@ -37,7 +40,8 @@
         </ComponentPreview>
 
         <ComponentPreview Title="Readonly">
-            <Select readonly="@true">
+            <Select readonly="@true"
+                    Value="@("")">
                 <Option>One</Option>
                 <Option>Two</Option>
                 <Option>Three</Option>
@@ -45,7 +49,8 @@
         </ComponentPreview>
 
         <ComponentPreview Title="Placeholder">
-            <Select Placeholder="Choose an option">
+            <Select Placeholder="Choose an option"
+                    Value="@("")">
                 <Option>One</Option>
                 <Option>Two</Option>
                 <Option>Three</Option>
@@ -53,7 +58,8 @@
         </ComponentPreview>
 
         <ComponentPreview Title="Icon">
-            <Select IconStart="IconName.Search">
+            <Select IconStart="IconName.Search"
+                    Value="@("")">
                 <Option>One</Option>
                 <Option>Two</Option>
                 <Option>Three</Option>
@@ -61,7 +67,8 @@
         </ComponentPreview>
 
         <ComponentPreview Title="Hint">
-            <Select Hint="This is a hint">
+            <Select Hint="This is a hint"
+                    Value="@("")">
                 <Option>One</Option>
                 <Option>Two</Option>
                 <Option>Three</Option>
@@ -69,17 +76,20 @@
         </ComponentPreview>
 
         <ComponentPreview Title="Dense">
-            <Select Dense="true">
+            <Select Dense="true"
+                    Value="@("")">
                 <Option>One</Option>
                 <Option>Two</Option>
                 <Option>Three</Option>
             </Select>
-            <Select Dense="true">
+            <Select Dense="true"
+                    Value="@("")">
                 <Option>One</Option>
                 <Option>Two</Option>
                 <Option>Three</Option>
             </Select>
-            <Select Dense="true">
+            <Select Dense="true"
+                    Value="@("")">
                 <Option>One</Option>
                 <Option>Two</Option>
                 <Option>Three</Option>
@@ -112,19 +122,22 @@
 
         <ComponentPreview Title="Size">
             <Select Label="Small"
-                    Size="InputSize.Small">
+                    Size="InputSize.Small"
+                    Value="@("")">
                 <Option>One</Option>
                 <Option>Two</Option>
                 <Option>Three</Option>
             </Select>
             <Select Label="Medium (Default)"
-                    Size="InputSize.Medium">
+                    Size="InputSize.Medium"
+                    Value="@("")">
                 <Option>One</Option>
                 <Option>Two</Option>
                 <Option>Three</Option>
             </Select>
             <Select Label="Large"
-                    Size="InputSize.Large">
+                    Size="InputSize.Large"
+                    Value="@("")">
                 <Option>One</Option>
                 <Option>Two</Option>
                 <Option>Three</Option>
@@ -135,15 +148,18 @@
             <Select Hint="This is a hint"
                     Label="Select"
                     Placeholder="Choose an option"
-                    State="FormFieldState.Default" />
+                    State="FormFieldState.Default"
+                    Value="@("")" />
             <Select Hint="This is a hint"
                     Label="Select"
                     Placeholder="Choose an option"
-                    State="FormFieldState.Invalid" />
+                    State="FormFieldState.Invalid"
+                    Value="@("")" />
             <Select Hint="This is a hint"
                     Label="Select"
                     Placeholder="Choose an option"
-                    State="FormFieldState.Valid" />
+                    State="FormFieldState.Valid"
+                    Value="@("")" />
         </ComponentPreview>
     </PageBody>
 </Page>
