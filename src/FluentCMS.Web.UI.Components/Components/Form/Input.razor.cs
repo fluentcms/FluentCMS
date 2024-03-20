@@ -5,6 +5,7 @@ public enum InputType
     Color,
     Date,
     DatetimeLocal,
+    Email,
     Number,
     Password,
     Text,
