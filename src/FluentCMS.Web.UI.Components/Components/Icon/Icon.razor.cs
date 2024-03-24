@@ -29,6 +29,7 @@ public enum IconName
     Lock,
     Moon,
     Next,
+    Number,
     Paragraph,
     Plus,
     Previous,

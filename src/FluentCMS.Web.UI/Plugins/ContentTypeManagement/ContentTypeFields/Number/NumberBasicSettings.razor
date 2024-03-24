@@ -1,0 +1,31 @@
+﻿@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields
+
+<Grid GutterX="GridGutter.Large">
+    <GridItem Small="GridItemColumn.Twelve"
+              Medium="GridItemColumn.Six">
+        <FieldName />
+    </GridItem>
+    <GridItem Small="GridItemColumn.Twelve"
+              Medium="GridItemColumn.Six">
+        <Select Label="Number format"
+                Value="@("")">
+            <Option>
+                integer (ex: 10)
+            </Option>
+            <Option>
+                big integer (ex: 123456789)
+            </Option>
+            <Option>
+                decimal (ex: 2.22)
+            </Option>
+            <Option>
+                float (ex: 3.33333333)
+            </Option>
+        </Select>
+    </GridItem>
+</Grid>
+
+@code {
+    [CascadingParameter]
+    public ContentTypeField Model { get; set; }
+}
