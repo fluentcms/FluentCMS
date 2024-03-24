@@ -5,17 +5,17 @@ describe('Basic', () => {
         cy.visit('/')
     })
 
-    it('setup page', () => {
+    it('Setup page', () => {
         cy.checkSetup()
     })
 
-    it('login page', () => {
+    it('Login page', () => {
         cy.visit('/auth/login')
         cy.shortWait()
         cy.checkLogin()
     })
 
-    it('register page', () => {
+    it('Register page', () => {
         // cy.visit('/auth/register')
         // cy.shortWait()
         // cy.checkRegister()

@@ -7,7 +7,7 @@
             <Select @bind-Value="AppSlug"
                     class="lg:hidden"
                     Dense="true"
-                    Id="contentAppSelect"
+                    Id="contentIndexAppSelect"
                     Placeholder="Choose an App..."
                     OnChange="(string value) => OnChangeApp()">
                 @foreach (var app in Apps)
@@ -17,13 +17,15 @@
             </Select>
             <Spacer class="lg:hidden"/>
 
-            <Grid GutterY="GridGutter.Medium" class="lg:hidden">
+            <Grid class="lg:hidden"
+                  GutterY="GridGutter.Medium"
+                  Id="contentIndexCollectionList">
                 @foreach (var collection in Collections)
                 {
                     
                     <GridItem Small="GridItemColumn.Twelve">
                         <a Href="@($"?pluginDef=Content Management&typeName=Content List&appSlug={AppSlug}&contentTypeSlug={collection.Slug}")"
-                            id="@($"contentSidebar{@collection.Slug}Link")">
+                            id="@($"contentIndex{@collection.Slug}Link")">
                             <Card>
                                 <CardBody>
                                     <CardTitle>@collection.Title</CardTitle>

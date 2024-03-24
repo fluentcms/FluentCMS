@@ -1,7 +1,10 @@
 const { defineConfig } = require("cypress");
 
+const isMobile = !!process.env.CYPRESS_MOBILE;
+
 module.exports = defineConfig({
-    viewportWidth: 1366,
+    // viewportWidth: 1366,
+    viewportWidth: isMobile ? 360 : 1366,
     viewportHeight: 800,
     reporter: 'cypress-mochawesome-reporter',
     reporterOptions: {

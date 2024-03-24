@@ -1,6 +1,6 @@
 Cypress.Commands.add('navigateToContentTypeListPage', (appTitle) => {
     cy.visit('/')
-    cy.get('#adminSidebarContentTypeLink').click()
+    cy.getSidebarItem('#adminSidebarContentTypeLink').click()
 
     cy.waitForNavigate()
     cy.get('#contentTypeAppSelect').should('be.visible')
@@ -84,13 +84,13 @@ Cypress.Commands.add('contentTypeDetail', (contentType) => {
     cy.contains('#contentTypeListTable tr', contentType.slug).then(($row) => {
         cy.wrap($row).find('[data-test="preview-btn"]').click()
 
-        cy.contains('ContentType Detail').should('be.visible')
-        cy.contains(contentType.title).should('be.visible')
-        cy.contains(contentType.slug).should('be.visible')
-        cy.contains(contentType.description).should('be.visible')
+        cy.get('main').contains('ContentType Detail').should('be.visible')
+        cy.get('main').contains(contentType.title).should('be.visible')
+        cy.get('main').contains(contentType.slug).should('be.visible')
+        cy.get('main').contains(contentType.description).should('be.visible')
         for (let field of contentType.fields) {
-            cy.contains(field.title).should('be.visible')
-            cy.contains(field.slug).should('be.visible')
+            cy.get('main').contains(field.title).should('be.visible')
+            cy.get('main').contains(field.slug).should('be.visible')
         }
     })
 })

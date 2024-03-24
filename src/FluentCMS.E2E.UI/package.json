@@ -2,6 +2,8 @@
     "name": "fluentcms.e2e",
     "scripts": {
         "test:open": "cypress open",
+        "test:open:mobile": "CYPRESS_MOBILE=true && npm run test:open",
+        "test:mobile": "CYPRESS_MOBILE=true && npm run test",
         "test": "cypress run"
     },
     "devDependencies": {
