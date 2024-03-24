@@ -13,6 +13,8 @@ describe('Basic', () => {
         cy.visit('/auth/login')
         cy.shortWait()
         cy.checkLogin()
+        cy.shot('Login')
+
     })
 
     it('Register page', () => {
