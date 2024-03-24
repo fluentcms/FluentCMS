@@ -140,7 +140,7 @@
         if (result)
         {
             await ContentClient.DeleteAsync(AppSlug, ContentTypeSlug, content.Id);
-            FetchData();
+            await FetchData();
         }
     }
 
