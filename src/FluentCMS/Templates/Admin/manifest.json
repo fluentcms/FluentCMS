@@ -59,6 +59,17 @@
             ]
         },
         {
+            "Name": "Change Password",
+            "Description": "Change Password Plugin",
+            "Types": [
+                {
+                    "Name": "Change Password",
+                    "Type": "ChangePasswordViewPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
             "Name": "Logout",
             "Description": "Logout Plugin",
             "Types": [
@@ -316,6 +327,17 @@
                     "Plugins": [
                         {
                             "Definition": "Reset Password",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Change Password",
+                    "Path": "/change-password",
+                    "Layout": "AuthLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "Change Password",
                             "Section": "Main"
                         }
                     ]
