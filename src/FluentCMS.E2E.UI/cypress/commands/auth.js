@@ -3,8 +3,6 @@
 import config from '../../config'
 
 Cypress.Commands.add('checkLogin', (username, password) => {
-    cy.shot('Login')
-
     cy.get('#loginUsernameInput').clear()
     cy.get('#loginUsernameInput').type(username || config.setupUsername, {delay: 0})
 

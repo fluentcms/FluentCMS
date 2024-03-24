@@ -893,11 +893,14 @@ body.dark {
 .f-page-back-button:focus > span {
   @apply underline;
 }
+.f-page-body {
+  @apply mb-12;
+}
 .f-page-header {
   @apply border-gray-200 px-0 py-4 text-gray-700;
 }
 .f-page-header-actions {
-  @apply flex-shrink-0 flex flex-col items-start md:flex-row md:items-center lg:justify-end space-y-3 md:space-y-0 md:space-x-3;
+  @apply flex-shrink-0 flex flex-col items-end md:flex-row md:items-center lg:justify-end space-y-3 md:space-y-0 md:space-x-3;
 }
 .f-page-header-body {
   @apply flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 md:space-x-4 pb-4 px-0;
@@ -959,6 +962,9 @@ body.dark {
 }
 .f-sidebar-footer {
   @apply justify-center w-full flex flex-col bg-white dark:bg-gray-800;
+}
+.f-sidebar-toggler {
+  @apply p-2 mr-2 text-gray-600 rounded-lg cursor-pointer lg:hidden hover:text-gray-900 hover:bg-gray-100 focus:bg-gray-100 dark:focus:bg-gray-700 focus:ring-2 focus:ring-gray-100 dark:focus:ring-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white;
 }
 .f-sidebar-item > span {
   @apply text-xs py-3;

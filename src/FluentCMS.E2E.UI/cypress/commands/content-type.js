@@ -1,5 +1,5 @@
 Cypress.Commands.add('navigateToContentTypeListPage', (appTitle) => {
-    cy.visit('/')
+    cy.visit('/').waitForNavigate()
     cy.getSidebarItem('#adminSidebarContentTypeLink').click()
 
     cy.waitForNavigate()
