@@ -1,5 +1,4 @@
 ﻿using FluentCMS.Web.UI.Components;
-using FluentCMS.Web.UI.Components.Resources;
 using System.Resources;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -13,10 +12,10 @@ public static class UIServiceExtensions
         services.AddScoped<ToastService>();
 
         services.AddKeyedScoped(
-            typeof(Icons).FullName,
+            typeof(IconResource).FullName,
             (_, _) =>
             {
-                var iconsType = typeof(Icons);
+                var iconsType = typeof(IconResource);
                 return new ResourceManager(iconsType.FullName!, iconsType.Assembly);
             }
         );
