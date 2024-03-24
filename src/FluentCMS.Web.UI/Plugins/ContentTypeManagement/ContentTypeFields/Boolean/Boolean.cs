@@ -10,7 +10,7 @@ public class BooleanInfo : Base
 
     public static IconName Icon = IconName.Boolean;
 
-    public static int Order = 2;
+    public static int Order = 9;
 
     public static Type BasicSettings = typeof(BooleanBasicSettings);
 
