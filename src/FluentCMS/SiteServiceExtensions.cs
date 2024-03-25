@@ -38,13 +38,13 @@ public static class SiteServiceExtensions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             });
-            context.Response.Cookies.Append("UserLoginResponse", json);
+            context.Response.Cookies.Append(CookieKeys.UserLoginResponse, json);
             context.Response.Redirect("/");
         });
 
         app.MapGet("/api/logout", async (context) =>
         {
-            context.Response.Cookies.Delete("UserLoginResponse");
+            context.Response.Cookies.Delete(CookieKeys.UserLoginResponse);
             context.Response.Redirect("/");
         });
 
