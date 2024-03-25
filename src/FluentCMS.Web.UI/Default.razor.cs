@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Reflection;
 using Microsoft.AspNetCore.Components.Sections;
+using Microsoft.AspNetCore.Http;
+using FluentCMS.Web.UI.Services.LocalStorage;
 
 namespace FluentCMS.Web.UI;
 
@@ -34,8 +36,12 @@ public partial class Default : IDisposable
 
     [Parameter] public string? Route { get; set; }
 
+    [Inject] public IHttpContextAccessor HttpContextAccessor { get; set; } = default!;
+
     protected override void OnInitialized()
     {
+
+
         NavigationManager.LocationChanged += LocationChanged;
     }
 
@@ -53,6 +59,12 @@ public partial class Default : IDisposable
     {
         if (!await SetupManager.IsInitialized())
         {
+            // if prerendering
+            if (!HttpContextAccessor.HttpContext!.Response.HasStarted)
+            {
+                // clean up previous auth cookie to avoid fetching non-existing user that was deleted at start-up
+                HttpContextAccessor.HttpContext!.Response.Cookies.Delete(CookieKeys.UserLoginResponse);
+            }
             Page = await SetupManager.GetSetupPage();
             return;
         }
