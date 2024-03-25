@@ -16,6 +16,10 @@ public class AuthStateProvider(NavigationManager navigationManager, IHttpContext
         try
         {
             var user = await FetchUserDetail();
+            if (user == null)
+            {
+                return NotAuthorized();
+            }
             NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(GetClaimsPricipal(user.Data))));
             return new AuthenticationState(GetClaimsPricipal(user.Data));
         }
@@ -30,13 +34,23 @@ public class AuthStateProvider(NavigationManager navigationManager, IHttpContext
         return new AuthenticationState(new ClaimsPrincipal());
     }
 
-    private async Task<UserDetailResponseIApiResult> FetchUserDetail()
+    private async Task<UserDetailResponseIApiResult?> FetchUserDetail()
     {
         var json = httpContextAccessor.HttpContext?.Request?.Cookies["UserLoginResponse"];
-        var loginResponse =
-            JsonSerializer.Deserialize<UserLoginResponse>(json);
-        var user = await userClient.GetAsync(loginResponse.UserId);
-        return user;
+        if (json != null)
+        {
+            var loginResponse =
+                JsonSerializer.Deserialize<UserLoginResponse?>(json);
+            
+            if (loginResponse?.UserId is var userId && userId is null || userId == default(Guid))
+            {
+                return null;
+            }
+            var user = await userClient.GetAsync(loginResponse.UserId);
+            return user;
+        }
+
+        return null;
     }
 
     public async Task<UserLoginResponseIApiResult> LoginAsync(UserLoginRequest userLoginRequest)
@@ -46,8 +60,6 @@ public class AuthStateProvider(NavigationManager navigationManager, IHttpContext
         if (result.Errors!.Count == 0)
         {
             navigationManager.NavigateTo($"/api/auth?user-id={result.Data.UserId}&token={result.Data.Token}&role-ids={JsonSerializer.Serialize(result.Data.RoleIds)}", true);
-            var user = await FetchUserDetail();
-            NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(GetClaimsPricipal(user.Data))));
         }
         return result;
     }

@@ -34,7 +34,7 @@ public class UserService(
     {
         var identityResult = await userManager.CreateAsync(user, password);
         identityResult.ThrowIfInvalid();
-        return await GetById(user.Id, cancellationToken);
+        return user;
     }
 
     public async Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default)
