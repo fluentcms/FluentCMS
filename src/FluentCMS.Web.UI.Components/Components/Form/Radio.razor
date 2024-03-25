@@ -3,13 +3,7 @@
 @namespace FluentCMS.Web.UI.Components
 
 <FormField Appearance="FormFieldAppearance.Radio"
-           Dense="@Dense"
-           Disabled="@Disabled"
-           Hint="@Hint"
-           Id="@Id"
-           Label="@Label"
-           Name="@Name"
-           Required="@Required">
+           Field="this">
     <input @attributes="AdditionalAttributes"
            @bind="@Value"
            class="@this.GetClasses()"

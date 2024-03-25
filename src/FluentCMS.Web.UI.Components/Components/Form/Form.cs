@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Components;
-using System.Linq.Expressions;
 
 namespace FluentCMS.Web.UI.Components;
 
@@ -55,18 +54,6 @@ public abstract class FormElementsValuable<T> : FormElements
 
     [Parameter]
     public EventCallback<T> ValueChanged { get; set; }
-}
-
-public abstract class FormElementsField : FormElements
-{
-    [Parameter]
-    public FormFieldAppearance Appearance { get; set; }
-
-    [Parameter]
-    public IconName? IconEnd { get; set; }
-
-    [Parameter]
-    public IconName? IconStart { get; set; }
 }
 
 public abstract class FormCheckboxesType<T> : FormElementsValuable<T>

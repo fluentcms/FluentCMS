@@ -1,25 +1,25 @@
 @* TODO *@
 
 @implements IDisposable
-@inherits FormElementsField
+@inherits FormElements
 
 @namespace FluentCMS.Web.UI.Components
 
 <div @attributes="AdditionalAttributes"
      class="@this.GetClasses()">
-    @if (!IsInlineLabel && (!string.IsNullOrEmpty(Label) || LabelFragment != null))
+    @if (!IsInlineLabel && (!string.IsNullOrEmpty(Field.Label) || Field.LabelFragment != null))
     {
-        <label for="@Id"
+        <label for="@Field.Id"
                class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-            @if (!string.IsNullOrEmpty(Label))
+            @if (!string.IsNullOrEmpty(Field.Label))
             {
-                @Label
+                @Field.Label
             }
             else
             {
-                @LabelFragment
+                @Field.LabelFragment
             }
-            @(Required ? "\u00A0*" : "")
+            @(Field.Required ? "\u00A0*" : "")
         </label>
     }
     <div class="relative">
@@ -36,34 +36,34 @@
                 <label class="relative inline-flex items-center cursor-pointer">
                     @ChildContent
                     <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">
-                        @if (LabelFragment == null)
+                        @if (Field.LabelFragment == null)
                         {
-                            @Label
+                            @Field.Label
                         }
                         else
                         {
-                            @LabelFragment
+                            @Field.LabelFragment
                         }
-                        @(Required ? "\u00A0*" : "")
+                        @(Field.Required ? "\u00A0*" : "")
                     </span>
                 </label>
             }
             else
             {
                 @ChildContent
-                @if (!string.IsNullOrEmpty(Label) || LabelFragment != null)
+                @if (!string.IsNullOrEmpty(Field.Label) || Field.LabelFragment != null)
                 {
-                    <label for="@Id"
+                    <label for="@Field.Id"
                            class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                        @if (!string.IsNullOrEmpty(Label))
+                        @if (!string.IsNullOrEmpty(Field.Label))
                         {
-                            @Label
+                            @Field.Label
                         }
                         else
                         {
-                            @LabelFragment
+                            @Field.LabelFragment
                         }
-                        @(Required ? "\u00A0*" : "")
+                        @(Field.Required ? "\u00A0*" : "")
                     </label>
                 }
             }
@@ -79,18 +79,18 @@
             </div>
         }
     </div>
-    @if (!Dense)
+    @if (!Field.Dense)
     {
         @if (string.IsNullOrEmpty(Errors.FirstOrDefault()))
         {
             <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                @(Hint ?? "\u00A0")
+                @(Field.Hint ?? "\u00A0")
             </p>
         }
         else
         {
             <p class="mt-2 text-sm text-gray-500 dark:text-gray-400"
-               id="@(Id)Error">
+               id="@(Field.Id)Error">
                 @Errors.FirstOrDefault()
             </p>
         }
@@ -100,6 +100,12 @@
 
 @code
 {
+    [Parameter]
+    public FormFieldAppearance Appearance { get; set; }
+
+    [Parameter]
+    public FormElements Field { get; set; }
+
     [CSSProperty]
     public bool HasIconEnd { get => IconEnd != null; }
 
@@ -111,6 +117,22 @@
 
     [CascadingParameter]
     EditContext? Context { get; set; }
+
+    IconName? IconEnd
+    {
+        get
+        {
+            return (IconName?)Field.GetType().GetProperty("IconEnd")?.GetValue(Field);
+        }
+    }
+
+    IconName? IconStart
+    {
+        get
+        {
+            return (IconName?)Field.GetType().GetProperty("IconStart")?.GetValue(Field);
+        }
+    }
 
     bool IsInlineLabel
     {
@@ -134,12 +156,12 @@
     {
         get
         {
-            if (Context == null || Name == null)
+            if (Context == null || Field.Name == null)
             {
                 return null;
             }
 
-            return Context.Field(Name);
+            return Context.Field(Field.Name);
         }
     }
 

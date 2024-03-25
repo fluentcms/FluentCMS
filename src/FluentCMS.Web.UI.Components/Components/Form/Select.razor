@@ -5,15 +5,7 @@
 @namespace FluentCMS.Web.UI.Components
 
 <FormField Appearance="FormFieldAppearance.Select"
-           Dense="@Dense"
-           Disabled="@Disabled"
-           Hint="@Hint"
-           IconEnd="@IconEnd"
-           IconStart="@IconStart"
-           Id="@Id"
-           Label="@Label"
-           Name="@Name"
-           Required="@Required">
+           Field="this">
     <InputSelect @attributes="AdditionalAttributes"
                  @bind-Value="Value"
                  class="@this.GetClasses()"

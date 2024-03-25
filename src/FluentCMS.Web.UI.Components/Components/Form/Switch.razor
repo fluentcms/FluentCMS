@@ -3,13 +3,7 @@
 @namespace FluentCMS.Web.UI.Components
 
 <FormField Appearance="FormFieldAppearance.Switch"
-           Dense="@Dense"
-           Disabled="@Disabled"
-           Hint="@Hint"
-           Id="@Id"
-           Label="@Label"
-           Name="@Name"
-           Required="@Required">
+           Field="this">
     <InputCheckbox @attributes="AdditionalAttributes"
                    @bind-Value="Value"
                    class="sr-only peer"
