@@ -10,6 +10,7 @@ public enum IconName
     Clipboard,
     ClipboardList,
     Clock,
+    Close,
     Code,
     Cog,
     Delete,
