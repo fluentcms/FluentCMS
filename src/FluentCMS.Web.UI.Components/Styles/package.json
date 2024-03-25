@@ -3,8 +3,8 @@
     "scripts": {
         "tailwind:watch": "tailwindcss -i ./dist/app.css -o ../wwwroot/css/app.min.css --watch",
         "tailwind": "tailwindcss -i ./dist/app.css -o ../wwwroot/css/app.min.css --minify",
-        "sass:watch": "sass ./scss/App.scss:./dist/app.css --watch",
-        "sass": "sass ./scss/App.scss:./dist/app.css",
+        "sass:watch": "sass ./App.scss:./dist/app.css --watch",
+        "sass": "sass ./App.scss:./dist/app.css",
         "watch": "conc \"npm run tailwind:watch\" \"npm run sass:watch\"",
         "build": "npm run sass && npm run tailwind"
     },

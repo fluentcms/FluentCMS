@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Update="Components\Icon\Icon.resx">
+    <EmbeddedResource Update="Components\Icon\IconResource.resx">
       <SubType>Designer</SubType>
     </EmbeddedResource>
   </ItemGroup>
