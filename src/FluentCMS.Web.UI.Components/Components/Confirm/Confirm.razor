@@ -113,6 +113,6 @@
 
         module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Confirm/Confirm.razor.js");
 
-        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { Static });
+        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { Open, Static });
     }
 }

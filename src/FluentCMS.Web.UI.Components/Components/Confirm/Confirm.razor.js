@@ -25,6 +25,10 @@ export function initialize(dotnet, element, config) {
     });
 
     confirms.set(element, confirm);
+
+    if (config.open) {
+        confirm.show();
+    }
 }
 
 export function dispose(dotnet, element) {
