@@ -9,7 +9,7 @@ public abstract class FormElements : BaseComponent
     public bool Dense { get; set; }
 
     [Parameter]
-    [CssProperty]
+    [CSSProperty]
     public bool Disabled { get; set; }
 
     [Parameter]

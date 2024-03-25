@@ -14,7 +14,7 @@ public static class BaseComponentHelper
         // get properties
         var properties = baseComponent.GetType().
             GetProperties().
-            Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CssPropertyAttribute)));
+            Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CSSPropertyAttribute)));
 
         foreach (var property in properties)
         {
