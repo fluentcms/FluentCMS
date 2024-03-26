@@ -5,6 +5,10 @@ describe('Admin Panel', () => {
         cy.doSetup()
     })
 
+    before(() => {
+        cy.cleanLogs()
+    })
+
     it('Check Navbar', () => {
         cy.checkAdminNavbar()
     })

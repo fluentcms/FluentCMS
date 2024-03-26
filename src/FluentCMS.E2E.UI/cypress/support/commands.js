@@ -25,8 +25,22 @@
 //
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
+Cypress.Commands.add('cleanLogs', () => {
+    cy.writeFile('./cypress/logs.txt', '')
+})
 
-Cypress.Commands.add('waitForNavigate', () => cy.wait(250))
+Cypress.Commands.add('waitForNavigate', () => {
+    cy.get('body').find('.f-toast-provider').then($el => {
+        const text = $el.text().trim()
+        if (text) {
+            cy.writeFile('./cypress/logs.txt', text + '\n\n\n', { flag: 'a' })
+        }
+        cy.wrap($el).should('be.empty')
+    })
+
+    // TODO: wait until location changes
+    cy.wait(250)
+})
 Cypress.Commands.add('shortWait', () => cy.wait(750))
 Cypress.Commands.add('mediumWait', () => cy.wait(1000))
 Cypress.Commands.add('longWait', () => cy.wait(1500))
@@ -45,13 +59,13 @@ Cypress.Commands.add('dashboardShouldAvailable', () => {
     cy.get('main').contains('Welcome').should('be.visible')
 })
 
-Cypress.Commands.add('deleteRow', {prevSubject: 'element'}, ($el, confirm = true) => {
+Cypress.Commands.add('deleteRow', { prevSubject: 'element' }, ($el, confirm = true) => {
     cy.shortWait()
     cy.get('.f-confirm').should('not.exist')
-  
+
     cy.wrap($el).find('[data-test="delete-btn"]').click()
     cy.get('.f-confirm-content').should('be.visible')
-    if(confirm) {
+    if (confirm) {
         cy.get('.f-confirm-content').contains('Yes, I\'m sure').click()
     } else {
         cy.get('.f-confirm-content').contains('No, cancel').click()
@@ -63,10 +77,10 @@ Cypress.Commands.add('deleteRow', {prevSubject: 'element'}, ($el, confirm = true
 
 })
 
-Cypress.Commands.add('deleteTableRows', {prevSubject: 'element'}, ($table) => {
+Cypress.Commands.add('deleteTableRows', { prevSubject: 'element' }, ($table) => {
     function removeRows() {
         return cy.wrap($table).then(async $rows => {
-            if($rows[0].querySelector('.f-table-row')) {
+            if ($rows[0].querySelector('.f-table-row')) {
                 await cy.wrap($rows).rows().first().deleteRow()
 
                 removeRows()
@@ -79,11 +93,11 @@ Cypress.Commands.add('deleteTableRows', {prevSubject: 'element'}, ($table) => {
 Cypress.Commands.add('rows', { prevSubject: 'element' }, ($table, filter) => {
     let $rows = $table.find('.f-table-row');
 
-    if($rows.length && filter) {
+    if ($rows.length && filter) {
         return cy.wrap($rows).filter(`:contains("${filter}")`)
     }
 
-    if($rows.length) {
+    if ($rows.length) {
         return $rows
     } else {
         return []
