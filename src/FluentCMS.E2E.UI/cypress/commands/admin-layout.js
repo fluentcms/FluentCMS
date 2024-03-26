@@ -1,4 +1,4 @@
-const isMobile = !!process.env.CYPRESS_MOBILE;
+
 Cypress.Commands.add('getSidebarItem', (id) => {
     cy.waitForNavigate()
     cy.waitForNavigate()
@@ -6,21 +6,15 @@ Cypress.Commands.add('getSidebarItem', (id) => {
         cy.wrap($sidebar).click({ force: true })
     })
 
-    if (isMobile) {
+    const isMobile = Cypress.config('viewportWidth') < 400
 
-        cy.get('#adminNavbarToggleButton').then($el => {
-            if ($el) {
-                cy.wrap($el).click()
-                cy.waitForNavigate()
-            }
-        }).then(() => {
-            return cy.get(id)
-        })
+    if (isMobile) {
+        cy.get('#adminNavbarToggleButton').click()
+        cy.waitForNavigate()
+        return cy.get(id)
     } else {
         return cy.get(id)
-
     }
-
 })
 
 Cypress.Commands.add("checkAdminSidebarNavigations", () => {

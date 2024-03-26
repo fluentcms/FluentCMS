@@ -1,27 +1,26 @@
+const isMobile = Cypress.config('viewportWidth') < 400
+
 Cypress.Commands.add('navigateToContentListPage', (appTitle, contentTypeTitle) => {
     cy.visit('/')
 
     cy.getSidebarItem('#adminSidebarContentManagementLink').click()
     cy.waitForNavigate()
-    if(appTitle) {
-        cy.get('#contentIndexAppSelect').then($el => {
-            if($el.length > 0) {
-                cy.wrap($el).select(appTitle)
-            } else {
-                cy.get('#contentAppSelect').select(appTitle)
-            }
-            
-        })
+
+    if (appTitle) {
+        if (isMobile) {
+            cy.get('#contentIndexAppSelect').select(appTitle)
+        } else {
+            cy.get('#contentAppSelect').select(appTitle)
+
+        }
         cy.waitForNavigate()
     }
-    cy.get('#contentIndexCollectionList').then($el => {
-        if($el.length > 0) {
-            cy.wrap($el).contains(contentTypeTitle).click().waitForNavigate()
+    if (isMobile) {
+        cy.get('#contentIndexCollectionList').contains(contentTypeTitle).click().waitForNavigate()
 
-        } else {
-            cy.get('main').contains(contentTypeTitle).click().waitForNavigate()
-        }
-    })
+    } else {
+        cy.get('main').contains(contentTypeTitle).click().waitForNavigate()
+    }
     // TODO: Enable this test
     cy.contains(contentTypeTitle + " List").should('be.visible')
 })
@@ -47,8 +46,8 @@ Cypress.Commands.add('contentCreateCancel', (contentTypeTitle) => {
 
 Cypress.Commands.add('contentCreate', (appTitle, contentTypeTitle, value) => {
 
-    for(let field in value) {
-        cy.get(`#contentCreate${field}Input`).type(value[field], {delay: 50})
+    for (let field in value) {
+        cy.get(`#contentCreate${field}Input`).type(value[field], { delay: 50 })
     }
 
     cy.get('#contentCreateSubmitButton').click()
@@ -58,12 +57,12 @@ Cypress.Commands.add('contentCreate', (appTitle, contentTypeTitle, value) => {
     cy.waitForNavigate()
 
     cy.contains(contentTypeTitle + " List").should('be.visible')
-    
-    for(let field in value) {
+
+    for (let field in value) {
         cy.contains(value[field])
     }
     cy.shot('Content Create ' + contentTypeTitle)
-    
+
 })
 
 Cypress.Commands.add('contentList', (appTitle, contentTypeTitle) => {
@@ -74,7 +73,7 @@ Cypress.Commands.add('contentList', (appTitle, contentTypeTitle) => {
 })
 
 Cypress.Commands.add('contentCreateCancel', () => {
-    
+
 })
 
 
@@ -103,9 +102,9 @@ Cypress.Commands.add('contentDelete', (text) => {
 Cypress.Commands.add('contentUpdate', (appTitle, contentTypeTitle, text, value) => {
     cy.contains('#contentListTable tr', text).then($row => {
         cy.wrap($row).get('[data-test="edit-btn"]').click()
-        
-        for(let key in value) {
-            cy.get(`#contentUpdate${key}Input`).clear().type(value[key], {delay: 50})
+
+        for (let key in value) {
+            cy.get(`#contentUpdate${key}Input`).clear().type(value[key], { delay: 50 })
         }
         cy.get('#contentUpdateSubmitButton').click()
 
@@ -113,10 +112,10 @@ Cypress.Commands.add('contentUpdate', (appTitle, contentTypeTitle, text, value) 
         cy.navigateToContentListPage(appTitle, contentTypeTitle)
 
         cy.waitForNavigate()
-    
+
         cy.contains(contentTypeTitle + ' List').should('be.visible')
-        
-        const updatedText = value[Object.keys(value)[0]] 
+
+        const updatedText = value[Object.keys(value)[0]]
         cy.get('#contentListTable').contains(updatedText).should('be.visible')
         cy.shot('Content Update ' + contentTypeTitle)
     })
@@ -125,13 +124,13 @@ Cypress.Commands.add('contentUpdate', (appTitle, contentTypeTitle, text, value) 
 Cypress.Commands.add('contentUpdateCancel', (contentTypeTitle, text) => {
     cy.contains('#contentListTable tr', text).then($row => {
         cy.wrap($row).get('[data-test="edit-btn"]').click()
-        
-        
+
+
         // TODO: Fix JS interop error and back navigation
         // cy.get('#contentUpdateCancelButton').click()
         // cy.waitForNavigate()
         // cy.contains(contentTypeTitle + ' List').should('be.visible')
-        
+
         // cy.get('#contentListTable').contains(text).should('be.visible')
         // cy.shot('Content Update Cancel ' + contentTypeTitle)
     })
