@@ -1,4 +1,4 @@
-import '../../js/tom-select.js'
+import '../../../js/tom-select.js'
 
 const autocompletes = new Map();
 
