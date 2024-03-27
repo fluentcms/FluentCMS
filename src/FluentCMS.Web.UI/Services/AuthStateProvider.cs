@@ -1,12 +1,10 @@
-﻿using System.Reflection;
-using System.Security.Claims;
-using System.Text.Json;
-using FluentCMS.Web.UI.Services.LocalStorage;
-using Microsoft.AspNetCore.Components;
+﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using System.Security.Claims;
+using System.Text.Json;
 
 namespace FluentCMS.Web.UI.Services;
 public class AuthStateProvider(NavigationManager navigationManager, IHttpContextAccessor httpContextAccessor, UserClient userClient, AccountClient accountClient, ILoggerFactory factory) : RevalidatingServerAuthenticationStateProvider(factory)

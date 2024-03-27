@@ -1,11 +1,4 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace FluentCMS.Web.UI.Services;
 public static class ErrorMessageExtension
@@ -23,7 +16,7 @@ public static class ErrorMessageExtension
             return [ex.ToString()];
         }
     };
-    
+
 
     public static IServiceCollection AddErrorMessageFactory(this IServiceCollection services)
     {

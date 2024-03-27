@@ -2,7 +2,7 @@
 
 public class ToastModel
 {
-    public int Duration{ get; set; }
+    public int Duration { get; set; }
 
     public string? Message { get; set; }
 

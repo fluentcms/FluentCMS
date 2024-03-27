@@ -4,5 +4,5 @@ public enum TableColumnWidth
 {
     Default,
     Small,
-    
+
 }
