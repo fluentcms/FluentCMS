@@ -45,4 +45,5 @@ Scenario: Set Field
 Scenario: Delete Field
 	Given I have a ContentType
 	When I delete a field
+	Then Wait 1 second
 	Then I should not see the field
