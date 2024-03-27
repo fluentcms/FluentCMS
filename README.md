@@ -54,7 +54,7 @@ dotnet test ./src/Tests/FluentCMS.E2eTests
 - For a comprehensive understanding of the available options, you may wish to consult the official [dotnet-test](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test) documentation.
   
 
-## Generating LivingDoc
+### Generating LivingDoc
 
 To generate a [LivingDoc](https://specflow.org/tools/living-doc/) report, use the following command in the terminal:
 
