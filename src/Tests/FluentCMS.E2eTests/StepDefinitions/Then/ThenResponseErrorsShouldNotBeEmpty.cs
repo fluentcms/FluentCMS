@@ -5,7 +5,7 @@ public partial class StepDefinitions
     public void ThenResponseErrorsShouldNotBeEmpty()
     {
 
-        var errors = context.Get<ICollection<AppError>>();
+        var errors = context.Get<List<AppError>>();
         errors.ShouldNotBeEmpty();
     }
 }
