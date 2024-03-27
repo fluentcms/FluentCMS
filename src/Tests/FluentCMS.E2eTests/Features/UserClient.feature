@@ -44,5 +44,6 @@ Scenario: Update user
 		| password | DummyPassw0rd!      |
 	When I create a user
 	Then user is created
+	Then Wait 1 second
 	When I update a user
 	Then user is updated
