@@ -1,5 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
-using FluentCMS.Web.Api.Validation;
+﻿using FluentCMS.Web.Api.Validation;
+using System.ComponentModel.DataAnnotations;
 
 namespace FluentCMS.Web.Api.Models;
 

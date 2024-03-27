@@ -1,5 +1,5 @@
-﻿using System.Net.Http.Headers;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
+using System.Net.Http.Headers;
 using System.Reflection;
 
 namespace FluentCMS.E2eTests.StepDefinitions;

@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
-using FluentCMS.Web.Api.Models.Users;
+﻿using FluentCMS.Web.Api.Models.Users;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using System.Security.Claims;
 
 namespace FluentCMS.Web.Api.Controllers;
 

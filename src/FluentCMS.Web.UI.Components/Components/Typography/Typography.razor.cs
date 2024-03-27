@@ -37,4 +37,4 @@ public enum TextWeight
     Bold,
     ExtraBold,
     Black,
-} 
+}

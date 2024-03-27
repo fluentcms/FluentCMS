@@ -1,8 +1,7 @@
-﻿using System.Text.Json;
-using FluentCMS.Services;
+﻿using FluentCMS.Services;
 using FluentCMS.Web.Api.Models;
 using FluentCMS.Web.UI;
-using FluentCMS.Web.UI.Services.LocalStorage;
+using System.Text.Json;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
