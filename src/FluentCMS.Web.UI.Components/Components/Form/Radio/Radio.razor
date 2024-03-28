@@ -1,0 +1,15 @@
+@inherits FormCheckboxesType<bool>
+
+@namespace FluentCMS.Web.UI.Components
+
+<FormField Appearance="FormFieldAppearance.Radio"
+           Field="this">
+    <input @attributes="AdditionalAttributes"
+           @bind="@Value"
+           class="@this.GetClasses()"
+           disabled="@Disabled"
+           id="@Id"
+           name="@Name"
+           type="radio" />
+</FormField>
+

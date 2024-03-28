@@ -11,18 +11,18 @@
 @code {
     private MarkupString? Content { get; set; }
 
-    [Inject(Key = "FluentCMS.Web.UI.Components.Resources.Icons")]
+    [Inject(Key = "FluentCMS.Web.UI.Components.IconResource")]
     public required ResourceManager ResourceManager { get; set; }
 
     [Parameter]
-    [CssProperty]
+    [CSSProperty]
     public Color Color { get; set; } = Color.Default;
 
     [Parameter]
     public IconName Name { get; set; } = IconName.Default;
 
     [Parameter]
-    [CssProperty]
+    [CSSProperty]
     public IconSize Size { get; set; } = IconSize.Default;
 
     protected override void OnInitialized()

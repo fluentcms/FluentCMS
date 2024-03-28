@@ -2,13 +2,13 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<th @attributes="@AdditionalAttributes"
-    class="@this.GetClasses()">
+<div @attributes="AdditionalAttributes"
+     class="@this.GetClasses()">
     @ChildContent
-</th>
+</div>
 
 @code {
     [Parameter]
     [CSSProperty]
-    public TableColumnWidth Width { get; set; }
+    public bool Vertical { get; set; }
 }

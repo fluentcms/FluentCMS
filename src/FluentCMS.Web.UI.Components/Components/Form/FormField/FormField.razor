@@ -1,0 +1,191 @@
+@* TODO *@
+
+@implements IDisposable
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+<div @attributes="AdditionalAttributes"
+     class="@this.GetClasses()">
+    @if (!IsInlineLabel && (!string.IsNullOrEmpty(Field?.Label) || Field?.LabelFragment != null))
+    {
+        <label for="@Field?.Id"
+               class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+            @if (!string.IsNullOrEmpty(Field?.Label))
+            {
+                @Field?.Label
+            }
+            else
+            {
+                @Field?.LabelFragment
+            }
+            @(Field != null && Field.Required ? "\u00A0*" : "")
+
+        </label>
+    }
+    <div class="relative">
+        @if (IconStart != null)
+        {
+            <div class="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
+                <Icon Name="IconStart.GetValueOrDefault()" />
+            </div>
+        }
+        @if (IsInlineLabel)
+        {
+            @if (Appearance == FormFieldAppearance.Switch)
+            {
+                <label class="relative inline-flex items-center cursor-pointer">
+                    @ChildContent
+                    <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">
+                        @if (Field?.LabelFragment == null)
+                        {
+                            @Field?.Label
+                        }
+                        else
+                        {
+                            @Field?.LabelFragment
+                        }
+                        @(Field != null && Field.Required ? "\u00A0*" : "")
+                    </span>
+                </label>
+            }
+            else
+            {
+                @ChildContent
+                @if (!string.IsNullOrEmpty(Field?.Label) || Field?.LabelFragment != null)
+                {
+                    <label for="@Field?.Id"
+                           class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                        @if (!string.IsNullOrEmpty(Field?.Label))
+                        {
+                            @Field?.Label
+                        }
+                        else
+                        {
+                            @Field?.LabelFragment
+                        }
+                        @(Field != null && Field.Required ? "\u00A0*" : "")
+                    </label>
+                }
+            }
+        }
+        else
+        {
+            @ChildContent
+        }
+        @if (IconEnd != null)
+        {
+            <div class="absolute inset-y-0 end-0 flex items-center pe-3.5 pointer-events-none">
+                <Icon Name="IconEnd.GetValueOrDefault()" />
+            </div>
+        }
+    </div>
+    @if (Field != null && !Field.Dense)
+    {
+        @if (string.IsNullOrEmpty(Errors.FirstOrDefault()))
+        {
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                @(Field?.Hint ?? "\u00A0")
+            </p>
+        }
+        else
+        {
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400"
+               id="@(Field?.Id)Error">
+                @Errors.FirstOrDefault()
+            </p>
+        }
+        <Spacer />
+    }
+</div>
+
+@code
+{
+    [Parameter]
+    public FormFieldAppearance Appearance { get; set; }
+
+    [Parameter]
+    public FormElements? Field { get; set; }
+
+    [CSSProperty]
+    public bool HasIconEnd { get => IconEnd != null; }
+
+    [CSSProperty]
+    public bool HasIconStart { get => IconStart != null; }
+
+    [CSSProperty]
+    public FormFieldState State { get; set; }
+
+    [CascadingParameter]
+    EditContext? Context { get; set; }
+
+    IconName? IconEnd
+    {
+        get
+        {
+            return (IconName?)Field?.GetType().GetProperty("IconEnd")?.GetValue(Field);
+        }
+    }
+
+    IconName? IconStart
+    {
+        get
+        {
+            return (IconName?)Field?.GetType().GetProperty("IconStart")?.GetValue(Field);
+        }
+    }
+
+    bool IsInlineLabel
+    {
+        get => Appearance == FormFieldAppearance.Checkbox || Appearance == FormFieldAppearance.Radio || Appearance == FormFieldAppearance.Switch;
+    }
+
+    IEnumerable<string> Errors
+    {
+        get
+        {
+            if (Context == null || Identifier == null)
+            {
+                return new List<string> { };
+            }
+
+            return Context.GetValidationMessages(Identifier.GetValueOrDefault());
+        }
+    }
+
+    FieldIdentifier? Identifier
+    {
+        get
+        {
+            if (Context == null || Field?.Name == null)
+            {
+                return null;
+            }
+
+            return Context.Field(Field.Name);
+        }
+    }
+
+    void OnValidationRequested(object sender, ValidationRequestedEventArgs args)
+    {
+        if (Context == null || Identifier == null) return;
+
+        var IsValid = Context.IsValid(Identifier.GetValueOrDefault());
+
+        State = IsValid ? FormFieldState.Valid : FormFieldState.Invalid;
+    }
+
+    public void Dispose()
+    {
+        if (Context == null) return;
+
+        Context.OnValidationRequested -= OnValidationRequested;
+    }
+
+    protected override void OnInitialized()
+    {
+        if (Context == null) return;
+
+        Context.OnValidationRequested += OnValidationRequested;
+    }
+}

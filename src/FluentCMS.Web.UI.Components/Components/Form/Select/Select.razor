@@ -1,0 +1,31 @@
+@typeparam TValue
+
+@inherits FormInputsType<TValue>
+
+@namespace FluentCMS.Web.UI.Components
+
+<FormField Appearance="FormFieldAppearance.Select"
+           Field="this">
+    <InputSelect @attributes="AdditionalAttributes"
+                 @bind-Value="Value"
+                 class="@this.GetClasses()"
+                 disabled="@Disabled"
+                 id="@Id"
+                 multiple="@Multiple"
+                 name="@Name">
+        @if (!string.IsNullOrEmpty(this.Placeholder))
+        {
+            <Option Selected>@Placeholder</Option>
+        }
+        @ChildContent
+    </InputSelect>
+</FormField>
+
+@code {
+    [Parameter]
+    public bool Multiple { get; set; }
+
+    [Parameter]
+    [CSSProperty]
+    public InputSize? Size { get; set; }
+}

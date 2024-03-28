@@ -5,9 +5,9 @@
 @ChildContent
 
 @code {
-
     [Parameter]
     public EventCallback<Exception> OnError { get; set; }
+
     protected override async Task OnErrorAsync(Exception exception)
     {
         StateHasChanged();

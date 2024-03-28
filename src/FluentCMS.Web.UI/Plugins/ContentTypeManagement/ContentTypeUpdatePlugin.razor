@@ -38,7 +38,11 @@
                                       Name="Description"
                                       Placeholder="Enter Description..." />
                             <Spacer />
-                            <FormField Appearance="FormFieldAppearance.Input" Label="Fields">
+                            <div>
+                                <Typography Size="TextSize.Small"
+                                            Weight="TextWeight.Medium">
+                                    Fields
+                                </Typography>
                                 <Table>
                                     <TableHead>
                                         <TableCell>Slug</TableCell>
@@ -90,8 +94,8 @@
                                         </TableRow>
                                     </TableBody>
                                 </Table>
-
-                            </FormField>
+                                <Spacer />
+                            </div>
                             @if (!string.IsNullOrEmpty(Message))
                             {
                                 <Typography>
