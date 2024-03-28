@@ -1,6 +1,4 @@
-using FluentCMS.Web.UI.Services;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Authorization;
 
 namespace FluentCMS.Web.UI.Plugins.Auth;
 

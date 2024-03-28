@@ -41,6 +41,31 @@ FluentCMS is a modern Content Management System (CMS) built on the powerful ASP.
 
 *(You can expand on more detailed setup instructions, configurations, etc.)*
 
+## Running e2e Tests for FluentCMS APIs
+
+To run the end-to-end tests for FluentCMS APIs, use the following command in the terminal:
+
+```shell
+dotnet test ./src/Tests/FluentCMS.E2eTests
+```
+
+- Please ensure that the project is running at `http://localhost:5000` you can change this endpoint by modifing `./src/tests/FluentCMS.E2eTests/appsettings.json`
+  
+- For a comprehensive understanding of the available options, you may wish to consult the official [dotnet-test](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test) documentation.
+  
+
+### Generating LivingDoc
+
+To generate a [LivingDoc](https://specflow.org/tools/living-doc/) report, use the following command in the terminal:
+
+```shell
+livingdoc feature-folder ./src/Tests/FluentCMS.E2eTests -t ./src/Tests/FluentCMS.E2eTests\bin\Debug\net8.0\TestExecution.json --output LivingDoc.Html
+```
+
+- For guidance on installation and an overview of functionalities, kindly consult the [LivingDoc Official Documentation](https://docs.specflow.org/projects/specflow-livingdoc/en/latest/LivingDocGenerator/Generating-Documentation.html).
+  
+  -Please ensure that tests are executed prior to report generation, as the `TestExecution.json` file is essential for creating the report.
+
 ## Contributing
 
 We welcome contributions! If you're interested in improving FluentCMS, please read our [CONTRIBUTING.md](./CONTRIBUTING.md) guide.

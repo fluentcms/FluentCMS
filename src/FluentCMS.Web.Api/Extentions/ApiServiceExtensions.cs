@@ -3,13 +3,12 @@ using FluentCMS.Web.Api;
 using FluentCMS.Web.Api.Filters;
 using FluentCMS.Web.Api.Middleware;
 using FluentCMS.Web.Api.Setup;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace Microsoft.Extensions.DependencyInjection;
 

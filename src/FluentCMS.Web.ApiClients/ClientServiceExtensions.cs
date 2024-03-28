@@ -1,9 +1,9 @@
 ﻿using FluentCMS.Web.ApiClients;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text.Json;
-using Microsoft.AspNetCore.Http;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
