@@ -30,7 +30,7 @@ public class File : IAuditableEntity
     /// <summary>
     /// The size of the file in bytes.
     /// </summary>
-    public ulong Size { get; set; } = 0;
+    public long Size { get; set; } = 0;
 
     public string CreatedBy { get; set; } = string.Empty;
 
