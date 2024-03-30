@@ -1,5 +1,5 @@
 ﻿namespace FluentCMS.Entities;
-public class File : IAuditableEntity
+public class File : ICreationAuditableEntity
 {
     public Guid Id { get; set; }
 
@@ -35,9 +35,5 @@ public class File : IAuditableEntity
     public string CreatedBy { get; set; } = string.Empty;
 
     public DateTime CreatedAt { get; set; }
-
-    public string? ModifiedBy { get; set; }
-
-    public DateTime? ModifiedAt { get; set; }
 
 }
