@@ -2,8 +2,8 @@
 
 public interface IAuditableEntity : IEntity
 {
-    public string CreatedBy { get; set; }
-    public DateTime CreatedAt { get; set; }
+    string CreatedBy { get; set; }
+    DateTime CreatedAt { get; set; }
     string? ModifiedBy { get; set; }
     DateTime? ModifiedAt { get; set; }
 }
