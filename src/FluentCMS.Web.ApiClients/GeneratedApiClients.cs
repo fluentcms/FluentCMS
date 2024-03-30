@@ -146,8 +146,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Account/Register"
-                    urlBuilder_.Append("api/global/Account/Register");
+                    // Operation Path: "api/Account/Register"
+                    urlBuilder_.Append("api/Account/Register");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -228,8 +228,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Account/Authenticate"
-                    urlBuilder_.Append("api/global/Account/Authenticate");
+                    // Operation Path: "api/Account/Authenticate"
+                    urlBuilder_.Append("api/Account/Authenticate");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -310,8 +310,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Account/ChangePassword"
-                    urlBuilder_.Append("api/global/Account/ChangePassword");
+                    // Operation Path: "api/Account/ChangePassword"
+                    urlBuilder_.Append("api/Account/ChangePassword");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -392,8 +392,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Account/SendPasswordResetToken"
-                    urlBuilder_.Append("api/global/Account/SendPasswordResetToken");
+                    // Operation Path: "api/Account/SendPasswordResetToken"
+                    urlBuilder_.Append("api/Account/SendPasswordResetToken");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -474,8 +474,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Account/ValidatePasswordResetToken"
-                    urlBuilder_.Append("api/global/Account/ValidatePasswordResetToken");
+                    // Operation Path: "api/Account/ValidatePasswordResetToken"
+                    urlBuilder_.Append("api/Account/ValidatePasswordResetToken");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -552,8 +552,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Account/GetUserDetail"
-                    urlBuilder_.Append("api/global/Account/GetUserDetail");
+                    // Operation Path: "api/Account/GetUserDetail"
+                    urlBuilder_.Append("api/Account/GetUserDetail");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -634,8 +634,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Account/SetUserDetail"
-                    urlBuilder_.Append("api/global/Account/SetUserDetail");
+                    // Operation Path: "api/Account/SetUserDetail"
+                    urlBuilder_.Append("api/Account/SetUserDetail");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -663,828 +663,6 @@ namespace FluentCMS.Web.ApiClients
                         if (status_ == 200)
                         {
                             var objectResponse_ = await ReadObjectResponseAsync<UserDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiClientException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        protected struct ObjectResponseResult<T>
-        {
-            public ObjectResponseResult(T responseObject, string responseText)
-            {
-                this.Object = responseObject;
-                this.Text = responseText;
-            }
-
-            public T Object { get; }
-
-            public string Text { get; }
-        }
-
-        public bool ReadResponseAsString { get; set; }
-
-        protected virtual async System.Threading.Tasks.Task<ObjectResponseResult<T>> ReadObjectResponseAsync<T>(System.Net.Http.HttpResponseMessage response, System.Collections.Generic.IReadOnlyDictionary<string, System.Collections.Generic.IEnumerable<string>> headers, System.Threading.CancellationToken cancellationToken)
-        {
-            if (response == null || response.Content == null)
-            {
-                return new ObjectResponseResult<T>(default(T)!, string.Empty);
-            }
-
-            if (ReadResponseAsString)
-            {
-                var responseText = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                try
-                {
-                    var typedBody = System.Text.Json.JsonSerializer.Deserialize<T>(responseText, JsonSerializerSettings);
-                    return new ObjectResponseResult<T>(typedBody!, responseText);
-                }
-                catch (System.Text.Json.JsonException exception)
-                {
-                    var message = "Could not deserialize the response body string as " + typeof(T).FullName + ".";
-                    throw new ApiClientException(message, (int)response.StatusCode, responseText, headers, exception);
-                }
-            }
-            else
-            {
-                try
-                {
-                    using (var responseStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-                    {
-                        var typedBody = await System.Text.Json.JsonSerializer.DeserializeAsync<T>(responseStream, JsonSerializerSettings, cancellationToken).ConfigureAwait(false);
-                        return new ObjectResponseResult<T>(typedBody!, string.Empty);
-                    }
-                }
-                catch (System.Text.Json.JsonException exception)
-                {
-                    var message = "Could not deserialize the response body stream as " + typeof(T).FullName + ".";
-                    throw new ApiClientException(message, (int)response.StatusCode, string.Empty, headers, exception);
-                }
-            }
-        }
-
-        private string ConvertToString(object? value, System.Globalization.CultureInfo cultureInfo)
-        {
-            if (value == null)
-            {
-                return "";
-            }
-
-            if (value is System.Enum)
-            {
-                var name = System.Enum.GetName(value.GetType(), value);
-                if (name != null)
-                {
-                    var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
-                    if (field != null)
-                    {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
-                            as System.Runtime.Serialization.EnumMemberAttribute;
-                        if (attribute != null)
-                        {
-                            return attribute.Value != null ? attribute.Value : name;
-                        }
-                    }
-
-                    var converted = System.Convert.ToString(System.Convert.ChangeType(value, System.Enum.GetUnderlyingType(value.GetType()), cultureInfo));
-                    return converted == null ? string.Empty : converted;
-                }
-            }
-            else if (value is bool)
-            {
-                return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
-            }
-            else if (value is byte[])
-            {
-                return System.Convert.ToBase64String((byte[])value);
-            }
-            else if (value is string[])
-            {
-                return string.Join(",", (string[])value);
-            }
-            else if (value.GetType().IsArray)
-            {
-                var valueArray = (System.Array)value;
-                var valueTextArray = new string[valueArray.Length];
-                for (var i = 0; i < valueArray.Length; i++)
-                {
-                    valueTextArray[i] = ConvertToString(valueArray.GetValue(i), cultureInfo);
-                }
-                return string.Join(",", valueTextArray);
-            }
-
-            var result = System.Convert.ToString(value, cultureInfo);
-            return result == null ? "" : result;
-        }
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial interface IAppClient : IApiClient
-    {
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<AppDetailResponseIApiResult> CreateAsync(AppCreateRequest? body);
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<AppDetailResponseIApiResult> CreateAsync(AppCreateRequest? body, System.Threading.CancellationToken cancellationToken);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<AppDetailResponseIApiResult> UpdateAsync(AppUpdateRequest? body);
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<AppDetailResponseIApiResult> UpdateAsync(AppUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<AppDetailResponseIApiPagingResult> GetAllAsync();
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<AppDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid appId);
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid appId, System.Threading.CancellationToken cancellationToken);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<AppDetailResponseIApiResult> GetBySlugAsync(string appSlug);
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<AppDetailResponseIApiResult> GetBySlugAsync(string appSlug, System.Threading.CancellationToken cancellationToken);
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class AppClient : IAppClient
-    {
-        private System.Net.Http.HttpClient _httpClient;
-        private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
-
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-        public AppClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-        {
-            _httpClient = httpClient;
-        }
-
-        private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
-        {
-            var settings = new System.Text.Json.JsonSerializerOptions();
-            UpdateJsonSerializerSettings(settings);
-            return settings;
-        }
-
-        public System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
-
-        static partial void UpdateJsonSerializerSettings(System.Text.Json.JsonSerializerOptions settings);
-
-        partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, string url);
-        partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
-        partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<AppDetailResponseIApiResult> CreateAsync(AppCreateRequest? body)
-        {
-            return CreateAsync(body, System.Threading.CancellationToken.None);
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<AppDetailResponseIApiResult> CreateAsync(AppCreateRequest? body, System.Threading.CancellationToken cancellationToken)
-        {
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, _settings.Value);
-                    var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
-                    request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
-
-                    var urlBuilder_ = new System.Text.StringBuilder();
-
-                    // Operation Path: "api/global/App/Create"
-                    urlBuilder_.Append("api/global/App/Create");
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
-                        foreach (var item_ in response_.Headers)
-                            headers_[item_.Key] = item_.Value;
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<AppDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiClientException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<AppDetailResponseIApiResult> UpdateAsync(AppUpdateRequest? body)
-        {
-            return UpdateAsync(body, System.Threading.CancellationToken.None);
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<AppDetailResponseIApiResult> UpdateAsync(AppUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
-        {
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, _settings.Value);
-                    var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
-                    request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
-
-                    var urlBuilder_ = new System.Text.StringBuilder();
-
-                    // Operation Path: "api/global/App/Update"
-                    urlBuilder_.Append("api/global/App/Update");
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
-                        foreach (var item_ in response_.Headers)
-                            headers_[item_.Key] = item_.Value;
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<AppDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiClientException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<AppDetailResponseIApiPagingResult> GetAllAsync()
-        {
-            return GetAllAsync(System.Threading.CancellationToken.None);
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<AppDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
-        {
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-                    request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
-
-                    var urlBuilder_ = new System.Text.StringBuilder();
-
-                    // Operation Path: "api/global/App/GetAll"
-                    urlBuilder_.Append("api/global/App/GetAll");
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
-                        foreach (var item_ in response_.Headers)
-                            headers_[item_.Key] = item_.Value;
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<AppDetailResponseIApiPagingResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiClientException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid appId)
-        {
-            return DeleteAsync(appId, System.Threading.CancellationToken.None);
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid appId, System.Threading.CancellationToken cancellationToken)
-        {
-            if (appId == null)
-                throw new System.ArgumentNullException("appId");
-
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-                    request_.Method = new System.Net.Http.HttpMethod("DELETE");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
-
-                    var urlBuilder_ = new System.Text.StringBuilder();
-
-                    // Operation Path: "api/global/App/Delete/{appId}"
-                    urlBuilder_.Append("api/global/App/Delete/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appId, System.Globalization.CultureInfo.InvariantCulture)));
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
-                        foreach (var item_ in response_.Headers)
-                            headers_[item_.Key] = item_.Value;
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<BooleanIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiClientException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<AppDetailResponseIApiResult> GetBySlugAsync(string appSlug)
-        {
-            return GetBySlugAsync(appSlug, System.Threading.CancellationToken.None);
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<AppDetailResponseIApiResult> GetBySlugAsync(string appSlug, System.Threading.CancellationToken cancellationToken)
-        {
-            if (appSlug == null)
-                throw new System.ArgumentNullException("appSlug");
-
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-                    request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
-
-                    var urlBuilder_ = new System.Text.StringBuilder();
-
-                    // Operation Path: "api/global/App/GetBySlug/{appSlug}"
-                    urlBuilder_.Append("api/global/App/GetBySlug/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
-                        foreach (var item_ in response_.Headers)
-                            headers_[item_.Key] = item_.Value;
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<AppDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            throw new ApiClientException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        protected struct ObjectResponseResult<T>
-        {
-            public ObjectResponseResult(T responseObject, string responseText)
-            {
-                this.Object = responseObject;
-                this.Text = responseText;
-            }
-
-            public T Object { get; }
-
-            public string Text { get; }
-        }
-
-        public bool ReadResponseAsString { get; set; }
-
-        protected virtual async System.Threading.Tasks.Task<ObjectResponseResult<T>> ReadObjectResponseAsync<T>(System.Net.Http.HttpResponseMessage response, System.Collections.Generic.IReadOnlyDictionary<string, System.Collections.Generic.IEnumerable<string>> headers, System.Threading.CancellationToken cancellationToken)
-        {
-            if (response == null || response.Content == null)
-            {
-                return new ObjectResponseResult<T>(default(T)!, string.Empty);
-            }
-
-            if (ReadResponseAsString)
-            {
-                var responseText = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                try
-                {
-                    var typedBody = System.Text.Json.JsonSerializer.Deserialize<T>(responseText, JsonSerializerSettings);
-                    return new ObjectResponseResult<T>(typedBody!, responseText);
-                }
-                catch (System.Text.Json.JsonException exception)
-                {
-                    var message = "Could not deserialize the response body string as " + typeof(T).FullName + ".";
-                    throw new ApiClientException(message, (int)response.StatusCode, responseText, headers, exception);
-                }
-            }
-            else
-            {
-                try
-                {
-                    using (var responseStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-                    {
-                        var typedBody = await System.Text.Json.JsonSerializer.DeserializeAsync<T>(responseStream, JsonSerializerSettings, cancellationToken).ConfigureAwait(false);
-                        return new ObjectResponseResult<T>(typedBody!, string.Empty);
-                    }
-                }
-                catch (System.Text.Json.JsonException exception)
-                {
-                    var message = "Could not deserialize the response body stream as " + typeof(T).FullName + ".";
-                    throw new ApiClientException(message, (int)response.StatusCode, string.Empty, headers, exception);
-                }
-            }
-        }
-
-        private string ConvertToString(object? value, System.Globalization.CultureInfo cultureInfo)
-        {
-            if (value == null)
-            {
-                return "";
-            }
-
-            if (value is System.Enum)
-            {
-                var name = System.Enum.GetName(value.GetType(), value);
-                if (name != null)
-                {
-                    var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
-                    if (field != null)
-                    {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
-                            as System.Runtime.Serialization.EnumMemberAttribute;
-                        if (attribute != null)
-                        {
-                            return attribute.Value != null ? attribute.Value : name;
-                        }
-                    }
-
-                    var converted = System.Convert.ToString(System.Convert.ChangeType(value, System.Enum.GetUnderlyingType(value.GetType()), cultureInfo));
-                    return converted == null ? string.Empty : converted;
-                }
-            }
-            else if (value is bool)
-            {
-                return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
-            }
-            else if (value is byte[])
-            {
-                return System.Convert.ToBase64String((byte[])value);
-            }
-            else if (value is string[])
-            {
-                return string.Join(",", (string[])value);
-            }
-            else if (value.GetType().IsArray)
-            {
-                var valueArray = (System.Array)value;
-                var valueTextArray = new string[valueArray.Length];
-                for (var i = 0; i < valueArray.Length; i++)
-                {
-                    valueTextArray[i] = ConvertToString(valueArray.GetValue(i), cultureInfo);
-                }
-                return string.Join(",", valueTextArray);
-            }
-
-            var result = System.Convert.ToString(value, cultureInfo);
-            return result == null ? "" : result;
-        }
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial interface IAppTemplateClient : IApiClient
-    {
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<AppTemplateResponseIApiPagingResult> GetAllAsync();
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<AppTemplateResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class AppTemplateClient : IAppTemplateClient
-    {
-        private System.Net.Http.HttpClient _httpClient;
-        private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
-
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-        public AppTemplateClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-        {
-            _httpClient = httpClient;
-        }
-
-        private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
-        {
-            var settings = new System.Text.Json.JsonSerializerOptions();
-            UpdateJsonSerializerSettings(settings);
-            return settings;
-        }
-
-        public System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _settings.Value; } }
-
-        static partial void UpdateJsonSerializerSettings(System.Text.Json.JsonSerializerOptions settings);
-
-        partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, string url);
-        partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
-        partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<AppTemplateResponseIApiPagingResult> GetAllAsync()
-        {
-            return GetAllAsync(System.Threading.CancellationToken.None);
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<AppTemplateResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
-        {
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-                    request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
-
-                    var urlBuilder_ = new System.Text.StringBuilder();
-
-                    // Operation Path: "api/global/AppTemplate/GetAll"
-                    urlBuilder_.Append("api/global/AppTemplate/GetAll");
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
-                        foreach (var item_ in response_.Headers)
-                            headers_[item_.Key] = item_.Value;
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<AppTemplateResponseIApiPagingResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -1625,39 +803,39 @@ namespace FluentCMS.Web.ApiClients
     {
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentDetailResponseIApiPagingResult> GetAllAsync(string appSlug, string contentTypeSlug);
+        System.Threading.Tasks.Task<ContentDetailResponseIApiPagingResult> GetAllAsync(string contentTypeSlug);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentDetailResponseIApiPagingResult> GetAllAsync(string appSlug, string contentTypeSlug, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<ContentDetailResponseIApiPagingResult> GetAllAsync(string contentTypeSlug, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string appSlug, string contentTypeSlug, ContentCreateRequest? body);
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string appSlug, string contentTypeSlug, ContentCreateRequest? body, System.Threading.CancellationToken cancellationToken);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string appSlug, string contentTypeSlug, ContentUpdateRequest? body);
+        System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string contentTypeSlug, ContentCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string appSlug, string contentTypeSlug, ContentUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string contentTypeSlug, ContentCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string appSlug, string contentTypeSlug, System.Guid id);
+        System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string contentTypeSlug, ContentUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string appSlug, string contentTypeSlug, System.Guid id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string contentTypeSlug, ContentUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
+
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string contentTypeSlug, System.Guid id);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string contentTypeSlug, System.Guid id, System.Threading.CancellationToken cancellationToken);
 
     }
 
@@ -1691,19 +869,16 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentDetailResponseIApiPagingResult> GetAllAsync(string appSlug, string contentTypeSlug)
+        public virtual System.Threading.Tasks.Task<ContentDetailResponseIApiPagingResult> GetAllAsync(string contentTypeSlug)
         {
-            return GetAllAsync(appSlug, contentTypeSlug, System.Threading.CancellationToken.None);
+            return GetAllAsync(contentTypeSlug, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentDetailResponseIApiPagingResult> GetAllAsync(string appSlug, string contentTypeSlug, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentDetailResponseIApiPagingResult> GetAllAsync(string contentTypeSlug, System.Threading.CancellationToken cancellationToken)
         {
-            if (appSlug == null)
-                throw new System.ArgumentNullException("appSlug");
-
             if (contentTypeSlug == null)
                 throw new System.ArgumentNullException("contentTypeSlug");
 
@@ -1718,10 +893,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/app/{appSlug}/Content/{contentTypeSlug}/GetAll"
-                    urlBuilder_.Append("api/app/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/Content/");
+                    // Operation Path: "api/Content/{contentTypeSlug}/GetAll"
+                    urlBuilder_.Append("api/Content/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(contentTypeSlug, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/GetAll");
 
@@ -1779,19 +952,16 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string appSlug, string contentTypeSlug, ContentCreateRequest? body)
+        public virtual System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string contentTypeSlug, ContentCreateRequest? body)
         {
-            return CreateAsync(appSlug, contentTypeSlug, body, System.Threading.CancellationToken.None);
+            return CreateAsync(contentTypeSlug, body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string appSlug, string contentTypeSlug, ContentCreateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string contentTypeSlug, ContentCreateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
-            if (appSlug == null)
-                throw new System.ArgumentNullException("appSlug");
-
             if (contentTypeSlug == null)
                 throw new System.ArgumentNullException("contentTypeSlug");
 
@@ -1810,10 +980,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/app/{appSlug}/Content/{contentTypeSlug}/Create"
-                    urlBuilder_.Append("api/app/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/Content/");
+                    // Operation Path: "api/Content/{contentTypeSlug}/Create"
+                    urlBuilder_.Append("api/Content/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(contentTypeSlug, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/Create");
 
@@ -1871,19 +1039,16 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string appSlug, string contentTypeSlug, ContentUpdateRequest? body)
+        public virtual System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string contentTypeSlug, ContentUpdateRequest? body)
         {
-            return UpdateAsync(appSlug, contentTypeSlug, body, System.Threading.CancellationToken.None);
+            return UpdateAsync(contentTypeSlug, body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string appSlug, string contentTypeSlug, ContentUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string contentTypeSlug, ContentUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
-            if (appSlug == null)
-                throw new System.ArgumentNullException("appSlug");
-
             if (contentTypeSlug == null)
                 throw new System.ArgumentNullException("contentTypeSlug");
 
@@ -1902,10 +1067,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/app/{appSlug}/Content/{contentTypeSlug}/Update"
-                    urlBuilder_.Append("api/app/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/Content/");
+                    // Operation Path: "api/Content/{contentTypeSlug}/Update"
+                    urlBuilder_.Append("api/Content/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(contentTypeSlug, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/Update");
 
@@ -1963,19 +1126,16 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string appSlug, string contentTypeSlug, System.Guid id)
+        public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string contentTypeSlug, System.Guid id)
         {
-            return DeleteAsync(appSlug, contentTypeSlug, id, System.Threading.CancellationToken.None);
+            return DeleteAsync(contentTypeSlug, id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string appSlug, string contentTypeSlug, System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string contentTypeSlug, System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
-            if (appSlug == null)
-                throw new System.ArgumentNullException("appSlug");
-
             if (contentTypeSlug == null)
                 throw new System.ArgumentNullException("contentTypeSlug");
 
@@ -1993,10 +1153,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/app/{appSlug}/Content/{contentTypeSlug}/Delete/{id}"
-                    urlBuilder_.Append("api/app/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/Content/");
+                    // Operation Path: "api/Content/{contentTypeSlug}/Delete/{id}"
+                    urlBuilder_.Append("api/Content/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(contentTypeSlug, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -2167,75 +1325,75 @@ namespace FluentCMS.Web.ApiClients
     {
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetBySlugAsync(string slug, string appSlug);
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetBySlugAsync(string slug);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetBySlugAsync(string slug, string appSlug, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetBySlugAsync(string slug, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetByIdAsync(System.Guid id, string appSlug);
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetByIdAsync(System.Guid id, string appSlug, System.Threading.CancellationToken cancellationToken);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetAllAsync(string appSlug);
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetByIdAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetAllAsync(string appSlug, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> CreateAsync(string appSlug, ContentTypeCreateRequest? body);
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> CreateAsync(string appSlug, ContentTypeCreateRequest? body, System.Threading.CancellationToken cancellationToken);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> UpdateAsync(string appSlug, ContentTypeUpdateRequest? body);
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetAllAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> UpdateAsync(string appSlug, ContentTypeUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string appSlug, System.Guid id);
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string appSlug, System.Guid id, System.Threading.CancellationToken cancellationToken);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> SetFieldAsync(string appSlug, System.Guid id, ContentTypeField? body);
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> CreateAsync(ContentTypeCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> SetFieldAsync(string appSlug, System.Guid id, ContentTypeField? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> CreateAsync(ContentTypeCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> DeleteFieldAsync(string appSlug, System.Guid id, string name);
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> UpdateAsync(ContentTypeUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> DeleteFieldAsync(string appSlug, System.Guid id, string name, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> UpdateAsync(ContentTypeUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
+
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
+
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> SetFieldAsync(System.Guid id, ContentTypeField? body);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> SetFieldAsync(System.Guid id, ContentTypeField? body, System.Threading.CancellationToken cancellationToken);
+
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> DeleteFieldAsync(System.Guid id, string name);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> DeleteFieldAsync(System.Guid id, string name, System.Threading.CancellationToken cancellationToken);
 
     }
 
@@ -2269,21 +1427,18 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetBySlugAsync(string slug, string appSlug)
+        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetBySlugAsync(string slug)
         {
-            return GetBySlugAsync(slug, appSlug, System.Threading.CancellationToken.None);
+            return GetBySlugAsync(slug, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetBySlugAsync(string slug, string appSlug, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetBySlugAsync(string slug, System.Threading.CancellationToken cancellationToken)
         {
             if (slug == null)
                 throw new System.ArgumentNullException("slug");
-
-            if (appSlug == null)
-                throw new System.ArgumentNullException("appSlug");
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -2296,10 +1451,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/{appSlug}/ContentType/GetBySlug/{slug}"
-                    urlBuilder_.Append("api/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/ContentType/GetBySlug/");
+                    // Operation Path: "api/ContentType/GetBySlug/{slug}"
+                    urlBuilder_.Append("api/ContentType/GetBySlug/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(slug, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -2356,21 +1509,18 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetByIdAsync(System.Guid id, string appSlug)
+        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetByIdAsync(System.Guid id)
         {
-            return GetByIdAsync(id, appSlug, System.Threading.CancellationToken.None);
+            return GetByIdAsync(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetByIdAsync(System.Guid id, string appSlug, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
-
-            if (appSlug == null)
-                throw new System.ArgumentNullException("appSlug");
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -2383,10 +1533,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/{appSlug}/ContentType/GetById/{id}"
-                    urlBuilder_.Append("api/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/ContentType/GetById/");
+                    // Operation Path: "api/ContentType/GetById/{id}"
+                    urlBuilder_.Append("api/ContentType/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -2443,19 +1591,16 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetAllAsync(string appSlug)
+        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetAllAsync()
         {
-            return GetAllAsync(appSlug, System.Threading.CancellationToken.None);
+            return GetAllAsync(System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetAllAsync(string appSlug, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
         {
-            if (appSlug == null)
-                throw new System.ArgumentNullException("appSlug");
-
             var client_ = _httpClient;
             var disposeClient_ = false;
             try
@@ -2467,10 +1612,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/{appSlug}/ContentType/GetAll"
-                    urlBuilder_.Append("api/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/ContentType/GetAll");
+                    // Operation Path: "api/ContentType/GetAll"
+                    urlBuilder_.Append("api/ContentType/GetAll");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -2526,19 +1669,16 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> CreateAsync(string appSlug, ContentTypeCreateRequest? body)
+        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> CreateAsync(ContentTypeCreateRequest? body)
         {
-            return CreateAsync(appSlug, body, System.Threading.CancellationToken.None);
+            return CreateAsync(body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> CreateAsync(string appSlug, ContentTypeCreateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> CreateAsync(ContentTypeCreateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
-            if (appSlug == null)
-                throw new System.ArgumentNullException("appSlug");
-
             var client_ = _httpClient;
             var disposeClient_ = false;
             try
@@ -2554,10 +1694,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/{appSlug}/ContentType/Create"
-                    urlBuilder_.Append("api/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/ContentType/Create");
+                    // Operation Path: "api/ContentType/Create"
+                    urlBuilder_.Append("api/ContentType/Create");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -2613,19 +1751,16 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> UpdateAsync(string appSlug, ContentTypeUpdateRequest? body)
+        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> UpdateAsync(ContentTypeUpdateRequest? body)
         {
-            return UpdateAsync(appSlug, body, System.Threading.CancellationToken.None);
+            return UpdateAsync(body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> UpdateAsync(string appSlug, ContentTypeUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> UpdateAsync(ContentTypeUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
-            if (appSlug == null)
-                throw new System.ArgumentNullException("appSlug");
-
             var client_ = _httpClient;
             var disposeClient_ = false;
             try
@@ -2641,10 +1776,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/{appSlug}/ContentType/Update"
-                    urlBuilder_.Append("api/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/ContentType/Update");
+                    // Operation Path: "api/ContentType/Update"
+                    urlBuilder_.Append("api/ContentType/Update");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -2700,19 +1833,16 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string appSlug, System.Guid id)
+        public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id)
         {
-            return DeleteAsync(appSlug, id, System.Threading.CancellationToken.None);
+            return DeleteAsync(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string appSlug, System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
-            if (appSlug == null)
-                throw new System.ArgumentNullException("appSlug");
-
             if (id == null)
                 throw new System.ArgumentNullException("id");
 
@@ -2727,10 +1857,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/{appSlug}/ContentType/Delete/{id}"
-                    urlBuilder_.Append("api/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/ContentType/Delete/");
+                    // Operation Path: "api/ContentType/Delete/{id}"
+                    urlBuilder_.Append("api/ContentType/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -2787,19 +1915,16 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> SetFieldAsync(string appSlug, System.Guid id, ContentTypeField? body)
+        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> SetFieldAsync(System.Guid id, ContentTypeField? body)
         {
-            return SetFieldAsync(appSlug, id, body, System.Threading.CancellationToken.None);
+            return SetFieldAsync(id, body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> SetFieldAsync(string appSlug, System.Guid id, ContentTypeField? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> SetFieldAsync(System.Guid id, ContentTypeField? body, System.Threading.CancellationToken cancellationToken)
         {
-            if (appSlug == null)
-                throw new System.ArgumentNullException("appSlug");
-
             if (id == null)
                 throw new System.ArgumentNullException("id");
 
@@ -2818,10 +1943,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/{appSlug}/ContentType/SetField/{id}"
-                    urlBuilder_.Append("api/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/ContentType/SetField/");
+                    // Operation Path: "api/ContentType/SetField/{id}"
+                    urlBuilder_.Append("api/ContentType/SetField/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -2878,19 +2001,16 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> DeleteFieldAsync(string appSlug, System.Guid id, string name)
+        public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> DeleteFieldAsync(System.Guid id, string name)
         {
-            return DeleteFieldAsync(appSlug, id, name, System.Threading.CancellationToken.None);
+            return DeleteFieldAsync(id, name, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> DeleteFieldAsync(string appSlug, System.Guid id, string name, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> DeleteFieldAsync(System.Guid id, string name, System.Threading.CancellationToken cancellationToken)
         {
-            if (appSlug == null)
-                throw new System.ArgumentNullException("appSlug");
-
             if (id == null)
                 throw new System.ArgumentNullException("id");
 
@@ -2908,10 +2028,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/{appSlug}/ContentType/DeleteField/{id}/{name}"
-                    urlBuilder_.Append("api/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/ContentType/DeleteField/");
+                    // Operation Path: "api/ContentType/DeleteField/{id}/{name}"
+                    urlBuilder_.Append("api/ContentType/DeleteField/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append('/');
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(name, System.Globalization.CultureInfo.InvariantCulture)));
@@ -3151,8 +2269,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/GlobalSettings/Get"
-                    urlBuilder_.Append("api/global/GlobalSettings/Get");
+                    // Operation Path: "api/GlobalSettings/Get"
+                    urlBuilder_.Append("api/GlobalSettings/Get");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -3233,8 +2351,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/GlobalSettings/Update"
-                    urlBuilder_.Append("api/global/GlobalSettings/Update");
+                    // Operation Path: "api/GlobalSettings/Update"
+                    urlBuilder_.Append("api/GlobalSettings/Update");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -3510,8 +2628,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Page/GetAll/{siteUrl}"
-                    urlBuilder_.Append("api/global/Page/GetAll/");
+                    // Operation Path: "api/Page/GetAll/{siteUrl}"
+                    urlBuilder_.Append("api/Page/GetAll/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(siteUrl, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -3592,8 +2710,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Page/GetById/{id}"
-                    urlBuilder_.Append("api/global/Page/GetById/");
+                    // Operation Path: "api/Page/GetById/{id}"
+                    urlBuilder_.Append("api/Page/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -3671,8 +2789,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Page/GetByUrl"
-                    urlBuilder_.Append("api/global/Page/GetByUrl");
+                    // Operation Path: "api/Page/GetByUrl"
+                    urlBuilder_.Append("api/Page/GetByUrl");
                     urlBuilder_.Append('?');
                     if (url != null)
                     {
@@ -3759,8 +2877,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Page/Create"
-                    urlBuilder_.Append("api/global/Page/Create");
+                    // Operation Path: "api/Page/Create"
+                    urlBuilder_.Append("api/Page/Create");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -3841,8 +2959,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Page/Update"
-                    urlBuilder_.Append("api/global/Page/Update");
+                    // Operation Path: "api/Page/Update"
+                    urlBuilder_.Append("api/Page/Update");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -3922,8 +3040,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Page/Delete/{id}"
-                    urlBuilder_.Append("api/global/Page/Delete/");
+                    // Operation Path: "api/Page/Delete/{id}"
+                    urlBuilder_.Append("api/Page/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -4191,8 +3309,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Plugin/GetByPageId/{pageId}"
-                    urlBuilder_.Append("api/global/Plugin/GetByPageId/");
+                    // Operation Path: "api/Plugin/GetByPageId/{pageId}"
+                    urlBuilder_.Append("api/Plugin/GetByPageId/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pageId, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -4273,8 +3391,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Plugin/GetById/{id}"
-                    urlBuilder_.Append("api/global/Plugin/GetById/");
+                    // Operation Path: "api/Plugin/GetById/{id}"
+                    urlBuilder_.Append("api/Plugin/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -4356,8 +3474,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Plugin/Create"
-                    urlBuilder_.Append("api/global/Plugin/Create");
+                    // Operation Path: "api/Plugin/Create"
+                    urlBuilder_.Append("api/Plugin/Create");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -4438,8 +3556,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Plugin/Update"
-                    urlBuilder_.Append("api/global/Plugin/Update");
+                    // Operation Path: "api/Plugin/Update"
+                    urlBuilder_.Append("api/Plugin/Update");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -4519,8 +3637,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Plugin/Delete/{id}"
-                    urlBuilder_.Append("api/global/Plugin/Delete/");
+                    // Operation Path: "api/Plugin/Delete/{id}"
+                    urlBuilder_.Append("api/Plugin/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -4762,8 +3880,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/PluginDefinition/Create"
-                    urlBuilder_.Append("api/global/PluginDefinition/Create");
+                    // Operation Path: "api/PluginDefinition/Create"
+                    urlBuilder_.Append("api/PluginDefinition/Create");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -4840,8 +3958,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/PluginDefinition/GetAll"
-                    urlBuilder_.Append("api/global/PluginDefinition/GetAll");
+                    // Operation Path: "api/PluginDefinition/GetAll"
+                    urlBuilder_.Append("api/PluginDefinition/GetAll");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -5009,39 +4127,39 @@ namespace FluentCMS.Web.ApiClients
     {
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleDetailResponseIApiPagingResult> GetAllAsync(string appSlug);
+        System.Threading.Tasks.Task<RoleDetailResponseIApiPagingResult> GetAllAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleDetailResponseIApiPagingResult> GetAllAsync(string appSlug, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<RoleDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(string appSlug, RoleCreateRequest? body);
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(string appSlug, RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken);
-
-        /// <returns>Success</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(string appSlug, RoleUpdateRequest? body);
+        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(RoleCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(string appSlug, RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string appSlug, System.Guid id);
+        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(RoleUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string appSlug, System.Guid id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
+
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
     }
 
@@ -5075,19 +4193,16 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<RoleDetailResponseIApiPagingResult> GetAllAsync(string appSlug)
+        public virtual System.Threading.Tasks.Task<RoleDetailResponseIApiPagingResult> GetAllAsync()
         {
-            return GetAllAsync(appSlug, System.Threading.CancellationToken.None);
+            return GetAllAsync(System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<RoleDetailResponseIApiPagingResult> GetAllAsync(string appSlug, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<RoleDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
         {
-            if (appSlug == null)
-                throw new System.ArgumentNullException("appSlug");
-
             var client_ = _httpClient;
             var disposeClient_ = false;
             try
@@ -5099,10 +4214,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/{appSlug}/Role/GetAll"
-                    urlBuilder_.Append("api/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/Role/GetAll");
+                    // Operation Path: "api/Role/GetAll"
+                    urlBuilder_.Append("api/Role/GetAll");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -5158,19 +4271,16 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(string appSlug, RoleCreateRequest? body)
+        public virtual System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(RoleCreateRequest? body)
         {
-            return CreateAsync(appSlug, body, System.Threading.CancellationToken.None);
+            return CreateAsync(body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(string appSlug, RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
-            if (appSlug == null)
-                throw new System.ArgumentNullException("appSlug");
-
             var client_ = _httpClient;
             var disposeClient_ = false;
             try
@@ -5186,10 +4296,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/{appSlug}/Role/Create"
-                    urlBuilder_.Append("api/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/Role/Create");
+                    // Operation Path: "api/Role/Create"
+                    urlBuilder_.Append("api/Role/Create");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -5245,19 +4353,16 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(string appSlug, RoleUpdateRequest? body)
+        public virtual System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(RoleUpdateRequest? body)
         {
-            return UpdateAsync(appSlug, body, System.Threading.CancellationToken.None);
+            return UpdateAsync(body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(string appSlug, RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
-            if (appSlug == null)
-                throw new System.ArgumentNullException("appSlug");
-
             var client_ = _httpClient;
             var disposeClient_ = false;
             try
@@ -5273,10 +4378,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/{appSlug}/Role/Update"
-                    urlBuilder_.Append("api/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/Role/Update");
+                    // Operation Path: "api/Role/Update"
+                    urlBuilder_.Append("api/Role/Update");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -5332,19 +4435,16 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string appSlug, System.Guid id)
+        public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id)
         {
-            return DeleteAsync(appSlug, id, System.Threading.CancellationToken.None);
+            return DeleteAsync(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string appSlug, System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
-            if (appSlug == null)
-                throw new System.ArgumentNullException("appSlug");
-
             if (id == null)
                 throw new System.ArgumentNullException("id");
 
@@ -5359,10 +4459,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/{appSlug}/Role/Delete/{id}"
-                    urlBuilder_.Append("api/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(appSlug, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/Role/Delete/");
+                    // Operation Path: "api/Role/Delete/{id}"
+                    urlBuilder_.Append("api/Role/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -5618,8 +4716,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Setup/IsInitialized"
-                    urlBuilder_.Append("api/global/Setup/IsInitialized");
+                    // Operation Path: "api/Setup/IsInitialized"
+                    urlBuilder_.Append("api/Setup/IsInitialized");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -5700,8 +4798,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Setup/Start"
-                    urlBuilder_.Append("api/global/Setup/Start");
+                    // Operation Path: "api/Setup/Start"
+                    urlBuilder_.Append("api/Setup/Start");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -5779,8 +4877,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Setup/Reset"
-                    urlBuilder_.Append("api/global/Setup/Reset");
+                    // Operation Path: "api/Setup/Reset"
+                    urlBuilder_.Append("api/Setup/Reset");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -5857,8 +4955,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Setup/GetSetupPage"
-                    urlBuilder_.Append("api/global/Setup/GetSetupPage");
+                    // Operation Path: "api/Setup/GetSetupPage"
+                    urlBuilder_.Append("api/Setup/GetSetupPage");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -6134,8 +5232,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Site/GetByUrl/{siteUrl}"
-                    urlBuilder_.Append("api/global/Site/GetByUrl/");
+                    // Operation Path: "api/Site/GetByUrl/{siteUrl}"
+                    urlBuilder_.Append("api/Site/GetByUrl/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(siteUrl, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -6213,8 +5311,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Site/GetAll"
-                    urlBuilder_.Append("api/global/Site/GetAll");
+                    // Operation Path: "api/Site/GetAll"
+                    urlBuilder_.Append("api/Site/GetAll");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -6294,8 +5392,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Site/GetById/{id}"
-                    urlBuilder_.Append("api/global/Site/GetById/");
+                    // Operation Path: "api/Site/GetById/{id}"
+                    urlBuilder_.Append("api/Site/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -6377,8 +5475,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Site/Create"
-                    urlBuilder_.Append("api/global/Site/Create");
+                    // Operation Path: "api/Site/Create"
+                    urlBuilder_.Append("api/Site/Create");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -6459,8 +5557,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Site/Update"
-                    urlBuilder_.Append("api/global/Site/Update");
+                    // Operation Path: "api/Site/Update"
+                    urlBuilder_.Append("api/Site/Update");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -6540,8 +5638,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/Site/Delete/{siteId}"
-                    urlBuilder_.Append("api/global/Site/Delete/");
+                    // Operation Path: "api/Site/Delete/{siteId}"
+                    urlBuilder_.Append("api/Site/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -6797,8 +5895,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/User/GetAll"
-                    urlBuilder_.Append("api/global/User/GetAll");
+                    // Operation Path: "api/User/GetAll"
+                    urlBuilder_.Append("api/User/GetAll");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -6878,8 +5976,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/User/Get/{userId}"
-                    urlBuilder_.Append("api/global/User/Get/");
+                    // Operation Path: "api/User/Get/{userId}"
+                    urlBuilder_.Append("api/User/Get/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(userId, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -6961,8 +6059,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/User/Update"
-                    urlBuilder_.Append("api/global/User/Update");
+                    // Operation Path: "api/User/Update"
+                    urlBuilder_.Append("api/User/Update");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -7043,8 +6141,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/global/User/Create"
-                    urlBuilder_.Append("api/global/User/Create");
+                    // Operation Path: "api/User/Create"
+                    urlBuilder_.Append("api/User/Create");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -7208,128 +6306,6 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class AppCreateRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("slug")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public string Slug { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public string Title { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("description")]
-        public string? Description { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class AppDetailResponse
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid Id { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("createdBy")]
-        public string? CreatedBy { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
-        public System.DateTime CreatedAt { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
-        public string? ModifiedBy { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
-        public System.DateTime? ModifiedAt { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("appId")]
-        public System.Guid AppId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("slug")]
-        public string? Slug { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("description")]
-        public string? Description { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class AppDetailResponseIApiPagingResult
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
-        public int PageSize { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
-        public int TotalPages { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
-        public int PageNumber { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
-        public long TotalCount { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
-        public bool HasPrevious { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
-        public bool HasNext { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public System.Collections.Generic.ICollection<AppDetailResponse>? Data { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
-        public string? UniqueId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class AppDetailResponseIApiResult
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public AppDetailResponse Data { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
-        public string? UniqueId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class AppError
     {
 
@@ -7338,74 +6314,6 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string? Description { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class AppTemplateResponse
-    {
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class AppTemplateResponseIApiPagingResult
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
-        public int PageSize { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
-        public int TotalPages { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
-        public int PageNumber { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
-        public long TotalCount { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
-        public bool HasPrevious { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
-        public bool HasNext { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public System.Collections.Generic.ICollection<AppTemplateResponse>? Data { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
-        public string? UniqueId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class AppUpdateRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public string Title { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("description")]
-        public string? Description { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("slug")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public string Slug { get; set; } = default!;
 
     }
 
@@ -7712,10 +6620,6 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("id")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid Id { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("appId")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public System.Guid AppId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("title")]
         [System.ComponentModel.DataAnnotations.Required]
