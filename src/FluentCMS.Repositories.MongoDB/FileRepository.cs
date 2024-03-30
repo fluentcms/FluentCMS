@@ -1,10 +1,4 @@
-﻿using FluentCMS.Repositories.Abstractions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using File = FluentCMS.Entities.File;
+﻿using File = FluentCMS.Entities.File;
 
 namespace FluentCMS.Repositories.MongoDB;
 public class FileRepository(IMongoDBContext mongoDbContext, IAuthContext authContext)

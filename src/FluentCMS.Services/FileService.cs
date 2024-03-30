@@ -1,7 +1,5 @@
 ﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.VisualBasic;
 using File = FluentCMS.Entities.File;
 
 namespace FluentCMS.Services;

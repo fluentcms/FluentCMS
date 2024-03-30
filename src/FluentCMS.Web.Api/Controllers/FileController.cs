@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using FluentCMS.Web.Api.Models.File;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Net.Http.Headers;
+﻿using FluentCMS.Web.Api.Models.File;
 using File = FluentCMS.Entities.File;
 
 namespace FluentCMS.Web.Api.Controllers;
