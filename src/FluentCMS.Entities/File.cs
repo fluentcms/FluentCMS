@@ -37,4 +37,5 @@ public class File : IAuditableEntity
     public DateTime CreatedAt { get; set; }
     public string? ModifiedBy { get; set; }
     public DateTime? ModifiedAt { get; set; }
+    public string LocalPath { get; set; } = string.Empty;
 }
