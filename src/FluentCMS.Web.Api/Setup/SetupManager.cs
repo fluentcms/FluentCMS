@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using System.Text.Json;
+using File = System.IO.File;
 
 namespace FluentCMS.Web.Api.Setup;
 
