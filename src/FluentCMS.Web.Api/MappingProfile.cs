@@ -1,5 +1,7 @@
-﻿using FluentCMS.Web.Api.Models.Users;
+﻿using FluentCMS.Web.Api.Models.File;
+using FluentCMS.Web.Api.Models.Users;
 using FluentCMS.Web.Api.ValueConverters;
+using File = FluentCMS.Entities.File;
 
 namespace FluentCMS.Web.Api;
 
@@ -87,6 +89,13 @@ public class MappingProfile : Profile
         CreateMap<ContentUpdateRequest, Content>().ForMember(x => x.Value,
             expression => expression.ConvertUsing(new ObjectDictionaryValueConverter()!));
         CreateMap<Content, ContentDetailResponse>();
+
+        #endregion
+
+        #region File
+
+        CreateMap<FileCreateRequest, File>();
+        CreateMap<File, FileDetailResponse>();
 
         #endregion
     }
