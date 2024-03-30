@@ -1,4 +1,5 @@
 ﻿namespace FluentCMS.Repositories.MongoDB;
+
 public class SiteRepository : AuditableEntityRepository<Site>, ISiteRepository
 {
     public SiteRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
