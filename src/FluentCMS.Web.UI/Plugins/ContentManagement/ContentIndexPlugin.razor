@@ -16,13 +16,12 @@
                 }
             </Select>
             <Spacer class="lg:hidden"/>
-
             <Grid class="lg:hidden"
                   GutterY="GridGutter.Medium"
                   Id="contentIndexCollectionList">
                 @foreach (var collection in Collections)
                 {
-                    
+
                     <GridItem Small="GridItemColumn.Twelve">
                         <a Href="@($"?pluginDef=Content Management&typeName=Content List&appSlug={AppSlug}&contentTypeSlug={collection.Slug}")"
                             id="@($"contentIndex{@collection.Slug}Link")">

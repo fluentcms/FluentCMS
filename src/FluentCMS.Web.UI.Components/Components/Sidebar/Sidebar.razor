@@ -4,7 +4,8 @@
 
 @* TODO: remove extra class *@
 <aside @attributes="AdditionalAttributes"
-       class="@this.GetClasses() -translate-x-full lg:!translate-x-0" id="@Id">
+       class="@this.GetClasses() -translate-x-full lg:!translate-x-0"
+       id="@Id">
     <div class="@this.ClassName("SidebarMain")">
         @if (!string.IsNullOrEmpty(Title))
         {

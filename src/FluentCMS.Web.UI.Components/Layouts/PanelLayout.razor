@@ -4,13 +4,16 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<div class="antialiased bg-gray-50 dark:bg-gray-900 dark:text-white" id="adminNavbar">
+<div class="antialiased bg-gray-50 dark:bg-gray-900 dark:text-white"
+     id="adminNavbar">
     <nav class="bg-white border-b border-gray-200 px-4 py-2.5 dark:bg-gray-800 dark:border-gray-700 fixed lg:hidden left-0 right-0 top-0 z-50">
         <div class="flex flex-wrap justify-between items-center">
             <div class="flex justify-start items-center">
                 <SidebarToggler id="adminNavbarToggleButton"
                                 SidebarId="adminSidebar" />
-                <a href="/" class="flex items-center" id="adminNavbarLogoLink">
+                <a class="flex items-center"
+                   href="/"
+                   id="adminNavbarLogoLink">
                     <Logo />
                     <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">FluentCMS</span>
                 </a>
@@ -19,7 +22,7 @@
     </nav>
     <div class="relative flex h-full w-full flex-1 overflow-auto">
         <SectionOutlet SectionName="sidebar" />
-        <main class="h-screen overflow-auto dark:bg-gray-900 w-full flex-1 flex flex-col items-stretch h-full lg:ml-64 pt-20 lg:pt-0">
+        <main class="overflow-auto dark:bg-gray-900 w-full flex-1 flex flex-col items-stretch h-full lg:ml-64 pt-20 lg:pt-0">
             @Body
         </main>
     </div>

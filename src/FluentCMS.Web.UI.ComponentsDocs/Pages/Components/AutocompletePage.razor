@@ -24,8 +24,9 @@
         </ComponentPreview>
 
         <ComponentPreview Title="Value">
-            <Autocomplete @bind-Value="Value" Multiple
-                           Options=Options />
+            <Autocomplete @bind-Value="Value"
+                          Multiple="true"
+                          Options=Options />
              <Spacer />
              <Stack>
                  @foreach (var item in Value)

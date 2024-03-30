@@ -51,7 +51,7 @@
 
     [JSInvokable]
     public async void Update(bool open)
-    {                                  
+    {
         await OpenChanged.InvokeAsync(Open = open);
     }
 

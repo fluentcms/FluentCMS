@@ -1,6 +1,6 @@
 @using System.Text.Json
 <ContentLayout>
-    <Page>       
+    <Page>
         <PageHeader HasBack="true"
                     Title="@PageTitle"/>
         <PageBody>
@@ -10,7 +10,8 @@
                     <GridItem Small="GridItemColumn.Twelve"
                             Medium="GridItemColumn.Seven"
                             Large="GridItemColumn.Nine">
-                        <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
+                        <Grid Gutter="GridGutter.Large"
+                              JustifySmall="GridJustify.End">
 
                             @foreach (var field in Fields)
                             {
@@ -21,8 +22,6 @@
                                     </Typography>
                                 </GridItem>
                             }
-
-                           
                         </Grid>
                     </GridItem>
                     <GridItem Small="GridItemColumn.Twelve"
@@ -95,7 +94,7 @@
 
     [Inject]
     IJSRuntime JsRuntime { set; get; } = default!;
-    
+
     [Inject]
     NavigationManager NavigationManager { set; get; } = default!;
 

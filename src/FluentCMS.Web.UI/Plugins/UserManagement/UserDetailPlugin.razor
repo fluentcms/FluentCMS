@@ -1,11 +1,14 @@
 ﻿<Page>
-    <PageHeader HasBack="true" 
+    <PageHeader HasBack="true"
                 Title="User Detail">
     </PageHeader>
     <PageBody>
         <Grid Gutter="GridGutter.Large">
-            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Seven" Large="GridItemColumn.Nine">
-                <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
+            <GridItem Small="GridItemColumn.Twelve"
+                      Medium="GridItemColumn.Seven"
+                      Large="GridItemColumn.Nine">
+                <Grid Gutter="GridGutter.Large"
+                          JustifySmall="GridJustify.End">
                     <GridItem Small="GridItemColumn.Twelve">
                         <Typography><strong>Username:</strong></Typography>
                         <Typography>
@@ -20,7 +23,9 @@
                     </GridItem>
                 </Grid>
             </GridItem>
-            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Five" Large="GridItemColumn.Three">
+            <GridItem Small="GridItemColumn.Twelve"
+                      Medium="GridItemColumn.Five"
+                      Large="GridItemColumn.Three">
                 <Card>
                     <CardBody>
                         @if (!string.IsNullOrEmpty(View.CreatedBy))
@@ -49,9 +54,11 @@
                     </CardBody>
                 </Card>
                 <Spacer />
-                <Button Block="true" Color="Color.Primary"
-                    Href="@($"?PluginDef=User Management&typeName=Update User&id={View.Id}")" Item="true"
-                    Outline="true">
+                <Button Block="true"
+                        Color="Color.Primary"
+                        Href="@($"?PluginDef=User Management&typeName=Update User&id={View.Id}")"
+                        Item="true"
+                        Outline="true">
                     <Icon Name="IconName.Edit" />
                     Edit
                 </Button>

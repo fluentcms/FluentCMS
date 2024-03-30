@@ -1,11 +1,12 @@
 ﻿<Page>
-    <PageHeader HasBack="false" Title="Content Types List">
+    <PageHeader HasBack="false"
+                Title="Content Types List">
         <PageHeaderActions>
             <ButtonGroup>
-                <Select @bind-Value="AppSlug" 
+                <Select @bind-Value="AppSlug"
                         autofocus="true"
-                        Dense="true" 
-                        Id="contentTypeAppSelect" 
+                        Dense="true"
+                        Id="contentTypeAppSelect"
                         Placeholder="Choose an App..."
                         Size="InputSize.Small"
                         OnChange="(string value) => OnAppSlugChanged()">
@@ -18,7 +19,7 @@
                 {
                     <Button Color="Color.Primary"
                             Href="@($"?PluginDef=ContentType Management&typeName=Create ContentType&appSlug={AppSlug}")"
-                            id="contentTypeCreateButton" 
+                            id="contentTypeCreateButton"
                             Size="ButtonSize.Small">
                         <Icon Name="IconName.Plus" />
                         Add Content Type
@@ -60,7 +61,7 @@
                                     </Button>
                                     <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
 
-                                    <Button data-test="edit-btn" 
+                                    <Button data-test="edit-btn"
                                             Ghost="true"
                                             Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={contentType.Id}&appSlug={AppSlug}")"
                                             Size="ButtonSize.Small">
@@ -68,9 +69,9 @@
                                     </Button>
                                     <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
 
-                                    <Button data-test="delete-btn" 
-                                            Ghost="true" 
-                                            Size="ButtonSize.Small" 
+                                    <Button data-test="delete-btn"
+                                            Ghost="true"
+                                            Size="ButtonSize.Small"
                                             OnClick="@(evt => OnDelete(contentType))">
                                         <Icon Name="IconName.Delete" />
                                     </Button>
@@ -89,16 +90,16 @@
                         <Button autofocus="true"
                                 Color="Color.Primary"
                                 Href="@($"?PluginDef=ContentType Management&typeName=Create ContentType&appSlug={AppSlug}")"
-                                id="contentTypeCreateButton" 
+                                id="contentTypeCreateButton"
                                 Size="ButtonSize.Small">
                             <Icon Name="IconName.Plus" />
                             Add Content Type
                         </Button>
                     } else {
                         <Button autofocus="true"
-                                Color="Color.Primary" 
+                                Color="Color.Primary"
                                 Href="?PluginDef=App Management&typeName=Create App"
-                                Id="appEmptyCreateButton" 
+                                Id="appEmptyCreateButton"
                                 Size="ButtonSize.Small">
                             <Icon Name="IconName.Plus" />
                             First Add an App

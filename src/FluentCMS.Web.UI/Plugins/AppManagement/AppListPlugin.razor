@@ -1,10 +1,11 @@
 ﻿<Page>
-    <PageHeader HasBack="false" Title="Apps List">
+    <PageHeader HasBack="false"
+                Title="Apps List">
         <PageHeaderActions>
             <ButtonGroup>
-                <Button autofocus="true" 
-                        Color="Color.Primary" 
-                        Href="?PluginDef=App Management&typeName=Create App" 
+                <Button autofocus="true"
+                        Color="Color.Primary"
+                        Href="?PluginDef=App Management&typeName=Create App"
                         Id="appCreateButton"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
@@ -55,12 +56,10 @@
                                         <Icon Name="IconName.Delete" />
                                     </Button>
                                     <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
-
                                 </ButtonGroup>
                             </TableCell>
                         </TableRow>
                     }
-
                 </TableBody>
             </Table>
 
@@ -68,9 +67,9 @@
             {
                 <EmptyTable Message="No Apps Found!">
                     <Button autofocus="true"
-                            Color="Color.Primary" 
+                            Color="Color.Primary"
                             Href="?PluginDef=App Management&typeName=Create App"
-                            Id="appEmptyCreateButton" 
+                            Id="appEmptyCreateButton"
                             Size="ButtonSize.Small">
                         <Icon Name="IconName.Plus" />
                         Add App

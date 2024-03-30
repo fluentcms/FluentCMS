@@ -15,7 +15,6 @@
                                    Name="Email"
                                    Placeholder="Enter Profile Email..."
                                    Required="true" />
-                            @*Disabled="true"*@
                             <Spacer />
                             @if (!string.IsNullOrEmpty(Message))
                             {
@@ -68,10 +67,8 @@
     {
 
         View = (await AccountClient.GetUserDetailAsync()).Data;
-        
+
         Model.Email = View.Email;
-        @* Model.Username = View.Username; *@
-        @* Model.PhoneNumber = View.PhoneNumber; *@
     }
 
     async Task OnSubmit()

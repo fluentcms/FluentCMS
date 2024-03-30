@@ -7,7 +7,7 @@
                Id="contentTypeFieldModalDefaultValueInput"
                Label="Default Value"
                Name="DefaultValue"
-               Placeholder="Choose Default Value..." 
+               Placeholder="Choose Default Value..."
         >
             @foreach(var option in Options) {
                 <Option>@option</Option>
@@ -17,7 +17,7 @@
     </GridItem>
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-              
+
     </GridItem>
 </Grid>
 
@@ -30,10 +30,9 @@
     public ContentTypeField Model { get; set; }
 
     List<string> Options = [];
-    protected override void OnInitialized() 
+    protected override void OnInitialized()
     {
         var items = /* Model.Options ??*/ "item1\nitem2\nitem3";
-
 
         Options = items.Split('\n').ToList();
     }
