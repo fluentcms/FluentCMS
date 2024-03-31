@@ -139,10 +139,4 @@ public class ExceptionCodes
     public const string PageHasChildren = "Page.PageHasChildren";
 
     #endregion
-
-    #region File
-
-    public const string FileDuplicateSlug = "File.DuplicateSlug";
-
-    #endregion
 }

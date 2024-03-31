@@ -6,12 +6,10 @@ namespace FluentCMS.Services;
 
 public interface IFileService : IAutoRegisterService
 {
-    public Task<File?> Create(string? slug, IFormFile formFile, CancellationToken cancellationToken = default);
+    public Task<File?> Create(IFormFile formFile, CancellationToken cancellationToken = default);
     public Task<IEnumerable<File?>> GetAll(CancellationToken cancellationToken = default);
     public Task<File?> GetById(Guid id, CancellationToken cancellationToken = default);
-    public Task<File?> GetBySlug(string slug, CancellationToken cancellationToken = default);
     public Task<File?> DeleteById(Guid id, CancellationToken cancellationToken = default);
-    public Task<File?> DeleteBySlug(string slug, CancellationToken cancellationToken = default);
 }
 public class FileService : IFileService
 {
@@ -32,12 +30,10 @@ public class FileService : IFileService
         }
     }
 
-    public async Task<File?> Create(string? slug, IFormFile formFile, CancellationToken cancellationToken = default)
+    public async Task<File?> Create(IFormFile formFile, CancellationToken cancellationToken = default)
     {
         var fileId = Guid.NewGuid();
         var localFilePath = Path.Join(UploadPath, fileId.ToString("D"));
-        slug ??= formFile.FileName.Slugify();
-        await GuardAgainstDuplicateSlug(slug, cancellationToken);
         var sourceStream = formFile.OpenReadStream();
         var destinationStream = System.IO.File.OpenWrite(localFilePath);
         await sourceStream.CopyToAsync(destinationStream, cancellationToken);
@@ -49,20 +45,11 @@ public class FileService : IFileService
             Extension = Path.GetExtension(formFile.FileName).ToLower(),
             MimeType = formFile.ContentType,
             Size = sourceStream.Length,
-            Slug = slug
         };
         await _fileRepository.Create(fileModel, cancellationToken);
         await destinationStream.FlushAsync(cancellationToken);
         destinationStream.Close();
         return fileModel;
-    }
-
-    private async Task GuardAgainstDuplicateSlug(string slug, CancellationToken cancellationToken)
-    {
-        if ((await _fileRepository.GetBySlug(slug, cancellationToken)) is not null)
-        {
-            throw new AppException(ExceptionCodes.FileDuplicateSlug);
-        }
     }
 
     public Task<IEnumerable<File?>> GetAll(CancellationToken cancellationToken = default)
@@ -73,11 +60,6 @@ public class FileService : IFileService
     public Task<File?> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         return _fileRepository.GetById(id, cancellationToken);
-    }
-
-    public Task<File?> GetBySlug(string slug, CancellationToken cancellationToken = default)
-    {
-        return _fileRepository.GetBySlug(slug, cancellationToken);
     }
 
     public async Task<File?> DeleteById(Guid id, CancellationToken cancellationToken = default)
@@ -95,10 +77,4 @@ public class FileService : IFileService
         }
     }
 
-    public async Task<File?> DeleteBySlug(string slug, CancellationToken cancellationToken = default)
-    {
-        var file = await _fileRepository.Delete(slug, cancellationToken);
-        DeleteFromFileSystem(file);
-        return file;
-    }
 }

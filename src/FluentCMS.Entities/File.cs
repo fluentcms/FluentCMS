@@ -4,12 +4,6 @@ public class File : IAuditableEntity
     public Guid Id { get; set; }
 
     /// <summary>
-    /// A normalized and unique identifier for the file used in URLs, such as 'untitled', 'untitled-2', 'logo', etc.
-    /// This identifier can be auto-generated from the 'Name' property or set manually by the user.
-    /// </summary>
-    public string Slug { get; set; } = string.Empty;
-
-    /// <summary>
     /// The original name of the file within the physical file system prior to upload.
     /// The name of the file when downloaded should match this property, e.g., 'Untitled.png', 'Default.png', etc.
     /// </summary>
