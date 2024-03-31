@@ -1,15 +1,23 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization;
+
 <AuthorizeView>
     <Authorized>
-        <a href="/auth/profile" class="flex items-center px-5 py-3 border-t border-gray-200 dark:border-gray-700">
-            <div class="relative inline-flex items-center justify-center w-10 h-10 overflow-hidden bg-gray-100 rounded-full dark:bg-gray-600">
-                <span class="font-medium text-gray-600 dark:text-gray-300">
-                    @context.User.Identity?.Name?.First()
-                </span>
-            </div>
-            <div class="font-semibold leading-none text-gray-900 dark:text-white ml-3">
-                @context.User.Identity?.Name
-            </div>
+        @* TODO: remove classes *@
+        <a href="/auth/profile"
+           class="px-5 py-3 border-t border-gray-200 dark:border-gray-700">
+            <Grid ItemsSmall="GridItems.Center"
+                  GutterX="GridGutter.Large">
+                <GridItem>
+                    <Avatar>
+                        @context.User.Identity?.Name?.First()
+                    </Avatar>
+                </GridItem>
+                <GridItem>
+                    <Typography Weight="TextWeight.SemiBold">
+                        @context.User.Identity?.Name.ToUpper()
+                    </Typography>
+                </GridItem>
+            </Grid>
         </a>
     </Authorized>
     <Authorizing>
