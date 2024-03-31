@@ -199,6 +199,29 @@
             ]
         },
         {
+            "Name": "Role Management",
+            "Description": "Role Management Plugin",
+            "Types": [
+                {
+                    "Name": "Roles List",
+                    "Type": "RoleListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create Role",
+                    "Type": "RoleCreatePlugin"
+                },
+                {
+                    "Name": "Update Role",
+                    "Type": "RoleUpdatePlugin"
+                },
+                {
+                    "Name": "Role Detail",
+                    "Type": "RoleDetailPlugin"
+                }
+            ]
+        },
+        {
             "Name": "Counter",
             "Description": "Counter Plugin",
             "Types": [
@@ -288,6 +311,16 @@
                     "Plugins": [
                         {
                             "Definition": "App Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Roles",
+                    "Path": "/roles",
+                    "Plugins": [
+                        {
+                            "Definition": "Role Management",
                             "Section": "Main"
                         }
                     ]

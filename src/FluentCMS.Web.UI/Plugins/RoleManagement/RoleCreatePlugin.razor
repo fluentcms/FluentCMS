@@ -1,0 +1,85 @@
+﻿<Page>
+    <PageHeader HasBack="true"
+                Title="Create Role">
+    </PageHeader>
+    <PageBody>
+        <Grid Gutter="GridGutter.Medium">
+            <GridItem Small="GridItemColumn.Twelve">
+                <Form Model="@Model"
+                      OnSubmit="OnSubmit">
+                    <Card>
+                        <CardBody>
+                            <Input @bind-Value="Model.Name"
+                                   Id="roleCreateNameInput"
+                                   Label="Name"
+                                   Name="Name"
+                                   Placeholder="Enter Role Name..."
+                                   Required="true" />
+                            <Textarea @bind-Value="Model.Description"
+                                      Id="roleCreateDescriptionInput"
+                                      Label="Description"
+                                      Name="Description"
+                                      Placeholder="Enter Textarea..." />
+                            <Spacer />
+                            @if (!string.IsNullOrEmpty(Message))
+                            {
+                                <Typography>
+                                    @Message
+                                </Typography>
+                                <Spacer />
+                            }
+                            <ButtonGroup>
+                                <Button id="roleCreateCancelButton" 
+                                        OnClick="GoBack">
+                                    Cancel
+                                </Button>
+                                <Button id="roleCreateSubmitButton" 
+                                        Color="Color.Primary"
+                                        Type="ButtonType.Submit">
+                                    Save
+                                </Button>
+                            </ButtonGroup>
+                        </CardBody>
+                    </Card>
+                </Form>
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
+
+@code {
+    [Inject]
+    IJSRuntime JsRuntime { set; get; } = default!;
+
+    [Inject]
+    NavigationManager NavigationManager { set; get; } = default!;
+
+    [Inject]
+    RoleClient RoleClient { get; set; } = default!;
+
+    string? AppSlug {get; set; }
+
+    string? Message { get; set; }
+
+    RoleCreateRequest Model { get; set; } = new();
+
+    async Task GoBack()
+    {
+        await JsRuntime.InvokeVoidAsync("history.back");
+    }
+
+    async Task OnSubmit()
+    {
+        try
+        {
+            AppSlug = NavigationManager.GetAppSlugFromQuery();
+            var newRole = await RoleClient.CreateAsync(AppSlug, Model);
+            Message = "Done!";
+            GoBack();
+        }
+        catch (Exception ex)
+        {
+            Message = ex.ToString();
+        }
+    }
+}
