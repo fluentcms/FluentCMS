@@ -2,47 +2,49 @@
 
 <ContentLayout>
     <Page>
-        <PageHeader Title="Content Management"/>
+        <PageHeader Title="Content Management" />
         <PageBody>
-            <Select @bind-Value="AppSlug"
-                    class="lg:hidden"
-                    Dense="true"
-                    Id="contentIndexAppSelect"
-                    Placeholder="Choose an App..."
-                    OnChange="(string value) => OnChangeApp()">
-                @foreach (var app in Apps)
-                {
-                    <Option Value="@app.Slug">@app.Title</Option>
-                }
-            </Select>
-            <Spacer class="lg:hidden"/>
-
-            <Grid class="lg:hidden"
-                  GutterY="GridGutter.Medium"
+            <Grid GutterY="GridGutter.Medium"
                   Id="contentIndexCollectionList">
+                <GridItem HideLarge="true"
+                          Small="GridItemColumn.Twelve">
+                    <Select @bind-Value="AppSlug"
+                            Dense="true"
+                            Id="contentIndexAppSelect"
+                            Placeholder="Choose an App..."
+                            OnChange="(string value) => OnChangeApp()">
+                        @foreach (var app in Apps)
+                        {
+                            <Option Value="@app.Slug">@app.Title</Option>
+                        }
+                    </Select>
+                </GridItem>
                 @foreach (var collection in Collections)
                 {
-                    
-                    <GridItem Small="GridItemColumn.Twelve">
+                    <GridItem HideLarge="true"
+                              Small="GridItemColumn.Twelve">
                         <a Href="@($"?pluginDef=Content Management&typeName=Content List&appSlug={AppSlug}&contentTypeSlug={collection.Slug}")"
-                            id="@($"contentIndex{@collection.Slug}Link")">
+                           id="@($"contentIndex{@collection.Slug}Link")">
                             <Card>
                                 <CardBody>
-                                    <CardTitle>@collection.Title</CardTitle>
-                                    <Typography>@collection.Description</Typography>
+                                    <CardTitle>
+                                        @collection.Title
+                                    </CardTitle>
+                                    <Typography>
+                                        @collection.Description
+                                    </Typography>
                                 </CardBody>
                             </Card>
                         </a>
                     </GridItem>
                 }
             </Grid>
-
         </PageBody>
     </Page>
 </ContentLayout>
 
 @code {
-        [Inject]
+    [Inject]
     AppClient AppClient { get; set; } = default!;
 
     [Inject]

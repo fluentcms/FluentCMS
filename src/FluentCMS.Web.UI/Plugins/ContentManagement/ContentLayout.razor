@@ -1,7 +1,8 @@
 @inherits BaseComponent
 
 <Grid>
-    <GridItem class="hidden lg:flex" 
+    <GridItem HideSmall="true"
+              HideMedium="true"
               Small="GridItemColumn.Auto">
         <Sidebar Title="Collections"
                  Secondary="true">
@@ -101,4 +102,3 @@
         await Load();
     }
 }
-
