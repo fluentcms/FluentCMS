@@ -92,5 +92,5 @@ Cypress.Commands.add('checkAdminNavbar', () => {
     cy.get('#adminNavbarToggleButton').click()
     cy.elementShouldAvailable('#adminSidebar')
 
-    cy.viewport(1366, 768)
+    cy.viewport(1366, 800)
 })
