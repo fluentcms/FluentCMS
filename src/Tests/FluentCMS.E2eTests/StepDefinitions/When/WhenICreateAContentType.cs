@@ -10,9 +10,7 @@ public partial class StepDefinitions
 
         var client = context.Get<ContentTypeClient>();
 
-        var app = context.Get<AppDetailResponseIApiResult>();
-
-        var result = await client.CreateAsync(app.Data.Slug!, request);
+        var result = await client.CreateAsync(request);
 
         context.Set(result);
     }
