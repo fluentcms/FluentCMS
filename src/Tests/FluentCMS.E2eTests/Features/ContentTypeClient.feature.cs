@@ -20,7 +20,6 @@ namespace FluentCMS.E2eTests.Features
     [System.CodeDom.Compiler.GeneratedCodeAttribute("TechTalk.SpecFlow", "3.9.0.0")]
     [System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     [Xunit.TraitAttribute("Category", "RequiresFreshSetup")]
-    [Xunit.TraitAttribute("Category", "RequiresTestApp")]
     [Xunit.TraitAttribute("Category", "RequiresAuthenticatedAdmin")]
     public partial class ContentTypeClientFeature : object, Xunit.IClassFixture<ContentTypeClientFeature.FixtureData>, System.IDisposable
     {
@@ -29,7 +28,6 @@ namespace FluentCMS.E2eTests.Features
         
         private static string[] featureTags = new string[] {
                 "RequiresFreshSetup",
-                "RequiresTestApp",
                 "RequiresAuthenticatedAdmin"};
         
         private Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
@@ -83,9 +81,9 @@ namespace FluentCMS.E2eTests.Features
         
         public virtual void FeatureBackground()
         {
-#line 6
+#line 5
 #line hidden
-#line 7
+#line 6
  testRunner.Given("I have a \"ContentTypeClient\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
         }
@@ -103,7 +101,7 @@ namespace FluentCMS.E2eTests.Features
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Get All", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 9
+#line 8
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -113,16 +111,16 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 6
+#line 5
 this.FeatureBackground();
 #line hidden
-#line 10
+#line 9
  testRunner.Given("I have 10 ContentTypes", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 11
+#line 10
  testRunner.When("I get all content types", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 12
+#line 11
  testRunner.Then("I should see 10 content types", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -137,7 +135,7 @@ this.FeatureBackground();
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Create", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 14
+#line 13
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -147,28 +145,28 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 6
+#line 5
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table6 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table4 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table6.AddRow(new string[] {
+                table4.AddRow(new string[] {
                             "title",
                             "test"});
-                table6.AddRow(new string[] {
+                table4.AddRow(new string[] {
                             "description",
                             "test description"});
-                table6.AddRow(new string[] {
+                table4.AddRow(new string[] {
                             "slug",
                             "test-slug"});
-#line 15
- testRunner.Given("I have a ContentTypeCreateRequest", ((string)(null)), table6, "Given ");
+#line 14
+ testRunner.Given("I have a ContentTypeCreateRequest", ((string)(null)), table4, "Given ");
 #line hidden
-#line 20
+#line 19
  testRunner.When("I create a content type", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 21
+#line 20
  testRunner.Then("I should see the content type", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -185,7 +183,7 @@ this.FeatureBackground();
                     "RequiresContentType"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Update", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 24
+#line 23
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -195,25 +193,25 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 6
+#line 5
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table7 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table5 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table7.AddRow(new string[] {
+                table5.AddRow(new string[] {
                             "title",
                             "test-updated"});
-                table7.AddRow(new string[] {
+                table5.AddRow(new string[] {
                             "description",
                             "test updated description"});
-#line 25
- testRunner.Given("I have a ContentTypeUpdateRequest", ((string)(null)), table7, "Given ");
+#line 24
+ testRunner.Given("I have a ContentTypeUpdateRequest", ((string)(null)), table5, "Given ");
 #line hidden
-#line 29
+#line 28
  testRunner.When("I update a content type", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 30
+#line 29
  testRunner.Then("I should see the updated content type", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -230,7 +228,7 @@ this.FeatureBackground();
                     "RequiresContentType"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Delete", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 33
+#line 32
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -240,13 +238,13 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 6
+#line 5
 this.FeatureBackground();
 #line hidden
-#line 34
+#line 33
  testRunner.When("I delete a content type", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 35
+#line 34
  testRunner.Then("I should not see the content type", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -263,7 +261,7 @@ this.FeatureBackground();
                     "RequiresContentType"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Set Field", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 38
+#line 37
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -273,16 +271,16 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 6
+#line 5
 this.FeatureBackground();
 #line hidden
-#line 39
+#line 38
  testRunner.Given("I have a ContentType", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 40
+#line 39
  testRunner.When("I set a field", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 41
+#line 40
  testRunner.Then("I should see the field", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -301,7 +299,7 @@ this.FeatureBackground();
                     "RequiresContentTypeSetField"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Delete Field", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 45
+#line 44
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -311,19 +309,19 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 6
+#line 5
 this.FeatureBackground();
 #line hidden
-#line 46
+#line 45
  testRunner.Given("I have a ContentType", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 47
+#line 46
  testRunner.When("I delete a field", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 48
+#line 47
  testRunner.Then("Wait 1 second", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 49
+#line 48
  testRunner.Then("I should not see the field", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
