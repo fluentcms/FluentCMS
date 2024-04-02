@@ -20,7 +20,6 @@ namespace FluentCMS.E2eTests.Features
     [System.CodeDom.Compiler.GeneratedCodeAttribute("TechTalk.SpecFlow", "3.9.0.0")]
     [System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     [Xunit.TraitAttribute("Category", "RequiresFreshSetup")]
-    [Xunit.TraitAttribute("Category", "RequiresTestApp")]
     [Xunit.TraitAttribute("Category", "RequiresAuthenticatedAdmin")]
     public partial class RoleClientFeature : object, Xunit.IClassFixture<RoleClientFeature.FixtureData>, System.IDisposable
     {
@@ -29,7 +28,6 @@ namespace FluentCMS.E2eTests.Features
         
         private static string[] featureTags = new string[] {
                 "RequiresFreshSetup",
-                "RequiresTestApp",
                 "RequiresAuthenticatedAdmin"};
         
         private Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
@@ -83,9 +81,9 @@ namespace FluentCMS.E2eTests.Features
         
         public virtual void FeatureBackground()
         {
-#line 5
+#line 4
 #line hidden
-#line 6
+#line 5
  testRunner.Given("I have a \"RoleClient\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
         }
@@ -103,7 +101,7 @@ namespace FluentCMS.E2eTests.Features
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Create Role", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 8
+#line 7
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -113,25 +111,25 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 5
+#line 4
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table8 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table6 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table8.AddRow(new string[] {
+                table6.AddRow(new string[] {
                             "name",
                             "DummyRole"});
-                table8.AddRow(new string[] {
+                table6.AddRow(new string[] {
                             "description",
                             "DummyRole Description"});
-#line 9
- testRunner.Given("I have a role", ((string)(null)), table8, "Given ");
+#line 8
+ testRunner.Given("I have a role", ((string)(null)), table6, "Given ");
 #line hidden
-#line 13
+#line 12
  testRunner.When("I Create Role", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 14
+#line 13
  testRunner.Then("Role Creation Result should be Success", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -148,7 +146,7 @@ this.FeatureBackground();
                     "RequiresTestRole"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Update Role", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 17
+#line 16
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -158,22 +156,22 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 5
+#line 4
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table9 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table7 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table9.AddRow(new string[] {
+                table7.AddRow(new string[] {
                             "name",
                             "UpdatedDummyRole"});
-                table9.AddRow(new string[] {
+                table7.AddRow(new string[] {
                             "description",
                             "Updated DummyRole Description"});
-#line 18
- testRunner.When("I Update Role to", ((string)(null)), table9, "When ");
+#line 17
+ testRunner.When("I Update Role to", ((string)(null)), table7, "When ");
 #line hidden
-#line 22
+#line 21
  testRunner.Then("Role Update Result should be Success", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -190,7 +188,7 @@ this.FeatureBackground();
                     "RequiresTestRole"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Delete Role", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 25
+#line 24
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -200,13 +198,13 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 5
+#line 4
 this.FeatureBackground();
 #line hidden
-#line 26
+#line 25
  testRunner.When("I Delete Role", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 27
+#line 26
  testRunner.Then("Role Deletion Result should be Success", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -221,7 +219,7 @@ this.FeatureBackground();
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("GetAll Roles", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 29
+#line 28
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -231,16 +229,16 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 5
+#line 4
 this.FeatureBackground();
 #line hidden
-#line 30
+#line 29
  testRunner.Given("I have 10 Roles", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 31
+#line 30
  testRunner.When("I Get All Roles", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 32
+#line 31
  testRunner.Then("I should get 10 Roles", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
