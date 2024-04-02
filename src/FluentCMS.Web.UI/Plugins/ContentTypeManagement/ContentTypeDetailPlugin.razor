@@ -61,35 +61,35 @@
                       Large="GridItemColumn.Three">
                 <Card>
                     <CardBody>
-                        @if(!string.IsNullOrEmpty(View.CreatedBy))
+                        @if (!string.IsNullOrEmpty(View.CreatedBy))
                         {
                             <Typography><strong>Created By</strong></Typography>
                             <Typography>@View.CreatedBy</Typography>
                             <Spacer />
                         }
-                        @if(!string.IsNullOrEmpty(View.CreatedAt.ToString()))
+                        @if (!string.IsNullOrEmpty(View.CreatedAt.ToString()))
                         {
                             <Typography><strong>Created At</strong></Typography>
                             <Typography>@View.CreatedAt</Typography>
                             <Spacer />
                         }
-                        @if(!string.IsNullOrEmpty(View.ModifiedBy))
+                        @if (!string.IsNullOrEmpty(View.ModifiedBy))
                         {
                             <Typography><strong>Modified By</strong></Typography>
                             <Typography>@View.ModifiedBy</Typography>
                             <Spacer />
                         }
-                        @if(!string.IsNullOrEmpty(View.ModifiedAt.ToString()))
+                        @if (!string.IsNullOrEmpty(View.ModifiedAt.ToString()))
                         {
                             <Typography><strong>Modified At</strong></Typography>
                             <Typography>@View.ModifiedAt</Typography>
                         }
                     </CardBody>
                 </Card>
-                  <Spacer/>
+                <Spacer />
                 <Button Block="true"
                         Color="Color.Primary"
-                        Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={View.Id}&appSlug={NavigationManager.GetAppSlugFromQuery()}")"
+                        Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={View.Id}")"
                         Item="true"
                         Outline="true">
                     <Icon Name="IconName.Edit" />
@@ -111,9 +111,6 @@
 
 @code {
     [Inject]
-    AppClient AppClient { get; set; } = default!;
-
-    [Inject]
     ConfirmService Confirm { set; get; } = default!;
 
     [Inject]
@@ -121,8 +118,6 @@
 
     [Inject]
     NavigationManager NavigationManager { set; get; } = default!;
-
-    AppDetailResponse App { get; set; } = new();
 
     Guid? ContentTypeId { get; set; }
 
@@ -136,17 +131,16 @@
 
     async Task LoadData()
     {
-        // TODO: View = (await ContentTypeClient.GetAsync(appSlug, contentTypeId.Value)).Data;
-        View = (await ContentTypeClient.GetAllAsync(App.Slug))?.Data.ToList().Find(x => x.Id == ContentTypeId);
+        View = (await ContentTypeClient.GetAllAsync())?.Data.ToList().Find(x => x.Id == ContentTypeId);
         Fields = View.Fields.ToList();
     }
 
     async Task OnDelete()
     {
         var result = await Confirm.Show("Are you sure to remove this ContentType?");
-        if(result && ContentTypeId != null)
+        if (result && ContentTypeId != null)
         {
-            await ContentTypeClient.DeleteAsync(App.Slug, View.Id);
+            await ContentTypeClient.DeleteAsync(View.Id);
             GoBack();
         }
     }
@@ -157,14 +151,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var appSlug = NavigationManager.GetAppSlugFromQuery();
         ContentTypeId = NavigationManager.GetIdFromQuery();
 
-        if(!string.IsNullOrEmpty(appSlug))
-        {
-            App = (await AppClient.GetBySlugAsync(appSlug)).Data;
-        }
-        if (ContentTypeId != null && App != null)
+        if (ContentTypeId != null)
             try
             {
                 await LoadData();

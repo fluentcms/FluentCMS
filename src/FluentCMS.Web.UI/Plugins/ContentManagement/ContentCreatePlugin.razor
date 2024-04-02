@@ -40,15 +40,11 @@
 </ContentLayout>
 
 @code {
-    [Inject] AppClient AppClient { get; set; } = default!;
-
     [Inject] ContentClient ContentClient { get; set; } = default!;
 
     [Inject] ContentTypeClient ContentTypeClient { get; set; } = default!;
 
     [Inject] NavigationManager NavigationManager { set; get; } = default!;
-
-    AppDetailResponse App { get; set; } = new();
 
     ContentTypeDetailResponse ContentType { get; set; } = new();
 
@@ -60,23 +56,16 @@
 
     void GoBack()
     {
-        NavigationManager.NavigateTo($"?pluginDef=Content Management&typeName=Content List&contentTypeSlug={ContentType.Slug}&appSlug={App.Slug}");
+        NavigationManager.NavigateTo($"?pluginDef=Content Management&typeName=Content List&contentTypeSlug={ContentType.Slug}");
     }
 
     protected override async Task OnInitializedAsync()
     {
-        var appSlug = NavigationManager.GetStringFromQuery("appSlug");
         var contentTypeSlug = NavigationManager.GetStringFromQuery("contentTypeSlug");
 
-        if (!string.IsNullOrEmpty(contentTypeSlug) && !string.IsNullOrEmpty(appSlug))
+        if (!string.IsNullOrEmpty(contentTypeSlug))
         {
-            var appResponse = await AppClient.GetBySlugAsync(appSlug);
-            if (appResponse?.Data != null)
-            {
-                App = appResponse?.Data;
-            }
-
-            var response = await ContentTypeClient.GetAllAsync(appSlug);
+            var response = await ContentTypeClient.GetAllAsync();
             if (response?.Data != null)
             {
                 ContentType = response.Data.ToList().Find(x => x.Slug == contentTypeSlug);
@@ -97,7 +86,7 @@
         try
         {
             // TODO: Doesn't work
-            var response = await ContentClient.CreateAsync(App.Slug, ContentType.Slug, new ContentCreateRequest {
+            var response = await ContentClient.CreateAsync(ContentType.Slug, new ContentCreateRequest {
                 Value = Model
             });
 

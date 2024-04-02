@@ -8,8 +8,6 @@ public partial class StepDefinitions
     {
         var contentTypeClient = context.Get<ContentTypeClient>();
 
-        var app = context.Get<AppDetailResponseIApiResult>();
-
         var contentTypesToBeCreated = Enumerable.Range(1, count)
             .Select(x => new ContentTypeCreateRequest()
             {
@@ -21,7 +19,7 @@ public partial class StepDefinitions
         // iterate and create contentTypesToBeCreated
         foreach (var contentType in contentTypesToBeCreated)
         {
-            await contentTypeClient.CreateAsync(app.Data.Slug, contentType);
+            await contentTypeClient.CreateAsync(contentType);
         }
     }
 }

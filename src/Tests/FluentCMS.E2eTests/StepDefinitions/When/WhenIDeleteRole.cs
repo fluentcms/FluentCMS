@@ -7,8 +7,7 @@ public partial class StepDefinitions
     {
         var rolesClient = context.Get<RoleClient>();
         var role = context.Get<RoleDetailResponseIApiResult>();
-        var app = context.Get<AppDetailResponseIApiResult>();
-        var response = await rolesClient.DeleteAsync(app.Data.Slug!, role.Data.Id);
+        var response = await rolesClient.DeleteAsync(role.Data.Id);
         context.Set(response);
     }
 }
