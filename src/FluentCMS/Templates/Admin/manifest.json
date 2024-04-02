@@ -210,6 +210,17 @@
             ]
         },
         {
+            "Name": "Settings",
+            "Description": "Settings Plugin",
+            "Types": [
+                {
+                    "Name": "Settings",
+                    "Type": "SettingsViewPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
             "Name": "User Info",
             "Description": "User Info Plugin",
             "Types": [
@@ -278,6 +289,16 @@
                     "Plugins": [
                         {
                             "Definition": "User Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Settings",
+                    "Path": "/settings",
+                    "Plugins": [
+                        {
+                            "Definition": "Settings",
                             "Section": "Main"
                         }
                     ]
