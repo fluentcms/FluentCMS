@@ -7,12 +7,9 @@ public partial class StepDefinitions
     {
         var contentType = context.Get<ContentTypeDetailResponseIApiResult>();
 
-        var app = context.Get<AppDetailResponseIApiResult>();
-
         var client = context.Get<ContentTypeClient>();
 
         var deleteResult = await client.DeleteFieldAsync(
-                    app.Data.Slug!,
                     contentType.Data.Id,
                     "test-field");
 
