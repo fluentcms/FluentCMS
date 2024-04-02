@@ -3,10 +3,10 @@
 public class ContentTypeRepository(
     IMongoDBContext mongoDbContext,
     IAuthContext authContext) :
-    AppAssociatedRepository<ContentType>(mongoDbContext, authContext),
+    AuditableEntityRepository<ContentType>(mongoDbContext, authContext),
     IContentTypeRepository
 {
-    public async Task<ContentType?> GetBySlug(Guid appId, string contentTypeSlug, CancellationToken cancellationToken = default)
+    public async Task<ContentType?> GetBySlug(string contentTypeSlug, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

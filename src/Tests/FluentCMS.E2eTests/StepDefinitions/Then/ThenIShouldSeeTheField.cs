@@ -6,10 +6,9 @@ public partial class StepDefinitions
     public async Task ThenIShouldSeeTheFieldAsync()
     {
         var client = context.Get<ContentTypeClient>();
-        var app = context.Get<AppDetailResponseIApiResult>();
 
         // fetch all content types
-        var result = await client.GetAllAsync(app.Data.Slug!);
+        var result = await client.GetAllAsync();
 
         // find the content type
         var contentType = context.Get<ContentTypeDetailResponseIApiResult>();

@@ -18,19 +18,6 @@ public static class Helper
         return default;
     }
 
-    public static string? GetAppSlugFromQuery(this NavigationManager? navigation)
-    {
-        if (navigation == null)
-            return default;
-
-        var uri = new Uri(navigation.Uri);
-        var query = HttpUtility.ParseQueryString(uri.Query);
-        if (!string.IsNullOrEmpty(query["appSlug"]))
-            return query["appSlug"];
-
-        return default;
-    }
-
     public static string? GetStringFromQuery(this NavigationManager? navigation, string key)
     {
         if (navigation == null)
