@@ -9,18 +9,6 @@
                       OnSubmit="OnSubmit">
                     <Card>
                         <CardBody>
-                            <Select @bind-Value="AppSlug"
-                                    Disabled="true"
-                                    Label="App"
-                                    Name="App"
-                                    Placeholder="Choose App..."
-                                    Required="true"
-                                    Size="InputSize.Small">
-                                @foreach (var app in Apps)
-                                {
-                                    <Option Value="@app.Slug">@app.Title</Option>
-                                }
-                            </Select>
                             <Input @bind-Value="@View.Slug"
                                    Disabled="true"
                                    Label="Slug"
@@ -129,9 +117,6 @@
 
 @code {
     [Inject]
-    AppClient AppClient { get; set; } = default!;
-
-    [Inject]
     ContentTypeClient ContentTypeClient { get; set; } = default!;
 
     [Inject]
@@ -143,11 +128,7 @@
     [Inject]
     NavigationManager NavigationManager { set; get; } = default!;
 
-    List<AppDetailResponse> Apps { get; set; } = [];
-
     List<ContentTypeField> Fields { get; set; } = [];
-
-    string? AppSlug { get; set; }
 
     bool FieldModalOpen = false;
 
@@ -165,23 +146,23 @@
 
     async Task GoBack()
     {
-        NavigationManager.NavigateTo("/admin/content-types?appSlug=" + AppSlug);
+        NavigationManager.NavigateTo("/admin/content-types");
     }
 
     async Task OnEditField(ContentTypeField field)
     {
         FieldModel = new ContentTypeField
-            {
-                DefaultValue = field.DefaultValue,
-                Description = field.Description,
-                Hint = field.Hint,
-                IsRequired = field.IsRequired,
-                Label = field.Label,
-                Placeholder = field.Placeholder,
-                Slug = field.Slug,
-                Title = field.Title,
+        {
+            DefaultValue = field.DefaultValue,
+            Description = field.Description,
+            Hint = field.Hint,
+            IsRequired = field.IsRequired,
+            Label = field.Label,
+            Placeholder = field.Placeholder,
+            Slug = field.Slug,
+            Title = field.Title,
 
-            };
+        };
         FieldModalOpen = true;
     }
 
@@ -191,7 +172,7 @@
 
         if (result)
         {
-            var response = await ContentTypeClient.DeleteFieldAsync(AppSlug, View.Id, fieldName);
+            var response = await ContentTypeClient.DeleteFieldAsync(View.Id, fieldName);
 
             if (response?.Data != null)
             {
@@ -209,16 +190,8 @@
     protected override async Task OnInitializedAsync()
     {
         Id = NavigationManager.GetIdFromQuery();
-        AppSlug = NavigationManager.GetAppSlugFromQuery();
 
-        var appResponse = await AppClient.GetAllAsync();
-
-        if (appResponse?.Data != null)
-        {
-            Apps = appResponse.Data.ToList();
-        }
-
-        var response = await ContentTypeClient.GetByIdAsync(Id!.Value, AppSlug!);
+        var response = await ContentTypeClient.GetByIdAsync(Id!.Value);
 
         if (response?.Data != null)
         {
@@ -226,7 +199,6 @@
             Fields = (View.Fields ?? []).ToList();
             Model.Id = View.Id;
             Model.Title = View.Title;
-            Model.AppId = View.AppId;
             Model.Description = View.Description;
         }
     }
@@ -239,7 +211,7 @@
     async Task OnSubmitField(ContentTypeField field)
     {
         FieldModalOpen = false;
-        var response = await ContentTypeClient.SetFieldAsync(AppSlug, View.Id, field);
+        var response = await ContentTypeClient.SetFieldAsync(View.Id, field);
 
         if (response?.Data != null)
         {
@@ -251,7 +223,7 @@
     {
         try
         {
-            var updatedContentType = await ContentTypeClient.UpdateAsync(AppSlug, Model);
+            var updatedContentType = await ContentTypeClient.UpdateAsync(Model);
             Message = "Done!";
             await GoBack();
         }
