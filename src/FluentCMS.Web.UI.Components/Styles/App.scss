@@ -23,6 +23,7 @@ body.dark {
 // COMPONENTS
 
 @import '../Components/Alert/Alert';
+@import '../Components/Avatar/Avatar';
 @import '../Components/Badge/Badge';
 @import '../Components/Button/Button';
 @import '../Components/Card/Card';
@@ -35,6 +36,8 @@ body.dark {
 @import '../Components/Form/Form/Form';
 @import '../Components/Form/FormField/FormField';
 @import '../Components/Form/Input/Input';
+@import '../Components/Form/MarkdownEditor/MarkdownEditor.Core';
+@import '../Components/Form/MarkdownEditor/MarkdownEditor';
 @import '../Components/Form/Option/Option';
 @import '../Components/Form/Radio/Radio';
 @import '../Components/Form/Select/Select';
