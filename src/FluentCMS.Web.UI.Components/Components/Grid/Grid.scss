@@ -82,4 +82,22 @@ $grid-item-column: ( one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 
             }
         }
     }
+
+    @media (min-width: 0) and (max-width: 767px) {
+        &-hide-small-true {
+            display: none;
+        }
+    }
+
+    @media (min-width: 768px) and (max-width: 1199px) {
+        &-hide-medium-true {
+            display: none;
+        }
+    }
+
+    @media (min-width: 1200px) {
+        &-hide-large-true {
+            display: none;
+        }
+    }
 }

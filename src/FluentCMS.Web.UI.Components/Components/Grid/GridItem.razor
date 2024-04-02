@@ -7,7 +7,7 @@
     @ChildContent
 </div>
 
-@code {
+@code { 
     #region Column
 
     [Parameter]
@@ -21,6 +21,22 @@
     [Parameter]
     [CSSProperty]
     public GridItemColumn? Large { get; set; }
+
+    #endregion
+
+    #region Hide
+
+    [Parameter]
+    [CSSProperty]
+    public bool? HideSmall { get; set; }
+
+    [Parameter]
+    [CSSProperty]
+    public bool? HideMedium { get; set; }
+
+    [Parameter]
+    [CSSProperty]
+    public bool? HideLarge { get; set; }
 
     #endregion
 }
