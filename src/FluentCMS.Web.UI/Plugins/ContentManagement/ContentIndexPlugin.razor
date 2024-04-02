@@ -2,30 +2,19 @@
 
 <ContentLayout>
     <Page>
-        <PageHeader Title="Content Management"/>
+        <PageHeader Title="Content Management" />
         <PageBody>
-            <Select @bind-Value="AppSlug"
-                    class="lg:hidden"
-                    Dense="true"
-                    Id="contentIndexAppSelect"
-                    Placeholder="Choose an App..."
-                    OnChange="(string value) => OnChangeApp()">
-                @foreach (var app in Apps)
-                {
-                    <Option Value="@app.Slug">@app.Title</Option>
-                }
-            </Select>
-            <Spacer class="lg:hidden"/>
+            <Spacer class="lg:hidden" />
 
             <Grid class="lg:hidden"
                   GutterY="GridGutter.Medium"
                   Id="contentIndexCollectionList">
                 @foreach (var collection in Collections)
                 {
-                    
+
                     <GridItem Small="GridItemColumn.Twelve">
-                        <a Href="@($"?pluginDef=Content Management&typeName=Content List&appSlug={AppSlug}&contentTypeSlug={collection.Slug}")"
-                            id="@($"contentIndex{@collection.Slug}Link")">
+                        <a Href="@($"?pluginDef=Content Management&typeName=Content List&contentTypeSlug={collection.Slug}")"
+                           id="@($"contentIndex{@collection.Slug}Link")">
                             <Card>
                                 <CardBody>
                                     <CardTitle>@collection.Title</CardTitle>
@@ -42,9 +31,6 @@
 </ContentLayout>
 
 @code {
-        [Inject]
-    AppClient AppClient { get; set; } = default!;
-
     [Inject]
     ContentClient ContentClient { get; set; } = default!;
 
@@ -57,15 +43,11 @@
     [Inject]
     NavigationManager NavigationManager { get; set; } = default!;
 
-    string? AppSlug { get; set; }
-
-    List<AppDetailResponse> Apps { get; set; } = [];
-
     List<ContentTypeDetailResponse> Collections { get; set; } = [];
 
     async Task Load()
     {
-        var response = await ContentTypeClient.GetAllAsync(AppSlug);
+        var response = await ContentTypeClient.GetAllAsync();
 
         if (response?.Data == null) return;
 
@@ -80,34 +62,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
-
-        AppSlug = NavigationManager.GetAppSlugFromQuery();
-
-        if (!string.IsNullOrEmpty(AppSlug))
-        {
-            await Load();
-        }
-
-        var response = await AppClient!.GetAllAsync();
-
-        if (response?.Data == null) return;
-
-        Apps = response.Data.ToList();
-
-        StateHasChanged();
-
-        if (!string.IsNullOrEmpty(AppSlug)) return;
-
-        if (Apps.Count() == 0) return;
-
-        var slug = await LocalStorageService.GetItemAsStringAsync("APP_SLUG");
-
-        AppSlug = Apps.Exists(x => x.Slug == slug) ? slug : Apps.First().Slug;
-
-        StateHasChanged();
-
-        await LocalStorageService.SetItemAsStringAsync("APP_SLUG", AppSlug);
-
         await Load();
+        StateHasChanged();
     }
 }
