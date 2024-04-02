@@ -10,9 +10,7 @@ public partial class StepDefinitions
 
         var client = context.Get<ContentTypeClient>();
 
-        var app = context.Get<AppDetailResponseIApiResult>();
-
-        var result = await client.GetAllAsync(app.Data.Slug!);
+        var result = await client.GetAllAsync();
 
         result.Data.ShouldNotContain(x => x.Slug == createResponse.Data.Slug);
     }
