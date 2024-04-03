@@ -84,7 +84,7 @@ public class MappingProfile : Profile
 
         #endregion
 
-        #region File
+        #region Files
 
         CreateMap<FileCreateRequest, File>();
         CreateMap<File, FileDetailResponse>();
