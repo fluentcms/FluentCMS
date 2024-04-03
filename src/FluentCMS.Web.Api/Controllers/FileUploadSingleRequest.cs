@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class SingleFileCreateRequest
+public class FileUploadSingleRequest
 {
     [Required]
     public IFormFile File { get; set; } = default!;
