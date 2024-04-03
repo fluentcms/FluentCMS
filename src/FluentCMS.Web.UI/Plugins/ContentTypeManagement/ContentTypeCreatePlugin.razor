@@ -9,17 +9,6 @@
                       OnSubmit="OnSubmit">
                     <Card>
                         <CardBody>
-                            <Select @bind-Value="AppSlug"
-                                   Label="App"
-                                   Name="App"
-                                   Placeholder="Choose App..."
-                                   Disabled="@(AppSlug != null)"
-                                   Required="true">
-                                @foreach (var app in Apps)
-                                {
-                                    <Option Value="@app.Slug">@app.Title</Option>
-                                }
-                            </Select>
                             <Input @bind-Value="Model.Slug"
                                    Id="contentTypeCreateSlugInput"
                                    Label="Slug"
@@ -30,26 +19,26 @@
                                    Label="Title"
                                    Name="Title"
                                    Placeholder="Enter Title..."
-                                   Required="true"/>
+                                   Required="true" />
                             <Textarea @bind-Value="Model.Description"
-                                   Id="contentTypeCreateDescriptionInput"
-                                   Label="Description"
-                                   Name="Description"
-                                   Placeholder="Enter Description..." />
-                            <Spacer/>
-                            @if(!string.IsNullOrEmpty(Message))
+                                      Id="contentTypeCreateDescriptionInput"
+                                      Label="Description"
+                                      Name="Description"
+                                      Placeholder="Enter Description..." />
+                            <Spacer />
+                            @if (!string.IsNullOrEmpty(Message))
                             {
                                 <Typography>
                                     @Message
                                 </Typography>
-                                <Spacer/>
+                                <Spacer />
                             }
                             <ButtonGroup>
-                                <Button id="contentTypeCreateCancelButton" 
+                                <Button id="contentTypeCreateCancelButton"
                                         OnClick="GoBack">
                                     Cancel
                                 </Button>
-                                <Button id="contentTypeCreateSubmitButton" 
+                                <Button id="contentTypeCreateSubmitButton"
                                         Color="Color.Primary"
                                         Type="ButtonType.Submit">
                                     Save
@@ -65,9 +54,6 @@
 
 @code {
     [Inject]
-    AppClient AppClient { get; set; } = default!;
-
-    [Inject]
     ContentTypeClient ContentTypeClient { get; set; } = default!;
 
     [Inject]
@@ -76,49 +62,34 @@
     [Inject]
     NavigationManager NavigationManager { set; get; } = default!;
 
-    List<AppDetailResponse> Apps { get; set; } = [];
-
-    string? AppSlug { get; set; }
-
     string? Message { get; set; }
 
     ContentTypeCreateRequest Model { get; set; } = new();
 
     void GoBack()
     {
-        NavigationManager.NavigateTo("/admin/content-types?appSlug=" + AppSlug);
+        NavigationManager.NavigateTo("/admin/content-types");
     }
 
     void GoToUpdatePage(Guid? id)
     {
-        NavigationManager.NavigateTo($"?PluginDef=ContentType Management&typeName=Update ContentType&id={id.Value}&appSlug={AppSlug}");
+        NavigationManager.NavigateTo($"?PluginDef=ContentType Management&typeName=Update ContentType&id={id.Value}");
     }
 
-    protected override async Task OnInitializedAsync()
+async Task OnSubmit()
+{
+    try
     {
-        AppSlug = NavigationManager.GetAppSlugFromQuery();
-        var response = await AppClient.GetAllAsync();
-
-        if(response?.Data != null)
+        var newContentType = await ContentTypeClient.CreateAsync(Model);
+        Message = "Done!";
+        if (newContentType?.Data?.Id != null)
         {
-            Apps = response.Data.ToList();
+            GoToUpdatePage(newContentType?.Data?.Id!);
         }
     }
-
-    async Task OnSubmit()
+    catch (Exception ex)
     {
-        try
-        {
-            var newContentType = await ContentTypeClient.CreateAsync(AppSlug, Model);
-            Message = "Done!";
-            if(newContentType?.Data?.Id != null)
-            {
-                GoToUpdatePage(newContentType?.Data?.Id!);
-            }
-        }
-        catch (Exception ex)
-        {
-            Message = ex.ToString();
-        }
+        Message = ex.ToString();
     }
+}
 }

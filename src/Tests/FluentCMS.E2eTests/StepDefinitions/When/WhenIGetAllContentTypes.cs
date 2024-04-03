@@ -8,9 +8,7 @@ public partial class StepDefinitions
     {
         var contentTypeService = context.Get<ContentTypeClient>();
 
-        var app = context.Get<AppDetailResponseIApiResult>();
-
-        var contentTypes = await contentTypeService.GetAllAsync(app.Data.Slug!);
+        var contentTypes = await contentTypeService.GetAllAsync();
 
         context.Set(contentTypes);
     }

@@ -1,8 +1,7 @@
 ﻿namespace FluentCMS.Entities;
-public class File : IAuditableEntity
-{
-    public Guid Id { get; set; }
 
+public class File : AuditableEntity
+{
     /// <summary>
     /// The original name of the file within the physical file system prior to upload.
     /// The name of the file when downloaded should match this property, e.g., 'Untitled.png', 'Default.png', etc.
@@ -25,11 +24,4 @@ public class File : IAuditableEntity
     /// The size of the file in bytes.
     /// </summary>
     public long Size { get; set; } = 0;
-
-    public string CreatedBy { get; set; } = string.Empty;
-
-    public DateTime CreatedAt { get; set; }
-    public string? ModifiedBy { get; set; }
-    public DateTime? ModifiedAt { get; set; }
-    public string LocalPath { get; set; } = string.Empty;
 }

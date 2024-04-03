@@ -1,0 +1,75 @@
+@page "/components/markdown-editor"
+@layout ComponentsLayout;
+
+<Page>
+    <PageHeader Title="Textareas" />
+    <PageBody>
+        <ComponentPreview Title="Default">
+            <MarkdownEditor />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Label">
+            <MarkdownEditor Label="This is a label" />
+        </ComponentPreview>
+
+        @* <ComponentPreview Title="Disabled">
+            <MarkdownEditor Disabled="true" />
+        </ComponentPreview> *@
+
+        <ComponentPreview Title="Required">
+            <MarkdownEditor Label="Required" 
+                            Required="true" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Placeholder">
+            <MarkdownEditor Label="Placeholder"
+                            Placeholder="Type something..." />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Hint">
+            <MarkdownEditor Hint="This is a hint" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Dense">
+            <MarkdownEditor Dense="true" />
+            <MarkdownEditor Dense="true" />
+            <MarkdownEditor Dense="true" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Initial Value">
+            <MarkdownEditor @bind-Value="Value1" />
+            <Badge Color="Color.Primary">
+                @Value1
+            </Badge>
+        </ComponentPreview>
+
+        <ComponentPreview Title="Bind Value">
+            <MarkdownEditor @bind-Value="Value2" />
+            <MarkdownEditor @bind-Value="Value2" />
+        </ComponentPreview>
+
+        @* <ComponentPreview Title="Validation">
+            <MarkdownEditor Hint="This is a hint"
+                      Label="MarkdownEditor"
+                      Placeholder="Type something..."
+                      State="FormFieldState.Default" />
+            <MarkdownEditor Hint="This is a hint"
+                      Label="MarkdownEditor"
+                      Placeholder="Type something..."
+                      State="FormFieldState.Invalid" />
+            <MarkdownEditor Hint="This is a hint"
+                      Label="MarkdownEditor"
+                      Placeholder="Type something..."
+                      State="FormFieldState.Valid" />
+        </ComponentPreview>
+
+        <ComponentPreview Title="Rows">
+            <MarkdownEditor Rows="20" />
+        </ComponentPreview> *@
+    </PageBody>
+</Page>
+
+@code {
+    private string Value1 = "Initial";
+    private string Value2;
+}

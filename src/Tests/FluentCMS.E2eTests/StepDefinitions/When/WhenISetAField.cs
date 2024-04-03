@@ -6,7 +6,6 @@ public partial class StepDefinitions
     [When("I set a field")]
     public async Task WhenISetAFieldAsync()
     {
-        var app = context.Get<AppDetailResponseIApiResult>();
 
         var contentType = context.Get<ContentTypeDetailResponseIApiResult>();
 
@@ -25,7 +24,6 @@ public partial class StepDefinitions
         };
 
         var result = await contentTypeClient.SetFieldAsync(
-            app.Data.Slug!,
             contentType.Data.Id,
             body);
 
