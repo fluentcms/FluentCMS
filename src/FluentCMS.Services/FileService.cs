@@ -6,8 +6,8 @@ namespace FluentCMS.Services;
 
 public interface IFileService : IAutoRegisterService
 {
-    public Task<File?> Create(IFormFile formFile, CancellationToken cancellationToken = default);
-    public Task<IEnumerable<File?>> GetAll(CancellationToken cancellationToken = default);
+    public Task<File> Create(IFormFile formFile, CancellationToken cancellationToken = default);
+    public Task<IEnumerable<File>> GetAll(CancellationToken cancellationToken = default);
     public Task<File?> GetById(Guid id, CancellationToken cancellationToken = default);
     public Task<File?> DeleteById(Guid id, CancellationToken cancellationToken = default);
     string GetFilePath(Guid fileId);
@@ -31,7 +31,7 @@ public class FileService : IFileService
         }
     }
 
-    public async Task<File?> Create(IFormFile formFile, CancellationToken cancellationToken = default)
+    public async Task<File> Create(IFormFile formFile, CancellationToken cancellationToken = default)
     {
         var fileId = Guid.NewGuid();
         var localFilePath = GetFilePath(fileId);
@@ -57,7 +57,7 @@ public class FileService : IFileService
         return Path.Join(UploadPath, fileId.ToString("D"));
     }
 
-    public Task<IEnumerable<File?>> GetAll(CancellationToken cancellationToken = default)
+    public Task<IEnumerable<File>> GetAll(CancellationToken cancellationToken = default)
     {
         return _fileRepository.GetAll(cancellationToken)!;
     }
