@@ -6,7 +6,14 @@ namespace FluentCMS.Web.Api.Controllers;
 public class FileController(IFileService fileService, IMapper mapper) : BaseGlobalController
 {
     [HttpPost]
-    public async Task<IApiResult<IEnumerable<FileDetailResponse>>> Upload([FromForm] FileCreateRequest createRequest, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<FileDetailResponse>> UploadSingle([FromForm] SingleFileCreateRequest createRequest, CancellationToken cancellationToken = default)
+    {
+        var file = await fileService.Create(createRequest.File, cancellationToken: cancellationToken);
+        return Ok(mapper.Map<File, FileDetailResponse>(file));
+    }
+
+    [HttpPost]
+    public async Task<IApiResult<IEnumerable<FileDetailResponse>>> UploadMultiple([FromForm] MultipleFileCreateRequest createRequest, CancellationToken cancellationToken = default)
     {
         var createdFiles = new List<File>();
         foreach (var requestFile in createRequest.Files)
