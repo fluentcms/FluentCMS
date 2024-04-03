@@ -33,14 +33,13 @@ public class FileService : IFileService
     public async Task<File?> Create(IFormFile formFile, CancellationToken cancellationToken = default)
     {
         var fileId = Guid.NewGuid();
-        var localFilePath = Path.Join(UploadPath, fileId.ToString("D"));
+        var localFilePath = GetFilePath(fileId);
         var sourceStream = formFile.OpenReadStream();
         var destinationStream = System.IO.File.OpenWrite(localFilePath);
         await sourceStream.CopyToAsync(destinationStream, cancellationToken);
         var fileModel = new File()
         {
             Id = fileId,
-            LocalPath = localFilePath,
             Name = formFile.FileName,
             Extension = Path.GetExtension(formFile.FileName).ToLower(),
             MimeType = formFile.ContentType,
@@ -50,6 +49,11 @@ public class FileService : IFileService
         await destinationStream.FlushAsync(cancellationToken);
         destinationStream.Close();
         return fileModel;
+    }
+
+    private string GetFilePath(Guid fileId)
+    {
+        return Path.Join(UploadPath, fileId.ToString("D"));
     }
 
     public Task<IEnumerable<File?>> GetAll(CancellationToken cancellationToken = default)
@@ -69,11 +73,11 @@ public class FileService : IFileService
         return file;
     }
 
-    private static void DeleteFromFileSystem(File? file)
+    private void DeleteFromFileSystem(File? file)
     {
-        if (file != null && System.IO.File.Exists(file.LocalPath))
+        if (file != null && GetFilePath(file.Id) is var filePath && System.IO.File.Exists(filePath))
         {
-            System.IO.File.Delete(file.LocalPath);
+            System.IO.File.Delete(filePath);
         }
     }
 
