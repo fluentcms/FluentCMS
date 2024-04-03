@@ -13,14 +13,21 @@ public class FileController(IFileService fileService, IMapper mapper) : BaseGlob
     }
 
     [HttpGet]
-    public async Task<IApiResult<IEnumerable<FileDetailResponse>>> GetFiles(CancellationToken cancellationToken = default)
+    public async Task<IApiResult<IEnumerable<FileDetailResponse>>> GetAll(CancellationToken cancellationToken = default)
     {
         var files = await fileService.GetAll(cancellationToken);
         return Ok(files.Select(file => mapper.Map<File, FileDetailResponse>(file!)));
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetFileById([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<FileDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    {
+        var file = await fileService.GetById(id, cancellationToken);
+        return Ok(mapper.Map<File, FileDetailResponse>(file!));
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> Download([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var file = await fileService.GetById(id, cancellationToken);
         if (file == null)
