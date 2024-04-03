@@ -27,7 +27,7 @@ public class FileController(IFileService fileService, IMapper mapper) : BaseGlob
         {
             return new NotFoundResult();
         }
-        var fileStream = System.IO.File.OpenRead(file.LocalPath);
+        var fileStream = System.IO.File.OpenRead(fileService.GetFilePath(id));
         return new FileStreamResult(fileStream, file.MimeType)
         {
             FileDownloadName = file.Name

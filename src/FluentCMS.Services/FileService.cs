@@ -10,6 +10,7 @@ public interface IFileService : IAutoRegisterService
     public Task<IEnumerable<File?>> GetAll(CancellationToken cancellationToken = default);
     public Task<File?> GetById(Guid id, CancellationToken cancellationToken = default);
     public Task<File?> DeleteById(Guid id, CancellationToken cancellationToken = default);
+    string GetFilePath(Guid fileId);
 }
 public class FileService : IFileService
 {
@@ -51,7 +52,7 @@ public class FileService : IFileService
         return fileModel;
     }
 
-    private string GetFilePath(Guid fileId)
+    public string GetFilePath(Guid fileId)
     {
         return Path.Join(UploadPath, fileId.ToString("D"));
     }
