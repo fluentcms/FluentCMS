@@ -1,6 +1,5 @@
 ﻿using FluentCMS.Services;
 using FluentCMS.Web.Api.Models;
-using FluentCMS.Web.UI;
 using System.Text.Json;
 
 namespace Microsoft.Extensions.DependencyInjection;
