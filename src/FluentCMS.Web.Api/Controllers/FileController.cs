@@ -53,9 +53,9 @@ public class FileController(IFileService fileService, IMapper mapper) : BaseGlob
     }
 
     [HttpDelete("{id:guid}")]
-    public async Task<IApiResult<bool>> DeleteById([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        var file = await fileService.DeleteById(id, cancellationToken);
+        var file = await fileService.Delete(id, cancellationToken);
         return Ok(file != null);
     }
 }

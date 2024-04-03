@@ -9,7 +9,7 @@ public interface IFileService : IAutoRegisterService
     public Task<File> Create(IFormFile formFile, CancellationToken cancellationToken = default);
     public Task<IEnumerable<File>> GetAll(CancellationToken cancellationToken = default);
     public Task<File?> GetById(Guid id, CancellationToken cancellationToken = default);
-    public Task<File?> DeleteById(Guid id, CancellationToken cancellationToken = default);
+    public Task<File?> Delete(Guid id, CancellationToken cancellationToken = default);
     string GetFilePath(Guid fileId);
 }
 public class FileService : IFileService
@@ -67,7 +67,7 @@ public class FileService : IFileService
         return _fileRepository.GetById(id, cancellationToken);
     }
 
-    public async Task<File?> DeleteById(Guid id, CancellationToken cancellationToken = default)
+    public async Task<File?> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var file = await _fileRepository.Delete(id, cancellationToken);
         DeleteFromFileSystem(file);
