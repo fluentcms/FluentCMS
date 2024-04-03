@@ -11,6 +11,7 @@ public enum IconName
     ClipboardList,
     Clock,
     Close,
+    CloudArrowUp,
     Code,
     Cog,
     Delete,
