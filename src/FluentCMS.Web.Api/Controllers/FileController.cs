@@ -13,16 +13,16 @@ public class FileController(IFileService fileService, IMapper mapper) : BaseGlob
     }
 
     [HttpGet]
-    public async Task<IApiResult<IEnumerable<FileDetailResponse>>> GetFiles()
+    public async Task<IApiResult<IEnumerable<FileDetailResponse>>> GetFiles(CancellationToken cancellationToken = default)
     {
-        var files = await fileService.GetAll();
+        var files = await fileService.GetAll(cancellationToken);
         return Ok(files.Select(file => mapper.Map<File, FileDetailResponse>(file!)));
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetFileById([FromRoute] Guid id)
+    public async Task<IActionResult> GetFileById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        var file = await fileService.GetById(id);
+        var file = await fileService.GetById(id, cancellationToken);
         if (file == null)
         {
             return new NotFoundResult();
@@ -35,9 +35,9 @@ public class FileController(IFileService fileService, IMapper mapper) : BaseGlob
     }
 
     [HttpDelete("{id:guid}")]
-    public async Task<IApiResult<bool>> DeleteById([FromRoute] Guid id)
+    public async Task<IApiResult<bool>> DeleteById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        var file = await fileService.DeleteById(id);
+        var file = await fileService.DeleteById(id, cancellationToken);
         return Ok(file != null);
     }
 }
