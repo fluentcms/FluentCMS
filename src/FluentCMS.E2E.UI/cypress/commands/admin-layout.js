@@ -18,9 +18,6 @@ Cypress.Commands.add('getSidebarItem', (id) => {
 })
 
 Cypress.Commands.add("checkAdminSidebarNavigations", () => {
-    cy.getSidebarItem('#adminSidebarAppsLink').click()
-    cy.get('.f-page-header-title').should('have.text', 'Apps List')
-
     cy.getSidebarItem('#adminSidebarUsersLink').click()
     cy.get('.f-page-header-title').should('have.text', 'Users List')
 
@@ -72,7 +69,6 @@ Cypress.Commands.add('adminSidebarShouldAvailable', () => {
 
     cy.elementShouldAvailable('#adminSidebarContentManagementLink a')
 
-    cy.elementShouldAvailable('#adminSidebarAppsLink a')
     cy.elementShouldAvailable('#adminSidebarContentTypeLink a')
     cy.elementShouldAvailable('#adminSidebarUsersLink a')
 
