@@ -1,6 +1,6 @@
 ﻿@if (Page.Sections.ContainsKey(Name))
 {
-<div class="f-section">
+<div>
     @foreach (var Plugin in Page.Sections[Name].OrderBy(p => p.Order))
     {
         <CascadingValue Value="@Page">

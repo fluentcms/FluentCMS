@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Repositories.Abstractions;
 
-public interface IPluginRepository : ISiteAssociatedRepository<Plugin>
+public interface IPluginRepository : IAuditableEntityRepository<Plugin>
 {
     Task<IEnumerable<Plugin>> GetByPageId(Guid pageId, CancellationToken cancellationToken = default);
 }

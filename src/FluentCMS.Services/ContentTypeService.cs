@@ -2,26 +2,26 @@
 
 public interface IContentTypeService : IAutoRegisterService
 {
-    Task<IEnumerable<ContentType>> GetAll(Guid appId, CancellationToken cancellationToken = default);
-    Task<ContentType> GetBySlug(Guid appId, string contentTypeSlug, CancellationToken cancellationToken = default);
+    Task<IEnumerable<ContentType>> GetAll(CancellationToken cancellationToken = default);
+    Task<ContentType> GetBySlug(string contentTypeSlug, CancellationToken cancellationToken = default);
     Task<ContentType> Create(ContentType contentType, CancellationToken cancellationToken = default);
     Task<ContentType> Update(ContentType contentType, CancellationToken cancellationToken = default);
-    Task<ContentType> Delete(Guid appId, Guid contentTypeId, CancellationToken cancellationToken = default);
-    Task<ContentType> SetField(Guid appId, Guid contentTypeId, ContentTypeField field, CancellationToken cancellationToken = default);
-    Task<ContentType> DeleteField(Guid appId, Guid contentTypeId, string fieldSlug, CancellationToken cancellationToken = default);
+    Task<ContentType> Delete(Guid contentTypeId, CancellationToken cancellationToken = default);
+    Task<ContentType> SetField(Guid contentTypeId, ContentTypeField field, CancellationToken cancellationToken = default);
+    Task<ContentType> DeleteField(Guid contentTypeId, string fieldSlug, CancellationToken cancellationToken = default);
     Task<ContentType> GetById(Guid id, CancellationToken cancellationToken);
 }
 
 public class ContentTypeService(IContentTypeRepository contentTypeRepository) : IContentTypeService
 {
-    public Task<IEnumerable<ContentType>> GetAll(Guid appId, CancellationToken cancellationToken = default)
+    public Task<IEnumerable<ContentType>> GetAll(CancellationToken cancellationToken = default)
     {
-        return contentTypeRepository.GetAll(appId, cancellationToken);
+        return contentTypeRepository.GetAll(cancellationToken);
     }
 
-    public async Task<ContentType> GetBySlug(Guid appId, string contentTypeSlug, CancellationToken cancellationToken = default)
+    public async Task<ContentType> GetBySlug(string contentTypeSlug, CancellationToken cancellationToken = default)
     {
-        return await contentTypeRepository.GetBySlug(appId, contentTypeSlug, cancellationToken) ??
+        return await contentTypeRepository.GetBySlug(contentTypeSlug, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeNotFound);
     }
 
@@ -33,13 +33,10 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
             throw new AppException(ExceptionCodes.ContentTypeUnableToCreate);
     }
 
-    public async Task<ContentType> Delete(Guid appId, Guid contentTypeId, CancellationToken cancellationToken = default)
+    public async Task<ContentType> Delete(Guid contentTypeId, CancellationToken cancellationToken = default)
     {
         var contentType = await contentTypeRepository.GetById(contentTypeId, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeNotFound);
-
-        if (contentType.AppId != appId)
-            throw new AppException(ExceptionCodes.ContentTypeInvalidAppId);
 
         return await contentTypeRepository.Delete(contentTypeId, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeUnableToDelete);
@@ -53,9 +50,6 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
         var original = await contentTypeRepository.GetById(contentType.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeNotFound);
 
-        if (original.AppId != contentType.AppId)
-            throw new AppException(ExceptionCodes.ContentTypeInvalidAppId);
-
         original.Title = contentType.Title;
         original.Description = contentType.Description;
 
@@ -65,18 +59,15 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
 
     private async Task CheckDuplicateSlug(ContentType contentType)
     {
-        var originalBySlug = await contentTypeRepository.GetBySlug(contentType.AppId, contentType.Slug);
+        var originalBySlug = await contentTypeRepository.GetBySlug(contentType.Slug);
         if (originalBySlug != null && originalBySlug.Id != contentType.Id) throw new AppException(ExceptionCodes.ContentTypeDuplicateSlug);
     }
 
-    public async Task<ContentType> SetField(Guid appId, Guid contentTypeId, ContentTypeField field, CancellationToken cancellationToken = default)
+    public async Task<ContentType> SetField(Guid contentTypeId, ContentTypeField field, CancellationToken cancellationToken = default)
     {
         // load the content type
         var contentType = await contentTypeRepository.GetById(contentTypeId, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeNotFound);
-
-        if (contentType.AppId != appId)
-            throw new AppException(ExceptionCodes.ContentTypeInvalidAppId);
 
         // check the field exists
         var original = contentType.Fields.FirstOrDefault(f => f.Slug == field.Slug);
@@ -93,14 +84,11 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
             throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);
     }
 
-    public async Task<ContentType> DeleteField(Guid appId, Guid contentTypeId, string fieldSlug, CancellationToken cancellationToken = default)
+    public async Task<ContentType> DeleteField(Guid contentTypeId, string fieldSlug, CancellationToken cancellationToken = default)
     {
         // load the content type
         var contentType = await contentTypeRepository.GetById(contentTypeId, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeNotFound);
-
-        if (contentType.AppId != appId)
-            throw new AppException(ExceptionCodes.ContentTypeInvalidAppId);
 
         // check the field exists
         var original = contentType.Fields.FirstOrDefault(f => f.Slug == fieldSlug) ??
