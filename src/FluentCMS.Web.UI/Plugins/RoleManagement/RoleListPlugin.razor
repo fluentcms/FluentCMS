@@ -94,9 +94,7 @@
 
     async Task Load()
     {
-        var AppSlug = NavigationManager.GetAppSlugFromQuery();
-
-        var response = await RoleClient!.GetAllAsync(AppSlug);
+        var response = await RoleClient!.GetAllAsync();
 
         if (response?.Data == null) return;
 
@@ -112,10 +110,9 @@
     {
         var result = await Confirm.Show("Are you sure to remove this role?");
 
-        var appSlug = NavigationManager.GetAppSlugFromQuery();
         if (!result) return;
 
-        await RoleClient!.DeleteAsync(appSlug, role.Id);
+        await RoleClient!.DeleteAsync(role.Id);
 
         await Load();
     }

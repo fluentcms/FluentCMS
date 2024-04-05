@@ -19,7 +19,7 @@
                                       Id="roleCreateDescriptionInput"
                                       Label="Description"
                                       Name="Description"
-                                      Placeholder="Enter Textarea..." />
+                                      Placeholder="Enter Description..." />
                             <Spacer />
                             @if (!string.IsNullOrEmpty(Message))
                             {
@@ -57,8 +57,6 @@
     [Inject]
     RoleClient RoleClient { get; set; } = default!;
 
-    string? AppSlug {get; set; }
-
     string? Message { get; set; }
 
     RoleCreateRequest Model { get; set; } = new();
@@ -72,8 +70,7 @@
     {
         try
         {
-            AppSlug = NavigationManager.GetAppSlugFromQuery();
-            var newRole = await RoleClient.CreateAsync(AppSlug, Model);
+            var newRole = await RoleClient.CreateAsync(Model);
             Message = "Done!";
             GoBack();
         }

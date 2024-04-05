@@ -89,8 +89,6 @@
     [Inject]
     RoleClient RoleClient { get; set; } = default!;
 
-    string? AppSlug {get; set;}
-
     string? Message { get; set; }
 
     RoleDetailResponse View { get; set; } = new();
@@ -102,23 +100,22 @@
 
     async Task OnDelete() 
     {
-        var result = await Confirm.Show("Are you sure to remove this app?");
+        var result = await Confirm.Show("Are you sure to remove this role?");
 
         if(result) {
-            await RoleClient.DeleteAsync(AppSlug, View.Id);  
+            await RoleClient.DeleteAsync(View.Id);  
             await GoBack(); 
         }
     }
     protected override async Task OnInitializedAsync()
     {
         var id = NavigationManager.GetIdFromQuery();
-        AppSlug = NavigationManager.GetAppSlugFromQuery();
 
         if (id != null)
         {
             try
             {
-                View = (await RoleClient.GetAllAsync(AppSlug)).Data.ToList<RoleDetailResponse>().Find(x => x.Id == id);
+                View = (await RoleClient.GetAllAsync()).Data.ToList<RoleDetailResponse>().Find(x => x.Id == id);
             }
             catch (Exception)
             {
