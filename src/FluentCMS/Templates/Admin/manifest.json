@@ -59,17 +59,6 @@
             ]
         },
         {
-            "Name": "Change Password",
-            "Description": "Change Password Plugin",
-            "Types": [
-                {
-                    "Name": "Change Password",
-                    "Type": "ChangePasswordViewPlugin",
-                    "IsDefault": true
-                }
-            ]
-        },
-        {
             "Name": "Logout",
             "Description": "Logout Plugin",
             "Types": [
