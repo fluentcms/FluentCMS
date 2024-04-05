@@ -3,7 +3,7 @@
                 Title="Update Profile">
     </PageHeader>
     <PageBody>
-        <Grid Gutter="GridGutter.Medium">
+        <Grid Gutter="GridGutter.Large">
             <GridItem Small="GridItemColumn.Twelve">
                 <Form Model="@Model"
                       OnSubmit="OnSubmit">
@@ -39,6 +39,51 @@
                     </Card>
                 </Form>
             </GridItem>
+            <GridItem Small="GridItemColumn.Twelve">
+                <Form Model="@ChangePasswordModel" 
+                      OnSubmit="OnChangePasswordSubmit">
+                    <Card>
+                        <CardBody>
+                            <Grid Gutter="GridGutter.Medium">
+                                <GridItem Small="GridItemColumn.Six">
+                                    <Input @bind-Value="ChangePasswordModel.OldPassword" 
+                                           autofocus="true" 
+                                           Id="changePasswordOldInput"
+                                           Label="Old Password" 
+                                           Name="oldPassword" 
+                                           Placeholder="Enter your old password..."
+                                           Required="true" 
+                                           Type="InputType.Password" />
+                                </GridItem>
+                                <GridItem Small="GridItemColumn.Six">
+
+                                    <Input @bind-Value="ChangePasswordModel.NewPassword" 
+                                           autofocus="true" 
+                                           Id="changePasswordNewInput"
+                                           Label="New Password" 
+                                           Name="newPassword" 
+                                           Placeholder="Enter new password..."
+                                           Required="true" 
+                                           Type="InputType.Password" />
+                                </GridItem>
+                            </Grid>
+                            <Button Color="Color.Primary" 
+                                    id="changePasswordSubmitButton"
+                                    Type="ButtonType.Submit">
+                                Change password
+                            </Button>
+                            <Spacer />
+                            @if (!string.IsNullOrEmpty(Message))
+                            {
+                                <Typography>
+                                    @Message
+                                </Typography>
+                                <Spacer />
+                            }
+                        </CardBody>
+                    </Card>
+                </Form>
+            </GridItem>
         </Grid>
     </PageBody>
 </Page>
@@ -55,6 +100,7 @@
 
     string Message { get; set; } = string.Empty;
 
+    UserChangePasswordRequest ChangePasswordModel { get; set; } = new();
     UserUpdateProfileRequest Model { get; set; } = new();
 
     UserDetailResponse View { get; set; } = new();
@@ -70,8 +116,15 @@
         View = (await AccountClient.GetUserDetailAsync()).Data;
         
         Model.Email = View.Email;
+        ChangePasswordModel.UserId = View.Id;
         @* Model.Username = View.Username; *@
         @* Model.PhoneNumber = View.PhoneNumber; *@
+    }
+
+    async Task OnChangePasswordSubmit() 
+    {
+        await AccountClient.ChangePasswordAsync(ChangePasswordModel);
+        await GoBack();
     }
 
     async Task OnSubmit()
