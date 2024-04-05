@@ -20,6 +20,47 @@
                             @View.Description
                         </Typography>
                     </GridItem>
+                    <GridItem Small="GridItemColumn.Twelve">
+                        <Typography><strong>Permissions:</strong></Typography>
+                            <Spacer Size="SpacerSize.Small"/>
+                        <Card>
+                            <Table>
+                                <TableHead>
+                                    <TableCell>Content Type</TableCell>
+                                    <TableCell Width="TableColumnWidth.Small">Create</TableCell>
+                                    <TableCell Width="TableColumnWidth.Small">Read</TableCell>
+                                    <TableCell Width="TableColumnWidth.Small">Update</TableCell>
+                                    <TableCell Width="TableColumnWidth.Small">Delete</TableCell>
+                                    <TableCell Width="TableColumnWidth.Small">Publish</TableCell>
+                                </TableHead>
+                                <TableBody>
+                                    @foreach (var contentType in ContentTypes)
+                                    {
+                                        <TableRow>
+                                            <TableCell>
+                                                @contentType.Title
+                                            </TableCell>
+                                            <TableCell>
+                                                true
+                                            </TableCell>
+                                            <TableCell>
+                                                false
+                                            </TableCell>
+                                            <TableCell>
+                                                true
+                                            </TableCell>
+                                            <TableCell>
+                                                false
+                                            </TableCell>
+                                            <TableCell>
+                                                false
+                                            </TableCell>
+                                        </TableRow>
+                                    }
+                                </TableBody>
+                            </Table>
+                        </Card>
+                    </GridItem>
                 </Grid>
             </GridItem>
             <GridItem Small="GridItemColumn.Twelve"
@@ -89,8 +130,14 @@
     [Inject]
     RoleClient RoleClient { get; set; } = default!;
 
+    [Inject]
+    ContentTypeClient ContentTypeClient { get; set; } = default!;
+
     string? Message { get; set; }
 
+
+    List<ContentTypeDetailResponse> ContentTypes {get; set;} = [];
+        
     RoleDetailResponse View { get; set; } = new();
 
     async Task GoBack()
@@ -116,6 +163,12 @@
             try
             {
                 View = (await RoleClient.GetAllAsync()).Data.ToList<RoleDetailResponse>().Find(x => x.Id == id);
+
+                var result = await ContentTypeClient.GetAllAsync();
+                if(result?.Data != null) 
+                {
+                    ContentTypes = result.Data.ToList();
+                }
             }
             catch (Exception)
             {

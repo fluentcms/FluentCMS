@@ -20,6 +20,57 @@
                                       Label="Description"
                                       Name="Description"
                                       Placeholder="Enter Description..." />
+
+                            <div>
+                                <Typography Size="TextSize.Small"
+                                            Weight="TextWeight.Medium">
+                                    Permissions
+                                </Typography>
+                                <Spacer Size="SpacerSize.Small"/>
+                                <Card>
+                                    <Table>
+                                        <TableHead>
+                                            <TableCell>Content Type</TableCell>
+                                            <TableCell Width="TableColumnWidth.Small">Create</TableCell>
+                                            <TableCell Width="TableColumnWidth.Small">Read</TableCell>
+                                            <TableCell Width="TableColumnWidth.Small">Update</TableCell>
+                                            <TableCell Width="TableColumnWidth.Small">Delete</TableCell>
+                                            <TableCell Width="TableColumnWidth.Small">Publish</TableCell>
+                                        </TableHead>
+                                        <TableBody>
+                                            @foreach (var contentType in ContentTypes)
+                                            {
+                                                <TableRow>
+                                                    <TableCell>
+                                                        @contentType.Title
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Switch @bind-Value="Permissions[contentType.Slug].Create"
+                                                                Dense="true"/>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Switch @bind-Value="Permissions[contentType.Slug].Read"
+                                                                Dense="true"/>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Switch @bind-Value="Permissions[contentType.Slug].Update"
+                                                                Dense="true"/>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Switch @bind-Value="Permissions[contentType.Slug].Delete"
+                                                                Dense="true"/>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Switch @bind-Value="Permissions[contentType.Slug].Publish"
+                                                                Dense="true"/>
+                                                    </TableCell>
+                                                </TableRow>
+                                            }
+                                        </TableBody>
+                                    </Table>
+                                </Card>
+                                <Spacer />
+                            </div>
                             <Spacer />
                             @if (!string.IsNullOrEmpty(Message))
                             {
@@ -57,13 +108,51 @@
     [Inject]
     RoleClient RoleClient { get; set; } = default!;
 
+    [Inject]
+    ContentTypeClient ContentTypeClient { get; set; } = default!;
+
     string? Message { get; set; }
 
+    List<ContentTypeDetailResponse> ContentTypes {get; set;} = [];
+
+    Dictionary<string, Permission> Permissions = new();
+
     RoleCreateRequest Model { get; set; } = new();
+
+    public class Permission
+    {
+        public bool Create { get; set; }
+        public bool Read { get; set; }
+        public bool Update { get; set; }
+        public bool Delete { get; set; }
+        public bool Publish { get; set; }
+    }
 
     async Task GoBack()
     {
         await JsRuntime.InvokeVoidAsync("history.back");
+    }
+    
+
+    protected override async Task OnInitializedAsync() 
+    {
+        var result = await ContentTypeClient.GetAllAsync();
+        if(result?.Data != null) 
+        {
+            ContentTypes = result.Data.ToList();
+
+            foreach(var contentType in ContentTypes)
+            {
+                Permissions[contentType.Slug] = new Permission 
+                {
+                    Create = false, 
+                    Read = false,
+                    Update = false,
+                    Delete = false,
+                    Publish = false,
+                };
+            }
+        }
     }
 
     async Task OnSubmit()
