@@ -1,53 +1,55 @@
-﻿<Page>
-    <PageHeader HasBack="true"
-                Title="Create User">
-    </PageHeader>
-    <PageBody>
-        <Grid Gutter="GridGutter.Medium">
-            <GridItem Small="GridItemColumn.Twelve">
-                <Form Model="@Model"
-                      OnSubmit="OnSubmit">
-                    <Card>
-                        <CardBody>
-                            <Input @bind-Value="Model.Username"
-                                   Label="Username"
-                                   Name="Username"
-                                   Placeholder="Enter Username..."
-                                   Required="true"/>
-                            <Input @bind-Value="Model.Email"
-                                   Label="Email"
-                                   Name="Email"
-                                   Placeholder="Enter Email..."
-                                   Required="true" />
-                            <Input @bind-Value="Model.Password"
-                                   Label="Password"
-                                   Name="Password"
-                                   Placeholder="Enter Password..."
-                                   Type="InputType.Password"/>
-                            <Spacer/>
-                            @if(!string.IsNullOrEmpty(Message))
-                            {
-                                <Typography>
-                                    @Message
-                                </Typography>
+﻿<FluentCMS.Web.UI.Plugins.Settings.SettingsLayout>
+    <Page>
+        <PageHeader HasBack="true"
+                    Title="Create User">
+        </PageHeader>
+        <PageBody>
+            <Grid Gutter="GridGutter.Medium">
+                <GridItem Small="GridItemColumn.Twelve">
+                    <Form Model="@Model"
+                        OnSubmit="OnSubmit">
+                        <Card>
+                            <CardBody>
+                                <Input @bind-Value="Model.Username"
+                                    Label="Username"
+                                    Name="Username"
+                                    Placeholder="Enter Username..."
+                                    Required="true"/>
+                                <Input @bind-Value="Model.Email"
+                                    Label="Email"
+                                    Name="Email"
+                                    Placeholder="Enter Email..."
+                                    Required="true" />
+                                <Input @bind-Value="Model.Password"
+                                    Label="Password"
+                                    Name="Password"
+                                    Placeholder="Enter Password..."
+                                    Type="InputType.Password"/>
                                 <Spacer/>
-                            }
-                            <ButtonGroup>
-                                <Button OnClick="GoBack">
-                                    Cancel
-                                </Button>
-                                <Button Color="Color.Primary"
-                                        Type="ButtonType.Submit">
-                                    Save
-                                </Button>
-                            </ButtonGroup>
-                        </CardBody>
-                    </Card>
-                </Form>
-            </GridItem>
-        </Grid>
-    </PageBody>
-</Page>
+                                @if(!string.IsNullOrEmpty(Message))
+                                {
+                                    <Typography>
+                                        @Message
+                                    </Typography>
+                                    <Spacer/>
+                                }
+                                <ButtonGroup>
+                                    <Button OnClick="GoBack">
+                                        Cancel
+                                    </Button>
+                                    <Button Color="Color.Primary"
+                                            Type="ButtonType.Submit">
+                                        Save
+                                    </Button>
+                                </ButtonGroup>
+                            </CardBody>
+                        </Card>
+                    </Form>
+                </GridItem>
+            </Grid>
+        </PageBody>
+    </Page>
+</FluentCMS.Web.UI.Plugins.Settings.SettingsLayout>
 
 @code {
     [Inject]
