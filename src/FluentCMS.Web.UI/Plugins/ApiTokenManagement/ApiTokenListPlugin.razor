@@ -1,0 +1,118 @@
+<Page>
+    <PageHeader HasBack="false" Title="API Token List">
+        <PageHeaderActions>
+            <ButtonGroup>
+                <Button autofocus="true"
+                        Color="Color.Primary" 
+                        Href="?PluginDef=Api Token Management&typeName=Create Api Token"
+                        Size="ButtonSize.Small">
+                    <Icon Name="IconName.Plus" />
+                    Add new API Token
+                </Button>
+            </ButtonGroup>
+        </PageHeaderActions>
+    </PageHeader>
+    <PageBody>
+        <Card>
+            <Table>
+                <TableHead>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Description</TableCell>
+                    <TableCell>Duration</TableCell>
+                    <TableCell>Type</TableCell>
+                    <TableCell Width="TableColumnWidth.Small"></TableCell>
+                </TableHead>
+                <TableBody>
+                    @foreach (var token in Tokens)
+                    {
+                        <TableRow>
+                            <TableCell> @token.Name </TableCell>
+                            <TableCell> @token.Description </TableCell>
+                            <TableCell> @token.Duration </TableCell>
+                            <TableCell> @token.Type </TableCell>
+                            <TableCell>
+                                <ButtonGroup>
+                                    <Button Ghost="true"
+                                        Href="@($"?PluginDef=Api Token Management&typeName=Api Token Detail&id={token.Id}")"
+                                        Size="ButtonSize.Small">
+                                        <Icon Name="IconName.Eye" />
+                                    </Button>
+                                    <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
+
+                                    <Button data-test="edit-btn"
+                                        Ghost="true"
+                                        Href="@($"?PluginDef=Api Token Management&typeName=Update Api Token&id={token.Id}")"
+                                        Size="ButtonSize.Small">
+                                        <Icon Name="IconName.Edit" />
+                                    </Button>
+                                    <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
+
+                                    <Button data-test="delete-btn"
+                                            Ghost="true"
+                                            Size="ButtonSize.Small"
+                                            OnClick="@(evt => OnDelete(token))">
+                                        <Icon Name="IconName.Delete" />
+                                    </Button>
+                                    <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
+                                </ButtonGroup>
+                            </TableCell>
+                        </TableRow>
+                    }
+                </TableBody>
+            </Table>
+            @if (Tokens.Count == 0)
+            {
+                <EmptyTable Message="No API Tokens Found!">
+                    <Button autofocus="true"
+                            Color="Color.Primary" 
+                            Href="?PluginDef=Api Token Management&typeName=Create Api Token"
+                            Size="ButtonSize.Small">
+                        <Icon Name="IconName.Plus" />
+                        Add new API Token
+                    </Button>
+                </EmptyTable>
+            }
+        </Card>
+    </PageBody>
+</Page>
+
+@code {
+    [Inject]
+    UserClient? UserClient { get; set; }
+
+    [Inject]
+    ConfirmService Confirm { get; set; }
+
+    class TokenDetailResponse {
+        public Guid Id {get; set;}
+        public string Name {get; set;}
+        public string Description {get; set;}
+        public string Duration {get; set;}
+        public string Type {get; set;}
+    };
+
+
+    List<TokenDetailResponse> Tokens { get; set; } = [];
+
+    async Task OnDelete(TokenDetailResponse token)
+    {
+        var result = await Confirm.Show("Are you sure you want to remove this contentType?");
+
+        if (!result) return;
+
+        @* await ApiTokenClient.DeleteAsync(token.Id); *@
+
+        @* await Load(); *@
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await UserClient!.GetAllAsync();
+
+        if (response?.Data != null)
+        {
+            Tokens = []; //response.Data.ToList();
+        }
+    }
+}
