@@ -1,4 +1,5 @@
-﻿using FluentCMS.Web.Api.Models.File;
+﻿using FluentCMS.Web.Api.MappingActions;
+using FluentCMS.Web.Api.Models.File;
 using FluentCMS.Web.Api.Models.Users;
 using FluentCMS.Web.Api.ValueConverters;
 using File = FluentCMS.Entities.File;
@@ -86,7 +87,7 @@ public class MappingProfile : Profile
 
         #region Files
 
-        CreateMap<File, FileDetailResponse>();
+        CreateMap<File, FileDetailResponse>().AfterMap<SetFileUrl>();
 
         #endregion
     }
