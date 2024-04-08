@@ -16,6 +16,17 @@
             Files (@files.Count)
         </Typography>
         <Spacer />
+        @if (files.Count == 0)
+        {
+            <Stack Vertical="true">
+                <Icon Color="Color.Secondary"
+                      Name="IconName.File"
+                      Size="IconSize.X3" />
+                <Typography Color="Color.Secondary">
+                    No Files Found
+                </Typography>
+            </Stack>
+        }
         <Grid Gutter="GridGutter.Large">
             @foreach (var file in files)
             {
