@@ -3,7 +3,7 @@
         <PageHeaderActions>
             <ButtonGroup>
                 <Button Color="Color.Primary"
-                        OnClick="OnOpenBrowseModal"
+                        OnClick="OpenBrowseModal"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
                     Add New Files
@@ -13,7 +13,7 @@
     </PageHeader>
     <PageBody>
         <Typography Size="TextSize.H4">
-            Files (@files.Length)
+            Files (@files.Count)
         </Typography>
         <Spacer />
         <Grid Gutter="GridGutter.Large">
@@ -24,7 +24,8 @@
                           Medium="GridItemColumn.Four"
                           Large="GridItemColumn.Three">
                     <FileManagementTile Value="file"
-                                        OnDelete="() => Delete(file)" />
+                                        OnDelete="() => Delete(file)"
+                                        OnEdit="() => Edit(file)" />
                 </GridItem>
             }
         </Grid>
@@ -32,15 +33,23 @@
 </Page>
 
 <FileManagementUploadModal Open="openBrowseModal"
-                           OnCancel="OnCloseBrowseModal" />
+                           OnSelect="OnSelectBrowseModal" />
+
+<FileManagementEditModal Open="openEditModal"
+                         Value="editing"
+                         OnChange="OnChangeEditModal" />
 
 @code {
     [Inject]
     ConfirmService Confirm { get; set; } = default!;
 
-    FileDTO[] files { get; set; } = { };
+    FileDTO editing = default!;
+
+    List<FileDTO> files { get; set; } = new() { };
 
     bool openBrowseModal = false;
+
+    bool openEditModal = false;
 
     async Task Delete(FileDTO file)
     {
@@ -48,23 +57,56 @@
 
         if (!result) return;
 
-        // TODO
+        // TODO: Parsa
+        // await DELETE_SERVICE(file.Id);
+
+        files.Remove(file);
     }
 
-    void OnCloseBrowseModal()
+    void Edit(FileDTO file)
     {
-        openBrowseModal = false;
+        editing = file;
+
+        openEditModal = true;
     }
 
-    void OnOpenBrowseModal()
+    void OpenBrowseModal()
     {
         openBrowseModal = true;
     }
 
+    async Task OnChangeEditModal(FileDTO? file)
+    {
+        openEditModal = false;
+
+        if (file == null) return;
+
+        var index = files.FindIndex(x => x.Id == file.Id);
+
+        // TODO: Parsa
+        // file = await UPDATE_SERVICE(file);
+
+        files[index] = file;
+    }
+
+    async Task OnSelectBrowseModal(List<FileDTO>? next)
+    {
+        openBrowseModal = false;
+
+        if (next == null) return;
+
+        // TODO: Parsa
+        // next = await UPLOAD_SERVICE(next);
+
+        files = files.Concat(next).ToList();
+    }
+
     protected override Task OnInitializedAsync()
     {
-        // TODO
-        files = new FileDTO[]
+        // TODO: Parsa
+        // files = await LIST_SERVICE();
+
+        files = new List<FileDTO>()
         {
             new FileDTO()
                 {

@@ -19,12 +19,15 @@
         }
         <div class="hidden group-hover:flex absolute top-3 right-3">
             <ButtonGroup>
-                <Button Color="Color.Default"
-                        Outline="true"
-                        Size="ButtonSize.Small"
-                        OnClick="() => OnEdit.InvokeAsync()">
-                    <Icon Name="IconName.Edit" />
-                </Button>
+                @if (Editable)
+                {
+                    <Button Color="Color.Default"
+                            Outline="true"
+                            Size="ButtonSize.Small"
+                            OnClick="() => OnEdit.InvokeAsync()">
+                        <Icon Name="IconName.Edit" />
+                    </Button>
+                }
                 <Button Color="Color.Danger"
                         Outline="true"
                         Size="ButtonSize.Small"
@@ -58,6 +61,9 @@
 </Card>
 
 @code {
+    [Parameter]
+    public bool Editable { get; set; } = true;
+
     [Parameter]
     public FileDTO Value { get; set; } = default!;
 

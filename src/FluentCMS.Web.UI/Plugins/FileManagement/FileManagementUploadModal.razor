@@ -33,12 +33,12 @@
             <Grid Gutter="GridGutter.Large">
                 @foreach (var file in files)
                 {
-                    <GridItem @key="file.Id + file.Name"
-                              Small="GridItemColumn.Twelve"
+                    <GridItem Small="GridItemColumn.Twelve"
                               Medium="GridItemColumn.Six"
                               Large="GridItemColumn.Four">
-                        <FileManagementTile Value="file"
-                                            OnDelete="() => files.Remove(file)" />
+                        <FileManagementTile Editable="false"
+                                            Value="previews[file]"
+                                            OnDelete="() => Delete(file)" />
                     </GridItem>
                 }
             </Grid>
@@ -46,12 +46,14 @@
     </ModalBody>
     <ModalFooter>
         <ButtonGroup>
-            <Button OnClick="() => OnCancel.InvokeAsync()">
+            <Button OnClick="() => OnSelect.InvokeAsync()">
                 Cancel
             </Button>
             @if (!selecting && files.Count != 0)
             {
-                <Button Color="Color.Primary">
+                <Button Color="Color.Primary"
+                        Disabled="busy"
+                        OnClick="Upload">
                     Upload
                 </Button>
             }
@@ -64,57 +66,71 @@
     public bool Open { get; set; }
 
     [Parameter]
-    public EventCallback<bool> OnCancel { get; set; }
+    public EventCallback<List<FileDTO>?> OnSelect { get; set; }
+
+    List<IBrowserFile> files { get; set; } = new() { };
+
+    Dictionary<IBrowserFile, FileDTO> previews = new();
+
+    bool busy;
 
     bool selecting;
 
-    List<FileDTO> files { get; set; } = new() { };
-
-    void Upload()
+    void Delete(IBrowserFile file)
     {
+        previews.Remove(file);
 
+        files.Remove(file);
+    }
+
+    async Task Upload()
+    {
+        busy = true;
+
+        var next = previews.Values.ToList() ?? new() { };
+
+        await OnSelect.InvokeAsync(next);
+
+        busy = false;
     }
 
     async Task OnChange(InputFileChangeEventArgs evt)
     {
-        selecting = false;
-
         var items = evt.GetMultipleFiles();
 
         for (int i = 0; i < items.Count; i++)
         {
-            var file = items[i];
+            var item = items[i];
 
             string? url = null;
 
-            if (file.ContentType.StartsWith("image"))
+            if (item.ContentType.StartsWith("image"))
             {
-                try
-                {
-                    var image = await file.RequestImageFileAsync(file.ContentType, 300, 500);
+                var image = await item.RequestImageFileAsync(item.ContentType, 320, 320);
 
-                    var buffer = new byte[image.Size];
+                var buffer = new byte[image.Size];
 
-                    await image.OpenReadStream().ReadAsync(buffer);
+                await image.OpenReadStream().ReadAsync(buffer);
 
-                    url = $"data:{image.ContentType};base64,{Convert.ToBase64String(buffer)}";
-                }
-                catch (Exception ex)
-                {
-                    // Handle image processing error (e.g., log the error)
-                    Console.WriteLine($"Error processing image: {ex.Message}");
-                }
+                url = $"data:{image.ContentType};base64,{Convert.ToBase64String(buffer)}";
             }
 
-            files.Add(new()
+            var preview = new FileDTO()
                 {
-                    Name = file.Name,
+                    Id = Guid.NewGuid(),
+                    Extension = item.Name.Split('.').Last(),
+                    Name = item.Name,
+                    MimeType = item.ContentType,
+                    Size = item.Size,
                     Url = url,
-                    MimeType = file.ContentType,
-                    Extension = file.Name.Split('.').Last(),
-                    Size = file.Size
-                });
+                };
+
+            previews.Add(item, preview);
+
+            files.Add(item);
         }
+
+        selecting = false;
     }
 
     protected override void OnParametersSet()
@@ -124,6 +140,8 @@
         selecting = false;
 
         files = new() { };
+
+        previews.Clear();
     }
 }
 
