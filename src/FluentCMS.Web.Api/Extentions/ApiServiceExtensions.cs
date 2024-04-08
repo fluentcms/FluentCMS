@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -47,6 +48,8 @@ public static class ApiServiceExtensions
         services.AddAuthorization();
 
         services.AddHttpContextAccessor();
+
+        services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
 
         services.AddScoped<ApiExecutionContext>();
 
