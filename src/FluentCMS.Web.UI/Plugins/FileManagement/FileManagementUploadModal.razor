@@ -75,20 +75,45 @@
 
     }
 
-    void OnChange(InputFileChangeEventArgs evt)
+    async Task OnChange(InputFileChangeEventArgs evt)
     {
         selecting = false;
 
-        foreach (var file in evt.GetMultipleFiles())
+        var items = evt.GetMultipleFiles();
+
+        for (int i = 0; i < items.Count; i++)
         {
+            var file = items[i];
+
+            string? url = null;
+
+            if (file.ContentType.StartsWith("image"))
+            {
+                try
+                {
+                    var image = await file.RequestImageFileAsync(file.ContentType, 300, 500);
+
+                    var buffer = new byte[image.Size];
+
+                    await image.OpenReadStream().ReadAsync(buffer);
+
+                    url = $"data:{image.ContentType};base64,{Convert.ToBase64String(buffer)}";
+                }
+                catch (Exception ex)
+                {
+                    // Handle image processing error (e.g., log the error)
+                    Console.WriteLine($"Error processing image: {ex.Message}");
+                }
+            }
+
             files.Add(new()
                 {
                     Name = file.Name,
+                    Url = url,
                     MimeType = file.ContentType,
                     Extension = file.Name.Split('.').Last(),
                     Size = file.Size
-                }
-            );
+                });
         }
     }
 
