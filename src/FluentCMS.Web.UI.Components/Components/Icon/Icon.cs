@@ -20,6 +20,7 @@ public enum IconName
     Eye,
     Edit,
     ExclamationCircle,
+    File,
     Filter,
     Github,
     Grid,

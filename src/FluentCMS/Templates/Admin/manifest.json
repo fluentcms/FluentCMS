@@ -234,6 +234,17 @@
                     "Type": "ProfileUpdatePlugin"
                 }
             ]
+        },
+        {
+            "Name": "File Management",
+            "Description": "File Management Plugin",
+            "Types": [
+                {
+                    "Name": "File Management List",
+                    "Type": "FileManagementListPlugin",
+                    "IsDefault": true
+                }
+            ]
         }
     ],
     "Pages": [
@@ -288,6 +299,16 @@
                     "Plugins": [
                         {
                             "Definition": "App Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "File Management",
+                    "Path": "/file-management",
+                    "Plugins": [
+                        {
+                            "Definition": "File Management",
                             "Section": "Main"
                         }
                     ]
