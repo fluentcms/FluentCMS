@@ -1,0 +1,20 @@
+@page "/components/accordion"
+@layout ComponentsLayout
+
+<Page>
+    <PageHeader Title="Accordions" />
+    <PageBody>
+        <button @onclick="() => Disabled =! Disabled">dis</button>
+        <button @onclick="() => Open =! Open">togg @(Open)</button>
+        <ComponentPreview Title="Default">
+            <Accordion Disabled="Disabled" @bind-Open="Open" Summary="Is there a Figma file available?">
+                <p class="mb-2 text-gray-500 dark:text-gray-400">Flowbite is first conceptualized and designed using the Figma software so everything you see in the library has a design equivalent in our Figma file.</p>
+                <p class="text-gray-500 dark:text-gray-400">Check out the <a href="https://flowbite.com/figma/" class="text-blue-600 dark:text-blue-500 hover:underline">Figma design system</a> based on the utility classes from Tailwind CSS and components from Flowbite.</p>
+            </Accordion>
+        </ComponentPreview>
+     </PageBody>
+ </Page>
+@code {
+    bool Disabled;
+    bool Open;
+}
