@@ -1,0 +1,24 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+<Grid>
+    <GridItem HideSmall="true"
+            HideMedium="true"
+            Small="GridItemColumn.Auto"
+        >
+        <Sidebar Secondary="true">
+            <ChildContent>
+                @Sidebar
+            </ChildContent>
+        </Sidebar>
+    </GridItem>
+    <GridItem Small="GridItemColumn.Grow">
+        @ChildContent
+    </GridItem>
+</Grid>
+
+@code {
+    [Parameter]
+    public RenderFragment Sidebar {get; set;}
+}

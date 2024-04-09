@@ -22,27 +22,7 @@
         <div class="relative flex h-full w-full flex-1 overflow-auto">
             <SectionOutlet SectionName="sidebar" />
             <main class="overflow-auto dark:bg-gray-900 w-full flex-1 flex flex-col items-stretch h-full lg:ml-64 pt-20 lg:pt-0">
-                @if(HasSecondarySidebar)
-                {
-                    <Grid>
-                        <GridItem HideSmall="true"
-                                HideMedium="true"
-                                Small="GridItemColumn.Auto">
-                            <Sidebar Secondary="true">
-                                <ChildContent>
-                                    <SectionOutlet SectionName="sidebar-secondary" />
-                                </ChildContent>
-                            </Sidebar>
-                        </GridItem>
-                        <GridItem Small="GridItemColumn.Grow">
-                            @Body
-                        </GridItem>
-                    </Grid>
-                } 
-                else 
-                {
-                    @Body
-                }
+                @Body
             </main>
         </div>
     </div>

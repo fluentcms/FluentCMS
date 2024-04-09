@@ -1,0 +1,38 @@
+﻿<ConfirmProvider fluentcms />
+<ToastProvider fluentcms />
+
+<PanelLayout fluentcms>
+    <SectionContent SectionName="sidebar" fluentcms>
+        <AdminSidebar fluentcms />
+    </SectionContent>
+ 
+    <SecondarySidebarWrapper fluentcms>
+        <Sidebar fluentcms-slot>
+            <SidebarItem fluentcms> Global Settings </SidebarItem>
+            <SidebarItem Href="/admin/settings"
+                            id="settingsSidebarGeneralLink"
+                            fluentcms>
+                General
+            </SidebarItem>
+            <SidebarItem Href="/admin/users"
+                            id="settingsSidebarUsersLink"
+                            fluentcms>
+                Users
+            </SidebarItem>
+        
+            <!-- <SidebarItem Href="/admin/roles"
+                            id="@($"settingsSidebarRolesLink")">
+                Roles
+            </SidebarItem>
+            <SidebarItem Href="/admin/api-tokens"
+                            id="@($"settingsSidebarApiTokensLink")">
+                API Tokens
+            </SidebarItem> -->
+        </Sidebar>
+        <ChildContent>
+            <Section Name="Main" fluentcms />
+        </ChildContent>
+    </SecondarySidebarWrapper>
+</PanelLayout>
+
+<script src="/js/flowbite.min.js"></script>

@@ -11,6 +11,10 @@
         {
             "Name": "AuthLayout",
             "IsDefault": false
+        },
+        {
+            "Name": "SettingsLayout",
+            "IsDefault": false
         }
     ],
     "PluginDefinitions": [
@@ -286,6 +290,7 @@
                 {
                     "Title": "Users",
                     "Path": "/users",
+                    "Layout": "SettingsLayout",
                     "Plugins": [
                         {
                             "Definition": "User Management",
@@ -296,6 +301,7 @@
                 {
                     "Title": "Settings",
                     "Path": "/settings",
+                    "Layout": "SettingsLayout",
                     "Plugins": [
                         {
                             "Definition": "Settings",
