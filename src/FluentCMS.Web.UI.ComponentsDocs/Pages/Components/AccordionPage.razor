@@ -4,17 +4,22 @@
 <Page>
     <PageHeader Title="Accordions" />
     <PageBody>
-        <button @onclick="() => Disabled =! Disabled">dis</button>
-        <button @onclick="() => Open =! Open">togg @(Open)</button>
         <ComponentPreview Title="Default">
-            <Accordion Disabled="Disabled" @bind-Open="Open" Summary="Is there a Figma file available?">
-                <p class="mb-2 text-gray-500 dark:text-gray-400">Flowbite is first conceptualized and designed using the Figma software so everything you see in the library has a design equivalent in our Figma file.</p>
-                <p class="text-gray-500 dark:text-gray-400">Check out the <a href="https://flowbite.com/figma/" class="text-blue-600 dark:text-blue-500 hover:underline">Figma design system</a> based on the utility classes from Tailwind CSS and components from Flowbite.</p>
+            <Accordion Summary="First">
+                Dignissimos vomito amplitudo sed comis.
+                Adimpleo amplus colo tunc adulatio avarus alii aliqua abstergo.
+                Delectus vulgo capto assentator maiores velum verto tunc subnecto.
+            </Accordion>
+            <Accordion Summary="Second">
+                Verus conduco sodalitas conscendo talis theologus suasoria vita.
+                Patrocinor conspergo alo vae sollers vilicus tres campana.
+                Decipio statim nesciunt tyrannus cumque succedo.
+            </Accordion>
+            <Accordion Summary="Third">
+                Audeo acceptus aegrus canto cogo audacia demo.
+                Assentator vita vesica sol cetera animi umquam suscipit tergeo audax.
+                Terebro dicta possimus sursum victoria ascisco aetas ulciscor.
             </Accordion>
         </ComponentPreview>
-     </PageBody>
- </Page>
-@code {
-    bool Disabled;
-    bool Open;
-}
+    </PageBody>
+</Page>

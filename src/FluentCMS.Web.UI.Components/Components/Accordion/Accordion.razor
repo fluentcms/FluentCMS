@@ -6,17 +6,27 @@
 <div @attributes="AdditionalAttributes"
      @ref="Element"
      class="@this.GetClasses()">
-    <h2>
-        <button disabled="@Disabled" type="button">
+    <h2 class="@this.ClassName("AccordionHeader")">
+        <button class="@this.ClassName("AccordionToggler")"
+                disabled="@Disabled"
+                type="button">
             <span>
                 @Summary
             </span>
-            <Icon Name="Open ? IconName.ChevronDown : IconName.ChevronDown"
-                  Size="IconSize.Medium" />
+            @if (Open)
+            {
+                <Icon Name="IconName.AngleDown"
+                      Size="IconSize.Large" />
+            }
+            else
+            {
+                <Icon Name="IconName.AngleUp"
+                      Size="IconSize.Large" />
+            }
         </button>
     </h2>
-    <div class="hidden">
-        <div>
+    <div class="hidden @this.ClassName(" AccordionBody")">
+        <div class="@this.ClassName("AccordionContent")">
             @ChildContent
         </div>
     </div>
@@ -58,7 +68,7 @@
 
     [JSInvokable]
     public async void Update(bool open)
-    {                                 
+    {
         await OpenChanged.InvokeAsync(Open = open);
     }
 
