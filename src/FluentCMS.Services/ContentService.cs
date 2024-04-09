@@ -2,17 +2,17 @@
 
 public interface IContentService : IAutoRegisterService
 {
-    Task<IEnumerable<Content>> GetAll(Guid appId, Guid contentTypeId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Content>> GetAll(Guid contentTypeId, CancellationToken cancellationToken = default);
     Task<Content> Create(Content content, CancellationToken cancellationToken = default);
-    Task<Content> Delete(Guid appId, Guid contentTypeId, Guid id, CancellationToken cancellationToken = default);
+    Task<Content> Delete(Guid contentTypeId, Guid id, CancellationToken cancellationToken = default);
     Task<Content> Update(Content content, CancellationToken cancellationToken = default);
 }
 
 public class ContentService(IContentRepository contentRepository) : IContentService
 {
-    public async Task<IEnumerable<Content>> GetAll(Guid appId, Guid contentTypeId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Content>> GetAll(Guid contentTypeId, CancellationToken cancellationToken = default)
     {
-        return await contentRepository.GetAll(appId, contentTypeId, cancellationToken);
+        return await contentRepository.GetAll(contentTypeId, cancellationToken);
     }
 
     public async Task<Content> Create(Content content, CancellationToken cancellationToken = default)
@@ -23,7 +23,7 @@ public class ContentService(IContentRepository contentRepository) : IContentServ
         return newContent;
     }
 
-    public async Task<Content> Delete(Guid appId, Guid contentTypeId, Guid id, CancellationToken cancellationToken = default)
+    public async Task<Content> Delete(Guid contentTypeId, Guid id, CancellationToken cancellationToken = default)
     {
         return await contentRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentUnableToDelete);

@@ -42,9 +42,6 @@
 
 @code {
     [Inject]
-    AppClient AppClient { get; set; } = default!;
-
-    [Inject]
     ContentClient ContentClient { get; set; } = default!;
 
     [Inject]
@@ -55,8 +52,6 @@
 
     [Inject]
     NavigationManager NavigationManager { set; get; } = default!;
-
-    AppDetailResponse App { get; set; } = new();
 
     Guid? ContentId;
 
@@ -77,7 +72,7 @@
 
     async Task LoadData()
     {
-        var response = await ContentClient.GetAllAsync(App.Slug!, ContentType.Slug!);
+        var response = await ContentClient.GetAllAsync(ContentType.Slug!);
 
         if (response?.Data != null)
         {
@@ -100,13 +95,7 @@
 
         if (!string.IsNullOrEmpty(contentTypeSlug) && !string.IsNullOrEmpty(appSlug))
         {
-            var appResponse = await AppClient.GetBySlugAsync(appSlug);
-            if (appResponse?.Data != null)
-            {
-                App = appResponse?.Data;
-            }
-
-            var response = await ContentTypeClient.GetAllAsync(appSlug);
+            var response = await ContentTypeClient.GetAllAsync();
             if (response?.Data != null)
             {
                 ContentType = response.Data.ToList().Find(x => x.Slug == contentTypeSlug);
@@ -145,7 +134,7 @@
     {
         try
         {
-            var response = await ContentClient.UpdateAsync(App.Slug, ContentType.Slug, Model);
+            var response = await ContentClient.UpdateAsync(ContentType.Slug, Model);
 
             if (response?.Data != null)
             {

@@ -1,5 +1,4 @@
 @RequiresFreshSetup
-@RequiresTestApp
 @RequiresAuthenticatedAdmin
 Feature: Role Client
 Background:

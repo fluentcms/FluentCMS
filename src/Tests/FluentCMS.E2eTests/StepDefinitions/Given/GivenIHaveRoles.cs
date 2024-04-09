@@ -11,10 +11,9 @@ public partial class StepDefinitions
             Description = $"DummyRole{x} description"
         }).ToList();
         var rolesClient = context.Get<RoleClient>();
-        var app = context.Get<AppDetailResponseIApiResult>();
         foreach (var role in rolesToCreate)
         {
-            await rolesClient.CreateAsync(app.Data.Slug!, role);
+            await rolesClient.CreateAsync(role);
         }
         context.Set(rolesToCreate);
     }

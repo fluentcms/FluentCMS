@@ -15,13 +15,7 @@ public abstract class BaseController
     }
 }
 
-[Route("api/{appSlug}/[controller]/[action]")]
-public abstract class BaseAppController : BaseController
-{
-
-}
-
-[Route("api/global/[controller]/[action]")]
+[Route("api/[controller]/[action]")]
 public abstract class BaseGlobalController : BaseController
 {
 

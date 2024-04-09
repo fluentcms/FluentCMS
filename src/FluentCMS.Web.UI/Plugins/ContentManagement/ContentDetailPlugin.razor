@@ -1,15 +1,15 @@
 @using System.Text.Json
 <ContentLayout>
-    <Page>       
+    <Page>
         <PageHeader HasBack="true"
-                    Title="@PageTitle"/>
+                    Title="@PageTitle" />
         <PageBody>
             @if (Model != null)
             {
                 <Grid Gutter="GridGutter.Large">
                     <GridItem Small="GridItemColumn.Twelve"
-                            Medium="GridItemColumn.Seven"
-                            Large="GridItemColumn.Nine">
+                              Medium="GridItemColumn.Seven"
+                              Large="GridItemColumn.Nine">
                         <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
 
                             @foreach (var field in Fields)
@@ -22,43 +22,43 @@
                                 </GridItem>
                             }
 
-                           
+
                         </Grid>
                     </GridItem>
                     <GridItem Small="GridItemColumn.Twelve"
-                      Medium="GridItemColumn.Five"
-                      Large="GridItemColumn.Three">
+                              Medium="GridItemColumn.Five"
+                              Large="GridItemColumn.Three">
                         <Card>
                             <CardBody>
-                                @if(!string.IsNullOrEmpty(View.CreatedBy))
+                                @if (!string.IsNullOrEmpty(View.CreatedBy))
                                 {
                                     <Typography><strong>Created By</strong></Typography>
                                     <Typography>@View.CreatedBy</Typography>
                                     <Spacer />
                                 }
-                                @if(!string.IsNullOrEmpty(View.CreatedAt.ToString()))
+                                @if (!string.IsNullOrEmpty(View.CreatedAt.ToString()))
                                 {
                                     <Typography><strong>Created At</strong></Typography>
                                     <Typography>@View.CreatedAt</Typography>
                                     <Spacer />
                                 }
-                                @if(!string.IsNullOrEmpty(View.ModifiedBy))
+                                @if (!string.IsNullOrEmpty(View.ModifiedBy))
                                 {
                                     <Typography><strong>Modified By</strong></Typography>
                                     <Typography>@View.ModifiedBy</Typography>
                                     <Spacer />
                                 }
-                                @if(!string.IsNullOrEmpty(View.ModifiedAt.ToString()))
+                                @if (!string.IsNullOrEmpty(View.ModifiedAt.ToString()))
                                 {
                                     <Typography><strong>Modified At</strong></Typography>
                                     <Typography>@View.ModifiedAt</Typography>
                                 }
                             </CardBody>
                         </Card>
-                        <Spacer/>
+                        <Spacer />
                         <Button Block="true"
                                 Color="Color.Primary"
-                            Href="@($"?pluginDef=Content Management&typeName=Update Content&appSlug={App.Slug}&contentTypeSlug={ContentType.Slug}&id={View.Id}")"
+                                Href="@($"?pluginDef=Content Management&typeName=Update Content&contentTypeSlug={ContentType.Slug}&id={View.Id}")"
                                 Item="true"
                                 Outline="true">
                             <Icon Name="IconName.Edit" />
@@ -82,9 +82,6 @@
 
 @code {
     [Inject]
-    AppClient AppClient { get; set; } = default!;
-
-    [Inject]
     ConfirmService Confirm { get; set; } = default!;
 
     [Inject]
@@ -95,11 +92,9 @@
 
     [Inject]
     IJSRuntime JsRuntime { set; get; } = default!;
-    
+
     [Inject]
     NavigationManager NavigationManager { set; get; } = default!;
-
-    AppDetailResponse App { get; set; } = new();
 
     Guid? ContentId;
 
@@ -120,36 +115,29 @@
 
     async Task LoadData()
     {
-        var response = await ContentClient.GetAllAsync(App.Slug!, ContentType.Slug!);
+        var response = await ContentClient.GetAllAsync(ContentType.Slug!);
 
         if (response?.Data != null)
         {
             View = response.Data.ToList().Find(x => x.Id == ContentId);
 
             Model = new()
-                {
-                    Id = View!.Id,
-                    Value = View!.Value
-                };
+            {
+                Id = View!.Id,
+                Value = View!.Value
+            };
         }
     }
 
     protected override async Task OnInitializedAsync()
     {
-        var appSlug = NavigationManager.GetStringFromQuery("appSlug");
         var contentTypeSlug = NavigationManager.GetStringFromQuery("contentTypeSlug");
         // TODO: GetGuidFromQuery("id");
         ContentId = NavigationManager.GetIdFromQuery();
 
-        if (!string.IsNullOrEmpty(contentTypeSlug) && !string.IsNullOrEmpty(appSlug))
+        if (!string.IsNullOrEmpty(contentTypeSlug))
         {
-            var appResponse = await AppClient.GetBySlugAsync(appSlug);
-            if (appResponse?.Data != null)
-            {
-                App = appResponse?.Data;
-            }
-
-            var response = await ContentTypeClient.GetAllAsync(appSlug);
+            var response = await ContentTypeClient.GetAllAsync();
             if (response?.Data != null)
             {
                 ContentType = response.Data.ToList().Find(x => x.Slug == contentTypeSlug);
@@ -190,7 +178,7 @@
 
         if (result)
         {
-            await ContentClient.DeleteAsync(App.Slug, ContentType.Slug, View.Id);
+            await ContentClient.DeleteAsync(ContentType.Slug, View.Id);
             await GoBack();
         }
     }
@@ -198,7 +186,7 @@
     {
         try
         {
-            var response = await ContentClient.UpdateAsync(App.Slug, ContentType.Slug, Model);
+            var response = await ContentClient.UpdateAsync(ContentType.Slug, Model);
 
             if (response?.Data != null)
             {
