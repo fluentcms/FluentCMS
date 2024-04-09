@@ -1,53 +1,52 @@
-<SettingsLayout>
-    <Page>
-        <PageHeader Title="Settings"/>
-        <PageBody>
-            <Grid Gutter="GridGutter.Medium">
-                <GridItem Small="GridItemColumn.Twelve">
-                    <Form Model="@Model"
-                        OnSubmit="OnSubmit">
-                        <Card>
-                            <CardBody>
-                                <Select @bind-Value="SuperUser"
-                                    Id="settingsSuperUsers"
-                                    Label="SuperUsers"
-                                    Multiple="true"
-                                    Name="SuperUsers"
-                                    Placeholder="Choose Super Users..."
-                                    Required="true">
-                                    <Option>Test1</Option>
-                                    <Option>Test2</Option>
-                                    <Option>Test3</Option>
-                                </Select>
-                                
+<SettingsSidebar />
+<Page>
+    <PageHeader Title="Settings"/>
+    <PageBody>
+        <Grid Gutter="GridGutter.Medium">
+            <GridItem Small="GridItemColumn.Twelve">
+                <Form Model="@Model"
+                    OnSubmit="OnSubmit">
+                    <Card>
+                        <CardBody>
+                            <Select @bind-Value="SuperUser"
+                                Id="settingsSuperUsers"
+                                Label="SuperUsers"
+                                Multiple="true"
+                                Name="SuperUsers"
+                                Placeholder="Choose Super Users..."
+                                Required="true">
+                                <Option>Test1</Option>
+                                <Option>Test2</Option>
+                                <Option>Test3</Option>
+                            </Select>
+                            
+                            <Spacer />
+                            @if (!string.IsNullOrEmpty(Message))
+                            {
+                                <Typography>
+                                    @Message
+                                </Typography>
                                 <Spacer />
-                                @if (!string.IsNullOrEmpty(Message))
-                                {
-                                    <Typography>
-                                        @Message
-                                    </Typography>
-                                    <Spacer />
-                                }
-                                <ButtonGroup>
-                                    <Button id="settingsCancelButton" 
-                                            OnClick="GoBack">
-                                        Cancel
-                                    </Button>
-                                    <Button id="settingsSubmitButton" 
-                                            Color="Color.Primary"
-                                            Type="ButtonType.Submit">
-                                        Save
-                                    </Button>
-                                </ButtonGroup>
-                            </CardBody>
-                        </Card>
-                    </Form>
-                </GridItem>
-            </Grid>
-        </PageBody>
-    </Page>
+                            }
+                            <ButtonGroup>
+                                <Button id="settingsCancelButton" 
+                                        OnClick="GoBack">
+                                    Cancel
+                                </Button>
+                                <Button id="settingsSubmitButton" 
+                                        Color="Color.Primary"
+                                        Type="ButtonType.Submit">
+                                    Save
+                                </Button>
+                            </ButtonGroup>
+                        </CardBody>
+                    </Card>
+                </Form>
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
 
-</SettingsLayout>
 @code {
     [Inject]
     IJSRuntime JsRuntime { set; get; } = default!;

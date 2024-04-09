@@ -1,52 +1,52 @@
-﻿<FluentCMS.Web.UI.Plugins.Settings.SettingsLayout>
-    <Page>
-        <PageHeader HasBack="true"
-                    Title="Update User">
-        </PageHeader>
-        <PageBody>
-            <Grid Gutter="GridGutter.Medium">
-                <GridItem Small="GridItemColumn.Twelve">
-                    <Form Model="@Model"
-                        OnSubmit="OnSubmit">
-                        <Card>
-                            <CardBody>
-                                <Input Value="@View.Username"
-                                    Label="Username"
-                                    Name="Username"
-                                    Placeholder="username"
-                                    Disabled="true"
-                                    Required="true"/>
-                                <Input @bind-Value="Model.Email"
-                                    Label="Email"
-                                    Name="Email"
-                                    Placeholder="name@example.com"
-                                    Required="true" />
+﻿<FluentCMS.Web.UI.Plugins.Settings.SettingsSidebar />
 
+<Page>
+    <PageHeader HasBack="true"
+                Title="Update User">
+    </PageHeader>
+    <PageBody>
+        <Grid Gutter="GridGutter.Medium">
+            <GridItem Small="GridItemColumn.Twelve">
+                <Form Model="@Model"
+                    OnSubmit="OnSubmit">
+                    <Card>
+                        <CardBody>
+                            <Input Value="@View.Username"
+                                Label="Username"
+                                Name="Username"
+                                Placeholder="username"
+                                Disabled="true"
+                                Required="true"/>
+                            <Input @bind-Value="Model.Email"
+                                Label="Email"
+                                Name="Email"
+                                Placeholder="name@example.com"
+                                Required="true" />
+
+                            <Spacer/>
+                            @if(!string.IsNullOrEmpty(Message))
+                            {
+                                <Typography>
+                                    @Message
+                                </Typography>
                                 <Spacer/>
-                                @if(!string.IsNullOrEmpty(Message))
-                                {
-                                    <Typography>
-                                        @Message
-                                    </Typography>
-                                    <Spacer/>
-                                }
-                                <ButtonGroup>
-                                    <Button OnClick="GoBack">
-                                        Cancel
-                                    </Button>
-                                    <Button Color="Color.Primary"
-                                            Type="ButtonType.Submit" >
-                                        Submit
-                                    </Button>
-                                </ButtonGroup>
-                            </CardBody>
-                        </Card>
-                    </Form>
-                </GridItem>
-            </Grid>
-        </PageBody>
-    </Page>
-</FluentCMS.Web.UI.Plugins.Settings.SettingsLayout>
+                            }
+                            <ButtonGroup>
+                                <Button OnClick="GoBack">
+                                    Cancel
+                                </Button>
+                                <Button Color="Color.Primary"
+                                        Type="ButtonType.Submit" >
+                                    Submit
+                                </Button>
+                            </ButtonGroup>
+                        </CardBody>
+                    </Card>
+                </Form>
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
 
 @code {
     [Inject]
