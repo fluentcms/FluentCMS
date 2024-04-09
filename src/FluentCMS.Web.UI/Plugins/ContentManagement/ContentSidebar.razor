@@ -1,26 +1,15 @@
 @inherits BaseComponent
 
-<Grid>
-    <GridItem HideSmall="true"
-              HideMedium="true"
-              Small="GridItemColumn.Auto">
-        <Sidebar Title="Collections"
-                 Secondary="true">
-            <ChildContent>
-                @foreach (var collection in Collections)
-                {
-                    <SidebarItem Href="@($"?pluginDef=Content Management&typeName=Content List&contentTypeSlug={collection.Slug}")"
-                                 id="@($"contentSidebar{@collection.Slug}Link")">
-                        @collection.Title
-                    </SidebarItem>
-                }
-            </ChildContent>
-        </Sidebar>
-    </GridItem>
-    <GridItem Small="GridItemColumn.Grow">
-        @ChildContent
-    </GridItem>
-</Grid>
+<SecondarySidebarSection>
+    <SidebarItem>Collections</SidebarItem>
+    @foreach (var collection in Collections)
+    {
+        <SidebarItem Href="@($"?pluginDef=Content Management&typeName=Content List&contentTypeSlug={collection.Slug}")"
+                        id="@($"contentSidebar{@collection.Slug}Link")">
+            @collection.Title
+        </SidebarItem>
+    }
+</SecondarySidebarSection>
 
 @code {
     [Inject]

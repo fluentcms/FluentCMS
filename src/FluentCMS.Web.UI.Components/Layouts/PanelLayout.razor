@@ -4,46 +4,70 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<div class="antialiased bg-gray-50 dark:bg-gray-900 dark:text-white" id="adminNavbar">
-    <nav class="bg-white border-b border-gray-200 px-4 py-2.5 dark:bg-gray-800 dark:border-gray-700 fixed lg:hidden left-0 right-0 top-0 z-50">
-        <div class="flex flex-wrap justify-between items-center">
-            <div class="flex justify-start items-center">
-                <SidebarToggler id="adminNavbarToggleButton"
-                                SidebarId="adminSidebar" />
-                <a href="/" class="flex items-center" id="adminNavbarLogoLink">
-                    <Logo />
-                    <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">FluentCMS</span>
-                </a>
-            </div>
-        </div>
-    </nav>
-    <div class="relative flex h-full w-full flex-1 overflow-auto">
-        <SectionOutlet SectionName="sidebar" />
-        <main class="overflow-auto dark:bg-gray-900 w-full flex-1 flex flex-col items-stretch h-full lg:ml-64 pt-20 lg:pt-0">
+<CascadingValue Value="this">
 
-            @if(true)
-            {
-                <Grid>
-                    <GridItem HideSmall="true"
-                            HideMedium="true"
-                            Small="GridItemColumn.Auto">
-                        <Sidebar Secondary="true">
-                            <ChildContent>
-                                <SectionOutlet SectionName="sidebar-secondary" />
-                            </ChildContent>
-                        </Sidebar>
-                    </GridItem>
-                    <GridItem Small="GridItemColumn.Grow">
-                        @Body
-                    </GridItem>
-                </Grid>
-            } 
-            else 
-            {
-                @Body
-            }
-        </main>
+    <div class="antialiased bg-gray-50 dark:bg-gray-900 dark:text-white" id="adminNavbar">
+        <nav class="bg-white border-b border-gray-200 px-4 py-2.5 dark:bg-gray-800 dark:border-gray-700 fixed lg:hidden left-0 right-0 top-0 z-50">
+            <div class="flex flex-wrap justify-between items-center">
+                <div class="flex justify-start items-center">
+                    <SidebarToggler id="adminNavbarToggleButton"
+                                    SidebarId="adminSidebar" />
+                    <a href="/" class="flex items-center" id="adminNavbarLogoLink">
+                        <Logo />
+                        <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">FluentCMS</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        <div class="relative flex h-full w-full flex-1 overflow-auto">
+            <SectionOutlet SectionName="sidebar" />
+            <main class="overflow-auto dark:bg-gray-900 w-full flex-1 flex flex-col items-stretch h-full lg:ml-64 pt-20 lg:pt-0">
+                @if(HasSecondarySidebar)
+                {
+                    <Grid>
+                        <GridItem HideSmall="true"
+                                HideMedium="true"
+                                Small="GridItemColumn.Auto">
+                            <Sidebar Secondary="true">
+                                <ChildContent>
+                                    <SectionOutlet SectionName="sidebar-secondary" />
+                                </ChildContent>
+                            </Sidebar>
+                        </GridItem>
+                        <GridItem Small="GridItemColumn.Grow">
+                            @Body
+                        </GridItem>
+                    </Grid>
+                } 
+                else 
+                {
+                    @Body
+                }
+            </main>
+        </div>
     </div>
-</div>
+</CascadingValue>
 
 <script src="/_content/FluentCMS.Web.UI.Components/js/flowbite.min.js"></script>
+
+@code {
+
+    private bool _hasSecondarySidebar = false;
+    public bool HasSecondarySidebar
+    {
+        get => _hasSecondarySidebar;
+        set
+        {
+            if (_hasSecondarySidebar != value)
+            {
+                _hasSecondarySidebar = value;
+                StateHasChanged();
+            }
+        }
+    }
+
+    protected override void OnParametersSet() 
+    {
+        HasSecondarySidebar = false;
+    }
+}

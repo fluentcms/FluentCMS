@@ -1,38 +1,37 @@
 @using FluentCMS.Web.UI.Plugins.ContentManagement
+<ContentSidebar />
 
-<ContentLayout>
-    <Page>
-        <PageHeader Title="Content Management" />
-        <PageBody>
-            <Spacer class="lg:hidden" />
-            <Grid class="lg:hidden"
-                  GutterY="GridGutter.Medium"
-                  Id="contentIndexCollectionList">
-                <GridItem HideLarge="true"
-                          Small="GridItemColumn.Twelve">
+<Page>
+    <PageHeader Title="Content Management" />
+    <PageBody>
+        <Spacer class="lg:hidden" />
+        <Grid class="lg:hidden"
+                GutterY="GridGutter.Medium"
+                Id="contentIndexCollectionList">
+            <GridItem HideLarge="true"
+                        Small="GridItemColumn.Twelve">
+            </GridItem>
+            @foreach (var collection in Collections)
+            {
+                <GridItem Small="GridItemColumn.Twelve">
+                    <a Href="@($"?pluginDef=Content Management&typeName=Content List&contentTypeSlug={collection.Slug}")"
+                        id="@($"contentIndex{@collection.Slug}Link")">
+                        <Card>
+                            <CardBody>
+                                <CardTitle>
+                                    @collection.Title
+                                </CardTitle>
+                                <Typography>
+                                    @collection.Description
+                                </Typography>
+                            </CardBody>
+                        </Card>
+                    </a>
                 </GridItem>
-                @foreach (var collection in Collections)
-                {
-                    <GridItem Small="GridItemColumn.Twelve">
-                        <a Href="@($"?pluginDef=Content Management&typeName=Content List&contentTypeSlug={collection.Slug}")"
-                           id="@($"contentIndex{@collection.Slug}Link")">
-                            <Card>
-                                <CardBody>
-                                    <CardTitle>
-                                        @collection.Title
-                                    </CardTitle>
-                                    <Typography>
-                                        @collection.Description
-                                    </Typography>
-                                </CardBody>
-                            </Card>
-                        </a>
-                    </GridItem>
-                }
-            </Grid>
-        </PageBody>
-    </Page>
-</ContentLayout>
+            }
+        </Grid>
+    </PageBody>
+</Page>
 
 @code {
     [Inject]

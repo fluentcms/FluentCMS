@@ -1,0 +1,15 @@
+@inherits BaseComponent
+
+<SectionContent SectionName="sidebar-secondary">
+    @ChildContent
+</SectionContent>
+
+@code {
+    [CascadingParameter]
+    PanelLayout? Layout {get; set;}
+
+    protected override void OnParametersSet() 
+    {
+        Layout!.HasSecondarySidebar = true;
+    }
+}
