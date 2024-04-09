@@ -9,38 +9,50 @@
                       OnSubmit="OnSubmit">
                     <Card>
                         <CardBody>
-                            <Input @bind-Value="Model.Name"
-                                   Id="apiTokenCreateNameInput"
-                                   Label="Name"
-                                   Name="Name"
-                                   Placeholder="Enter Name..." />
-                            <Textarea @bind-Value="Model.Description"
-                                      Id="apiTokenCreateDescriptionInput"
-                                      Label="Description"
-                                      Name="Description"
-                                      Placeholder="Enter Description..." />
-                            <Select @bind-Value="Model.Duration"
-                                      Id="apiTokenCreateDurationInput"
-                                      Label="Duration"
-                                      Name="Duration"
-                                      Placeholder="Choose Duration...">
-                                <Option>One Month</Option>
-                                <Option>Three Month</Option>
-                                <Option>Six Month</Option>
-                                <Option>One Year</Option>
-                                <Option>Unlimited</Option>
-                            </Select>
+                            <Grid Gutter="GridGutter.Medium">
+                                <GridItem Small="GridItemColumn.Twelve">
 
-                            <Select @bind-Value="Model.Type"
-                                      Id="apiTokenCreateTypeInput"
-                                      Label="Type"
-                                      Name="Type"
-                                      Placeholder="Choose Type...">
-                                <Option>Full-Access</Option>
-                                <Option>Read-Only</Option>
-                                <Option>Custom</Option>
-                            </Select>
-                            
+                                    <Input @bind-Value="Model.Name"
+                                        Id="apiTokenCreateNameInput"
+                                        Label="Name"
+                                        Name="Name"
+                                        Placeholder="Enter Name..." />
+                                </GridItem>
+
+                                <GridItem Small="GridItemColumn.Twelve">
+                                    <Textarea @bind-Value="Model.Description"
+                                            Id="apiTokenCreateDescriptionInput"
+                                            Label="Description"
+                                            Name="Description"
+                                            Placeholder="Enter Description..." />
+                                </GridItem>
+
+                                <GridItem Small="GridItemColumn.Six">
+                                    <Select @bind-Value="Model.Duration"
+                                            Id="apiTokenCreateDurationInput"
+                                            Label="Duration"
+                                            Name="Duration"
+                                            Placeholder="Choose Duration...">
+                                        <Option>One Month</Option>
+                                        <Option>Three Month</Option>
+                                        <Option>Six Month</Option>
+                                        <Option>One Year</Option>
+                                        <Option>Unlimited</Option>
+                                    </Select>
+                                </GridItem>
+
+                                <GridItem Small="GridItemColumn.Six">
+                                    <Select @bind-Value="Model.Type"
+                                            Id="apiTokenCreateTypeInput"
+                                            Label="Type"
+                                            Name="Type"
+                                            Placeholder="Choose Type...">
+                                        <Option>Full-Access</Option>
+                                        <Option>Read-Only</Option>
+                                        <Option>Custom</Option>
+                                    </Select>
+                                </GridItem>
+                            </Grid>
                             <Spacer />
                             @if (!string.IsNullOrEmpty(Message))
                             {
@@ -71,7 +83,10 @@
                                 <AccordionBody Id="users">
                                     @foreach(var item in permission.Body)
                                     {
-                                        <Divider Placement="DividerPlacement.Start">@item.Title</Divider>
+                                        @if(!string.IsNullOrEmpty(item.Title))
+                                        {
+                                            <Divider Placement="DividerPlacement.Start">@item.Title</Divider>
+                                        }
                                         <Grid>
                                             @foreach(var checkbox in item.Items)
                                             {
@@ -106,7 +121,7 @@
     string? Message { get; set; }
 
     class TokenPermissionBody {
-        public string Title {get; set;}
+        public string? Title {get; set;}
         public List<string> Items {get; set;} = [];
     }
 
@@ -120,7 +135,6 @@
             Title = "Books",
             Body = new List<TokenPermissionBody> {
                 new TokenPermissionBody {
-                    Title = "CRUD",
                     Items = new List<string> { "findOne", "findMany", "create", "update", "delete" }    
                 }
             }
@@ -129,9 +143,12 @@
             Title = "Users",
             Body = new List<TokenPermissionBody> {
                 new TokenPermissionBody {
-                    Title = "CRUD",
                     Items = new List<string> { "findOne", "findMany", "create", "update", "delete" }    
-                }
+                },
+                new TokenPermissionBody {
+                    Title = "Auth",
+                    Items = new List<string> { "login", "register", "reset" }    
+                },
             }
         },
         new TokenPermission {
