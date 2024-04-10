@@ -1,22 +1,25 @@
 ﻿@using Microsoft.AspNetCore.Http
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    @* These lines should be here to avoid ui flickering *@
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>FluentCMS</title>
-    <link rel="stylesheet" href="/_content/FluentCMS.Web.UI.Components/css/app.min.css" />
-    <link rel="icon" type="image/png" href="favicon.png" />
-    <base href="/" />
+@if (!BlockRender)
+{
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        @* These lines should be here to avoid ui flickering *@
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>FluentCMS</title>
+        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI.Components/css/app.min.css" />
+        <link rel="icon" type="image/png" href="favicon.png" />
+        <base href="/" />
 
-    <HeadOutlet @rendermode="RenderMode" />
-</head>
-<body>
-<Routes @rendermode="RenderMode"/>
-<script src="_framework/blazor.web.js"></script>
-</body>
-</html>
+        <HeadOutlet @rendermode="RenderMode" />
+    </head>
+    <body>
+        <Routes @rendermode="RenderMode" />
+        <script src="_framework/blazor.web.js"></script>
+    </body>
+    </html>
+}
 
 @code {
     [Inject] SetupClient SetupClient { get; set; }
@@ -27,12 +30,16 @@
 
     public bool Initialized { get; set; } = false;
 
-    public IComponentRenderMode? RenderMode => (!_staticRenderModePaths.Any(x => HttpContext.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase)) && Initialized) ? InteractiveServer : null;
+    public bool BlockRender = true;
+
+    public IComponentRenderMode? RenderMode { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
         Initialized = (await SetupClient.IsInitializedAsync()).Data;
+        RenderMode = (!_staticRenderModePaths.Any(x => HttpContext.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase)) && Initialized) ? InteractiveServer : null;
+        BlockRender = false; // todo find a better solution for this
     }
 
     protected override void OnParametersSet()
