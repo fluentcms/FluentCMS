@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace FluentCMS.Web.Api.Models;
+namespace FluentCMS.Web.Api.Validation;
 
 public class PasswordValidatorAttribute : ValidationAttribute
 {

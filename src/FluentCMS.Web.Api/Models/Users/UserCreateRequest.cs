@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using FluentCMS.Web.Api.Validation;
 
 namespace FluentCMS.Web.Api.Models;
 
@@ -12,5 +13,6 @@ public class UserCreateRequest
     public string Email { get; set; } = default!;
 
     [Required]
+    [PasswordValidator]
     public string Password { get; set; } = default!;
 }
