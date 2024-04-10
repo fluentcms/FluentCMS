@@ -78,10 +78,6 @@ else
         {
             Model.AdminDomain = new Uri(NavigationManager.BaseUri).Authority;
         }
-
-        //Clean up previous invalid cookie
-        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-
     }
 
     private async Task OnSubmit()

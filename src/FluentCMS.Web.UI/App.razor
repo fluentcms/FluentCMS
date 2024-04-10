@@ -1,4 +1,6 @@
 ﻿@using Microsoft.AspNetCore.Http
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.Authentication
 @if (!BlockRender)
 {
     <!DOCTYPE html>
@@ -42,14 +44,18 @@
         BlockRender = false; // todo find a better solution for this
     }
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        base.OnParametersSet();
+        await base.OnParametersSetAsync();
         if (HttpContext == null && RenderMode == null)
         {
             NavigationManager.Refresh(true);
         }
+        else
+        {
+            
+            //Clean up previous invalid cookie
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        }
     }
-
-
 }
