@@ -9,6 +9,8 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -24,9 +26,15 @@ public static class ApiServiceExtensions
             config.Filters.Add<ApiResultExceptionFilter>();
         });
 
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        services
+            .AddAuthentication(c =>
+            {
                 c.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-            .AddJwtBearer((c) =>
+                c.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                c.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+            })
+            .AddCookie()
+            .AddJwtBearer((c) => 
             {
                 var serviceProvider = services.BuildServiceProvider();
                 var options = serviceProvider.GetRequiredService<IOptions<JwtOptions>>().Value;
