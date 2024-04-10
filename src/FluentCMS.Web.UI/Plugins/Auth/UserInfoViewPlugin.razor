@@ -9,13 +9,20 @@
                   GutterX="GridGutter.Large">
                 <GridItem>
                     <Avatar>
-                        @context.User.Identity?.Name?.First()
+                        @context.User?.Identity?.Name?.First()
                     </Avatar>
                 </GridItem>
                 <GridItem>
                     <Typography Weight="TextWeight.SemiBold">
-                        @context.User.Identity?.Name.ToUpper()
+                        @context.User?.Identity?.Name?.ToUpper()
                     </Typography>
+                </GridItem>
+                <GridItem>
+                    <NavLink href="/auth/logout">
+                        <Typography Weight="TextWeight.SemiBold">
+                            Logout
+                        </Typography>
+                    </NavLink>
                 </GridItem>
             </Grid>
         </a>
@@ -24,6 +31,6 @@
         Authorizing...
     </Authorizing>
     <NotAuthorized>
-        NotAuthorized!
+        <RedirectToLogin></RedirectToLogin>
     </NotAuthorized>
 </AuthorizeView>
