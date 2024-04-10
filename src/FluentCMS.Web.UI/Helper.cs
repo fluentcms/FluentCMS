@@ -42,39 +42,54 @@ public static class Helper
     public static async Task SignInAsync(this HttpContext httpContext, UserLoginRequest request)
     {
         var scopeFactory = httpContext.RequestServices.GetRequiredService<IServiceScopeFactory>();
-        using (var scope = scopeFactory.CreateScope())
+        using var scope = scopeFactory.CreateScope();
+        var serviceProvider = scope.ServiceProvider;
+        var accountClient = serviceProvider.GetRequiredService<AccountClient>();
+
+        //get access token
+        var loginResponseIApiResult = await accountClient.AuthenticateAsync(new UserLoginRequest()
         {
-            var serviceProvider = scope.ServiceProvider;
-            var accountClient = serviceProvider.GetRequiredService<AccountClient>();
-            var loginResponseIApiResult = await accountClient.AuthenticateAsync(new UserLoginRequest()
-            {
-                Username = request.Username,
-                Password = request.Password
-            });
+            Username = request.Username,
+            Password = request.Password
+        });
 
-            var claims = new List<Claim>();
+        var claims = new List<Claim>();
 
+        //force set auth header
+        // todo: find a better solution for this
+        var httpClient = (HttpClient) accountClient.GetType().GetField("_httpClient", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(accountClient)!;
+        httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("bearer", loginResponseIApiResult.Data.Token);
 
-            // fill userDetails
-            claims.Add(new Claim(ClaimTypes.NameIdentifier, loginResponseIApiResult.Data.UserId.ToString("D")));
-            claims.Add(new Claim("token", loginResponseIApiResult.Data.Token));
+        // get UserAccountDetails
+        var userDetails = await accountClient.GetUserDetailAsync();
 
-            //force set header
-            var httpClient = (HttpClient)accountClient.GetType().GetField("_httpClient", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(accountClient);
-            httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("bearer", loginResponseIApiResult.Data.Token);
+        // login
+        claims.BuildUserClaims(loginResponseIApiResult, userDetails);
 
-            var userDetails = await accountClient.GetUserDetailAsync();
+        var claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
 
-            claims.Add(new Claim(ClaimTypes.Name, userDetails.Data.Username));
-            claims.Add(new Claim(ClaimTypes.Email, userDetails.Data.Email));
+        await httpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, claimsPrincipal);
+    }
 
-            var claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
-            if (userDetails.Data.PhoneNumber != null)
-                claims.Add(new Claim(ClaimTypes.MobilePhone, userDetails.Data.PhoneNumber));
+    private static void BuildUserClaims(this List<Claim> claims, UserLoginResponseIApiResult loginResponseIApiResult,
+        UserDetailResponseIApiResult userDetails)
+    {
+        claims.BuildUserClaims(loginResponseIApiResult);
+        claims.BuildUserClaims(userDetails);
+    }
 
+    private static void BuildUserClaims(this List<Claim> claims, UserDetailResponseIApiResult userDetails)
+    {
+        claims.Add(new Claim(ClaimTypes.Name, userDetails.Data.Username));
+        claims.Add(new Claim(ClaimTypes.Email, userDetails.Data.Email));
+        if (userDetails.Data.PhoneNumber != null)
+            claims.Add(new Claim(ClaimTypes.MobilePhone, userDetails.Data.PhoneNumber));
+    }
 
-            await httpContext?.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, claimsPrincipal);
-        }
+    private static void BuildUserClaims(this List<Claim> claims, UserLoginResponseIApiResult loginResponseIApiResult)
+    {
+        claims.Add(new Claim(ClaimTypes.NameIdentifier, loginResponseIApiResult.Data.UserId.ToString("D")));
+        claims.Add(new Claim("token", loginResponseIApiResult.Data.Token));
     }
 }
