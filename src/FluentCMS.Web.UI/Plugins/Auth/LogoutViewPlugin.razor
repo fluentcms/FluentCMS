@@ -1,4 +1,25 @@
+@using Microsoft.AspNetCore.Http
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
 <Typography Align="TextAlign.Center"
-      Color="Color.Secondary">
+            Color="Color.Secondary">
     You are logging out
 </Typography>
+
+@code
+{
+    [CascadingParameter] public HttpContext HttpContext { get; set; } = default!;
+    [Inject] public NavigationManager NavigationManager { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+        if (HttpContext == null)
+        {
+            NavigationManager.Refresh(true);
+            return;
+        }
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        NavigationManager.NavigateTo("/", true);
+    }
+}
