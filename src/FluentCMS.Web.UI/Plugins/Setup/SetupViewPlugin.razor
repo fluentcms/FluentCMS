@@ -1,7 +1,12 @@
-﻿@if (!Initialized)
+﻿@using Microsoft.AspNetCore.Http
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@if (!Initialized)
 {
     <Form Model="@Model"
-          OnSubmit="OnSubmit">
+              method="post"
+              FormName="SetupForm"
+              OnSubmit="OnSubmit">
         <Typography Size="TextSize.H5">
             Welcome To FluentCMS
         </Typography>
@@ -10,23 +15,25 @@
                autofocus="true"
                Id="setupUsernameInput"
                Label="Username"
-               Name="Username"
+               Name="Model.Username"
                Placeholder="Enter your username"
                Required="true" />
         <Input @bind-Value="Model.Email"
                Id="setupEmailInput"
                Label="Email"
-               Name="Email"
+               Name="Model.Email"
                Placeholder="Enter your email"
                Required="true" />
         <Input @bind-Value="Model.Password"
                Id="setupPasswordInput"
                Label="Password"
-               Name="Password"
+               Name="Model.Password"
                Placeholder="Enter your password"
                Required="true"
                Type="InputType.Password" />
-        <Spacer />
+        <InputText type="hidden" @bind-Value="Model.AppTemplateName" />
+        <InputText type="hidden" @bind-Value="Model.SiteTemplateName" />
+        <InputText type="hidden" @bind-Value="Model.AdminDomain" />
         <Button Block="true"
                 Color="Color.Primary"
                 id="setupSubmitButton"
@@ -49,21 +56,32 @@ else
     [Inject]
     NavigationManager NavigationManager { get; set; } = default!;
 
+    [CascadingParameter]
+    public HttpContext HttpContext { get; set; }
+
     bool Initialized { get; set; }
 
-    SetupRequest Model { get; set; } = new SetupRequest
+    [SupplyParameterFromForm(FormName = "SetupForm")]
+    public SetupRequest Model { get; set; } = new()
         {
             Username = "admin",
             Email = "admin@example.com",
             Password = "Passw0rd!",
             AppTemplateName = "Blank",
-            SiteTemplateName = "Blank"
+            SiteTemplateName = "Blank",
         };
 
     protected override async Task OnInitializedAsync()
     {
         Initialized = await SetupManager.IsInitialized();
-        Model.AdminDomain = new Uri(NavigationManager.BaseUri).Authority;
+        if (Model != null)
+        {
+            Model.AdminDomain = new Uri(NavigationManager.BaseUri).Authority;
+        }
+
+        //Clean up previous invalid cookie
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
     }
 
     private async Task OnSubmit()
