@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -20,11 +21,10 @@ public static class ClientServiceExtensions
             //set auth header
             var httpContextAccessor = sp.GetService<IHttpContextAccessor>();
             var httpContext = httpContextAccessor?.HttpContext;
-            if (httpContext != null && httpContext.Request.Cookies.ContainsKey("UserLoginResponse"))
+            
+            if (httpContext != null && httpContext.User.FindFirstValue("token") is var jwt && !string.IsNullOrEmpty(jwt))
             {
-                var loginResponse = JsonSerializer.Deserialize<UserLoginResponse>(httpContext.Request.Cookies["UserLoginResponse"] ?? throw new Exception("Cookie 'UserLoginResponse' is null!")) ?? throw new Exception("Unable to deserialize UserLoginResponse");
-                var token = loginResponse.Token;
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("bearer", token);
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("bearer", jwt);
             }
         });
 
