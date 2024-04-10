@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.AspNetCore.Http
+<!DOCTYPE html>
 <html lang="en">
 <head>
     @* These lines should be here to avoid ui flickering *@
@@ -9,10 +10,42 @@
     <link rel="icon" type="image/png" href="favicon.png" />
     <base href="/" />
 
-    <HeadOutlet @rendermode="@InteractiveServer" />
+    <HeadOutlet @rendermode="RenderMode" />
 </head>
 <body>
-    <Routes @rendermode="@InteractiveServer" />
-    <script src="_framework/blazor.web.js"></script>
+<pre>
+@(RenderMode?.ToString() ?? "static")
+</pre>
+<Routes @rendermode="RenderMode"/>
+<script src="_framework/blazor.web.js"></script>
 </body>
 </html>
+
+@code {
+    [Inject] SetupClient SetupClient { get; set; }
+    [CascadingParameter] public HttpContext HttpContext { get; set; } = default!;
+    [Inject] NavigationManager NavigationManager { get; set; }
+
+    private readonly string[] _staticRenderModePaths = ["/auth"];
+
+    public bool Initialized { get; set; } = false;
+
+    public IComponentRenderMode? RenderMode => (!_staticRenderModePaths.Any(x => HttpContext.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase)) && Initialized) ? InteractiveServer : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Initialized = (await SetupClient.IsInitializedAsync()).Data;
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        if (HttpContext == null && RenderMode == null)
+        {
+            NavigationManager.Refresh(true);
+        }
+    }
+
+
+}
