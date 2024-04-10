@@ -1,6 +1,9 @@
 ﻿<Router AppAssembly="@this.GetType().Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" />
+        <AuthorizeRouteView RouteData="@routeData">
+            <Authorizing>Authorizing</Authorizing>
+            <NotAuthorized>NotAuthorized</NotAuthorized>
+        </AuthorizeRouteView>
         <ExtendedFocusOnNavigate RouteData="@routeData" Selector="[autofocus]" />
     </Found>
 </Router>
