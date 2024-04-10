@@ -51,11 +51,5 @@
         {
             NavigationManager.Refresh(true);
         }
-        else
-        {
-            
-            //Clean up previous invalid cookie
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        }
     }
 }
