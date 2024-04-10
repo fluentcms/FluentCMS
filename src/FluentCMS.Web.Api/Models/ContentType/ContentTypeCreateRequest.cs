@@ -10,6 +10,7 @@ public class ContentTypeCreateRequest
     public string Slug { get; set; } = default!;
 
     [Required]
+    [Length(3,20)]
     public string Title { get; set; } = default!;
     public string? Description { get; set; } = default!;
 }
