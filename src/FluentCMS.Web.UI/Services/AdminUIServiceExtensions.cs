@@ -12,8 +12,6 @@ public static class AdminUIServiceExtensions
         services.AddApiClients(configuration);
         services.AddScoped<SetupManager>();
         services.AddErrorMessageFactory();
-        services.AddTransient<AuthStateProvider>();
-        services.AddTransient<AuthenticationStateProvider, AuthStateProvider>(c => c.GetRequiredService<AuthStateProvider>());
         services.AddCascadingAuthenticationState();
 
         return services;
