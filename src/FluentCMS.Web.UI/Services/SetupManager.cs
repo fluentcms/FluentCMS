@@ -72,25 +72,17 @@ public class SetupManager
             claims.Add(new Claim("token", loginResponseIApiResult.Data.Token));
 
             //force set header
-            var httpClient = (HttpClient) _accountClient.GetType().GetField("_httpClient", BindingFlags.NonPublic|BindingFlags.Instance).GetValue(_accountClient);
+            var httpClient = (HttpClient)_accountClient.GetType().GetField("_httpClient", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(_accountClient);
             httpClient.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("bearer", loginResponseIApiResult.Data.Token);
 
 
-            try
-            {
-                var userDetails = await _accountClient.GetUserDetailAsync();
+            var userDetails = await _accountClient.GetUserDetailAsync();
 
-                claims.Add(new Claim(ClaimTypes.Name, userDetails.Data.Username));
-                claims.Add(new Claim(ClaimTypes.Email, userDetails.Data.Email));
-                if(userDetails.Data.PhoneNumber != null)
-                    claims.Add(new Claim(ClaimTypes.MobilePhone, userDetails.Data.PhoneNumber));
-            }
-            catch (Exception ex)
-            {
-
-                throw;
-            }
+            claims.Add(new Claim(ClaimTypes.Name, userDetails.Data.Username));
+            claims.Add(new Claim(ClaimTypes.Email, userDetails.Data.Email));
+            if (userDetails.Data.PhoneNumber != null)
+                claims.Add(new Claim(ClaimTypes.MobilePhone, userDetails.Data.PhoneNumber));
         }
 
         var claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
