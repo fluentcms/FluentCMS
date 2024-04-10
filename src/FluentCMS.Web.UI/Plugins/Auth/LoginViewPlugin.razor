@@ -1,4 +1,6 @@
 <Form Model="@Model"
+      FormName="LoginForm"
+      Method="post"
       OnSubmit="OnSubmit">
     <Typography Size="TextSize.H5">
         Welcome back
@@ -8,13 +10,13 @@
            autofocus="true"
            Id="loginUsernameInput"
            Label="Username"
-           Name="Username"
+           Name="Model.Username"
            Placeholder="Enter your username"
            Required="true" />
     <Input @bind-Value="Model.Password"
            Id="loginPasswordInput"
            Label="Password"
-           Name="Password"
+           Name="Model.Password"
            Placeholder="Enter your password"
            Required="true"
            Type="InputType.Password" />
