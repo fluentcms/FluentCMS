@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using FluentCMS.Web.Api.Validation;
 
 namespace FluentCMS.Web.Api.Models;
 
