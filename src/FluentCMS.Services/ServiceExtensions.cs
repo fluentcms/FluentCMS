@@ -19,7 +19,17 @@ public static class ServiceExtensions
 
     private static IdentityBuilder AddIdentity(IServiceCollection services)
     {
-        var builder = services.AddIdentityCore<User>();
+        var builder = services.AddIdentityCore<User>(c =>
+        {
+            c.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
+            c.User.RequireUniqueEmail = true;
+
+            c.Password.RequiredLength = 8;
+            c.Password.RequireDigit = true;
+            c.Password.RequireUppercase = true;
+            c.Password.RequireLowercase = true;
+            c.Password.RequireNonAlphanumeric = true;
+        });
 
         builder
             .AddUserStore<UserStore>()
