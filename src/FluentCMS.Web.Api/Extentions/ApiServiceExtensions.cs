@@ -74,7 +74,6 @@ public static class ApiServiceExtensions
     {
         app.UseApiDocumentation();
 
-        app.UseAntiforgery();
 
         app.UseWhen(context => context.Request.Path.StartsWithSegments("/api"), app =>
         {
@@ -85,6 +84,9 @@ public static class ApiServiceExtensions
         app.UseAuthentication();
 
         app.UseAuthorization();
+
+        // this should be here as a workaround for issues regarding invalid Anti-Forgery tokens https://github.com/dotnet/aspnetcore/issues/50612
+        app.UseAntiforgery();
 
         app.MapControllers();
 
