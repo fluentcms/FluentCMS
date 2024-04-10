@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
 
@@ -14,7 +15,7 @@ public class GlobalSettingsController(IGlobalSettingsService service, IMapper ma
     }
 
     [HttpPost]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IApiResult<GlobalSettings>> Update(GlobalSettingsUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var settings = mapper.Map<GlobalSettings>(request);
