@@ -1,4 +1,7 @@
-﻿namespace FluentCMS.Web.Api.Models;
+﻿using System.ComponentModel.DataAnnotations;
+using static FluentCMS.Web.Api.Models.UserRegisterRequest;
+
+namespace FluentCMS.Web.Api.Models;
 
 /// <summary>
 /// Represents a request for changing a user's password.
@@ -11,6 +14,7 @@ public class UserChangePasswordRequest
     /// <value>
     /// The unique identifier of the user.
     /// </value>
+    [Required]
     public required Guid UserId { get; set; }
 
     /// <summary>
@@ -19,6 +23,7 @@ public class UserChangePasswordRequest
     /// <value>
     /// The current password of the user.
     /// </value>
+    [Required]
     public required string OldPassword { get; set; }
 
     /// <summary>
@@ -27,5 +32,7 @@ public class UserChangePasswordRequest
     /// <value>
     /// The new password to be set for the user.
     /// </value>
+    [Required]
+    [PasswordValidator]
     public required string NewPassword { get; set; }
 }
