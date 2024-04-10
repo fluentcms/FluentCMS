@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace FluentCMS.Web.Api.Controllers;
 
@@ -54,15 +55,15 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
     }
 
     [HttpGet]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IApiResult<UserDetailResponse>> GetUserDetail()
     {
-        var userId = Guid.Parse(httpContextAccessor!.HttpContext!.User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userId = Guid.Parse(httpContextAccessor!.HttpContext!.User.FindFirstValue(ClaimTypes.NameIdentifier));
         var user = await userService.GetById(userId);
         return Ok(mapper.Map<UserDetailResponse>(user));
     }
     [HttpGet]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IApiResult<UserDetailResponse>> SetUserDetail(UserUpdateProfileRequest request, CancellationToken cancellationToken = default)
     {
         var userId = Guid.Parse(httpContextAccessor!.HttpContext!.User.FindFirst(ClaimTypes.NameIdentifier)!.Value);

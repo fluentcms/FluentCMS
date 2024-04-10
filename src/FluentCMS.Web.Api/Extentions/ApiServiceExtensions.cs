@@ -25,6 +25,7 @@ public static class ApiServiceExtensions
         });
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                c.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
             .AddJwtBearer((c) =>
             {
                 var serviceProvider = services.BuildServiceProvider();
