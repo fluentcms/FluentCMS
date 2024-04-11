@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="/_content/FluentCMS.Web.UI.Components/css/app.min.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <base href="/" />
+    <script>
+        const theme = localStorage.getItem('THEME') ?? 'light'
+        document.documentElement.classList.add(theme)
+    </script>
 
     <HeadOutlet @rendermode="@InteractiveServer" />
 </head>
