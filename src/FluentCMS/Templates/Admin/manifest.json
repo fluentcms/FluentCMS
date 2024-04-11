@@ -15,6 +15,10 @@
         {
             "Name": "SettingsLayout",
             "IsDefault": false
+        },
+        {
+            "Name": "ContentLayout",
+            "IsDefault": false
         }
     ],
     "PluginDefinitions": [
@@ -270,6 +274,7 @@
                 {
                     "Title": "Content Management",
                     "Path": "/content",
+                    "Layout": "ContentLayout",
                     "Plugins": [
                         {
                             "Definition": "Content Management",

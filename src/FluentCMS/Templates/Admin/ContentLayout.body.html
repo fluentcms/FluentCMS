@@ -1,0 +1,19 @@
+﻿<ConfirmProvider fluentcms />
+<ToastProvider fluentcms />
+
+<PanelLayout fluentcms>
+    <SectionContent SectionName="sidebar" fluentcms>
+        <AdminSidebar fluentcms />
+    </SectionContent>
+ 
+    <SecondarySidebarWrapper fluentcms>
+        <Sidebar fluentcms-slot>
+            <ContentSidebar fluentcms/>
+        </Sidebar>
+        <ChildContent>
+            <Section Name="Main" fluentcms />
+        </ChildContent>
+    </SecondarySidebarWrapper>
+</PanelLayout>
+
+<script src="/js/flowbite.min.js"></script>

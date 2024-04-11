@@ -1,15 +1,14 @@
 @inherits BaseComponent
 
-<SecondarySidebarSection>
-    <SidebarItem>Collections</SidebarItem>
-    @foreach (var collection in Collections)
-    {
-        <SidebarItem Href="@($"?pluginDef=Content Management&typeName=Content List&contentTypeSlug={collection.Slug}")"
-                        id="@($"contentSidebar{@collection.Slug}Link")">
-            @collection.Title
-        </SidebarItem>
-    }
-</SecondarySidebarSection>
+<SidebarItem>Collections</SidebarItem>
+@foreach (var collection in Collections)
+{
+    <SidebarItem Href="@($"?pluginDef=Content Management&typeName=Content List&contentTypeSlug={collection.Slug}")"
+                    id="@($"contentSidebar{@collection.Slug}Link")">
+        @collection.Title
+    </SidebarItem>
+}
+
 
 @code {
     [Inject]
