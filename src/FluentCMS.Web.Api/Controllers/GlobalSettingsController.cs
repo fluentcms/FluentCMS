@@ -6,6 +6,7 @@ namespace FluentCMS.Web.Api.Controllers;
 public class GlobalSettingsController(IGlobalSettingsService service, IMapper mapper) : BaseGlobalController
 {
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IApiResult<GlobalSettings>> Get(CancellationToken cancellationToken = default)
     {
         var systemSettings = await service.Get(cancellationToken) ??
@@ -15,7 +16,6 @@ public class GlobalSettingsController(IGlobalSettingsService service, IMapper ma
     }
 
     [HttpPost]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IApiResult<GlobalSettings>> Update(GlobalSettingsUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var settings = mapper.Map<GlobalSettings>(request);

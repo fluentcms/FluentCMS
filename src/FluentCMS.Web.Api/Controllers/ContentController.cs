@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 
 [Route("api/[controller]/{contentTypeSlug}/[action]")]
 public class ContentController(

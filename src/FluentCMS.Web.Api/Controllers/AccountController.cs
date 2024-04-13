@@ -10,6 +10,7 @@ namespace FluentCMS.Web.Api.Controllers;
 public class AccountController(IMapper mapper, IUserService userService, ILogger<AccountController> logger, IHttpContextAccessor httpContextAccessor) : BaseGlobalController
 {
     [HttpPost]
+    [AllowAnonymous]
     public async Task<IApiResult<UserDetailResponse>> Register([FromBody] UserRegisterRequest request, CancellationToken cancellationToken = default)
     {
         var user = mapper.Map<User>(request);
@@ -19,6 +20,7 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
     }
 
     [HttpPost]
+    [AllowAnonymous]
     public async Task<IApiResult<UserLoginResponse>> Authenticate([FromBody] UserLoginRequest request, CancellationToken cancellationToken = default)
     {
         var user = await userService.Authenticate(request.Username, request.Password, cancellationToken);
@@ -32,7 +34,6 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
     }
 
     [HttpPost]
-    [Authorize]
     public async Task<IApiResult<bool>> ChangePassword([FromBody] UserChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
         await userService.ChangePassword(request.UserId, request.OldPassword, request.NewPassword, cancellationToken);
@@ -40,6 +41,7 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
     }
 
     [HttpPost]
+    [AllowAnonymous]
     public async Task<IApiResult<bool>> SendPasswordResetToken([FromBody] UserSendPasswordResetTokenRequest request)
     {
         var token = await userService.GeneratePasswordResetToken(request.Email);
@@ -48,6 +50,7 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
         return Ok(true);
     }
     [HttpPost]
+    [AllowAnonymous]
     public async Task<IApiResult<bool>> ValidatePasswordResetToken([FromBody] UserValidatePasswordResetTokenRequest request)
     {
         var result = await userService.ValidatePasswordResetToken(request.Token, request.Email, request.NewPassword);
@@ -55,7 +58,6 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
     }
 
     [HttpGet]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IApiResult<UserDetailResponse>> GetUserDetail()
     {
         var userId = Guid.Parse(httpContextAccessor!.HttpContext!.User.FindFirstValue(ClaimTypes.NameIdentifier));
@@ -63,7 +65,7 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
         return Ok(mapper.Map<UserDetailResponse>(user));
     }
     [HttpGet]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    
     public async Task<IApiResult<UserDetailResponse>> SetUserDetail(UserUpdateProfileRequest request, CancellationToken cancellationToken = default)
     {
         var userId = Guid.Parse(httpContextAccessor!.HttpContext!.User.FindFirst(ClaimTypes.NameIdentifier)!.Value);

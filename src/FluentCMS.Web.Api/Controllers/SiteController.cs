@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class SiteController(ISiteService siteService, ILayoutService layoutService, IPageService pageService, IMapper mapper) : BaseGlobalController
 {
     [AllowAnonymous]

@@ -1,6 +1,10 @@
-﻿namespace FluentCMS.Web.Api.Controllers;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+
+namespace FluentCMS.Web.Api.Controllers;
 
 [ApiController]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 [Produces("application/json")]
 public abstract class BaseController
 {
@@ -16,6 +20,7 @@ public abstract class BaseController
 }
 
 [Route("api/[controller]/[action]")]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public abstract class BaseGlobalController : BaseController
 {
 

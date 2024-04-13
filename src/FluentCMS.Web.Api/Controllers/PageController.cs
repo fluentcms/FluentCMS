@@ -17,6 +17,7 @@ public class PageController(
 
     [HttpGet("{siteUrl}")]
     [DecodeQueryParam]
+    [AllowAnonymous]
     public async Task<IApiPagingResult<PageDetailResponse>> GetAll([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
     {
         var site = await siteService.GetByUrl(siteUrl, cancellationToken);
@@ -26,6 +27,7 @@ public class PageController(
     }
 
     [HttpGet("{id}")]
+    [AllowAnonymous]
     public async Task<IApiResult<PageDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var entity = await pageService.GetById(id, cancellationToken);
@@ -35,6 +37,7 @@ public class PageController(
 
     [HttpGet]
     [DecodeQueryParam]
+    [AllowAnonymous]
     public async Task<IApiResult<PageFullDetailResponse>> GetByUrl([FromQuery] string url, CancellationToken cancellationToken = default)
     {
         var uri = new Uri(url);
@@ -154,7 +157,6 @@ public class PageController(
     }
 
     [HttpPost]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IApiResult<PageDetailResponse>> Create(PageCreateRequest request, CancellationToken cancellationToken = default)
     {
         var entity = mapper.Map<Page>(request);
@@ -164,7 +166,6 @@ public class PageController(
     }
 
     [HttpPut]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IApiResult<PageDetailResponse>> Update(PageUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var entity = mapper.Map<Page>(request);
@@ -174,7 +175,6 @@ public class PageController(
     }
 
     [HttpDelete("{id}")]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
     {
         await pageService.Delete(id);
