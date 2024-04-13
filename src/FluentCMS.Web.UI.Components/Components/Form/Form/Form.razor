@@ -4,14 +4,22 @@
 
 <EditForm @attributes="AdditionalAttributes"
           class="@this.GetClasses()"
-          novalidate
           EditContext="@Context"
+          FormName="@FormName"
+          method="@Method"
+          novalidate
           OnValidSubmit="@OnValidSubmit">
     <DataAnnotationsValidator />
     @ChildContent
 </EditForm>
 
 @code {
+    [Parameter]
+    public string? FormName { get; set; }
+
+    [Parameter]
+    public string? Method { get; set; }
+
     [Parameter]
     public object? Model { get; set; }
 
