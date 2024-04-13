@@ -1,5 +1,4 @@
 ﻿using FluentCMS.Web.UI.Services;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Extensions.DependencyInjection;

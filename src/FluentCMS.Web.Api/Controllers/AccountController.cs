@@ -1,9 +1,9 @@
 ﻿using FluentCMS.Web.Api.Models.Users;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace FluentCMS.Web.Api.Controllers;
 

@@ -1,13 +1,12 @@
-﻿using Microsoft.AspNetCore.Components;
-using System.Web;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Http;
-using System;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using System.Web;
 
 namespace FluentCMS.Web.UI;
 
@@ -57,7 +56,7 @@ public static class Helper
 
         //force set auth header
         // todo: find a better solution for this
-        var httpClient = (HttpClient) accountClient.GetType().GetField("_httpClient", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(accountClient)!;
+        var httpClient = (HttpClient)accountClient.GetType().GetField("_httpClient", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(accountClient)!;
         httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("bearer", loginResponseIApiResult.Data.Token);
 

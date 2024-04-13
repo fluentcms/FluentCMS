@@ -3,14 +3,12 @@ using FluentCMS.Web.Api;
 using FluentCMS.Web.Api.Filters;
 using FluentCMS.Web.Api.Middleware;
 using FluentCMS.Web.Api.Setup;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Identity;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -34,7 +32,7 @@ public static class ApiServiceExtensions
                 c.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
             })
             .AddCookie()
-            .AddJwtBearer((c) => 
+            .AddJwtBearer((c) =>
             {
                 var serviceProvider = services.BuildServiceProvider();
                 var options = serviceProvider.GetRequiredService<IOptions<JwtOptions>>().Value;

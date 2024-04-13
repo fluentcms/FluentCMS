@@ -1,10 +1,4 @@
-﻿using System.Net.Http.Headers;
-using System.Reflection;
-using System.Security.Claims;
-using FluentCMS.Web.ApiClients;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Web.UI.Services;

@@ -1,6 +1,4 @@
-﻿using FluentCMS.Web.UI.Services;
-using FluentCMS.Web.UI.Services.LocalStorage;
-using Microsoft.AspNetCore.Components;
+﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Http;
 
 namespace FluentCMS.Web.UI.Plugins.Auth;

@@ -4,7 +4,6 @@ using Microsoft.Extensions.Configuration;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Security.Claims;
-using System.Text.Json;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -21,7 +20,7 @@ public static class ClientServiceExtensions
             //set auth header
             var httpContextAccessor = sp.GetService<IHttpContextAccessor>();
             var httpContext = httpContextAccessor?.HttpContext;
-            
+
             if (httpContext != null && httpContext.User.FindFirstValue("token") is var jwt && !string.IsNullOrEmpty(jwt))
             {
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("bearer", jwt);
