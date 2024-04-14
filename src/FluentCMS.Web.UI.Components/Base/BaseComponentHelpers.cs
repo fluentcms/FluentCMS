@@ -2,16 +2,24 @@ namespace FluentCMS.Web.UI.Components;
 
 public static class BaseComponentHelper
 {
+
+    // css prefix for auto-generated classes
+    public const string PREFIX = "f";
+
+    public const string SEPARATOR = "-";
+
     public static string ClassName(this BaseComponent baseComponent, string Name)
     {
-        return string.Join(UISettings.SEPARATOR, [UISettings.PREFIX, Name.FromPascalCaseToKebabCase()]);
+        ArgumentNullException.ThrowIfNull(baseComponent);
+
+        return string.Join(SEPARATOR, [PREFIX, Name.FromPascalCaseToKebabCase()]);
     }
 
     public static List<string> ClassNames(this BaseComponent baseComponent)
     {
         var classes = new List<string>();
 
-        // get properties
+        // get properties with CSSProperty Attribute
         var properties = baseComponent.GetType().
             GetProperties().
             Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CSSPropertyAttribute)));
@@ -23,7 +31,7 @@ public static class BaseComponentHelper
                 if (value != null)
                 {
                     var propertyValue = value.ToString()?.FromPascalCaseToKebabCase() ?? string.Empty;
-                    classes.Add(string.Join(UISettings.SEPARATOR, [UISettings.PREFIX, baseComponent.ComponentName, property.Name.FromPascalCaseToKebabCase(), propertyValue]));
+                    classes.Add(string.Join(SEPARATOR, [PREFIX, baseComponent.ComponentName, property.Name.FromPascalCaseToKebabCase(), propertyValue]));
                 }
             }
         }
@@ -33,16 +41,11 @@ public static class BaseComponentHelper
 
     public static string GetClasses(this BaseComponent baseComponent)
     {
-        List<string> classes = new() { };
-
-        // f-component
-        classes.Add(string.Join(UISettings.SEPARATOR, [UISettings.PREFIX, baseComponent.ComponentName]));
+        // component's class name from its name (f-button, f-badge, etc.)
+        var componentCss = string.Join(SEPARATOR, [PREFIX, baseComponent.ComponentName]);
 
         // add css properties
-        classes = classes.Concat(ClassNames(baseComponent)).ToList();
-
-        // add class property's value
-        classes.Add(baseComponent.Class);
+        List<string> classes = [componentCss, .. ClassNames(baseComponent), baseComponent.Class];
 
         return string.Join(" ", classes);
     }
