@@ -3,10 +3,13 @@ namespace FluentCMS.Web.UI.Components;
 public enum IconName
 {
     Default,
+    AngleDown,
+    AngleUp,
     AtSign,
     Boolean,
     CalendarWeek,
     ChevronDown,
+    ChevronUp,
     Clipboard,
     ClipboardList,
     Clock,
