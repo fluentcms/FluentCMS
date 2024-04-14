@@ -14,7 +14,7 @@
                 @foreach (var collection in Collections)
                 {
                     <GridItem Small="GridItemColumn.Twelve">
-                        <a Href="@($"?pluginDef=Content Management&typeName=Content List&contentTypeSlug={collection.Slug}")"
+                        <a Href="@Helper.CalculatePath("Content Management", "Content List", new { contentTypeSlug = collection.Slug })"
                            id="@($"contentIndex{@collection.Slug}Link")">
                             <Card>
                                 <CardBody>

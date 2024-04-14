@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components;
+using System;
 using System.Web;
 
 namespace FluentCMS.Web.UI;
@@ -29,5 +30,21 @@ public static class Helper
             return query[key];
 
         return default;
+    }
+
+    public static string CalculatePath(string pluginDef, string typeName, object? parameters = null)
+    {
+        parameters ??= new { };
+
+        var properties = parameters.GetType()
+                                       .GetProperties()
+                                       .Where(p => p.GetValue(parameters, null) != null)
+                                       .Select(p => $"{p.Name}={HttpUtility.UrlEncode(p.GetValue(parameters, null)?.ToString() ?? "")}");
+
+        var queries = String.Join("&", properties.ToArray());
+
+        queries = string.IsNullOrEmpty(queries) ? queries : "&" + queries;
+
+        return $"?pluginDef={pluginDef}&typeName={typeName}{queries}";
     }
 }

@@ -58,7 +58,7 @@
                         <Spacer />
                         <Button Block="true"
                                 Color="Color.Primary"
-                                Href="@($"?pluginDef=Content Management&typeName=Update Content&contentTypeSlug={ContentType.Slug}&id={View.Id}")"
+                                Href="@Helper.CalculatePath("Content Management", "Update Content", new { contentTypeSlug = ContentType.Slug, id = View.Id })"
                                 Item="true"
                                 Outline="true">
                             <Icon Name="IconName.Edit" />
