@@ -321,17 +321,6 @@
                     ]
                 },
                 {
-                    "Title": "Change Password",
-                    "Path": "/change-password",
-                    "Layout": "AuthLayout",
-                    "Plugins": [
-                        {
-                            "Definition": "Change Password",
-                            "Section": "Main"
-                        }
-                    ]
-                },
-                {
                     "Title": "Forgot Password",
                     "Path": "/forgot-password",
                     "Layout": "AuthLayout",
