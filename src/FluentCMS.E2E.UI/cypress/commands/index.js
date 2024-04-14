@@ -1,5 +1,4 @@
 import './admin-layout'
-import './apps'
 import './auth'
 import './content'
 import './content-type'
