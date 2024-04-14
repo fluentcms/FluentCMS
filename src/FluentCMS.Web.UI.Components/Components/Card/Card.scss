@@ -14,16 +14,4 @@ $card: $prefix + 'card';
     &-title {
         @apply text-2xl font-bold text-gray-900 dark:text-white;
     }
-
-    &-width-small {
-        @apply w-full max-w-sm;
-    }
-
-    &-width-medium {
-        @apply w-full max-w-md;
-    }
-
-    &-width-large {
-        @apply w-full max-w-lg;
-    }
 }
