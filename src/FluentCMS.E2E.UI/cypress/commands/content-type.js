@@ -1,18 +1,12 @@
-Cypress.Commands.add('navigateToContentTypeListPage', (appTitle) => {
+Cypress.Commands.add('navigateToContentTypeListPage', () => {
     cy.visit('/').waitForNavigate()
     cy.getSidebarItem('#adminSidebarContentTypeLink').click()
 
     cy.waitForNavigate()
-    cy.get('#contentTypeAppSelect').should('be.visible')
-
-    if (appTitle) {
-        cy.get('#contentTypeAppSelect').select(appTitle)
-        cy.waitForNavigate()
-    }
 })
 
-Cypress.Commands.add('navigateToContentTypeCreatePage', (appTitle) => {
-    cy.navigateToContentTypeListPage(appTitle)
+Cypress.Commands.add('navigateToContentTypeCreatePage', () => {
+    cy.navigateToContentTypeListPage()
     cy.get('#contentTypeCreateButton').should('be.visible')
     cy.get('#contentTypeCreateButton').click()
     cy.waitForNavigate()
@@ -109,11 +103,8 @@ Cypress.Commands.add('contentTypeDetail', (contentType) => {
 //     ])
 // })
 
-Cypress.Commands.add('contentTypeList', (appTitle) => {
-    // check app switch
-    cy.get('#contentTypeAppSelect').should('have.value', appTitle)
-
-    cy.shot('Content Type List ' + appTitle)
+Cypress.Commands.add('contentTypeList', () => {
+    cy.shot('Content Type List ')
 })
 
 Cypress.Commands.add('contentTypeCreateCancel', () => {
@@ -125,7 +116,7 @@ Cypress.Commands.add('contentTypeUpdateCancel', () => {
 
 })
 
-Cypress.Commands.add('contentTypeUpdate', (appTitle, contentTypeSlug, contentType) => {
+Cypress.Commands.add('contentTypeUpdate', (contentTypeSlug, contentType) => {
     cy.contains('#contentTypeListTable tr', contentTypeSlug).then(($el) => {
         cy.wrap($el).get('[data-test="edit-btn"]').click()
 
@@ -134,7 +125,7 @@ Cypress.Commands.add('contentTypeUpdate', (appTitle, contentTypeSlug, contentTyp
         cy.get('#contentTypeUpdateSubmitButton').click()
 
         // TODO Should remove this line
-        cy.navigateToContentTypeListPage(appTitle)
+        cy.navigateToContentTypeListPage()
 
         cy.shot('Content Type Update')
         cy.contains(contentType.title).should('be.visible')

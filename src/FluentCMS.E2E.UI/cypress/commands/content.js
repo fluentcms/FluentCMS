@@ -1,20 +1,11 @@
 const isMobile = Cypress.config('viewportWidth') < 400
 
-Cypress.Commands.add('navigateToContentListPage', (appTitle, contentTypeTitle) => {
+Cypress.Commands.add('navigateToContentListPage', (contentTypeTitle) => {
     cy.visit('/')
 
     cy.getSidebarItem('#adminSidebarContentManagementLink').click()
     cy.waitForNavigate()
 
-    if (appTitle) {
-        if (isMobile) {
-            cy.get('#contentIndexAppSelect').select(appTitle)
-        } else {
-            cy.get('#contentAppSelect').select(appTitle)
-
-        }
-        cy.waitForNavigate()
-    }
     if (isMobile) {
         cy.get('#contentIndexCollectionList').contains(contentTypeTitle).click().waitForNavigate()
 
@@ -25,8 +16,8 @@ Cypress.Commands.add('navigateToContentListPage', (appTitle, contentTypeTitle) =
     cy.contains(contentTypeTitle + " List").should('be.visible')
 })
 
-Cypress.Commands.add('navigateToContentCreatePage', (appTitle, contentTypeTitle) => {
-    cy.navigateToContentListPage(appTitle, contentTypeTitle)
+Cypress.Commands.add('navigateToContentCreatePage', (contentTypeTitle) => {
+    cy.navigateToContentListPage(contentTypeTitle)
 
     cy.get('#contentCreateButton').click()
 
@@ -44,7 +35,7 @@ Cypress.Commands.add('contentCreateCancel', (contentTypeTitle) => {
 
 })
 
-Cypress.Commands.add('contentCreate', (appTitle, contentTypeTitle, value) => {
+Cypress.Commands.add('contentCreate', (contentTypeTitle, value) => {
 
     for (let field in value) {
         cy.get(`#contentCreate${field}Input`).type(value[field], { delay: 50 })
@@ -53,7 +44,7 @@ Cypress.Commands.add('contentCreate', (appTitle, contentTypeTitle, value) => {
     cy.get('#contentCreateSubmitButton').click()
 
     // TODO: Should remove this
-    cy.navigateToContentListPage(appTitle, contentTypeTitle)
+    cy.navigateToContentListPage(contentTypeTitle)
     cy.waitForNavigate()
 
     cy.contains(contentTypeTitle + " List").should('be.visible')
@@ -65,11 +56,11 @@ Cypress.Commands.add('contentCreate', (appTitle, contentTypeTitle, value) => {
 
 })
 
-Cypress.Commands.add('contentList', (appTitle, contentTypeTitle) => {
+Cypress.Commands.add('contentList', (contentTypeTitle) => {
     // TODO: Check list of different apps and content types
 
     // cy.navigateToContentListPage('Second', 'Books')
-    cy.shot('Content List ' + appTitle + ' > ' + contentTypeTitle)
+    cy.shot('Content List ' + contentTypeTitle)
 })
 
 Cypress.Commands.add('contentCreateCancel', () => {
@@ -99,7 +90,7 @@ Cypress.Commands.add('contentDelete', (text) => {
 })
 
 
-Cypress.Commands.add('contentUpdate', (appTitle, contentTypeTitle, text, value) => {
+Cypress.Commands.add('contentUpdate', (contentTypeTitle, text, value) => {
     cy.contains('#contentListTable tr', text).then($row => {
         cy.wrap($row).get('[data-test="edit-btn"]').click()
 
@@ -109,7 +100,7 @@ Cypress.Commands.add('contentUpdate', (appTitle, contentTypeTitle, text, value) 
         cy.get('#contentUpdateSubmitButton').click()
 
         // TODO: Should remove this
-        cy.navigateToContentListPage(appTitle, contentTypeTitle)
+        cy.navigateToContentListPage(contentTypeTitle)
 
         cy.waitForNavigate()
 
