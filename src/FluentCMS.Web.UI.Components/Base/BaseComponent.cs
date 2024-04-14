@@ -8,12 +8,12 @@ public abstract class BaseComponent : ComponentBase
     public RenderFragment ChildContent { get; set; } = default!;
 
     [Parameter]
-    public string Class { get; set; }
+    public string Class { get; set; } = string.Empty;
 
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object> AdditionalAttributes { get; set; } = default!;
 
-    public string ComponentName { get; }
+    public string ComponentName { get; } = string.Empty;
 
     public BaseComponent()
     {
