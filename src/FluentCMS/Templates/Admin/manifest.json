@@ -81,17 +81,6 @@
             ]
         },
         {
-            "Name": "Media Library",
-            "Description": "Media Library Plugin",
-            "Types": [
-                {
-                    "Name": "Media List",
-                    "Type": "MediaListPlugin",
-                    "IsDefault": true
-                }
-            ]
-        },
-        {
             "Name": "User Management",
             "Description": "Users Management Plugin",
             "Types": [
