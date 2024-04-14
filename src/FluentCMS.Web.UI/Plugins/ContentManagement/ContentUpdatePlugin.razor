@@ -88,12 +88,11 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var appSlug = NavigationManager.GetStringFromQuery("appSlug");
         var contentTypeSlug = NavigationManager.GetStringFromQuery("contentTypeSlug");
         // TODO: GetGuidFromQuery("id");
         ContentId = NavigationManager.GetIdFromQuery();
 
-        if (!string.IsNullOrEmpty(contentTypeSlug) && !string.IsNullOrEmpty(appSlug))
+        if (!string.IsNullOrEmpty(contentTypeSlug))
         {
             var response = await ContentTypeClient.GetAllAsync();
             if (response?.Data != null)
