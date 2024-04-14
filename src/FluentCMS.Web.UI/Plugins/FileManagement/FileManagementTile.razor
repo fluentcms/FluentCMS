@@ -38,14 +38,14 @@
         </div>
         <hr />
         <Spacer />
+        <Typography class="truncate"
+                    Size="TextSize.Small"
+                    Weight="TextWeight.Medium">
+            @Value.Name
+        </Typography>
         <Grid ItemsSmall="GridItems.Center"
               NoWrap="true">
-            <GridItem Small="GridItemColumn.Grow">
-                <Typography class="truncate"
-                            Size="TextSize.Small"
-                            Weight="TextWeight.Medium">
-                    @Value.Name
-                </Typography>
+            <GridItem Small="GridItemColumn.Grow">        
                 <Typography Color="Color.Secondary"
                             Size="TextSize.ExtraSmall">
                     @Value.Extension.ToUpper()

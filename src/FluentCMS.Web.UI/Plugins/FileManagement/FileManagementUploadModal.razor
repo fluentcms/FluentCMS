@@ -1,5 +1,6 @@
 <Modal @bind-Open="Open"
-       Size="ModalSize.Large">
+       Size="ModalSize.Large"
+       OnClose="() => OnSelect.InvokeAsync()">
     <ModalHeader>
         <ModalTitle>
             Add new assets

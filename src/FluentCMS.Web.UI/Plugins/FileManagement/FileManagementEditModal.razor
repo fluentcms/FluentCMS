@@ -1,7 +1,8 @@
 ﻿@using System.Text.Json
 
 <Modal @bind-Open="Open"
-       Size="ModalSize.Large">
+       Size="ModalSize.Large"
+       OnClose="() => OnChange.InvokeAsync()">
     <ModalHeader>
         <ModalTitle>
             Details
