@@ -17,6 +17,13 @@
                         @context.User.Identity?.Name.ToUpper()
                     </Typography>
                 </GridItem>
+                <GridItem>
+                    <a href="/auth/logout">
+                        <Typography Weight="TextWeight.SemiBold">
+                            Logout
+                        </Typography>
+                    </a>
+                </GridItem>
             </Grid>
         </a>
     </Authorized>
@@ -24,6 +31,6 @@
         Authorizing...
     </Authorizing>
     <NotAuthorized>
-        NotAuthorized!
+        <RedirectToLogin></RedirectToLogin>
     </NotAuthorized>
 </AuthorizeView>
