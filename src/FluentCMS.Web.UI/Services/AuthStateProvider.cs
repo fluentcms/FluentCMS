@@ -1,92 +1,84 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using FluentCMS.Web.UI.Services.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Server;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 using System.Text.Json;
 
 namespace FluentCMS.Web.UI.Services;
-public class AuthStateProvider(NavigationManager navigationManager, IHttpContextAccessor httpContextAccessor, UserClient userClient, AccountClient accountClient, ILoggerFactory factory) : RevalidatingServerAuthenticationStateProvider(factory)
+
+public class AuthStateProvider(
+    ILocalStorageService localStorageService,
+    AccountClient accountClient) :
+    AuthenticationStateProvider()
 {
+
+    public const string LOCAL_STORAGE_KEY = "accessToken";
+
+    public async Task<UserLoginResponseIApiResult> LoginAsync(UserLoginRequest body, CancellationToken cancellationToken = default)
+    {
+        // clear accessToken from local storage
+
+        // try to authenticate from api and retrieve access token and user details
+        var userLoginResponse = await accountClient.AuthenticateAsync(body, cancellationToken);
+        if (userLoginResponse?.Data != null)
+        {
+            // serialize userLogin to json string
+            var userLoginToken = JsonSerializer.Serialize(userLoginResponse.Data);
+
+            // store access token in local storage
+            await localStorageService.SetItemAsStringAsync(LOCAL_STORAGE_KEY, userLoginToken, cancellationToken);
+
+            return userLoginResponse;
+        }
+        throw new Exception("Unable to login!");
+    }
+
+    public async Task<string?> GetUserToken(CancellationToken cancellationToken = default)
+    {
+        var userLogin = await localStorageService.GetItemAsync<UserLoginResponse>(LOCAL_STORAGE_KEY, cancellationToken);
+
+        if (userLogin is null || string.IsNullOrEmpty(userLogin.Token))
+            return null;
+
+        return userLogin.Token;
+    }
+
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
         try
         {
-            var user = await FetchUserDetail();
-            NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(GetClaimsPricipal(user.Data))));
-            return new AuthenticationState(GetClaimsPricipal(user.Data));
+            // read access token from local storage
+            var userLogin = await localStorageService.GetItemAsync<UserLoginResponse>(LOCAL_STORAGE_KEY);
+            if (userLogin != null)
+            {
+
+                // read user details from api
+                var userResponse = await accountClient.GetUserDetailAsync();
+                if (userResponse.Data != null)
+                {
+                    // setting user detail claims
+                    var user = userResponse.Data;
+                    List<Claim> authClaims =
+                    [
+                        new Claim(ClaimTypes.Name, user.Username ?? string.Empty),
+                        new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
+                        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
+                    ];
+
+                    // setting user roles in claims
+                    if (userLogin.RoleIds!=null)
+                    {
+                        var roleClaims = userLogin.RoleIds.Select(x => new Claim(ClaimTypes.Role, x.ToString()));
+                        authClaims.AddRange(roleClaims.ToList());
+                    }
+
+                    return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(authClaims, "Bearer")));
+                }
+            }
+            return new AuthenticationState(new ClaimsPrincipal());
         }
-        catch (Exception e)
+        catch
         {
-            return NotAuthorized(); // not authorized
+            return new AuthenticationState(new ClaimsPrincipal());
         }
     }
-
-    private static AuthenticationState NotAuthorized()
-    {
-        return new AuthenticationState(new ClaimsPrincipal());
-    }
-
-    private async Task<UserDetailResponseIApiResult> FetchUserDetail()
-    {
-        var json = httpContextAccessor.HttpContext?.Request?.Cookies["UserLoginResponse"];
-        var loginResponse =
-            JsonSerializer.Deserialize<UserLoginResponse>(json);
-        var user = await userClient.GetAsync(loginResponse.UserId);
-        return user;
-    }
-
-    public async Task<UserLoginResponseIApiResult> LoginAsync(UserLoginRequest userLoginRequest)
-    {
-        var result = await accountClient.AuthenticateAsync(userLoginRequest);
-
-        if (result.Errors!.Count == 0)
-        {
-            navigationManager.NavigateTo($"/api/auth?user-id={result.Data.UserId}&token={result.Data.Token}&role-ids={JsonSerializer.Serialize(result.Data.RoleIds)}", true);
-            var user = await FetchUserDetail();
-            NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(GetClaimsPricipal(user.Data))));
-        }
-        return result;
-    }
-
-    public async Task Logout()
-    {
-        navigationManager.NavigateTo($"/api/auth/logout", true);
-        NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(new ClaimsPrincipal()))); // not authorized
-    }
-
-    private ClaimsPrincipal GetClaimsPricipal(UserDetailResponse userData)
-    {
-        return new ClaimsPrincipal(GetClaimIdentities(userData));
-    }
-
-    private IEnumerable<ClaimsIdentity> GetClaimIdentities(UserDetailResponse userData)
-    {
-        return [new ClaimsIdentity(GetClaims(userData), "localStorage")];
-    }
-
-    private IEnumerable<Claim>? GetClaims(UserDetailResponse userData)
-    {
-        // static claims
-        if (userData.Id != null) yield return new Claim(ClaimTypes.Sid, userData.Id.ToString("D"));
-        if (userData.Id != null) yield return new Claim(ClaimTypes.NameIdentifier, userData.Id.ToString("D"));
-        if (userData.Username != null) yield return new Claim(ClaimTypes.Name, userData.Username);
-        if (userData.PhoneNumber != null) yield return new Claim(ClaimTypes.MobilePhone, userData.PhoneNumber);
-        if (userData.Email != null) yield return new Claim(ClaimTypes.Email, userData.Email);
-        // other claims excluding username, phone and email
-        var excludedClaims = new List<string>() { nameof(userData.Username), nameof(userData.PhoneNumber), nameof(userData.Email), nameof(userData.Id) };
-        foreach (var propertyInfo in userData.GetType().GetProperties().Where(x => !excludedClaims.Contains(x.Name)))
-        {
-            var value = propertyInfo.GetValue(userData)?.ToString();
-            if (value != null) yield return new Claim(propertyInfo.Name, value);
-        }
-    }
-
-    protected override async Task<bool> ValidateAuthenticationStateAsync(AuthenticationState authenticationState, CancellationToken cancellationToken)
-    {
-        return true;
-    }
-
-    protected override TimeSpan RevalidationInterval { get; } = TimeSpan.FromMinutes(30);
 }
