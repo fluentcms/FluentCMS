@@ -177,6 +177,29 @@
             ]
         },
         {
+            "Name": "Role Management",
+            "Description": "Role Management Plugin",
+            "Types": [
+                {
+                    "Name": "Roles List",
+                    "Type": "RoleListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create Role",
+                    "Type": "RoleCreatePlugin"
+                },
+                {
+                    "Name": "Update Role",
+                    "Type": "RoleUpdatePlugin"
+                },
+                {
+                    "Name": "Role Detail",
+                    "Type": "RoleDetailPlugin"
+                }
+            ]
+        },
+        {
             "Name": "Counter",
             "Description": "Counter Plugin",
             "Types": [
@@ -187,6 +210,17 @@
                 }
             ]
         },
+        {
+            "Name": "File Management",
+            "Description": "File Management Plugin",
+            "Types": [
+                {
+                    "Name": "File Management List",
+                    "Type": "FileManagementListPlugin",
+                    "IsDefault": true
+                }
+            ]
+         },
         {
             "Name": "User Info",
             "Description": "User Info Plugin",
@@ -210,17 +244,6 @@
                 {
                     "Name": "Update",
                     "Type": "ProfileUpdatePlugin"
-                }
-            ]
-        },
-        {
-            "Name": "File Management",
-            "Description": "File Management Plugin",
-            "Types": [
-                {
-                    "Name": "File Management List",
-                    "Type": "FileManagementListPlugin",
-                    "IsDefault": true
                 }
             ]
         }
@@ -290,6 +313,16 @@
                             "Section": "Main"
                         }
                     ]
+                },
+                {
+                    "Title": "Roles",
+                    "Path": "/roles",
+                    "Plugins": [
+                        {
+                            "Definition": "Role Management",
+                            "Section": "Main"
+                        }
+                    ]
                 }
             ]
         },
@@ -326,17 +359,6 @@
                     "Plugins": [
                         {
                             "Definition": "Reset Password",
-                            "Section": "Main"
-                        }
-                    ]
-                },
-                {
-                    "Title": "Change Password",
-                    "Path": "/change-password",
-                    "Layout": "AuthLayout",
-                    "Plugins": [
-                        {
-                            "Definition": "Change Password",
                             "Section": "Main"
                         }
                     ]
