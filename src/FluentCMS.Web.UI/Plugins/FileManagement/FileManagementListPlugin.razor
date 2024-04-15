@@ -1,0 +1,152 @@
+<Page>
+    <PageHeader Title="File Management">
+        <PageHeaderActions>
+            <ButtonGroup>
+                <Button Color="Color.Primary"
+                        OnClick="OpenBrowseModal"
+                        Size="ButtonSize.Small">
+                    <Icon Name="IconName.Plus" />
+                    Add New Files
+                </Button>
+            </ButtonGroup>
+        </PageHeaderActions>
+    </PageHeader>
+    <PageBody>
+        <Typography Size="TextSize.H4">
+            Files (@files.Count)
+        </Typography>
+        <Spacer />
+        @if (files.Count == 0)
+        {
+            <Stack Vertical="true">
+                <Icon Color="Color.Secondary"
+                      Name="IconName.File"
+                      Size="IconSize.X3" />
+                <Typography Color="Color.Secondary">
+                    No Files Found
+                </Typography>
+            </Stack>
+        }
+        <Grid Gutter="GridGutter.Large">
+            @foreach (var file in files)
+            {
+                <GridItem @key="file.Id"
+                          Small="GridItemColumn.Twelve"
+                          Medium="GridItemColumn.Four"
+                          Large="GridItemColumn.Three">
+                    <FileManagementTile Value="file"
+                                        OnDelete="() => Delete(file)"
+                                        OnEdit="() => Edit(file)" />
+                </GridItem>
+            }
+        </Grid>
+    </PageBody>
+</Page>
+
+<FileManagementUploadModal Open="openBrowseModal"
+                           OnSelect="OnSelectBrowseModal" />
+
+<FileManagementEditModal Open="openEditModal"
+                         Value="editing"
+                         OnChange="OnChangeEditModal" />
+
+@code {
+    [Inject]
+    ConfirmService Confirm { get; set; } = default!;
+
+    FileDTO editing = default!;
+
+    List<FileDTO> files { get; set; } = new() { };
+
+    bool openBrowseModal = false;
+
+    bool openEditModal = false;
+
+    async Task Delete(FileDTO file)
+    {
+        var result = await Confirm.Show("Are you sure to remove this file?");
+
+        if (!result) return;
+
+        // TODO: Parsa
+        // await DELETE_SERVICE(file.Id);
+
+        files.Remove(file);
+    }
+
+    void Edit(FileDTO file)
+    {
+        editing = file;
+
+        openEditModal = true;
+    }
+
+    void OpenBrowseModal()
+    {
+        openBrowseModal = true;
+    }
+
+    async Task OnChangeEditModal(FileDTO? file)
+    {
+        openEditModal = false;
+
+        if (file == null) return;
+
+        var index = files.FindIndex(x => x.Id == file.Id);
+
+        // TODO: Parsa
+        // file = await UPDATE_SERVICE(file);
+
+        files[index] = file;
+    }
+
+    async Task OnSelectBrowseModal(List<FileDTO>? next)
+    {
+        openBrowseModal = false;
+
+        if (next == null) return;
+
+        // TODO: Parsa
+        // next = await UPLOAD_SERVICE(next);
+
+        files = files.Concat(next).ToList();
+    }
+
+    protected override Task OnInitializedAsync()
+    {
+        // TODO: Parsa
+        // files = await LIST_SERVICE();
+
+        files = new List<FileDTO>()
+        {
+            new FileDTO()
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "test",
+                    Url = "https://flowbite.s3.amazonaws.com/blocks/application-ui/products/imac-front-image.png",
+                    Extension = "png",
+                    MimeType = "image/png",
+                    Size = 123
+                },
+            new FileDTO()
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "test",
+                    Extension = "png",
+                    MimeType = "app/json",
+                    Size = 123
+                },
+            new FileDTO()
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "test",
+                    Url = "https://flowbite.s3.amazonaws.com/blocks/application-ui/products/imac-front-image.png",
+                    Extension = "png",
+                    MimeType = "image/png",
+                    Size = 123
+                }
+        };
+
+        return base.OnInitializedAsync();
+    }
+}

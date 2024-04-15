@@ -81,17 +81,6 @@
             ]
         },
         {
-            "Name": "Media Library",
-            "Description": "Media Library Plugin",
-            "Types": [
-                {
-                    "Name": "Media List",
-                    "Type": "MediaListPlugin",
-                    "IsDefault": true
-                }
-            ]
-        },
-        {
             "Name": "User Management",
             "Description": "Users Management Plugin",
             "Types": [
@@ -222,6 +211,17 @@
             ]
         },
         {
+            "Name": "File Management",
+            "Description": "File Management Plugin",
+            "Types": [
+                {
+                    "Name": "File Management List",
+                    "Type": "FileManagementListPlugin",
+                    "IsDefault": true
+                }
+            ]
+         },
+        {
             "Name": "User Info",
             "Description": "User Info Plugin",
             "Types": [
@@ -300,6 +300,16 @@
                     "Plugins": [
                         {
                             "Definition": "App Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "File Management",
+                    "Path": "/file-management",
+                    "Plugins": [
+                        {
+                            "Definition": "File Management",
                             "Section": "Main"
                         }
                     ]

@@ -1,0 +1,57 @@
+@inherits BaseComponent
+@inject IJSRuntime JS
+
+@namespace FluentCMS.Web.UI.Components
+
+<div @attributes="AdditionalAttributes"
+     @ref="Element"
+     class="@this.GetClasses()">
+    <label class="dark:hover:bg-bray-800 dark:hover:border-gray-500 dark:hover:bg-gray-600"
+           for="dropzone-file">
+        <Icon Name="IconName.CloudArrowUp"
+              Size="IconSize.X2" />
+        <p class="text-sm">
+            <span class="font-semibold">
+                Click to upload
+            </span>
+            or drag and drop
+        </p>
+        <p class="text-xs">
+            @ChildContent
+        </p>
+        <InputFile accept="@Accept"
+                   id="dropzone-file"
+                   multiple="@Multiple"
+                   type="file"
+                   OnChange="HandleChange" />
+    </label>
+</div>
+
+@code {
+    [Parameter]
+    public string? Accept { get; set; }
+
+    [Parameter]
+    public bool Multiple { get; set; }
+
+    [Parameter]
+    public EventCallback<InputFileChangeEventArgs> OnChange { get; set; }
+
+    public ElementReference Element;
+
+    public IJSObjectReference Module = default!;
+
+    async Task HandleChange(InputFileChangeEventArgs evt)
+    {
+        OnChange.InvokeAsync(evt);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Browse/Browse.razor.js");
+
+        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), Element);
+    }
+}
