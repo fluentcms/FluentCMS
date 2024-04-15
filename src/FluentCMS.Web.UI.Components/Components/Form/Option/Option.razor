@@ -1,3 +1,5 @@
+@typeparam TValue
+
 @inherits BaseComponent
 
 @namespace FluentCMS.Web.UI.Components
@@ -14,5 +16,5 @@
     public bool Selected { get; set; }
 
     [Parameter]
-    public string? Value { get; set; }
+    public TValue? Value { get; set; }
 }
