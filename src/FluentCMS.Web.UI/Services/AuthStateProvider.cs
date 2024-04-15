@@ -49,10 +49,10 @@ public class AuthStateProvider(
         {
             // read access token from local storage
             var userLogin = await localStorageService.GetItemAsync<UserLoginResponse>(LOCAL_STORAGE_KEY);
-            SetupHttpClient(userLogin.Token);
+            
             if (userLogin != null)
             {
-
+                SetupHttpClient(userLogin.Token);
                 // read user details from api
                 var userResponse = await accountClient.GetUserDetailAsync();
                 if (userResponse.Data != null)
