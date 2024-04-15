@@ -27,6 +27,8 @@ public class AuthStateProvider(
             // store access token in local storage
             await localStorageService.SetItemAsStringAsync(LOCAL_STORAGE_KEY, userLoginToken, cancellationToken);
 
+            NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+
             return userLoginResponse;
         }
         throw new Exception("Unable to login!");
@@ -93,5 +95,6 @@ public class AuthStateProvider(
     public async Task LogoffAsync()
     {
         await localStorageService.RemoveItemAsync(LOCAL_STORAGE_KEY);
+        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
 }
