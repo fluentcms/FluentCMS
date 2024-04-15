@@ -1,6 +1,6 @@
-﻿using System.Net.Http.Headers;
-using FluentCMS.Web.UI.Services.LocalStorage;
+﻿using FluentCMS.Web.UI.Services.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
+using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -49,7 +49,7 @@ public class AuthStateProvider(
         {
             // read access token from local storage
             var userLogin = await localStorageService.GetItemAsync<UserLoginResponse>(LOCAL_STORAGE_KEY);
-            
+
             if (userLogin != null)
             {
                 SetupHttpClient(userLogin.Token);
@@ -67,7 +67,7 @@ public class AuthStateProvider(
                     ];
 
                     // setting user roles in claims
-                    if (userLogin.RoleIds!=null)
+                    if (userLogin.RoleIds != null)
                     {
                         var roleClaims = userLogin.RoleIds.Select(x => new Claim(ClaimTypes.Role, x.ToString()));
                         authClaims.AddRange(roleClaims.ToList());
