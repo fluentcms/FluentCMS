@@ -2,3 +2,19 @@
       Color="Color.Secondary">
     You are logging out
 </Typography>
+@code
+{
+    [Inject]
+    public NavigationManager NavigationManager { get; set; }
+
+    [Inject]
+    public AuthStateProvider AuthStateProvider{ get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await AuthStateProvider.LogoffAsync();
+        NavigationManager.NavigateTo("/",true);
+
+    }
+}

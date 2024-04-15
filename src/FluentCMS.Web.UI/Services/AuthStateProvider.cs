@@ -88,4 +88,9 @@ public class AuthStateProvider(
     {
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", userLoginToken);
     }
+
+    public async Task LogoffAsync()
+    {
+        await localStorageService.RemoveItemAsync(LOCAL_STORAGE_KEY);
+    }
 }
