@@ -14,7 +14,7 @@
                 @foreach (var collection in Collections)
                 {
                     <GridItem Small="GridItemColumn.Twelve">
-                        <a Href="@NavigationManager.PluginPath("Content Management", "Content List", new { contentTypeSlug = collection.Slug })"
+                        <a Href="@NavigationManager.Plugin("Content Management", "Content List", new { contentTypeSlug = collection.Slug })"
                            id="@($"contentIndex{@collection.Slug}Link")">
                             <Card>
                                 <CardBody>

@@ -56,7 +56,7 @@
 
     void GoBack()
     {
-        NavigationManager.NavigateTo(NavigationManager.PluginPath("Content Management", "Content List", new { contentTypeSlug = ContentType.Slug }));
+        NavigationManager.NavigateTo(NavigationManager.Plugin("Content Management", "Content List", new { contentTypeSlug = ContentType.Slug }));
     }
 
     protected override async Task OnInitializedAsync()

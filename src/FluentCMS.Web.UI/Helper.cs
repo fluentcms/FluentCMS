@@ -31,20 +31,8 @@ public static class Helper
 
         return default;
     }
-    public static string PluginPath(this NavigationManager? navigationManager, string pluginDef, string typeName, object? parameters = null)
-    {
-        var basePath = navigationManager.Uri;
-        basePath = basePath.Contains('?') ? basePath.Substring(0, basePath.IndexOf('?')) : basePath;
 
-        if (basePath.EndsWith('/'))
-        {
-            basePath = basePath.TrimEnd('/');
-        }
-
-        return basePath + Helper.CalculatePath(pluginDef, typeName, parameters);
-    }
-    
-    static string CalculatePath(string pluginDef, string typeName, object? parameters = null)
+    public static string Plugin(this NavigationManager? navigationManager, string pluginDef, string typeName, object? parameters = null)
     {
         parameters ??= new { };
 
@@ -57,6 +45,8 @@ public static class Helper
 
         queries = string.IsNullOrEmpty(queries) ? queries : "&" + queries;
 
-        return $"?pluginDef={pluginDef}&typeName={typeName}{queries}";
+        var absolutePath = new Uri(navigationManager.Uri).AbsolutePath;
+
+        return $"{absolutePath}?pluginDef={pluginDef}&typeName={typeName}{queries}";
     }
 }

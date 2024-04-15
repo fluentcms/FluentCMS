@@ -73,7 +73,7 @@
 
     void GoToUpdatePage(Guid? id)
     {
-        NavigationManager.NavigateTo(NavigationManager.PluginPath("ContentType Management", "Update ContentType", new { id = id.Value }));
+        NavigationManager.NavigateTo(NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = id.Value }));
     }
 
     async Task OnSubmit()

@@ -3,7 +3,7 @@
         <PageHeaderActions>
             <ButtonGroup>
                 <Button Color="Color.Primary"
-                        Href="@NavigationManager.PluginPath("ContentType Management", "Create ContentType")"
+                        Href="@NavigationManager.Plugin("ContentType Management", "Create ContentType")"
                         id="contentTypeCreateButton"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
@@ -39,7 +39,7 @@
                                 <ButtonGroup>
                                     <Button data-test="preview-btn"
                                             Ghost="true"
-                                            Href="@NavigationManager.PluginPath("ContentType Management", "ContentType Detail", new { id = contentType.Id })"
+                                            Href="@NavigationManager.Plugin("ContentType Management", "ContentType Detail", new { id = contentType.Id })"
                                             Size="ButtonSize.Small">
                                         <Icon Name="IconName.Eye" />
                                     </Button>
@@ -47,7 +47,7 @@
 
                                     <Button data-test="edit-btn"
                                             Ghost="true"  
-                                            Href="@NavigationManager.PluginPath("ContentType Management", "Update ContentType", new { id = contentType.Id })"
+                                            Href="@NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = contentType.Id })"
                                             Size="ButtonSize.Small">
                                         <Icon Name="IconName.Edit" />
                                     </Button>
@@ -71,7 +71,7 @@
                 <EmptyTable Message="No Content Types Found!">
                     <Button autofocus="true"
                             Color="Color.Primary"
-                            Href="@NavigationManager.PluginPath("ContentType Management", "Create ContentType")"
+                            Href="@NavigationManager.Plugin("ContentType Management", "Create ContentType")"
                             id="contentTypeCreateButton"
                             Size="ButtonSize.Small">
                         <Icon Name="IconName.Plus" />
