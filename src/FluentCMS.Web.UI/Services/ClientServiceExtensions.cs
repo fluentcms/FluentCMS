@@ -14,13 +14,6 @@ public static class ClientServiceExtensions
             client.BaseAddress = new Uri(configuration["urls"]);
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-            // read access token from local storage
-            //var authStateProvider = sp.GetRequiredService<AuthenticationStateProvider>();
-            //var token = authStateProvider.GetUserToken().GetAwaiter().GetResult();
-
-            //if (!string.IsNullOrEmpty(token))
-            //    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("bearer", token);
         });
 
         services.AddScoped<HttpClient>(
@@ -37,11 +30,6 @@ public static class ClientServiceExtensions
         {
             services.AddScoped(type, sp =>
             {
-                //var clientFactory = sp.GetRequiredService<IHttpClientFactory>();
-
-                //var client = clientFactory.CreateClient("FluentCMS.Web.Api") ??
-                //    throw new InvalidOperationException($"Could not create HttpClient for {type.Name}");
-
                 var client = sp.GetRequiredService<HttpClient>();
 
                 var ctor = type.GetConstructor([typeof(HttpClient)]) ??

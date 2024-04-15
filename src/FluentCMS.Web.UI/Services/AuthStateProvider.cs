@@ -11,7 +11,6 @@ public class AuthStateProvider(
     AccountClient accountClient, HttpClient httpClient) :
     AuthenticationStateProvider()
 {
-    public HttpClient HttpClient { get; } = httpClient;
     public const string LOCAL_STORAGE_KEY = "accessToken";
 
     public async Task<UserLoginResponseIApiResult> LoginAsync(UserLoginRequest body, CancellationToken cancellationToken = default)
@@ -52,6 +51,7 @@ public class AuthStateProvider(
 
             if (userLogin != null)
             {
+                // TODO: check token expiry
                 SetupHttpClient(userLogin.Token);
                 // read user details from api
                 var userResponse = await accountClient.GetUserDetailAsync();
@@ -86,6 +86,7 @@ public class AuthStateProvider(
 
     private void SetupHttpClient(string? userLoginToken)
     {
+        // TODO: improve this
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", userLoginToken);
     }
 
