@@ -1,4 +1,5 @@
-﻿using FluentCMS.Web.UI.Services.LocalStorage;
+﻿using System.Net.Http.Headers;
+using FluentCMS.Web.UI.Services.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
 using System.Text.Json;
@@ -7,10 +8,10 @@ namespace FluentCMS.Web.UI.Services;
 
 public class AuthStateProvider(
     ILocalStorageService localStorageService,
-    AccountClient accountClient) :
+    AccountClient accountClient, HttpClient httpClient) :
     AuthenticationStateProvider()
 {
-
+    public HttpClient HttpClient { get; } = httpClient;
     public const string LOCAL_STORAGE_KEY = "accessToken";
 
     public async Task<UserLoginResponseIApiResult> LoginAsync(UserLoginRequest body, CancellationToken cancellationToken = default)
@@ -48,6 +49,7 @@ public class AuthStateProvider(
         {
             // read access token from local storage
             var userLogin = await localStorageService.GetItemAsync<UserLoginResponse>(LOCAL_STORAGE_KEY);
+            SetupHttpClient(userLogin.Token);
             if (userLogin != null)
             {
 
@@ -76,9 +78,14 @@ public class AuthStateProvider(
             }
             return new AuthenticationState(new ClaimsPrincipal());
         }
-        catch
+        catch (Exception ex)
         {
             return new AuthenticationState(new ClaimsPrincipal());
         }
+    }
+
+    private void SetupHttpClient(string? userLoginToken)
+    {
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", userLoginToken);
     }
 }

@@ -25,6 +25,9 @@ public static class ClientServiceExtensions
             //    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("bearer", token);
         });
 
+        services.AddScoped<HttpClient>(
+            x => x.GetRequiredService<IHttpClientFactory>().CreateClient("FluentCMS.Web.Api"));
+
         var baseType = typeof(IApiClient);
         var assembly = AppDomain.CurrentDomain.GetAssemblies().
            Single(assembly => assembly.GetName().Name == "FluentCMS.Web.ApiClients");
@@ -36,10 +39,12 @@ public static class ClientServiceExtensions
         {
             services.AddScoped(type, sp =>
             {
-                var clientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                //var clientFactory = sp.GetRequiredService<IHttpClientFactory>();
 
-                var client = clientFactory.CreateClient("FluentCMS.Web.Api") ??
-                    throw new InvalidOperationException($"Could not create HttpClient for {type.Name}");
+                //var client = clientFactory.CreateClient("FluentCMS.Web.Api") ??
+                //    throw new InvalidOperationException($"Could not create HttpClient for {type.Name}");
+
+                var client = sp.GetRequiredService<HttpClient>();
 
                 var ctor = type.GetConstructor([typeof(HttpClient)]) ??
                     throw new InvalidOperationException($"Could not find constructor for {type.Name}");
