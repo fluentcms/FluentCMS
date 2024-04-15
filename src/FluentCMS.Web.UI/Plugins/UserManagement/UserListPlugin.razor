@@ -4,7 +4,7 @@
             <ButtonGroup>
                 <Button autofocus="true"
                         Color="Color.Primary"
-                        Href="@Helper.CalculatePath("User Management", "Create User")"
+                        Href="@Navigation.PluginPath("User Management", "Create User")"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
                     Add User
@@ -29,7 +29,7 @@
                             <TableCell>
                                 <ButtonGroup>
                                     <Button Ghost="true"
-                                            Href="@Helper.CalculatePath("User Management", "User Detail", new { id = user.Id })"
+                                            Href="@Navigation.PluginPath("User Management", "User Detail", new { id = user.Id })"
                                             Size="ButtonSize.Small">
                                         <Icon Name="IconName.Eye" />
                                     </Button>
@@ -37,7 +37,7 @@
 
                                     <Button data-test="edit-btn"
                                             Ghost="true"
-                                            Href="@Helper.CalculatePath("User Management", "Update User", new { id = user.Id })"
+                                            Href="@Navigation.PluginPath("User Management", "Update User", new { id = user.Id })"
                                             Size="ButtonSize.Small">
                                         <Icon Name="IconName.Edit" />
                                     </Button>
@@ -53,7 +53,7 @@
                 <EmptyTable Message="No Users Found!">
                     <Button autofocus="true"
                             Color="Color.Primary"
-                            Href="@Helper.CalculatePath("User Management", "Create User")"
+                            Href="@Navigation.PluginPath("User Management", "Create User")"
                             Size="ButtonSize.Small">
                         <Icon Name="IconName.Plus" />
                         Add User
@@ -70,6 +70,9 @@
 
     [Inject]
     ConfirmService Confirm { get; set; }
+
+    [Inject]
+    NavigationManager Navigation { get; set; }
 
     List<UserDetailResponse> Users { get; set; } = [];
 
