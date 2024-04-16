@@ -216,7 +216,7 @@
   &lt;/svg&gt;</value>
   </data>
   <data name="AtSign" xml:space="preserve">
-    <value>&lt;svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"&gt;&lt;path d="M17.4009 19.2C15.8965 20.3302 14.0265 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12V13.5C21 14.8807 19.8807 16 18.5 16C17.1193 16 16 14.8807 16 13.5V8M16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8C14.2091 8 16 9.79086 16 12Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/&gt;&lt;/svg&gt;</value>
+    <value>&lt;svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"&gt;&lt;path d="M17.4009 19.2C15.8965 20.3302 14.0265 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12V13.5C21 14.8807 19.8807 16 18.5 16C17.1193 16 16 14.8807 16 13.5V8M16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8C14.2091 8 16 9.79086 16 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/&gt;&lt;/svg&gt;</value>
   </data>
   <data name="Boolean" xml:space="preserve">
     <value>&lt;svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 32 32"&gt;  &lt;path d="M23,23a7,7,0,1,1,7-7A7.0078,7.0078,0,0,1,23,23Zm0-12a5,5,0,1,0,5,5A5.0055,5.0055,0,0,0,23,11Z"/&gt;
@@ -227,10 +227,10 @@
     <value>&lt;svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"&gt;&lt;path d="M22,3a1,1,0,0,1-1,1H9A1,1,0,0,1,9,2H21A1,1,0,0,1,22,3ZM21,8H3a1,1,0,0,0,0,2H21a1,1,0,0,0,0-2Zm0,6H3a1,1,0,0,0,0,2H21a1,1,0,0,0,0-2Zm0,6H3a1,1,0,0,0,0,2H21a1,1,0,0,0,0-2Z"/&gt;&lt;/svg&gt;</value>
   </data>
   <data name="Text" xml:space="preserve">
-    <value>&lt;svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"&gt;&lt;path d="M12 3V21M9 21H15M19 6V3H5V6" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/&gt;&lt;/svg&gt;</value>
+    <value>&lt;svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"&gt;&lt;path d="M12 3V21M9 21H15M19 6V3H5V6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/&gt;&lt;/svg&gt;</value>
   </data>
   <data name="Number" xml:space="preserve">
-    <value>&lt;svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"&gt;
+    <value>&lt;svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 52 52"&gt;
 &lt;path d="M44.8,49.5H7.2c-2.6,0-4.7-2.1-4.7-4.7V7.2c0-2.6,2.1-4.7,4.7-4.7h37.6c2.6,0,4.7,2.1,4.7,4.7v37.6  C49.5,47.4,47.4,49.5,44.8,49.5z M8.8,10.3v31.3c0,0.9,0.7,1.6,1.6,1.6h31.3c0.9,0,1.6-0.7,1.6-1.6V10.3c0-0.9-0.7-1.6-1.6-1.6H10.4  C9.5,8.8,8.8,9.5,8.8,10.3z"/&gt;
 &lt;path d="M36.2,20.3h-2.9l1.2-4.8v-0.1c0-0.2-0.1-0.4-0.4-0.4h-2.3c-0.2,0-0.3,0.1-0.4,0.3l-1.2,4.9h-5.8l1.2-4.8  v-0.1c0-0.2-0.1-0.4-0.4-0.4h-2.3c-0.2,0-0.3,0.1-0.4,0.3l-1.3,4.9h-3.2c-0.2,0-0.3,0.1-0.4,0.3l-0.6,2.2v0.1c0,0.2,0.1,0.4,0.4,0.4  h3l-1.4,5.6h-3.1c-0.2,0-0.3,0.1-0.4,0.3l-0.6,2.2v0.1c0,0.2,0.1,0.4,0.4,0.4h2.9l-1.2,4.8v0.1c0,0.2,0.1,0.4,0.4,0.4h2.3  c0.2,0,0.3-0.1,0.4-0.3l1.3-5h5.7L26,36.4v0.1c0,0.2,0.1,0.4,0.4,0.4h2.3c0.2,0,0.3-0.1,0.4-0.3l1.3-5h3.2c0.2,0,0.3-0.1,0.4-0.3  l0.6-2.2V29c0-0.2-0.1-0.4-0.4-0.4h-3l1.4-5.6h3.1c0.2,0,0.3-0.1,0.4-0.3l0.6-2.2v-0.1C36.6,20.5,36.4,20.3,36.2,20.3L36.2,20.3z   M28.1,28.8h-5.8l1.4-5.6h5.7L28.1,28.8z"/&gt;
 &lt;/svg&gt;</value>
