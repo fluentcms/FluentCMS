@@ -11,10 +11,10 @@
     </GridItem>
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Input Value="@("")"
-               Hint="The text of the regular expression"
+        <Input Hint="The text of the regular expression"
                Label="RegExp pattern"
-               Name="TODO" />
+               Value="@(Model.GetValue<string>("Pattern"))"
+               ValueChanged="@((string value) => Model.SetValue<string>("Pattern", value))" />
     </GridItem>
 </Grid>
 

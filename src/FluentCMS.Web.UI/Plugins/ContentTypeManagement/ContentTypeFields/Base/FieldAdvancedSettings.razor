@@ -13,7 +13,9 @@
         <GridItem Small="GridItemColumn.Twelve"
                   Medium="GridItemColumn.Six">
             <Checkbox Label="Unique field"
-                      Hint="You won't be able to create an entry if there is an existing entry with identical content" />
+                      Hint="You won't be able to create an entry if there is an existing entry with identical content"
+                      Value="@(Model.GetValue<bool>("Unique"))"
+                      ValueChanged="@((bool value) => Model.SetValue<bool>("Unique", value))" />
         </GridItem>
     }
     @if (Range)
@@ -27,7 +29,8 @@
             {
                 <Spacer />
                 <Input Type="InputType.Number"
-                       Value="@(0)" />
+                       Value="@(Model.GetValue<int>("Maximum"))"
+                       ValueChanged="@((int value) => Model.SetValue<int>("Maximum", value))" />
             }
         </GridItem>
         <GridItem Small="GridItemColumn.Twelve"
@@ -39,21 +42,26 @@
             {
                 <Spacer />
                 <Input Type="InputType.Number"
-                       Value="@(0)" />
+                       Value="@(Model.GetValue<int>("Minimum"))"
+                       ValueChanged="@((int value) => Model.SetValue<int>("Minimum", value))" />
             }
         </GridItem>
     }
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Checkbox Label="Private field"
+        <Checkbox @bind-Value="Model.IsPrivate"
+                  Id="contentTypeFieldModalPrivateInput"
+                  Label="Private field"
                   Hint="This field will not show up in the API response" />
     </GridItem>
-    @if(Localization) 
+    @if (Localization)
     {
         <GridItem Small="GridItemColumn.Twelve"
-              Medium="GridItemColumn.Six">
+                  Medium="GridItemColumn.Six">
             <Checkbox Label="Enable localization for this field"
-                      Hint="The field can have different values in each language" />
+                      Hint="The field can have different values in each language"
+                      Value="@(Model.GetValue<bool>("Localization"))"
+                      ValueChanged="@((bool value) => Model.SetValue<bool>("Localization", value))" />
         </GridItem>
     }
 </Grid>

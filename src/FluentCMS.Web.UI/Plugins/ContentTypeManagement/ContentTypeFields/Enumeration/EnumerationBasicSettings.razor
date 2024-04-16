@@ -12,9 +12,9 @@
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
         <Textarea Label="Values (one line per value)"
-                  Name="TODO"
                   Placeholder="@("Ex:\nmorning\nmoon\nevening")"
-                  Value="TODO"/>
+                  Value="@(Model.GetValue<string>("Values"))"
+                  ValueChanged="@((string value) => Model.SetValue<string>("Values", value))" />
     </GridItem>
 </Grid>
 

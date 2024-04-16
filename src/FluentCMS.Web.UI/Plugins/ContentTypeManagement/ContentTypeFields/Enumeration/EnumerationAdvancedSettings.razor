@@ -2,7 +2,7 @@
 
 <Grid GutterX="GridGutter.Large">
     <GridItem Small="GridItemColumn.Twelve"
-              Medium="GridItemColumn.Six"> 
+              Medium="GridItemColumn.Six">
         <Select @bind-Value="Model.DefaultValue"
                 Id="contentTypeFieldModalDefaultValueInput"
                 Label="Default Value"
@@ -26,11 +26,12 @@
     public ContentTypeFieldResponse Model { get; set; }
 
     List<string> Options = [];
-    protected override void OnInitialized()
+
+    protected override void OnParametersSet()
     {
-        var items = /* Model.Options ??*/ "item1\nitem2\nitem3";
-
-
-        Options = items.Split('\n').ToList();
+        if (Model.GetValue<string>("Values") != null)
+        {
+            Options = Model.GetValue<string>("Values").Split('\n').ToList();
+        }
     }
 }

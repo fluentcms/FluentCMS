@@ -8,9 +8,9 @@
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
         <Select Label="Type"
-                Name="TODO"
                 Placeholder="Choose Date type..."
-                Value="@("")">
+                Value="@(Model.GetValue<int>("Type"))"
+                ValueChanged="@((int value) => Model.SetValue<int>("Type", value))">
             <Option Value="0">
                 Date (ex: 01/01/2024)
             </Option>

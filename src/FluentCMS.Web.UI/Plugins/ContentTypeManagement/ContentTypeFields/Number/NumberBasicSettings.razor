@@ -8,9 +8,9 @@
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
         <Select Label="Number format"
-                Name="TODO"
                 Placeholder="Choose Number type..."
-                Value="@("")">
+                Value="@(Model.GetValue<int>("Format"))"
+                ValueChanged="@((int value) => Model.SetValue<int>("Format", value))">
             <Option Value="0">
                 integer (ex: 10)
             </Option>
