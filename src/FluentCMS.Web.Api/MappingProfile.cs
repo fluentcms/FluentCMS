@@ -72,6 +72,9 @@ public class MappingProfile : Profile
 
         #endregion
 
+        CreateMap<ContentTypeFieldSetRequest, ContentTypeField>();
+        CreateMap<ContentTypeFieldResponse, ContentTypeField>();
+
         #region Content
 
         CreateMap<ContentCreateRequest, Content>().ForMember(x => x.Value,
