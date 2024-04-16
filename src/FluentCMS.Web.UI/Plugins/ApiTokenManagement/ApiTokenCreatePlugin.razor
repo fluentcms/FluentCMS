@@ -49,33 +49,30 @@
                                 </Typography>
 
                                 <Spacer Size="SpacerSize.Small"/>
-                                <Accordions>
+                                <div>
                                     @foreach(var permission in Permissions)
                                     {
-                                        <Accordion>
-                                            <AccordionHeader Id="@permission.Title">@permission.Title</AccordionHeader>
-                                            <AccordionBody Id="@permission.Title">
-                                                @foreach(var item in permission.Body)
+                                        <Accordion Summary="@permission.Title">
+                                            @foreach(var item in permission.Body)
+                                            {
+                                                @if(!string.IsNullOrEmpty(item.Title))
                                                 {
-                                                    @if(!string.IsNullOrEmpty(item.Title))
-                                                    {
-                                                        <Divider Placement="DividerPlacement.Start">@item.Title</Divider>
-                                                    }
-                                                    <Grid>
-                                                        @foreach(var checkbox in item.Items)
-                                                        {
-                                                            <GridItem Small="GridItemColumn.Six">
-                                                                <Checkbox Dense="true"
-                                                                            Label="@checkbox"/>
-                                                                <Spacer Size="SpacerSize.Small"/>
-                                                            </GridItem>
-                                                        }
-                                                    </Grid>
+                                                    <Divider Placement="DividerPlacement.Start">@item.Title</Divider>
                                                 }
-                                            </AccordionBody>
+                                                <Grid>
+                                                    @foreach(var checkbox in item.Items)
+                                                    {
+                                                        <GridItem Small="GridItemColumn.Six">
+                                                            <Checkbox Dense="true"
+                                                                        Label="@checkbox"/>
+                                                            <Spacer Size="SpacerSize.Small"/>
+                                                        </GridItem>
+                                                    }
+                                                </Grid>
+                                            }
                                         </Accordion>
                                     }
-                                </Accordions>
+                                </div>
                             </div>
                         
                             <Spacer />
