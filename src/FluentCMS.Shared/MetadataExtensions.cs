@@ -9,7 +9,13 @@ public static class MetadataExtensions
         {
             throw new Exception("Cant use this type");
         }
-        return (T?)(((IDictionary<string, object?>)metaDataField.GetValue(obj)!)[fieldName]);
+
+        var dictionary = (IDictionary<string, object?>)metaDataField.GetValue(obj);
+        if (!dictionary.ContainsKey(fieldName))
+        {
+            dictionary[fieldName] = default(T);
+        }
+        return (T?)(dictionary[fieldName]);
     }
     public static void SetValue<T>(this object obj, string fieldName, T? value, string metadataField = "Metadata")
     {
