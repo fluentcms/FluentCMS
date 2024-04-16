@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Web.Api.Models;
+﻿using FluentCMS.Shared;
+
+namespace FluentCMS.Web.Api.Models;
 
 public class ContentTypeFieldSetRequest
 {
@@ -12,5 +14,6 @@ public class ContentTypeFieldSetRequest
     public bool IsRequired { get; set; }
     public bool IsPrivate { get; set; }
     public string FieldType { get; set; }
-    public Dictionary<string, object> Metadata { get; set; }
+
+    public IDictionary<string, object?> Metadata { get; set; } = new Dictionary<string, object?>();
 }

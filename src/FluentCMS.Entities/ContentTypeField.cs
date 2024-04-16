@@ -12,5 +12,5 @@ public class ContentTypeField
     public bool IsRequired { get; set; }
     public bool IsPrivate { get; set; }
     public string FieldType { get; set; }
-    public Dictionary<string, object> Metadata { get; set; }
+    public IDictionary<string, object?> Metadata { get; set; } = new Dictionary<string, object?>();
 }
