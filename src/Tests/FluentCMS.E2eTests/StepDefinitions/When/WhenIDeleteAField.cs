@@ -11,7 +11,7 @@ public partial class StepDefinitions
 
         var deleteResult = await client.DeleteFieldAsync(
                     contentType.Data.Id,
-                    "test-field");
+                    "dummy-field-slug");
 
         context.Set(deleteResult);
 

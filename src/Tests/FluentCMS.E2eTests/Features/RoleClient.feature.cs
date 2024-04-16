@@ -114,17 +114,17 @@ this.ScenarioInitialize(scenarioInfo);
 #line 4
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table6 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table7 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table6.AddRow(new string[] {
+                table7.AddRow(new string[] {
                             "name",
                             "DummyRole"});
-                table6.AddRow(new string[] {
+                table7.AddRow(new string[] {
                             "description",
                             "DummyRole Description"});
 #line 8
- testRunner.Given("I have a role", ((string)(null)), table6, "Given ");
+ testRunner.Given("I have a role", ((string)(null)), table7, "Given ");
 #line hidden
 #line 12
  testRunner.When("I Create Role", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
@@ -159,17 +159,17 @@ this.ScenarioInitialize(scenarioInfo);
 #line 4
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table7 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table8 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table7.AddRow(new string[] {
+                table8.AddRow(new string[] {
                             "name",
                             "UpdatedDummyRole"});
-                table7.AddRow(new string[] {
+                table8.AddRow(new string[] {
                             "description",
                             "Updated DummyRole Description"});
 #line 17
- testRunner.When("I Update Role to", ((string)(null)), table7, "When ");
+ testRunner.When("I Update Role to", ((string)(null)), table8, "When ");
 #line hidden
 #line 21
  testRunner.Then("Role Update Result should be Success", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");

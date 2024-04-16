@@ -37,6 +37,22 @@ Scenario: Delete
 Scenario: Set Field
 	Given I have a ContentType
 	When I set a field
+		| field           | value                       |
+		| slug            | dummy-field-slug            |
+		| title           | dummy-field-title           |
+		| description     | dummy-field-description     |
+		| label           | dummy-field-label           |
+		| placeholder     | dummy-field-placeholder     |
+		| hint            | dummy-field-hint            |
+		| defaultValue    | dummy-field-defaultValue    |
+		| isRequired      | false                       |
+		| isPrivate       | false                       |
+		| fieldType       | dummy-field-fieldType       |
+		| metadata.field1 | dummy-field-metadata-field1 |
+		| metadata.field2 | dummy-field-metadata-field2 |
+		| metadata.field3 | dummy-field-metadata-field3 |
+		| metadata.field4 | dummy-field-metadata-field4 |
+
 	Then I should see the field
 
 @RequiresContentType

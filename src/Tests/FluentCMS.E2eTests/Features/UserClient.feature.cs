@@ -114,20 +114,20 @@ this.ScenarioInitialize(scenarioInfo);
 #line 5
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table10 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table11 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table10.AddRow(new string[] {
+                table11.AddRow(new string[] {
                             "username",
                             "DummyUser"});
-                table10.AddRow(new string[] {
+                table11.AddRow(new string[] {
                             "email",
                             "DummyUser@localhost"});
-                table10.AddRow(new string[] {
+                table11.AddRow(new string[] {
                             "password",
                             "DummyPassw0rd!"});
 #line 9
- testRunner.Given("I have Credentials", ((string)(null)), table10, "Given ");
+ testRunner.Given("I have Credentials", ((string)(null)), table11, "Given ");
 #line hidden
 #line 14
  testRunner.When("I create a user", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
@@ -160,20 +160,20 @@ this.ScenarioInitialize(scenarioInfo);
 #line 5
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table11 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table12 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table11.AddRow(new string[] {
+                table12.AddRow(new string[] {
                             "username",
                             "DummyUser"});
-                table11.AddRow(new string[] {
+                table12.AddRow(new string[] {
                             "email",
                             "DummyUser@localhost"});
-                table11.AddRow(new string[] {
+                table12.AddRow(new string[] {
                             "password",
                             "DummyPassw0rd!"});
 #line 18
- testRunner.Given("I have Credentials", ((string)(null)), table11, "Given ");
+ testRunner.Given("I have Credentials", ((string)(null)), table12, "Given ");
 #line hidden
 #line 23
  testRunner.When("I create a user", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
@@ -212,20 +212,20 @@ this.ScenarioInitialize(scenarioInfo);
 #line 5
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table12 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table13 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table12.AddRow(new string[] {
+                table13.AddRow(new string[] {
                             "username",
                             "DummyUser"});
-                table12.AddRow(new string[] {
+                table13.AddRow(new string[] {
                             "email",
                             "DummyUser@localhost"});
-                table12.AddRow(new string[] {
+                table13.AddRow(new string[] {
                             "password",
                             "DummyPassw0rd!"});
 #line 29
- testRunner.Given("I have Credentials", ((string)(null)), table12, "Given ");
+ testRunner.Given("I have Credentials", ((string)(null)), table13, "Given ");
 #line hidden
 #line 34
  testRunner.When("I create a user", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
@@ -264,20 +264,20 @@ this.ScenarioInitialize(scenarioInfo);
 #line 5
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table13 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table14 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table13.AddRow(new string[] {
+                table14.AddRow(new string[] {
                             "username",
                             "DummyUser"});
-                table13.AddRow(new string[] {
+                table14.AddRow(new string[] {
                             "email",
                             "DummyUser@localhost"});
-                table13.AddRow(new string[] {
+                table14.AddRow(new string[] {
                             "password",
                             "DummyPassw0rd!"});
 #line 40
- testRunner.Given("I have Credentials", ((string)(null)), table13, "Given ");
+ testRunner.Given("I have Credentials", ((string)(null)), table14, "Given ");
 #line hidden
 #line 45
  testRunner.When("I create a user", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");

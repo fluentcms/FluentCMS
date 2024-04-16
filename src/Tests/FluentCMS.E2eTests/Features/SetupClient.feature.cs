@@ -149,29 +149,29 @@ this.ScenarioInitialize(scenarioInfo);
 #line 3
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table8 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table9 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table8.AddRow(new string[] {
+                table9.AddRow(new string[] {
                             "username",
                             "superadmin"});
-                table8.AddRow(new string[] {
+                table9.AddRow(new string[] {
                             "email",
                             "superadmin@localhost"});
-                table8.AddRow(new string[] {
+                table9.AddRow(new string[] {
                             "password",
                             "Passw0rd!"});
-                table8.AddRow(new string[] {
+                table9.AddRow(new string[] {
                             "AppTemplateName",
                             "Blank"});
-                table8.AddRow(new string[] {
+                table9.AddRow(new string[] {
                             "SiteTemplateName",
                             "Blank"});
-                table8.AddRow(new string[] {
+                table9.AddRow(new string[] {
                             "AdminDomain",
                             "https://localhost:7230"});
 #line 16
- testRunner.When("I Start Setup", ((string)(null)), table8, "When ");
+ testRunner.When("I Start Setup", ((string)(null)), table9, "When ");
 #line hidden
 #line 24
  testRunner.Then("Wait 2 seconds", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
@@ -209,29 +209,29 @@ this.ScenarioInitialize(scenarioInfo);
 #line 3
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table9 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table10 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table9.AddRow(new string[] {
+                table10.AddRow(new string[] {
                             "username",
                             "superadmin"});
-                table9.AddRow(new string[] {
+                table10.AddRow(new string[] {
                             "email",
                             "superadmin@localhost"});
-                table9.AddRow(new string[] {
+                table10.AddRow(new string[] {
                             "password",
                             "Passw0rd!"});
-                table9.AddRow(new string[] {
+                table10.AddRow(new string[] {
                             "AppTemplateName",
                             "Blank"});
-                table9.AddRow(new string[] {
+                table10.AddRow(new string[] {
                             "SiteTemplateName",
                             "Blank"});
-                table9.AddRow(new string[] {
+                table10.AddRow(new string[] {
                             "AdminDomain",
                             "https://localhost:7230"});
 #line 31
- testRunner.When("I Start Setup", ((string)(null)), table9, "When ");
+ testRunner.When("I Start Setup", ((string)(null)), table10, "When ");
 #line hidden
 #line 39
  testRunner.Then("Wait 2 seconds", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");

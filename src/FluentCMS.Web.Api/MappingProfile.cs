@@ -1,5 +1,6 @@
 ﻿using FluentCMS.Web.Api.Models.Users;
 using FluentCMS.Web.Api.ValueConverters;
+using System.Text.Json;
 
 namespace FluentCMS.Web.Api;
 
@@ -72,17 +73,21 @@ public class MappingProfile : Profile
 
         #endregion
 
-        CreateMap<ContentTypeFieldSetRequest, ContentTypeField>();
-        CreateMap<ContentTypeFieldResponse, ContentTypeField>();
+        CreateMap<ContentTypeFieldSetRequest, ContentTypeField>()
+            .ForMember(x => x.Metadata,
+                expression => expression.ConvertUsing(new ObjectDictionaryValueConverter()));
+        CreateMap<ContentTypeField, ContentTypeFieldResponse>();
 
         #region Content
 
         CreateMap<ContentCreateRequest, Content>().ForMember(x => x.Value,
-            expression => expression.ConvertUsing(new ObjectDictionaryValueConverter()!));
+            expression => expression.ConvertUsing(new ObjectDictionaryValueConverter()));
         CreateMap<ContentUpdateRequest, Content>().ForMember(x => x.Value,
-            expression => expression.ConvertUsing(new ObjectDictionaryValueConverter()!));
+            expression => expression.ConvertUsing(new ObjectDictionaryValueConverter()));
         CreateMap<Content, ContentDetailResponse>();
 
         #endregion
+
+
     }
 }

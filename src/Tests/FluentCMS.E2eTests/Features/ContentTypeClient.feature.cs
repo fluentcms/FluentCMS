@@ -277,10 +277,55 @@ this.FeatureBackground();
 #line 38
  testRunner.Given("I have a ContentType", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
+                TechTalk.SpecFlow.Table table6 = new TechTalk.SpecFlow.Table(new string[] {
+                            "field",
+                            "value"});
+                table6.AddRow(new string[] {
+                            "slug",
+                            "dummy-field-slug"});
+                table6.AddRow(new string[] {
+                            "title",
+                            "dummy-field-title"});
+                table6.AddRow(new string[] {
+                            "description",
+                            "dummy-field-description"});
+                table6.AddRow(new string[] {
+                            "label",
+                            "dummy-field-label"});
+                table6.AddRow(new string[] {
+                            "placeholder",
+                            "dummy-field-placeholder"});
+                table6.AddRow(new string[] {
+                            "hint",
+                            "dummy-field-hint"});
+                table6.AddRow(new string[] {
+                            "defaultValue",
+                            "dummy-field-defaultValue"});
+                table6.AddRow(new string[] {
+                            "isRequired",
+                            "false"});
+                table6.AddRow(new string[] {
+                            "isPrivate",
+                            "false"});
+                table6.AddRow(new string[] {
+                            "fieldType",
+                            "dummy-field-fieldType"});
+                table6.AddRow(new string[] {
+                            "metadata.field1",
+                            "dummy-field-metadata-field1"});
+                table6.AddRow(new string[] {
+                            "metadata.field2",
+                            "dummy-field-metadata-field2"});
+                table6.AddRow(new string[] {
+                            "metadata.field3",
+                            "dummy-field-metadata-field3"});
+                table6.AddRow(new string[] {
+                            "metadata.field4",
+                            "dummy-field-metadata-field4"});
 #line 39
- testRunner.When("I set a field", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+ testRunner.When("I set a field", ((string)(null)), table6, "When ");
 #line hidden
-#line 40
+#line 56
  testRunner.Then("I should see the field", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -299,7 +344,7 @@ this.FeatureBackground();
                     "RequiresContentTypeSetField"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Delete Field", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 44
+#line 60
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -312,16 +357,16 @@ this.ScenarioInitialize(scenarioInfo);
 #line 5
 this.FeatureBackground();
 #line hidden
-#line 45
+#line 61
  testRunner.Given("I have a ContentType", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 46
+#line 62
  testRunner.When("I delete a field", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 47
+#line 63
  testRunner.Then("Wait 1 second", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 48
+#line 64
  testRunner.Then("I should not see the field", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
