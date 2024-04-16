@@ -5,65 +5,25 @@
 <Grid GutterX="GridGutter.Large">
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        @* <FieldName /> *@
+        <FieldName />
     </GridItem>
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        @*         <Select Label="Type"
-                Name="TODO"
+        <Select Label="Type"
                 Placeholder="Choose Boolean type..."
-                TValue="int"
-                Value="@(Model.GetValue<int>(" Type"))"
-                ValueChanged="@(i => Model.SetValue("Type",i))">
+                Value="@(Model.GetValue<int>("Type"))"
+                ValueChanged="@((int value) => Model.SetValue<int>("Type", value))">
             <Option Value="0">
                 Checkbox
             </Option>
             <Option Value="1">
                 Switch
             </Option>
-        </Select> *@
-
-        @*          @if (Model != null)
-        {
-            @(Model.GetValue<bool>("isrequired"))
-            <Checkbox 
-                Value="@(Model.GetValue<bool>("isrequired"))"
-                ValueChanged="@(val => @Model.SetValue<bool>("isrequired", val))" /> 
-        } *@
-        @* @(getVal<bool>("isrequired") ? "t" : "f") *@
-        @(model.GetValue<bool>("isrequired") ? "t" : "f")
-        <Checkbox TValue="string"
-                  Value="@(model.GetValue<bool>("isrequired"))"
-                  ValueChanged="@(val => model.SetValue("isrequired", val))" />
+        </Select>
     </GridItem>
 </Grid>
 
-
 @code {
-    public Model model { get; set; } = new();
-
-    T getVal<T>(string key)
-    {
-        var a = model.Metadata[key];
-
-        if (a == null) return default!;
-
-        return (T)a;
-    }
-    void setVal<T>(string key, T? val)
-    {
-        model.Metadata[key] = val;
-    }
-
-    protected override void OnInitialized()
-    {
-    }
-
-    public class Model
-    {
-        public bool IsRequired { get; set; }
-
-        public Dictionary<string, object?> Metadata { get; set; } = new Dictionary<string, object?>();
-    }
-
+    [CascadingParameter]
+    public ContentTypeFieldResponse Model { get; set; }
 }
