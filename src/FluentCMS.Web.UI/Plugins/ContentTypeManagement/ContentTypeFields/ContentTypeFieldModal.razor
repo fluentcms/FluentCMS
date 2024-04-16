@@ -114,6 +114,8 @@
 
     void OnFormSubmit()
     {
+        Model.FieldType = type.Key;
+
         OnSubmit.InvokeAsync(Model);
     }
 

@@ -210,14 +210,14 @@
 
     async Task OnSubmitField(ContentTypeFieldResponse field)
     {
-        // TODO
-        // FieldModalOpen = false;
-        // var response = await ContentTypeClient.SetFieldAsync(View.Id, (ContentTypeFieldSetRequest)field);
+        FieldModalOpen = false;
 
-        // if (response?.Data != null)
-        // {
-        //     Fields = response.Data.Fields.ToList();
-        // }
+        var response = await ContentTypeClient.SetFieldAsync(View.Id, (ContentTypeFieldSetRequest)(object)field);
+
+        if (response?.Data != null)
+        {
+            Fields = response.Data.Fields.ToList();
+        }
     }
 
     async Task OnSubmit()
