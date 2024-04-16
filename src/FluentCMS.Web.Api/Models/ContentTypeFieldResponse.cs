@@ -1,5 +1,5 @@
 ﻿namespace FluentCMS.Web.Api.Models;
 
-public class ContentTypeFieldResponse: ContentTypeFieldSetRequest
+public class ContentTypeFieldResponse : ContentTypeFieldSetRequest
 {
 }
