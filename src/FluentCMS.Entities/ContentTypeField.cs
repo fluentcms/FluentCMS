@@ -10,4 +10,7 @@ public class ContentTypeField
     public string? Hint { get; set; }
     public string? DefaultValue { get; set; }
     public bool IsRequired { get; set; }
+    public bool IsPrivate { get; set; }
+    public string FieldType { get; set; }
+    public Dictionary<string, object> Metadata { get; set; }
 }
