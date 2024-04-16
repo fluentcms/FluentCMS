@@ -7,18 +7,6 @@ export default {
     registerEmail: 'sam@example.com',
     registerPassword: 'Passw0rd!',
 
-    // apps: [
-    //     {
-    //         title: 'First App',
-    //         slug: 'first-app',
-    //         description: 'First App Description'
-    //     },
-    //     {
-    //         title: 'New title',
-    //         slug: 'new-slug',
-    //         description: 'new-description'
-    //     }
-    // ],
     contentTypes: [
         {
             title: 'Posts',
