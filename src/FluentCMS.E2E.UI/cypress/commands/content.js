@@ -57,7 +57,7 @@ Cypress.Commands.add('contentCreate', (contentTypeTitle, value) => {
 })
 
 Cypress.Commands.add('contentList', (contentTypeTitle) => {
-    // TODO: Check list of different apps and content types
+    // TODO: Check list of different content types
 
     // cy.navigateToContentListPage('Second', 'Books')
     cy.shot('Content List ' + contentTypeTitle)

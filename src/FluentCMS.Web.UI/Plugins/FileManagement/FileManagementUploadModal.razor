@@ -1,0 +1,148 @@
+<Modal @bind-Open="Open"
+       Size="ModalSize.Large"
+       OnClose="() => OnSelect.InvokeAsync()">
+    <ModalHeader>
+        <ModalTitle>
+            Add new assets
+        </ModalTitle>
+    </ModalHeader>
+    <ModalBody>
+        @if (selecting || files.Count == 0)
+        {
+            <Browse Multiple="true"
+                    OnChange="OnChange"></Browse>
+        }
+        else
+        {
+            <Grid ItemsSmall="GridItems.Center"
+                  JustifySmall="GridJustify.Between">
+                <GridItem>
+                    <Typography>
+                        @(files.Count) files ready to upload
+                    </Typography>
+                    <Typography>
+                        Manage the files before adding them to the file management
+                    </Typography>
+                </GridItem>
+                <GridItem>
+                    <Button Color="Color.Primary"
+                            OnClick="() => selecting = true">
+                        Add new files
+                    </Button>
+                </GridItem>
+            </Grid>
+            <Grid Gutter="GridGutter.Large">
+                @foreach (var file in files)
+                {
+                    <GridItem Small="GridItemColumn.Twelve"
+                              Medium="GridItemColumn.Six"
+                              Large="GridItemColumn.Four">
+                        <FileManagementTile Editable="false"
+                                            Value="previews[file]"
+                                            OnDelete="() => Delete(file)" />
+                    </GridItem>
+                }
+            </Grid>
+        }
+    </ModalBody>
+    <ModalFooter>
+        <ButtonGroup>
+            <Button OnClick="() => OnSelect.InvokeAsync()">
+                Cancel
+            </Button>
+            @if (!selecting && files.Count != 0)
+            {
+                <Button Color="Color.Primary"
+                        Disabled="busy"
+                        OnClick="Upload">
+                    Upload
+                </Button>
+            }
+        </ButtonGroup>
+    </ModalFooter>
+</Modal>
+
+@code {
+    [Parameter]
+    public bool Open { get; set; }
+
+    [Parameter]
+    public EventCallback<List<FileDTO>?> OnSelect { get; set; }
+
+    List<IBrowserFile> files { get; set; } = new() { };
+
+    Dictionary<IBrowserFile, FileDTO> previews = new();
+
+    bool busy;
+
+    bool selecting;
+
+    void Delete(IBrowserFile file)
+    {
+        previews.Remove(file);
+
+        files.Remove(file);
+    }
+
+    async Task Upload()
+    {
+        busy = true;
+
+        var next = previews.Values.ToList() ?? new() { };
+
+        await OnSelect.InvokeAsync(next);
+
+        busy = false;
+    }
+
+    async Task OnChange(InputFileChangeEventArgs evt)
+    {
+        var items = evt.GetMultipleFiles();
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            var item = items[i];
+
+            string? url = null;
+
+            if (item.ContentType.StartsWith("image"))
+            {
+                var image = await item.RequestImageFileAsync(item.ContentType, 320, 320);
+
+                var buffer = new byte[image.Size];
+
+                await image.OpenReadStream().ReadAsync(buffer);
+
+                url = $"data:{image.ContentType};base64,{Convert.ToBase64String(buffer)}";
+            }
+
+            var preview = new FileDTO()
+                {
+                    Id = Guid.NewGuid(),
+                    Extension = item.Name.Split('.').Last(),
+                    Name = item.Name,
+                    MimeType = item.ContentType,
+                    Size = item.Size,
+                    Url = url,
+                };
+
+            previews.Add(item, preview);
+
+            files.Add(item);
+        }
+
+        selecting = false;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!Open) return;
+
+        selecting = false;
+
+        files = new() { };
+
+        previews.Clear();
+    }
+}
+

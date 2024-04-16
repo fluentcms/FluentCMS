@@ -85,17 +85,6 @@
             ]
         },
         {
-            "Name": "Media Library",
-            "Description": "Media Library Plugin",
-            "Types": [
-                {
-                    "Name": "Media List",
-                    "Type": "MediaListPlugin",
-                    "IsDefault": true
-                }
-            ]
-        },
-        {
             "Name": "User Management",
             "Description": "Users Management Plugin",
             "Types": [
@@ -169,25 +158,25 @@
             ]
         },
         {
-            "Name": "App Management",
-            "Description": "App Management Plugin",
+            "Name": "Role Management",
+            "Description": "Role Management Plugin",
             "Types": [
                 {
-                    "Name": "Apps List",
-                    "Type": "AppListPlugin",
+                    "Name": "Roles List",
+                    "Type": "RoleListPlugin",
                     "IsDefault": true
                 },
                 {
-                    "Name": "Create App",
-                    "Type": "AppCreatePlugin"
+                    "Name": "Create Role",
+                    "Type": "RoleCreatePlugin"
                 },
                 {
-                    "Name": "Update App",
-                    "Type": "AppUpdatePlugin"
+                    "Name": "Update Role",
+                    "Type": "RoleUpdatePlugin"
                 },
                 {
-                    "Name": "App Detail",
-                    "Type": "AppDetailPlugin"
+                    "Name": "Role Detail",
+                    "Type": "RoleDetailPlugin"
                 }
             ]
         },
@@ -202,6 +191,17 @@
                 }
             ]
         },
+        {
+            "Name": "File Management",
+            "Description": "File Management Plugin",
+            "Types": [
+                {
+                    "Name": "File Management List",
+                    "Type": "FileManagementListPlugin",
+                    "IsDefault": true
+                }
+            ]
+         },
         {
             "Name": "User Info",
             "Description": "User Info Plugin",
@@ -299,11 +299,21 @@
                     ]
                 },
                 {
-                    "Title": "Apps",
-                    "Path": "/apps",
+                    "Title": "File Management",
+                    "Path": "/file-management",
                     "Plugins": [
                         {
-                            "Definition": "App Management",
+                            "Definition": "File Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Roles",
+                    "Path": "/roles",
+                    "Plugins": [
+                        {
+                            "Definition": "Role Management",
                             "Section": "Main"
                         }
                     ]

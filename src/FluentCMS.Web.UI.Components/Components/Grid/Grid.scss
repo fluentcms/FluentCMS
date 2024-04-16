@@ -55,6 +55,10 @@ $grid-item-column: ( one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 
         margin-top: calc(var(--grid-gutter-y) * -1);
         margin-left: calc(var(--grid-gutter-x) * -1);
     }
+
+    &-no-wrap-true > div {
+        @apply flex-nowrap;
+    }
 }
 
 .#{$grid}-item {

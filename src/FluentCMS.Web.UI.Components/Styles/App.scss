@@ -18,7 +18,7 @@ body {
     @apply bg-gray-50;
 }
 
-body.dark {
+.dark body {
     @apply bg-gray-800;
     color-scheme: dark;
 }
@@ -28,41 +28,41 @@ body.dark {
 }
 
 // COMPONENTS
-
 @import "../Components/Accordion/Accordion";
-@import "../Components/Alert/Alert";
-@import "../Components/Avatar/Avatar";
-@import "../Components/Badge/Badge";
-@import "../Components/Button/Button";
-@import "../Components/Card/Card";
-@import "../Components/CloseButton/CloseButton";
-@import "../Components/Confirm/Confirm";
-@import "../Components/Dropdown/Dropdown";
-@import "../Components/Form/Autocomplete/Autocomplete.Core";
-@import "../Components/Form/Autocomplete/Autocomplete";
-@import "../Components/Form/Checkbox/Checkbox";
-@import "../Components/Form/Form/Form";
-@import "../Components/Form/FormField/FormField";
-@import "../Components/Form/Input/Input";
-@import "../Components/Form/MarkdownEditor/MarkdownEditor.Core";
-@import "../Components/Form/MarkdownEditor/MarkdownEditor";
-@import "../Components/Form/Option/Option";
-@import "../Components/Form/Radio/Radio";
-@import "../Components/Form/Select/Select";
-@import "../Components/Form/Switch/Switch";
-@import "../Components/Form/Textarea/Textarea";
-@import "../Components/Grid/Grid";
-@import "../Components/Icon/Icon";
-@import "../Components/Modal/Modal";
-@import "../Components/Page/Page";
-@import "../Components/Pagination/Pagination";
-@import "../Components/Sidebar//Sidebar";
-@import "../Components/Spacer/Spacer";
-@import "../Components/Spinner/Spinner";
-@import "../Components/Stack/Stack";
-@import "../Components/Table/Table";
-@import "../Components/Tabs/Tabs";
-@import "../Components/ThemeSwitcher/ThemeSwitcher";
-@import "../Components/Toast/Toast";
-@import "../Components/Tooltip/Tooltip";
-@import "../Components/Typography/Typography";
+@import '../Components/Alert/Alert';
+@import '../Components/Avatar/Avatar';
+@import '../Components/Badge/Badge';
+@import '../Components/Browse/Browse';
+@import '../Components/Button/Button';
+@import '../Components/Card/Card';
+@import '../Components/CloseButton/CloseButton';
+@import '../Components/Confirm/Confirm';
+@import '../Components/Dropdown/Dropdown';
+@import '../Components/Form/Autocomplete/Autocomplete.Core';
+@import '../Components/Form/Autocomplete/Autocomplete';
+@import '../Components/Form/Checkbox/Checkbox';
+@import '../Components/Form/Form/Form';
+@import '../Components/Form/FormField/FormField';
+@import '../Components/Form/Input/Input';
+@import '../Components/Form/MarkdownEditor/MarkdownEditor.Core';
+@import '../Components/Form/MarkdownEditor/MarkdownEditor';
+@import '../Components/Form/Option/Option';
+@import '../Components/Form/Radio/Radio';
+@import '../Components/Form/Select/Select';
+@import '../Components/Form/Switch/Switch';
+@import '../Components/Form/Textarea/Textarea';
+@import '../Components/Grid/Grid';
+@import '../Components/Icon/Icon';
+@import '../Components/Modal/Modal';
+@import '../Components/Page/Page';
+@import '../Components/Pagination/Pagination';
+@import '../Components/Sidebar//Sidebar';
+@import '../Components/Spacer/Spacer';
+@import '../Components/Spinner/Spinner';
+@import '../Components/Stack/Stack';
+@import '../Components/Table/Table';
+@import '../Components/Tabs/Tabs';
+@import '../Components/ThemeSwitcher/ThemeSwitcher';
+@import '../Components/Toast/Toast';
+@import '../Components/Tooltip/Tooltip';
+@import '../Components/Typography/Typography';

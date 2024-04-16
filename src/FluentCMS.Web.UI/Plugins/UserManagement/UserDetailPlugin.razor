@@ -1,5 +1,5 @@
 ﻿<Page>
-    <PageHeader HasBack="true" 
+    <PageHeader HasBack="true"
                 Title="User Detail">
     </PageHeader>
     <PageBody>
@@ -48,10 +48,11 @@
                         }
                     </CardBody>
                 </Card>
-                <Spacer />
+                <Spacer /> 
                 <Button Block="true" Color="Color.Primary"
-                    Href="@($"/admin/users?PluginDef=User Management&typeName=Update User&id={View.Id}")" Item="true"
-                    Outline="true">
+                        Href="@NavigationManager.Plugin("User Management", "Update User", new { id = View.Id })"
+                        Item="true"
+                        Outline="true">
                     <Icon Name="IconName.Edit" />
                     Edit
                 </Button>

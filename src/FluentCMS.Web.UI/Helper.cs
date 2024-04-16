@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components;
+using System;
 using System.Web;
 
 namespace FluentCMS.Web.UI;
@@ -29,5 +30,23 @@ public static class Helper
             return query[key];
 
         return default;
+    }
+
+    public static string Plugin(this NavigationManager? navigationManager, string pluginDef, string typeName, object? parameters = null)
+    {
+        parameters ??= new { };
+
+        var properties = parameters.GetType()
+                                       .GetProperties()
+                                       .Where(p => p.GetValue(parameters, null) != null)
+                                       .Select(p => $"{p.Name}={HttpUtility.UrlEncode(p.GetValue(parameters, null)?.ToString() ?? "")}");
+
+        var queries = String.Join("&", properties.ToArray());
+
+        queries = string.IsNullOrEmpty(queries) ? queries : "&" + queries;
+
+        var absolutePath = new Uri(navigationManager.Uri).AbsolutePath;
+
+        return $"{absolutePath}?pluginDef={pluginDef}&typeName={typeName}{queries}";
     }
 }

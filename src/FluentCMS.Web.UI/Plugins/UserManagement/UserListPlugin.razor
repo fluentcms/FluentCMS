@@ -3,8 +3,8 @@
         <PageHeaderActions>
             <ButtonGroup>
                 <Button autofocus="true"
-                        Color="Color.Primary" 
-                        Href="/admin/users?PluginDef=User Management&typeName=Create User"
+                        Color="Color.Primary"
+                        Href="@NavigationManager.Plugin("User Management", "Create User")"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
                     Add User
@@ -29,16 +29,16 @@
                             <TableCell>
                                 <ButtonGroup>
                                     <Button Ghost="true"
-                                        Href="@($"/admin/users?PluginDef=User Management&typeName=User Detail&id={user.Id}")"
-                                        Size="ButtonSize.Small">
+                                            Href="@NavigationManager.Plugin("User Management", "User Detail", new { id = user.Id })"
+                                            Size="ButtonSize.Small">
                                         <Icon Name="IconName.Eye" />
                                     </Button>
                                     <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
 
                                     <Button data-test="edit-btn"
-                                        Ghost="true"
-                                        Href="@($"/admin/users?PluginDef=User Management&typeName=Update User&id={user.Id}")"
-                                        Size="ButtonSize.Small">
+                                            Ghost="true"
+                                            Href="@NavigationManager.Plugin("User Management", "Update User", new { id = user.Id })"
+                                            Size="ButtonSize.Small">
                                         <Icon Name="IconName.Edit" />
                                     </Button>
                                     <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
@@ -52,8 +52,8 @@
             {
                 <EmptyTable Message="No Users Found!">
                     <Button autofocus="true"
-                            Color="Color.Primary" 
-                        Href="/admin/users?PluginDef=User Management&typeName=Create User"
+                            Color="Color.Primary"
+                            Href="@NavigationManager.Plugin("User Management", "Create User")"
                             Size="ButtonSize.Small">
                         <Icon Name="IconName.Plus" />
                         Add User
@@ -70,6 +70,9 @@
 
     [Inject]
     ConfirmService Confirm { get; set; }
+
+    [Inject]
+    NavigationManager NavigationManager { get; set; }
 
     List<UserDetailResponse> Users { get; set; } = [];
 

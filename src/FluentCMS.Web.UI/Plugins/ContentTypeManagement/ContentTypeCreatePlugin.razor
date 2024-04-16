@@ -73,23 +73,23 @@
 
     void GoToUpdatePage(Guid? id)
     {
-        NavigationManager.NavigateTo($"?PluginDef=ContentType Management&typeName=Update ContentType&id={id.Value}");
+        NavigationManager.NavigateTo(NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = id.Value }));
     }
 
-async Task OnSubmit()
-{
-    try
+    async Task OnSubmit()
     {
-        var newContentType = await ContentTypeClient.CreateAsync(Model);
-        Message = "Done!";
-        if (newContentType?.Data?.Id != null)
+        try
         {
-            GoToUpdatePage(newContentType?.Data?.Id!);
+            var newContentType = await ContentTypeClient.CreateAsync(Model);
+            Message = "Done!";
+            if (newContentType?.Data?.Id != null)
+            {
+                GoToUpdatePage(newContentType?.Data?.Id!);
+            }
+        }
+        catch (Exception ex)
+        {
+            Message = ex.ToString();
         }
     }
-    catch (Exception ex)
-    {
-        Message = ex.ToString();
-    }
-}
 }

@@ -1,9 +1,9 @@
 export function toggle(dotnet, isLight) {
-    document.body.classList.remove('dark', 'light');
+    document.documentElement.classList.remove('dark', 'light');
 
     const theme = isLight ? 'light' : 'dark';
 
-    document.body.classList.add(theme);
+    document.documentElement.classList.add(theme);
 
     localStorage.setItem("THEME", theme);
 
