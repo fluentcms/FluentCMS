@@ -1,0 +1,110 @@
+﻿@using System.Text.Json
+
+<Modal @bind-Open="Open"
+       Size="ModalSize.Large"
+       OnClose="() => OnChange.InvokeAsync()">
+    <ModalHeader>
+        <ModalTitle>
+            Details
+        </ModalTitle>
+    </ModalHeader>
+    <ModalBody>
+        @if (model != null)
+        {
+            <Grid Gutter="GridGutter.Large">
+                <GridItem Small="GridItemColumn.Twelve"
+                          Medium="GridItemColumn.Six">
+                    <Card>
+                        <img src="@model.Url"
+                             class="w-full object-contain h-[264px]" />
+                    </Card>
+                </GridItem>
+                <GridItem Small="GridItemColumn.Twelve"
+                          Medium="GridItemColumn.Six">
+                    <Grid Gutter="GridGutter.Large">
+                        <GridItem Small="GridItemColumn.Six">
+                            <Typography Size="TextSize.Small">
+                                SIZE
+                            </Typography>
+                            <Typography Size="TextSize.Small">
+                                @model.Size
+                            </Typography>
+                        </GridItem>
+                        <GridItem Small="GridItemColumn.Six">
+                            <Typography Size="TextSize.Small">
+                                DIMENSIONS
+                            </Typography>
+                            <Typography Size="TextSize.Small">
+                                -
+                            </Typography>
+                        </GridItem>
+                        <GridItem Small="GridItemColumn.Six">
+                            <Typography Size="TextSize.Small">
+                                DATE
+                            </Typography>
+                            <Typography Size="TextSize.Small">
+                                @model.CreatedAt.ToShortDateString()
+                            </Typography>
+                        </GridItem>
+                        <GridItem Small="GridItemColumn.Six">
+                            <Typography Size="TextSize.Small">
+                                EXTENSION
+                            </Typography>
+                            <Typography Size="TextSize.Small">
+                                @model.Extension
+                            </Typography>
+                        </GridItem>
+                        <GridItem Small="GridItemColumn.Twelve">
+                            <Typography Size="TextSize.Small">
+                                ASSET ID
+                            </Typography>
+                            <Typography Size="TextSize.Small">
+                                @model?.Id
+                            </Typography>
+                        </GridItem>
+                    </Grid>
+                    <Spacer />
+                    <Input @bind-Value="model.Name"
+                           Label="File name" />
+                </GridItem>
+            </Grid>
+        }
+    </ModalBody>
+    <ModalFooter>
+        <ButtonGroup>
+            <Button OnClick="() => OnChange.InvokeAsync()">
+                Cancel
+            </Button>
+            <Button Color="Color.Primary"
+                    OnClick="Update">
+                Update
+            </Button>
+        </ButtonGroup>
+    </ModalFooter>
+</Modal>
+
+@code {
+    [Parameter]
+    public bool Open { get; set; }
+
+    [Parameter]
+    public FileDTO Value { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<FileDTO?> OnChange { get; set; }
+
+    FileDTO model;
+
+    async Task Update()
+    {
+        await OnChange.InvokeAsync(model);
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!Open) return;
+
+        model = JsonSerializer.Deserialize<FileDTO>(JsonSerializer.Serialize(Value));
+    }
+}
+

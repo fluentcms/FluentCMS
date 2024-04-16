@@ -3,7 +3,14 @@
 @tailwind utilities;
 
 $prefix: "f-";
-$colors: ( "primary": "blue", "success": "green", "info": "cyan", "danger": "red", "warning": "yellow", "secondary": "gray" );
+$colors: (
+    "primary": "blue",
+    "success": "green",
+    "info": "cyan",
+    "danger": "red",
+    "warning": "yellow",
+    "secondary": "gray",
+);
 
 // BODY
 
@@ -21,10 +28,11 @@ body.dark {
 }
 
 // COMPONENTS
-
+@import "../Components/Accordion/Accordion";
 @import '../Components/Alert/Alert';
 @import '../Components/Avatar/Avatar';
 @import '../Components/Badge/Badge';
+@import '../Components/Browse/Browse';
 @import '../Components/Button/Button';
 @import '../Components/Card/Card';
 @import '../Components/CloseButton/CloseButton';
