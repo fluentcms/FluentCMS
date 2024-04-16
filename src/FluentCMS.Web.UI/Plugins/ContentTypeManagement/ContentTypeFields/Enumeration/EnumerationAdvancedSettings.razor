@@ -2,35 +2,31 @@
 
 <Grid GutterX="GridGutter.Large">
     <GridItem Small="GridItemColumn.Twelve"
-              Medium="GridItemColumn.Six">
+              Medium="GridItemColumn.Six"> 
         <Select @bind-Value="Model.DefaultValue"
-               Id="contentTypeFieldModalDefaultValueInput"
-               Label="Default Value"
-               Name="DefaultValue"
-               Placeholder="Choose Default Value..." 
-        >
-            @foreach(var option in Options) {
+                Id="contentTypeFieldModalDefaultValueInput"
+                Label="Default Value"
+                Name="DefaultValue"
+                Placeholder="Choose Default Value...">
+            @foreach (var option in Options)
+            {
                 <Option Value="option">@option</Option>
             }
         </Select>
 
     </GridItem>
-    <GridItem Small="GridItemColumn.Twelve"
-              Medium="GridItemColumn.Six">
-              
-    </GridItem>
 </Grid>
 
 <FieldAdvancedSettings Localization="false"
                        Range="false"
-                       Unique="false"/>
+                       Unique="false" />
 
 @code {
     [CascadingParameter]
-    public ContentTypeField Model { get; set; }
+    public ContentTypeFieldResponse Model { get; set; }
 
     List<string> Options = [];
-    protected override void OnInitialized() 
+    protected override void OnInitialized()
     {
         var items = /* Model.Options ??*/ "item1\nitem2\nitem3";
 

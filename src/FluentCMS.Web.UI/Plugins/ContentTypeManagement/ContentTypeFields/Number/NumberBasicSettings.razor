@@ -8,6 +8,8 @@
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
         <Select Label="Number format"
+                Name="TODO"
+                Placeholder="Choose Number type..."
                 Value="@("")">
             <Option Value="0">
                 integer (ex: 10)
@@ -27,5 +29,5 @@
 
 @code {
     [CascadingParameter]
-    public ContentTypeField Model { get; set; }
+    public ContentTypeFieldResponse Model { get; set; }
 }

@@ -12,7 +12,7 @@ public class PasswordInfo : Base
 
     public static int Order = 8;
 
-    public static Type BasicSettings = typeof(PasswordBasicSettings);
+    public static Type BasicSettings = typeof(FieldBasicSettings);
 
     public static Type AdvancedSettings = typeof(PasswordAdvancedSettings);
 }

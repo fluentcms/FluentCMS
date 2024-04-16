@@ -11,13 +11,15 @@
     </GridItem>
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Textarea Label="Values (one line per value)" 
-                  Placeholder="@("Ex:\nmorning\nmoon\nevening")"/>
+        <Textarea Label="Values (one line per value)"
+                  Name="TODO"
+                  Placeholder="@("Ex:\nmorning\nmoon\nevening")"
+                  Value="TODO"/>
     </GridItem>
 </Grid>
 
 
 @code {
     [CascadingParameter]
-    public ContentTypeField Model { get; set; }
+    public ContentTypeFieldResponse Model { get; set; }
 }

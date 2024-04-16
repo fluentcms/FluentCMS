@@ -4,8 +4,10 @@
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
         <Input @bind-Value="Model.DefaultValue"
+               Id="contentTypeFieldModalDefaultValueInput"
                Label="Default Value"
-               Name="DefaultValue" />
+               Name="DefaultValue"
+               Placeholder="Enter Default Value..." />
     </GridItem>
 </Grid>
 
@@ -13,5 +15,5 @@
 
 @code {
     [CascadingParameter]
-    public ContentTypeField Model { get; set; }
+    public ContentTypeFieldResponse Model { get; set; }
 }

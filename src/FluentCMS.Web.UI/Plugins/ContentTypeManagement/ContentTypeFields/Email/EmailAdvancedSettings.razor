@@ -11,15 +11,11 @@
                Type="InputType.Email"/>
 
     </GridItem>
-    <GridItem Small="GridItemColumn.Twelve"
-              Medium="GridItemColumn.Six">
-              
-    </GridItem>
 </Grid>
 
 <FieldAdvancedSettings Localization="false" />
 
 @code {
     [CascadingParameter]
-    public ContentTypeField Model { get; set; }
+    public ContentTypeFieldResponse Model { get; set; }
 }

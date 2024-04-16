@@ -78,7 +78,7 @@
 
 @code {
     [Parameter]
-    public ContentTypeField? Model { get; set; }
+    public ContentTypeFieldResponse? Model { get; set; }
 
     [Parameter]
     public bool Open { get; set; } = false;
@@ -87,7 +87,7 @@
     public EventCallback OnCancel { get; set; }
 
     [Parameter]
-    public EventCallback<ContentTypeField> OnSubmit { get; set; }
+    public EventCallback<ContentTypeFieldResponse> OnSubmit { get; set; }
 
     bool editing;
 
@@ -108,6 +108,8 @@
     void Back()
     {
         type = null;
+
+        tab = "tab-basic";
     }
 
     void OnFormSubmit()

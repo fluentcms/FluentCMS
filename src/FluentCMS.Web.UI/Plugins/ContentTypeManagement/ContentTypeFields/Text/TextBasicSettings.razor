@@ -9,6 +9,7 @@
               Medium="GridItemColumn.Six">
         <Select Label="Type"
                 Name="TODO"
+                Placeholder="Choose Text type..."
                 Value="@("")">
             <Option Value="0">
                 Short text
@@ -22,5 +23,5 @@
 
 @code {
     [CascadingParameter]
-    public ContentTypeField Model { get; set; }
+    public ContentTypeFieldResponse Model { get; set; }
 }

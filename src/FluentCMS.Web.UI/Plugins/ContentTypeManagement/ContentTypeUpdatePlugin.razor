@@ -128,11 +128,11 @@
     [Inject]
     NavigationManager NavigationManager { set; get; } = default!;
 
-    List<ContentTypeField> Fields { get; set; } = [];
+    List<ContentTypeFieldResponse> Fields { get; set; } = [];
 
     bool FieldModalOpen = false;
 
-    ContentTypeField? FieldModel;
+    ContentTypeFieldResponse? FieldModel;
 
     string? FieldModalTitle;
 
@@ -149,9 +149,9 @@
         NavigationManager.NavigateTo("/admin/content-types");
     }
 
-    async Task OnEditField(ContentTypeField field)
+    async Task OnEditField(ContentTypeFieldResponse field)
     {
-        FieldModel = new ContentTypeField
+        FieldModel = new ContentTypeFieldResponse
         {
             DefaultValue = field.DefaultValue,
             Description = field.Description,
@@ -208,15 +208,16 @@
         FieldModalOpen = false;
     }
 
-    async Task OnSubmitField(ContentTypeField field)
+    async Task OnSubmitField(ContentTypeFieldResponse field)
     {
-        FieldModalOpen = false;
-        var response = await ContentTypeClient.SetFieldAsync(View.Id, field);
+        // TODO
+        // FieldModalOpen = false;
+        // var response = await ContentTypeClient.SetFieldAsync(View.Id, (ContentTypeFieldSetRequest)field);
 
-        if (response?.Data != null)
-        {
-            Fields = response.Data.Fields.ToList();
-        }
+        // if (response?.Data != null)
+        // {
+        //     Fields = response.Data.Fields.ToList();
+        // }
     }
 
     async Task OnSubmit()

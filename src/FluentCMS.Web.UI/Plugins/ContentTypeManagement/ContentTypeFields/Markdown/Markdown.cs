@@ -12,7 +12,7 @@ public class MarkdownInfo : Base
 
     public static int Order = 8;
 
-    public static Type BasicSettings = typeof(MarkdownBasicSettings);
+    public static Type BasicSettings = typeof(FieldBasicSettings);
 
     public static Type AdvancedSettings = typeof(MarkdownAdvancedSettings);
 }

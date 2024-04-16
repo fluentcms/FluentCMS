@@ -4,14 +4,17 @@
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
         <Input @bind-Value="Model.DefaultValue"
+               Id="contentTypeFieldModalDefaultValueInput"
                Label="Default Value"
-               Name="DefaultValue" />
+               Name="DefaultValue"
+               Placeholder="Enter Default Value..." />
     </GridItem>
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
         <Input Value="@("")"
                Hint="The text of the regular expression"
-               Label="RegExp pattern" />
+               Label="RegExp pattern"
+               Name="TODO" />
     </GridItem>
 </Grid>
 
@@ -19,5 +22,5 @@
 
 @code {
     [CascadingParameter]
-    public ContentTypeField Model { get; set; }
+    public ContentTypeFieldResponse Model { get; set; }
 }

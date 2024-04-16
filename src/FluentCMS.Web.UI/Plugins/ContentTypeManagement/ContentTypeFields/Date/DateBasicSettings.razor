@@ -8,6 +8,7 @@
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
         <Select Label="Type"
+                Name="TODO"
                 Placeholder="Choose Date type..."
                 Value="@("")">
             <Option Value="0">
@@ -26,5 +27,5 @@
 
 @code {
     [CascadingParameter]
-    public ContentTypeField Model { get; set; }
+    public ContentTypeFieldResponse Model { get; set; }
 }
