@@ -2,6 +2,13 @@
 
 @namespace FluentCMS.Web.UI.Components
 
+<HeadContent>
+    @if(!string.IsNullOrEmpty(Title)) 
+    {
+        <title>@Title</title>
+    }
+</HeadContent>
+
 <nav @attributes="AdditionalAttributes"
     class="@this.GetClasses()">
     @if (HasBack)
