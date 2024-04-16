@@ -311,6 +311,7 @@
                 {
                     "Title": "Roles",
                     "Path": "/roles",
+                    "Layout": "SettingsLayout",
                     "Plugins": [
                         {
                             "Definition": "Role Management",
