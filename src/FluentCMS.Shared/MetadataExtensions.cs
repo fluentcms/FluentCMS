@@ -10,12 +10,17 @@ public static class MetadataExtensions
             throw new Exception("Cant use this type");
         }
 
-        var dictionary = (IDictionary<string, object?>)metaDataField.GetValue(obj);
-        if (!dictionary.ContainsKey(fieldName))
+        var metaDataDictionary = (IDictionary<string, object?>)metaDataField.GetValue(obj);
+        if (metaDataDictionary == null)
         {
-            dictionary[fieldName] = default(T);
+            metaDataField.SetValue(obj, new Dictionary<string, object?>());
+            metaDataDictionary = (IDictionary<string, object?>)metaDataField.GetValue(obj);
         }
-        return (T?)(dictionary[fieldName]);
+        if (!metaDataDictionary.ContainsKey(fieldName))
+        {
+            metaDataDictionary[fieldName] = default(T);
+        }
+        return (T?)(metaDataDictionary[fieldName]);
     }
     public static void SetValue<T>(this object obj, string fieldName, T? value, string metadataField = "Metadata")
     {
@@ -24,7 +29,14 @@ public static class MetadataExtensions
         {
             throw new Exception("Cant use this type");
         }
-        ((IDictionary<string, object?>)metaDataField.GetValue(obj)!)[fieldName] = value;
+
+        var metaDataDictionary = metaDataField.GetValue(obj);
+        if (metaDataDictionary == null)
+        {
+            metaDataField.SetValue(obj,new Dictionary<string,object?>());
+            metaDataDictionary = metaDataField.GetValue(obj);
+        }
+        ((IDictionary<string, object?>)metaDataDictionary!)[fieldName] = value;
     }
 
 }
