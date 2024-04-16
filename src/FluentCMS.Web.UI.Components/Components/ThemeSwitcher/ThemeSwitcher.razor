@@ -3,7 +3,7 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<a @attributes="AdditionalAttributes"
+<span @attributes="AdditionalAttributes"
    class="@this.GetClasses()"
    @onclick="OnClick">
     @if (IsLight)
@@ -14,7 +14,7 @@
     {
         <Icon Name="IconName.Sun" />
     }
-</a>
+</span>
 
 @code {
     private IJSObjectReference module = default!;
