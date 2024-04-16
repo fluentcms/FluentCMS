@@ -55,9 +55,10 @@ public class ContentTypeController(IMapper mapper, IContentTypeService contentTy
     }
 
     [HttpPut("{id}")]
-    public async Task<IApiResult<ContentTypeDetailResponse>> SetField([FromRoute] Guid id, ContentTypeField request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<ContentTypeDetailResponse>> SetField([FromRoute] Guid id, ContentTypeFieldSetRequest request, CancellationToken cancellationToken = default)
     {
-        var updated = await contentTypeService.SetField(id, request, cancellationToken);
+        var field = mapper.Map<ContentTypeFieldSetRequest, ContentTypeField>(request);
+        var updated = await contentTypeService.SetField(id, field, cancellationToken);
         var response = mapper.Map<ContentTypeDetailResponse>(updated);
         return Ok(response);
     }
