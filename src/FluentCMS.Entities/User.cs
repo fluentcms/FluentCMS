@@ -19,12 +19,9 @@ public class User : IdentityUser<Guid>, IAuditableEntity
     public List<UserTwoFactorRecoveryCode> RecoveryCodes { get; set; } = [];
     public string? AuthenticatorKey { get; set; }
     public List<IdentityUserClaim<Guid>> Claims { get; set; } = [];
-
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
     public User()
-    {
-    }
-
-    public User(string userName) : base(userName)
     {
     }
 }
