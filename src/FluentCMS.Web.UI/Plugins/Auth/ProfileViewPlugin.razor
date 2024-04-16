@@ -63,7 +63,7 @@
                     <Spacer />
                     <Button Block="true"
                             Color="Color.Primary"
-                            Href="@($"?PluginDef=Profile&typeName=Update")"
+                            Href="@NavigationManager.Plugin("Profile", "Update")"
                             Item="true"
                             Outline="true">
                         <Icon Name="IconName.Edit" />
@@ -74,3 +74,8 @@
         }
     </PageBody>
 </Page>
+
+@code {
+    [Inject]
+    NavigationManager NavigationManager {get; set;}
+}
