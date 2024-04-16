@@ -4,7 +4,7 @@
             <ButtonGroup>
                 <Button autofocus="true" 
                         Color="Color.Primary" 
-                        Href="?PluginDef=Role Management&typeName=Create Role" 
+                        Href="@NavigationManager.Plugin("Role Management", "Create Role")"
                         Id="appCreateButton"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
@@ -30,7 +30,7 @@
                             <TableCell>
                                 <ButtonGroup>
                                     <Button data-test="preview-btn"
-                                            Href="@($"?PluginDef=Role Management&typeName=Role Detail&id={role.Id}")"
+                                            Href="@NavigationManager.Plugin("Role Management", "Role Detail", new { id= role.Id })"
                                             Ghost="true"
                                             Size="ButtonSize.Small">
                                         <Icon Name="IconName.Eye" />
@@ -39,7 +39,7 @@
 
                                     <Button data-test="edit-btn"
                                             Ghost="true"
-                                            Href="@($"?PluginDef=Role Management&typeName=Update Role&id={role.Id}")"
+                                            Href="@NavigationManager.Plugin("Role Management", "Update Role", new { id= role.Id })"
                                             Size="ButtonSize.Small">
                                         <Icon Name="IconName.Edit" />
                                     </Button>
@@ -67,7 +67,7 @@
                 <EmptyTable Message="No Roles Found!">
                     <Button autofocus="true"
                             Color="Color.Primary" 
-                            Href="?PluginDef=Role Management&typeName=Create Role"
+                            Href="@NavigationManager.Plugin("Role Management", "Create Role")"
                             Id="roleEmptyCreateButton" 
                             Size="ButtonSize.Small">
                         <Icon Name="IconName.Plus" />

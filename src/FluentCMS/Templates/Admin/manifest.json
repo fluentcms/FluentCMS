@@ -11,6 +11,10 @@
         {
             "Name": "AuthLayout",
             "IsDefault": false
+        },
+        {
+            "Name": "SettingsLayout",
+            "IsDefault": false
         }
     ],
     "PluginDefinitions": [
@@ -223,6 +227,17 @@
                     "Type": "ProfileUpdatePlugin"
                 }
             ]
+        },
+        {
+            "Name": "Settings",
+            "Description": "Settings Plugin",
+            "Types": [
+                {
+                    "Name": "Settings",
+                    "Type": "SettingsViewPlugin",
+                    "IsDefault": true
+                }
+            ]
         }
     ],
     "Pages": [
@@ -264,9 +279,21 @@
                 {
                     "Title": "Users",
                     "Path": "/users",
+                    "Layout": "SettingsLayout",
                     "Plugins": [
                         {
                             "Definition": "User Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Settings",
+                    "Path": "/settings",
+                    "Layout": "SettingsLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "Settings",
                             "Section": "Main"
                         }
                     ]
@@ -284,6 +311,7 @@
                 {
                     "Title": "Roles",
                     "Path": "/roles",
+                    "Layout": "SettingsLayout",
                     "Plugins": [
                         {
                             "Definition": "Role Management",
