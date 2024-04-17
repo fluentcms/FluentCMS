@@ -3,9 +3,10 @@
 <Grid GutterX="GridGutter.Large">
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Select @bind-Value="Model.DefaultValue"
-                Label="Default Value"
-                Name="DefaultValue">
+        <Select Label="Default Value"
+                Name="DefaultValue"
+                Value="@((int?)Model.DefaultValue)"
+                ValueChanged="@((int? value) => Model.DefaultValue = value)">
             <Option Value="0">
                 null
             </Option>

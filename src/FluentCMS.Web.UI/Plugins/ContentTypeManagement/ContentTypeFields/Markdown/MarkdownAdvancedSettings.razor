@@ -3,16 +3,17 @@
 <Grid GutterX="GridGutter.Large">
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Input @bind-Value="Model.DefaultValue"
-               Id="contentTypeFieldModalDefaultValueInput"
+        <Input Id="contentTypeFieldModalDefaultValueInput"
                Label="Default Value"
                Name="DefaultValue"
-               Placeholder="Enter Default Value..." />
+               Placeholder="Enter Default Value..."
+               Value="@((string?)Model.DefaultValue)"
+               ValueChanged="@((string? value) => Model.DefaultValue = value)" />
     </GridItem>
 </Grid>
 
 <FieldAdvancedSettings Localization="false"
-                       Unique="false"/>
+                       Unique="false" />
 
 @code {
     [CascadingParameter]

@@ -3,11 +3,12 @@
 <Grid GutterX="GridGutter.Large">
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Select @bind-Value="Model.DefaultValue"
-                Id="contentTypeFieldModalDefaultValueInput"
+        <Select Id="contentTypeFieldModalDefaultValueInput"
                 Label="Default Value"
                 Name="DefaultValue"
-                Placeholder="Choose Default Value...">
+                Placeholder="Choose Default Value..."
+                Value="@((string?)Model.DefaultValue)"
+                ValueChanged="@((string? value) => Model.DefaultValue = value)">
             @foreach (var option in Options)
             {
                 <Option Value="option">@option</Option>
