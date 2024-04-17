@@ -87,7 +87,7 @@
     public EventCallback OnCancel { get; set; }
 
     [Parameter]
-    public EventCallback<ContentTypeFieldResponse> OnSubmit { get; set; }
+    public EventCallback<ContentTypeFieldSetRequest> OnSubmit { get; set; }
 
     bool editing;
 
@@ -116,7 +116,20 @@
     {
         Model.FieldType = type.Key;
 
-        OnSubmit.InvokeAsync(Model);
+        OnSubmit.InvokeAsync(new()
+            {
+                Slug = Model.Slug,
+                Title = Model.Title,
+                Description = Model.Description,
+                Label = Model.Label,
+                Placeholder = Model.Placeholder,
+                Hint = Model.Hint,
+                DefaultValue = Model.DefaultValue,
+                IsRequired = Model.IsRequired,
+                IsPrivate = Model.IsPrivate,
+                FieldType = Model.FieldType,
+                Metadata = Model.Metadata,
+            });
     }
 
     protected override void OnParametersSet()

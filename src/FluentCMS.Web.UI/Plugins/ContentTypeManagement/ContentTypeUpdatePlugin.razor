@@ -206,11 +206,11 @@
         }
     }
 
-    async Task OnSubmitField(ContentTypeFieldResponse field)
+    async Task OnSubmitField(ContentTypeFieldSetRequest field)
     {
         FieldModalOpen = false;
 
-        var response = await ContentTypeClient.SetFieldAsync(View.Id, (ContentTypeFieldSetRequest)(object)field);
+        var response = await ContentTypeClient.SetFieldAsync(View.Id, field);
 
         if (response?.Data != null)
         {
