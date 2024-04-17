@@ -1,12 +1,11 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using BitzArt.Blazor.Cookies;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Web;
-using BitzArt.Blazor.Cookies;
 
 namespace FluentCMS.Web.UI.Services;
 public class AuthStateProvider(NavigationManager navigationManager, ICookieService cookieService, UserClient userClient, AccountClient accountClient, ILoggerFactory factory) : RevalidatingServerAuthenticationStateProvider(factory)

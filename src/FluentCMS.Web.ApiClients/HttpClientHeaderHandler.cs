@@ -1,12 +1,12 @@
-﻿using System.Net.Http.Headers;
+﻿using BitzArt.Blazor.Cookies;
+using FluentCMS.Web.ApiClients;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Web;
-using BitzArt.Blazor.Cookies;
-using FluentCMS.Web.ApiClients;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
-public class HttpClientHeaderHandler(ICookieService cookieService):DelegatingHandler
+public class HttpClientHeaderHandler(ICookieService cookieService) : DelegatingHandler
 {
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {

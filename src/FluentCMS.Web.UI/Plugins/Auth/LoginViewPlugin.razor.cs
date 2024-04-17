@@ -18,7 +18,7 @@ public partial class LoginViewPlugin
         var result = await AuthStateProvider.LoginAsync(Model);
         if (result.Errors!.Count == 0)
         {
-            NavigationManager.NavigateTo("/",true);
+            NavigationManager.NavigateTo("/", true);
         }
     }
 }

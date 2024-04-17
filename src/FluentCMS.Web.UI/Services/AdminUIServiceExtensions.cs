@@ -1,7 +1,6 @@
 ﻿using FluentCMS.Web.UI.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
-using BitzArt.Blazor.Cookies;
 namespace Microsoft.Extensions.DependencyInjection;
 
 public static class AdminUIServiceExtensions
