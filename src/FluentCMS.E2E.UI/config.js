@@ -47,5 +47,33 @@ export default {
             title: 'updated title',
             content: 'updated content'
         }
+    ],
+    roles: [
+        {
+            name: 'ADMIN',
+            description: "Role for admins to manage the system",
+            permissions: {
+                "Posts": {
+                    create: true,
+                    update: true,
+                    delete: true,
+                    read: true,
+                    publish: true,
+                }
+            }
+        },
+        {
+            name: 'EDITOR',
+            description: "Role for content editors",
+            permissions: {
+                "Posts": {
+                    create: true,
+                    update: true,
+                    read: true,
+                    delete: false,
+                    publish: false,
+                }
+            }
+        },
     ]
 }
