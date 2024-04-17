@@ -3,9 +3,9 @@
     [Inject]
     public NavigationManager NavigationManager { get; set; }
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnAfterRender(bool firstRender)
     {
-        await base.OnInitializedAsync();
-        NavigationManager.NavigateTo("/auth/login",true);
+        base.OnAfterRender(firstRender);
+        NavigationManager.NavigateTo("/auth/login", true);
     }
 }
