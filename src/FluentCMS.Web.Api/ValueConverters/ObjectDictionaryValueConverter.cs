@@ -7,27 +7,21 @@ public class ObjectDictionaryValueConverter :
 {
     public Dictionary<string, object?> Convert(Dictionary<string, object?> sourceMember, ResolutionContext context)
     {
-        return sourceMember.Select(x => (x.Key, Value: mapValue(x.Value)))
+        return sourceMember.Select(x => (x.Key, Value: x.Value.MapValue()))
             .ToDictionary(x => x.Key, x => x.Value);
     }
 
-    private object? mapValue(object value)
+}
+
+
+
+public class ObjectValueConverter :
+    IValueConverter<object?, object?>
+{
+
+    public object? Convert(object? sourceMember, ResolutionContext context)
     {
-        var jsonElement = (JsonElement)value;
-        return jsonElement.ValueKind switch
-        {
-            JsonValueKind.Undefined => null,
-            JsonValueKind.Null => null,
-            JsonValueKind.Object => jsonElement.EnumerateObject()
-                .Select(x => (x.Name, Value: mapValue(x.Value)))
-                .ToDictionary(x => x.Name, x => x.Value),
-            JsonValueKind.Array => jsonElement.EnumerateArray().Select(x => mapValue(x)).ToArray(),
-            JsonValueKind.String => jsonElement.GetString(),
-            JsonValueKind.Number => jsonElement
-                .GetDecimal(), // todo: find a better way for this as most of our values don't need to be Decimal
-            JsonValueKind.True => true,
-            JsonValueKind.False => false,
-            _ => throw new ArgumentOutOfRangeException(nameof(value))
-        };
+        return sourceMember.MapValue();
     }
+
 }

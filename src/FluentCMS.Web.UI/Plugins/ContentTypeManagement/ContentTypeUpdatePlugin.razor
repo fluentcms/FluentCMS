@@ -1,4 +1,5 @@
-﻿<Page>
+﻿@using FluentCMS.Web.Api.ValueConverters
+<Page>
     <PageHeader HasBack="true"
                 Title="Update ContentType">
     </PageHeader>
@@ -177,7 +178,8 @@
     {
         FieldModel = new ContentTypeFieldResponse
             {
-                DefaultValue = field.DefaultValue,
+                DefaultValue = field.DefaultValue.MapValue(),
+                FieldType = field.FieldType,
                 Description = field.Description,
                 Hint = field.Hint,
                 IsRequired = field.IsRequired,
@@ -185,7 +187,7 @@
                 Placeholder = field.Placeholder,
                 Slug = field.Slug,
                 Title = field.Title,
-
+                Metadata = field.Metadata?.Select(x => new KeyValuePair<string, object>(x.Key, x.Value.MapValue())).ToDictionary()
             };
         FieldModalOpen = true;
     }

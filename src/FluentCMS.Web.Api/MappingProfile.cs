@@ -75,7 +75,9 @@ public class MappingProfile : Profile
 
         CreateMap<ContentTypeFieldSetRequest, ContentTypeField>()
             .ForMember(x => x.Metadata,
-                expression => expression.ConvertUsing(new ObjectDictionaryValueConverter()));
+                expression => expression.ConvertUsing(new ObjectDictionaryValueConverter()))
+            .ForMember(x => x.DefaultValue,
+                expression => expression.ConvertUsing(new ObjectValueConverter()));
         CreateMap<ContentTypeField, ContentTypeFieldResponse>();
 
         #region Content
