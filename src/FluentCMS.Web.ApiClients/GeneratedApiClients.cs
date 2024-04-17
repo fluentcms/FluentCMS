@@ -6627,7 +6627,7 @@ namespace FluentCMS.Web.ApiClients
         public string? Hint { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("defaultValue")]
-        public string? DefaultValue { get; set; } = default!;
+        public object? DefaultValue { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("isRequired")]
         public bool IsRequired { get; set; } = default!;
@@ -6666,7 +6666,7 @@ namespace FluentCMS.Web.ApiClients
         public string? Hint { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("defaultValue")]
-        public string? DefaultValue { get; set; } = default!;
+        public object? DefaultValue { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("isRequired")]
         public bool IsRequired { get; set; } = default!;
