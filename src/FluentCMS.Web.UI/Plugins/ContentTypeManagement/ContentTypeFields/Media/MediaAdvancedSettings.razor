@@ -1,0 +1,53 @@
+﻿@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields
+
+<Grid GutterX="GridGutter.Large">
+    <GridItem Small="GridItemColumn.Twelve"
+              Medium="GridItemColumn.Six">
+        @* TODO *@
+        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+            Select allowed types of media
+        </label>
+        <Autocomplete Options="options"
+                      Multiple="true"
+                      Value="@(Model.GetValue<List<string>>("Accept") ?? new())"
+                      ValueChanged="@((List<string> value) => Model.SetValue<List<string>>("Accept", value))" />
+        <Spacer />
+    </GridItem>
+</Grid>
+
+<FieldAdvancedSettings Range="false"
+                       Unique="false" />
+
+@code {
+    [CascadingParameter]
+    public ContentTypeFieldResponse Model { get; set; }
+
+    List<AutocompleteOptions> options = new()
+    {
+        new AutocompleteOptions
+        {
+            Id = "audios",
+            Title = "Audios"
+        },
+        new AutocompleteOptions
+        {
+            Id = "files",
+            Title = "Files"
+        },
+        new AutocompleteOptions
+        {
+            Id = "images",
+            Title = "Images"
+        },
+        new AutocompleteOptions
+        {
+            Id = "videos",
+            Title = "Videos"
+        }
+    };
+
+    protected override void OnInitialized()
+    {
+        Model.SetValue<List<string>>("Accept", options.Select((option) => option.Id).ToList());
+    }
+}

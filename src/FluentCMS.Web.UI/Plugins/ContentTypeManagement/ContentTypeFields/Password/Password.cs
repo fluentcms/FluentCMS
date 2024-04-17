@@ -10,7 +10,7 @@ public class PasswordInfo : Base
 
     public static IconName Icon = IconName.Lock;
 
-    public static int Order = 8;
+    public static int Order = 4;
 
     public static Type BasicSettings = typeof(FieldBasicSettings);
 

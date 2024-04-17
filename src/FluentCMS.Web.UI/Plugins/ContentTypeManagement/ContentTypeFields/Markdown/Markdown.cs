@@ -10,7 +10,7 @@ public class MarkdownInfo : Base
 
     public static IconName Icon = IconName.Paragraph;
 
-    public static int Order = 8;
+    public static int Order = 3;
 
     public static Type BasicSettings = typeof(FieldBasicSettings);
 

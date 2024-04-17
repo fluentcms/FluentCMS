@@ -10,7 +10,7 @@ public class NumberInfo : Base
 
     public static IconName Icon = IconName.Number;
 
-    public static int Order = 3;
+    public static int Order = 5;
 
     public static Type BasicSettings = typeof(NumberBasicSettings);
 
