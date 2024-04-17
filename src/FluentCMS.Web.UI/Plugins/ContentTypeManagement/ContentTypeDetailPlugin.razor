@@ -9,25 +9,33 @@
                       Large="GridItemColumn.Nine">
                 <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
                     <GridItem Small="GridItemColumn.Twelve">
-                        <Typography><strong>Title:</strong></Typography>
+                        <Typography Weight="TextWeight.Bold">
+                            Title:
+                        </Typography>
                         <Typography>
-                            @View.Title
+                            @model.Title
                         </Typography>
                     </GridItem>
                     <GridItem Small="GridItemColumn.Twelve">
-                        <Typography><strong>Slug:</strong></Typography>
+                        <Typography Weight="TextWeight.Bold">
+                            Slug:
+                        </Typography>
                         <Typography>
-                            @View.Slug
+                            @model.Slug
                         </Typography>
                     </GridItem>
                     <GridItem Small="GridItemColumn.Twelve">
-                        <Typography><strong>Description:</strong></Typography>
+                        <Typography Weight="TextWeight.Bold">
+                            Description:
+                        </Typography>
                         <Typography>
-                            @View.Description
+                            @model.Description
                         </Typography>
                     </GridItem>
                     <GridItem Small="GridItemColumn.Twelve">
-                        <Typography><strong>Fields:</strong></Typography>
+                        <Typography Weight="TextWeight.Bold">
+                            Fields:
+                        </Typography>
                         <Table>
                             <TableHead>
                                 <TableCell>
@@ -41,12 +49,12 @@
                                 </TableCell>
                             </TableHead>
                             <TableBody>
-                                @foreach (var field in Fields)
+                                @foreach (var field in fields)
                                 {
                                     <TableRow>
                                         <TableCell>@field.Slug</TableCell>
                                         <TableCell>@field.Title</TableCell>
-                                        <TableCell>Text</TableCell>
+                                        <TableCell>@field.FieldType</TableCell>
                                     </TableRow>
                                 }
                             </TableBody>
@@ -61,35 +69,55 @@
                       Large="GridItemColumn.Three">
                 <Card>
                     <CardBody>
-                        @if (!string.IsNullOrEmpty(View.CreatedBy))
+                        @if (!string.IsNullOrEmpty(model.CreatedBy))
                         {
-                            <Typography><strong>Created By</strong></Typography>
-                            <Typography>@View.CreatedBy</Typography>
+                            <Typography Weight="TextWeight.Bold">
+                                Created By
+                            </Typography>
+                            <Typography>
+                                @model.CreatedBy
+                            </Typography>
                             <Spacer />
                         }
-                        @if (!string.IsNullOrEmpty(View.CreatedAt.ToString()))
+
+                        @if (model.CreatedAt != null)
                         {
-                            <Typography><strong>Created At</strong></Typography>
-                            <Typography>@View.CreatedAt</Typography>
+                            <Typography Weight="TextWeight.Bold">
+                                Created At
+                            </Typography>
+                            <Typography>
+                                @model.CreatedAt
+                            </Typography>
                             <Spacer />
                         }
-                        @if (!string.IsNullOrEmpty(View.ModifiedBy))
+
+                        @if (!string.IsNullOrEmpty(model.ModifiedBy))
                         {
-                            <Typography><strong>Modified By</strong></Typography>
-                            <Typography>@View.ModifiedBy</Typography>
+                            <Typography Weight="TextWeight.Bold">
+                                Modified By
+                            </Typography>
+                            <Typography>
+                                @model.ModifiedBy
+                            </Typography>
                             <Spacer />
                         }
-                        @if (!string.IsNullOrEmpty(View.ModifiedAt.ToString()))
+
+                        @if (model.ModifiedAt != null)
                         {
-                            <Typography><strong>Modified At</strong></Typography>
-                            <Typography>@View.ModifiedAt</Typography>
+                            <Typography Weight="TextWeight.Bold">
+                                Modified At
+                            </Typography>
+                            <Typography>
+                                @model.ModifiedAt
+                            </Typography>
+                            <Spacer />
                         }
                     </CardBody>
                 </Card>
                 <Spacer />
                 <Button Block="true"
                         Color="Color.Primary"
-                        Href="@NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = View.Id })" 
+                        Href="@NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = model.Id })"
                         Item="true"
                         Outline="true">
                     <Icon Name="IconName.Edit" />
@@ -119,48 +147,31 @@
     [Inject]
     NavigationManager NavigationManager { set; get; } = default!;
 
-    Guid? ContentTypeId { get; set; }
+    ContentTypeDetailResponse model { get; set; } = new();
 
-    List<ContentTypeFieldResponse> Fields { get; set; } = [];
-
-    Guid? Id { get; set; }
-
-    string? Message { get; set; }
-
-    ContentTypeDetailResponse View { get; set; } = new();
-
-    async Task LoadData()
-    {
-        View = (await ContentTypeClient.GetAllAsync())?.Data.ToList().Find(x => x.Id == ContentTypeId);
-        Fields = View.Fields.ToList();
-    }
+    List<ContentTypeFieldResponse> fields { get; set; } = new();
 
     async Task OnDelete()
     {
         var result = await Confirm.Show("Are you sure to remove this ContentType?");
-        if (result && ContentTypeId != null)
-        {
-            await ContentTypeClient.DeleteAsync(View.Id);
-            GoBack();
-        }
-    }
-    void GoBack()
-    {
-        NavigationManager.NavigateTo("/admin/content-types");
+
+        if (!result) return;
+
+        await ContentTypeClient.DeleteAsync(model.Id);
+
+        NavigationManager.NavigateTo(NavigationManager.Plugin("ContentType Management", "ContentTypes List"));
     }
 
     protected override async Task OnInitializedAsync()
     {
-        ContentTypeId = NavigationManager.GetIdFromQuery();
+        var contentTypeId = NavigationManager.GetIdFromQuery();
 
-        if (ContentTypeId != null)
-            try
-            {
-                await LoadData();
-            }
-            catch (Exception)
-            {
-                Message = "An error occured!";
-            }
+        if (contentTypeId == null) return;
+
+        model = (await ContentTypeClient.GetByIdAsync(contentTypeId ?? Guid.Empty)).Data;
+
+        if (model == null) return;
+
+        fields = model.Fields?.ToList() ?? new();
     }
 }

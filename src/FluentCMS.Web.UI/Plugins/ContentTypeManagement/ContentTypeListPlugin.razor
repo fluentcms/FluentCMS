@@ -23,31 +23,31 @@
                     <TableCell Width="TableColumnWidth.Small"></TableCell>
                 </TableHead>
                 <TableBody id="contentTypeListTable">
-                    @foreach (var contentType in ContentTypes)
+                    @foreach (var item in items)
                     {
                         <TableRow>
                             <TableCell>
-                                @contentType.Slug
+                                @item.Slug
                             </TableCell>
                             <TableCell>
-                                @contentType.Title
+                                @item.Title
                             </TableCell>
                             <TableCell>
-                                @contentType.Description
+                                @item.Description
                             </TableCell>
                             <TableCell>
                                 <ButtonGroup>
                                     <Button data-test="preview-btn"
                                             Ghost="true"
-                                            Href="@NavigationManager.Plugin("ContentType Management", "ContentType Detail", new { id = contentType.Id })"
+                                            Href="@NavigationManager.Plugin("ContentType Management", "ContentType Detail", new { id = item.Id })"
                                             Size="ButtonSize.Small">
                                         <Icon Name="IconName.Eye" />
                                     </Button>
                                     <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
 
                                     <Button data-test="edit-btn"
-                                            Ghost="true"  
-                                            Href="@NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = contentType.Id })"
+                                            Ghost="true"
+                                            Href="@NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = item.Id })"
                                             Size="ButtonSize.Small">
                                         <Icon Name="IconName.Edit" />
                                     </Button>
@@ -56,7 +56,7 @@
                                     <Button data-test="delete-btn"
                                             Ghost="true"
                                             Size="ButtonSize.Small"
-                                            OnClick="@(evt => OnDelete(contentType))">
+                                            OnClick="@(evt => OnDelete(item))">
                                         <Icon Name="IconName.Delete" />
                                     </Button>
                                     <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
@@ -66,7 +66,7 @@
                     }
                 </TableBody>
             </Table>
-            @if (Loaded && ContentTypes.Count == 0)
+            @if (loaded && items.Count == 0)
             {
                 <EmptyTable Message="No Content Types Found!">
                     <Button autofocus="true"
@@ -91,29 +91,12 @@
     [Inject]
     ContentTypeClient ContentTypeClient { get; set; } = default!;
 
-    [CascadingParameter]
-    public System.Net.Http.HttpContent? HttpContext { get; set; }
-
-    [Inject]
-    ILocalStorageService LocalStorageService { get; set; } = default!;
-
     [Inject]
     NavigationManager NavigationManager { get; set; } = default!;
 
-    bool Loaded { get; set; }
+    List<ContentTypeDetailResponse> items { get; set; } = new();
 
-    List<ContentTypeDetailResponse> ContentTypes { get; set; } = [];
-
-    async Task Load()
-    {
-        var response = await ContentTypeClient.GetAllAsync();
-
-        if (response?.Data == null) return;
-
-        ContentTypes = response.Data.ToList();
-
-        Loaded = true;
-    }
+    bool loaded { get; set; }
 
     async Task OnDelete(ContentTypeDetailResponse contentType)
     {
@@ -123,14 +106,21 @@
 
         await ContentTypeClient.DeleteAsync(contentType.Id);
 
-        await Load();
+        items.Remove(contentType);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
-        Loaded = true;
-        await Load();
+
+        loaded = true;
+
+        var response = await ContentTypeClient.GetAllAsync();
+
+        if (response?.Data == null) return;
+
+        items = response.Data.ToList();
+
         StateHasChanged();
     }
 }

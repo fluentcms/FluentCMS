@@ -130,11 +130,9 @@
 
     List<ContentTypeFieldResponse> Fields { get; set; } = [];
 
-    bool FieldModalOpen = false;
-
     ContentTypeFieldResponse? FieldModel;
 
-    string? FieldModalTitle;
+    bool FieldModalOpen = false;
 
     Guid? Id { get; set; }
 
@@ -146,24 +144,18 @@
 
     async Task GoBack()
     {
-        NavigationManager.NavigateTo("/admin/content-types");
+        NavigationManager.NavigateTo(NavigationManager.Plugin("ContentType Management", "ContentTypes List"));
     }
 
-    async Task OnEditField(ContentTypeFieldResponse field)
+    void OpenAddFieldModal()
     {
-        FieldModel = new ContentTypeFieldResponse
-        {
-            DefaultValue = field.DefaultValue,
-            Description = field.Description,
-            Hint = field.Hint,
-            IsRequired = field.IsRequired,
-            Label = field.Label,
-            Placeholder = field.Placeholder,
-            Slug = field.Slug,
-            Title = field.Title,
-
-        };
+        FieldModel = null;
         FieldModalOpen = true;
+    }
+
+    void OnCancelField()
+    {
+        FieldModalOpen = false;
     }
 
     async Task OnDeleteField(string fieldName)
@@ -181,9 +173,20 @@
         }
     }
 
-    void OpenAddFieldModal()
+    async Task OnEditField(ContentTypeFieldResponse field)
     {
-        FieldModel = null;
+        FieldModel = new ContentTypeFieldResponse
+            {
+                DefaultValue = field.DefaultValue,
+                Description = field.Description,
+                Hint = field.Hint,
+                IsRequired = field.IsRequired,
+                Label = field.Label,
+                Placeholder = field.Placeholder,
+                Slug = field.Slug,
+                Title = field.Title,
+
+            };
         FieldModalOpen = true;
     }
 
@@ -201,11 +204,6 @@
             Model.Title = View.Title;
             Model.Description = View.Description;
         }
-    }
-
-    void OnCancelField()
-    {
-        FieldModalOpen = false;
     }
 
     async Task OnSubmitField(ContentTypeFieldResponse field)

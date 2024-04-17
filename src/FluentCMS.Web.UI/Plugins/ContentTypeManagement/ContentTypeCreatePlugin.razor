@@ -5,31 +5,31 @@
     <PageBody>
         <Grid Gutter="GridGutter.Medium">
             <GridItem Small="GridItemColumn.Twelve">
-                <Form Model="@Model"
+                <Form Model="@model"
                       OnSubmit="OnSubmit">
                     <Card>
                         <CardBody>
-                            <Input @bind-Value="Model.Slug"
+                            <Input @bind-Value="model.Slug"
                                    Id="contentTypeCreateSlugInput"
                                    Label="Slug"
                                    Name="Slug"
                                    Placeholder="Enter Slug..." />
-                            <Input @bind-Value="Model.Title"
+                            <Input @bind-Value="model.Title"
                                    Id="contentTypeCreateTitleInput"
                                    Label="Title"
                                    Name="Title"
                                    Placeholder="Enter Title..."
                                    Required="true" />
-                            <Textarea @bind-Value="Model.Description"
+                            <Textarea @bind-Value="model.Description"
                                       Id="contentTypeCreateDescriptionInput"
                                       Label="Description"
                                       Name="Description"
                                       Placeholder="Enter Description..." />
                             <Spacer />
-                            @if (!string.IsNullOrEmpty(Message))
+                            @if (!string.IsNullOrEmpty(message))
                             {
                                 <Typography>
-                                    @Message
+                                    @message
                                 </Typography>
                                 <Spacer />
                             }
@@ -62,34 +62,30 @@
     [Inject]
     NavigationManager NavigationManager { set; get; } = default!;
 
-    string? Message { get; set; }
+    string? message { get; set; }
 
-    ContentTypeCreateRequest Model { get; set; } = new();
+    ContentTypeCreateRequest model { get; set; } = new();
 
     void GoBack()
     {
-        NavigationManager.NavigateTo("/admin/content-types");
-    }
-
-    void GoToUpdatePage(Guid? id)
-    {
-        NavigationManager.NavigateTo(NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = id.Value }));
+        NavigationManager.NavigateTo(NavigationManager.Plugin("ContentType Management", "ContentTypes List"));
     }
 
     async Task OnSubmit()
     {
         try
         {
-            var newContentType = await ContentTypeClient.CreateAsync(Model);
-            Message = "Done!";
-            if (newContentType?.Data?.Id != null)
-            {
-                GoToUpdatePage(newContentType?.Data?.Id!);
-            }
+            var contentType = await ContentTypeClient.CreateAsync(model);
+
+            message = "Done!";
+
+            if (contentType?.Data?.Id == null) return;
+
+            NavigationManager.NavigateTo(NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = contentType?.Data?.Id! }));
         }
         catch (Exception ex)
         {
-            Message = ex.ToString();
+            message = ex.ToString();
         }
     }
 }
