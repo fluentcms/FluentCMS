@@ -1,0 +1,11 @@
+@code
+{
+    [Inject]
+    public NavigationManager NavigationManager { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        NavigationManager.NavigateTo("/auth/login",true);
+    }
+}

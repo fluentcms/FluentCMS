@@ -5,16 +5,21 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 using System.Text.Json;
+using System.Web;
+using BitzArt.Blazor.Cookies;
 
 namespace FluentCMS.Web.UI.Services;
-public class AuthStateProvider(NavigationManager navigationManager, IHttpContextAccessor httpContextAccessor, UserClient userClient, AccountClient accountClient, ILoggerFactory factory) : RevalidatingServerAuthenticationStateProvider(factory)
+public class AuthStateProvider(NavigationManager navigationManager, ICookieService cookieService, UserClient userClient, AccountClient accountClient, ILoggerFactory factory) : RevalidatingServerAuthenticationStateProvider(factory)
 {
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
         try
         {
             var user = await FetchUserDetail();
-            NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(GetClaimsPricipal(user.Data))));
+            if (user == null)
+            {
+                return NotAuthorized(); // not authorized
+            }
             return new AuthenticationState(GetClaimsPricipal(user.Data));
         }
         catch (Exception e)
@@ -28,11 +33,15 @@ public class AuthStateProvider(NavigationManager navigationManager, IHttpContext
         return new AuthenticationState(new ClaimsPrincipal());
     }
 
-    private async Task<UserDetailResponseIApiResult> FetchUserDetail()
+    private async Task<UserDetailResponseIApiResult?> FetchUserDetail()
     {
-        var json = httpContextAccessor.HttpContext?.Request?.Cookies["UserLoginResponse"];
-        var loginResponse =
-            JsonSerializer.Deserialize<UserLoginResponse>(json);
+        var cookie = await cookieService.GetAsync(nameof(UserLoginResponse));
+        if (cookie is null)
+        {
+            return null;
+        }
+
+        var loginResponse = JsonSerializer.Deserialize<UserLoginResponse>(HttpUtility.UrlDecode(cookie.Value));
         var user = await userClient.GetAsync(loginResponse.UserId);
         return user;
     }
@@ -43,17 +52,16 @@ public class AuthStateProvider(NavigationManager navigationManager, IHttpContext
 
         if (result.Errors!.Count == 0)
         {
-            navigationManager.NavigateTo($"/api/auth?user-id={result.Data.UserId}&token={result.Data.Token}&role-ids={JsonSerializer.Serialize(result.Data.RoleIds)}", true);
-            var user = await FetchUserDetail();
-            NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(GetClaimsPricipal(user.Data))));
+            await cookieService.SetAsync(nameof(UserLoginResponse), HttpUtility.UrlEncode(JsonSerializer.Serialize(result.Data)), null);
+            //navigationManager.Refresh(true);
         }
         return result;
     }
 
     public async Task Logout()
     {
-        navigationManager.NavigateTo($"/api/auth/logout", true);
-        NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(new ClaimsPrincipal()))); // not authorized
+        await cookieService.RemoveAsync(nameof(UserLoginResponse));
+        navigationManager.NavigateTo("/auth/login", forceLoad: true);
     }
 
     private ClaimsPrincipal GetClaimsPricipal(UserDetailResponse userData)
@@ -63,7 +71,7 @@ public class AuthStateProvider(NavigationManager navigationManager, IHttpContext
 
     private IEnumerable<ClaimsIdentity> GetClaimIdentities(UserDetailResponse userData)
     {
-        return [new ClaimsIdentity(GetClaims(userData), "localStorage")];
+        return [new ClaimsIdentity(GetClaims(userData), "Authentication")];
     }
 
     private IEnumerable<Claim>? GetClaims(UserDetailResponse userData)

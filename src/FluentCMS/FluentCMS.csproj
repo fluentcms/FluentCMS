@@ -21,6 +21,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="BitzArt.Blazor.Cookies.Server" Version="1.0.4" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\FluentCMS.Repositories.MongoDB\FluentCMS.Repositories.MongoDB.csproj" />
         <ProjectReference Include="..\FluentCMS.Web.Api\FluentCMS.Web.Api.csproj" />
         <ProjectReference Include="..\FluentCMS.Web.UI\FluentCMS.Web.UI.csproj" />

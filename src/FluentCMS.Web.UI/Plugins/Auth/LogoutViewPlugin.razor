@@ -1,4 +1,15 @@
 <Typography Align="TextAlign.Center"
-      Color="Color.Secondary">
+            Color="Color.Secondary">
     You are logging out
 </Typography>
+
+@code {
+    [Inject]
+    public AuthStateProvider AuthStateProvider { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await AuthStateProvider.Logout();
+    }
+}
+
