@@ -17,7 +17,7 @@ public class AuthStateProvider(NavigationManager navigationManager, ICookieServi
             {
                 return NotAuthorized(); // not authorized
             }
-            return new AuthenticationState(GetClaimsPricipal(user.Data));
+            return new AuthenticationState(GetClaimsPrincipal(user.Data));
         }
         catch (Exception e)
         {
@@ -61,7 +61,7 @@ public class AuthStateProvider(NavigationManager navigationManager, ICookieServi
         navigationManager.NavigateTo("/auth/login", forceLoad: true);
     }
 
-    private ClaimsPrincipal GetClaimsPricipal(UserDetailResponse userData)
+    private ClaimsPrincipal GetClaimsPrincipal(UserDetailResponse userData)
     {
         return new ClaimsPrincipal(GetClaimIdentities(userData));
     }
