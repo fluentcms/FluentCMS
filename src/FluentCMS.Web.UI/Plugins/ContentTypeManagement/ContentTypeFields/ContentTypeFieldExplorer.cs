@@ -29,4 +29,9 @@ public class ContentTypeFieldExplorer
 
         return types;
     }
+
+    public static Base? Find(string? key)
+    {
+        return Load().FirstOrDefault(x => x.Key == key);
+    }
 }

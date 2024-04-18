@@ -49,7 +49,7 @@
                                                     @field.Title
                                                 </TableCell>
                                                 <TableCell>
-                                                    @field.FieldType
+                                                    @ContentTypeFields.ContentTypeFieldExplorer.Find(field!.FieldType)?.Title
                                                 </TableCell>
                                                 <TableCell>
                                                     <ButtonGroup>

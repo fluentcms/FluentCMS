@@ -144,7 +144,7 @@
 
         tab = "tab-basic";
 
-        type = editing ? ContentTypeFieldExplorer.Load().FirstOrDefault(x => x.Key == Model.FieldType) : null;
+        type = editing ? ContentTypeFieldExplorer.Find(Model!.FieldType) : null;
 
         if (editing)
         {
