@@ -28,6 +28,10 @@ public class AuthStateProvider(ICookieService cookieService, AccountClient accou
             var base64Data = Convert.ToBase64String(Encoding.UTF8.GetBytes(jsonData));
 
             await cookieService.SetAsync(nameof(UserLoginResponse), base64Data, null);
+
+            var authState = new AuthenticationState(GetClaimsPrincipal(result.Data));
+
+            NotifyAuthenticationStateChanged(Task.FromResult(authState));
         }
         return result;
     }
@@ -35,6 +39,8 @@ public class AuthStateProvider(ICookieService cookieService, AccountClient accou
     public async Task Logout()
     {
         await cookieService.RemoveAsync(nameof(UserLoginResponse));
+        var authState = new AuthenticationState(new ClaimsPrincipal());
+        NotifyAuthenticationStateChanged(Task.FromResult(authState));
     }
 
     private static ClaimsPrincipal GetClaimsPrincipal(UserLoginResponse loginResponse)
