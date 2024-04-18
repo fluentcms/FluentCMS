@@ -10,9 +10,9 @@ public class EmailInfo : Base
 
     public static IconName Icon = IconName.AtSign;
 
-    public static int Order = 6;
+    public static int Order = 2;
 
-    public static Type BasicSettings = typeof(EmailBasicSettings);
+    public static Type BasicSettings = typeof(FieldBasicSettings);
 
     public static Type AdvancedSettings = typeof(EmailAdvancedSettings);
 }
