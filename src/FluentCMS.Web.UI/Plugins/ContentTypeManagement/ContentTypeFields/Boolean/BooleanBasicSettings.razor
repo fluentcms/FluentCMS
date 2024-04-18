@@ -8,7 +8,6 @@
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
         <Select Label="Type"
-                Placeholder="Choose Boolean type..."
                 Value="@(Model.GetValue<Decimal>("Type"))"
                 ValueChanged="@((Decimal value) => Model.SetValue<Decimal>("Type", value))">
             <Option Value="0">

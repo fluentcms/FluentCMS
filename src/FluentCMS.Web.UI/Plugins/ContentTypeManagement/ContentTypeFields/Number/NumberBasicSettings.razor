@@ -8,7 +8,6 @@
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
         <Select Label="Number format"
-                Placeholder="Choose Number type..."
                 Value="@(Model.GetValue<Decimal>("Format"))"
                 ValueChanged="@((Decimal value) => Model.SetValue<Decimal>("Format", value))">
             <Option Value="0">
