@@ -23,30 +23,6 @@ public static class SiteServiceExtensions
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
 
-        app.MapGet("/api/auth", async (HttpContext context) =>
-        {
-            var data = new UserLoginResponse()
-            {
-                UserId = Guid.Parse(context.Request.Query["user-id"]),
-                Token = context.Request.Query["token"],
-                RoleIds = JsonSerializer.Deserialize<List<Guid>>(context.Request.Query["role-ids"]),
-            };
-            var tokenProvider = context.RequestServices.GetRequiredService<IUserTokenProvider>(); ;
-            await tokenProvider.Validate(data.Token);
-            var json = JsonSerializer.Serialize(data, new JsonSerializerOptions()
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
-            context.Response.Cookies.Append("UserLoginResponse", json);
-            context.Response.Redirect("/");
-        });
-
-        app.MapGet("/api/logout", async (context) =>
-        {
-            context.Response.Cookies.Delete("UserLoginResponse");
-            context.Response.Redirect("/");
-        });
-
         return app;
     }
 

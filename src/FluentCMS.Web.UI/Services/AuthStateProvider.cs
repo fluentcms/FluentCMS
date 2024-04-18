@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Web;
 
 namespace FluentCMS.Web.UI.Services;
-public class AuthStateProvider(NavigationManager navigationManager, ICookieService cookieService, UserClient userClient, AccountClient accountClient, ILoggerFactory factory) : RevalidatingServerAuthenticationStateProvider(factory)
+public class AuthStateProvider(NavigationManager navigationManager, ICookieService cookieService, UserClient userClient, AccountClient accountClient) : AuthenticationStateProvider
 {
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
@@ -75,13 +75,13 @@ public class AuthStateProvider(NavigationManager navigationManager, ICookieServi
 
     private IEnumerable<Claim>? GetClaims(UserDetailResponse userData)
     {
-        // static claims
-        if (userData.Id != null) yield return new Claim(ClaimTypes.Sid, userData.Id.ToString("D"));
-        if (userData.Id != null) yield return new Claim(ClaimTypes.NameIdentifier, userData.Id.ToString("D"));
+        // add id Username and Password claims with standard claim names
+        yield return new Claim(ClaimTypes.Sid, userData.Id.ToString("D"));
+        yield return new Claim(ClaimTypes.NameIdentifier, userData.Id.ToString("D"));
         if (userData.Username != null) yield return new Claim(ClaimTypes.Name, userData.Username);
         if (userData.PhoneNumber != null) yield return new Claim(ClaimTypes.MobilePhone, userData.PhoneNumber);
         if (userData.Email != null) yield return new Claim(ClaimTypes.Email, userData.Email);
-        // other claims excluding username, phone and email
+        // add the rest of properties to the claims
         var excludedClaims = new List<string>() { nameof(userData.Username), nameof(userData.PhoneNumber), nameof(userData.Email), nameof(userData.Id) };
         foreach (var propertyInfo in userData.GetType().GetProperties().Where(x => !excludedClaims.Contains(x.Name)))
         {
@@ -89,11 +89,4 @@ public class AuthStateProvider(NavigationManager navigationManager, ICookieServi
             if (value != null) yield return new Claim(propertyInfo.Name, value);
         }
     }
-
-    protected override async Task<bool> ValidateAuthenticationStateAsync(AuthenticationState authenticationState, CancellationToken cancellationToken)
-    {
-        return true;
-    }
-
-    protected override TimeSpan RevalidationInterval { get; } = TimeSpan.FromMinutes(30);
 }
