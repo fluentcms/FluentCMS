@@ -8,7 +8,7 @@ public static class ObjectExtensions
         return JsonSerializer.Serialize(obj);
     }
 
-    public static T? DeserializeToJson<T>(this string json)
+    public static T? DeserializeFromJson<T>(this string json)
     {
         return JsonSerializer.Deserialize<T?>(json);
     }
