@@ -24,26 +24,28 @@
                   Medium="GridItemColumn.Six">
             <Checkbox @bind-Value="maximum"
                       Dense="maximum"
-                      Label="Maximum" />
+                      Label="Maximum"
+                      OnChange="OnMaximumChange" />
             @if (maximum)
             {
                 <Spacer />
                 <Input Type="InputType.Number"
-                       Value="@(Model.GetValue<int>("Maximum"))"
-                       ValueChanged="@((int value) => Model.SetValue<int>("Maximum", value))" />
+                       Value="@(Model.GetValue<Decimal>("Maximum"))"
+                       ValueChanged="@((Decimal value) => Model.SetValue<Decimal>("Maximum", value))" />
             }
         </GridItem>
         <GridItem Small="GridItemColumn.Twelve"
                   Medium="GridItemColumn.Six">
             <Checkbox @bind-Value="minimum"
                       Dense="minimum"
-                      Label="Minimum" />
+                      Label="Minimum"
+                      OnChange="OnMinimumChange" />
             @if (minimum)
             {
                 <Spacer />
                 <Input Type="InputType.Number"
-                       Value="@(Model.GetValue<int>("Minimum"))"
-                       ValueChanged="@((int value) => Model.SetValue<int>("Minimum", value))" />
+                       Value="@(Model.GetValue<Decimal>("Minimum"))"
+                       ValueChanged="@((Decimal value) => Model.SetValue<Decimal>("Minimum", value))" />
             }
         </GridItem>
     }
@@ -82,4 +84,22 @@
 
     bool maximum;
     bool minimum;
+
+    void OnMaximumChange(bool value)
+    {
+        if (value) return;
+        Model?.Metadata?.Remove("Maximum");
+    }
+
+    void OnMinimumChange(bool value)
+    {
+        if (value) return;
+        Model?.Metadata?.Remove("Minimum");
+    }
+
+    protected override void OnParametersSet()
+    {
+        maximum = Model?.Metadata?.ContainsKey("Maximum") ?? false;
+        minimum = Model?.Metadata?.ContainsKey("Minimum") ?? false;
+    }
 }

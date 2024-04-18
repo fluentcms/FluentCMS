@@ -1,5 +1,4 @@
-﻿@using FluentCMS.Web.Api.ValueConverters
-<Page>
+﻿<Page>
     <PageHeader HasBack="true"
                 Title="Update ContentType">
     </PageHeader>
@@ -50,7 +49,7 @@
                                                     @field.Title
                                                 </TableCell>
                                                 <TableCell>
-                                                    Text
+                                                    @field.FieldType
                                                 </TableCell>
                                                 <TableCell>
                                                     <ButtonGroup>
@@ -176,19 +175,7 @@
 
     async Task OnEditField(ContentTypeFieldResponse field)
     {
-        FieldModel = new ContentTypeFieldResponse
-            {
-                DefaultValue = field.DefaultValue.MapValue(),
-                FieldType = field.FieldType,
-                Description = field.Description,
-                Hint = field.Hint,
-                IsRequired = field.IsRequired,
-                Label = field.Label,
-                Placeholder = field.Placeholder,
-                Slug = field.Slug,
-                Title = field.Title,
-                Metadata = field.Metadata?.Select(x => new KeyValuePair<string, object>(x.Key, x.Value.MapValue())).ToDictionary()
-            };
+        FieldModel = field;
         FieldModalOpen = true;
     }
 

@@ -9,8 +9,8 @@
               Medium="GridItemColumn.Six">
         <Select Label="Type"
                 Placeholder="Choose Text type..."
-                Value="@(Model.GetValue<int>("Type"))"
-                ValueChanged="@((int value) => Model.SetValue<int>("Type", value))">
+                Value="@(Model.GetValue<Decimal>("Type"))"
+                ValueChanged="@((Decimal value) => Model.SetValue<Decimal>("Type", value))">
             <Option Value="0">
                 Short text
             </Option>

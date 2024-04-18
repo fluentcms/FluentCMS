@@ -1,3 +1,5 @@
+@using FluentCMS.Web.Api.ValueConverters
+
 @namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields
 
 <Modal Open="Open"
@@ -36,26 +38,28 @@
             {
                 <ModalBody>
                     <CascadingValue Value="Model">
-                        <Tabs @bind-Value="tab">
-                            <TabsList>
-                                <TabsTab id="contentTypeFieldModalBasicTab"
-                                         Name="tab-basic">
-                                    Basic
-                                </TabsTab>
-                                <TabsTab id="contentTypeFieldModalAdvancedTab"
-                                         Name="tab-advanced">
-                                    Advanced
-                                </TabsTab>
-                            </TabsList>
-                            <TabsPanels>
-                                <TabsPanel Name="tab-basic">
-                                    <DynamicComponent Type="type.BasicSettings"></DynamicComponent>
-                                </TabsPanel>
-                                <TabsPanel Name="tab-advanced">
-                                    <DynamicComponent Type="type.AdvancedSettings"></DynamicComponent>
-                                </TabsPanel>
-                            </TabsPanels>
-                        </Tabs>
+                        <CascadingValue Value="editing" Name="EditingMode">
+                            <Tabs @bind-Value="tab">
+                                <TabsList>
+                                    <TabsTab id="contentTypeFieldModalBasicTab"
+                                             Name="tab-basic">
+                                        Basic
+                                    </TabsTab>
+                                    <TabsTab id="contentTypeFieldModalAdvancedTab"
+                                             Name="tab-advanced">
+                                        Advanced
+                                    </TabsTab>
+                                </TabsList>
+                                <TabsPanels>
+                                    <TabsPanel Name="tab-basic">
+                                        <DynamicComponent Type="type.BasicSettings"></DynamicComponent>
+                                    </TabsPanel>
+                                    <TabsPanel Name="tab-advanced">
+                                        <DynamicComponent Type="type.AdvancedSettings"></DynamicComponent>
+                                    </TabsPanel>
+                                </TabsPanels>
+                            </Tabs>
+                        </CascadingValue>
                     </CascadingValue>
                 </ModalBody>
                 <ModalFooter>
@@ -140,18 +144,41 @@
 
         tab = "tab-basic";
 
-        type = editing ? ContentTypeFieldExplorer.Load().First() : null;
+        type = editing ? ContentTypeFieldExplorer.Load().FirstOrDefault(x => x.Key == Model.FieldType) : null;
 
-        Model ??= new()
-            {
-                DefaultValue = null,
-                Description = "",
-                Hint = "",
-                IsRequired = false,
-                Label = "",
-                Placeholder = "",
-                Slug = "",
-                Title = ""
-            };
+        if (editing)
+        {
+            Model = new ContentTypeFieldResponse
+                {
+                    Slug = Model.Slug,
+                    Title = Model.Title,
+                    Description = Model.Description,
+                    Label = Model.Label,
+                    Placeholder = Model.Placeholder,
+                    Hint = Model.Hint,
+                    DefaultValue = Model.DefaultValue.MapValue(),
+                    IsRequired = Model.IsRequired,
+                    IsPrivate = Model.IsPrivate,
+                    FieldType = Model.FieldType,
+                    Metadata = Model.Metadata?.Select(x => new KeyValuePair<string, object>(x.Key, x.Value.MapValue())).ToDictionary(),
+                };
+        }
+        else
+        {
+            Model ??= new()
+                {
+                    Slug = "",
+                    Title = "",
+                    Description = "",
+                    Label = "",
+                    Placeholder = "",
+                    Hint = "",
+                    DefaultValue = null,
+                    IsRequired = false,
+                    IsPrivate = false,
+                    FieldType = "",
+                    Metadata = null,
+                };
+        }
     }
 }

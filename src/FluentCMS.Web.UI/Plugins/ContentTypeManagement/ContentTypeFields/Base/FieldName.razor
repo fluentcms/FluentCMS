@@ -2,6 +2,7 @@
 
 <Input @bind-Value="Model.Slug"
        autofocus="true"
+       Disabled="editing"
        Id="contentTypeFieldModalSlugInput"
        Label="Slug"
        Name="Slug"
@@ -9,6 +10,9 @@
        Required="true" />
 
 @code {
+    [CascadingParameter(Name = "EditingMode")]
+    public bool editing { get; set; }
+ 
     [CascadingParameter]
     public ContentTypeFieldResponse Model { get; set; }
 }

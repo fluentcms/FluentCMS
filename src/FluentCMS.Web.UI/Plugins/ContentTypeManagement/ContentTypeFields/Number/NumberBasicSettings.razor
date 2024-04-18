@@ -9,8 +9,8 @@
               Medium="GridItemColumn.Six">
         <Select Label="Number format"
                 Placeholder="Choose Number type..."
-                Value="@(Model.GetValue<int>("Format"))"
-                ValueChanged="@((int value) => Model.SetValue<int>("Format", value))">
+                Value="@(Model.GetValue<Decimal>("Format"))"
+                ValueChanged="@((Decimal value) => Model.SetValue<Decimal>("Format", value))">
             <Option Value="0">
                 integer (ex: 10)
             </Option>
