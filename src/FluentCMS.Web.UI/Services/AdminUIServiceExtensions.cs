@@ -9,6 +9,7 @@ public static class AdminUIServiceExtensions
     public static IServiceCollection AddAdminUIServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddLocalStorage();
+        services.AddCookies();
         services.AddApiClients(configuration);
         services.AddScoped<SetupManager>();
         services.AddErrorMessageFactory();
