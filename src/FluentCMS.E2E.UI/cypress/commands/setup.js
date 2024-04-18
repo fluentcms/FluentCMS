@@ -12,6 +12,9 @@ Cypress.Commands.add('doSetup', (username, email, password) => {
     password ??= config.setupPassword
 
     cy.visit('/').waitForNavigate()
+
+    cy.clearAllLocalStorage();
+    cy.waitForNavigate();
     
     cy.get('body').then($body => {
         if($body[0].querySelector('#setupUsernameInput')) {

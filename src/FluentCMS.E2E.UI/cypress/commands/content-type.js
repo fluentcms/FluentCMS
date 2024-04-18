@@ -138,7 +138,7 @@ Cypress.Commands.add('contentTypeDeleteCancel', (contentTypeSlug) => {
     cy.contains('#contentTypeListTable tr', contentTypeSlug).then(($el) => {
         cy.wrap($el).deleteRow(false);
 
-        cy.shot('Content Type Delete')
+        cy.shot('Content Type Delete Cancel')
         cy.contains(contentTypeSlug).should('exist')
     })
 })
