@@ -40,7 +40,7 @@ public class SetupManager
 
         var response = await _setupClient.StartAsync(request);
 
-        await _authStateProvider.LoginAsync(new UserLoginRequest()
+        await _authStateProvider.Login(new UserLoginRequest()
         {
             Username = request.Username,
             Password = request.Password,

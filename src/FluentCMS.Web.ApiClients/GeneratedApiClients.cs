@@ -7807,6 +7807,12 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("token")]
         public string? Token { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("userName")]
+        public string? UserName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("email")]
+        public string? Email { get; set; } = default!;
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]

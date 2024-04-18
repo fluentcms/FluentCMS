@@ -63,17 +63,6 @@
             ]
         },
         {
-            "Name": "Logout",
-            "Description": "Logout Plugin",
-            "Types": [
-                {
-                    "Name": "Logout",
-                    "Type": "LogoutViewPlugin",
-                    "IsDefault": true
-                }
-            ]
-        },
-        {
             "Name": "Home",
             "Description": "Home Plugin",
             "Types": [
@@ -375,17 +364,6 @@
                     "Plugins": [
                         {
                             "Definition": "Profile",
-                            "Section": "Main"
-                        }
-                    ]
-                },
-                {
-                    "Title": "Logout",
-                    "Path": "/logout",
-                    "Layout": "AuthLayout",
-                    "Plugins": [
-                        {
-                            "Definition": "Logout",
                             "Section": "Main"
                         }
                     ]

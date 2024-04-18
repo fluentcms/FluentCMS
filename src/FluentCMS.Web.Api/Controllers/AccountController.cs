@@ -26,7 +26,9 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
         {
             Token = userToken.AccessToken,
             RoleIds = user.RoleIds,
-            UserId = user.Id
+            UserId = user.Id,
+            UserName = user.UserName ?? string.Empty,
+            Email = user.Email ?? string.Empty
         });
     }
 
