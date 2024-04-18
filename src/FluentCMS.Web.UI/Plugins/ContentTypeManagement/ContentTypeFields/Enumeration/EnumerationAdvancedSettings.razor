@@ -30,9 +30,11 @@
 
     protected override void OnParametersSet()
     {
-        if (Model.GetValue<string>("Values") != null)
+        var values = Model?.GetValue<string?>("Values");
+
+        if (!string.IsNullOrEmpty(values))
         {
-            Options = Model.GetValue<string>("Values").Split('\n').ToList();
+            Options = values.Split('\n').ToList();
         }
     }
 }

@@ -19,6 +19,9 @@
                        Unique="false" />
 
 @code {
+    [CascadingParameter(Name = "EditingMode")]
+    public bool editing { get; set; }
+
     [CascadingParameter]
     public ContentTypeFieldResponse Model { get; set; }
 
@@ -48,6 +51,8 @@
 
     protected override void OnInitialized()
     {
+        if (editing) return;
+
         Model.SetValue<List<string>>("Accept", options.Select((option) => option.Id).ToList());
     }
 }
