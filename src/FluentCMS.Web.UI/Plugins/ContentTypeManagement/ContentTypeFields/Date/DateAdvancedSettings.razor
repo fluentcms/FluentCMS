@@ -8,7 +8,7 @@
                Name="DefaultValue"
                Placeholder="Enter Default Value..."
                Type="InputType.DatetimeLocal"
-               Value="@((DateTime?)Model.DefaultValue)"
+               Value="@(ParseDate(Model.DefaultValue))"
                ValueChanged="@((DateTime? value) => Model.DefaultValue = value)" />
     </GridItem>
 </Grid>
@@ -19,4 +19,11 @@
 @code {
     [CascadingParameter]
     public ContentTypeFieldResponse Model { get; set; }
+
+    private DateTime? ParseDate(object obj)
+    {
+        if (obj is DateTime) return (DateTime)obj;
+        if (obj is string) return DateTime.Parse((string)obj);
+        return null;
+    }
 }
