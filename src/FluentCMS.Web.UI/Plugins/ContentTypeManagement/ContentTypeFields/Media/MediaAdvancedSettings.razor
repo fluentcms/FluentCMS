@@ -7,10 +7,9 @@
         <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
             Select allowed types of media
         </label>
-        <Autocomplete Options="options"
-                      Multiple="true"
-                      Value="@(Model.GetValue<List<string>>("Accept") ?? new())"
-                      ValueChanged="@((List<string> value) => Model.SetValue<List<string>>("Accept", value))" />
+        <Autocomplete @bind-Value="accept"
+                      Options="options"
+                      Multiple="true" />
         <Spacer />
     </GridItem>
 </Grid>
@@ -20,10 +19,22 @@
 
 @code {
     [CascadingParameter(Name = "EditingMode")]
-    public bool editing { get; set; }
+    public bool Eediting { get; set; }
 
     [CascadingParameter]
     public ContentTypeFieldResponse Model { get; set; }
+
+    List<string> accept
+    {
+        get
+        {
+            return Model.GetValue<List<string>>("Accept") ?? new();
+        }
+        set
+        {
+            Model.SetValue<List<string>>("Accept", value);
+        }
+    }
 
     List<AutocompleteOptions> options = new()
     {
@@ -51,7 +62,7 @@
 
     protected override void OnInitialized()
     {
-        if (editing) return;
+        if (Eediting) return;
 
         Model.SetValue<List<string>>("Accept", options.Select((option) => option.Id).ToList());
     }

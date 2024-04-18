@@ -3,13 +3,12 @@
 <Grid GutterX="GridGutter.Large">
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Input Id="contentTypeFieldModalDefaultValueInput"
+        <Input @bind-Value="value"
+               Id="contentTypeFieldModalDefaultValueInput"
                Label="Default Value"
                Name="DefaultValue"
                Placeholder="Enter Default Value..."
-               Type="InputType.Number"
-               Value="@((Decimal?)Model.DefaultValue)"
-               ValueChanged="@((Decimal? value) => Model.DefaultValue = value)" />
+               Type="InputType.Number" />
     </GridItem>
 </Grid>
 
@@ -18,4 +17,16 @@
 @code {
     [CascadingParameter]
     public ContentTypeFieldResponse Model { get; set; }
+
+    Decimal? value
+    {
+        get
+        {
+            return (Decimal?)Model.DefaultValue;
+        }
+        set
+        {
+            Model.DefaultValue = value;
+        }
+    }
 }

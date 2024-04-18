@@ -11,10 +11,9 @@
     </GridItem>
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Textarea Label="Values (one line per value)"
-                  Placeholder="@("Ex:\nmorning\nmoon\nevening")"
-                  Value="@(Model.GetValue<string>("Values"))"
-                  ValueChanged="@((string value) => Model.SetValue<string>("Values", value))" />
+        <Textarea @bind-Value="values"
+                  Label="Values (one line per value)"
+                  Placeholder="@("Ex:\nmorning\nmoon\nevening")" />
     </GridItem>
 </Grid>
 
@@ -22,4 +21,16 @@
 @code {
     [CascadingParameter]
     public ContentTypeFieldResponse Model { get; set; }
+
+    string? values
+    {
+        get
+        {
+            return Model.GetValue<string?>("Values");
+        }
+        set
+        {
+            Model.SetValue("Values", value);
+        }
+    }
 }

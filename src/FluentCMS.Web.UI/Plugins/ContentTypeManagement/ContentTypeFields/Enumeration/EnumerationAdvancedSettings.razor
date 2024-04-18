@@ -3,12 +3,11 @@
 <Grid GutterX="GridGutter.Large">
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Select Id="contentTypeFieldModalDefaultValueInput"
+        <Select @bind-Value="value"
+                Id="contentTypeFieldModalDefaultValueInput"
                 Label="Default Value"
                 Name="DefaultValue"
-                Placeholder="Choose Default Value..."
-                Value="@((string?)Model.DefaultValue)"
-                ValueChanged="@((string? value) => Model.DefaultValue = value)">
+                Placeholder="Choose Default Value...">
             @foreach (var option in Options)
             {
                 <Option Value="option">@option</Option>
@@ -26,15 +25,27 @@
     [CascadingParameter]
     public ContentTypeFieldResponse Model { get; set; }
 
-    List<string> Options = [];
-
-    protected override void OnParametersSet()
+    List<string> Options
     {
-        var values = Model?.GetValue<string?>("Values");
-
-        if (!string.IsNullOrEmpty(values))
+        get
         {
-            Options = values.Split('\n').ToList();
+            var values = Model?.GetValue<string?>("Values");
+
+            if (string.IsNullOrEmpty(values)) return new();
+
+            return values.Split('\n').ToList();
+        }
+    }
+
+    string? value
+    {
+        get
+        {
+            return (string?)Model.DefaultValue;
+        }
+        set
+        {
+            Model.DefaultValue = value;
         }
     }
 }

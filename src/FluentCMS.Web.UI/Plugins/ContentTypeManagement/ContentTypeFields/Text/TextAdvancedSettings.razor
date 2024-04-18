@@ -3,19 +3,17 @@
 <Grid GutterX="GridGutter.Large">
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Input Id="contentTypeFieldModalDefaultValueInput"
+        <Input @bind-Value="value"
+               Id="contentTypeFieldModalDefaultValueInput"
                Label="Default Value"
                Name="DefaultValue"
-               Placeholder="Enter Default Value..."
-               Value="@((string?)Model.DefaultValue)"
-               ValueChanged="@((string? value) => Model.DefaultValue = value)" />
+               Placeholder="Enter Default Value..." />
     </GridItem>
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Input Hint="The text of the regular expression"
-               Label="RegExp pattern"
-               Value="@(Model.GetValue<string>("Pattern"))"
-               ValueChanged="@((string value) => Model.SetValue<string>("Pattern", value))" />
+        <Input @bind-Value="pattern"
+               Hint="The text of the regular expression"
+               Label="RegExp pattern" />
     </GridItem>
 </Grid>
 
@@ -24,4 +22,28 @@
 @code {
     [CascadingParameter]
     public ContentTypeFieldResponse Model { get; set; }
+
+    string? value
+    {
+        get
+        {
+            return (string?)Model.DefaultValue;
+        }
+        set
+        {
+            Model.DefaultValue = value;
+        }
+    }
+
+    string? pattern
+    {
+        get
+        {
+            return Model.GetValue<string>("Pattern");
+        }
+        set
+        {
+            Model.SetValue("Pattern", value);
+        }
+    }
 }

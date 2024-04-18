@@ -7,9 +7,8 @@
     </GridItem>
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Select Label="Type"
-                Value="@(Model.GetValue<Decimal>("Type"))"
-                ValueChanged="@((Decimal value) => Model.SetValue<Decimal>("Type", value))">
+        <Select @bind-Value="type"
+                Label="Type">
             <Option Value="0">
                 Single
             </Option>
@@ -23,4 +22,16 @@
 @code {
     [CascadingParameter]
     public ContentTypeFieldResponse Model { get; set; }
+
+    Decimal type
+    {
+        get
+        {
+            return Model.GetValue<Decimal>("Type");
+        }
+        set
+        {
+            Model.SetValue("Type", value);
+        }
+    }
 }

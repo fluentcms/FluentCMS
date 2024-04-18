@@ -3,10 +3,9 @@
 <Grid GutterX="GridGutter.Large">
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Select Label="Default Value"
-                Name="DefaultValue"
-                Value="@((Decimal?)Model.DefaultValue)"
-                ValueChanged="@((Decimal? value) => Model.DefaultValue = value)">
+        <Select @bind-Value="value"
+                Label="Default Value"
+                Name="DefaultValue">
             <Option Value="0">
                 null
             </Option>
@@ -26,4 +25,16 @@
 @code {
     [CascadingParameter]
     public ContentTypeFieldResponse Model { get; set; }
+
+    Decimal? value
+    {
+        get
+        {
+            return (Decimal?)Model.DefaultValue;
+        }
+        set
+        {
+            Model.DefaultValue = value;
+        }
+    }
 }

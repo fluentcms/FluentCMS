@@ -3,13 +3,12 @@
 <Grid GutterX="GridGutter.Large">
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Input Id="contentTypeFieldModalDefaultValueInput"
+        <Input @bind-Value="value"
+               Id="contentTypeFieldModalDefaultValueInput"
                Label="Default Value"
                Name="DefaultValue"
                Placeholder="Enter Default Value..."
-               Type="InputType.Email"
-               Value="@((string?)Model.DefaultValue)"
-               ValueChanged="@((string? value) => Model.DefaultValue = value)" />
+               Type="InputType.Email" />
 
     </GridItem>
 </Grid>
@@ -19,4 +18,16 @@
 @code {
     [CascadingParameter]
     public ContentTypeFieldResponse Model { get; set; }
+
+    string? value
+    {
+        get
+        {
+            return (string?)Model.DefaultValue;
+        }
+        set
+        {
+            Model.DefaultValue = value;
+        }
+    }
 }
