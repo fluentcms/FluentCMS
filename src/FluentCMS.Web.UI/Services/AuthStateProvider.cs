@@ -1,8 +1,8 @@
 ﻿using FluentCMS.Web.UI.Services.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
-using System.Text;
 using System.Text.Json;
+using System.Web;
 
 namespace FluentCMS.Web.UI.Services;
 
@@ -25,9 +25,8 @@ public class AuthStateProvider(ICookieService cookieService, AccountClient accou
         if (result.Errors!.Count == 0 && result.Data != null)
         {
             var jsonData = JsonSerializer.Serialize(result.Data);
-            var base64Data = Convert.ToBase64String(Encoding.UTF8.GetBytes(jsonData));
 
-            await cookieService.SetAsync(nameof(UserLoginResponse), base64Data, null);
+            await cookieService.SetAsync(nameof(UserLoginResponse), HttpUtility.UrlEncode(jsonData), null);
 
             var authState = new AuthenticationState(GetClaimsPrincipal(result.Data));
 
@@ -69,7 +68,7 @@ public class AuthStateProvider(ICookieService cookieService, AccountClient accou
             return null;
         try
         {
-            var jsonData = Encoding.UTF8.GetString(Convert.FromBase64String(cookie.Value));
+            var jsonData = HttpUtility.UrlDecode(cookie.Value);
 
             var loginResponse = JsonSerializer.Deserialize<UserLoginResponse>(jsonData);
 

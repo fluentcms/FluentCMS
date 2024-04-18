@@ -1,9 +1,8 @@
 ﻿using FluentCMS.Web.UI.Services.Cookies;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json;
+using System.Web;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -57,7 +56,7 @@ public class HttpClientHeaderHandler(ICookieService cookieService) : DelegatingH
 
         if (cookie != null && !string.IsNullOrEmpty(cookie.Value))
         {
-            var jsonData = Encoding.UTF8.GetString(Convert.FromBase64String(cookie.Value));
+            var jsonData = HttpUtility.UrlDecode(cookie.Value);
 
             var loginResponse = JsonSerializer.Deserialize<UserLoginResponse>(jsonData);
             if (loginResponse != null)
