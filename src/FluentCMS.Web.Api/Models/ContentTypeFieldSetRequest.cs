@@ -15,5 +15,5 @@ public class ContentTypeFieldSetRequest
     public bool IsPrivate { get; set; }
     public string FieldType { get; set; }
 
-    public IDictionary<string, object?> Metadata { get; set; } = new Dictionary<string, object?>();
+    public IDictionary<string, object?>? Metadata { get; set; } = new Dictionary<string, object?>();
 }
