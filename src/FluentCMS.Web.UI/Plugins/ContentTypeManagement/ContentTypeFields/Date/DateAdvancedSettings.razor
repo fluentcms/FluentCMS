@@ -3,13 +3,12 @@
 <Grid GutterX="GridGutter.Large">
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
-        <Input Id="contentTypeFieldModalDefaultValueInput"
+        <Input @bind-Value="value"
+               Id="contentTypeFieldModalDefaultValueInput"
                Label="Default Value"
                Name="DefaultValue"
                Placeholder="Enter Default Value..."
-               Type="InputType.DatetimeLocal"
-               Value="@(ParseDate(Model.DefaultValue))"
-               ValueChanged="@((DateTime? value) => Model.DefaultValue = value)" />
+               Type="type" />
     </GridItem>
 </Grid>
 
@@ -20,10 +19,59 @@
     [CascadingParameter]
     public ContentTypeFieldResponse Model { get; set; }
 
-    private DateTime? ParseDate(object obj)
+    string? value
     {
-        if (obj is DateTime) return (DateTime)obj;
-        if (obj is string) return DateTime.Parse((string)obj);
-        return null;
+        get
+        {
+            if (Model.DefaultValue == null) return null;
+
+            if (Model.DefaultValue is string) return (string)Model.DefaultValue;
+
+            switch (type)
+            {
+                case InputType.Date:
+                    return ((DateOnly)Model.DefaultValue).ToString("yyyy-MM-dd");
+                case InputType.DatetimeLocal:
+                    return ((DateTime)Model.DefaultValue).ToString("yyyy-MM-ddTHH:mm:ss");
+                case InputType.Time:
+                    return ((TimeOnly)Model.DefaultValue).ToString("HH:mm:ss");
+            }
+
+            return null;
+        }
+        set
+        {
+            Model.DefaultValue = null;
+
+            if (string.IsNullOrEmpty(value)) return;
+
+            switch (type)
+            {
+                case InputType.Date:
+                    Model.DefaultValue = DateOnly.Parse(value);
+                    break;
+                case InputType.DatetimeLocal:
+                    Model.DefaultValue = DateTime.Parse(value);
+                    break;
+                case InputType.Time:
+                    Model.DefaultValue = TimeOnly.Parse(value);
+                    break;
+            }
+        }
     }
+
+    InputType type
+    {
+        get
+        {
+            var type = Model.GetValue<Decimal>("Type");
+
+            if (type == 0) return InputType.Date;
+            if (type == 1) return InputType.DatetimeLocal;
+            if (type == 2) return InputType.Time;
+
+            return InputType.DatetimeLocal;
+        }
+    }
+
 }
