@@ -1,4 +1,5 @@
-﻿@if (!Initialized)
+﻿@using Microsoft.AspNetCore.Http
+@if (!Initialized)
 {
     <Form Model="@Model"
           OnSubmit="OnSubmit">
@@ -52,7 +53,8 @@ else
     [Inject]
     AuthStateProvider AuthStateProvider { get; set; } = default!;
 
-    [Inject] ICookieService CookieService { get; set; } = default!;
+    [CascadingParameter]
+    public HttpContext HttpContext { get; set; }
 
     bool Initialized { get; set; }
 
@@ -70,11 +72,10 @@ else
         Initialized = await SetupManager.IsInitialized();
         Model.AdminDomain = new Uri(NavigationManager.BaseUri).Authority;
 
-        var allCookies = await CookieService.GetAllAsync();
-
-        if (allCookies.Any(x => x.Key == nameof(UserLoginResponse)))
+        // if is prerendering and Previous cookie exists, clean up & refresh
+        if (HttpContext != null && HttpContext.Request.Cookies.Any(x => x.Key == nameof(UserLoginResponse)))
         {
-            await CookieService.RemoveAsync(nameof(UserLoginResponse));
+            HttpContext.Response.Cookies.Delete(nameof(UserLoginResponse));
             NavigationManager.Refresh(true);
         }
     }

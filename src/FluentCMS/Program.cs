@@ -1,12 +1,8 @@
-using BitzArt.Blazor.Cookies;
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddConfig(builder.Environment);
 
 builder.Services.AddFluentCmsUiComponents();
-
-builder.AddBlazorCookies();
 
 #region Services
 

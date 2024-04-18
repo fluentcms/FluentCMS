@@ -1,12 +1,10 @@
-﻿using BitzArt.Blazor.Cookies;
-using Microsoft.AspNetCore.Components;
+﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.JSInterop;
 using System.Security.Claims;
-using System.Text.Json;
-using System.Web;
 
 namespace FluentCMS.Web.UI.Services;
-public class AuthStateProvider(NavigationManager navigationManager, ICookieService cookieService, UserClient userClient, AccountClient accountClient) : AuthenticationStateProvider
+public class AuthStateProvider(NavigationManager navigationManager, IJSRuntime jsRuntime, UserClient userClient, AccountClient accountClient) : AuthenticationStateProvider
 {
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
@@ -32,14 +30,12 @@ public class AuthStateProvider(NavigationManager navigationManager, ICookieServi
 
     private async Task<UserDetailResponseIApiResult?> FetchUserDetail()
     {
-        var cookie = await cookieService.GetAsync(nameof(UserLoginResponse));
+        var cookie = await jsRuntime.GetCookieAsync<UserLoginResponse>();
         if (cookie is null)
         {
             return null;
         }
-
-        var loginResponse = JsonSerializer.Deserialize<UserLoginResponse>(HttpUtility.UrlDecode(cookie.Value));
-        var user = await userClient.GetAsync(loginResponse.UserId);
+        var user = await userClient.GetAsync(cookie.UserId);
         return user;
     }
 
@@ -49,14 +45,14 @@ public class AuthStateProvider(NavigationManager navigationManager, ICookieServi
 
         if (result.Errors!.Count == 0)
         {
-            await cookieService.SetAsync(nameof(UserLoginResponse), HttpUtility.UrlEncode(JsonSerializer.Serialize(result.Data)), null);
+            await jsRuntime.SetCookieAsJsonAsync(result.Data, null);
         }
         return result;
     }
 
     public async Task LogoutAsync()
     {
-        await cookieService.RemoveAsync(nameof(UserLoginResponse));
+        await jsRuntime.RemoveCookieAsync<UserLoginResponse>();
     }
 
     private ClaimsPrincipal GetClaimsPrincipal(UserDetailResponse userData)
