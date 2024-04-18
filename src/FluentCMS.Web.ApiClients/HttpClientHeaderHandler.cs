@@ -16,7 +16,7 @@ public class HttpClientHeaderHandler(IServiceProvider serviceProvider) : Delegat
     {
         var contextAccessor = serviceProvider.GetRequiredService<IHttpContextAccessor>();
         // if httpContext is available, and we have a valid auth cookie
-        if (contextAccessor.HttpContext is var httpContext is { } && httpContext.Request.Cookies.TryGetValue(nameof(UserLoginResponse), out var authCookie) && !string.IsNullOrEmpty(authCookie) && HttpUtility.HtmlDecode(authCookie) is var decodedAuthCookieJson && JsonSerializer.Deserialize<UserLoginResponse>(decodedAuthCookieJson) is var userLoginResponse)
+        if (contextAccessor.HttpContext is var httpContext && httpContext != null && httpContext.Request.TryGetJsonCookie<UserLoginResponse>(nameof(UserLoginResponse), out var userLoginResponse))
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", userLoginResponse.Token);
         }

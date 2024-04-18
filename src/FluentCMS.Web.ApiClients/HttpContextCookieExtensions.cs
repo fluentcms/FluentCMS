@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
-using System.Threading.Tasks;
+﻿using System.Text.Json;
 using System.Web;
 using Microsoft.AspNetCore.Http;
 
-namespace FluentCMS.Web.UI.Services;
+namespace FluentCMS.Web.ApiClients;
 public static class HttpContextCookieExtensions
 {
     private static string SerializeToJson<T>(this T obj)
@@ -48,7 +43,7 @@ public static class HttpContextCookieExtensions
         return false;
     }
 
-    public static bool TryGetJsonCookie<T>(this HttpRequest? httpRequest, string key, out T? obj)
+    public static bool TryGetJsonCookie<T>(this HttpRequest httpRequest, string key, out T? obj)
     {
         if (httpRequest.Cookies.Keys.Any(x => x == key))
         {
