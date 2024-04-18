@@ -33,13 +33,13 @@ public static class JsRuntimeCookieExtensions
     }
     public static async Task<T?> GetCookieAsync<T>(this IJSRuntime jsRuntime, string key)
     {
-        return (await jsRuntime.GetAllCookiesAsync()).First(x => x.Key == key).Value.UrlDecode().DeserializeToJson<T>();
+        return (await jsRuntime.GetAllCookiesAsync()).First(x => x.Key == key).Value.UrlDecode().DeserializeFromJson<T>();
     }
 
     public static async Task<T?> GetCookieAsync<T>(this IJSRuntime jsRuntime)
     {
         var key = typeof(T).Name;
-        return (await jsRuntime.GetAllCookiesAsync()).First(x => x.Key == key).Value.UrlDecode().DeserializeToJson<T>();
+        return (await jsRuntime.GetAllCookiesAsync()).First(x => x.Key == key).Value.UrlDecode().DeserializeFromJson<T>();
     }
 
     public static async Task RemoveCookieAsync(this IJSRuntime jsRuntime, string key)

@@ -11,7 +11,7 @@ public static class HttpContextCookieExtensions
     }
     public static T? GetCookieAsJson<T>(this HttpContext httpContext, string key)
     {
-        return httpContext.Request.Cookies[key]!.UrlDecode().DeserializeToJson<T>();
+        return httpContext.Request.Cookies[key]!.UrlDecode().DeserializeFromJson<T>();
     }
 
     public static bool TrySetCookieAsJson<T>(this HttpContext? httpContext, string key, T obj)
