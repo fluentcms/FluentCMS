@@ -49,6 +49,11 @@ else
     [Inject]
     NavigationManager NavigationManager { get; set; } = default!;
 
+    [Inject]
+    AuthStateProvider AuthStateProvider { get; set; } = default!;
+
+    [Inject] ICookieService CookieService { get; set; } = default!;
+
     bool Initialized { get; set; }
 
     SetupRequest Model { get; set; } = new SetupRequest
@@ -64,6 +69,14 @@ else
     {
         Initialized = await SetupManager.IsInitialized();
         Model.AdminDomain = new Uri(NavigationManager.BaseUri).Authority;
+
+        var allCookies = await CookieService.GetAllAsync();
+
+        if (allCookies.Any(x => x.Key == nameof(UserLoginResponse)))
+        {
+            await CookieService.RemoveAsync(nameof(UserLoginResponse));
+            NavigationManager.Refresh(true);
+        }
     }
 
     private async Task OnSubmit()

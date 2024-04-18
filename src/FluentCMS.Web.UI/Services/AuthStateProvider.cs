@@ -15,17 +15,17 @@ public class AuthStateProvider(NavigationManager navigationManager, ICookieServi
             var user = await FetchUserDetail();
             if (user == null)
             {
-                return NotAuthorized(); // not authorized
+                return Anonymous();
             }
             return new AuthenticationState(GetClaimsPrincipal(user.Data));
         }
         catch (Exception e)
         {
-            return NotAuthorized(); // not authorized
+            return Anonymous();
         }
     }
 
-    private static AuthenticationState NotAuthorized()
+    private static AuthenticationState Anonymous()
     {
         return new AuthenticationState(new ClaimsPrincipal());
     }
@@ -50,15 +50,13 @@ public class AuthStateProvider(NavigationManager navigationManager, ICookieServi
         if (result.Errors!.Count == 0)
         {
             await cookieService.SetAsync(nameof(UserLoginResponse), HttpUtility.UrlEncode(JsonSerializer.Serialize(result.Data)), null);
-            //navigationManager.Refresh(true);
         }
         return result;
     }
 
-    public async Task Logout()
+    public async Task LogoutAsync()
     {
         await cookieService.RemoveAsync(nameof(UserLoginResponse));
-        navigationManager.NavigateTo("/auth/login", forceLoad: true);
     }
 
     private ClaimsPrincipal GetClaimsPrincipal(UserDetailResponse userData)

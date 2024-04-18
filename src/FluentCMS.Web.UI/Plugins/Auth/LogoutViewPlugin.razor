@@ -6,10 +6,14 @@
 @code {
     [Inject]
     public AuthStateProvider AuthStateProvider { get; set; }
+
+    [Inject]
+    public NavigationManager NavigationManager { get; set; }
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        await AuthStateProvider.Logout();
+        await AuthStateProvider.LogoutAsync();
+        NavigationManager.NavigateTo("/auth/login", true);
     }
 }
 

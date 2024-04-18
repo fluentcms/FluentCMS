@@ -10,7 +10,7 @@ public static class ClientServiceExtensions
 {
     public static IServiceCollection AddApiClients(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddTransient<HttpClientHeaderHandler>();
+        services.AddScoped<HttpClientHeaderHandler>();
         services.AddHttpClient("FluentCMS.Web.Api", (sp, client) =>
         {
             client.BaseAddress = new Uri(configuration["urls"]);
