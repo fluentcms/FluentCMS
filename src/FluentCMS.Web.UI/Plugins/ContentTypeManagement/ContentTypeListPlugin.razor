@@ -38,13 +38,17 @@
                                 </TableCell>
                                 <TableCell>
                                     <ButtonGroup>
-                                        <Button data-test="preview-btn"
-                                                Ghost="true"
-                                                Href="@NavigationManager.Plugin("ContentType Management", "ContentType Detail", new { id = contentType.Id })"
-                                                Size="ButtonSize.Small">
-                                            <Icon Name="IconName.Eye" />
-                                        </Button>
-                                        <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
+                                        @* TODO: Enable Preview after detail page updated *@
+                                        @if(false)
+                                        {
+                                            <Button data-test="preview-btn"
+                                                    Ghost="true"
+                                                    Href="@NavigationManager.Plugin("ContentType Management", "ContentType Detail", new { id = contentType.Id })"
+                                                    Size="ButtonSize.Small">
+                                                <Icon Name="IconName.Eye" />
+                                            </Button>
+                                            <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
+                                        }
 
                                         <Button data-test="edit-btn"
                                                 Ghost="true"  
