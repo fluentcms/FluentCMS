@@ -10,22 +10,14 @@
             <PageBody>
                 <Card>
                     <EmptyTable Message="There is no Content-Type yet!">
-                        @* TODO: href should be dynamic *@
+                        @* TODO: Should not throw error from Section.razor component *@
                         <Button autofocus="true"
                                 Color="Color.Primary"
                                 Href="@NavigationManager.Plugin("ContentType Management", "Create ContentType")"
                                 id="contentCreateButton"
                                 Size="ButtonSize.Small">
                             <Icon Name="IconName.Plus" />
-                            Add Content Type
-                        </Button>
-                        <Button autofocus="true"
-                                Color="Color.Primary"
-                                Href="/admin/content-types?TypeName=Create ContentType"
-                                id="contentCreateButton"
-                                Size="ButtonSize.Small">
-                            <Icon Name="IconName.Plus" />
-                            Add Content Type
+                            Add New Content Type
                         </Button>
                     </EmptyTable>
                 </Card>
