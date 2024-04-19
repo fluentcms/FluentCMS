@@ -5,24 +5,9 @@
     <SectionContent SectionName="sidebar" fluentcms>
         <AdminSidebar fluentcms />
     </SectionContent>
-    <SecondarySidebarWrapper fluentcms>
+    <SecondarySidebarWrapper Title="Settings" fluentcms>
         <Sidebar fluentcms-slot>
-            <SidebarItem fluentcms> Global Settings </SidebarItem>
-            <SidebarItem Href="/admin/settings"
-                            id="settingsSidebarGeneralLink"
-                            fluentcms>
-                General
-            </SidebarItem>
-            <SidebarItem Href="/admin/users"
-                            id="settingsSidebarUsersLink"
-                            fluentcms>
-                Users
-            </SidebarItem>
-            <SidebarItem Href="/admin/roles"
-                         id="settingsSidebarRolesLink"
-                         fluentcms>
-                Roles
-            </SidebarItem>
+            <SettingsSidebar fluentcms />
         </Sidebar>
 
         <ChildContent>

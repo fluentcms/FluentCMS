@@ -278,7 +278,7 @@
                 },
                 {
                     "Title": "Users",
-                    "Path": "/users",
+                    "Path": "/settings/users",
                     "Layout": "SettingsLayout",
                     "Plugins": [
                         {
@@ -310,7 +310,7 @@
                 },
                 {
                     "Title": "Roles",
-                    "Path": "/roles",
+                    "Path": "/settings/roles",
                     "Layout": "SettingsLayout",
                     "Plugins": [
                         {

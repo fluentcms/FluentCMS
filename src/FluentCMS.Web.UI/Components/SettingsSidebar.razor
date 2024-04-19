@@ -1,0 +1,41 @@
+@implements IDisposable
+
+<SidebarItem Active="@(Pathname == "/admin/settings")"
+             Href="/admin/settings"
+             id="settingsSidebarGeneralLink">
+    General
+</SidebarItem>
+<SidebarItem Active="@(Pathname == "/admin/settings/users")"
+             Href="/admin/settings/users"
+             id="settingsSidebarUsersLink">
+    Users
+</SidebarItem>
+<SidebarItem Active="@(Pathname == "/admin/settings/roles")"
+             Href="/admin/settings/roles"
+             id="settingsSidebarRolesLink">
+    Roles
+</SidebarItem>
+
+@code {
+    string Pathname {get; set;} = null;
+    
+    [Inject]
+    NavigationManager NavigationManager {get; set;} = default!;
+
+    void LocationChanged(object sender, LocationChangedEventArgs e)
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        Pathname = uri.AbsolutePath;
+        StateHasChanged();
+    }
+
+    void IDisposable.Dispose()
+    {
+        NavigationManager.LocationChanged -= LocationChanged;
+    }
+
+    protected override void OnInitialized() 
+    {
+        NavigationManager.LocationChanged += LocationChanged;
+    }
+}

@@ -1,26 +1,62 @@
 @inherits BaseComponent
 
-<Grid>
-    <GridItem HideSmall="true"
-              HideMedium="true"
-              Small="GridItemColumn.Auto">
-        <Sidebar Title="Collections"
-                 Secondary="true">
-            <ChildContent>
-                @foreach (var collection in Collections)
-                {
-                    <SidebarItem Href="@NavigationManager.Plugin("Content Management", "Content List", new { contentTypeSlug = collection.Slug })"
-                                 id="@($"contentSidebar{@collection.Slug}Link")">
-                        @collection.Title
-                    </SidebarItem>
-                }
-            </ChildContent>
-        </Sidebar>
-    </GridItem>
-    <GridItem Small="GridItemColumn.Grow">
-        @ChildContent
-    </GridItem>
-</Grid>
+@if(Loaded) {
+    @if(Collections.Count == 0)
+    {
+        <Page>
+            <PageHeader Title="Content Management (Draft)">
+
+            </PageHeader>
+            <PageBody>
+                <Card>
+                    <EmptyTable Message="There is no Content-Type yet!">
+                        @* TODO: href should be dynamic *@
+                        <Button autofocus="true"
+                                Color="Color.Primary"
+                                Href="@NavigationManager.Plugin("ContentType Management", "Create ContentType")"
+                                id="contentCreateButton"
+                                Size="ButtonSize.Small">
+                            <Icon Name="IconName.Plus" />
+                            Add Content Type
+                        </Button>
+                        <Button autofocus="true"
+                                Color="Color.Primary"
+                                Href="/admin/content-types?TypeName=Create ContentType"
+                                id="contentCreateButton"
+                                Size="ButtonSize.Small">
+                            <Icon Name="IconName.Plus" />
+                            Add Content Type
+                        </Button>
+                    </EmptyTable>
+                </Card>
+            </PageBody>
+        </Page>
+    } else {
+        <Grid>
+            <GridItem HideSmall="true"
+                    HideMedium="true"
+                    Small="GridItemColumn.Auto">
+                <Sidebar Title="Collections"
+                        Secondary="true">
+                    <ChildContent>
+                        @foreach (var collection in Collections)
+                        {
+                            <SidebarItem Active="@(currentContentTypeSlug == collection.Slug)" 
+                                         Href="@NavigationManager.Plugin("Content Management", "Content List", new { contentTypeSlug = collection.Slug })"
+                                         id="@($"contentSidebar{@collection.Slug}Link")">
+                                @collection.Title
+                            </SidebarItem>
+                        }
+                    </ChildContent>
+                </Sidebar>
+            </GridItem>
+            <GridItem Small="GridItemColumn.Grow">
+                @ChildContent
+            </GridItem>
+        </Grid>
+    }
+}
+
 
 @code {
     [Inject]
@@ -37,6 +73,23 @@
 
     List<ContentTypeDetailResponse> Collections { get; set; } = [];
 
+    bool Loaded {get; set;} = false;
+
+    string currentContentTypeSlug {get; set;}
+@* 
+    void LocationChanged(object sender, LocationChangedEventArgs e)
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        currentContentTypeSlug = uri.query["contentTypeSlug"];
+
+        StateHasChanged();
+    }
+
+    void IDisposable.Dispose()
+    {
+        NavigationManager.LocationChanged -= LocationChanged;
+    } *@
+
     async Task Load()
     {
         var response = await ContentTypeClient.GetAllAsync();
@@ -44,6 +97,14 @@
         if (response?.Data == null) return;
 
         Collections = response.Data.ToList();
+        Loaded = true;
+
+        currentContentTypeSlug = NavigationManager.GetStringFromQuery("contentTypeSlug");
+
+        if(string.IsNullOrEmpty(currentContentTypeSlug) && Collections.Count > 0) 
+        {
+            NavigationManager.NavigateTo(NavigationManager.Plugin("Content Management", "Content List", new { contentTypeSlug = Collections[0].Slug }));    
+        }
     }
 
     async Task OnChangeApp()
@@ -51,9 +112,10 @@
         await Load();
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnInitializedAsync()
     {
-        if (!firstRender) return;
+        @* NavigationManager.LocationChanged += LocationChanged; *@
+
         await Load();
         StateHasChanged();
     }

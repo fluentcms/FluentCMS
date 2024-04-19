@@ -10,6 +10,7 @@ public enum IconName
     CalendarWeek,
     ChevronDown,
     ChevronUp,
+    ClapperboardPlay,
     Clipboard,
     ClipboardList,
     Clock,
@@ -37,12 +38,14 @@ public enum IconName
     Next,
     Number,
     Paragraph,
+    PenNib,
     Plus,
     Previous,
     Rocket,
     Search,
     Settings,
     Sun,
+    TableColumn,
     Text
 }
 

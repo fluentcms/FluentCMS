@@ -7,7 +7,7 @@
             HideMedium="true"
             Small="GridItemColumn.Auto"
         >
-        <Sidebar Secondary="true">
+        <Sidebar Secondary="true" Title="@Title">
             @Sidebar
         </Sidebar>
     </GridItem>
@@ -19,4 +19,7 @@
 @code {
     [Parameter]
     public RenderFragment Sidebar {get; set;}
+
+    [Parameter]
+    public string Title {get; set;}
 }

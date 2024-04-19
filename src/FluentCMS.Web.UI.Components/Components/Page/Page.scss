@@ -16,26 +16,50 @@ $page: $prefix + 'page';
     }
 
     &-body {
-        @apply mb-12;
+        @apply mb-12 pt-4;
     }
 
     &-header {
-        @apply border-gray-200 px-0 py-4 text-gray-700;
+        @apply transition-all z-[1]  border-gray-200 sticky top-[-1px] px-0 pt-4 text-gray-700;
+
+        &-pinned {
+            @apply flex items-center justify-start px-4 py-2 bg-white border-b border-gray-200 dark:bg-gray-800  dark:border-gray-700 -mx-4;
+
+            .#{$page}-header-body {
+                @apply pb-0 w-full;
+            }
+
+            .#{$page}-header-title {
+                @apply flex items-center text-xl;
+            }
+
+            .#{$page}-back-button {
+                @apply pe-2 mb-0.5 flex items-center justify-center;
+            }
+
+            .#{$page}-back-button-text {
+                @apply hidden;
+            }
+
+            .#{$page}-header-actions {
+                @apply ms-auto;
+            }
+        }
 
         &-actions {
-            @apply flex-shrink-0 flex flex-col items-end md:flex-row md:items-center lg:justify-end space-y-3 md:space-y-0 md:space-x-3;
+            @apply flex-shrink-0 ms-auto flex flex-row items-center lg:justify-end space-x-3;
         }
 
         &-body {
-            @apply flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 md:space-x-4 pb-4 px-0;
+            @apply transition-all flex flex-row flex-wrap md:items-center gap-2 md:justify-between pb-4 px-0;
         }
 
         &-subtitle {
-            @apply flex-1 flex items-center space-x-2;
+            @apply transition-all flex-1 flex items-center space-x-2;
         }
 
         &-title {
-            @apply text-3xl text-gray-900 dark:text-gray-300;
+            @apply transition-all text-3xl text-gray-900 dark:text-gray-300;
         }
     }
 }

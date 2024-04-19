@@ -1,10 +1,25 @@
 <Page>
-    <PageHeader Title="Settings"/>
-    <PageBody>
-        <Grid Gutter="GridGutter.Medium">
-            <GridItem Small="GridItemColumn.Twelve">
-                <Form Model="@Model"
-                    OnSubmit="OnSubmit">
+    <Form Model="@Model"
+          OnSubmit="OnSubmit">
+        <PageHeader Title="General Settings (Draft)">
+            <PageHeaderActions>
+                <Button id="settingsCancelButton" 
+                        OnClick="GoBack"
+                        Size="ButtonSize.Small">
+                    Cancel
+                </Button>
+                <Button id="settingsSubmitButton" 
+                        Color="Color.Primary"
+                        Size="ButtonSize.Small"
+                        Type="ButtonType.Submit">
+                    Save
+                </Button>
+            </PageHeaderActions>
+        </PageHeader>
+        <PageBody>
+            <Grid Gutter="GridGutter.Medium">
+                <GridItem Small="GridItemColumn.Twelve">
+                
                     <Card>
                         <CardBody>
                             <Select @bind-Value="SuperUser"
@@ -27,23 +42,12 @@
                                 </Typography>
                                 <Spacer />
                             }
-                            <ButtonGroup>
-                                <Button id="settingsCancelButton" 
-                                        OnClick="GoBack">
-                                    Cancel
-                                </Button>
-                                <Button id="settingsSubmitButton" 
-                                        Color="Color.Primary"
-                                        Type="ButtonType.Submit">
-                                    Save
-                                </Button>
-                            </ButtonGroup>
                         </CardBody>
                     </Card>
-                </Form>
-            </GridItem>
-        </Grid>
-    </PageBody>
+                </GridItem>
+            </Grid>
+        </PageBody>
+    </Form>
 </Page>
 
 @code {

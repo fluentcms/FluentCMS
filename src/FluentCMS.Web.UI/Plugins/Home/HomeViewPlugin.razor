@@ -67,7 +67,7 @@
                 </a>
 
                 <Spacer Size="SpacerSize.Small" />
-                <Version Assembly="Assembly.GetEntryAssembly()"></Version>
+                <Version class="hidden md:block" Assembly="Assembly.GetEntryAssembly()"></Version>
 
             </GridItem>
             <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Four">
@@ -102,6 +102,7 @@
                         </Card>
                     </CardBody>
                 </Card>
+                <Version class="md:hidden" Assembly="Assembly.GetEntryAssembly()"></Version>
             </GridItem>
         </Grid>
     </PageBody>

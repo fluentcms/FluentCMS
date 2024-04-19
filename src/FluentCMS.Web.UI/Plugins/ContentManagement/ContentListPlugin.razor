@@ -10,7 +10,7 @@
                             Href="@NavigationManager.Plugin("Content Management", "Create Content", new { contentTypeSlug = ContentTypeSlug })"
                             id="contentCreateButton" Size="ButtonSize.Small">
                         <Icon Name="IconName.Plus" />
-                        Insert
+                        Add New Content
                     </Button>
                 </ButtonGroup>
             </PageHeaderActions>
@@ -20,7 +20,7 @@
             <Card>
                 <ChildContent>
 
-                    @if (ContentType != null && ContentType.Fields?.Count > 0)
+                    @if (ContentType != null && Data.Count > 0 && ContentType.Fields?.Count > 0)
                     {
                         <Table>
                             <TableHead>
@@ -94,7 +94,7 @@
                                     id="contentCreateButton"
                                     Size="ButtonSize.Small">
                                 <Icon Name="IconName.Plus" />
-                                Add First @ContentType.Title
+                                Add First Content
                             </Button>
                         </EmptyTable>
                     }
