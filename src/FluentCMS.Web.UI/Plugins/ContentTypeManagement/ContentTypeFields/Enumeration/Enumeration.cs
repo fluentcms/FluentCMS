@@ -10,7 +10,7 @@ public class EnumerationInfo : Base
 
     public static IconName Icon = IconName.List;
 
-    public static int Order = 7;
+    public static int Order = 6;
 
     public static Type BasicSettings = typeof(EnumerationBasicSettings);
 
