@@ -12,7 +12,7 @@ public class RichTextInfo : Base
 
     public static int Order = 3;
 
-    public static Type BasicSettings = typeof(RichTextBasicSettings);
+    public static Type BasicSettings = typeof(FieldBasicSettings);
 
     public static Type AdvancedSettings = typeof(RichTextAdvancedSettings);
 }
