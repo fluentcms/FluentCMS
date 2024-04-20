@@ -6,7 +6,7 @@ using System.Web;
 
 namespace FluentCMS.Web.UI.Services;
 
-public class AuthStateProvider(ICookieService cookieService, AccountClient accountClient) : AuthenticationStateProvider
+public class AuthStateProvider(ICookieService cookieService, IHttpClientFactory httpClientFactory) : AuthenticationStateProvider
 {
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
@@ -20,7 +20,7 @@ public class AuthStateProvider(ICookieService cookieService, AccountClient accou
 
     public async Task<UserLoginResponseIApiResult> Login(UserLoginRequest userLoginRequest)
     {
-        var result = await accountClient.AuthenticateAsync(userLoginRequest);
+        var result = await httpClientFactory.GetClient<AccountClient>().AuthenticateAsync(userLoginRequest);
 
         if (result.Errors!.Count == 0 && result.Data != null)
         {

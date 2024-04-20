@@ -1,74 +1,44 @@
-﻿@if (!Initialized)
+﻿﻿@if (!Initialized)
 {
-    <Form Model="@Model"
-          OnSubmit="OnSubmit">
+    <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="SetupForm">
         <Typography Size="TextSize.H5">
-            Welcome To FluentCMS
+            Welcome To FluentCMS @Model.Username
         </Typography>
         <Spacer />
-        <Input @bind-Value="Model.Username"
-               autofocus="true"
-               Id="setupUsernameInput"
-               Label="Username"
-               Name="Username"
-               Placeholder="Enter your username"
-               Required="true" />
-        <Input @bind-Value="Model.Email"
-               Id="setupEmailInput"
-               Label="Email"
-               Name="Email"
-               Placeholder="Enter your email"
-               Required="true" />
-        <Input @bind-Value="Model.Password"
-               Id="setupPasswordInput"
-               Label="Password"
-               Name="Password"
-               Placeholder="Enter your password"
-               Required="true"
-               Type="InputType.Password" />
+        <InputText @bind-Value="Model.Username" Placeholder="Enter your username" Required="true" />
+        <InputText @bind-Value="Model.Email" Placeholder="Enter your email" Required="true" />
+        <InputText @bind-Value="Model.Password" Placeholder="Enter your password" Required="true" type="password" />
+                
+        <InputText @bind-Value="Model.AppTemplateName" Required="true" />
+        <InputText @bind-Value="Model.SiteTemplateName" Required="true" />
+        <InputText @bind-Value="Model.AdminDomain" Required="true" />
+
         <Spacer />
-        <Button Block="true"
-                Color="Color.Primary"
-                id="setupSubmitButton"
-                Type="ButtonType.Submit">
+        <Button Block="true" Color="Color.Primary" Type="ButtonType.Submit">
             Setup
         </Button>
-    </Form>
+        @if (!string.IsNullOrEmpty(Message))
+        {
+            <Spacer />
+            <Alert Type="AlertType.Success">
+                <b>@Message</b>
+            </Alert>
+        }
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <Spacer />
+            <Alert Type="AlertType.Danger">
+                <b>@ErrorMessage</b>
+            </Alert>
+        }
+    </EditForm>
 }
 else
 {
-    <Typography>
+    <Typography Size="TextSize.H5">
         Setup is already done!
     </Typography>
-}
-
-@code {
-    [Inject]
-    SetupManager SetupManager { get; set; } = default!;
-
-    [Inject]
-    NavigationManager NavigationManager { get; set; } = default!;
-
-    bool Initialized { get; set; }
-
-    SetupRequest Model { get; set; } = new SetupRequest
-        {
-            Username = "admin",
-            Email = "admin@example.com",
-            Password = "Passw0rd!",
-            AppTemplateName = "Blank",
-            SiteTemplateName = "Blank"
-        };
-
-    protected override async Task OnInitializedAsync()
-    {
-        Initialized = await SetupManager.IsInitialized();
-        Model.AdminDomain = new Uri(NavigationManager.BaseUri).Authority;
-    }
-
-    private async Task OnSubmit()
-    {
-        if (await SetupManager.Start(Model))
-            NavigationManager.NavigateTo("/", true);
-    }
+    <Button Block="true" Color="Color.Primary" Type="ButtonType.Button" Href="/">
+        Setup
+    </Button>
 }

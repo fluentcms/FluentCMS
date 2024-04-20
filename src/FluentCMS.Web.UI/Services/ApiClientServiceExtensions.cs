@@ -10,7 +10,7 @@ public static class ApiClientServiceExtensions
 {
     public static IServiceCollection AddApiClients(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddTransient<HttpClientHeaderHandler>();
+        services.AddScoped<HttpClientHeaderHandler>();
 
         services.AddHttpClient("FluentCMS.Web.Api", (sp, client) =>
         {
@@ -20,29 +20,6 @@ public static class ApiClientServiceExtensions
 
         }).AddHttpMessageHandler<HttpClientHeaderHandler>();
 
-        var baseType = typeof(IApiClient);
-        var assembly = baseType.Assembly;
-
-        var derivedTypes = assembly.GetTypes()
-            .Where(t => t.IsClass && !t.IsAbstract && baseType.IsAssignableFrom(t) && t.Namespace == baseType.Namespace);
-
-        foreach (var type in derivedTypes)
-        {
-            services.AddScoped(type, sp =>
-            {
-                var clientFactory = sp.GetRequiredService<IHttpClientFactory>();
-
-                var client = clientFactory.CreateClient("FluentCMS.Web.Api") ??
-                    throw new InvalidOperationException($"Could not create HttpClient for {type.Name}");
-
-                var ctor = type.GetConstructor([typeof(HttpClient)]) ??
-                    throw new InvalidOperationException($"Could not find constructor for {type.Name}");
-
-                var instance = ctor.Invoke([client]);
-
-                return instance;
-            });
-        }
         return services;
     }
 }

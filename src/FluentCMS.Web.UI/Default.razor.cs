@@ -1,10 +1,8 @@
 ﻿using FluentCMS.Web.UI.Services;
 using HtmlAgilityPack;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components.Sections;
-using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Web.UI;
 
@@ -15,29 +13,30 @@ public partial class Default : IDisposable
 
     public PageFullDetailResponse? Page { get; set; }
 
-    [Inject] public NavigationManager NavigationManager { set; get; } = default!;
+    [Parameter]
+    public string? Route { get; set; }
 
-    [Inject] public SetupManager SetupManager { set; get; } = default!;
+    [Inject]
+    public NavigationManager NavigationManager { set; get; } = default!;
 
-    [Inject] public PageClient PageClient { set; get; } = default!;
+    [Inject]
+    public SetupManager SetupManager { set; get; } = default!;
 
-    [Inject] public SiteClient SiteClient { set; get; } = default!;
+    [Inject]
+    public IHttpClientFactory HttpClientFactory { set; get; } = default!;
 
-    [Inject] public PluginDefinitionClient PluginDefinitionClient { set; get; } = default!;
+    [Inject]
+    public ToastService ToastService { set; get; }
 
-    [Inject] public ToastService ToastService { set; get; }
-
-    [Inject] public ILogger<Default> Logger { get; set; }
     [Inject(Key = ErrorMessageExtension.ErrorMessageFactoryKey)] public required Func<Exception, string[]> ErrorMessageFactory { get; set; }
 
-    [Parameter] public string? Route { get; set; }
 
     protected override void OnInitialized()
     {
         NavigationManager.LocationChanged += LocationChanged;
     }
 
-    void LocationChanged(object sender, LocationChangedEventArgs e)
+    void LocationChanged(object? sender, LocationChangedEventArgs e)
     {
         StateHasChanged();
     }
@@ -57,7 +56,7 @@ public partial class Default : IDisposable
 
         try
         {
-            var pageResponse = await PageClient.GetByUrlAsync(NavigationManager.Uri);
+            var pageResponse = await HttpClientFactory.GetClient<PageClient>().GetByUrlAsync(NavigationManager.Uri);
             if (pageResponse.Data != null)
                 Page = pageResponse.Data;
         }
@@ -190,7 +189,6 @@ public partial class Default : IDisposable
     {
         if (ToastService == null || ToastService.ToastProvider == null)
         {
-            Logger.LogError(ex, "Toast Not Initialized");
             return;
         }
         var message = ErrorMessageFactory.Invoke(ex);
