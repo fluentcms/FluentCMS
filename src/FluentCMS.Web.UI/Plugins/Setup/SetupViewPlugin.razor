@@ -1,18 +1,18 @@
-﻿﻿@if (!Initialized)
+﻿@inherits BasePlugin
+
+@if (!Initialized)
 {
-    <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="SetupForm">
+    <EditForm Model="@Model" OnValidSubmit="OnSubmit" FormName="SetupForm" Enhance>
         <Typography Size="TextSize.H5">
             Welcome To FluentCMS @Model.Username
         </Typography>
         <Spacer />
-        <InputText @bind-Value="Model.Username" Placeholder="Enter your username" Required="true" />
-        <InputText @bind-Value="Model.Email" Placeholder="Enter your email" Required="true" />
-        <InputText @bind-Value="Model.Password" Placeholder="Enter your password" Required="true" type="password" />
-                
-        <InputText @bind-Value="Model.AppTemplateName" Required="true" />
-        <InputText @bind-Value="Model.SiteTemplateName" Required="true" />
-        <InputText @bind-Value="Model.AdminDomain" Required="true" />
-
+        <InputText @bind-Value="Model.Username" Placeholder="Enter your username" />
+        <InputText @bind-Value="Model.Email" Placeholder="Enter your email" />
+        <InputText @bind-Value="Model.Password" Placeholder="Enter your password" type="password" />
+        <InputText @bind-Value="Model.AppTemplateName" />
+        <InputText @bind-Value="Model.SiteTemplateName" />
+        <InputText @bind-Value="Model.AdminDomain" />
         <Spacer />
         <Button Block="true" Color="Color.Primary" Type="ButtonType.Submit">
             Setup
@@ -31,6 +31,8 @@
                 <b>@ErrorMessage</b>
             </Alert>
         }
+        <DataAnnotationsValidator />
+        <ValidationSummary />
     </EditForm>
 }
 else
