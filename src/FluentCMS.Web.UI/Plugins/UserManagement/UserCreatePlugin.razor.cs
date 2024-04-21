@@ -12,7 +12,6 @@ public partial class UserCreatePlugin
     [Inject]
     IHttpClientFactory HttpClientFactory { set; get; } = default!;
 
-    string? Message { get; set; }
     public string BackUrl => new Uri(CurrentUrl).LocalPath;
 
     protected override void OnInitialized()
@@ -22,14 +21,7 @@ public partial class UserCreatePlugin
 
     async Task OnSubmit()
     {
-        try
-        {
-            var newUser = await HttpClientFactory.GetClient<UserClient>().CreateAsync(Model);
-            Message = "Done!";
-        }
-        catch (Exception ex)
-        {
-            Message = ex.ToString();
-        }
+        await HttpClientFactory.GetClient<UserClient>().CreateAsync(Model);
+        NavigationManager.NavigateTo(BackUrl);
     }
 }

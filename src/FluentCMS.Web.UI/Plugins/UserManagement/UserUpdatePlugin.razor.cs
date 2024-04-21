@@ -6,17 +6,12 @@ public partial class UserUpdatePlugin : BasePlugin
 {
     const string _formName = "UserUpdateForm";
 
-    [Inject]
-    IJSRuntime JsRuntime { set; get; } = default!;
-
     [Inject] IHttpClientFactory HttpClientFactory { set; get; } = default!;
 
     UserClient UserClient { get; set; } = default!;
 
     [SupplyParameterFromQuery(Name = "id")]
     Guid Id { get; set; }
-
-    string Message { get; set; } = string.Empty;
 
     public string BackUrl => new Uri(CurrentUrl).LocalPath;
 
@@ -32,18 +27,12 @@ public partial class UserUpdatePlugin : BasePlugin
         return base.OnInitializedAsync();
     }
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnFirstAsync()
     {
-        try
-        {
-            View = (await UserClient.GetAsync(Id)).Data;
-            Model.Id = Id;
-            Model.Email = View.Email!;
-        }
-        catch (Exception)
-        {
-            Message = "An error occured!";
-        }
+        await base.OnFirstAsync();
+        View = (await UserClient.GetAsync(Id)).Data;
+        Model.Id = Id;
+        Model.Email = View.Email!;
     }
     protected override Task OnPostAsync()
     {
@@ -52,14 +41,7 @@ public partial class UserUpdatePlugin : BasePlugin
     }
     private async Task OnSubmit()
     {
-        try
-        {
-            await UserClient.UpdateAsync(Model);
-            Message = "Done!";
-        }
-        catch (Exception exception)
-        {
-            Message = exception.ToString();
-        }
+        await UserClient.UpdateAsync(Model);
+        NavigationManager.NavigateTo(BackUrl);
     }
 }

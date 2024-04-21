@@ -11,18 +11,11 @@
                         OnSubmit="OnSubmit">
                     <Card>
                         <CardBody>
-                            <input name="Model.Id" value="@(Model.Id.ToString("D"))" Required="true" />
+                            <input type="hidden" name="Model.Id" value="@(Model.Id.ToString("D"))" Required="true" />
                             <input value="@(View.Username)" disabled />
                             <InputText @bind-Value="Model.Email" Placeholder="name@example.com" Required="true" />
                             <ValidationMessage For="()=>Model.Email" />
                             <Spacer />
-                            @if (!string.IsNullOrEmpty(Message))
-                            {
-                                <Typography>
-                                    @Message
-                                </Typography>
-                                <Spacer />
-                            }
                             <ButtonGroup>
                                 <Button Href="@BackUrl">
                                     Cancel
