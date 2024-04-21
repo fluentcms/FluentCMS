@@ -18,17 +18,14 @@ public partial class UserUpdatePlugin
 
     UserDetailResponse View { get; set; } = new();
 
-    protected override Task OnInitializedAsync()
-    {
-        return base.OnInitializedAsync();
-    }
-
     protected override async Task OnFirstAsync()
     {
         await base.OnFirstAsync();
         View = (await (HttpClientFactory.GetClient<UserClient>()).GetAsync(Id)).Data;
         Model.Id = View.Id;
         Model.Email = View.Email!;
+        Model.Enabled = View.Enabled;
+        Model.PhoneNumber = View.PhoneNumber;
     }
     protected override Task OnPostAsync()
     {
