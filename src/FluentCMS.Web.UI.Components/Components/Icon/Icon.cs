@@ -42,11 +42,13 @@ public enum IconName
     Plus,
     Previous,
     Rocket,
+    Roles,
     Search,
     Settings,
     Sun,
     TableColumn,
-    Text
+    Text,
+    Users
 }
 
 public enum IconSize

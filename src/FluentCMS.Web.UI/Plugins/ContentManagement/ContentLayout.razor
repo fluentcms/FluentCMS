@@ -2,14 +2,15 @@
 
 <Grid>
     <GridItem HideSmall="true"
-              HideMedium="true"
-              Small="GridItemColumn.Auto">
+            HideMedium="true"
+            Small="GridItemColumn.Auto">
         <Sidebar Title="Collections"
-                 Secondary="true">
+                Secondary="true">
             <ChildContent>
                 @foreach (var collection in Collections)
                 {
-                    <SidebarItem Href="@NavigationManager.Plugin("Content Management", "Content List", new { contentTypeSlug = collection.Slug })"
+                    <SidebarItem Active="@(currentContentTypeSlug == collection.Slug)" 
+                                 Href="@NavigationManager.Plugin("Content Management", "Content List", new { contentTypeSlug = collection.Slug })"
                                  id="@($"contentSidebar{@collection.Slug}Link")">
                         @collection.Title
                     </SidebarItem>
@@ -37,6 +38,8 @@
 
     List<ContentTypeDetailResponse> Collections { get; set; } = [];
 
+    string currentContentTypeSlug {get; set;}
+
     async Task Load()
     {
         var response = await ContentTypeClient.GetAllAsync();
@@ -44,6 +47,8 @@
         if (response?.Data == null) return;
 
         Collections = response.Data.ToList();
+
+        currentContentTypeSlug = NavigationManager.GetStringFromQuery("contentTypeSlug");
     }
 
     async Task OnChangeApp()
@@ -51,9 +56,8 @@
         await Load();
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnInitializedAsync()
     {
-        if (!firstRender) return;
         await Load();
         StateHasChanged();
     }

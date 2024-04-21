@@ -6,7 +6,7 @@
     class="@this.GetClasses()">
     @if (string.IsNullOrEmpty(Href))
     {
-        <span>
+        <span class="@this.ClassName("SidebarItemText")">
             @ChildContent
         </span>
     }
@@ -18,9 +18,9 @@
            target="@Target">
             @if (this.Icon != IconName.Default)
             {
-                <Icon Name="Icon" />
+                <Icon class="@this.ClassName("SidebarItemIcon")" Name="Icon" />
             }
-            <span>
+            <span class="@this.ClassName("SidebarItemText")">
                 @ChildContent
             </span>
         </a>
@@ -28,6 +28,10 @@
 </li>
 
 @code {
+    [Parameter]
+    [CSSProperty]
+    public bool Active { get; set; }
+
     [Parameter]
     public string? Href { get; set; }
 
