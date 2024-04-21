@@ -15,6 +15,9 @@
                             <input value="@(View.Username)" disabled />
                             <InputText @bind-Value="Model.Email" Placeholder="name@example.com" />
                             <ValidationMessage For="()=>Model.Email" />
+                            <InputText @bind-Value="Model.PhoneNumber" Placeholder="PhoneNumber" />
+                            <ValidationMessage For="()=>Model.PhoneNumber" />
+                            <InputCheckbox @bind-Value="Model.Enabled" />
                             <Spacer />
                             <ButtonGroup>
                                 <Button Href="@BackUrl">
