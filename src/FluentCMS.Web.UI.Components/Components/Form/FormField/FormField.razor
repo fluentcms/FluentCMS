@@ -172,7 +172,7 @@
 
         var IsValid = Context.IsValid(Identifier.GetValueOrDefault());
 
-        State = IsValid ? FormFieldState.Valid : FormFieldState.Invalid;
+        State = IsValid ? FormFieldState.Default : FormFieldState.Invalid;
     }
 
     public void Dispose()
