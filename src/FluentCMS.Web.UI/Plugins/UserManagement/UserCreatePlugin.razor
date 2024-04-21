@@ -1,13 +1,10 @@
 ﻿@inherits BasePlugin
 <Page>
-    <PageHeader HasBack="true"
-                Title="Create User">
-    </PageHeader>
+    <PageHeader HasBack="true" Title="Create User" />
     <PageBody>
         <Grid Gutter="GridGutter.Medium">
             <GridItem Small="GridItemColumn.Twelve">
-                <MyForm Model="@Model"
-                        OnSubmit="OnSubmit" Name="_formName">
+                <MyForm Model="@Model" OnSubmit="OnSubmit" Name="@FORM_NAME">
                     <Card>
                         <CardBody>
                             <InputText @bind-Value="Model.Username" placeholder="Enter Username..." />
@@ -28,8 +25,7 @@
                                 <Button Href="@BackUrl">
                                     Cancel
                                 </Button>
-                                <Button Color="Color.Primary"
-                                        Type="ButtonType.Submit">
+                                <Button Color="Color.Primary" Type="ButtonType.Submit">
                                     Save
                                 </Button>
                             </ButtonGroup>
