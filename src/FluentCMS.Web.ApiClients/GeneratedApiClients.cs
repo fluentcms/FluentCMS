@@ -7634,6 +7634,12 @@ namespace FluentCMS.Web.ApiClients
         [System.ComponentModel.DataAnnotations.Required]
         public string Password { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("phoneNumber")]
+        public string? PhoneNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("enabled")]
+        public bool Enabled { get; set; } = default!;
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -7857,6 +7863,12 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("email")]
         [System.ComponentModel.DataAnnotations.Required]
         public string Email { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("phoneNumber")]
+        public string? PhoneNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("enabled")]
+        public bool Enabled { get; set; } = default!;
 
     }
 
