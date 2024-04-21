@@ -11,8 +11,11 @@
                             <ValidationMessage For="()=>Model.Username"></ValidationMessage>
                             <InputText @bind-Value="Model.Email" Placeholder="Enter Email..." />
                             <ValidationMessage For="()=>Model.Email"></ValidationMessage>
+                            <InputText @bind-Value="Model.PhoneNumber" Placeholder="Enter PhoneNumber..." />
+                            <ValidationMessage For="()=>Model.PhoneNumber"></ValidationMessage>
                             <InputText @bind-Value="Model.Password" Placeholder="Enter Password..." />
                             <ValidationMessage For="()=>Model.Password"></ValidationMessage>
+                            <InputCheckbox hidden @bind-Value="Model.Enabled" />
                             <Spacer />
                             <ButtonGroup>
                                 <Button Href="@BackUrl">
