@@ -4,8 +4,10 @@ namespace FluentCMS.Web.UI.Plugins.UserManagement;
 
 public partial class UserCreatePlugin
 {
-    [SupplyParameterFromForm(FormName = _formName)]
+    [SupplyParameterFromForm(FormName = FORM_NAME)]
     UserCreateRequest Model { get; set; } = new();
+
+    const string FORM_NAME = "UserCreateForm";
 
     [Inject]
     IHttpClientFactory HttpClientFactory { set; get; } = default!;
