@@ -17,10 +17,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Compile Include="..\FluentCMS.Web.UI\Plugins\UserManagement\UserDetailPlugin.razor.cs" Link="UserDetailPlugin.razor.cs" />
-    </ItemGroup>
-
-    <ItemGroup>
       <None Include="wwwroot\js\admin-sidebar.js" />
     </ItemGroup>
 
