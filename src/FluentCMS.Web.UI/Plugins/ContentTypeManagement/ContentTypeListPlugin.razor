@@ -1,5 +1,5 @@
 ﻿<Page>
-    <PageHeader HasBack="false" Title="Content Types List">
+    <PageHeader HasBack="false" Title="Content Types List (Draft)">
         <PageHeaderActions>
             <ButtonGroup>
                 <Button Color="Color.Primary"
@@ -37,14 +37,8 @@
                             </TableCell>
                             <TableCell>
                                 <ButtonGroup>
-                                    <Button data-test="preview-btn"
-                                            Ghost="true"
-                                            Href="@NavigationManager.Plugin("ContentType Management", "ContentType Detail", new { id = contentType.Id })"
-                                            Size="ButtonSize.Small">
-                                        <Icon Name="IconName.Eye" />
-                                    </Button>
-                                    <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
-
+                                    @* TODO: Add preview when preview page designed *@
+                                    
                                     <Button data-test="edit-btn"
                                             Ghost="true"  
                                             Href="@NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = contentType.Id })"

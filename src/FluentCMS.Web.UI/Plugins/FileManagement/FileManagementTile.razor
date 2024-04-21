@@ -1,4 +1,6 @@
-<Card class="group relative">
+<Card class="group relative"
+      Clickable="true"
+      @onclick="() => OnEdit.InvokeAsync()">
     <CardBody>
         @if (hasPreview)
         {
@@ -45,7 +47,7 @@
         </Typography>
         <Grid ItemsSmall="GridItems.Center"
               NoWrap="true">
-            <GridItem Small="GridItemColumn.Grow">        
+            <GridItem Small="GridItemColumn.Grow">
                 <Typography Color="Color.Secondary"
                             Size="TextSize.ExtraSmall">
                     @Value.Extension.ToUpper()

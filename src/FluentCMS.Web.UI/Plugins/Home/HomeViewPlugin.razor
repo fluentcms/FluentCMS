@@ -67,7 +67,8 @@
                 </a>
 
                 <Spacer Size="SpacerSize.Small" />
-                <Version Assembly="Assembly.GetEntryAssembly()"></Version>
+                <!-- TODO: Do not use tailwind classes -->
+                <Version Class="hidden md:block" Assembly="Assembly.GetEntryAssembly()"></Version>
 
             </GridItem>
             <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Four">
@@ -102,6 +103,9 @@
                         </Card>
                     </CardBody>
                 </Card>
+                
+                <!-- TODO: Do not use tailwind classes -->
+                <Version Class="md:hidden" Assembly="Assembly.GetEntryAssembly()"></Version>
             </GridItem>
         </Grid>
     </PageBody>
