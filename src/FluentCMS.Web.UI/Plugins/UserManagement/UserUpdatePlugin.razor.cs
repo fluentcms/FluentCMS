@@ -7,8 +7,6 @@ public partial class UserUpdatePlugin
 
     [Inject] IHttpClientFactory HttpClientFactory { set; get; } = default!;
 
-    UserClient UserClient { get; set; } = default!;
-
     [SupplyParameterFromQuery(Name = "id")]
     Guid Id { get; set; }
 
@@ -22,14 +20,13 @@ public partial class UserUpdatePlugin
 
     protected override Task OnInitializedAsync()
     {
-        UserClient = HttpClientFactory.GetClient<UserClient>();
         return base.OnInitializedAsync();
     }
 
     protected override async Task OnFirstAsync()
     {
         await base.OnFirstAsync();
-        View = (await UserClient.GetAsync(Id)).Data;
+        View = (await (HttpClientFactory.GetClient<UserClient>()).GetAsync(Id)).Data;
         Model.Id = View.Id;
         Model.Email = View.Email!;
     }
@@ -41,7 +38,7 @@ public partial class UserUpdatePlugin
     }
     private async Task OnSubmit()
     {
-        await UserClient.UpdateAsync(Model);
+        await (HttpClientFactory.GetClient<UserClient>()).UpdateAsync(Model);
         NavigationManager.NavigateTo(BackUrl);
     }
 }

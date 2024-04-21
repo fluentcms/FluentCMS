@@ -3,13 +3,9 @@ using FluentCMS.Web.UI.Services;
 namespace FluentCMS.Web.UI.Plugins.UserManagement;
 public partial class UserListPlugin
 {
-    UserClient UserClient { get; set; } = default!;
 
     [Inject]
     IHttpClientFactory HttpClientFactory { get; set; } = default!;
-
-    [Inject]
-    ConfirmService Confirm { get; set; } = default!;
 
     public bool Loading { get; set; } = true;
 
@@ -19,7 +15,6 @@ public partial class UserListPlugin
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        UserClient = HttpClientFactory.GetClient<UserClient>();
     }
 
     protected override async Task OnFirstAsync()
@@ -34,7 +29,8 @@ public partial class UserListPlugin
         try
         {
             Loading = true;
-            if ((await UserClient!.GetAllAsync()) is var response && response != null && !response.Errors!.Any() && response.Data is var data && data != null)
+            var userClient = HttpClientFactory.GetClient<UserClient>();
+            if ((await userClient!.GetAllAsync()) is var response && response != null && !response.Errors!.Any() && response.Data is var data && data != null)
             {
                 Users = data.ToList();
             }
