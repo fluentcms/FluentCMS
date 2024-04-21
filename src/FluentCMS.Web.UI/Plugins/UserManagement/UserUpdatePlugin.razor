@@ -7,13 +7,13 @@
         <Grid Gutter="GridGutter.Medium">
             <GridItem Small="GridItemColumn.Twelve">
                 <MyForm Model="@Model"
-                        Name="@_formName"
+                        Name="@FORM_NAME"
                         OnSubmit="OnSubmit">
                     <Card>
                         <CardBody>
-                            <input type="hidden" name="Model.Id" value="@(Model.Id.ToString("D"))" Required="true" />
+                            <input type="hidden" name="Model.Id" value="@(Model.Id.ToString("D"))" />
                             <input value="@(View.Username)" disabled />
-                            <InputText @bind-Value="Model.Email" Placeholder="name@example.com" Required="true" />
+                            <InputText @bind-Value="Model.Email" Placeholder="name@example.com" />
                             <ValidationMessage For="()=>Model.Email" />
                             <Spacer />
                             <ButtonGroup>

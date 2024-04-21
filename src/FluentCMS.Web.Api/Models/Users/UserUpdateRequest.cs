@@ -7,5 +7,6 @@ public class UserUpdateRequest
     [Required]
     public required Guid Id { get; set; }
     [Required]
+    [EmailAddress]
     public required string Email { get; set; }
 }

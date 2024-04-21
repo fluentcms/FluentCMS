@@ -3,7 +3,7 @@ using FluentCMS.Web.UI.Services;
 namespace FluentCMS.Web.UI.Plugins.UserManagement;
 public partial class UserUpdatePlugin
 {
-    const string _formName = "UserUpdateForm";
+    const string FORM_NAME = "UserUpdateForm";
 
     [Inject] IHttpClientFactory HttpClientFactory { set; get; } = default!;
 
@@ -14,7 +14,7 @@ public partial class UserUpdatePlugin
 
     public string BackUrl => new Uri(CurrentUrl).LocalPath;
 
-    [SupplyParameterFromForm(FormName = _formName)]
+    [SupplyParameterFromForm(FormName = FORM_NAME)]
 
     UserUpdateRequest Model { get; set; } = new();
 
@@ -30,12 +30,13 @@ public partial class UserUpdatePlugin
     {
         await base.OnFirstAsync();
         View = (await UserClient.GetAsync(Id)).Data;
-        Model.Id = Id;
+        Model.Id = View.Id;
         Model.Email = View.Email!;
     }
     protected override Task OnPostAsync()
     {
         Model.Id = Id;
+
         return base.OnPostAsync();
     }
     private async Task OnSubmit()
