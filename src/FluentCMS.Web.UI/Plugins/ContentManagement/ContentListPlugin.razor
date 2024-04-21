@@ -20,7 +20,7 @@
             <Card>
                 <ChildContent>
 
-                    @if (ContentType != null && ContentType.Fields?.Count > 0)
+                    @if (ContentType != null && Data.Count > 0 && ContentType.Fields?.Count > 0)
                     {
                         <Table>
                             <TableHead>
@@ -76,18 +76,18 @@
 
                     @if (ContentType.Fields?.Count == 0)
                     {
-                        <EmptyTable Message="This Content Type doesn't have any field">
+                        <EmptyState Message="This Content Type doesn't have any field">
                             <Button Color="Color.Primary"
                                     Href="@NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = ContentType.Id })">
                                 <Icon Name="IconName.Edit" />
                                 Edit @ContentType.Title
                             </Button>
 
-                        </EmptyTable>
+                        </EmptyState>
                     }
                     else if (Data.Count == 0)
                     {
-                        <EmptyTable Message="There is no Content yet!">
+                        <EmptyState Message="There is no Content yet!">
                             <Button autofocus="true"
                                     Color="Color.Primary"
                                     Href="@NavigationManager.Plugin("Content Management", "Create Content", new { contentTypeSlug = ContentTypeSlug })"
@@ -96,7 +96,7 @@
                                 <Icon Name="IconName.Plus" />
                                 Add First @ContentType.Title
                             </Button>
-                        </EmptyTable>
+                        </EmptyState>
                     }
                 </ChildContent>
             </Card>
