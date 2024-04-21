@@ -16,12 +16,19 @@
            Label="Email"
            Name="Email"
            Placeholder="Enter your email"
-           Required="true" />
+           Required="true" /> 
     <Input @bind-Value="Model.Password"
            Id="registerPasswordInput"
            Label="Password"
            Name="Password"
            Placeholder="Enter your password"
+           Type="InputType.Password"
+           Required="true" />
+    <Input @bind-Value="Model.ConfirmPassword"
+           Id="registerConfirmPasswordInput"
+           Label="Confirm Password"
+           Name="ConfirmPassword"
+           Placeholder="Enter your password again"
            Type="InputType.Password"
            Required="true" />
     <Checkbox>

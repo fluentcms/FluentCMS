@@ -1,8 +1,9 @@
-﻿@using System.Reflection
+﻿@inherits BaseComponent
+@using System.Reflection
 
 @if (GetVersion() != null)
 {
-    <Typography Size="TextSize.ExtraSmall">@GetVersion()</Typography>
+    <Typography class="@this.GetClasses()" Size="TextSize.ExtraSmall">@GetVersion()</Typography>
 }
 
 @code {

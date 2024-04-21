@@ -121,7 +121,7 @@
 
     List<ContentTypeField> Fields { get; set; } = [];
 
-    string PageTitle = "Content List";
+    string PageTitle = "Content List (Draft)";
 
     async Task OnDelete(ContentDetailResponse content)
     {
@@ -144,7 +144,7 @@
 
             if (ContentType != null)
             {
-                PageTitle = ContentType.Title + " List";
+                PageTitle = ContentType.Title + " List (Draft)";
                 Fields = ContentType.Fields.ToList();
 
                 var response = await ContentClient.GetAllAsync(ContentTypeSlug);
