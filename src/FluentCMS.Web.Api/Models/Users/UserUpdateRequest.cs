@@ -9,4 +9,7 @@ public class UserUpdateRequest
     [Required]
     [EmailAddress]
     public required string Email { get; set; }
+    [Phone]
+    public string? PhoneNumber { get; set; }
+    public bool Enabled { get; set; }
 }
