@@ -1,7 +1,7 @@
 using FluentCMS.Web.UI.Services;
 
 namespace FluentCMS.Web.UI.Plugins.UserManagement;
-public partial class UserUpdatePlugin : BasePlugin
+public partial class UserUpdatePlugin
 {
     const string _formName = "UserUpdateForm";
 

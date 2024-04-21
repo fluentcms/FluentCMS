@@ -3,7 +3,7 @@ using FluentCMS.Web.UI.Services;
 using Microsoft.AspNetCore.Components;
 
 namespace FluentCMS.Web.UI.Plugins.UserManagement;
-public partial class UserDetailPlugin : BasePlugin
+public partial class UserDetailPlugin
 {
     [Inject]
     public IHttpClientFactory HttpClientFactory { get; set; } = default!;
