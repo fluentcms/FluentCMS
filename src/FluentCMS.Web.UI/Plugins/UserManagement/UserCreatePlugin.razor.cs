@@ -14,9 +14,10 @@ public partial class UserCreatePlugin
 
     public string BackUrl => new Uri(CurrentUrl).LocalPath;
 
-    protected override void OnInitialized()
+    protected override async Task OnFirstAsync()
     {
-        base.OnInitialized();
+        await base.OnFirstAsync();
+        Model.Enabled = true;
     }
 
     async Task OnSubmit()
