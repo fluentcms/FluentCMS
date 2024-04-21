@@ -1,7 +1,7 @@
 using FluentCMS.Web.UI.Services;
 
 namespace FluentCMS.Web.UI.Plugins.Settings;
-public partial class SettingsViewPlugin : BasePlugin
+public partial class SettingsViewPlugin
 {
     [Inject]
     IHttpClientFactory HttpClientFactory { get; set; } = default!;
