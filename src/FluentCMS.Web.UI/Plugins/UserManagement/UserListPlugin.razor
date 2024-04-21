@@ -15,16 +15,20 @@
         <Card>
             <Table>
                 <TableHead>
+                    <TableCell>Enabled</TableCell>
                     <TableCell>Username</TableCell>
                     <TableCell>Email</TableCell>
+                    <TableCell>Phonenumber</TableCell>
                     <TableCell Width="TableColumnWidth.Small"></TableCell>
                 </TableHead>
                 <TableBody>
                     @foreach (var user in Users)
                     {
                         <TableRow>
+                            <TableCell> <input type="checkbox" checked="@user.Enabled" disabled="true" readonly="true"/> </TableCell>
                             <TableCell> @user.Username </TableCell>
                             <TableCell> @user.Email </TableCell>
+                            <TableCell> @user.PhoneNumber</TableCell>
                             <TableCell>
                                 <ButtonGroup>
                                     <Button Ghost="true" Href="@NavigationManager.Plugin("User Management", "User Detail", new { id = user.Id })" Size="ButtonSize.Small">
