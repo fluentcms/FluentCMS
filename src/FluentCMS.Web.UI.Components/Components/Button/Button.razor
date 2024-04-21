@@ -23,6 +23,7 @@ else
             class="@this.GetClasses()"
             disabled="@Disabled"
             type="@Type.ToString()"
+            @onclick:stopPropagation="StopPropagation"
             @onclick="OnClick">
         <span>
             @ChildContent
@@ -77,6 +78,9 @@ else
     [Parameter]
     [CSSProperty]
     public ButtonSize Size { get; set; } = ButtonSize.Medium;
+
+    [Parameter]
+    public bool StopPropagation { get; set; }
 
     [Parameter]
     public ButtonType Type { get; set; } = ButtonType.Button;
