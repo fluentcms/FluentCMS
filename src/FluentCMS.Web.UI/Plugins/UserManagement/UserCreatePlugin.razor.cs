@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components;
 namespace FluentCMS.Web.UI.Plugins.UserManagement;
 public partial class UserCreatePlugin
 {
+    const string _formName = "UserCreateForm";
     [Inject]
     IJSRuntime JsRuntime { set; get; } = default!;
 
@@ -18,7 +19,7 @@ public partial class UserCreatePlugin
     string? Message { get; set; }
     public string BackUrl => new Uri(CurrentUrl).LocalPath;
 
-    [SupplyParameterFromForm(FormName = "UserCreateForm")]
+    [SupplyParameterFromForm(FormName = _formName)]
     UserCreateRequest Model { get; set; } = new();
     protected override void OnInitialized()
     {

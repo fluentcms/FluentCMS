@@ -6,6 +6,8 @@ using Microsoft.JSInterop;
 namespace FluentCMS.Web.UI.Plugins.UserManagement;
 public partial class UserUpdatePlugin : BasePlugin
 {
+    const string _formName = "UserUpdateForm";
+
     [Inject]
     IJSRuntime JsRuntime { set; get; } = default!;
 
@@ -20,7 +22,7 @@ public partial class UserUpdatePlugin : BasePlugin
 
     public string BackUrl => new Uri(CurrentUrl).LocalPath;
 
-    [SupplyParameterFromForm(Name = "UserUpdateForm")]
+    [SupplyParameterFromForm(FormName = _formName)]
 
     UserUpdateRequest Model { get; set; } = new();
 
