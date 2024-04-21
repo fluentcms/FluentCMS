@@ -1,56 +1,39 @@
 ﻿@inherits BasePlugin
 
-<Page>
-    <PageHeader HasBack="false" Title="Users List">
-        <PageHeaderActions>
-            <ButtonGroup>
-                <Button autofocus="true" Color="Color.Primary" Href="@NavigationManager.Plugin("User Management", "Create User")" Size="ButtonSize.Small">
-                    <Icon Name="IconName.Plus" />
-                    Add User
-                </Button>
-            </ButtonGroup>
-        </PageHeaderActions>
-    </PageHeader>
-    <PageBody>
-        <Card>
-            <Table>
-                <TableHead>
-                    <TableCell>Username</TableCell>
-                    <TableCell>Email</TableCell>
-                    <TableCell Width="TableColumnWidth.Small"></TableCell>
-                </TableHead>
-                <TableBody>
-                    @foreach (var user in Users)
-                    {
-                        <TableRow>
-                            <TableCell> @user.Username </TableCell>
-                            <TableCell> @user.Email </TableCell>
-                            <TableCell>
-                                <ButtonGroup>
-                                    <Button Ghost="true" Href="@NavigationManager.Plugin("User Management", "User Detail", new { id = user.Id })" Size="ButtonSize.Small">
-                                        <Icon Name="IconName.Eye" />
-                                    </Button>
-                                    <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
-
-                                    <Button data-test="edit-btn" Ghost="true" Href="@NavigationManager.Plugin("User Management", "Update User", new { id = user.Id })" Size="ButtonSize.Small">
-                                        <Icon Name="IconName.Edit" />
-                                    </Button>
-                                    <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
-                                </ButtonGroup>
-                            </TableCell>
-                        </TableRow>
-                    }
-                </TableBody>
-            </Table>
-            @if (Users.Count == 0)
+<PluginView Title="Users List">
+    <ButtonGroup>
+        <Button autofocus="true" Color="Color.Primary" Href="@NavigationManager.Plugin("User Management", "Create User")" Size="ButtonSize.Small">
+            <Icon Name="IconName.Plus" />
+            Add User
+        </Button>
+    </ButtonGroup>
+    <Table>
+        <TableHead>
+            <TableCell>Username</TableCell>
+            <TableCell>Email</TableCell>
+            <TableCell Width="TableColumnWidth.Small"></TableCell>
+        </TableHead>
+        <TableBody>
+            @foreach (var user in Users)
             {
-                <EmptyTable Message="No Users Found!">
-                    <Button autofocus="true" Color="Color.Primary" Href="@NavigationManager.Plugin("User Management", "Create User")" Size="ButtonSize.Small">
-                        <Icon Name="IconName.Plus" />
-                        Add User
-                    </Button>
-                </EmptyTable>
+                <TableRow>
+                    <TableCell> @user.Username </TableCell>
+                    <TableCell> @user.Email </TableCell>
+                    <TableCell>
+                        <ButtonGroup>
+                            <Button Ghost="true" Href="@NavigationManager.Plugin("User Management", "User Detail", new { id = user.Id })" Size="ButtonSize.Small">
+                                <Icon Name="IconName.Eye" />
+                            </Button>
+                            <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
+
+                            <Button data-test="edit-btn" Ghost="true" Href="@NavigationManager.Plugin("User Management", "Update User", new { id = user.Id })" Size="ButtonSize.Small">
+                                <Icon Name="IconName.Edit" />
+                            </Button>
+                            <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
+                        </ButtonGroup>
+                    </TableCell>
+                </TableRow>
             }
-        </Card>
-    </PageBody>
-</Page>
+        </TableBody>
+    </Table>
+</PluginView>

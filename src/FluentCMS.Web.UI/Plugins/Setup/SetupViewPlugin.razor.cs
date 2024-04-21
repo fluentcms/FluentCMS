@@ -1,6 +1,4 @@
-﻿using FluentCMS.Web.UI.Services;
-
-namespace FluentCMS.Web.UI.Plugins.Setup;
+﻿namespace FluentCMS.Web.UI.Plugins.Setup;
 
 public partial class SetupViewPlugin
 {
@@ -20,9 +18,9 @@ public partial class SetupViewPlugin
         Initialized = await SetupManager.IsInitialized();
     }
 
-    protected override async Task OnFirstAsync()
+    protected override async Task OnLoadAsync()
     {
-        await base.OnFirstAsync();
+        await base.OnLoadAsync();
 
         Model = new SetupRequest
         {

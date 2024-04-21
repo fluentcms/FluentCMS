@@ -1,5 +1,3 @@
-using FluentCMS.Web.UI.Services;
-
 namespace FluentCMS.Web.UI.Plugins.Settings;
 public partial class SettingsViewPlugin
 {

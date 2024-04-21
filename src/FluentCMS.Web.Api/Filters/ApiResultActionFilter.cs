@@ -30,6 +30,7 @@ public class ApiResultActionFilter : IAsyncActionFilter
             apiResult.TraceId = _apiExecutionContext.TraceId;
             apiResult.UniqueId = _apiExecutionContext.UniqueId;
             apiResult.Status = 200;
+            apiResult.IsSuccess = true;
         }
     }
 }

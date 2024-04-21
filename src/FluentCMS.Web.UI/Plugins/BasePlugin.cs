@@ -1,13 +1,12 @@
-﻿using Microsoft.AspNetCore.Http;
-
-namespace FluentCMS.Web.UI.Plugins;
+﻿namespace FluentCMS.Web.UI.Plugins;
 
 public abstract class BasePlugin : ComponentBase
 {
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = default!;
 
-    public string CurrentUrl => NavigationManager.Uri;
+    [Inject]
+    protected IHttpClientFactory HttpClientFactory { get; set; } = default!;
 
     [CascadingParameter]
     protected HttpContext HttpContext { get; set; } = default!;
@@ -29,7 +28,7 @@ public abstract class BasePlugin : ComponentBase
         }
         else
         {
-            await OnFirstAsync();
+            await OnLoadAsync();
         }
     }
 
@@ -39,8 +38,14 @@ public abstract class BasePlugin : ComponentBase
         await Task.CompletedTask;
     }
 
-    protected virtual async Task OnFirstAsync()
+    protected virtual async Task OnLoadAsync()
     {
         await Task.CompletedTask;
+    }
+
+    protected virtual void NavigateBack()
+    {
+        var uri = new Uri(NavigationManager.Uri).LocalPath;
+        NavigationManager.NavigateTo(uri);
     }
 }

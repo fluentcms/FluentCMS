@@ -1,22 +1,15 @@
-using FluentCMS.Web.ApiClients;
-using FluentCMS.Web.UI.Services;
-using Microsoft.AspNetCore.Components;
-
 namespace FluentCMS.Web.UI.Plugins.UserManagement;
+
 public partial class UserDetailPlugin
 {
-    [Inject]
-    public IHttpClientFactory HttpClientFactory { get; set; } = default!;
-
     [SupplyParameterFromQuery(Name = "id")]
-    Guid Id { get; set; }
+    private Guid Id { get; set; }
 
-    UserDetailResponse View { get; set; } = new();
+    private UserDetailResponse User { get; set; } = new();
 
-    protected override async Task OnFirstAsync()
+    protected override async Task OnLoadAsync()
     {
-        await base.OnFirstAsync();
-        View = (await (HttpClientFactory.GetClient<UserClient>()).GetAsync(Id)).Data;
+        var apiResponse = await HttpClientFactory.GetClient<UserClient>().GetAsync(Id);
+        User = apiResponse.Data;
     }
-
 }

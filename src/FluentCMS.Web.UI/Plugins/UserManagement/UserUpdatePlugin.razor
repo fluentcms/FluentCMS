@@ -1,36 +1,13 @@
 ﻿@inherits BasePlugin
-<Page>
-    <PageHeader HasBack="true"
-                Title="Update User">
-    </PageHeader>
-    <PageBody>
-        <Grid Gutter="GridGutter.Medium">
-            <GridItem Small="GridItemColumn.Twelve">
-                <MyForm Model="@Model"
-                        Name="@FORM_NAME"
-                        OnSubmit="OnSubmit">
-                    <Card>
-                        <CardBody>
-                            <input type="hidden" name="Model.Id" value="@(Model.Id.ToString("D"))" />
-                            <input value="@(View.Username)" disabled />
-                            <InputText @bind-Value="Model.Email" Placeholder="name@example.com" />
-                            <ValidationMessage For="()=>Model.Email" />
-                            <Spacer />
-                            <ButtonGroup>
-                                <Button Href="@BackUrl">
-                                    Cancel
-                                </Button>
-                                <Button Color="Color.Primary"
-                                        Type="ButtonType.Submit">
-                                    Submit
-                                </Button>
-                            </ButtonGroup>
-                        </CardBody>
-                    </Card>
-                </MyForm>
-            </GridItem>
-        </Grid>
-    </PageBody>
-</Page>
 
-
+<PluginForm Model="@Model" Name="@FORM_NAME" OnSubmit="OnSubmit">
+    <input type="hidden" name="Model.Id" value="@(Model.Id.ToString("D"))" />
+    <InputText @bind-Value="User.Username" Placeholder="name@example.com" />
+    <InputText @bind-Value="Model.Email" Placeholder="name@example.com" />
+    <ValidationMessage For="()=>Model.Email" />
+    <PluginFormActions>
+        <Button Color="Color.Primary" Type="ButtonType.Submit">
+            Submit
+        </Button>
+    </PluginFormActions>
+</PluginForm>

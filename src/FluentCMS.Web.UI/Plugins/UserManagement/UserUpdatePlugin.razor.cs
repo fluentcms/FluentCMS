@@ -1,44 +1,37 @@
-using FluentCMS.Web.UI.Services;
-
 namespace FluentCMS.Web.UI.Plugins.UserManagement;
+
 public partial class UserUpdatePlugin
 {
     const string FORM_NAME = "UserUpdateForm";
 
-    [Inject] IHttpClientFactory HttpClientFactory { set; get; } = default!;
-
     [SupplyParameterFromQuery(Name = "id")]
-    Guid Id { get; set; }
-
-    public string BackUrl => new Uri(CurrentUrl).LocalPath;
+    private Guid Id { get; set; }
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
 
-    UserUpdateRequest Model { get; set; } = new();
+    private UserUpdateRequest Model { get; set; } = new();
 
-    UserDetailResponse View { get; set; } = new();
+    private UserDetailResponse User { get; set; } = new();
 
-    protected override Task OnInitializedAsync()
+    protected override async Task OnLoadAsync()
     {
-        return base.OnInitializedAsync();
+        var userResponse = await HttpClientFactory.GetClient<UserClient>().GetAsync(Id);
+        User = userResponse.Data;
+        Model = new UserUpdateRequest
+        {
+            Email = User.Email ?? string.Empty,
+            Id = Id,
+        };
     }
 
-    protected override async Task OnFirstAsync()
-    {
-        await base.OnFirstAsync();
-        View = (await (HttpClientFactory.GetClient<UserClient>()).GetAsync(Id)).Data;
-        Model.Id = View.Id;
-        Model.Email = View.Email!;
-    }
     protected override Task OnPostAsync()
     {
-        Model.Id = Id;
+        return Task.CompletedTask;
+    } 
 
-        return base.OnPostAsync();
-    }
     private async Task OnSubmit()
     {
-        await (HttpClientFactory.GetClient<UserClient>()).UpdateAsync(Model);
-        NavigationManager.NavigateTo(BackUrl);
+        await HttpClientFactory.GetClient<UserClient>().UpdateAsync(Model);
+        NavigateBack();
     }
 }

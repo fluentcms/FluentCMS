@@ -6,4 +6,5 @@ public interface IAuthContext
     string Username { get; }
     bool IsAuthenticated { get; }
     bool IsSuperAdmin { get; }
+    Guid UserId { get; }
 }
