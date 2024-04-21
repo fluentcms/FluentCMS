@@ -1,14 +1,8 @@
-using FluentCMS.Web.ApiClients;
 using FluentCMS.Web.UI.Services;
-using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
 
 namespace FluentCMS.Web.UI.Plugins.Settings;
 public partial class SettingsViewPlugin : BasePlugin
 {
-    [Inject]
-    IJSRuntime JsRuntime { set; get; } = default!;
-
     [Inject]
     IHttpClientFactory HttpClientFactory { get; set; } = default!;
     GlobalSettingsClient GlobalSettingsClient { get; set; } = default!;

@@ -1,7 +1,4 @@
-using FluentCMS.Web.ApiClients;
-using FluentCMS.Web.UI.Components;
 using FluentCMS.Web.UI.Services;
-using Microsoft.AspNetCore.Components;
 
 namespace FluentCMS.Web.UI.Plugins.UserManagement;
 public partial class UserListPlugin

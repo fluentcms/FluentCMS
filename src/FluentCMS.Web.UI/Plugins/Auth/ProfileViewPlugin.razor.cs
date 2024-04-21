@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Components;
-
 namespace FluentCMS.Web.UI.Plugins.Auth;
 
 public partial class ProfileViewPlugin

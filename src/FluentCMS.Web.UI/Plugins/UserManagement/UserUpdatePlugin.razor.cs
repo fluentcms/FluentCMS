@@ -1,6 +1,4 @@
-using FluentCMS.Web.ApiClients;
 using FluentCMS.Web.UI.Services;
-using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
 namespace FluentCMS.Web.UI.Plugins.UserManagement;
