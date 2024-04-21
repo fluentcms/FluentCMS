@@ -17,89 +17,85 @@
 
         </PageHeader>
         <PageBody>
-            <Card>
-                <ChildContent>
-
-                    @if (ContentType != null && Data.Count > 0 && ContentType.Fields?.Count > 0)
-                    {
-                        <Table>
-                            <TableHead>
-                                @foreach (var field in Fields)
-                                {
-                                    <TableCell>
-                                        @field.Title
-                                    </TableCell>
-                                }
-                                <TableCell Width="TableColumnWidth.Small"></TableCell>
-                            </TableHead>
-                            <TableBody id="contentListTable">
-                                @foreach (var item in Data)
-                                {
-                                    <TableRow>
-                                        @foreach (var field in ContentType.Fields.ToList())
-                                        {
-                                            <TableCell>
-                                                @(item.Value[field.Slug])
-                                            </TableCell>
-                                        }
+            @if (ContentType != null && Data.Count > 0 && ContentType.Fields?.Count > 0)
+            {
+                <Card>
+                    <Table>
+                        <TableHead>
+                            @foreach (var field in Fields)
+                            {
+                                <TableCell>
+                                    @field.Title
+                                </TableCell>
+                            }
+                            <TableCell Width="TableColumnWidth.Small"></TableCell>
+                        </TableHead>
+                        <TableBody id="contentListTable">
+                            @foreach (var item in Data)
+                            {
+                                <TableRow>
+                                    @foreach (var field in ContentType.Fields.ToList())
+                                    {
                                         <TableCell>
-                                            <ButtonGroup>
-                                                <Button data-test="preview-btn"
-                                                        Ghost="true"
-                                                        Href="@NavigationManager.Plugin("Content Management", "Content Detail", new { contentTypeSlug = ContentTypeSlug, id = item.Id })"
-                                                        Size="ButtonSize.Small">
-                                                    <Icon Name="IconName.Eye" />
-                                                </Button>
-                                                <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
-                                                <Button data-test="edit-btn"
-                                                        Ghost="true"
-                                                        Href="@NavigationManager.Plugin("Content Management", "Update Content", new { contentTypeSlug = ContentTypeSlug, id = item.Id })"
-                                                        Size="ButtonSize.Small">
-                                                    <Icon Name="IconName.Edit" />
-                                                </Button>
-                                                <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
-
-                                                <Button data-test="delete-btn"
-                                                        Ghost="true"
-                                                        Size="ButtonSize.Small"
-                                                        OnClick="@(evt => OnDelete(item))">
-                                                    <Icon Name="IconName.Delete" />
-                                                </Button>
-                                                <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
-                                            </ButtonGroup>
+                                            @(item.Value[field.Slug])
                                         </TableCell>
-                                    </TableRow>
-                                }
-                            </TableBody>
-                        </Table>
-                    }
+                                    }
+                                    <TableCell>
+                                        <ButtonGroup>
+                                            <Button data-test="preview-btn"
+                                                    Ghost="true"
+                                                    Href="@NavigationManager.Plugin("Content Management", "Content Detail", new { contentTypeSlug = ContentTypeSlug, id = item.Id })"
+                                                    Size="ButtonSize.Small">
+                                                <Icon Name="IconName.Eye" />
+                                            </Button>
+                                            <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
+                                            <Button data-test="edit-btn"
+                                                    Ghost="true"
+                                                    Href="@NavigationManager.Plugin("Content Management", "Update Content", new { contentTypeSlug = ContentTypeSlug, id = item.Id })"
+                                                    Size="ButtonSize.Small">
+                                                <Icon Name="IconName.Edit" />
+                                            </Button>
+                                            <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
 
-                    @if (ContentType.Fields?.Count == 0)
-                    {
-                        <EmptyState Message="This Content Type doesn't have any field">
-                            <Button Color="Color.Primary"
-                                    Href="@NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = ContentType.Id })">
-                                <Icon Name="IconName.Edit" />
-                                Edit @ContentType.Title
-                            </Button>
+                                            <Button data-test="delete-btn"
+                                                    Ghost="true"
+                                                    Size="ButtonSize.Small"
+                                                    OnClick="@(evt => OnDelete(item))">
+                                                <Icon Name="IconName.Delete" />
+                                            </Button>
+                                            <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
+                                        </ButtonGroup>
+                                    </TableCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                </Card>
+            }
+            @if (ContentType.Fields?.Count == 0)
+            {
+                <EmptyState Message="This Content Type doesn't have any field">
+                    <Button Color="Color.Primary"
+                            Href="@NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = ContentType.Id })">
+                        <Icon Name="IconName.Edit" />
+                        Edit @ContentType.Title
+                    </Button>
 
-                        </EmptyState>
-                    }
-                    else if (Data.Count == 0)
-                    {
-                        <EmptyState Message="There is no Content yet!">
-                            <Button autofocus="true"
-                                    Color="Color.Primary"
-                                    Href="@NavigationManager.Plugin("Content Management", "Create Content", new { contentTypeSlug = ContentTypeSlug })"
-                                    id="contentCreateButton"
-                                    Size="ButtonSize.Small">
-                                <Icon Name="IconName.Plus" />
-                                Add First @ContentType.Title
-                            </Button>
-                        </EmptyState>
-                    }
-                </ChildContent>
-            </Card>
+                </EmptyState>
+            }
+            else if (Data.Count == 0)
+            {
+                <EmptyState Message="There is no Content yet!">
+                    <Button autofocus="true"
+                            Color="Color.Primary"
+                            Href="@NavigationManager.Plugin("Content Management", "Create Content", new { contentTypeSlug = ContentTypeSlug })"
+                            id="contentCreateButton"
+                            Size="ButtonSize.Small">
+                        <Icon Name="IconName.Plus" />
+                        Add First @ContentType.Title
+                    </Button>
+                </EmptyState>
+            }
         </PageBody>
     </Page>
 </ContentLayout>
