@@ -1,103 +1,43 @@
-﻿<Page>
+﻿@inherits BasePlugin
+<Page>
     <PageHeader HasBack="true"
                 Title="Update User">
     </PageHeader>
     <PageBody>
         <Grid Gutter="GridGutter.Medium">
             <GridItem Small="GridItemColumn.Twelve">
-                <Form Model="@Model"
-                      OnSubmit="OnSubmit">
+                <MyForm Model="@Model"
+                        Name="UserUpdateForm"
+                        OnSubmit="OnSubmit">
                     <Card>
                         <CardBody>
-                            <Input Value="@View.Username"
-                                   Label="Username"
-                                   Name="Username"
-                                   Placeholder="username"
-                                   Disabled="true"
-                                   Required="true"/>
-                            <Input @bind-Value="Model.Email"
-                                   Label="Email"
-                                   Name="Email"
-                                   Placeholder="name@example.com"
-                                   Required="true" />
-
-                            <Spacer/>
-                            @if(!string.IsNullOrEmpty(Message))
+                            <input name="Model.Id" value="@(Model.Id.ToString("D"))" Required="true" />
+                            <input value="@(View.Username)" disabled />
+                            <InputText @bind-Value="Model.Email" Placeholder="name@example.com" Required="true" />
+                            <ValidationMessage For="()=>Model.Email" />
+                            <Spacer />
+                            @if (!string.IsNullOrEmpty(Message))
                             {
                                 <Typography>
                                     @Message
                                 </Typography>
-                                <Spacer/>
+                                <Spacer />
                             }
                             <ButtonGroup>
-                                <Button OnClick="GoBack">
+                                <Button Href="@BackUrl">
                                     Cancel
                                 </Button>
                                 <Button Color="Color.Primary"
-                                        Type="ButtonType.Submit" >
+                                        Type="ButtonType.Submit">
                                     Submit
                                 </Button>
                             </ButtonGroup>
                         </CardBody>
                     </Card>
-                </Form>
+                </MyForm>
             </GridItem>
         </Grid>
     </PageBody>
 </Page>
 
-@code {
-    [Inject]
-    IJSRuntime JsRuntime { set; get; } = default!;
 
-    [Inject]
-    NavigationManager NavigationManager { set; get; } = default!;
-
-    [Inject]
-    UserClient UserClient { get; set; } = default!;
-
-    Guid? Id { get; set; }
-
-    string Message { get; set; } = string.Empty;
-
-    UserUpdateRequest Model { get; set; } = new();
-
-    UserDetailResponse View { get; set; } = new();
-
-    async Task GoBack()
-    {
-        await JsRuntime.InvokeAsync<object>("history.back");
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-
-        var userId = NavigationManager.GetIdFromQuery();
-        if (userId != null)
-            try
-            {
-                View = (await UserClient.GetAsync(userId.Value)).Data;
-                Model.Id = userId.Value;
-                Model.Email = View.Email;
-            }
-            catch (Exception)
-            {
-                Message = "An error occured!";
-            }
-    }
-
-    async Task OnSubmit()
-    {
-        try
-        {
-            await UserClient.UpdateAsync(Model);
-            Message = "Done!";
-            GoBack();
-        }
-        catch (Exception exception)
-        {
-            Message = exception.ToString();
-        }
-
-    }
-}

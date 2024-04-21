@@ -1,4 +1,6 @@
-﻿<Page>
+﻿@inherits BasePlugin
+
+<Page>
     <PageHeader HasBack="false" Title="Users List">
         <PageHeaderActions>
             <ButtonGroup>
@@ -63,26 +65,3 @@
         </Card>
     </PageBody>
 </Page>
-
-@code {
-    [Inject]
-    UserClient? UserClient { get; set; }
-
-    [Inject]
-    ConfirmService Confirm { get; set; }
-
-    [Inject]
-    NavigationManager NavigationManager { get; set; }
-
-    List<UserDetailResponse> Users { get; set; } = [];
-
-    protected override async Task OnInitializedAsync()
-    {
-        var response = await UserClient!.GetAllAsync();
-
-        if (response?.Data != null)
-        {
-            Users = response.Data.ToList();
-        }
-    }
-}

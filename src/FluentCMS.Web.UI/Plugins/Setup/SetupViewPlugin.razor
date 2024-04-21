@@ -2,45 +2,31 @@
 
 @if (!Initialized)
 {
-    <EditForm Model="@Model" OnValidSubmit="OnSubmit" FormName="SetupForm" Enhance>
-        <Typography Size="TextSize.H5">
-            Welcome To FluentCMS @Model.Username
-        </Typography>
-        <Spacer />
+    <MyForm Model="@Model" OnSubmit="OnSubmit" Name="SetupForm" Title="@($"Welcome To FluentCMS {Model.Username}")">
         <InputText @bind-Value="Model.Username" Placeholder="Enter your username" />
+        <ValidationMessage For="()=>Model.Username"></ValidationMessage>
         <InputText @bind-Value="Model.Email" Placeholder="Enter your email" />
+        <ValidationMessage For="()=>Model.Email"></ValidationMessage>
         <InputText @bind-Value="Model.Password" Placeholder="Enter your password" type="password" />
+        <ValidationMessage For="()=>Model.Password"></ValidationMessage>
         <InputText @bind-Value="Model.AppTemplateName" />
+        <ValidationMessage For="()=>Model.AppTemplateName"></ValidationMessage>
         <InputText @bind-Value="Model.SiteTemplateName" />
+        <ValidationMessage For="()=>Model.SiteTemplateName"></ValidationMessage>
         <InputText @bind-Value="Model.AdminDomain" />
+        <ValidationMessage For="()=>Model.AdminDomain"></ValidationMessage>
         <Spacer />
         <Button Block="true" Color="Color.Primary" Type="ButtonType.Submit">
             Setup
         </Button>
-        @if (!string.IsNullOrEmpty(Message))
-        {
-            <Spacer />
-            <Alert Type="AlertType.Success">
-                <b>@Message</b>
-            </Alert>
-        }
-        @if (!string.IsNullOrEmpty(ErrorMessage))
-        {
-            <Spacer />
-            <Alert Type="AlertType.Danger">
-                <b>@ErrorMessage</b>
-            </Alert>
-        }
-        <DataAnnotationsValidator />
-        <ValidationSummary />
-    </EditForm>
+    </MyForm>
 }
 else
 {
     <Typography Size="TextSize.H5">
         Setup is already done!
     </Typography>
-    <Button Block="true" Color="Color.Primary" Type="ButtonType.Button" Href="/">
+    <Button Block="true" Color="Color.Primary" Href="/">
         Setup
     </Button>
 }

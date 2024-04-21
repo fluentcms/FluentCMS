@@ -1,4 +1,6 @@
 ﻿<EditForm Model="@Model" OnValidSubmit="HandleValidSubmit" FormName="@Name" Enhance>
+    <DataAnnotationsValidator />
+
     <Typography Size="TextSize.H5">
         @Title
     </Typography>
@@ -18,6 +20,4 @@
             <b>@Error</b>
         </Alert>
     }
-    <DataAnnotationsValidator />
-    <ValidationSummary />
 </EditForm>

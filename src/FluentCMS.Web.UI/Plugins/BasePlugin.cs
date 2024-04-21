@@ -7,6 +7,8 @@ public abstract class BasePlugin : ComponentBase
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = default!;
 
+    public string CurrentUrl => NavigationManager.Uri;
+
     [CascadingParameter]
     protected HttpContext HttpContext { get; set; } = default!;
 

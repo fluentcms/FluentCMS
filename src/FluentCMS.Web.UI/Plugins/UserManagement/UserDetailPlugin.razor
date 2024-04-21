@@ -76,7 +76,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-
+        await base.OnInitializedAsync();
         var userId = NavigationManager.GetIdFromQuery();
         if (userId != null)
             try

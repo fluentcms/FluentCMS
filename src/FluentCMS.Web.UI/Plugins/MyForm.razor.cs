@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Web.UI.Plugins;
+﻿using Microsoft.AspNetCore.Components.Forms;
+
+namespace FluentCMS.Web.UI.Plugins;
 
 public partial class MyForm
 {
@@ -29,22 +31,22 @@ public partial class MyForm
         if (string.IsNullOrEmpty(Name))
             throw new ArgumentNullException("FormName");
     }
-
-    private async Task HandleValidSubmit()
+    private async Task HandleValidSubmit(EditContext editContext)
     {
         try
         {
-            await OnSubmit();
+            await OnSubmit.InvokeAsync(editContext);
             _showMessage = true;
+        }
+        catch (NavigationException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
             Error = ex.Message;
         }
     }
-
-    public virtual async Task OnSubmit()
-    {
-        await Task.CompletedTask;
-    }
+    [Parameter]
+    public EventCallback<EditContext> OnSubmit { get; set; }
 }

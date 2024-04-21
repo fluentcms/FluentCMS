@@ -36,6 +36,8 @@ public partial class SetupViewPlugin
     private async Task OnSubmit()
     {
         if (await SetupManager.Start(Model))
+        {
             Initialized = await SetupManager.IsInitialized();
+        }
     }
 }
