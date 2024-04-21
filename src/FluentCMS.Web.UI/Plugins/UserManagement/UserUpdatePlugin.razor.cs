@@ -1,5 +1,4 @@
 using FluentCMS.Web.UI.Services;
-using Microsoft.JSInterop;
 
 namespace FluentCMS.Web.UI.Plugins.UserManagement;
 public partial class UserUpdatePlugin : BasePlugin
