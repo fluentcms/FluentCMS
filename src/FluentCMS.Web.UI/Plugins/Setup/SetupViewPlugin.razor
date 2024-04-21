@@ -2,7 +2,7 @@
 
 @if (!Initialized)
 {
-    <MyForm Model="@Model" OnSubmit="OnSubmit" Name="@_formName" Title="@($"Welcome To FluentCMS {Model.Username}")">
+    <MyForm Model="@Model" OnSubmit="OnSubmit" Name="@FORM_NAME" Title="@($"Welcome To FluentCMS {Model.Username}")">
         <InputText @bind-Value="Model.Username" Placeholder="Enter your username" />
         <ValidationMessage For="()=>Model.Username"></ValidationMessage>
         <InputText @bind-Value="Model.Email" Placeholder="Enter your email" />

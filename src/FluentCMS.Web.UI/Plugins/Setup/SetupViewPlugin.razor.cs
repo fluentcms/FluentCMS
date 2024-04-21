@@ -4,9 +4,9 @@ namespace FluentCMS.Web.UI.Plugins.Setup;
 
 public partial class SetupViewPlugin
 {
-    const string _formName = "SetupForm";
+    const string FORM_NAME = "SetupForm";
 
-    [SupplyParameterFromForm(FormName = _formName)]
+    [SupplyParameterFromForm(FormName = FORM_NAME)]
     public SetupRequest Model { get; set; } = new();
 
     [Inject]
