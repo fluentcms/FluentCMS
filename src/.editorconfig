@@ -32,6 +32,10 @@ dotnet_naming_rule.private_or_internal_field_should_be__camelcase.severity = war
 dotnet_naming_rule.private_or_internal_field_should_be__camelcase.symbols = private_or_internal_field
 dotnet_naming_rule.private_or_internal_field_should_be__camelcase.style = _camelcase
 
+dotnet_naming_rule.constants_should_be_upper_case.severity = warning
+dotnet_naming_rule.constants_should_be_upper_case.symbols = constants
+dotnet_naming_rule.constants_should_be_upper_case.style = constant_style
+
 # Symbol specifications
 
 dotnet_naming_symbols.interface.applicable_kinds = interface
@@ -49,6 +53,9 @@ dotnet_naming_symbols.non_field_members.required_modifiers =
 dotnet_naming_symbols.private_or_internal_field.applicable_kinds = field
 dotnet_naming_symbols.private_or_internal_field.applicable_accessibilities = internal, private, private_protected
 dotnet_naming_symbols.private_or_internal_field.required_modifiers =
+
+dotnet_naming_symbols.constants.applicable_kinds = field, local
+dotnet_naming_symbols.constants.required_modifiers = const
 
 # Naming styles
 
@@ -71,6 +78,9 @@ dotnet_naming_style._camelcase.required_prefix = _
 dotnet_naming_style._camelcase.required_suffix =
 dotnet_naming_style._camelcase.word_separator =
 dotnet_naming_style._camelcase.capitalization = camel_case
+dotnet_naming_style.constant_style.capitalization = all_upper
+dotnet_naming_style.constant_style.word_separator = _
+
 csharp_indent_labels = one_less_than_current
 csharp_using_directive_placement = outside_namespace:silent
 csharp_prefer_simple_using_statement = true:suggestion
