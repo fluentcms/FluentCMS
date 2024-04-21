@@ -1,7 +1,6 @@
-﻿
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
-namespace FluentCMS.Web.Api.Models;
+namespace FluentCMS.Web.Api.Validation;
 
 [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
 public class DomainNameAttribute : RegularExpressionAttribute
