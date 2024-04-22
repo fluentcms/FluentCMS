@@ -20,8 +20,6 @@ public partial class SetupViewPlugin
 
     protected override async Task OnLoadAsync()
     {
-        await base.OnLoadAsync();
-
         Model = new SetupRequest
         {
             Username = "admin",
@@ -31,6 +29,7 @@ public partial class SetupViewPlugin
             AppTemplateName = "Blank",
             SiteTemplateName = "Blank"
         };
+        await Task.CompletedTask;
     }
 
     private async Task OnSubmit()

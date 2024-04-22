@@ -4,21 +4,16 @@
 {
     <PluginForm Model="@Model" OnSubmit="OnSubmit" Name="@FORM_NAME" Title="@($"Welcome To FluentCMS {Model.Username}")">
         <InputText @bind-Value="Model.Username" Placeholder="Enter your username" />
-        <ValidationMessage For="()=>Model.Username"></ValidationMessage>
         <InputText @bind-Value="Model.Email" Placeholder="Enter your email" />
-        <ValidationMessage For="()=>Model.Email"></ValidationMessage>
         <InputText @bind-Value="Model.Password" Placeholder="Enter your password" type="password" />
-        <ValidationMessage For="()=>Model.Password"></ValidationMessage>
         <InputText @bind-Value="Model.AppTemplateName" />
-        <ValidationMessage For="()=>Model.AppTemplateName"></ValidationMessage>
         <InputText @bind-Value="Model.SiteTemplateName" />
-        <ValidationMessage For="()=>Model.SiteTemplateName"></ValidationMessage>
         <InputText @bind-Value="Model.AdminDomain" />
-        <ValidationMessage For="()=>Model.AdminDomain"></ValidationMessage>
-        <Spacer />
-        <Button Block="true" Color="Color.Primary" Type="ButtonType.Submit">
-            Setup
-        </Button>
+        <PluginFormActions>
+            <Button Block="true"  Color="Color.Primary" Type="ButtonType.Submit">
+                Setup
+            </Button>
+        </PluginFormActions>
     </PluginForm>
 }
 else
