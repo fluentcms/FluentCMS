@@ -2,7 +2,10 @@
 
 <PluginForm Model="@Model" Name="@FORM_NAME" OnSubmit="OnSubmit">
     <input type="hidden" name="Model.Id" value="@(Model.Id.ToString("D"))" />
-    <InputText @bind-Value="User.Username" Placeholder="name@example.com" />
+    <InputText @bind-Value="Model.FirstName" Placeholder="Enter FirstName..." />
+    <InputText @bind-Value="Model.LastName" Placeholder="Enter LastName..." />
+    <InputText @bind-Value="Model.PhoneNumber" placeholder="Enter Phone Number..." />
+    <InputText @bind-Value="User.Username" Placeholder="Enter Username..." />
     <InputText @bind-Value="Model.Email" Placeholder="name@example.com" />
     <ValidationMessage For="()=>Model.Email" />
     <PluginFormActions>

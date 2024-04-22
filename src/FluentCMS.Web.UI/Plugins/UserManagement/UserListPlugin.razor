@@ -9,16 +9,22 @@
     </ButtonGroup>
     <Table>
         <TableHead>
+            <TableCell>FirstName</TableCell>
+            <TableCell>LastName</TableCell>
             <TableCell>Username</TableCell>
             <TableCell>Email</TableCell>
+            <TableCell>Phone</TableCell>
             <TableCell Width="TableColumnWidth.Small"></TableCell>
         </TableHead>
         <TableBody>
             @foreach (var user in Users)
             {
                 <TableRow>
-                    <TableCell> @user.Username </TableCell>
-                    <TableCell> @user.Email </TableCell>
+                    <TableCell>@user.FirstName</TableCell>
+                    <TableCell>@user.LastName</TableCell>
+                    <TableCell>@user.Username</TableCell>
+                    <TableCell>@user.Email</TableCell>
+                    <TableCell>@user.PhoneNumber</TableCell>
                     <TableCell>
                         <ButtonGroup>
                             <Button Ghost="true" Href="@NavigationManager.Plugin("User Management", "User Detail", new { id = user.Id })" Size="ButtonSize.Small">

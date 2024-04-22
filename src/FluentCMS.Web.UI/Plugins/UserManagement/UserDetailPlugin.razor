@@ -5,6 +5,23 @@
         <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Seven" Large="GridItemColumn.Nine">
             <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
                 <GridItem Small="GridItemColumn.Twelve">
+                    <Typography><strong>FirstName:</strong></Typography>
+                    <Typography>
+                        @User.FirstName
+                    </Typography>
+                </GridItem>
+                <GridItem Small="GridItemColumn.Twelve">
+                    <Typography><strong>LastName:</strong></Typography>
+                    <Typography>
+                        @User.LastName
+                    </Typography>
+                </GridItem> <GridItem Small="GridItemColumn.Twelve">
+                    <Typography><strong>Phone:</strong></Typography>
+                    <Typography>
+                        @User.PhoneNumber
+                    </Typography>
+                </GridItem>
+                <GridItem Small="GridItemColumn.Twelve">
                     <Typography><strong>Username:</strong></Typography>
                     <Typography>
                         @User.Username

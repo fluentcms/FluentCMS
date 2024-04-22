@@ -1,12 +1,12 @@
 ﻿@inherits BasePlugin
 
 <PluginForm Model="@Model" OnSubmit="OnSubmit" Name="@FORM_NAME">
+    <InputText @bind-Value="Model.FirstName" Placeholder="Enter FirstName..." />
+    <InputText @bind-Value="Model.LastName" Placeholder="Enter LastName..." />
+    <InputText @bind-Value="Model.PhoneNumber" placeholder="Enter Phone Number..." />
     <InputText @bind-Value="Model.Username" placeholder="Enter Username..." />
-    <ValidationMessage For="()=>Model.Username"></ValidationMessage>
     <InputText @bind-Value="Model.Email" Placeholder="Enter Email..." />
-    <ValidationMessage For="()=>Model.Email"></ValidationMessage>
     <InputText @bind-Value="Model.Password" Placeholder="Enter Password..." />
-    <ValidationMessage For="()=>Model.Password"></ValidationMessage>
     <PluginFormActions>
         <Button Color="Color.Primary" Type="ButtonType.Submit">
             Save

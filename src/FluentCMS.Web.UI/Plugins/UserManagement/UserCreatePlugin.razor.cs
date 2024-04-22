@@ -12,7 +12,7 @@ public partial class UserCreatePlugin
         var apiResult = await HttpClientFactory.GetClient<UserClient>().CreateAsync(Model);
         if (apiResult.IsSuccess)
         {
-            NavigationManager.NavigateTo("/");
+            NavigateBack();
         }
         else
         {
