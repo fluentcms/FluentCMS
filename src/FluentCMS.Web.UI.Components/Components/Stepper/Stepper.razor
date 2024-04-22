@@ -1,0 +1,14 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+<ol @attributes="AdditionalAttributes"
+     class="@this.GetClasses()">                  
+    @ChildContent
+</ol>
+
+@code {
+    [Parameter]
+    [CSSProperty]
+    public bool Vertical { get; set; } = true;
+}

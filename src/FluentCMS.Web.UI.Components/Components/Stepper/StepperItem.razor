@@ -1,0 +1,39 @@
+@inherits BaseComponent;
+
+@namespace FluentCMS.Web.UI.Components
+
+<li @attributes="AdditionalAttributes" 
+    class="@this.GetClasses()">            
+    <span class="@this.ClassName("StepperItemIcon")">
+        @if(Icon != IconName.Default)
+        {
+            <Icon Name="Icon" 
+                  Color="Color" />
+        }
+    </span>
+    <h3 class="@this.ClassName("StepperItemTitle")">@Title</h3>
+    @if(!string.IsNullOrEmpty(Subtitle))
+    {
+        <p class="@this.ClassName("StepperItemSubtitle")">@Subtitle</p>
+    }
+    @if(ChildContent != null)
+    {
+        <Spacer/>
+        @ChildContent
+    }
+</li>
+
+@code {
+    [Parameter]
+    [CSSProperty]
+    public Color Color {get; set;} = Color.Default;
+
+    [Parameter]
+    public IconName Icon {get; set;} = IconName.Default;
+
+    [Parameter]
+    public string Subtitle {get; set;}
+
+    [Parameter]
+    public string Title {get; set;}
+}

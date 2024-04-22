@@ -1,0 +1,27 @@
+$stepper: $prefix + 'stepper';
+
+.#{$stepper} {
+    &-vertical-true {
+        @apply relative text-gray-500 border-s border-gray-200 dark:border-gray-700 dark:text-gray-400;    
+    }
+
+    &-item {
+        @apply mb-10 ms-6;
+    }
+    
+    &-item-icon {
+        // TODO: Handle colors
+        // .f-stepper-color-success...
+        @apply absolute flex items-center justify-center w-8 h-8 bg-gray-200 rounded-full -start-4 ring-4 ring-gray-50 dark:ring-gray-800 dark:bg-gray-600;
+    }
+
+    &-item-title {
+        @apply font-medium leading-tight;
+    }
+ 
+    &-item-subtitle {
+        @apply text-sm;
+    }
+    
+
+}
