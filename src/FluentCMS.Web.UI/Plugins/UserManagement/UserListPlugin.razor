@@ -7,7 +7,7 @@
                         Href="@NavigationManager.Plugin("User Management", "Create User")"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
-                    Add User
+                    Add New User
                 </Button>
             </ButtonGroup>
         </PageHeaderActions>
@@ -16,7 +16,7 @@
         @if (Users.Count > 0)
         {
             <Card>
-                <Table>
+                <Table Hoverable>
                     <TableHead>
                         <TableCell>Username</TableCell>
                         <TableCell>Email</TableCell>
@@ -25,14 +25,15 @@
                     <TableBody>
                         @foreach (var user in Users)
                         {
-                            <TableRow>
+                            <TableRow OnClick="@(evt => TableRowDefaultAction(user))">
                                 <TableCell> @user.Username </TableCell>
                                 <TableCell> @user.Email </TableCell>
                                 <TableCell>
                                     <ButtonGroup>
                                         <Button Ghost="true"
                                                 Href="@NavigationManager.Plugin("User Management", "User Detail", new { id = user.Id })"
-                                                Size="ButtonSize.Small">
+                                                Size="ButtonSize.Small"
+                                                StopPropagation="true">
                                             <Icon Name="IconName.Eye" />
                                         </Button>
                                         <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
@@ -40,7 +41,8 @@
                                         <Button data-test="edit-btn"
                                                 Ghost="true"
                                                 Href="@NavigationManager.Plugin("User Management", "Update User", new { id = user.Id })"
-                                                Size="ButtonSize.Small">
+                                                Size="ButtonSize.Small"
+                                                StopPropagation="true">
                                             <Icon Name="IconName.Edit" />
                                         </Button>
                                         <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
@@ -59,7 +61,7 @@
                         Href="@NavigationManager.Plugin("User Management", "Create User")"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
-                    Add User
+                    Add New User
                 </Button>
             </EmptyState>
         }
@@ -86,5 +88,11 @@
         {
             Users = response.Data.ToList();
         }
+    }
+
+    async Task TableRowDefaultAction(UserDetailResponse user) 
+    {
+        var url = NavigationManager.Plugin("User Management", "User Detail", new { id= user.Id });
+        NavigationManager.NavigateTo(url);
     }
 }

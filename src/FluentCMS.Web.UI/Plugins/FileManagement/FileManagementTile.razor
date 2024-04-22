@@ -26,6 +26,7 @@
                     <Button Color="Color.Default"
                             Outline="true"
                             Size="ButtonSize.Small"
+                            StopPropagation="true"
                             OnClick="() => OnEdit.InvokeAsync()">
                         <Icon Name="IconName.Edit" />
                     </Button>
@@ -33,6 +34,7 @@
                 <Button Color="Color.Danger"
                         Outline="true"
                         Size="ButtonSize.Small"
+                        StopPropagation="true"
                         OnClick="() => OnDelete.InvokeAsync()">
                     <Icon Name="IconName.Delete" />
                 </Button>

@@ -19,10 +19,10 @@ Cypress.Commands.add('getSidebarItem', (id) => {
 
 Cypress.Commands.add("checkAdminSidebarNavigations", () => {
     cy.getSidebarItem('#adminSidebarSettingsLink').click()
-    cy.get('.f-page-header-title').should('have.text', 'Settings')
+    cy.get('.f-page-header-title').should('have.text', 'Settings (Draft)')
 
     cy.getSidebarItem('#adminSidebarContentTypeLink').click()
-    cy.get('.f-page-header-title').should('have.text', 'Content Types List')
+    cy.get('.f-page-header-title').should('have.text', 'Content Types List (Draft)')
 
     cy.getSidebarItem('#adminSidebarDocsLink a').should('have.attr', 'target', '_blank')
     cy.getSidebarItem('#adminSidebarDocsLink a').invoke('removeAttr', 'target').scrollIntoView().click()
