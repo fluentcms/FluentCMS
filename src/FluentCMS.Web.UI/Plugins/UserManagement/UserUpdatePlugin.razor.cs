@@ -8,7 +8,6 @@ public partial class UserUpdatePlugin
     private Guid Id { get; set; }
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
-
     private UserUpdateRequest Model { get; set; } = new();
 
     private UserDetailResponse User { get; set; } = new();

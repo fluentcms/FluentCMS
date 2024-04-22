@@ -12,14 +12,9 @@ public partial class SetupViewPlugin
 
     private bool Initialized { get; set; } = false;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await base.OnInitializedAsync();
-        Initialized = await SetupManager.IsInitialized();
-    }
-
     protected override async Task OnLoadAsync()
     {
+        Initialized = await SetupManager.IsInitialized();
         Model = new SetupRequest
         {
             Username = "admin",
