@@ -1,8 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿namespace FluentCMS.Web.Api.Controllers;
 
-namespace FluentCMS.Web.Api.Controllers;
-
-[Authorize]
 public class UserController(IUserService userService, IMapper mapper) : BaseGlobalController
 {
 

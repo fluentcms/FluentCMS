@@ -1,74 +1,27 @@
-﻿@if (!Initialized)
+﻿@inherits BasePlugin
+
+@if (!Initialized)
 {
-    <Form Model="@Model"
-          OnSubmit="OnSubmit">
-        <Typography Size="TextSize.H5">
-            Welcome To FluentCMS
-        </Typography>
-        <Spacer />
-        <Input @bind-Value="Model.Username"
-               autofocus="true"
-               Id="setupUsernameInput"
-               Label="Username"
-               Name="Username"
-               Placeholder="Enter your username"
-               Required="true" />
-        <Input @bind-Value="Model.Email"
-               Id="setupEmailInput"
-               Label="Email"
-               Name="Email"
-               Placeholder="Enter your email"
-               Required="true" />
-        <Input @bind-Value="Model.Password"
-               Id="setupPasswordInput"
-               Label="Password"
-               Name="Password"
-               Placeholder="Enter your password"
-               Required="true"
-               Type="InputType.Password" />
-        <Spacer />
-        <Button Block="true"
-                Color="Color.Primary"
-                id="setupSubmitButton"
-                Type="ButtonType.Submit">
-            Setup
-        </Button>
-    </Form>
+    <PluginForm Model="@Model" OnSubmit="OnSubmit" Name="@FORM_NAME" Title="@($"Welcome To FluentCMS {Model.Username}")">
+        <InputText @bind-Value="Model.Username" Placeholder="Enter your username" />
+        <InputText @bind-Value="Model.Email" Placeholder="Enter your email" />
+        <InputText @bind-Value="Model.Password" Placeholder="Enter your password" type="password" />
+        <InputText @bind-Value="Model.AppTemplateName" />
+        <InputText @bind-Value="Model.SiteTemplateName" />
+        <InputText @bind-Value="Model.AdminDomain" />
+        <PluginFormActions>
+            <Button Block="true"  Color="Color.Primary" Type="ButtonType.Submit">
+                Setup
+            </Button>
+        </PluginFormActions>
+    </PluginForm>
 }
 else
 {
-    <Typography>
-        Setup is already done!
+    <Typography Size="TextSize.H5">
+        Setup completed successfully!
     </Typography>
-}
-
-@code {
-    [Inject]
-    SetupManager SetupManager { get; set; } = default!;
-
-    [Inject]
-    NavigationManager NavigationManager { get; set; } = default!;
-
-    bool Initialized { get; set; }
-
-    SetupRequest Model { get; set; } = new SetupRequest
-        {
-            Username = "admin",
-            Email = "admin@example.com",
-            Password = "Passw0rd!",
-            AppTemplateName = "Blank",
-            SiteTemplateName = "Blank"
-        };
-
-    protected override async Task OnInitializedAsync()
-    {
-        Initialized = await SetupManager.IsInitialized();
-        Model.AdminDomain = new Uri(NavigationManager.BaseUri).Authority;
-    }
-
-    private async Task OnSubmit()
-    {
-        if (await SetupManager.Start(Model))
-            NavigationManager.NavigateTo("/", true);
-    }
+    <Button Block="true" Color="Color.Primary" Href="/">
+        Continue...
+    </Button>
 }

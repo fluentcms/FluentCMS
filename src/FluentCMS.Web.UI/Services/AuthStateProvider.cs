@@ -1,92 +1,85 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using FluentCMS.Web.UI.Services.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Server;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 using System.Text.Json;
+using System.Web;
 
 namespace FluentCMS.Web.UI.Services;
-public class AuthStateProvider(NavigationManager navigationManager, IHttpContextAccessor httpContextAccessor, UserClient userClient, AccountClient accountClient, ILoggerFactory factory) : RevalidatingServerAuthenticationStateProvider(factory)
+
+public class AuthStateProvider(ICookieService cookieService, IHttpClientFactory httpClientFactory) : AuthenticationStateProvider
 {
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        try
-        {
-            var user = await FetchUserDetail();
-            NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(GetClaimsPricipal(user.Data))));
-            return new AuthenticationState(GetClaimsPricipal(user.Data));
-        }
-        catch (Exception e)
-        {
-            return NotAuthorized(); // not authorized
-        }
+        var loginResponse = await GetIdentityFromCookie();
+
+        if (loginResponse == null)
+            return new AuthenticationState(new ClaimsPrincipal());
+
+        return new AuthenticationState(GetClaimsPrincipal(loginResponse));
     }
 
-    private static AuthenticationState NotAuthorized()
+    public async Task<UserLoginResponseIApiResult> Login(UserLoginRequest userLoginRequest)
     {
-        return new AuthenticationState(new ClaimsPrincipal());
-    }
+        var result = await httpClientFactory.GetClient<AccountClient>().AuthenticateAsync(userLoginRequest);
 
-    private async Task<UserDetailResponseIApiResult> FetchUserDetail()
-    {
-        var json = httpContextAccessor.HttpContext?.Request?.Cookies["UserLoginResponse"];
-        var loginResponse =
-            JsonSerializer.Deserialize<UserLoginResponse>(json);
-        var user = await userClient.GetAsync(loginResponse.UserId);
-        return user;
-    }
-
-    public async Task<UserLoginResponseIApiResult> LoginAsync(UserLoginRequest userLoginRequest)
-    {
-        var result = await accountClient.AuthenticateAsync(userLoginRequest);
-
-        if (result.Errors!.Count == 0)
+        if (result.Errors!.Count == 0 && result.Data != null)
         {
-            navigationManager.NavigateTo($"/api/auth?user-id={result.Data.UserId}&token={result.Data.Token}&role-ids={JsonSerializer.Serialize(result.Data.RoleIds)}", true);
-            var user = await FetchUserDetail();
-            NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(GetClaimsPricipal(user.Data))));
+            var jsonData = JsonSerializer.Serialize(result.Data);
+
+            await cookieService.SetAsync(nameof(UserLoginResponse), HttpUtility.UrlEncode(jsonData), null);
+
+            var authState = new AuthenticationState(GetClaimsPrincipal(result.Data));
+
+            NotifyAuthenticationStateChanged(Task.FromResult(authState));
         }
         return result;
     }
 
     public async Task Logout()
     {
-        navigationManager.NavigateTo($"/api/auth/logout", true);
-        NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(new ClaimsPrincipal()))); // not authorized
+        await cookieService.RemoveAsync(nameof(UserLoginResponse));
+        var authState = new AuthenticationState(new ClaimsPrincipal());
+        NotifyAuthenticationStateChanged(Task.FromResult(authState));
     }
 
-    private ClaimsPrincipal GetClaimsPricipal(UserDetailResponse userData)
+    private static ClaimsPrincipal GetClaimsPrincipal(UserLoginResponse loginResponse)
     {
-        return new ClaimsPrincipal(GetClaimIdentities(userData));
-    }
-
-    private IEnumerable<ClaimsIdentity> GetClaimIdentities(UserDetailResponse userData)
-    {
-        return [new ClaimsIdentity(GetClaims(userData), "localStorage")];
-    }
-
-    private IEnumerable<Claim>? GetClaims(UserDetailResponse userData)
-    {
-        // static claims
-        if (userData.Id != null) yield return new Claim(ClaimTypes.Sid, userData.Id.ToString("D"));
-        if (userData.Id != null) yield return new Claim(ClaimTypes.NameIdentifier, userData.Id.ToString("D"));
-        if (userData.Username != null) yield return new Claim(ClaimTypes.Name, userData.Username);
-        if (userData.PhoneNumber != null) yield return new Claim(ClaimTypes.MobilePhone, userData.PhoneNumber);
-        if (userData.Email != null) yield return new Claim(ClaimTypes.Email, userData.Email);
-        // other claims excluding username, phone and email
-        var excludedClaims = new List<string>() { nameof(userData.Username), nameof(userData.PhoneNumber), nameof(userData.Email), nameof(userData.Id) };
-        foreach (var propertyInfo in userData.GetType().GetProperties().Where(x => !excludedClaims.Contains(x.Name)))
+        var claims = new List<Claim>()
         {
-            var value = propertyInfo.GetValue(userData)?.ToString();
-            if (value != null) yield return new Claim(propertyInfo.Name, value);
+            new(ClaimTypes.Sid, loginResponse.UserId.ToString()),
+            new(ClaimTypes.NameIdentifier, loginResponse.UserName ?? string.Empty),
+            new(ClaimTypes.Email, loginResponse.Email ?? string.Empty)
+        };
+
+        if (loginResponse.RoleIds != null)
+            foreach (var roleId in loginResponse.RoleIds)
+                claims.Add(new(ClaimTypes.Role, roleId.ToString()));
+
+        var claimsIdentity = new ClaimsIdentity(claims, "Bearer");
+
+        return new ClaimsPrincipal([claimsIdentity]);
+    }
+
+    private async Task<UserLoginResponse?> GetIdentityFromCookie()
+    {
+        var cookie = await cookieService.GetAsync(nameof(UserLoginResponse));
+
+        if (cookie is null || string.IsNullOrEmpty(cookie.Value))
+            return null;
+        try
+        {
+            var jsonData = HttpUtility.UrlDecode(cookie.Value);
+
+            var loginResponse = JsonSerializer.Deserialize<UserLoginResponse>(jsonData);
+
+            if (loginResponse is null)
+                return null;
+
+            return loginResponse;
+        }
+        catch (Exception)
+        {
+            return null;
         }
     }
-
-    protected override async Task<bool> ValidateAuthenticationStateAsync(AuthenticationState authenticationState, CancellationToken cancellationToken)
-    {
-        return true;
-    }
-
-    protected override TimeSpan RevalidationInterval { get; } = TimeSpan.FromMinutes(30);
 }

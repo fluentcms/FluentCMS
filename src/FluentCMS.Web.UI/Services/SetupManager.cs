@@ -2,14 +2,14 @@
 
 public class SetupManager
 {
-    private readonly SetupClient _setupClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly AuthStateProvider _authStateProvider;
 
     private static bool _initialized = false;
 
-    public SetupManager(SetupClient setupClient, AuthStateProvider authStateProvider)
+    public SetupManager(IHttpClientFactory httpClientFactory, AuthStateProvider authStateProvider)
     {
-        _setupClient = setupClient;
+        _httpClientFactory = httpClientFactory;
         _authStateProvider = authStateProvider;
     }
 
@@ -18,7 +18,7 @@ public class SetupManager
         if (_initialized)
             return _initialized;
 
-        var initResponse = await _setupClient.IsInitializedAsync();
+        var initResponse = await _httpClientFactory.GetClient<SetupClient>().IsInitializedAsync();
 
         _initialized = initResponse.Data;
 
@@ -31,16 +31,17 @@ public class SetupManager
         if (_initialized)
             return _initialized;
 
-        var initResponse = await _setupClient.IsInitializedAsync();
+        var setupClient = _httpClientFactory.GetClient<SetupClient>();
+        var initResponse = await setupClient.IsInitializedAsync();
 
         _initialized = initResponse.Data;
 
         if (_initialized)
             return _initialized;
 
-        var response = await _setupClient.StartAsync(request);
+        var response = await setupClient.StartAsync(request);
 
-        await _authStateProvider.LoginAsync(new UserLoginRequest()
+        await _authStateProvider.Login(new UserLoginRequest()
         {
             Username = request.Username,
             Password = request.Password,
@@ -52,7 +53,7 @@ public class SetupManager
 
     public async Task<PageFullDetailResponse> GetSetupPage()
     {
-        var response = await _setupClient.GetSetupPageAsync();
+        var response = await _httpClientFactory.GetClient<SetupClient>().GetSetupPageAsync();
 
         return response.Data;
     }

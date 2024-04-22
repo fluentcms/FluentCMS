@@ -1,12 +1,9 @@
 ﻿using FluentCMS.Web.Api.Models.Users;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-using System.Security.Claims;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class AccountController(IMapper mapper, IUserService userService, ILogger<AccountController> logger, IHttpContextAccessor httpContextAccessor) : BaseGlobalController
+public class AccountController(IMapper mapper, IUserService userService, IAuthContext authContext) : BaseGlobalController
 {
     [HttpPost]
     public async Task<IApiResult<UserDetailResponse>> Register([FromBody] UserRegisterRequest request, CancellationToken cancellationToken = default)
@@ -26,7 +23,9 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
         {
             Token = userToken.AccessToken,
             RoleIds = user.RoleIds,
-            UserId = user.Id
+            UserId = user.Id,
+            UserName = user.UserName ?? string.Empty,
+            Email = user.Email ?? string.Empty
         });
     }
 
@@ -42,34 +41,22 @@ public class AccountController(IMapper mapper, IUserService userService, ILogger
     public async Task<IApiResult<bool>> SendPasswordResetToken([FromBody] UserSendPasswordResetTokenRequest request)
     {
         var token = await userService.GeneratePasswordResetToken(request.Email);
-        logger.LogInformation("PasswordReset:{email}:{token}", request.Email, token);
         // todo send token 
         return Ok(true);
     }
+
     [HttpPost]
     public async Task<IApiResult<bool>> ValidatePasswordResetToken([FromBody] UserValidatePasswordResetTokenRequest request)
     {
-        var result = await userService.ValidatePasswordResetToken(request.Token, request.Email, request.NewPassword);
+        _ = await userService.ValidatePasswordResetToken(request.Token, request.Email, request.NewPassword);
         return Ok(true);
     }
 
     [HttpGet]
     [Authorize]
-    public async Task<IApiResult<UserDetailResponse>> GetUserDetail()
+    public async Task<IApiResult<UserDetailResponse>> GetCurrent()
     {
-        var userId = Guid.Parse(httpContextAccessor!.HttpContext!.User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var user = await userService.GetById(userId);
+        var user = await userService.GetById(authContext.UserId);
         return Ok(mapper.Map<UserDetailResponse>(user));
-    }
-    [HttpGet]
-    [Authorize]
-    public async Task<IApiResult<UserDetailResponse>> SetUserDetail(UserUpdateProfileRequest request, CancellationToken cancellationToken = default)
-    {
-        var userId = Guid.Parse(httpContextAccessor!.HttpContext!.User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var user = mapper.Map<User>(request);
-        user.Id = userId;
-        var updated = await userService.Update(user, cancellationToken);
-        var userResponse = mapper.Map<UserDetailResponse>(updated);
-        return Ok(userResponse);
     }
 }

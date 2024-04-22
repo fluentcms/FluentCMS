@@ -22,7 +22,8 @@ public class ApiResultExceptionFilter : IExceptionFilter
             SessionId = _apiExecutionContext.SessionId,
             TraceId = _apiExecutionContext.TraceId,
             UniqueId = _apiExecutionContext.UniqueId,
-            Status = 500
+            Status = 500,
+            IsSuccess = false,
         };
 
         var exception = context.Exception;
