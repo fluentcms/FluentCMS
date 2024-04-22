@@ -1,15 +1,3 @@
-﻿<ErrorBoundary>
-    <ChildContent>
-        @{
-            base.BuildRenderTree(__builder);
-        }
-    </ChildContent>
-    <ErrorContent Context="Exception">
-        <Alert Type="AlertType.Danger">
-            <b>Error loading plugin: @Plugin?.Definition.Name</b>
-            <div>
-                @Exception.Message
-            </div>
-        </Alert>
-    </ErrorContent>
-</ErrorBoundary>
+﻿@{
+    base.BuildRenderTree(__builder);
+}
