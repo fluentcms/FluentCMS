@@ -1,5 +1,5 @@
 ﻿<Page>
-    <PageHeader HasBack="false" Title="Roles List">
+    <PageHeader HasBack="false" Title="Roles (Draft)">
         <PageHeaderActions>
             <ButtonGroup>
                 <Button autofocus="true" 
@@ -8,75 +8,76 @@
                         Id="roleCreateButton"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
-                    Add Role
+                    Add New Role
                 </Button>
             </ButtonGroup>
         </PageHeaderActions>
     </PageHeader>
     <PageBody>
-        <Card>
-            <Table>
-                <TableHead>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell Width="TableColumnWidth.Small"></TableCell>
-                </TableHead>
-                <TableBody id="roleListTable">
-                    @foreach (var role in Roles)
-                    {
-                        <TableRow>
-                            <TableCell> @role.Name </TableCell>
-                            <TableCell> @role.Description </TableCell>
-                            <TableCell>
-                                <ButtonGroup>
-                                    <Button data-test="preview-btn"
-                                            Href="@NavigationManager.Plugin("Role Management", "Role Detail", new { id= role.Id })"
-                                            Ghost="true"
-                                            Size="ButtonSize.Small">
-                                        <Icon Name="IconName.Eye" />
-                                    </Button>
-                                    <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
+        @if(Roles.Count > 0) 
+        {
+            <Card>
+                <Table Hoverable>
+                    <TableHead>
+                        <TableCell>Name</TableCell>
+                        <TableCell>Description</TableCell>
+                        <TableCell Width="TableColumnWidth.Small"></TableCell>
+                    </TableHead>
+                    <TableBody id="roleListTable">
+                        @foreach (var role in Roles)
+                        {
+                            <TableRow OnClick="@(evt => TableRowDefaultAction(role))">
+                                <TableCell> @role.Name </TableCell>
+                                <TableCell> @role.Description </TableCell>
+                                <TableCell>
+                                    <ButtonGroup>
+                                        <Button data-test="preview-btn"
+                                                Href="@NavigationManager.Plugin("Role Management", "Role Detail", new { id= role.Id })"
+                                                Ghost="true"
+                                                Size="ButtonSize.Small"
+                                                StopPropagation="true">
+                                            <Icon Name="IconName.Eye" />
+                                        </Button>
+                                        <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
 
-                                    <Button data-test="edit-btn"
-                                            Ghost="true"
-                                            Href="@NavigationManager.Plugin("Role Management", "Update Role", new { id= role.Id })"
-                                            Size="ButtonSize.Small">
-                                        <Icon Name="IconName.Edit" />
-                                    </Button>
-                                    <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
+                                        <Button data-test="edit-btn"
+                                                Ghost="true"
+                                                Href="@NavigationManager.Plugin("Role Management", "Update Role", new { id= role.Id })"
+                                                Size="ButtonSize.Small"
+                                                StopPropagation="true">
+                                            <Icon Name="IconName.Edit" />
+                                        </Button>
+                                        <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
 
-                                    <Button data-test="delete-btn"
-                                            Ghost="true"
-                                            Size="ButtonSize.Small"
-                                            OnClick="@(evt => OnDelete(role))">
+                                        <Button data-test="delete-btn"
+                                                Ghost="true"
+                                                Size="ButtonSize.Small"
+                                                StopPropagation="true"
+                                                OnClick="@(evt => OnDelete(role))">
 
-                                        <Icon Name="IconName.Delete" />
-                                    </Button>
-                                    <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
+                                            <Icon Name="IconName.Delete" />
+                                        </Button>
+                                        <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
 
-                                </ButtonGroup>
-                            </TableCell>
-                        </TableRow>
-                    }
-
-                </TableBody>
-            </Table>
-
-            @if (Roles.Count == 0)
-            {
-                <EmptyTable Message="No Roles Found!">
-                    <Button autofocus="true"
-                            Color="Color.Primary" 
-                            Href="@NavigationManager.Plugin("Role Management", "Create Role")"
-                            Id="roleEmptyCreateButton" 
-                            Size="ButtonSize.Small">
-                        <Icon Name="IconName.Plus" />
-                        Add Role
-                    </Button>
-                </EmptyTable>
-            }
-        </Card>
-
+                                    </ButtonGroup>
+                                </TableCell>
+                            </TableRow>
+                        }
+                    </TableBody>
+                </Table>
+            </Card>
+        } else {
+            <EmptyState Message="No Roles Found!">
+                <Button autofocus="true"
+                        Color="Color.Primary" 
+                        Href="@NavigationManager.Plugin("Role Management", "Create Role")"
+                        Id="roleEmptyCreateButton" 
+                        Size="ButtonSize.Small">
+                    <Icon Name="IconName.Plus" />
+                    Add New Role
+                </Button>
+            </EmptyState>
+        }
     </PageBody>
 </Page>
 
@@ -115,5 +116,11 @@
         await RoleClient!.DeleteAsync(role.Id);
 
         await Load();
+    }
+
+    async Task TableRowDefaultAction(RoleDetailResponse role) 
+    {
+        var url = NavigationManager.Plugin("Role Management", "Role Detail", new { id= role.Id });
+        NavigationManager.NavigateTo(url);
     }
 }

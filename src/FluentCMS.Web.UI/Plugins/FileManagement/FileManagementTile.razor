@@ -1,4 +1,6 @@
-<Card class="group relative">
+<Card class="group relative"
+      Clickable="true"
+      @onclick="() => OnEdit.InvokeAsync()">
     <CardBody>
         @if (hasPreview)
         {
@@ -24,6 +26,7 @@
                     <Button Color="Color.Default"
                             Outline="true"
                             Size="ButtonSize.Small"
+                            StopPropagation="true"
                             OnClick="() => OnEdit.InvokeAsync()">
                         <Icon Name="IconName.Edit" />
                     </Button>
@@ -31,6 +34,7 @@
                 <Button Color="Color.Danger"
                         Outline="true"
                         Size="ButtonSize.Small"
+                        StopPropagation="true"
                         OnClick="() => OnDelete.InvokeAsync()">
                     <Icon Name="IconName.Delete" />
                 </Button>
@@ -45,7 +49,7 @@
         </Typography>
         <Grid ItemsSmall="GridItems.Center"
               NoWrap="true">
-            <GridItem Small="GridItemColumn.Grow">        
+            <GridItem Small="GridItemColumn.Grow">
                 <Typography Color="Color.Secondary"
                             Size="TextSize.ExtraSmall">
                     @Value.Extension.ToUpper()

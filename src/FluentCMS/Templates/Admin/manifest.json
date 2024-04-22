@@ -11,10 +11,6 @@
         {
             "Name": "AuthLayout",
             "IsDefault": false
-        },
-        {
-            "Name": "SettingsLayout",
-            "IsDefault": false
         }
     ],
     "PluginDefinitions": [
@@ -190,7 +186,7 @@
                     "IsDefault": true
                 }
             ]
-         },
+        },
         {
             "Name": "User Info",
             "Description": "User Info Plugin",
@@ -268,7 +264,6 @@
                 {
                     "Title": "Users",
                     "Path": "/users",
-                    "Layout": "SettingsLayout",
                     "Plugins": [
                         {
                             "Definition": "User Management",
@@ -279,7 +274,6 @@
                 {
                     "Title": "Settings",
                     "Path": "/settings",
-                    "Layout": "SettingsLayout",
                     "Plugins": [
                         {
                             "Definition": "Settings",
@@ -300,7 +294,6 @@
                 {
                     "Title": "Roles",
                     "Path": "/roles",
-                    "Layout": "SettingsLayout",
                     "Plugins": [
                         {
                             "Definition": "Role Management",

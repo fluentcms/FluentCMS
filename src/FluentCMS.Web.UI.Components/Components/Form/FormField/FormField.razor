@@ -84,18 +84,18 @@
     {
         @if (string.IsNullOrEmpty(Errors.FirstOrDefault()))
         {
-            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 @(Field?.Hint ?? "\u00A0")
             </p>
         }
         else
         {
-            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400"
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400"
                id="@(Field?.Id)Error">
                 @Errors.FirstOrDefault()
             </p>
         }
-        <Spacer />
+        <div class="mb-2"></div>
     }
 </div>
 
@@ -172,7 +172,7 @@
 
         var IsValid = Context.IsValid(Identifier.GetValueOrDefault());
 
-        State = IsValid ? FormFieldState.Valid : FormFieldState.Invalid;
+        State = IsValid ? FormFieldState.Default : FormFieldState.Invalid;
     }
 
     public void Dispose()

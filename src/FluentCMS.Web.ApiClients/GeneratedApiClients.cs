@@ -7852,6 +7852,10 @@ namespace FluentCMS.Web.ApiClients
         [System.ComponentModel.DataAnnotations.Required]
         public string Password { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("confirmPassword")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public string ConfirmPassword { get; set; } = default!;
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]

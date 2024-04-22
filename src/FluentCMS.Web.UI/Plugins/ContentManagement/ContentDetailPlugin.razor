@@ -142,7 +142,7 @@
             {
                 ContentType = response.Data.ToList().Find(x => x.Slug == contentTypeSlug);
                 Fields = ContentType.Fields.ToList();
-                PageTitle = ContentType.Title + " Update";
+                PageTitle = ContentType.Title + " Detail";
 
                 if (ContentId != null)
                 {

@@ -2,13 +2,13 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<div @attributes="AdditionalAttributes"
-     class="@this.GetClasses()">
+<ol @attributes="AdditionalAttributes"
+    class="@this.GetClasses()">
     @ChildContent
-</div>
+</ol>
 
 @code {
     [Parameter]
     [CSSProperty]
-    public bool Clickable { get; set; }
+    public bool Vertical { get; set; } = true;
 }

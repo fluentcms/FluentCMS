@@ -12,4 +12,8 @@ public class UserRegisterRequest
 
     [Required]
     public required string Password { get; set; }
+
+    [Required]
+    [Compare("Password")]
+    public required string ConfirmPassword { get; set; }
 }
