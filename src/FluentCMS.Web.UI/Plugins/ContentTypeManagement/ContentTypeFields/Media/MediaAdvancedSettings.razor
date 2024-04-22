@@ -4,7 +4,7 @@
     <GridItem Small="GridItemColumn.Twelve"
               Medium="GridItemColumn.Six">
         @* TODO *@
-        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+        <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
             Select allowed types of media
         </label>
         <Autocomplete @bind-Value="accept"
@@ -28,7 +28,7 @@
     {
         get
         {
-            return Model.GetValue<List<string>>("Accept") ?? new();
+            return Model.GetValueArray<string>("Accept").ToList() ?? new();
         }
         set
         {
