@@ -8,3 +8,9 @@
         @ChildContent
     </table>
 </div>
+
+@code {
+    [Parameter]
+    [CSSProperty]
+    public bool Hoverable { get; set; } = false;
+}

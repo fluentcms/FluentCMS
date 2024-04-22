@@ -8,7 +8,7 @@
                         Id="roleCreateButton"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
-                    Add Role
+                    Add New Role
                 </Button>
             </ButtonGroup>
         </PageHeaderActions>
@@ -17,7 +17,7 @@
         @if(Roles.Count > 0) 
         {
             <Card>
-                <Table>
+                <Table Hoverable>
                     <TableHead>
                         <TableCell>Name</TableCell>
                         <TableCell>Description</TableCell>
@@ -26,7 +26,7 @@
                     <TableBody id="roleListTable">
                         @foreach (var role in Roles)
                         {
-                            <TableRow>
+                            <TableRow OnClick="@(evt => TableRowDefaultAction(role))">
                                 <TableCell> @role.Name </TableCell>
                                 <TableCell> @role.Description </TableCell>
                                 <TableCell>
@@ -34,7 +34,8 @@
                                         <Button data-test="preview-btn"
                                                 Href="@NavigationManager.Plugin("Role Management", "Role Detail", new { id= role.Id })"
                                                 Ghost="true"
-                                                Size="ButtonSize.Small">
+                                                Size="ButtonSize.Small"
+                                                StopPropagation="true">
                                             <Icon Name="IconName.Eye" />
                                         </Button>
                                         <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
@@ -42,7 +43,8 @@
                                         <Button data-test="edit-btn"
                                                 Ghost="true"
                                                 Href="@NavigationManager.Plugin("Role Management", "Update Role", new { id= role.Id })"
-                                                Size="ButtonSize.Small">
+                                                Size="ButtonSize.Small"
+                                                StopPropagation="true">
                                             <Icon Name="IconName.Edit" />
                                         </Button>
                                         <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
@@ -50,6 +52,7 @@
                                         <Button data-test="delete-btn"
                                                 Ghost="true"
                                                 Size="ButtonSize.Small"
+                                                StopPropagation="true"
                                                 OnClick="@(evt => OnDelete(role))">
 
                                             <Icon Name="IconName.Delete" />
@@ -71,7 +74,7 @@
                         Id="roleEmptyCreateButton" 
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
-                    Add Role
+                    Add New Role
                 </Button>
             </EmptyState>
         }
@@ -113,5 +116,11 @@
         await RoleClient!.DeleteAsync(role.Id);
 
         await Load();
+    }
+
+    async Task TableRowDefaultAction(RoleDetailResponse role) 
+    {
+        var url = NavigationManager.Plugin("Role Management", "Role Detail", new { id= role.Id });
+        NavigationManager.NavigateTo(url);
     }
 }

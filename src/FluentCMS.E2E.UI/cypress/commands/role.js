@@ -1,10 +1,6 @@
 Cypress.Commands.add('navigateToRoleListPage', () => {
     cy.visit('/').waitForNavigate()
-    cy.getSidebarItem('#adminSidebarSettingsLink').click()
-    cy.waitForNavigate()
-
-    cy.get('#settingsSidebarRolesLink').click()
-    
+    cy.getSidebarItem('#adminSidebarRolesLink').click()
     cy.waitForNavigate()
 })
 
@@ -58,9 +54,12 @@ Cypress.Commands.add('roleCreate', ({ name, description, permissions = {} }) => 
 })
 
 Cypress.Commands.add('roleClean', () => {
-    cy.get('#roleListTable').deleteTableRows()
+    cy.get('.f-card').then($el => {
+        if($el[0].querySelector('#roleListTable')) {
+            cy.get('#roleListTable').deleteTableRows()
+        }
+    })
 
-    // TODO: Enable this
     cy.contains('No Roles Found!').should('be.visible')
 })
 
