@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Web.UI.Plugins;
+﻿using Microsoft.AspNetCore.WebUtilities;
+
+namespace FluentCMS.Web.UI.Plugins;
 
 public abstract class BasePlugin : ComponentBase
 {
@@ -45,7 +47,28 @@ public abstract class BasePlugin : ComponentBase
 
     protected virtual void NavigateBack()
     {
-        var uri = new Uri(NavigationManager.Uri).LocalPath;
-        NavigationManager.NavigateTo(uri);
+        var url = new Uri(NavigationManager.Uri).LocalPath;
+        NavigationManager.NavigateTo(url);
+    }
+
+    protected virtual string GetUrl(string viewTypeName, object? parameters = null)
+    {
+        return GetUrl(Plugin?.Definition.Name ?? "/", viewTypeName, parameters);
+    }
+
+    protected virtual string GetUrl(string pluginDefName, string viewTypeName, object? parameters = null)
+    {
+        var queryParams = new Dictionary<string, string?>()
+        {
+            { "pluginDef", pluginDefName },
+            { "typeName", viewTypeName }
+        };
+
+        if (parameters != null)
+        {
+            foreach (var propInfo in parameters.GetType().GetProperties())
+                queryParams[propInfo.Name] = propInfo.GetValue(parameters)?.ToString();
+        }
+        return QueryHelpers.AddQueryString(NavigationManager.Uri, queryParams);
     }
 }

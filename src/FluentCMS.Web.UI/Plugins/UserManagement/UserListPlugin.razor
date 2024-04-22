@@ -2,7 +2,7 @@
 
 <PluginView Title="Users List">
     <ButtonGroup>
-        <Button autofocus="true" Color="Color.Primary" Href="@NavigationManager.Plugin("User Management", "Create User")" Size="ButtonSize.Small">
+        <Button autofocus="true" Color="Color.Primary" Href="@GetUrl("Create User")" Size="ButtonSize.Small">
             <Icon Name="IconName.Plus" />
             Add User
         </Button>
@@ -27,12 +27,12 @@
                     <TableCell>@user.PhoneNumber</TableCell>
                     <TableCell>
                         <ButtonGroup>
-                            <Button Ghost="true" Href="@NavigationManager.Plugin("User Management", "User Detail", new { id = user.Id })" Size="ButtonSize.Small">
+                            <Button Ghost="true" Href="@GetUrl("User Detail", new { id = user.Id })" Size="ButtonSize.Small">
                                 <Icon Name="IconName.Eye" />
                             </Button>
                             <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
 
-                            <Button data-test="edit-btn" Ghost="true" Href="@NavigationManager.Plugin("User Management", "Update User", new { id = user.Id })" Size="ButtonSize.Small">
+                            <Button data-test="edit-btn" Ghost="true" Href="@GetUrl("Update User", new { id = user.Id })" Size="ButtonSize.Small">
                                 <Icon Name="IconName.Edit" />
                             </Button>
                             <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
