@@ -17,7 +17,7 @@
         @if(Roles.Count > 0) 
         {
             <Card>
-                <Table>
+                <Table Hoverable>
                     <TableHead>
                         <TableCell>Name</TableCell>
                         <TableCell>Description</TableCell>
@@ -26,7 +26,7 @@
                     <TableBody id="roleListTable">
                         @foreach (var role in Roles)
                         {
-                            <TableRow>
+                            <TableRow OnClick="@(evt => TableRowDefaultAction(role))">
                                 <TableCell> @role.Name </TableCell>
                                 <TableCell> @role.Description </TableCell>
                                 <TableCell>
@@ -113,5 +113,11 @@
         await RoleClient!.DeleteAsync(role.Id);
 
         await Load();
+    }
+
+    async Task TableRowDefaultAction(RoleDetailResponse role) 
+    {
+        var url = NavigationManager.Plugin("Role Management", "Role Detail", new { id= role.Id });
+        NavigationManager.NavigateTo(url);
     }
 }

@@ -20,7 +20,7 @@
             @if (ContentType != null && Data.Count > 0 && ContentType.Fields?.Count > 0)
             {
                 <Card>
-                    <Table>
+                    <Table Hoverable>
                         <TableHead>
                             @foreach (var field in Fields)
                             {
@@ -33,7 +33,7 @@
                         <TableBody id="contentListTable">
                             @foreach (var item in Data)
                             {
-                                <TableRow>
+                                <TableRow OnClick="@(evt => TableRowDefaultAction(item))">
                                     @foreach (var field in ContentType.Fields.ToList())
                                     {
                                         <TableCell>
@@ -159,5 +159,11 @@
     protected override async Task OnInitializedAsync()
     {
         await FetchData();
+    }
+
+    async Task TableRowDefaultAction(ContentDetailResponse content) 
+    {
+        var url = NavigationManager.Plugin("Content Management", "Content Detail", new { contentTypeSlug = ContentTypeSlug, id = content.Id });
+        NavigationManager.NavigateTo(url);
     }
 }
