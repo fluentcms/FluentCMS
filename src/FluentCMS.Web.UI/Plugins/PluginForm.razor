@@ -1,0 +1,14 @@
+﻿<PluginView Title="@Title">
+    <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="@Name" Enhance>
+        <DataAnnotationsValidator />
+        <Spacer />
+        @ChildContent
+        @if (!string.IsNullOrEmpty(Error))
+        {
+            <Spacer />
+            <Alert Type="AlertType.Danger">
+                <b>@Error</b>
+            </Alert>
+        }
+    </EditForm>
+</PluginView>

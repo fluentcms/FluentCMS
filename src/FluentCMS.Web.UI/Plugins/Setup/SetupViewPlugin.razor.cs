@@ -1,10 +1,10 @@
-﻿using FluentCMS.Web.UI.Services;
-
-namespace FluentCMS.Web.UI.Plugins.Setup;
+﻿namespace FluentCMS.Web.UI.Plugins.Setup;
 
 public partial class SetupViewPlugin
 {
-    [SupplyParameterFromForm(FormName = "SetupForm")]
+    const string FORM_NAME = "SetupForm";
+
+    [SupplyParameterFromForm(FormName = FORM_NAME)]
     public SetupRequest Model { get; set; } = new();
 
     [Inject]
@@ -18,10 +18,8 @@ public partial class SetupViewPlugin
         Initialized = await SetupManager.IsInitialized();
     }
 
-    protected override async Task OnFirstAsync()
+    protected override async Task OnLoadAsync()
     {
-        await base.OnFirstAsync();
-
         Model = new SetupRequest
         {
             Username = "admin",
@@ -31,11 +29,14 @@ public partial class SetupViewPlugin
             AppTemplateName = "Blank",
             SiteTemplateName = "Blank"
         };
+        await Task.CompletedTask;
     }
 
     private async Task OnSubmit()
     {
         if (await SetupManager.Start(Model))
+        {
             Initialized = await SetupManager.IsInitialized();
+        }
     }
 }

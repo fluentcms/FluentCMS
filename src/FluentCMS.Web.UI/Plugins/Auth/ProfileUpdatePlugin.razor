@@ -101,7 +101,7 @@
     string Message { get; set; } = string.Empty;
 
     UserChangePasswordRequest ChangePasswordModel { get; set; } = new();
-    UserUpdateProfileRequest Model { get; set; } = new();
+    UserUpdateRequest Model { get; set; } = new();
 
     UserDetailResponse View { get; set; } = new();
 
@@ -113,10 +113,10 @@
     protected override async Task OnInitializedAsync()
     {
 
-        View = (await AccountClient.GetUserDetailAsync()).Data;
+        // View = (await AccountClient.GetUserDetailAsync()).Data;
         
-        Model.Email = View.Email;
-        ChangePasswordModel.UserId = View.Id;
+        // Model.Email = View.Email;
+        // ChangePasswordModel.UserId = View.Id;
         @* Model.Username = View.Username; *@
         @* Model.PhoneNumber = View.PhoneNumber; *@
     }
@@ -131,9 +131,9 @@
     {
         try
         {
-            await AccountClient.SetUserDetailAsync(Model);
-            Message = "Done!";
-            await GoBack();
+            // await AccountClient.SetUserDetailAsync(Model);
+            // Message = "Done!";
+            // await GoBack();
         }
         catch (Exception exception)
         {

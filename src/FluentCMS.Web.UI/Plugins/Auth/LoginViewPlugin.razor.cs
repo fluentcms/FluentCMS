@@ -1,7 +1,4 @@
-﻿using FluentCMS.Web.UI.Services;
-using Microsoft.AspNetCore.Components;
-
-namespace FluentCMS.Web.UI.Plugins.Auth;
+﻿namespace FluentCMS.Web.UI.Plugins.Auth;
 
 public partial class LoginViewPlugin
 {

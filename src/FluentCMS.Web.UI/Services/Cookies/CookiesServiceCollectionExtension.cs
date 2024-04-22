@@ -1,5 +1,4 @@
 ﻿using FluentCMS.Web.UI.Services.Cookies;
-using Microsoft.AspNetCore.Http;
 
 namespace Microsoft.Extensions.DependencyInjection;
 

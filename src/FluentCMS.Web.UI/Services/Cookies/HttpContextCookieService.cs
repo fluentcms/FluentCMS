@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-
-namespace FluentCMS.Web.UI.Services.Cookies;
+﻿namespace FluentCMS.Web.UI.Services.Cookies;
 
 internal class HttpContextCookieService : ICookieService
 {
