@@ -62,14 +62,14 @@
                     {
                         <TableRow OnClick="@(evt => currentItem = item.Title)">
                             <TableCell>#@item.Id</TableCell>
-                                <TableCell>@item.Title</TableCell>
-                                <TableCell>@item.CreatedAt</TableCell>
-                                <TableCell>@item.UpdatedAt</TableCell>
-                                <TableCell>
-                                    <Badge Color="Color.Primary">
-                                        @item.State
-                                    </Badge>
-                                </TableCell>
+                            <TableCell>@item.Title</TableCell>
+                            <TableCell>@item.CreatedAt</TableCell>
+                            <TableCell>@item.UpdatedAt</TableCell>
+                            <TableCell>
+                                <Badge Color="Color.Primary">
+                                    @item.State
+                                </Badge>
+                            </TableCell>
                             <TableCell>
                                 Button Group
                             </TableCell>
