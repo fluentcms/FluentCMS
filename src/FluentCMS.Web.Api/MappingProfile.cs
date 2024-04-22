@@ -1,5 +1,4 @@
-﻿using FluentCMS.Web.Api.Models.Users;
-using FluentCMS.Web.Api.ValueConverters;
+﻿using FluentCMS.Web.Api.ValueConverters;
 
 namespace FluentCMS.Web.Api;
 

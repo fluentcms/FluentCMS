@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Web.UI.Plugins;
 
-public partial class BasePlugin 
+public partial class BasePlugin
 {
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = default!;

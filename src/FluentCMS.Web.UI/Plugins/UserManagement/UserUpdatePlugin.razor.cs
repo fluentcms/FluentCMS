@@ -27,7 +27,7 @@ public partial class UserUpdatePlugin
     protected override Task OnPostAsync()
     {
         return Task.CompletedTask;
-    } 
+    }
 
     private async Task OnSubmit()
     {
