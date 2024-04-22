@@ -34,7 +34,8 @@
                                         <Button data-test="preview-btn"
                                                 Href="@NavigationManager.Plugin("Role Management", "Role Detail", new { id= role.Id })"
                                                 Ghost="true"
-                                                Size="ButtonSize.Small">
+                                                Size="ButtonSize.Small"
+                                                StopPropagation="true">
                                             <Icon Name="IconName.Eye" />
                                         </Button>
                                         <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
@@ -42,7 +43,8 @@
                                         <Button data-test="edit-btn"
                                                 Ghost="true"
                                                 Href="@NavigationManager.Plugin("Role Management", "Update Role", new { id= role.Id })"
-                                                Size="ButtonSize.Small">
+                                                Size="ButtonSize.Small"
+                                                StopPropagation="true">
                                             <Icon Name="IconName.Edit" />
                                         </Button>
                                         <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
@@ -50,6 +52,7 @@
                                         <Button data-test="delete-btn"
                                                 Ghost="true"
                                                 Size="ButtonSize.Small"
+                                                StopPropagation="true"
                                                 OnClick="@(evt => OnDelete(role))">
 
                                             <Icon Name="IconName.Delete" />
