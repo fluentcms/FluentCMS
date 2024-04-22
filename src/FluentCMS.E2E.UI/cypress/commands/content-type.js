@@ -68,26 +68,29 @@ Cypress.Commands.add('contentTypeCreate', ({ title, slug, description, fields = 
 })
 
 Cypress.Commands.add('contentTypeClean', () => {
-    cy.get('#contentTypeListTable').deleteTableRows()
-
-    // TODO: Enable this
-    // cy.contains('No Content Types Found!').should('be.visible')
-})
-
-Cypress.Commands.add('contentTypeDetail', (contentType) => {
-    cy.contains('#contentTypeListTable tr', contentType.slug).then(($row) => {
-        cy.wrap($row).find('[data-test="preview-btn"]').click()
-
-        cy.get('main').contains('ContentType Detail').should('be.visible')
-        cy.get('main').contains(contentType.title).should('be.visible')
-        cy.get('main').contains(contentType.slug).should('be.visible')
-        cy.get('main').contains(contentType.description).should('be.visible')
-        for (let field of contentType.fields) {
-            cy.get('main').contains(field.title).should('be.visible')
-            cy.get('main').contains(field.slug).should('be.visible')
+    cy.get('.f-card').then($el => {
+        if($el[0].querySelector('#contentTypeListTable')) {
+            cy.get('#contentTypeListTable').deleteTableRows()
         }
     })
+
+    cy.contains('No Content Types Found!').should('be.visible')
 })
+
+// Cypress.Commands.add('contentTypeDetail', (contentType) => {
+//     cy.contains('#contentTypeListTable tr', contentType.slug).then(($row) => {
+//         cy.wrap($row).find('[data-test="preview-btn"]').click()
+
+//         cy.get('main').contains('ContentType Detail').should('be.visible')
+//         cy.get('main').contains(contentType.title).should('be.visible')
+//         cy.get('main').contains(contentType.slug).should('be.visible')
+//         cy.get('main').contains(contentType.description).should('be.visible')
+//         for (let field of contentType.fields) {
+//             cy.get('main').contains(field.title).should('be.visible')
+//             cy.get('main').contains(field.slug).should('be.visible')
+//         }
+//     })
+// })
 
 // Cypress.Commands.add('createSampleContentTypes', () => {
 //     cy.createContentType('First', 'Posts', 'posts', 'Posts content type', [
