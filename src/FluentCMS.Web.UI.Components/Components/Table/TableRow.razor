@@ -3,6 +3,12 @@
 @namespace FluentCMS.Web.UI.Components
 
 <tr @attributes="AdditionalAttributes"
-    class="@this.GetClasses()">
+    class="@this.GetClasses()"
+    @onclick="OnClick">
     @ChildContent
 </tr>
+
+@code {
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnClick { get; set; }
+}
