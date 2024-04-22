@@ -1,8 +1,17 @@
 $stack: $prefix + 'stack';
 
+$stack-justify: ( normal, start, end, center, between, around, evenly, stretch);
+
 .#{$stack} {
     @apply flex gap-4 items-center;
+
     &-vertical-true {
         @apply flex-col;
+    }
+
+    @each $key in $stack-justify {
+        &-justify-#{$key} {
+            @apply justify-#{$key};
+        }
     }
 }
