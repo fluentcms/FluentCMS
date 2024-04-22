@@ -34,4 +34,10 @@ $table: $prefix + "table";
     &-row {
         @apply bg-white border-b dark:bg-gray-800 dark:border-gray-700;
     }
+
+    &-hoverable-true {
+        .#{$table}-row {
+            @apply hover:bg-gray-50 dark:hover:bg-gray-600;
+        }
+    }
 }

@@ -44,10 +44,58 @@
                 </TableFoot>
             </Table>
         </ComponentPreview>
+
+
+        <ComponentPreview Title="Hoverable"
+                          Description="By Adding Hoverable property to Table, you can have hoverable table.">
+            <Table Hoverable>
+                <TableHead>
+                    <TableCell>Id</TableCell>
+                    <TableCell>Title</TableCell>
+                    <TableCell>Created At</TableCell>
+                    <TableCell>Updated At</TableCell>
+                    <TableCell>State</TableCell>
+                    <TableCell></TableCell>
+                </TableHead>
+                <TableBody>
+                    @foreach (var item in data)
+                    {
+                        <TableRow OnClick="@(evt => currentItem = item.Title)">
+                            <TableCell>#@item.Id</TableCell>
+                                <TableCell>@item.Title</TableCell>
+                                <TableCell>@item.CreatedAt</TableCell>
+                                <TableCell>@item.UpdatedAt</TableCell>
+                                <TableCell>
+                                    <Badge Color="Color.Primary">
+                                        @item.State
+                                </Badge>
+                            </TableCell>
+                            <TableCell>
+                                Button Group
+                            </TableCell>
+                        </TableRow>
+                    }
+                </TableBody>
+                <TableFoot>
+                    <TableCell>Total</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell>5,233</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell>12,200</TableCell>
+                </TableFoot>
+            </Table>
+            <Typography>
+                Current Item: <Badge Color="Color.Primary">@currentItem</Badge>
+            </Typography>
+        </ComponentPreview>
     </PageBody>
 </Page>
 
 @code {
+
+    string currentItem {get; set;} = "";
+
     public class Item
     {
         public string Id;
