@@ -7,16 +7,18 @@ public partial class UserCreatePlugin
 
     const string FORM_NAME = "UserCreateForm";
 
+    private string? Error { get; set; }
+
     private async Task OnSubmit()
     {
-        var apiResult = await HttpClientFactory.GetClient<UserClient>().CreateAsync(Model);
-        if (apiResult.IsSuccess)
+        try
         {
+            var apiResult = await HttpClientFactory.GetClient<UserClient>().CreateAsync(Model);
             NavigateBack();
         }
-        else
+        catch (Exception ex)
         {
-
+            Error = ex.Message;
         }
     }
 }

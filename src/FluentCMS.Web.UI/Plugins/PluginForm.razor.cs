@@ -17,15 +17,10 @@ public partial class PluginForm
     public string? Error { get; set; }
 
     [Parameter]
-    public string? Message { get; set; }
-
-    [Parameter]
     public virtual object? Model { get; set; }
 
     [Parameter]
     public EventCallback<EditContext> OnSubmit { get; set; }
-
-    private bool _showMessage = false;
 
     protected override void OnParametersSet()
     {
@@ -34,12 +29,12 @@ public partial class PluginForm
         if (string.IsNullOrEmpty(Name))
             throw new ArgumentNullException("FormName");
     }
-    private async Task HandleValidSubmit(EditContext editContext)
+
+    private async Task HandleSubmit(EditContext editContext)
     {
         try
         {
             await OnSubmit.InvokeAsync(editContext);
-            _showMessage = true;
         }
         catch (Exception ex)
         {
