@@ -20,7 +20,7 @@
             @if (ContentType != null && Data.Count > 0 && ContentType.Fields?.Count > 0)
             {
                 <Card>
-                    <Table>
+                    <Table Hoverable>
                         <TableHead>
                             @foreach (var field in Fields)
                             {
@@ -33,7 +33,7 @@
                         <TableBody id="contentListTable">
                             @foreach (var item in Data)
                             {
-                                <TableRow>
+                                <TableRow OnClick="@(evt => TableRowDefaultAction(item))">
                                     @foreach (var field in ContentType.Fields.ToList())
                                     {
                                         <TableCell>
@@ -45,14 +45,16 @@
                                             <Button data-test="preview-btn"
                                                     Ghost="true"
                                                     Href="@NavigationManager.Plugin("Content Management", "Content Detail", new { contentTypeSlug = ContentTypeSlug, id = item.Id })"
-                                                    Size="ButtonSize.Small">
+                                                    Size="ButtonSize.Small"
+                                                    StopPropagation="true">
                                                 <Icon Name="IconName.Eye" />
                                             </Button>
                                             <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
                                             <Button data-test="edit-btn"
                                                     Ghost="true"
                                                     Href="@NavigationManager.Plugin("Content Management", "Update Content", new { contentTypeSlug = ContentTypeSlug, id = item.Id })"
-                                                    Size="ButtonSize.Small">
+                                                    Size="ButtonSize.Small"
+                                                    StopPropagation="true">
                                                 <Icon Name="IconName.Edit" />
                                             </Button>
                                             <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
@@ -60,6 +62,7 @@
                                             <Button data-test="delete-btn"
                                                     Ghost="true"
                                                     Size="ButtonSize.Small"
+                                                    StopPropagation="true"
                                                     OnClick="@(evt => OnDelete(item))">
                                                 <Icon Name="IconName.Delete" />
                                             </Button>
@@ -159,5 +162,11 @@
     protected override async Task OnInitializedAsync()
     {
         await FetchData();
+    }
+
+    async Task TableRowDefaultAction(ContentDetailResponse content) 
+    {
+        var url = NavigationManager.Plugin("Content Management", "Content Detail", new { contentTypeSlug = ContentTypeSlug, id = content.Id });
+        NavigationManager.NavigateTo(url);
     }
 }

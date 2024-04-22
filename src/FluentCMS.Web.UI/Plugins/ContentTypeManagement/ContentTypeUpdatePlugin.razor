@@ -31,7 +31,7 @@
                                             Weight="TextWeight.Medium">
                                     Fields
                                 </Typography>
-                                <Table>
+                                <Table Hoverable>
                                     <TableHead>
                                         <TableCell>Slug</TableCell>
                                         <TableCell>Title</TableCell>
@@ -41,7 +41,7 @@
                                     <TableBody>
                                         @foreach (var field in Fields)
                                         {
-                                            <TableRow>
+                                            <TableRow OnClick="() => OnEditField(field)">
                                                 <TableCell>
                                                     @field.Slug
                                                 </TableCell>
@@ -55,6 +55,7 @@
                                                     <ButtonGroup>
                                                         <Button Ghost="true"
                                                                 Size="ButtonSize.Small"
+                                                                StopPropagation="true"
                                                                 OnClick="() => OnDeleteField(field.Slug)">
                                                             <Icon Name="IconName.Delete" />
                                                         </Button>
@@ -62,6 +63,7 @@
 
                                                         <Button Ghost="true"
                                                                 Size="ButtonSize.Small"
+                                                                StopPropagation="true"
                                                                 OnClick="() => OnEditField(field)">
                                                             <Icon Name="IconName.Edit" />
                                                         </Button>

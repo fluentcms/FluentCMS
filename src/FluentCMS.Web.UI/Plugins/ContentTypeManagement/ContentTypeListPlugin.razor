@@ -16,7 +16,7 @@
         @if (ContentTypes.Count > 0)
         {
             <Card>
-                <Table>
+                <Table Hoverable>
                     <TableHead>
                         <TableCell>Slug</TableCell>
                         <TableCell>Title</TableCell>
@@ -26,7 +26,7 @@
                     <TableBody id="contentTypeListTable">
                         @foreach (var contentType in ContentTypes)
                         {
-                            <TableRow>
+                            <TableRow OnClick="@(evt => TableRowDefaultAction(contentType))">
                                 <TableCell>
                                     @contentType.Slug
                                 </TableCell>
@@ -44,7 +44,8 @@
                                         <Button data-test="edit-btn"
                                                 Ghost="true"  
                                                 Href="@NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = contentType.Id })"
-                                                Size="ButtonSize.Small">
+                                                Size="ButtonSize.Small"
+                                                StopPropagation="true">
                                             <Icon Name="IconName.Edit" />
                                         </Button>
                                         <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
@@ -52,6 +53,7 @@
                                         <Button data-test="delete-btn"
                                                 Ghost="true"
                                                 Size="ButtonSize.Small"
+                                                StopPropagation="true"
                                                 OnClick="@(evt => OnDelete(contentType))">
                                             <Icon Name="IconName.Delete" />
                                         </Button>
@@ -119,5 +121,11 @@
     protected override async Task OnInitializedAsync()
     {
         await Load();
+    }
+
+    async Task TableRowDefaultAction(ContentTypeDetailResponse contentType) 
+    {
+        var url = NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id= contentType.Id });
+        NavigationManager.NavigateTo(url);
     }
 }
