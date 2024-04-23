@@ -22,13 +22,13 @@ public partial class Default : IDisposable
     public SetupManager SetupManager { set; get; } = default!;
 
     [Inject]
-    public IHttpClientFactory HttpClientFactory { set; get; } = default!;
-
-    [Inject]
     public ToastService ToastService { set; get; }
 
-    [Inject(Key = ErrorMessageExtension.ErrorMessageFactoryKey)] public required Func<Exception, string[]> ErrorMessageFactory { get; set; }
+    [Inject]
+    public PageClient PageClient { set; get; } = default!;
 
+    [Inject(Key = ErrorMessageExtension.ErrorMessageFactoryKey)]
+    public required Func<Exception, string[]> ErrorMessageFactory { get; set; }
 
     protected override void OnInitialized()
     {
@@ -53,15 +53,9 @@ public partial class Default : IDisposable
             return;
         }
 
-        try
-        {
-            var pageResponse = await HttpClientFactory.GetClient<PageClient>().GetByUrlAsync(NavigationManager.Uri);
-            if (pageResponse.Data != null)
-                Page = pageResponse.Data;
-        }
-        catch
-        {
-        }
+        var pageResponse = await PageClient.GetByUrlAsync(NavigationManager.Uri);
+        if (pageResponse.Data != null)
+            Page = pageResponse.Data;
     }
 
     protected RenderFragment ChildComponents() => builder =>

@@ -5,6 +5,9 @@ public partial class UserCreatePlugin
     [SupplyParameterFromForm(FormName = FORM_NAME)]
     private UserCreateRequest Model { get; set; } = new();
 
+    [Inject]
+    public UserClient UserClient { get; set; } = default!;
+
     const string FORM_NAME = "UserCreateForm";
 
     private string? Error { get; set; }
@@ -13,7 +16,7 @@ public partial class UserCreatePlugin
     {
         try
         {
-            var apiResult = await HttpClientFactory.GetClient<UserClient>().CreateAsync(Model);
+            var apiResult = await UserClient.CreateAsync(Model);
             NavigateBack();
         }
         catch (Exception ex)

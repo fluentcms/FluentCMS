@@ -12,9 +12,12 @@ public partial class UserUpdatePlugin
 
     private UserDetailResponse User { get; set; } = new();
 
+    [Inject]
+    public UserClient UserClient { get; set; } = default!;
+
     protected override async Task OnLoadAsync()
     {
-        var userResponse = await HttpClientFactory.GetClient<UserClient>().GetAsync(Id);
+        var userResponse = await UserClient.GetAsync(Id);
         User = userResponse.Data;
         Model = new UserUpdateRequest
         {
@@ -30,7 +33,7 @@ public partial class UserUpdatePlugin
 
     private async Task OnSubmit()
     {
-        await HttpClientFactory.GetClient<UserClient>().UpdateAsync(Model);
+        await UserClient.UpdateAsync(Model);
         NavigateBack();
     }
 }

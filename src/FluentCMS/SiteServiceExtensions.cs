@@ -9,7 +9,8 @@ public static class SiteServiceExtensions
         services.AddAdminUIServices(configuration);
 
         // Add services to the container.
-        services.AddRazorComponents();
+        services.AddRazorComponents()
+            .AddInteractiveServerComponents();
 
         return services;
     }
@@ -18,7 +19,8 @@ public static class SiteServiceExtensions
     {
         app.UseAntiforgery();
 
-        app.MapRazorComponents<App>();
+        app.MapRazorComponents<App>()
+            .AddInteractiveServerRenderMode();
 
         return app;
     }

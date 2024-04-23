@@ -7,9 +7,6 @@ public partial class BasePlugin
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = default!;
 
-    [Inject]
-    protected IHttpClientFactory HttpClientFactory { get; set; } = default!;
-
     [CascadingParameter]
     protected HttpContext HttpContext { get; set; } = default!;
 
@@ -21,19 +18,8 @@ public partial class BasePlugin
 
     protected override async Task OnInitializedAsync()
     {
-        if (HttpContext is null)
-            throw new ArgumentNullException(nameof(HttpContext));
-
-        if (HttpMethods.IsPost(HttpContext.Request.Method))
-        {
-            await OnPostAsync();
-        }
-        else
-        {
-            await OnLoadAsync();
-        }
+        await OnLoadAsync();
     }
-
 
     protected virtual async Task OnPostAsync()
     {
