@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.WebUtilities;
+﻿using Microsoft.AspNetCore.WebUtilities;
 
 namespace FluentCMS.Web.UI.Plugins;
 
@@ -9,24 +8,20 @@ public partial class BasePlugin
     protected NavigationManager NavigationManager { get; set; } = default!;
 
     [CascadingParameter]
-    protected HttpContext HttpContext { get; set; } = default!;
+    protected PluginDetailResponse? Plugin { get; set; } = default!;
 
     [CascadingParameter]
-    public PluginDetailResponse? Plugin { get; set; } = default!;
+    protected PageFullDetailResponse? Page { get; set; }
 
     [CascadingParameter]
-    public PageFullDetailResponse? Page { get; set; }
-    [CascadingParameter]
-    public Task<AuthenticationState> AuthenticationState { get; set; } = default!;
+    protected UserLoginResponse? UserLogin { get; set; }
+
+    [Inject]
+    protected IHttpClientFactory HttpClientFactory { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
         await OnLoadAsync();
-    }
-
-    protected virtual async Task OnPostAsync()
-    {
-        await Task.CompletedTask;
     }
 
     protected virtual async Task OnLoadAsync()
@@ -59,5 +54,10 @@ public partial class BasePlugin
                 queryParams[propInfo.Name] = propInfo.GetValue(parameters)?.ToString();
         }
         return QueryHelpers.AddQueryString(NavigationManager.Uri, queryParams);
+    }
+
+    protected TClient GetApiClient<TClient>() where TClient : class, IApiClient
+    {
+        return HttpClientFactory.CreateApiClient<TClient>(UserLogin);
     }
 }

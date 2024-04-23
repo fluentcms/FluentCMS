@@ -13,6 +13,9 @@ public partial class SetupViewPlugin
     [Inject]
     private IAuthService AuthService { get; set; } = default!;
 
+    [CascadingParameter]
+    protected HttpContext HttpContext { get; set; } = default!;
+
     private bool Initialized { get; set; } = false;
 
     protected override async Task OnLoadAsync()

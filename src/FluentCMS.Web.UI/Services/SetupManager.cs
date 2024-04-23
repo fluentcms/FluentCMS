@@ -2,17 +2,13 @@
 
 public class SetupManager
 {
-    //private readonly IHttpClientFactory _httpClientFactory;
-    //private readonly AuthStateProvider _authStateProvider;
-    private readonly SetupClient _setupClient;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     private static bool _initialized = false;
 
-    public SetupManager(SetupClient setupClient)
+    public SetupManager(IHttpClientFactory httpClientFactory)
     {
-        //_httpClientFactory = httpClientFactory;
-        //_authStateProvider = authStateProvider;
-        _setupClient = setupClient;
+        _httpClientFactory = httpClientFactory;
     }
 
     public async Task<bool> IsInitialized()
@@ -20,7 +16,9 @@ public class SetupManager
         if (_initialized)
             return _initialized;
 
-        var initResponse = await _setupClient.IsInitializedAsync();
+        var httpClient = _httpClientFactory.CreateApiClient();
+        var setupClient = new SetupClient(httpClient);
+        var initResponse = await setupClient.IsInitializedAsync();
 
         _initialized = initResponse.Data;
 
@@ -33,20 +31,17 @@ public class SetupManager
         if (_initialized)
             return _initialized;
 
-        var initResponse = await _setupClient.IsInitializedAsync();
+        var httpClient = _httpClientFactory.CreateApiClient();
+        var setupClient = new SetupClient(httpClient);
+
+        var initResponse = await setupClient.IsInitializedAsync();
 
         _initialized = initResponse.Data;
 
         if (_initialized)
             return _initialized;
 
-        var response = await _setupClient.StartAsync(request);
-
-        //await _authStateProvider.Login(new UserLoginRequest()
-        //{
-        //    Username = request.Username,
-        //    Password = request.Password,
-        //});
+        var response = await setupClient.StartAsync(request);
 
         _initialized = response.Data;
         return response.Data;
@@ -54,7 +49,10 @@ public class SetupManager
 
     public async Task<PageFullDetailResponse> GetSetupPage()
     {
-        var response = await _setupClient.GetSetupPageAsync();
+        var httpClient = _httpClientFactory.CreateApiClient();
+        var setupClient = new SetupClient(httpClient);
+
+        var response = await setupClient.GetSetupPageAsync();
 
         return response.Data;
     }

@@ -1,4 +1,5 @@
 ﻿using HtmlAgilityPack;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components.Sections;
@@ -25,14 +26,21 @@ public partial class Default : IDisposable
     public ToastService ToastService { set; get; }
 
     [Inject]
-    public PageClient PageClient { set; get; } = default!;
+    public IHttpClientFactory HttpClientFactory { set; get; } = default!;
 
     [Inject(Key = ErrorMessageExtension.ErrorMessageFactoryKey)]
     public required Func<Exception, string[]> ErrorMessageFactory { get; set; }
 
-    protected override void OnInitialized()
+    [CascadingParameter]
+    public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    public UserLoginResponse? UserLogin { get; set; }
+
+    protected override async Task OnInitializedAsync()
     {
+        await base.OnInitializedAsync();
         NavigationManager.LocationChanged += LocationChanged;
+        UserLogin = await AuthenticationStateTask.GetLogin();
     }
 
     void LocationChanged(object? sender, LocationChangedEventArgs e)
@@ -53,7 +61,9 @@ public partial class Default : IDisposable
             return;
         }
 
-        var pageResponse = await PageClient.GetByUrlAsync(NavigationManager.Uri);
+        var pageClient = HttpClientFactory.CreateApiClient<PageClient>(UserLogin);
+        var pageResponse = await pageClient.GetByUrlAsync(NavigationManager.Uri);
+
         if (pageResponse.Data != null)
             Page = pageResponse.Data;
     }
