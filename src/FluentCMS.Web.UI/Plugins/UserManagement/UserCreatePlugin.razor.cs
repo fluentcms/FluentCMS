@@ -5,7 +5,7 @@ public partial class UserCreatePlugin
     [SupplyParameterFromForm(FormName = FORM_NAME)]
     private UserCreateRequest Model { get; set; } = new();
 
-    const string FORM_NAME = "UserCreateForm";
+    public const string FORM_NAME = "UserCreateForm";
 
     private string? Error { get; set; }
 

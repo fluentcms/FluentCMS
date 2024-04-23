@@ -2,7 +2,7 @@
 
 public partial class SetupViewPlugin
 {
-    const string FORM_NAME = "SetupForm";
+    public const string FORM_NAME = "SetupForm";
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
     public SetupRequest Model { get; set; } = new();

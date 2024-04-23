@@ -2,7 +2,7 @@ namespace FluentCMS.Web.UI.Plugins.UserManagement;
 
 public partial class UserUpdatePlugin
 {
-    const string FORM_NAME = "UserUpdateForm";
+    public const string FORM_NAME = "UserUpdateForm";
 
     [SupplyParameterFromQuery(Name = "id")]
     private Guid Id { get; set; }
