@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.WebUtilities;
+﻿using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace FluentCMS.Web.UI.Plugins;
 
@@ -15,6 +16,8 @@ public partial class BasePlugin
 
     [CascadingParameter]
     public PageFullDetailResponse? Page { get; set; }
+    [CascadingParameter]
+    public Task<AuthenticationState> AuthenticationState { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
