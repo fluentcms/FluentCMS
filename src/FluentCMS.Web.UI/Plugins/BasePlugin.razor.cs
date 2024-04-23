@@ -7,6 +7,9 @@ public partial class BasePlugin
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = default!;
 
+    [Inject]
+    protected IAuthService AuthService { get; set; } = default!;
+
     [CascadingParameter]
     protected HttpContext HttpContext { get; set; } = default!;
 
@@ -15,9 +18,11 @@ public partial class BasePlugin
 
     [CascadingParameter]
     public PageFullDetailResponse? Page { get; set; }
+    public UserLoginResponse? CurrentUser { get; private set; }
 
     protected override async Task OnInitializedAsync()
     {
+        CurrentUser = await AuthService.GetLogin();
         await OnLoadAsync();
     }
 

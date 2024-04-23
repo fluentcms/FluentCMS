@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Components.Authorization;
 
 namespace FluentCMS.Web.UI.Services;
 
@@ -8,9 +9,10 @@ public interface IAuthService
 {
     Task Login(HttpContext httpContext, string username, string password, bool isPersist);
     Task Logout(HttpContext httpContext);
+    Task<UserLoginResponse?> GetLogin();
 }
 
-public class AuthService(AccountClient accountClient) : IAuthService
+public class AuthService(AccountClient accountClient, AuthenticationStateProvider authenticationStateProvider) : IAuthService
 {
     public async Task Logout(HttpContext httpContext)
     {
@@ -53,5 +55,25 @@ public class AuthService(AccountClient accountClient) : IAuthService
             });
 
         httpContext.Response.Redirect("/");
+    }
+
+    public async Task<UserLoginResponse?> GetLogin()
+    {
+        if (
+            authenticationStateProvider is null ||
+            await authenticationStateProvider.GetAuthenticationStateAsync() is var userState &&
+            (!userState.User.Identity?.IsAuthenticated ?? false))
+        {
+            return null;
+        }
+        ClaimsPrincipal user = userState.User;
+        return new UserLoginResponse()
+        {
+            Email = user.FindFirstValue(ClaimTypes.Email),
+            RoleIds = user.FindFirstValue(ClaimTypes.Role)?.Split(",").Select(x => Guid.Parse(x)).ToArray(),
+            Token = user.FindFirstValue("jwt"),
+            UserName = user.FindFirstValue(ClaimTypes.Name),
+            UserId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!)
+        };
     }
 }

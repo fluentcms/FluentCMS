@@ -35,6 +35,10 @@ public static class ApiClientServiceExtensions
             client.BaseAddress = new Uri(configuration["urls"]);
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            // var authService = sp.GetRequiredService<IAuthService>(); 
+            // var loginDetails = authService.GetLogin().GetAwaiter().GetResult();
+            // client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginDetails.Token);
+            // Does Not Work Here!
 
         });//.AddHttpMessageHandler<HttpClientHeaderHandler>();
 
