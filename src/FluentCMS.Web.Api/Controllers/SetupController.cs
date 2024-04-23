@@ -17,13 +17,6 @@ public class SetupController(SetupManager setupManager) : BaseGlobalController
         return Ok(await setupManager.Start(request));
     }
 
-    [HttpPost]
-    public async Task<IApiResult<bool>> Reset()
-    {
-        await setupManager.Reset();
-        return Ok(await setupManager.IsInitialized());
-    }
-
     [HttpGet]
     public async Task<IApiResult<PageFullDetailResponse>> GetSetupPage()
     {
