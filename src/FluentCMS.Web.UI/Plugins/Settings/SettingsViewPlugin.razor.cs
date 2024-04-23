@@ -1,9 +1,7 @@
 namespace FluentCMS.Web.UI.Plugins.Settings;
+
 public partial class SettingsViewPlugin
 {
-    //[Inject]
-    //IHttpClientFactory HttpClientFactory { get; set; } = default!;
-
     [Inject]
     GlobalSettingsClient GlobalSettingsClient { get; set; } = default!;
 
