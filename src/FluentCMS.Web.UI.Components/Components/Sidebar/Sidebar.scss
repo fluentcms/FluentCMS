@@ -86,7 +86,7 @@ $sidebar: $prefix + 'sidebar';
                 @apply p-2;
 
                 span {
-                    @apply w-auto h-auto ml-3;
+                    @apply text-xs w-auto h-auto ml-3;
                 }
             }
         }
