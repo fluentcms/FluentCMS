@@ -9,7 +9,7 @@ public partial class UserDetailPlugin
 
     protected override async Task OnLoadAsync()
     {
-        var apiResponse = await HttpClientFactory.GetClient<UserClient>().GetAsync(Id);
+        var apiResponse = await GetApiClient<UserClient>().GetAsync(Id);
         User = apiResponse.Data;
     }
 }

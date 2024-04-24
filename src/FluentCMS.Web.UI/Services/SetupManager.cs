@@ -3,14 +3,12 @@
 public class SetupManager
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly AuthStateProvider _authStateProvider;
 
     private static bool _initialized = false;
 
-    public SetupManager(IHttpClientFactory httpClientFactory, AuthStateProvider authStateProvider)
+    public SetupManager(IHttpClientFactory httpClientFactory)
     {
         _httpClientFactory = httpClientFactory;
-        _authStateProvider = authStateProvider;
     }
 
     public async Task<bool> IsInitialized()
@@ -18,7 +16,9 @@ public class SetupManager
         if (_initialized)
             return _initialized;
 
-        var initResponse = await _httpClientFactory.GetClient<SetupClient>().IsInitializedAsync();
+        var httpClient = _httpClientFactory.CreateApiClient();
+        var setupClient = new SetupClient(httpClient);
+        var initResponse = await setupClient.IsInitializedAsync();
 
         _initialized = initResponse.Data;
 
@@ -31,7 +31,9 @@ public class SetupManager
         if (_initialized)
             return _initialized;
 
-        var setupClient = _httpClientFactory.GetClient<SetupClient>();
+        var httpClient = _httpClientFactory.CreateApiClient();
+        var setupClient = new SetupClient(httpClient);
+
         var initResponse = await setupClient.IsInitializedAsync();
 
         _initialized = initResponse.Data;
@@ -41,19 +43,16 @@ public class SetupManager
 
         var response = await setupClient.StartAsync(request);
 
-        await _authStateProvider.Login(new UserLoginRequest()
-        {
-            Username = request.Username,
-            Password = request.Password,
-        });
-
         _initialized = response.Data;
         return response.Data;
     }
 
     public async Task<PageFullDetailResponse> GetSetupPage()
     {
-        var response = await _httpClientFactory.GetClient<SetupClient>().GetSetupPageAsync();
+        var httpClient = _httpClientFactory.CreateApiClient();
+        var setupClient = new SetupClient(httpClient);
+
+        var response = await setupClient.GetSetupPageAsync();
 
         return response.Data;
     }

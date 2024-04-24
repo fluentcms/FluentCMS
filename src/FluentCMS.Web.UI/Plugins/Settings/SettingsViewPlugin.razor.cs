@@ -1,8 +1,8 @@
 namespace FluentCMS.Web.UI.Plugins.Settings;
+
 public partial class SettingsViewPlugin
 {
     [Inject]
-    IHttpClientFactory HttpClientFactory { get; set; } = default!;
     GlobalSettingsClient GlobalSettingsClient { get; set; } = default!;
 
     string? SuperUser { get; set; }
@@ -14,7 +14,6 @@ public partial class SettingsViewPlugin
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        GlobalSettingsClient = HttpClientFactory.GetClient<GlobalSettingsClient>();
         var result = await GlobalSettingsClient!.GetAsync();
 
         if (result?.Data != null)

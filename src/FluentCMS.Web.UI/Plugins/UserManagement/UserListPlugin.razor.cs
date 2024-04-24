@@ -6,7 +6,7 @@ public partial class UserListPlugin
 
     protected override async Task OnLoadAsync()
     {
-        var usersResponse = await HttpClientFactory.GetClient<UserClient>().GetAllAsync();
+        var usersResponse = await GetApiClient<UserClient>().GetAllAsync();
         Users = usersResponse?.Data?.ToList() ?? [];
     }
 }

@@ -2,13 +2,19 @@
 
 public partial class SetupViewPlugin
 {
-    const string FORM_NAME = "SetupForm";
+    public const string FORM_NAME = "SetupForm";
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
     public SetupRequest Model { get; set; } = new();
 
     [Inject]
     private SetupManager SetupManager { get; set; } = default!;
+
+    [Inject]
+    private IAuthService AuthService { get; set; } = default!;
+
+    [CascadingParameter]
+    protected HttpContext HttpContext { get; set; } = default!;
 
     private bool Initialized { get; set; } = false;
 
@@ -32,6 +38,7 @@ public partial class SetupViewPlugin
         if (await SetupManager.Start(Model))
         {
             Initialized = await SetupManager.IsInitialized();
+            await AuthService.Login(HttpContext, Model.Username, Model.Password, true);
         }
     }
 }

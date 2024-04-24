@@ -1,4 +1,5 @@
 ﻿using HtmlAgilityPack;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components.Sections;
@@ -22,17 +23,24 @@ public partial class Default : IDisposable
     public SetupManager SetupManager { set; get; } = default!;
 
     [Inject]
-    public IHttpClientFactory HttpClientFactory { set; get; } = default!;
-
-    [Inject]
     public ToastService ToastService { set; get; }
 
-    [Inject(Key = ErrorMessageExtension.ErrorMessageFactoryKey)] public required Func<Exception, string[]> ErrorMessageFactory { get; set; }
+    [Inject]
+    public IHttpClientFactory HttpClientFactory { set; get; } = default!;
 
+    [Inject(Key = ErrorMessageExtension.ErrorMessageFactoryKey)]
+    public required Func<Exception, string[]> ErrorMessageFactory { get; set; }
 
-    protected override void OnInitialized()
+    [CascadingParameter]
+    public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    public UserLoginResponse? UserLogin { get; set; }
+
+    protected override async Task OnInitializedAsync()
     {
+        await base.OnInitializedAsync();
         NavigationManager.LocationChanged += LocationChanged;
+        UserLogin = await AuthenticationStateTask.GetLogin();
     }
 
     void LocationChanged(object? sender, LocationChangedEventArgs e)
@@ -53,15 +61,11 @@ public partial class Default : IDisposable
             return;
         }
 
-        try
-        {
-            var pageResponse = await HttpClientFactory.GetClient<PageClient>().GetByUrlAsync(NavigationManager.Uri);
-            if (pageResponse.Data != null)
-                Page = pageResponse.Data;
-        }
-        catch
-        {
-        }
+        var pageClient = HttpClientFactory.CreateApiClient<PageClient>(UserLogin);
+        var pageResponse = await pageClient.GetByUrlAsync(NavigationManager.Uri);
+
+        if (pageResponse.Data != null)
+            Page = pageResponse.Data;
     }
 
     protected RenderFragment ChildComponents() => builder =>

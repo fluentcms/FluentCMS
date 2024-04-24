@@ -1,18 +1,26 @@
-﻿namespace FluentCMS.Web.UI.Services;
+﻿using System.Net.Http.Headers;
+
+namespace FluentCMS.Web.UI.Services;
 
 public static class HttpClientFactoryHelper
 {
-    public static T GetClient<T>(this IHttpClientFactory httpClientFactory) where T : IApiClient
+    public const string HTTP_CLIENT_API_NAME = "FluentCMS.Web.Api";
+
+    public static HttpClient CreateApiClient(this IHttpClientFactory httpClientFactory)
     {
-        var client = httpClientFactory.CreateClient("FluentCMS.Web.Api");
+        return httpClientFactory.CreateClient(HTTP_CLIENT_API_NAME);
+    }
 
-        var type = typeof(T);
+    public static TClient CreateApiClient<TClient>(this IHttpClientFactory httpClientFactory, UserLoginResponse? userLogin) where TClient : class, IApiClient
+    {
+        var httpClient = httpClientFactory.CreateApiClient();
 
-        var ctor = type.GetConstructor([typeof(HttpClient)]) ??
-            throw new InvalidOperationException($"Could not find constructor for {type.Name}");
+        if (!string.IsNullOrEmpty(userLogin?.Token))
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", userLogin.Token);
 
-        var instance = ctor.Invoke([client]);
+        var ctor = typeof(TClient).GetConstructor([typeof(HttpClient)]) ??
+                    throw new InvalidOperationException($"Could not find constructor for {typeof(TClient).Name}");
 
-        return (T)instance;
+        return (TClient)ctor.Invoke([httpClient]);
     }
 }

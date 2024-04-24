@@ -1,6 +1,8 @@
-﻿<Router AppAssembly="@this.GetType().Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" />
-        <ExtendedFocusOnNavigate RouteData="@routeData" Selector="[autofocus]" />
-    </Found>
-</Router>
+﻿<CascadingAuthenticationState>
+    <Router AppAssembly="@this.GetType().Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="@routeData" />
+            <ExtendedFocusOnNavigate RouteData="@routeData" Selector="[autofocus]" />
+        </Found>
+    </Router>
+</CascadingAuthenticationState>

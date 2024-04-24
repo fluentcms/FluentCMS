@@ -2,7 +2,7 @@ namespace FluentCMS.Web.UI.Plugins.UserManagement;
 
 public partial class UserUpdatePlugin
 {
-    const string FORM_NAME = "UserUpdateForm";
+    public const string FORM_NAME = "UserUpdateForm";
 
     [SupplyParameterFromQuery(Name = "id")]
     private Guid Id { get; set; }
@@ -14,7 +14,7 @@ public partial class UserUpdatePlugin
 
     protected override async Task OnLoadAsync()
     {
-        var userResponse = await HttpClientFactory.GetClient<UserClient>().GetAsync(Id);
+        var userResponse = await GetApiClient<UserClient>().GetAsync(Id);
         User = userResponse.Data;
         Model = new UserUpdateRequest
         {
@@ -23,14 +23,9 @@ public partial class UserUpdatePlugin
         };
     }
 
-    protected override Task OnPostAsync()
-    {
-        return Task.CompletedTask;
-    }
-
     private async Task OnSubmit()
     {
-        await HttpClientFactory.GetClient<UserClient>().UpdateAsync(Model);
+        await GetApiClient<UserClient>().UpdateAsync(Model);
         NavigateBack();
     }
 }

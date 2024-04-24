@@ -7,37 +7,21 @@ public partial class BasePlugin
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = default!;
 
+    [CascadingParameter]
+    protected PluginDetailResponse? Plugin { get; set; } = default!;
+
+    [CascadingParameter]
+    protected PageFullDetailResponse? Page { get; set; }
+
+    [CascadingParameter]
+    protected UserLoginResponse? UserLogin { get; set; }
+
     [Inject]
     protected IHttpClientFactory HttpClientFactory { get; set; } = default!;
 
-    [CascadingParameter]
-    protected HttpContext HttpContext { get; set; } = default!;
-
-    [CascadingParameter]
-    public PluginDetailResponse? Plugin { get; set; } = default!;
-
-    [CascadingParameter]
-    public PageFullDetailResponse? Page { get; set; }
-
     protected override async Task OnInitializedAsync()
     {
-        if (HttpContext is null)
-            throw new ArgumentNullException(nameof(HttpContext));
-
-        if (HttpMethods.IsPost(HttpContext.Request.Method))
-        {
-            await OnPostAsync();
-        }
-        else
-        {
-            await OnLoadAsync();
-        }
-    }
-
-
-    protected virtual async Task OnPostAsync()
-    {
-        await Task.CompletedTask;
+        await OnLoadAsync();
     }
 
     protected virtual async Task OnLoadAsync()
@@ -70,5 +54,10 @@ public partial class BasePlugin
                 queryParams[propInfo.Name] = propInfo.GetValue(parameters)?.ToString();
         }
         return QueryHelpers.AddQueryString(NavigationManager.Uri, queryParams);
+    }
+
+    protected TClient GetApiClient<TClient>() where TClient : class, IApiClient
+    {
+        return HttpClientFactory.CreateApiClient<TClient>(UserLogin);
     }
 }
