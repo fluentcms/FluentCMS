@@ -20,6 +20,6 @@ $stepper: $prefix + 'stepper';
     }
 
     &-vertical-true {
-        @apply relative text-gray-500 border-s border-gray-200 dark:border-gray-700 dark:text-gray-400;
+        @apply ms-4 relative text-gray-500 border-s border-gray-200 dark:border-gray-700 dark:text-gray-400;
     }
 }
