@@ -23,13 +23,7 @@ public partial class Default : IDisposable
     public SetupManager SetupManager { set; get; } = default!;
 
     [Inject]
-    public ToastService ToastService { set; get; }
-
-    [Inject]
     public IHttpClientFactory HttpClientFactory { set; get; } = default!;
-
-    [Inject(Key = ErrorMessageExtension.ErrorMessageFactoryKey)]
-    public required Func<Exception, string[]> ErrorMessageFactory { get; set; }
 
     [CascadingParameter]
     public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
@@ -186,18 +180,5 @@ public partial class Default : IDisposable
             .Union([typeof(SectionContent)])
             .FirstOrDefault(x => x.Name == typeName);
         return typeInfo;
-    }
-
-    private async Task OnError(Exception ex)
-    {
-        if (ToastService == null || ToastService.ToastProvider == null)
-        {
-            return;
-        }
-        var message = ErrorMessageFactory.Invoke(ex);
-        foreach (var error in message)
-        {
-            ToastService!.ToastProvider!.Show(error, ToastType.Danger);
-        }
     }
 }

@@ -27,7 +27,6 @@ public static class AdminUIServiceExtensions
         services.AddCookies();
         services.AddApiClients(configuration);
         services.AddScoped<SetupManager>();
-        services.AddErrorMessageFactory();
 
         return services;
     }
