@@ -5,6 +5,9 @@
         <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Seven" Large="GridItemColumn.Nine">
             <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
                 <GridItem Small="GridItemColumn.Twelve">
+                    <input type="checkbox" checked="@User.Enabled" readonly disabled /> <label>Enabled</label>
+                </GridItem>
+                <GridItem Small="GridItemColumn.Twelve">
                     <Typography><strong>FirstName:</strong></Typography>
                     <Typography>
                         @User.FirstName

@@ -9,6 +9,7 @@
     </ButtonGroup>
     <Table>
         <TableHead>
+            <TableCell>Enabled</TableCell>
             <TableCell>FirstName</TableCell>
             <TableCell>LastName</TableCell>
             <TableCell>Username</TableCell>
@@ -20,6 +21,7 @@
             @foreach (var user in Users)
             {
                 <TableRow>
+                    <TableCell><input type="checkbox" checked="@user.Enabled" readonly disabled/></TableCell>
                     <TableCell>@user.FirstName</TableCell>
                     <TableCell>@user.LastName</TableCell>
                     <TableCell>@user.Username</TableCell>
