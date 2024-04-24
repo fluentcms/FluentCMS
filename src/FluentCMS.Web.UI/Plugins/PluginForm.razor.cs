@@ -22,19 +22,15 @@ public partial class PluginForm
     [Parameter]
     public EventCallback<EditContext> OnSubmit { get; set; }
 
-    protected override void OnParametersSet()
-    {
-        base.OnParametersSet();
-
-        if (string.IsNullOrEmpty(Name))
-            throw new ArgumentNullException("FormName");
-    }
-
     private async Task HandleSubmit(EditContext editContext)
     {
         try
         {
             await OnSubmit.InvokeAsync(editContext);
+        }
+        catch (ApiClientException apiException)
+        {
+            Error = string.Join("<br>", apiException.GetErrors());
         }
         catch (Exception ex)
         {
