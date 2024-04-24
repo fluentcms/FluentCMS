@@ -65,8 +65,6 @@ public static class ApiServiceExtensions
     {
         app.UseApiDocumentation();
 
-        app.UseAntiforgery();
-
         app.UseWhen(context => context.Request.Path.StartsWithSegments("/api"), app =>
         {
             // this will be executed only when the path starts with "/api"

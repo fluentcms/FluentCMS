@@ -11,10 +11,23 @@
     <base href="/" />
     <script src="/js/before-render.js"></script>
 
-    <HeadOutlet @rendermode="@InteractiveServer" />
+    <HeadOutlet @rendermode="@RenderModeForPage" />
 </head>
 <body>
-    <Routes @rendermode="@InteractiveServer" />
+    <Routes @rendermode="@RenderModeForPage" />
     <script src="_framework/blazor.web.js"></script>
 </body>
 </html>
+@code{
+
+    // app is static (NoneInteractive) only so we don't need to null check out HTTP Context
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; } = default!;
+
+    public string[] staticRoutePrefixes = ["/auth/login", "/"];
+
+    // determine render mode based on url
+    private IComponentRenderMode? RenderModeForPage => staticRoutePrefixes.Any(x => HttpContext.Request.Path.Equals(x))
+        ? null // null is NoneInteractive
+        : InteractiveServer;
+}
