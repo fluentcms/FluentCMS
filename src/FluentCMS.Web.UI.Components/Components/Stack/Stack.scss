@@ -1,5 +1,7 @@
 $stack: $prefix + 'stack';
 
+$stack-items: ( start, end, center, baseline, stretch);
+
 $stack-justify: ( normal, start, end, center, between, around, evenly, stretch);
 
 .#{$stack} {
@@ -7,6 +9,12 @@ $stack-justify: ( normal, start, end, center, between, around, evenly, stretch);
 
     &-vertical-true {
         @apply flex-col;
+    }
+
+    @each $key in $stack-items {
+        &-items-#{$key} {
+            @apply items-#{$key};
+        }
     }
 
     @each $key in $stack-justify {
