@@ -9,4 +9,5 @@ public class UserLoginRequest
 
     [Required]
     public required string Password { get; set; }
+    public bool Presist { get; set; }
 }

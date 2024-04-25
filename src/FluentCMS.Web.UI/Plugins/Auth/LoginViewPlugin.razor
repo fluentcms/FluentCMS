@@ -1,8 +1,9 @@
 @inherits BasePlugin
 
-<PluginForm Model="@Model" Name="" Title="Login" OnSubmit="OnSubmit">
+<PluginForm Model="@Model" Name="@FORM_NAME" Title="Login" OnSubmit="OnSubmit">
     <InputText @bind-Value="Model.Username" Placeholder="Enter your username" />
     <InputText @bind-Value="Model.Password" Placeholder="Enter your password" type="password" />
+    <InputCheckbox @bind-Value="Model.Presist"></InputCheckbox> <label>Remember</label>
 
     <Typography Color="Color.Secondary">
         Don't have an account?
