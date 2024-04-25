@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Web.Api.Models.Users;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
@@ -53,7 +54,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     }
 
     [HttpGet]
-    [Authorize]
+    [Authorize(JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IApiResult<UserDetailResponse>> GetCurrent()
     {
         var user = await userService.GetById(authContext.UserId);

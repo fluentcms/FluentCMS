@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.WebUtilities;
+﻿using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace FluentCMS.Web.UI.Plugins;
 
@@ -16,12 +18,22 @@ public partial class BasePlugin
     [CascadingParameter]
     protected UserLoginResponse? UserLogin { get; set; }
 
+    [Parameter]
+    public ErrorContext ErrorContext { get; set; } = new();
+
     [Inject]
     protected IHttpClientFactory HttpClientFactory { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        await OnLoadAsync();
+        try
+        {
+            await OnLoadAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorContext.SetError(ex);
+        }
     }
 
     protected virtual async Task OnLoadAsync()

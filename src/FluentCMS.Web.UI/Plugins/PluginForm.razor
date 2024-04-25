@@ -3,12 +3,5 @@
         <DataAnnotationsValidator />
         <Spacer />
         @ChildContent
-        @if (!string.IsNullOrEmpty(Error))
-        {
-            <Spacer />
-            <Alert Type="AlertType.Danger">
-                <b>@((MarkupString)Error)</b>
-            </Alert>
-        }
     </EditForm>
 </PluginView>
