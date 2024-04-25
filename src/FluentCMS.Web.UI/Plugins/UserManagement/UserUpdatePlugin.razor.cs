@@ -6,25 +6,27 @@ public partial class UserUpdatePlugin
     [SupplyParameterFromQuery(Name = "id")]
     private Guid Id { get; set; }
 
-    private AccountUpdateRequest Model { get; set; } = new();
+    private UserUpdateRequest Model { get; set; } = new();
     private UserDetailResponse User { get; set; } = new();
 
     protected override async Task OnLoadAsync()
     {
         var userResponse = await GetApiClient<UserClient>().GetAsync(Id);
         User = userResponse.Data;
-        Model = new AccountUpdateRequest
+        Model = new UserUpdateRequest
         {
+            Id = User.Id,
             Email = User.Email ?? string.Empty,
             FirstName = User.FirstName,
             LastName = User.LastName,
-            PhoneNumber = User.PhoneNumber
+            PhoneNumber = User.PhoneNumber,
+            Enabled = User.Enabled,
         };
     }
 
     private async Task OnSubmit()
     {
-        await GetApiClient<AccountClient>().UpdateCurrentAsync(Model);
+        await GetApiClient<UserClient>().UpdateAsync(Model);
         NavigateBack();
     }
 }

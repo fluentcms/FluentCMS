@@ -9,6 +9,6 @@ public partial class ProfileViewPlugin
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        View = (await GetApiClient<AccountClient>().GetCurrentAsync()).Data;
+        View = (await GetApiClient<AccountClient>().GetUserDetailAsync()).Data;
     }
 }
