@@ -1,11 +1,12 @@
 @using Version = FluentCMS.Web.UI.Components.Version
 @using System.Reflection
 <Page>
-    <PageHeader Title="Welcome" />
+    <PageHeader Subtitle="We hope you are making progress on your project! Feel free to read the latest news about FluentCMS. We are
+            giving our best to improve the product based on your feedback." 
+            Title="Welcome" />
     <PageBody>
         <Typography Size="TextSize.Small">
-            We hope you are making progress on your project! Feel free to read the latest news about FluentCMS. We are
-            giving our best to improve the product based on your feedback.
+            
         </Typography>
 
         <Spacer />
@@ -108,9 +109,9 @@
                     </a>
 
                     <Spacer Size="SpacerSize.Small" />
-                    <!-- TODO: Do not use tailwind classes -->
-                    <Version Class="hidden md:block" Assembly="Assembly.GetEntryAssembly()"></Version>
                 }
+                <!-- TODO: Do not use tailwind classes -->
+                <Version Class="hidden md:block" Assembly="Assembly.GetEntryAssembly()"></Version>
             </GridItem>
             <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Four">
 
