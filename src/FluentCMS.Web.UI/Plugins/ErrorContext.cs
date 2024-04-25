@@ -3,6 +3,7 @@
 public class ErrorContext
 {
     public string? LastError { get; set; } = null;
+    public Action ErrorChanged { get; set; } = default!;
     private static string GetError(Exception ex)
     {
         if (ex is ApiClientException apiClientException
@@ -23,9 +24,11 @@ public class ErrorContext
     public void SetError(Exception ex)
     {
         LastError = GetError(ex);
+        ErrorChanged?.Invoke();
     }
     public void Clear()
     {
         LastError = null;
+        ErrorChanged?.Invoke();
     }
 }
