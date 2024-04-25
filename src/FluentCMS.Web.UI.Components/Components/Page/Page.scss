@@ -16,7 +16,7 @@ $page: $prefix + 'page';
     }
 
     &-body {
-        @apply mb-12;
+        margin-bottom: calc(2rem + env(safe-area-inset-bottom, 1rem));
     }
 
     &-header {
