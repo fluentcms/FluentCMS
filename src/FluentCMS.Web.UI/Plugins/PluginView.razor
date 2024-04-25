@@ -9,15 +9,5 @@
             @ChildContent
         </CardBody>
     }
-    @if (!string.IsNullOrEmpty(ErrorContext?.LastError))
-    {
-        <CardBody>
-            <Alert Type="AlertType.Danger">
-                @foreach (var error in ErrorContext.LastError.Split("\n"))
-                {
-                    <div>@error</div>
-                }
-            </Alert>
-        </CardBody>
-    }
+    <ErrorDisplay></ErrorDisplay>
 </Card>

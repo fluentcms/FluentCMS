@@ -30,6 +30,7 @@ public partial class PluginForm
         catch (Exception ex)
         {
             ErrorContext.SetError(ex);
+            StateHasChanged();
         }
     }
 }
