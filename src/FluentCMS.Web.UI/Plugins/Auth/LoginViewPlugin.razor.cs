@@ -1,9 +1,9 @@
-﻿namespace FluentCMS.Web.UI.Plugins.Auth;
+﻿using Microsoft.AspNetCore.Components;
+
+namespace FluentCMS.Web.UI.Plugins.Auth;
 
 public partial class LoginViewPlugin
 {
-    [Inject]
-    private NavigationManager NavigationManager { get; set; } = default!;
 
     private UserLoginRequest Model { get; set; } = new();
 

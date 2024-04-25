@@ -1,7 +1,10 @@
 ﻿<Spacer />
 <ButtonGroup>
-    <Button Href="@GetBackUrl()">
-        Cancel
-    </Button>
+    @if (HasCancel)
+    {
+        <Button Href="@GetBackUrl()">
+            Cancel
+        </Button>
+    }
     @ChildContent
 </ButtonGroup>
