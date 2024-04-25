@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Web.UI.Plugins;
+using Microsoft.AspNetCore.Identity.UI.Services;
 
 namespace FluentCMS.Web.UI.Components;
 public partial class ErrorDisplay
@@ -15,7 +16,7 @@ public partial class ErrorDisplay
         }
     }
 
-    private void OnErrorChanged()
+    private void OnErrorChanged(object? sender, EventArgs e)
     {
         StateHasChanged();
     }
