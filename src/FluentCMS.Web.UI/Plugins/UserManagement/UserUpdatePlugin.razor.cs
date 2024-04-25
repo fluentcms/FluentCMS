@@ -8,7 +8,7 @@ public partial class UserUpdatePlugin
     private Guid Id { get; set; }
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
-    private UserUpdateRequest Model { get; set; } = new();
+    private AccountUpdateRequest Model { get; set; } = new();
 
     private UserDetailResponse User { get; set; } = new();
 
@@ -16,16 +16,18 @@ public partial class UserUpdatePlugin
     {
         var userResponse = await GetApiClient<UserClient>().GetAsync(Id);
         User = userResponse.Data;
-        Model = new UserUpdateRequest
+        Model = new AccountUpdateRequest
         {
             Email = User.Email ?? string.Empty,
-            Id = Id,
+            FirstName = User.FirstName,
+            LastName = User.LastName,
+            PhoneNumber = User.PhoneNumber
         };
     }
 
     private async Task OnSubmit()
     {
-        await GetApiClient<UserClient>().UpdateAsync(Model);
+        await GetApiClient<AccountClient>().UpdateCurrentAsync(Model);
         NavigateBack();
     }
 }
