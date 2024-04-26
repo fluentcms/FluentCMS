@@ -29,7 +29,6 @@ public partial class PluginForm
         }
         catch (Exception ex)
         {
-            ErrorContext.Clear();
             ErrorContext.SetError(ex);
         }
     }

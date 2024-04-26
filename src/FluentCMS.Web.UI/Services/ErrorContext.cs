@@ -6,6 +6,7 @@ public class ErrorContext
     public event EventHandler ErrorChanged;
     public void SetError(Exception ex)
     {
+        Clear();
         if (ex is ApiClientException apiClientException
             && apiClientException is not null
             && apiClientException.Data is not null
