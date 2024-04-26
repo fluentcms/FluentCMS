@@ -31,7 +31,6 @@ public partial class PluginForm
         {
             ErrorContext.Clear();
             ErrorContext.SetError(ex);
-            StateHasChanged();
         }
     }
 }

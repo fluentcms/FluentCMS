@@ -34,7 +34,6 @@ public partial class BasePlugin
         catch (Exception ex)
         {
             ErrorContext.SetError(ex);
-            StateHasChanged();
         }
     }
 
