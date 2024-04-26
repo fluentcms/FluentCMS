@@ -1,7 +1,5 @@
 ﻿using FluentCMS.Web.Api.Attributes;
 using FluentCMS.Web.Api.Models.Users;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
 
@@ -56,7 +54,6 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
 
     [HttpGet]
     [JwtAuthorize]
-
     public async Task<IApiResult<UserDetailResponse>> GetUserDetail(CancellationToken cancellationToken = default)
     {
         var user = await userService.GetById(authContext.UserId, cancellationToken);

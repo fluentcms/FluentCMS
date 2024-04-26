@@ -3,7 +3,6 @@
 namespace FluentCMS.Web.Api.Controllers;
 
 [JwtAuthorize]
-
 [Route("api/[controller]/{contentTypeSlug}/[action]")]
 public class ContentController(
     IMapper mapper,
