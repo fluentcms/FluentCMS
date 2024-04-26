@@ -39,25 +39,25 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     }
 
     [HttpPost]
-    public async Task<IApiResult<bool>> SendPasswordResetToken([FromBody] UserSendPasswordResetTokenRequest request)
+    public async Task<IApiResult<bool>> SendPasswordResetToken([FromBody] UserSendPasswordResetTokenRequest request, CancellationToken cancellationToken = default)
     {
-        var token = await userService.GeneratePasswordResetToken(request.Email);
+        var token = await userService.GeneratePasswordResetToken(request.Email, cancellationToken);
         // todo send token 
         return Ok(true);
     }
 
     [HttpPost]
-    public async Task<IApiResult<bool>> ValidatePasswordResetToken([FromBody] UserValidatePasswordResetTokenRequest request)
+    public async Task<IApiResult<bool>> ValidatePasswordResetToken([FromBody] UserValidatePasswordResetTokenRequest request, CancellationToken cancellationToken = default)
     {
-        _ = await userService.ValidatePasswordResetToken(request.Token, request.Email, request.NewPassword);
+        _ = await userService.ValidatePasswordResetToken(request.Token, request.Email, request.NewPassword, cancellationToken);
         return Ok(true);
     }
 
     [HttpGet]
     [Authorize(JwtBearerDefaults.AuthenticationScheme)]
-    public async Task<IApiResult<UserDetailResponse>> GetCurrent()
+    public async Task<IApiResult<UserDetailResponse>> GetUserDetail(CancellationToken cancellationToken = default)
     {
-        var user = await userService.GetById(authContext.UserId);
+        var user = await userService.GetById(authContext.UserId, cancellationToken);
         return Ok(mapper.Map<UserDetailResponse>(user));
     }
 }
