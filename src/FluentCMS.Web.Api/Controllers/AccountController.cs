@@ -1,4 +1,6 @@
-﻿using FluentCMS.Web.Api.Models.Users;
+﻿using FluentCMS.Web.Api.Attributes;
+using FluentCMS.Web.Api.Models.Users;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
@@ -30,7 +32,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     }
 
     [HttpPost]
-    [Authorize]
+    [JwtAuthorize]
     public async Task<IApiResult<bool>> ChangePassword([FromBody] UserChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
         await userService.ChangePassword(request.UserId, request.OldPassword, request.NewPassword, cancellationToken);
@@ -53,7 +55,8 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     }
 
     [HttpGet]
-    [Authorize]
+    [JwtAuthorize]
+
     public async Task<IApiResult<UserDetailResponse>> GetUserDetail(CancellationToken cancellationToken = default)
     {
         var user = await userService.GetById(authContext.UserId, cancellationToken);
