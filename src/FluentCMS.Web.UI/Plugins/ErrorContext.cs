@@ -2,9 +2,9 @@
 
 public class ErrorContext
 {
-    public string? LastError { get; set; } = null;
+    public List<string> Errors { get; set; } = new List<string>();
     public event EventHandler ErrorChanged;
-    private static string GetError(Exception ex)
+    public void SetError(Exception ex)
     {
         if (ex is ApiClientException apiClientException
             && apiClientException is not null
@@ -13,22 +13,29 @@ public class ErrorContext
             && errors is not null
             && errors.Any())
         {
-            return string.Join("\n", errors.Select(x => string.IsNullOrEmpty(x.Description) ? x.Code : x.Description));
+            foreach (var error in errors)
+            {
+                var message = new[] { error.Description, error.Code }.FirstOrDefault(x => !string.IsNullOrEmpty(x));
+                if (!string.IsNullOrEmpty(message))
+                {
+                    Errors.Add(message);
+                }
+                else if (!Errors.Any())
+                {
+                    Errors.Add(apiClientException.Message);
+                    break;
+                }
+            }
         }
         else
         {
-            return ex.Message;
+            Errors.Add(ex.Message);
         }
-    }
-
-    public void SetError(Exception ex)
-    {
-        LastError = GetError(ex);
         ErrorChanged?.Invoke(this, EventArgs.Empty);
     }
     public void Clear()
     {
-        LastError = null;
+        Errors.Clear();
         ErrorChanged?.Invoke(this, EventArgs.Empty);
     }
 }

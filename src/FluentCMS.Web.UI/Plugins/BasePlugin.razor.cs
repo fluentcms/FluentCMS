@@ -26,6 +26,7 @@ public partial class BasePlugin
 
     protected override async Task OnInitializedAsync()
     {
+        ErrorContext.Clear();
         try
         {
             await OnLoadAsync();

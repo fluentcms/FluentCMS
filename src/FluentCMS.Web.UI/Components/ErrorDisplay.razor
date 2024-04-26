@@ -1,8 +1,8 @@
-﻿@if (!string.IsNullOrEmpty(ErrorContext?.LastError))
+﻿@if (ErrorContext?.Errors.Any() ?? false)
 {
     <CardBody>
         <Alert Type="AlertType.Danger">
-            @foreach (var error in ErrorContext.LastError.Split("\n"))
+            @foreach (var error in ErrorContext.Errors)
             {
                 <div>@error</div>
             }
