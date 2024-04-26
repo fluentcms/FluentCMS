@@ -14,7 +14,7 @@ public class AuthContext : IAuthContext
 
     public AuthContext(IHttpContextAccessor httpContextAccessor)
     {
-        var idClaimValue = httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var idClaimValue = httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Sid)?.Value;
         _userId = idClaimValue == null ? Guid.Empty : Guid.Parse(idClaimValue);
         _username = httpContextAccessor.HttpContext?.User?.Identity?.Name ?? string.Empty;
         _roleIds = httpContextAccessor.HttpContext?.User?.Claims?.Where(x => x.Type == "role")?.Select(x => Guid.Parse(x.Value)) ?? [];
