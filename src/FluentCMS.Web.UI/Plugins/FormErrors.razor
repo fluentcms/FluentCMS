@@ -1,3 +1,11 @@
-﻿<Alert Type="AlertType.Danger">
-    <ValidationSummary></ValidationSummary>
-</Alert>
+﻿@if (PluginForm != null && PluginForm.Errors.Count > 0)
+{
+    <Alert Type="AlertType.Danger">
+        <ul>
+            @foreach (var error in PluginForm.Errors)
+            {
+                <li>@error</li>
+            }
+        </ul>
+    </Alert>
+}
