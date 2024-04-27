@@ -52,10 +52,10 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
 
     [HttpPost]
     public async Task<IApiResult<bool>> ValidatePasswordResetToken(
-        [FromBody] UserValidatePasswordResetTokenRequest request, CancellationToken cancellationToken = default)
+        [FromBody]
+        UserValidatePasswordResetTokenRequest request, CancellationToken cancellationToken = default)
     {
-        _ = await userService.ValidatePasswordResetToken(request.Token, request.Email, request.NewPassword,
-            cancellationToken);
+        _ = await userService.ValidatePasswordResetToken(request.Token, request.Email, request.NewPassword, cancellationToken);
         return Ok(true);
     }
 
