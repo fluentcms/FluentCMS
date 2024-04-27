@@ -14,21 +14,14 @@ public partial class PluginForm
     public string Name { get; set; } = default!; // Form Name
 
     [Parameter]
-    public string? Error { get; set; }
-
-    [Parameter]
     public virtual object? Model { get; set; }
 
     [Parameter]
     public EventCallback<EditContext> OnSubmit { get; set; }
 
-    protected override void OnParametersSet()
-    {
-        base.OnParametersSet();
+    private EditForm EditForm { get; set; } = default!;
 
-        if (string.IsNullOrEmpty(Name))
-            throw new ArgumentNullException("FormName");
-    }
+    public List<string> Errors { get; set; } = new();
 
     private async Task HandleSubmit(EditContext editContext)
     {
@@ -36,9 +29,23 @@ public partial class PluginForm
         {
             await OnSubmit.InvokeAsync(editContext);
         }
-        catch (Exception ex)
+        catch (ApiClientException ex)
         {
-            Error = ex.Message;
+            Errors.Clear();
+            if (ex.Data is { Errors: not null and var errors } && errors.Count > 0)
+            {
+                foreach (var error in errors)
+                {
+                    Errors.Add(string.IsNullOrEmpty(error.Description!) ? error.Code! : error.Description);
+                }
+
+                StateHasChanged();
+            }
+            else
+            {
+                Errors.Add(ex.Message);
+                StateHasChanged();
+            }
         }
     }
 }
