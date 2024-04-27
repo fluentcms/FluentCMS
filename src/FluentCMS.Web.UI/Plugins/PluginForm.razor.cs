@@ -21,16 +21,7 @@ public partial class PluginForm
 
     private EditForm EditForm { get; set; } = default!;
 
-    private ValidationMessageStore ValidationMessageStore { get; set; } = default!;
-
-    protected override void OnAfterRender(bool firstRender)
-    {
-        base.OnAfterRender(firstRender);
-        if (firstRender)
-        {
-            ValidationMessageStore = new ValidationMessageStore(EditForm.EditContext!);
-        }
-    }
+    public List<string> Errors { get; set; } = new();
 
     private async Task HandleSubmit(EditContext editContext)
     {
@@ -40,21 +31,20 @@ public partial class PluginForm
         }
         catch (ApiClientException ex)
         {
-            ValidationMessageStore.Clear();
+            Errors.Clear();
             if (ex.Data is { Errors: not null and var errors } && errors.Count > 0)
             {
                 foreach (var error in errors)
                 {
-                    ValidationMessageStore.Add(() => Model!,
-                        string.IsNullOrEmpty(error.Description!) ? error.Code! : error.Description);
+                    Errors.Add(string.IsNullOrEmpty(error.Description!) ? error.Code! : error.Description);
                 }
 
-                editContext.NotifyValidationStateChanged();
+                StateHasChanged();
             }
             else
             {
-                ValidationMessageStore.Add(() => Model!, ex.Message);
-                editContext.NotifyValidationStateChanged();
+                Errors.Add(ex.Message);
+                StateHasChanged();
             }
         }
     }
