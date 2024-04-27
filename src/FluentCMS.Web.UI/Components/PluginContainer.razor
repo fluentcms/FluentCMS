@@ -7,9 +7,6 @@
         </div>
     </ChildContent>
     <ErrorContent>
-        <div>@context.Message</div>
-        <Button OnClick="Recover">
-            Recover
-        </Button>
+        <PluginError Message="@context.Message" ErrorBoundaryRef="@ErrorBoundaryRef"/>
     </ErrorContent>
 </ErrorBoundary>
