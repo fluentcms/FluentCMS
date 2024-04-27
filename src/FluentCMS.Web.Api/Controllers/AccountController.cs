@@ -3,8 +3,7 @@ using FluentCMS.Web.Api.Models.Users;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class AccountController(IMapper mapper, IUserService userService, IAuthContext authContext)
-    : BaseGlobalController
+public class AccountController(IMapper mapper, IUserService userService, IAuthContext authContext) : BaseGlobalController
 {
     [HttpPost]
     public async Task<IApiResult<UserDetailResponse>> Register([FromBody] UserRegisterRequest request, CancellationToken cancellationToken = default)
