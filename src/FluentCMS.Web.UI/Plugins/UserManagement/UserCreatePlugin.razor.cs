@@ -6,8 +6,6 @@ public partial class UserCreatePlugin
 {
     private UserCreateRequest Model { get; set; } = new() { Enabled = true };
 
-    private string? Error { get; set; }
-
     private async Task OnSubmit()
     {
         var apiResult = await GetApiClient<UserClient>().CreateAsync(Model);
