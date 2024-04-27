@@ -1,7 +1,8 @@
 ﻿<PluginView Title="@Title">
-    <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="@Name" Enhance>
-        <DataAnnotationsValidator />
-        <Spacer />
+    <EditForm @ref="@EditForm" Model="@Model" OnSubmit="HandleSubmit" FormName="@Name" Enhance>
+        <DataAnnotationsValidator/>
+        <Spacer/>
         @ChildContent
+        <ValidationSummary></ValidationSummary>
     </EditForm>
 </PluginView>

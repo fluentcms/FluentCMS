@@ -10,9 +10,6 @@ public partial class PluginForm
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
-    [CascadingParameter]
-    public ErrorContext ErrorContext { get; set; } = default!;
-
     [Parameter]
     public string Name { get; set; } = default!; // Form Name
 
@@ -21,15 +18,44 @@ public partial class PluginForm
 
     [Parameter]
     public EventCallback<EditContext> OnSubmit { get; set; }
+
+    private EditForm EditForm { get; set; } = default!;
+
+    private ValidationMessageStore ValidationMessageStore { get; set; } = default!;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+        if (firstRender)
+        {
+            ValidationMessageStore = new ValidationMessageStore(EditForm.EditContext!);
+        }
+    }
+
     private async Task HandleSubmit(EditContext editContext)
     {
         try
         {
             await OnSubmit.InvokeAsync(editContext);
         }
-        catch (Exception ex)
+        catch (ApiClientException ex)
         {
-            ErrorContext.SetError(ex);
+            ValidationMessageStore.Clear();
+            if (ex.Data is { Errors: not null and var errors } && errors.Count > 0)
+            {
+                foreach (var error in errors)
+                {
+                    ValidationMessageStore.Add(() => Model!,
+                        string.IsNullOrEmpty(error.Description!) ? error.Code! : error.Description);
+                }
+
+                editContext.NotifyValidationStateChanged();
+            }
+            else
+            {
+                ValidationMessageStore.Add(() => Model!, ex.Message);
+                editContext.NotifyValidationStateChanged();
+            }
         }
     }
 }
