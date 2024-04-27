@@ -7,7 +7,4 @@ public partial class PluginView
 
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
-
-    [CascadingParameter]
-    public ErrorContext ErrorContext { get; set; } = default!;
 }
