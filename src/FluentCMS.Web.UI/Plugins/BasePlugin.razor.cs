@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Routing;
-using Microsoft.AspNetCore.WebUtilities;
+﻿using Microsoft.AspNetCore.WebUtilities;
 
 namespace FluentCMS.Web.UI.Plugins;
 
@@ -18,28 +16,17 @@ public partial class BasePlugin
     [CascadingParameter]
     protected UserLoginResponse? UserLogin { get; set; }
 
-    [Parameter]
-    public ErrorContext ErrorContext { get; set; } = new();
-
     [Inject]
     protected IHttpClientFactory HttpClientFactory { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        ErrorContext.Clear();
-        try
-        {
-            await OnLoadAsync();
-        }
-        catch (Exception ex)
-        {
-            ErrorContext.SetError(ex);
-        }
+        await OnLoadAsync();
     }
 
-    protected virtual async Task OnLoadAsync()
+    protected virtual Task OnLoadAsync()
     {
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     protected virtual void NavigateBack()
@@ -66,6 +53,7 @@ public partial class BasePlugin
             foreach (var propInfo in parameters.GetType().GetProperties())
                 queryParams[propInfo.Name] = propInfo.GetValue(parameters)?.ToString();
         }
+
         return QueryHelpers.AddQueryString(NavigationManager.Uri, queryParams);
     }
 
