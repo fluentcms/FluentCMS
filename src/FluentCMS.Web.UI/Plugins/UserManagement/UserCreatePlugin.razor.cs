@@ -1,5 +1,3 @@
-using System.Linq;
-
 namespace FluentCMS.Web.UI.Plugins.UserManagement;
 
 public partial class UserCreatePlugin
@@ -8,7 +6,7 @@ public partial class UserCreatePlugin
 
     private async Task OnSubmit()
     {
-        var apiResult = await GetApiClient<UserClient>().CreateAsync(Model);
+        await GetApiClient<UserClient>().CreateAsync(Model);
         NavigateBack();
     }
 }
