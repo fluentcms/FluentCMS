@@ -1,9 +1,13 @@
-﻿namespace FluentCMS.Web.Api.Controllers;
+﻿using FluentCMS.Web.Api.Attributes;
+using System.Reflection;
+
+namespace FluentCMS.Web.Api.Controllers;
 
 public class UserController(IUserService userService, IMapper mapper) : BaseGlobalController
 {
 
     [HttpGet]
+    [DynamicAuthorize("User Management", "Read")]
     public async Task<IApiPagingResult<UserDetailResponse>> GetAll(CancellationToken cancellationToken = default)
     {
         var users = await userService.GetAll(cancellationToken);
@@ -12,6 +16,7 @@ public class UserController(IUserService userService, IMapper mapper) : BaseGlob
     }
 
     [HttpGet("{userId}")]
+    [DynamicAuthorize("User Management", "Read")]
     public async Task<IApiResult<UserDetailResponse>> Get([FromRoute] Guid userId, CancellationToken cancellationToken = default)
     {
         var user = await userService.GetById(userId, cancellationToken);
@@ -20,6 +25,7 @@ public class UserController(IUserService userService, IMapper mapper) : BaseGlob
     }
 
     [HttpPut]
+    [DynamicAuthorize("User Management", "Update")]
     public async Task<IApiResult<UserDetailResponse>> Update([FromBody] UserUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var user = mapper.Map<User>(request);
@@ -29,6 +35,7 @@ public class UserController(IUserService userService, IMapper mapper) : BaseGlob
     }
 
     [HttpPost]
+    [DynamicAuthorize("User Management", "Create")]
     public async Task<IApiResult<UserDetailResponse>> Create([FromBody] UserCreateRequest request, CancellationToken cancellationToken = default)
     {
         var user = mapper.Map<User>(request);
