@@ -1,6 +1,5 @@
-﻿using FluentCMS.Web.Api.Models.Users;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
+using FluentCMS.Web.Api.Attributes;
+using FluentCMS.Web.Api.Models.Users;
 
 namespace FluentCMS.Web.Api.Controllers;
 
@@ -42,7 +41,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     public async Task<IApiResult<bool>> SendPasswordResetToken([FromBody] UserSendPasswordResetTokenRequest request, CancellationToken cancellationToken = default)
     {
         var token = await userService.GeneratePasswordResetToken(request.Email, cancellationToken);
-        // todo send token 
+        // todo send token
         return Ok(true);
     }
 
@@ -54,7 +53,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     }
 
     [HttpGet]
-    [Authorize(JwtBearerDefaults.AuthenticationScheme)]
+    [JwtAuthorize]
     public async Task<IApiResult<UserDetailResponse>> GetUserDetail(CancellationToken cancellationToken = default)
     {
         var user = await userService.GetById(authContext.UserId, cancellationToken);
