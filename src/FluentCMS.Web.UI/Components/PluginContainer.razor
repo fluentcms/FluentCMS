@@ -1,12 +1,12 @@
-﻿<ErrorBoundary @ref="ErrorBoundaryRef">
-    <ChildContent>
-        <div class="f-plugin-container">
-            <div class="f-plugin">
+﻿<div class="f-plugin-container">
+    <div class="f-plugin">
+        <ErrorBoundary @ref="ErrorBoundaryRef">
+            <ChildContent>
                 @ChildContent
-            </div>
-        </div>
-    </ChildContent>
-    <ErrorContent>
-        <PluginError Message="@context.Message" ErrorBoundaryRef="@ErrorBoundaryRef"/>
-    </ErrorContent>
-</ErrorBoundary>
+            </ChildContent>
+            <ErrorContent>
+                <PluginError Message="@context.Message" ErrorBoundaryRef="@ErrorBoundaryRef"/>
+            </ErrorContent>
+        </ErrorBoundary>
+    </div>
+</div>

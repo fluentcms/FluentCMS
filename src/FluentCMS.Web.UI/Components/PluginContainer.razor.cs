@@ -8,9 +8,4 @@ public partial class PluginContainer
     public RenderFragment? ChildContent { get; set; }
 
     public ErrorBoundary ErrorBoundaryRef { get; set; }
-
-    private void Recover()
-    {
-        ErrorBoundaryRef.Recover();
-    }
 }
