@@ -1,6 +1,8 @@
-﻿<Typography Align="TextAlign.Center">
-    @(Message ?? "An error has occurred.")
-</Typography>
-<Button OnClick="Retry">
-    Retry
-</Button>
+﻿<Alert Type="AlertType.Danger">
+    <Typography Align="TextAlign.Center">
+        @(Message ?? "An error has occurred.")
+    </Typography>
+    <Button OnClick="Retry">
+        Retry
+    </Button>
+</Alert>
