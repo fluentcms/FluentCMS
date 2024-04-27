@@ -1,12 +1,15 @@
-﻿@* TODO *@
-
-<div class="f-plugin-container">
-    <div class="f-plugin">
-        @ChildContent
-    </div>
-</div>
-
-@code {
-    [Parameter]
-    public RenderFragment? ChildContent { get; set; }
-}
+﻿<ErrorBoundary @ref="ErrorBoundaryRef">
+    <ChildContent>
+        <div class="f-plugin-container">
+            <div class="f-plugin">
+                @ChildContent
+            </div>
+        </div>
+    </ChildContent>
+    <ErrorContent>
+        <div>@context.Message</div>
+        <Button OnClick="Recover">
+            Recover
+        </Button>
+    </ErrorContent>
+</ErrorBoundary>
