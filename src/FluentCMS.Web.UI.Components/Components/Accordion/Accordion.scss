@@ -4,7 +4,7 @@ $accordion: $prefix + "accordion";
 
 .#{$accordion} {
     .#{$accordion}-content {
-        @apply p-5 border border-gray-200 dark:border-gray-700;
+        @apply p-5 border border-gray-200 dark:bg-gray-900 dark:border-gray-700;
     }
 
     &:last-of-type .#{$accordion}-content {
@@ -17,6 +17,17 @@ $accordion: $prefix + "accordion";
 
     &:first-of-type .#{$accordion}-toggler {
         @apply rounded-t-xl;
+    }
+
+    &:last-of-type {
+        @apply rounded-b-xl overflow-hidden border border-gray-200 dark:border-gray-700;
+
+        .#{$accordion}-content {
+            @apply border-0 border-t;
+        }
+        .#{$accordion}-toggler {
+            @apply border-0;
+        }
     }
 
     &:not(:last-of-type) {
