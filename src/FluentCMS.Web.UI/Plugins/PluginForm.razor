@@ -3,11 +3,11 @@
         <DataAnnotationsValidator />
         <Spacer />
         @ChildContent
+        <Spacer />
         @if (!string.IsNullOrEmpty(Error))
         {
-            <Spacer />
             <Alert Type="AlertType.Danger">
-                <b>@Error</b>
+                @Error
             </Alert>
         }
     </EditForm>

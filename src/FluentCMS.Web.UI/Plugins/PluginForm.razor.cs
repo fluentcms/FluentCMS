@@ -14,21 +14,12 @@ public partial class PluginForm
     public string Name { get; set; } = default!; // Form Name
 
     [Parameter]
-    public string? Error { get; set; }
-
-    [Parameter]
     public virtual object? Model { get; set; }
 
     [Parameter]
     public EventCallback<EditContext> OnSubmit { get; set; }
 
-    protected override void OnParametersSet()
-    {
-        base.OnParametersSet();
-
-        if (string.IsNullOrEmpty(Name))
-            throw new ArgumentNullException("FormName");
-    }
+    private string? Error { get; set; }
 
     private async Task HandleSubmit(EditContext editContext)
     {
@@ -39,6 +30,7 @@ public partial class PluginForm
         catch (Exception ex)
         {
             Error = ex.Message;
+            StateHasChanged();
         }
     }
 }
