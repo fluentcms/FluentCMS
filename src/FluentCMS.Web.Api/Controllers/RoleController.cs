@@ -2,10 +2,16 @@
 
 namespace FluentCMS.Web.Api.Controllers;
 
-[JwtAuthorize]
 public class RoleController(IMapper mapper, IRoleService roleService) : BaseGlobalController
 {
+    public const string AREA = "Role Management";
+    public const string READ = "Read";
+    public const string UPDATE = "Update";
+    public const string CREATE = "Create";
+    public const string DELETE = "Delete";
+
     [HttpGet]
+    [AuthorizePolicy(AREA, READ)]
     public async Task<IApiPagingResult<RoleDetailResponse>> GetAll(CancellationToken cancellationToken = default)
     {
         var roles = await roleService.GetAll(cancellationToken);
@@ -14,6 +20,7 @@ public class RoleController(IMapper mapper, IRoleService roleService) : BaseGlob
     }
 
     [HttpPost]
+    [AuthorizePolicy(AREA, CREATE)]
     public async Task<IApiResult<RoleDetailResponse>> Create([FromBody] RoleCreateRequest request, CancellationToken cancellationToken = default)
     {
         var role = mapper.Map<Role>(request);
@@ -23,6 +30,7 @@ public class RoleController(IMapper mapper, IRoleService roleService) : BaseGlob
     }
 
     [HttpPut]
+    [AuthorizePolicy(AREA, UPDATE)]
     public async Task<IApiResult<RoleDetailResponse>> Update([FromBody] RoleUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var role = mapper.Map<Role>(request);
@@ -32,6 +40,7 @@ public class RoleController(IMapper mapper, IRoleService roleService) : BaseGlob
     }
 
     [HttpDelete("{id}")]
+    [AuthorizePolicy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         await roleService.Delete(id, cancellationToken);
