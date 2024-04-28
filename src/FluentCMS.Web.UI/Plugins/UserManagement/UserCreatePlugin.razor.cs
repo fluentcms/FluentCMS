@@ -2,7 +2,10 @@ namespace FluentCMS.Web.UI.Plugins.UserManagement;
 
 public partial class UserCreatePlugin
 {
-    private UserCreateRequest Model { get; set; } = new() { Enabled = true };
+    [SupplyParameterFromForm(FormName = FORM_NAME)]
+    private UserCreateRequest Model { get; set; } = new();
+
+    public const string FORM_NAME = "UserCreateForm";
 
     private async Task OnSubmit()
     {

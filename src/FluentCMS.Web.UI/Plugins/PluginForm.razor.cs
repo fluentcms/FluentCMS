@@ -19,9 +19,7 @@ public partial class PluginForm
     [Parameter]
     public EventCallback<EditContext> OnSubmit { get; set; }
 
-    private EditForm EditForm { get; set; } = default!;
-
-    public List<string> Errors { get; set; } = new();
+    private string? Error { get; set; }
 
     private async Task HandleSubmit(EditContext editContext)
     {
@@ -31,21 +29,8 @@ public partial class PluginForm
         }
         catch (Exception ex)
         {
-            Errors.Clear();
-            if (ex is ApiClientException { Data.Errors: not null and var errors } && errors.Any())
-            {
-                foreach (var error in errors)
-                {
-                    Errors.Add(string.IsNullOrEmpty(error.Description!) ? error.Code! : error.Description);
-                }
-
-                StateHasChanged();
-            }
-            else
-            {
-                Errors.Add(ex.Message);
-                StateHasChanged();
-            }
+            Error = ex.Message;
+            StateHasChanged();
         }
     }
 }

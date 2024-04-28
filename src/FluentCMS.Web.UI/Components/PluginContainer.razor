@@ -1,12 +1,15 @@
+@* TODO: move css class names *@
 <div class="f-plugin-container">
-    <div class="f-plugin">
-        <ErrorBoundary @ref="ErrorBoundaryRef">
-            <ChildContent>
+    <ErrorBoundary>
+        <ChildContent>
+            <div class="f-plugin-container-content">
                 @ChildContent
-            </ChildContent>
-            <ErrorContent>
-                <PluginError Message="@context.Message" ErrorBoundaryRef="@ErrorBoundaryRef"/>
-            </ErrorContent>
-        </ErrorBoundary>
-    </div>
+            </div>
+        </ChildContent>
+        <ErrorContent>
+            <div class="f-plugin-container-error">
+                @context.Message
+            </div>
+        </ErrorContent>
+    </ErrorBoundary>
 </div>
