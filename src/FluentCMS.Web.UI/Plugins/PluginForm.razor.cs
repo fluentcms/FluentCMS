@@ -29,10 +29,10 @@ public partial class PluginForm
         {
             await OnSubmit.InvokeAsync(editContext);
         }
-        catch (ApiClientException ex)
+        catch (Exception ex)
         {
             Errors.Clear();
-            if (ex.Data is { Errors: not null and var errors } && errors.Count > 0)
+            if (ex is ApiClientException { Data.Errors: not null and var errors } && errors.Any())
             {
                 foreach (var error in errors)
                 {
