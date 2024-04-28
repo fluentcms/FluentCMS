@@ -7,6 +7,10 @@ $stack-justify: ( normal, start, end, center, between, around, evenly, stretch);
 .#{$stack} {
     @apply flex gap-4 items-center;
 
+    &-vertical-false {
+        @apply w-full;
+    }
+
     &-vertical-true {
         @apply flex-col;
     }

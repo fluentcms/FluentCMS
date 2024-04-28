@@ -24,17 +24,19 @@
                                 </Typography>
                                 <Spacer />
                             }
-                            <ButtonGroup>
-                                <Button id="appUpdateCancelButton"
-                                        OnClick="GoBack">
-                                    Cancel
-                                </Button>
-                                <Button Color="Color.Primary"
-                                        id="appUpdateSubmitButton"
-                                        Type="ButtonType.Submit">
-                                    Submit
-                                </Button>
-                            </ButtonGroup>
+                            <Stack Justify="StackJustify.End">
+                                <ButtonGroup>
+                                    <Button id="appUpdateCancelButton"
+                                            OnClick="GoBack">
+                                        Cancel
+                                    </Button>
+                                    <Button Color="Color.Primary"
+                                            id="appUpdateSubmitButton"
+                                            Type="ButtonType.Submit">
+                                        Submit
+                                    </Button>
+                                </ButtonGroup>
+                            </Stack>
                         </CardBody>
                     </Card>
                 </Form>
@@ -67,11 +69,13 @@
                                            Type="InputType.Password" />
                                 </GridItem>
                             </Grid>
-                            <Button Color="Color.Primary" 
-                                    id="changePasswordSubmitButton"
-                                    Type="ButtonType.Submit">
-                                Change password
-                            </Button>
+                            <Stack Justify="StackJustify.End">
+                                <Button Color="Color.Primary" 
+                                        id="changePasswordSubmitButton"
+                                        Type="ButtonType.Submit">
+                                    Change password
+                                </Button>
+                            </Stack>
                             <Spacer />
                             @if (!string.IsNullOrEmpty(Message))
                             {

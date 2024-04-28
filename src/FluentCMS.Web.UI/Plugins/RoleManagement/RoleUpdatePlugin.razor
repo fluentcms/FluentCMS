@@ -78,17 +78,19 @@
                                 </Typography>
                                 <Spacer/>
                             }
-                            <ButtonGroup>
-                                <Button id="roleUpdateCancelButton" 
-                                        OnClick="GoBack">
-                                    Cancel
-                                </Button>
-                                <Button Color="Color.Primary"
-                                        id="roleUpdateSubmitButton"
-                                        Type="ButtonType.Submit" >
-                                    Submit
-                                </Button>
-                            </ButtonGroup>
+                            <Stack Justify="StackJustify.End">
+                                <ButtonGroup>
+                                    <Button id="roleUpdateCancelButton" 
+                                            OnClick="GoBack">
+                                        Cancel
+                                    </Button>
+                                    <Button Color="Color.Primary"
+                                            id="roleUpdateSubmitButton"
+                                            Type="ButtonType.Submit" >
+                                        Submit
+                                    </Button>
+                                </ButtonGroup>
+                            </Stack>
                         </CardBody>
                     </Card>
                 </Form>
