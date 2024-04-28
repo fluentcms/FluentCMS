@@ -33,11 +33,11 @@
                                             Label="Duration"
                                             Name="Duration"
                                             Placeholder="Choose Duration...">
-                                        <Option>One Month</Option>
-                                        <Option>Three Month</Option>
-                                        <Option>Six Month</Option>
-                                        <Option>One Year</Option>
-                                        <Option>Unlimited</Option>
+                                        <Option Value="30">One Month</Option>
+                                        <Option Value="90">Three Month</Option>
+                                        <Option Value="180">Six Month</Option>
+                                        <Option Value="365">One Year</Option>
+                                        <Option Value="0">Unlimited</Option>
                                     </Select>
                                 </GridItem>
                             </Grid>
@@ -83,20 +83,20 @@
                                 </Typography>
                                 <Spacer />
                             }
-                            <ButtonGroup>
-                                <Button id="apiToken CreateCancelButton"
-                                        OnClick="GoBack">
-                                    Cancel
-                                </Button>
-                                <Button id="apiToken CreateSubmitButton"
-                                        Color="Color.Primary"
-                                        Type="ButtonType.Submit">
-                                    Save
-                                </Button>
-                            </ButtonGroup>
+                            <Stack Justify="StackJustify.End">
+                                <ButtonGroup>
+                                    <Button id="apiToken CreateCancelButton"
+                                            OnClick="GoBack">
+                                        Cancel
+                                    </Button>
+                                    <Button id="apiToken CreateSubmitButton"
+                                            Color="Color.Primary"
+                                            Type="ButtonType.Submit">
+                                        Save
+                                    </Button>
+                                </ButtonGroup>
+                            </Stack>
                         </CardBody>
-
-
                     </Card>
                     <Spacer/>
                 </Form>
@@ -106,8 +106,8 @@
 </Page>
 
 @code {
-    @* [Inject] *@
-    @* ApiTokenClient ApiTokenClient { get; set; } = default!; *@
+    // @* [Inject] *@
+    // @* ApiTokenClient ApiTokenClient { get; set; } = default!; *@
 
     [Inject]
     IJSRuntime JsRuntime { set; get; } = default!;
