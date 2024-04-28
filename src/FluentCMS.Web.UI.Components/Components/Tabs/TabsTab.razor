@@ -4,9 +4,10 @@
 
 <li @attributes="AdditionalAttributes"
     class="@this.GetClasses()">
-    <a @onclick="() => Parent?.Activate(Name)">
+    <button type="button" 
+            @onclick="() => Parent?.Activate(Name)">
         @ChildContent
-    </a>
+    </button>
 </li>
 
 @code {
