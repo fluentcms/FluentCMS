@@ -2,14 +2,14 @@
 <div class="f-plugin-container">
     <ErrorBoundary>
         <ChildContent>
-            <div class="f-plugin">
+            <div class="f-plugin-container-content">
                 @ChildContent
             </div>
         </ChildContent>
         <ErrorContent>
-            <Alert Type="AlertType.Danger">
+            <div class="f-plugin-container-error">
                 @context.Message
-            </Alert>
+            </div>
         </ErrorContent>
     </ErrorBoundary>
 </div>
