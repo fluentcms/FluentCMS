@@ -2,7 +2,7 @@
 
 <ContentLayout>
     <Page>
-        <PageHeader Title="Content Management" />
+        <PageHeader Title="Content Management (Draft)" />
         <PageBody>
             <Spacer class="lg:hidden" />
             <Grid class="lg:hidden"
@@ -14,7 +14,7 @@
                 @foreach (var collection in Collections)
                 {
                     <GridItem Small="GridItemColumn.Twelve">
-                        <a Href="@($"?pluginDef=Content Management&typeName=Content List&contentTypeSlug={collection.Slug}")"
+                        <a Href="@NavigationManager.Plugin("Content Management", "Content List", new { contentTypeSlug = collection.Slug })"
                            id="@($"contentIndex{@collection.Slug}Link")">
                             <Card>
                                 <CardBody>

@@ -1,0 +1,92 @@
+<Page>
+    <PageHeader Title="Settings (Draft)"/>
+    <PageBody>
+        <Grid Gutter="GridGutter.Medium">
+            <GridItem Small="GridItemColumn.Twelve">
+                <Form Model="@Model"
+                    OnSubmit="OnSubmit">
+                    <Card>
+                        <CardBody>
+                            <Select @bind-Value="SuperUser"
+                                Id="settingsSuperUsers"
+                                Label="SuperUsers"
+                                Multiple="true"
+                                Name="SuperUsers"
+                                Placeholder="Choose Super Users..."
+                                Required="true">
+                                <Option Value="1">Test1</Option>
+                                <Option Value="2">Test2</Option>
+                                <Option Value="3">Test3</Option>
+                            </Select>
+
+                            <Spacer />
+                            @if (!string.IsNullOrEmpty(Message))
+                            {
+                                <Typography>
+                                    @Message
+                                </Typography>
+                                <Spacer />
+                            }
+                            <ButtonGroup>
+                                <Button id="settingsCancelButton" 
+                                        OnClick="GoBack">
+                                    Cancel
+                                </Button>
+                                <Button id="settingsSubmitButton" 
+                                        Color="Color.Primary"
+                                        Type="ButtonType.Submit">
+                                    Save
+                                </Button>
+                            </ButtonGroup>
+                        </CardBody>
+                    </Card>
+                </Form>
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
+
+@code {
+    [Inject]
+    IJSRuntime JsRuntime { set; get; } = default!;
+
+    [Inject]
+    GlobalSettingsClient? GlobalSettingsClient {get; set;}
+
+    string? SuperUser {get; set;}
+    string? Message {get; set;}
+
+    GlobalSettings View = new();
+    GlobalSettingsUpdateRequest Model = new();
+
+    async Task GoBack()
+    {
+        await JsRuntime.InvokeVoidAsync("history.back");
+    }
+    protected override async Task OnInitializedAsync() {
+        var result = await GlobalSettingsClient!.GetAsync();
+
+        if(result?.Data != null) 
+        {
+            View = result.Data;
+            Model = new() 
+            {
+                SuperUsers = View.SuperUsers
+            };
+            SuperUser = View.SuperUsers?.ToList<string>().First();
+        }
+    }
+
+    async Task OnSubmit()
+    {
+        try
+        {
+            await GlobalSettingsClient!.UpdateAsync(new () { SuperUsers = [SuperUser!]});
+            Message = "Done!";
+        }
+        catch (Exception ex)
+        {
+            Message = ex.ToString();
+        }
+    }
+}

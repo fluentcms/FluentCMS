@@ -6,3 +6,9 @@
      class="@this.GetClasses()">
     @ChildContent
 </div>
+
+@code {
+    [Parameter]
+    [CSSProperty]
+    public bool Clickable { get; set; }
+}

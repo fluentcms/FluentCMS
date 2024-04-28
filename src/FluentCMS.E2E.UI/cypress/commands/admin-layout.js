@@ -18,11 +18,11 @@ Cypress.Commands.add('getSidebarItem', (id) => {
 })
 
 Cypress.Commands.add("checkAdminSidebarNavigations", () => {
-    cy.getSidebarItem('#adminSidebarUsersLink').click()
-    cy.get('.f-page-header-title').should('have.text', 'Users List')
+    cy.getSidebarItem('#adminSidebarSettingsLink').click()
+    cy.get('.f-page-header-title').should('have.text', 'Settings (Draft)')
 
     cy.getSidebarItem('#adminSidebarContentTypeLink').click()
-    cy.get('.f-page-header-title').should('have.text', 'Content Types List')
+    cy.get('.f-page-header-title').should('have.text', 'Content Types List (Draft)')
 
     cy.getSidebarItem('#adminSidebarDocsLink a').should('have.attr', 'target', '_blank')
     cy.getSidebarItem('#adminSidebarDocsLink a').invoke('removeAttr', 'target').scrollIntoView().click()
@@ -33,13 +33,13 @@ Cypress.Commands.add("checkAdminSidebarNavigations", () => {
 
 Cypress.Commands.add('checkAdminSidebarThemeToggle', () => {
     cy.shortWait()
-    cy.get('body').should('have.class', 'dark')
+    cy.get('html').should('have.class', 'dark')
 
     cy.getSidebarItem('#adminThemeButton').click().shortWait()
-    cy.get('body').should('not.have.class', 'dark')
+    cy.get('html').should('not.have.class', 'dark')
 
     cy.getSidebarItem('#adminThemeButton').click().shortWait()
-    cy.get('body').should('have.class', 'dark')
+    cy.get('html').should('have.class', 'dark')
 })
 
 Cypress.Commands.add('checkAdminHomeLinks', () => {
@@ -70,7 +70,7 @@ Cypress.Commands.add('adminSidebarShouldAvailable', () => {
     cy.elementShouldAvailable('#adminSidebarContentManagementLink a')
 
     cy.elementShouldAvailable('#adminSidebarContentTypeLink a')
-    cy.elementShouldAvailable('#adminSidebarUsersLink a')
+    cy.elementShouldAvailable('#adminSidebarSettingsLink a')
 
     cy.elementShouldAvailable('#adminSidebarDocsLink a')
 })

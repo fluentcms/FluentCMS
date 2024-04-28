@@ -7,18 +7,6 @@ export default {
     registerEmail: 'sam@example.com',
     registerPassword: 'Passw0rd!',
 
-    // apps: [
-    //     {
-    //         title: 'First App',
-    //         slug: 'first-app',
-    //         description: 'First App Description'
-    //     },
-    //     {
-    //         title: 'New title',
-    //         slug: 'new-slug',
-    //         description: 'new-description'
-    //     }
-    // ],
     contentTypes: [
         {
             title: 'Posts',
@@ -59,5 +47,33 @@ export default {
             title: 'updated title',
             content: 'updated content'
         }
+    ],
+    roles: [
+        {
+            name: 'ADMIN',
+            description: "Role for admins to manage the system",
+            permissions: {
+                "Posts": {
+                    create: true,
+                    update: true,
+                    delete: true,
+                    read: true,
+                    publish: true,
+                }
+            }
+        },
+        {
+            name: 'EDITOR',
+            description: "Role for content editors",
+            permissions: {
+                "Posts": {
+                    create: true,
+                    update: true,
+                    read: true,
+                    delete: false,
+                    publish: false,
+                }
+            }
+        },
     ]
 }

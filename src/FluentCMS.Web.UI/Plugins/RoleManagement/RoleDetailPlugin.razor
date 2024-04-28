@@ -96,7 +96,7 @@
                 <Spacer/>
                 <Button Block="true"
                         Color="Color.Primary"
-                        Href="@($"?PluginDef=Role Management&typeName=Update Role&id={View.Id}")"
+                        Href="@NavigationManager.Plugin("Role Management", "Update Role", new { id = View.Id })"
                         Item="true"
                         Outline="true">
                     <Icon Name="IconName.Edit" />

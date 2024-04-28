@@ -1,86 +1,82 @@
 ﻿<Page>
-    <PageHeader HasBack="false" Title="Content Types List">
+    <PageHeader HasBack="false" Title="Content Types List (Draft)">
         <PageHeaderActions>
             <ButtonGroup>
-                    <Button Color="Color.Primary"
-                            Href="@($"?PluginDef=ContentType Management&typeName=Create ContentType")"
-                            id="contentTypeCreateButton"
-                            Size="ButtonSize.Small">
-                        <Icon Name="IconName.Plus" />
-                        Add Content Type
-                    </Button>
+                <Button Color="Color.Primary"
+                        Href="@NavigationManager.Plugin("ContentType Management", "Create ContentType")"
+                        id="contentTypeCreateButton"
+                        Size="ButtonSize.Small">
+                    <Icon Name="IconName.Plus" />
+                    Add New Content Type
+                </Button>
             </ButtonGroup>
         </PageHeaderActions>
     </PageHeader>
     <PageBody>
-        <Card>
+        @if (ContentTypes.Count > 0)
+        {
+            <Card>
+                <Table Hoverable>
+                    <TableHead>
+                        <TableCell>Slug</TableCell>
+                        <TableCell>Title</TableCell>
+                        <TableCell>Description</TableCell>
+                        <TableCell Width="TableColumnWidth.Small"></TableCell>
+                    </TableHead>
+                    <TableBody id="contentTypeListTable">
+                        @foreach (var contentType in ContentTypes)
+                        {
+                            <TableRow OnClick="@(evt => TableRowDefaultAction(contentType))">
+                                <TableCell>
+                                    @contentType.Slug
+                                </TableCell>
+                                <TableCell>
+                                    @contentType.Title
+                                </TableCell>
+                                <TableCell>
+                                    @contentType.Description
+                                </TableCell>
+                                <TableCell>
+                                    <ButtonGroup>
+                                       @* TODO: Add preview when preview page designed *@
+                                        <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
 
-            <Table>
-                <TableHead>
-                    <TableCell>Slug</TableCell>
-                    <TableCell>Title</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell Width="TableColumnWidth.Small"></TableCell>
-                </TableHead>
-                <TableBody id="contentTypeListTable">
-                    @foreach (var contentType in ContentTypes)
-                    {
-                        <TableRow>
-                            <TableCell>
-                                @contentType.Slug
-                            </TableCell>
-                            <TableCell>
-                                @contentType.Title
-                            </TableCell>
-                            <TableCell>
-                                @contentType.Description
-                            </TableCell>
-                            <TableCell>
-                                <ButtonGroup>
-                                    <Button data-test="preview-btn"
-                                            Ghost="true"
-                                            Href="@($"?PluginDef=ContentType Management&typeName=ContentType Detail&id={contentType.Id}")"
-                                            Size="ButtonSize.Small">
-                                        <Icon Name="IconName.Eye" />
-                                    </Button>
-                                    <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
+                                        <Button data-test="edit-btn"
+                                                Ghost="true"  
+                                                Href="@NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = contentType.Id })"
+                                                Size="ButtonSize.Small"
+                                                StopPropagation="true">
+                                            <Icon Name="IconName.Edit" />
+                                        </Button>
+                                        <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
 
-                                    <Button data-test="edit-btn"
-                                            Ghost="true"
-                                            Href="@($"?PluginDef=ContentType Management&typeName=Update ContentType&id={contentType.Id}")"
-                                            Size="ButtonSize.Small">
-                                        <Icon Name="IconName.Edit" />
-                                    </Button>
-                                    <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
-
-                                    <Button data-test="delete-btn"
-                                            Ghost="true"
-                                            Size="ButtonSize.Small"
-                                            OnClick="@(evt => OnDelete(contentType))">
-                                        <Icon Name="IconName.Delete" />
-                                    </Button>
-                                    <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
-                                </ButtonGroup>
-                            </TableCell>
-                        </TableRow>
-                    }
-                </TableBody>
-            </Table>
-            @if (Loaded && ContentTypes.Count == 0)
-            {
-                <EmptyTable Message="No Content Types Found!">
-                        <Button autofocus="true"
-                                Color="Color.Primary"
-                                Href="@($"?PluginDef=ContentType Management&typeName=Create ContentType")"
-                                id="contentTypeCreateButton"
-                                Size="ButtonSize.Small">
-                            <Icon Name="IconName.Plus" />
-                            Add Content Type
-                        </Button>
-                </EmptyTable>
-            }
-        </Card>
-
+                                        <Button data-test="delete-btn"
+                                                Ghost="true"
+                                                Size="ButtonSize.Small"
+                                                StopPropagation="true"
+                                                OnClick="@(evt => OnDelete(contentType))">
+                                            <Icon Name="IconName.Delete" />
+                                        </Button>
+                                        <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
+                                    </ButtonGroup>
+                                </TableCell>
+                            </TableRow>
+                        }
+                    </TableBody>
+                </Table>
+            </Card>
+        } else {
+            <EmptyState Message="No Content Types Found!">
+                <Button autofocus="true"
+                        Color="Color.Primary"
+                        Href="@NavigationManager.Plugin("ContentType Management", "Create ContentType")"
+                        id="contentTypeCreateButton"
+                        Size="ButtonSize.Small">
+                    <Icon Name="IconName.Plus" />
+                    Add New Content Type
+                </Button>
+            </EmptyState>
+        }
     </PageBody>
 </Page>
 
@@ -100,8 +96,6 @@
     [Inject]
     NavigationManager NavigationManager { get; set; } = default!;
 
-    bool Loaded { get; set; }
-
     List<ContentTypeDetailResponse> ContentTypes { get; set; } = [];
 
     async Task Load()
@@ -111,8 +105,6 @@
         if (response?.Data == null) return;
 
         ContentTypes = response.Data.ToList();
-
-        Loaded = true;
     }
 
     async Task OnDelete(ContentTypeDetailResponse contentType)
@@ -126,11 +118,14 @@
         await Load();
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnInitializedAsync()
     {
-        if (!firstRender) return;
-        Loaded = true;
         await Load();
-        StateHasChanged();
+    }
+
+    async Task TableRowDefaultAction(ContentTypeDetailResponse contentType) 
+    {
+        var url = NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id= contentType.Id });
+        NavigationManager.NavigateTo(url);
     }
 }

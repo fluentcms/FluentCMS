@@ -1,66 +1,70 @@
 ﻿<Page>
-    <PageHeader HasBack="false" Title="Users List">
+    <PageHeader HasBack="false" Title="Users (Draft)">
         <PageHeaderActions>
             <ButtonGroup>
                 <Button autofocus="true"
-                        Color="Color.Primary" 
-                        Href="?PluginDef=User Management&typeName=Create User"
+                        Color="Color.Primary"
+                        Href="@NavigationManager.Plugin("User Management", "Create User")"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
-                    Add User
+                    Add New User
                 </Button>
             </ButtonGroup>
         </PageHeaderActions>
     </PageHeader>
     <PageBody>
-        <Card>
-            <Table>
-                <TableHead>
-                    <TableCell>Username</TableCell>
-                    <TableCell>Email</TableCell>
-                    <TableCell Width="TableColumnWidth.Small"></TableCell>
-                </TableHead>
-                <TableBody>
-                    @foreach (var user in Users)
-                    {
-                        <TableRow>
-                            <TableCell> @user.Username </TableCell>
-                            <TableCell> @user.Email </TableCell>
-                            <TableCell>
-                                <ButtonGroup>
-                                    <Button Ghost="true"
-                                        Href="@($"?PluginDef=User Management&typeName=User Detail&id={user.Id}")"
-                                        Size="ButtonSize.Small">
-                                        <Icon Name="IconName.Eye" />
-                                    </Button>
-                                    <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
+        @if (Users.Count > 0)
+        {
+            <Card>
+                <Table Hoverable>
+                    <TableHead>
+                        <TableCell>Username</TableCell>
+                        <TableCell>Email</TableCell>
+                        <TableCell Width="TableColumnWidth.Small"></TableCell>
+                    </TableHead>
+                    <TableBody>
+                        @foreach (var user in Users)
+                        {
+                            <TableRow OnClick="@(evt => TableRowDefaultAction(user))">
+                                <TableCell> @user.Username </TableCell>
+                                <TableCell> @user.Email </TableCell>
+                                <TableCell>
+                                    <ButtonGroup>
+                                        <Button Ghost="true"
+                                                Href="@NavigationManager.Plugin("User Management", "User Detail", new { id = user.Id })"
+                                                Size="ButtonSize.Small"
+                                                StopPropagation="true">
+                                            <Icon Name="IconName.Eye" />
+                                        </Button>
+                                        <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
 
-                                    <Button data-test="edit-btn"
-                                        Ghost="true"
-                                        Href="@($"?PluginDef=User Management&typeName=Update User&id={user.Id}")"
-                                        Size="ButtonSize.Small">
-                                        <Icon Name="IconName.Edit" />
-                                    </Button>
-                                    <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
-                                </ButtonGroup>
-                            </TableCell>
-                        </TableRow>
-                    }
-                </TableBody>
-            </Table>
-            @if (Users.Count == 0)
-            {
-                <EmptyTable Message="No Users Found!">
-                    <Button autofocus="true"
-                            Color="Color.Primary" 
-                            Href="?PluginDef=User Management&typeName=Create User"
-                            Size="ButtonSize.Small">
-                        <Icon Name="IconName.Plus" />
-                        Add User
-                    </Button>
-                </EmptyTable>
-            }
-        </Card>
+                                        <Button data-test="edit-btn"
+                                                Ghost="true"
+                                                Href="@NavigationManager.Plugin("User Management", "Update User", new { id = user.Id })"
+                                                Size="ButtonSize.Small"
+                                                StopPropagation="true">
+                                            <Icon Name="IconName.Edit" />
+                                        </Button>
+                                        <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
+                                    </ButtonGroup>
+                                </TableCell>
+                            </TableRow>
+                        }
+                    </TableBody>
+                </Table>
+            </Card>
+        } else {
+
+            <EmptyState Message="No Users Found!">
+                <Button autofocus="true"
+                        Color="Color.Primary"
+                        Href="@NavigationManager.Plugin("User Management", "Create User")"
+                        Size="ButtonSize.Small">
+                    <Icon Name="IconName.Plus" />
+                    Add New User
+                </Button>
+            </EmptyState>
+        }
     </PageBody>
 </Page>
 
@@ -70,6 +74,9 @@
 
     [Inject]
     ConfirmService Confirm { get; set; }
+
+    [Inject]
+    NavigationManager NavigationManager { get; set; }
 
     List<UserDetailResponse> Users { get; set; } = [];
 
@@ -81,5 +88,11 @@
         {
             Users = response.Data.ToList();
         }
+    }
+
+    async Task TableRowDefaultAction(UserDetailResponse user) 
+    {
+        var url = NavigationManager.Plugin("User Management", "User Detail", new { id= user.Id });
+        NavigationManager.NavigateTo(url);
     }
 }

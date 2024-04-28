@@ -58,7 +58,7 @@
                         <Spacer />
                         <Button Block="true"
                                 Color="Color.Primary"
-                                Href="@($"?pluginDef=Content Management&typeName=Update Content&contentTypeSlug={ContentType.Slug}&id={View.Id}")"
+                                Href="@NavigationManager.Plugin("Content Management", "Update Content", new { contentTypeSlug = ContentType.Slug, id = View.Id })"
                                 Item="true"
                                 Outline="true">
                             <Icon Name="IconName.Edit" />
@@ -142,7 +142,7 @@
             {
                 ContentType = response.Data.ToList().Find(x => x.Slug == contentTypeSlug);
                 Fields = ContentType.Fields.ToList();
-                PageTitle = ContentType.Title + " Update";
+                PageTitle = ContentType.Title + " Detail";
 
                 if (ContentId != null)
                 {

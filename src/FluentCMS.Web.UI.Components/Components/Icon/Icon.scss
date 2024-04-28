@@ -6,7 +6,7 @@ $icon-size: ( small: 0.875rem, medium: 1rem, large: 1.25rem, x1: 1rem, x2: 2rem,
     width: 1em;
     height: 1em;
 
-    @apply inline-flex justify-center;
+    @apply inline-flex items-center justify-center;
 
     * {
         stroke-width: 1.5px;

@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
     @* These lines should be here to avoid ui flickering *@
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>FluentCMS</title>
+    <meta name="description" content="AI based Headless CMS For Blazor community" />
     <link rel="stylesheet" href="/_content/FluentCMS.Web.UI.Components/css/app.min.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <base href="/" />
+    <script src="/js/before-render.js"></script>
 
     <HeadOutlet @rendermode="@InteractiveServer" />
 </head>

@@ -12,17 +12,31 @@ $sidebar: $prefix + 'sidebar';
     }
 
     &-item {
-        & > span {
-            @apply text-xs py-3;
+        &-icon {
+            @apply w-auto h-auto;
+        }
+        &-icon > svg {
+            @apply flex-shrink-0 w-5 h-5 transition duration-75;
+        }
+
+        & > .#{$sidebar}-item-text {
+            @apply py-3 flex-1 ms-3 whitespace-nowrap;
         }
 
         & > a {
-            @apply text-xs flex items-center font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700;
-
-            & > span {
-                @apply flex items-center gap-3 ml-3;
-            }
+            @apply flex items-center font-medium text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700;
         }
+    }
+    &-item-active-false &-item-icon > svg {
+        @apply text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white;
+    }
+
+    // &-item-active-true &-item-icon > svg {
+    //     @apply text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white;
+    // }
+
+    &-item-active-true > a {
+        @apply text-blue-700 hover:text-blue-700 dark:text-blue-500 dark:hover:text-blue-500 ;
     }
 
     &-main {
@@ -38,7 +52,7 @@ $sidebar: $prefix + 'sidebar';
     }
 
     &-title {
-        @apply text-gray-900 dark:text-white py-5;
+        @apply text-xl text-gray-900 dark:text-white py-5;
     }
 
     &-secondary-true {
@@ -72,7 +86,7 @@ $sidebar: $prefix + 'sidebar';
                 @apply p-2;
 
                 span {
-                    @apply ml-3;
+                    @apply text-xs w-auto h-auto ml-3;
                 }
             }
         }
@@ -80,6 +94,10 @@ $sidebar: $prefix + 'sidebar';
         .#{$sidebar}-main {
             @apply bg-white dark:bg-gray-800;
         }
+    }
+
+    &-backdrop {
+        @apply fixed inset-0 z-10 bg-gray-900/50 dark:bg-gray-900/60;
     }
 }
 

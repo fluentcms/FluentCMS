@@ -1,0 +1,52 @@
+﻿@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement.ContentTypeFields
+
+<Grid GutterX="GridGutter.Large">
+    <GridItem Small="GridItemColumn.Twelve"
+              Medium="GridItemColumn.Six">
+        @* TODO *@
+        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+            Select allowed types of media
+        </label>
+        <Autocomplete @bind-Value="accept"
+                      Options="options"
+                      Multiple="true" />
+        <Spacer />
+    </GridItem>
+</Grid>
+
+<FieldAdvancedSettings Range="false"
+                       Unique="false" />
+
+@code {
+    [CascadingParameter(Name = "EditingMode")]
+    public bool Eediting { get; set; }
+
+    [CascadingParameter]
+    public ContentTypeField Model { get; set; }
+
+    List<string> accept { get; set; } = new();
+
+    List<AutocompleteOptions> options = new()
+    {
+        new AutocompleteOptions
+        {
+            Id = "audios",
+            Title = "Audios"
+        },
+        new AutocompleteOptions
+        {
+            Id = "files",
+            Title = "Files"
+        },
+        new AutocompleteOptions
+        {
+            Id = "images",
+            Title = "Images"
+        },
+        new AutocompleteOptions
+        {
+            Id = "videos",
+            Title = "Videos"
+        }
+    };
+}

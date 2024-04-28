@@ -189,29 +189,6 @@
             ]
         },
         {
-            "Name": "App Management",
-            "Description": "App Management Plugin",
-            "Types": [
-                {
-                    "Name": "Apps List",
-                    "Type": "AppListPlugin",
-                    "IsDefault": true
-                },
-                {
-                    "Name": "Create App",
-                    "Type": "AppCreatePlugin"
-                },
-                {
-                    "Name": "Update App",
-                    "Type": "AppUpdatePlugin"
-                },
-                {
-                    "Name": "App Detail",
-                    "Type": "AppDetailPlugin"
-                }
-            ]
-        },
-        {
             "Name": "Role Management",
             "Description": "Role Management Plugin",
             "Types": [
@@ -255,7 +232,7 @@
                     "IsDefault": true
                 }
             ]
-         },
+        },
         {
             "Name": "User Info",
             "Description": "User Info Plugin",
@@ -279,6 +256,17 @@
                 {
                     "Name": "Update",
                     "Type": "ProfileUpdatePlugin"
+                }
+            ]
+        },
+        {
+            "Name": "Settings",
+            "Description": "Settings Plugin",
+            "Types": [
+                {
+                    "Name": "Settings",
+                    "Type": "SettingsViewPlugin",
+                    "IsDefault": true
                 }
             ]
         }
@@ -340,11 +328,11 @@
                     ]
                 },
                 {
-                    "Title": "Apps",
-                    "Path": "/apps",
+                    "Title": "Settings",
+                    "Path": "/settings",
                     "Plugins": [
                         {
-                            "Definition": "App Management",
+                            "Definition": "Settings",
                             "Section": "Main"
                         }
                     ]

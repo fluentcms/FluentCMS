@@ -29,6 +29,11 @@
     }
 </aside>
 
+@if(!Secondary)
+{
+    <div class="@this.ClassName("SidebarBackdrop") hidden" id="@(Id + "Backdrop")"></div>
+}
+
 @code {
     [Parameter]
     public RenderFragment? Header { get; set; }

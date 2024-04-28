@@ -16,7 +16,7 @@ $modal: $prefix + "modal";
     }
 
     &-footer {
-        @apply flex items-center rounded-b border-t border-gray-200 p-6 dark:border-gray-600;
+        @apply flex items-center justify-end rounded-b border-t border-gray-200 p-6 dark:border-gray-600;
     }
 
     &-header {

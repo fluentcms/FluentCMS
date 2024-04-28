@@ -1,0 +1,33 @@
+@inherits BaseComponent
+
+<Card>
+    <Spacer Size="SpacerSize.Large" />
+    <Spacer Size="SpacerSize.Large" />
+    <Stack Vertical="true">
+        @if(Icon != IconName.Default)
+        {
+            <GridItem>
+                <Icon Color="Color.Secondary"
+                    Name="Icon"
+                    Size="IconSize.X3" />
+            </GridItem>
+        }
+        <Typography Color="Color.Secondary">@Message</Typography>
+        <Grid JustifySmall="GridJustify.Center" ItemsSmall="GridItems.Center">
+            <GridItem>
+                <ButtonGroup>
+                    @ChildContent
+                </ButtonGroup>
+            </GridItem>
+        </Grid>
+    </Stack>
+    <Spacer Size="SpacerSize.Large" />
+    <Spacer Size="SpacerSize.Large" />
+</Card>
+
+@code {
+    [Parameter]
+    public IconName Icon {get; set;} = IconName.Default;
+    [Parameter]
+    public string Message { get; set; } = "No results found!";
+}
