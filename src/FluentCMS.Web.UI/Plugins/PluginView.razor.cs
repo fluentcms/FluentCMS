@@ -3,5 +3,8 @@
 public partial class PluginView
 {
     [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
     public RenderFragment? ChildContent { get; set; }
 }
