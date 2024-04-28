@@ -14,13 +14,12 @@ public partial class PluginForm
     public string Name { get; set; } = default!; // Form Name
 
     [Parameter]
-    public string? Error { get; set; }
-
-    [Parameter]
     public virtual object? Model { get; set; }
 
     [Parameter]
     public EventCallback<EditContext> OnSubmit { get; set; }
+
+    private List<string> Errors { get; set; } = [];
 
     private async Task HandleSubmit(EditContext editContext)
     {
@@ -28,13 +27,15 @@ public partial class PluginForm
         {
             await OnSubmit.InvokeAsync(editContext);
         }
-        catch (ApiClientException apiException)
+        catch (ApiClientException ex)
         {
-            Error = string.Join("<br>", apiException.GetErrors());
+            Errors = ex.ApiResult?.Errors?.Select(x => $"{x.Code ?? string.Empty}: {x.Description ?? string.Empty}").ToList() ?? [ex.Message];
+            StateHasChanged();
         }
         catch (Exception ex)
         {
-            Error = ex.Message;
+            Errors = [ex.Message];
+            StateHasChanged();
         }
     }
 }

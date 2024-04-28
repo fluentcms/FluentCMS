@@ -1,5 +1,5 @@
-﻿using FluentCMS.Web.Api.Filters;
-using Microsoft.AspNetCore.Authorization;
+﻿using FluentCMS.Web.Api.Attributes;
+using FluentCMS.Web.Api.Filters;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Primitives;
 
@@ -153,7 +153,7 @@ public class PageController(
     }
 
     [HttpPost]
-    [Authorize]
+    [JwtAuthorize]
     public async Task<IApiResult<PageDetailResponse>> Create(PageCreateRequest request, CancellationToken cancellationToken = default)
     {
         var entity = mapper.Map<Page>(request);
@@ -163,7 +163,7 @@ public class PageController(
     }
 
     [HttpPut]
-    [Authorize]
+    [JwtAuthorize]
     public async Task<IApiResult<PageDetailResponse>> Update(PageUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var entity = mapper.Map<Page>(request);
@@ -173,7 +173,7 @@ public class PageController(
     }
 
     [HttpDelete("{id}")]
-    [Authorize]
+    [JwtAuthorize]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
     {
         await pageService.Delete(id);

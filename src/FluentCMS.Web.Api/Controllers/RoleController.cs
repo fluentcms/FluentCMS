@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using FluentCMS.Web.Api.Attributes;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-[Authorize]
+[JwtAuthorize]
 public class RoleController(IMapper mapper, IRoleService roleService) : BaseGlobalController
 {
     [HttpGet]

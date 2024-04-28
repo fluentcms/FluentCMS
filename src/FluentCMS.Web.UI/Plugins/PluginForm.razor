@@ -3,11 +3,14 @@
         <DataAnnotationsValidator />
         <Spacer />
         @ChildContent
-        @if (!string.IsNullOrEmpty(Error))
+        <Spacer />
+        @if (Errors.Count > 0)
         {
-            <Spacer />
             <Alert Type="AlertType.Danger">
-                <b>@((MarkupString)Error)</b>
+                @foreach (var error in Errors)
+                {
+                    <p>@error</p>
+                }
             </Alert>
         }
     </EditForm>
