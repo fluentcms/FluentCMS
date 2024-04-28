@@ -54,7 +54,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
 
     [HttpGet]
     [JwtAuthorize]
-    public async Task<IApiResult<UserDetailResponse>> GetUserDetail(CancellationToken cancellationToken = default)
+    public async Task<IApiResult<UserDetailResponse>> GetCurrent(CancellationToken cancellationToken = default)
     {
         var user = await userService.GetById(authContext.UserId, cancellationToken);
         return Ok(mapper.Map<UserDetailResponse>(user));
