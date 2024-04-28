@@ -41,7 +41,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     public async Task<IApiResult<bool>> SendPasswordResetToken([FromBody] UserSendPasswordResetTokenRequest request, CancellationToken cancellationToken = default)
     {
         var token = await userService.GeneratePasswordResetToken(request.Email, cancellationToken);
-        // todo send token
+        // todo send token 
         return Ok(true);
     }
 
