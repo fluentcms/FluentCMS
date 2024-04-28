@@ -19,7 +19,7 @@ public partial class PluginForm
     [Parameter]
     public EventCallback<EditContext> OnSubmit { get; set; }
 
-    private string? Error { get; set; }
+    private List<string> Errors { get; set; } = [];
 
     private async Task HandleSubmit(EditContext editContext)
     {
@@ -27,9 +27,14 @@ public partial class PluginForm
         {
             await OnSubmit.InvokeAsync(editContext);
         }
+        catch (ApiClientException ex)
+        {
+            Errors = ex.ApiResult?.Errors?.Select(x => $"{x.Code ?? string.Empty}: {x.Description ?? string.Empty}").ToList() ?? [ex.Message];
+            StateHasChanged();
+        }
         catch (Exception ex)
         {
-            Error = ex.Message;
+            Errors = [ex.Message];
             StateHasChanged();
         }
     }

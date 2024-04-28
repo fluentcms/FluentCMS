@@ -4,10 +4,13 @@
         <Spacer />
         @ChildContent
         <Spacer />
-        @if (!string.IsNullOrEmpty(Error))
+        @if (Errors.Count > 0)
         {
             <Alert Type="AlertType.Danger">
-                @Error
+                @foreach (var error in Errors)
+                {
+                    <p>@error</p>
+                }
             </Alert>
         }
     </EditForm>
