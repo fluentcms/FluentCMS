@@ -81,6 +81,41 @@
             ]
         },
         {
+            "Name": "Media Library",
+            "Description": "Media Library Plugin",
+            "Types": [
+                {
+                    "Name": "Media List",
+                    "Type": "MediaListPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        
+        {
+            "Name": "Api Token Management",
+            "Description": "Api Token Management Plugin",
+            "Types": [
+                {
+                    "Name": "Api Token List",
+                    "Type": "ApiTokenListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create Api Token",
+                    "Type": "ApiTokenCreatePlugin"
+                },
+                {
+                    "Name": "Update Api Token",
+                    "Type": "ApiTokenUpdatePlugin"
+                },
+                {
+                    "Name": "Api Token Detail",
+                    "Type": "ApiTokenDetailPlugin"
+                }
+            ]
+        },
+        {
             "Name": "User Management",
             "Description": "Users Management Plugin",
             "Types": [
@@ -278,6 +313,16 @@
                     "Plugins": [
                         {
                             "Definition": "User Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Api Tokens",
+                    "Path": "/api-tokens",
+                    "Plugins": [
+                        {
+                            "Definition": "Api Token Management",
                             "Section": "Main"
                         }
                     ]
