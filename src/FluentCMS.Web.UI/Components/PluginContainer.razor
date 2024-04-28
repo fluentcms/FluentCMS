@@ -1,12 +1,15 @@
-﻿@* TODO *@
-
+@* TODO: move css class names *@
 <div class="f-plugin-container">
-    <div class="f-plugin">
-        @ChildContent
-    </div>
+    <ErrorBoundary>
+        <ChildContent>
+            <div class="f-plugin-container-content">
+                @ChildContent
+            </div>
+        </ChildContent>
+        <ErrorContent>
+            <div class="f-plugin-container-error">
+                @context.Message
+            </div>
+        </ErrorContent>
+    </ErrorBoundary>
 </div>
-
-@code {
-    [Parameter]
-    public RenderFragment? ChildContent { get; set; }
-}
