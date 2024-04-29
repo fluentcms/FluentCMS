@@ -16,11 +16,11 @@ Cypress.Commands.add('homeVersionShouldExist', () => {
 Cypress.Commands.add('homeTourButtonsShouldHaveCorrectLinks', () => {
     cy.get('#homeTourCreateContentTypeButton').click().waitForNavigate();
     cy.get('#contentTypeCreateButton').should('be.visible')
-    cy.go(-1)
+    cy.navigateToHomePage()
 
     cy.get('#homeTourCreateContentButton').click().waitForNavigate();
     cy.get('#contentCreateButton').should('be.visible')
-    cy.go(-1)
+    cy.navigateToHomePage()
 
     cy.get('#homeTourTestApiButton').click().waitForNavigate();
 
