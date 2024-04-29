@@ -72,30 +72,30 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetUserDetailAsync();
+        System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetUserDetailsAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetUserDetailAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetUserDetailsAsync(System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateCurrentAsync(AccountUpdateRequest? body);
+        System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateUserDetailsAsync(AccountUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateCurrentAsync(AccountUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateUserDetailsAsync(AccountUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
 
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.3.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class AccountClient : IAccountClient
     {
-#pragma warning disable 8618
+        #pragma warning disable 8618
         private string _baseUrl;
-#pragma warning restore 8618
+        #pragma warning restore 8618
 
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
@@ -532,15 +532,15 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetUserDetailAsync()
+        public virtual System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetUserDetailsAsync()
         {
-            return GetUserDetailAsync(System.Threading.CancellationToken.None);
+            return GetUserDetailsAsync(System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetUserDetailAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetUserDetailsAsync(System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -553,8 +553,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/Account/GetUserDetail"
-                    urlBuilder_.Append("api/Account/GetUserDetail");
+                    // Operation Path: "api/Account/GetUserDetails"
+                    urlBuilder_.Append("api/Account/GetUserDetails");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -610,15 +610,15 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateCurrentAsync(AccountUpdateRequest? body)
+        public virtual System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateUserDetailsAsync(AccountUpdateRequest? body)
         {
-            return UpdateCurrentAsync(body, System.Threading.CancellationToken.None);
+            return UpdateUserDetailsAsync(body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateCurrentAsync(AccountUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateUserDetailsAsync(AccountUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -635,8 +635,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/Account/UpdateCurrent"
-                    urlBuilder_.Append("api/Account/UpdateCurrent");
+                    // Operation Path: "api/Account/UpdateUserDetails"
+                    urlBuilder_.Append("api/Account/UpdateUserDetails");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -777,7 +777,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -843,9 +843,9 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.3.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentClient : IContentClient
     {
-#pragma warning disable 8618
+        #pragma warning disable 8618
         private string _baseUrl;
-#pragma warning restore 8618
+        #pragma warning restore 8618
 
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
@@ -1301,7 +1301,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -1403,9 +1403,9 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.3.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentTypeClient : IContentTypeClient
     {
-#pragma warning disable 8618
+        #pragma warning disable 8618
         private string _baseUrl;
-#pragma warning restore 8618
+        #pragma warning restore 8618
 
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
@@ -2178,7 +2178,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -2226,9 +2226,9 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.3.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class GlobalSettingsClient : IGlobalSettingsClient
     {
-#pragma warning disable 8618
+        #pragma warning disable 8618
         private string _baseUrl;
-#pragma warning restore 8618
+        #pragma warning restore 8618
 
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
@@ -2500,7 +2500,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -2584,9 +2584,9 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.3.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageClient : IPageClient
     {
-#pragma warning disable 8618
+        #pragma warning disable 8618
         private string _baseUrl;
-#pragma warning restore 8618
+        #pragma warning restore 8618
 
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
@@ -3192,7 +3192,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -3267,9 +3267,9 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.3.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginClient : IPluginClient
     {
-#pragma warning disable 8618
+        #pragma warning disable 8618
         private string _baseUrl;
-#pragma warning restore 8618
+        #pragma warning restore 8618
 
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
@@ -3791,7 +3791,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -3839,9 +3839,9 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.3.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginDefinitionClient : IPluginDefinitionClient
     {
-#pragma warning disable 8618
+        #pragma warning disable 8618
         private string _baseUrl;
-#pragma warning restore 8618
+        #pragma warning restore 8618
 
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
@@ -4113,7 +4113,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -4179,9 +4179,9 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.3.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RoleClient : IRoleClient
     {
-#pragma warning disable 8618
+        #pragma warning disable 8618
         private string _baseUrl;
-#pragma warning restore 8618
+        #pragma warning restore 8618
 
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
@@ -4617,7 +4617,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -4674,9 +4674,9 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.3.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SetupClient : ISetupClient
     {
-#pragma warning disable 8618
+        #pragma warning disable 8618
         private string _baseUrl;
-#pragma warning restore 8618
+        #pragma warning restore 8618
 
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
@@ -5026,7 +5026,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -5110,9 +5110,9 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.3.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SiteClient : ISiteClient
     {
-#pragma warning disable 8618
+        #pragma warning disable 8618
         private string _baseUrl;
-#pragma warning restore 8618
+        #pragma warning restore 8618
 
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
@@ -5712,7 +5712,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -5778,9 +5778,9 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.3.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserClient : IUserClient
     {
-#pragma warning disable 8618
+        #pragma warning disable 8618
         private string _baseUrl;
-#pragma warning restore 8618
+        #pragma warning restore 8618
 
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
@@ -6216,7 +6216,7 @@ namespace FluentCMS.Web.ApiClients
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -7960,10 +7960,10 @@ namespace FluentCMS.Web.ApiClients
 
 }
 
-#pragma warning restore 108
-#pragma warning restore 114
-#pragma warning restore 472
-#pragma warning restore 612
+#pragma warning restore  108
+#pragma warning restore  114
+#pragma warning restore  472
+#pragma warning restore  612
 #pragma warning restore 1573
 #pragma warning restore 1591
 #pragma warning restore 8073
