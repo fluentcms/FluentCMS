@@ -16,35 +16,42 @@
                 {
                     <Card>
                         <CardBody>
-                            <CardTitle>There are a few steps to get started</CardTitle>
+                            <CardTitle id="homeTourTitle">There are a few steps to get started</CardTitle>
                             <Stack Vertical="true" Items="StackItems.Start">
                                 <Spacer/>
                                 <Stepper>
                                     <StepperItem Icon="IconName.TableColumn"
+                                                id="homeTourCreateContentTypeStepper"
                                                 Title="ContentType"
                                                 Subtitle="First step is to create a content Type">
                                         <Button Color="Color.Primary"
+                                                id="homeTourCreateContentTypeButton"
                                                 Href="/admin/content-types">
                                             Create ContentType
                                         </Button>
                                     </StepperItem>
                                     <StepperItem Icon="IconName.PenNib"
+                                                id="homeTourCreateContentStepper"
                                                 Title="Content"
                                                 Subtitle="Then you can create content">
                                         <Button Color="Color.Primary"
+                                                id="homeTourCreateContentButton"
                                                 Href="/admin/content">
                                             Create Content
                                         </Button>
                                     </StepperItem>
                                     <StepperItem Icon="IconName.ClipboardList"
+                                                id="homeTourTestApiStepper"
                                                 Title="Api"
                                                 Subtitle="Finally you are able to use the API">
-                                        <Button Color="Color.Primary">
+                                        <Button Color="Color.Primary"
+                                                id="homeTourTestApiButton">
                                             Test API
                                         </Button>
                                     </StepperItem>
                                 </Stepper>
                                 <Button Color="Color.Primary" 
+                                        id="homeTourSkipButton"
                                         Outline="true" 
                                         OnClick="() => showTour = false">
                                     Skip the tour
@@ -54,8 +61,8 @@
                     </Card>
                 } else {
                     <a href="/api/doc"
-                    target="_blank">
-
+                       id="homeDocsLink"
+                       target="_blank">
                         <Card>
                             <CardBody>
                                 <Stack>
@@ -73,8 +80,8 @@
 
                     <Spacer Size="SpacerSize.Small" />
                     <a href="https://github.com/fluentcms/FluentCMS/blob/dev/CHANGELOG.md"
-                    target="_blank">
-
+                       id="homeChangelogLink"
+                       target="_blank">
                         <Card>
                             <CardBody>
                                 <Stack>
@@ -84,7 +91,6 @@
                                         <Typography Size="TextSize.Small">
                                             See how FluentCMS is evolving over time.
                                         </Typography>
-
                                     </div>
                                 </Stack>
                             </CardBody>
@@ -92,7 +98,8 @@
                     </a>
                     <Spacer Size="SpacerSize.Small" />
                     <a href="https://github.com/fluentcms/FluentCMS"
-                    target="_blank">
+                       id="homeExamplesLink"
+                       target="_blank">
                         <Card>
                             <CardBody>
                                 <Stack>
@@ -100,17 +107,19 @@
                                     <div>
                                         <Typography Size="TextSize.H5">Code Examples</Typography>
                                         <Typography Size="TextSize.Small">
-                                            Learn by testing real projects developed the community.
+                                            Learn by testing real projects developed by the community.
                                         </Typography>
                                     </div>
                                 </Stack>
                             </CardBody>
                         </Card>
-                    </a>
+                    </a>   
                 }
                 <Spacer Size="SpacerSize.Small" />
                 <!-- TODO: Do not use tailwind classes -->
-                <Version Class="hidden md:block" Assembly="Assembly.GetEntryAssembly()"></Version>
+                <Version Class="hidden md:block" 
+                         data-test="version" 
+                         Assembly="Assembly.GetEntryAssembly()" />
             </GridItem>
             <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Four">
 
@@ -126,18 +135,25 @@
                         </Typography>
                         <Spacer />
                         <Card>
-                            <Button Block="true" Color="Color.Primary" Ghost="true"
-                                Href="https://github.com/fluentcms/FluentCMS"
-                                target="_blank">
+                            <Button Block="true" 
+                                    Color="Color.Primary" 
+                                    Ghost="true"
+                                    Href="https://github.com/fluentcms/FluentCMS"
+                                    id="homeGithubLink"
+                                    target="_blank">
+
                                 <Icon Name="IconName.Github" />
                                 Github
                             </Button>
                         </Card>
                         <Spacer />
                         <Card>
-                            <Button Block="true" Color="Color.Primary" Ghost="true"
-                                Href="https://discord.gg/WyqYuC6YbY"
-                                target="_blank">
+                            <Button Block="true" 
+                                    Color="Color.Primary" 
+                                    Ghost="true"
+                                    Href="https://discord.gg/WyqYuC6YbY"
+                                    id="homeDiscordLink"
+                                    target="_blank">
                                 <Icon Name="IconName.Discord" />
                                 Discord
                             </Button>
@@ -146,7 +162,9 @@
                 </Card>
                 
                 <!-- TODO: Do not use tailwind classes -->
-                <Version Class="md:hidden" Assembly="Assembly.GetEntryAssembly()"></Version>
+                <Version Class="md:hidden" 
+                         data-test="version" 
+                         Assembly="Assembly.GetEntryAssembly()" />
             </GridItem>
         </Grid>
     </PageBody>

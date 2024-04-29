@@ -3,7 +3,11 @@
 
 @if (GetVersion() != null)
 {
-    <Typography class="@this.GetClasses()" Size="TextSize.ExtraSmall">@GetVersion()</Typography>
+    <Typography @attributes="AdditionalAttributes" 
+                class="@this.GetClasses()" 
+                Size="TextSize.ExtraSmall">
+        @GetVersion()
+    </Typography>
 }
 
 @code {
