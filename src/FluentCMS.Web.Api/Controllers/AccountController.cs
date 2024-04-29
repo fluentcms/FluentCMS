@@ -1,4 +1,4 @@
-﻿using FluentCMS.Web.Api.Attributes;
+using FluentCMS.Web.Api.Attributes;
 using FluentCMS.Web.Api.Models.Users;
 
 namespace FluentCMS.Web.Api.Controllers;

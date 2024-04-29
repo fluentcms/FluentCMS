@@ -7,6 +7,7 @@ public partial class UserUpdatePlugin
     private Guid Id { get; set; }
 
     private UserUpdateRequest Model { get; set; } = new();
+
     private UserDetailResponse User { get; set; } = new();
 
     protected override async Task OnLoadAsync()
@@ -15,12 +16,12 @@ public partial class UserUpdatePlugin
         User = userResponse.Data;
         Model = new UserUpdateRequest
         {
-            Id = User.Id,
-            Email = User.Email ?? string.Empty,
+            Enabled = User.Enabled,
             FirstName = User.FirstName,
             LastName = User.LastName,
             PhoneNumber = User.PhoneNumber,
-            Enabled = User.Enabled,
+            Email = User.Email ?? string.Empty,
+            Id = Id,
         };
     }
 
