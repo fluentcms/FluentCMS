@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Web.Api.Models;
 
-public class ContentDetailResponse : BaseAppAssociatedResponse
+public class ContentDetailResponse : BaseAuditableResponse
 {
     [Required]
     public Guid TypeId { get; set; }
