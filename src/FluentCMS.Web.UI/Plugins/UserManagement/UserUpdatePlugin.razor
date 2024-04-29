@@ -1,7 +1,7 @@
 ﻿@inherits BasePlugin
 
-<PluginForm Model="@Model" Name="@FORM_NAME" OnSubmit="OnSubmit">
-    <input type="hidden" name="Model.Id" value="@(Model.Id.ToString("D"))" />
+<PluginForm Model="@Model" OnSubmit="OnSubmit">
+    <InputCheckbox @bind-Value="Model.Enabled" /> <label>Enabled</label>
     <InputText @bind-Value="Model.FirstName" Placeholder="Enter FirstName..." />
     <InputText @bind-Value="Model.LastName" Placeholder="Enter LastName..." />
     <InputText @bind-Value="Model.PhoneNumber" placeholder="Enter Phone Number..." />

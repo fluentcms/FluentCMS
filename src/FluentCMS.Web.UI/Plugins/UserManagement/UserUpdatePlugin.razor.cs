@@ -2,12 +2,10 @@ namespace FluentCMS.Web.UI.Plugins.UserManagement;
 
 public partial class UserUpdatePlugin
 {
-    public const string FORM_NAME = "UserUpdateForm";
 
     [SupplyParameterFromQuery(Name = "id")]
     private Guid Id { get; set; }
 
-    [SupplyParameterFromForm(FormName = FORM_NAME)]
     private UserUpdateRequest Model { get; set; } = new();
 
     private UserDetailResponse User { get; set; } = new();
@@ -18,6 +16,10 @@ public partial class UserUpdatePlugin
         User = userResponse.Data;
         Model = new UserUpdateRequest
         {
+            Enabled = User.Enabled,
+            FirstName = User.FirstName,
+            LastName = User.LastName,
+            PhoneNumber = User.PhoneNumber,
             Email = User.Email ?? string.Empty,
             Id = Id,
         };
