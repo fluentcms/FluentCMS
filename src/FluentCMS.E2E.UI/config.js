@@ -75,5 +75,17 @@ export default {
                 }
             }
         },
-    ]
+    ],
+    users: [
+        {
+            password: 'Passw0rd!',
+            username: 'foo123',
+            email: 'foo@gmail.com'
+        },
+        {
+            password: 'Passw0rd!',
+            username: 'bar123',
+            email: 'bar@gmail.com'
+        },
+    ],
 }

@@ -10,16 +10,19 @@
                     <Card>
                         <CardBody>
                             <Input @bind-Value="Model.Username"
+                                   Id="userCreateUsernameInput"
                                    Label="Username"
                                    Name="Username"
                                    Placeholder="Enter Username..."
                                    Required="true"/>
                             <Input @bind-Value="Model.Email"
+                                   Id="userCreateEmailInput"
                                    Label="Email"
                                    Name="Email"
                                    Placeholder="Enter Email..."
                                    Required="true" />
                             <Input @bind-Value="Model.Password"
+                                   Id="userCreatePasswordInput"
                                    Label="Password"
                                    Name="Password"
                                    Placeholder="Enter Password..."
@@ -33,10 +36,12 @@
                                 <Spacer/>
                             }
                             <ButtonGroup>
-                                <Button OnClick="GoBack">
+                                <Button Id="userCreateCancelButton"
+                                        OnClick="GoBack">
                                     Cancel
                                 </Button>
                                 <Button Color="Color.Primary"
+                                        Id="userCreateSubmitButton"
                                         Type="ButtonType.Submit">
                                     Save
                                 </Button>

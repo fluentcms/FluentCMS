@@ -16,6 +16,7 @@
                                    Disabled="true"
                                    Required="true"/>
                             <Input @bind-Value="Model.Email"
+                                   Id="userUpdateEmailInput"
                                    Label="Email"
                                    Name="Email"
                                    Placeholder="name@example.com"
@@ -30,10 +31,12 @@
                                 <Spacer/>
                             }
                             <ButtonGroup>
-                                <Button OnClick="GoBack">
+                                <Button Id="userUpdateCancelButton" 
+                                        OnClick="GoBack">
                                     Cancel
                                 </Button>
                                 <Button Color="Color.Primary"
+                                        Id="userUpdateSubmitButton" 
                                         Type="ButtonType.Submit" >
                                     Submit
                                 </Button>

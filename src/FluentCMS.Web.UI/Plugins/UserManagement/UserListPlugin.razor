@@ -5,6 +5,7 @@
                 <Button autofocus="true"
                         Color="Color.Primary"
                         Href="@NavigationManager.Plugin("User Management", "Create User")"
+                        Id="userCreateButton"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
                     Add New User
@@ -22,7 +23,7 @@
                         <TableCell>Email</TableCell>
                         <TableCell Width="TableColumnWidth.Small"></TableCell>
                     </TableHead>
-                    <TableBody>
+                    <TableBody id="userListTable">
                         @foreach (var user in Users)
                         {
                             <TableRow OnClick="@(evt => TableRowDefaultAction(user))">
@@ -30,7 +31,8 @@
                                 <TableCell> @user.Email </TableCell>
                                 <TableCell>
                                     <ButtonGroup>
-                                        <Button Ghost="true"
+                                        <Button data-test="preview-btn" 
+                                                Ghost="true"
                                                 Href="@NavigationManager.Plugin("User Management", "User Detail", new { id = user.Id })"
                                                 Size="ButtonSize.Small"
                                                 StopPropagation="true">
