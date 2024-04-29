@@ -10,7 +10,7 @@
                     <Card>
                         <CardBody>
                             <Input @bind-Value="Model.Email"
-                                   Id="appUpdateEmailInput"
+                                   Id="profileUpdateEmailInput"
                                    Label="Email"
                                    Name="Email"
                                    Placeholder="Enter Profile Email..."
@@ -25,12 +25,12 @@
                                 <Spacer />
                             }
                             <ButtonGroup>
-                                <Button id="appUpdateCancelButton"
+                                <Button id="profileUpdateCancelButton"
                                         OnClick="GoBack">
                                     Cancel
                                 </Button>
                                 <Button Color="Color.Primary"
-                                        id="appUpdateSubmitButton"
+                                        id="profileUpdateSubmitButton"
                                         Type="ButtonType.Submit">
                                     Submit
                                 </Button>
@@ -48,7 +48,7 @@
                                 <GridItem Small="GridItemColumn.Six">
                                     <Input @bind-Value="ChangePasswordModel.OldPassword" 
                                            autofocus="true" 
-                                           Id="changePasswordOldInput"
+                                           Id="profileChangePasswordOldInput"
                                            Label="Old Password" 
                                            Name="oldPassword" 
                                            Placeholder="Enter your old password..."
@@ -59,7 +59,7 @@
 
                                     <Input @bind-Value="ChangePasswordModel.NewPassword" 
                                            autofocus="true" 
-                                           Id="changePasswordNewInput"
+                                           Id="profileChangePasswordNewInput"
                                            Label="New Password" 
                                            Name="newPassword" 
                                            Placeholder="Enter new password..."
@@ -68,7 +68,7 @@
                                 </GridItem>
                             </Grid>
                             <Button Color="Color.Primary" 
-                                    id="changePasswordSubmitButton"
+                                    id="profileChangePasswordSubmitButton"
                                     Type="ButtonType.Submit">
                                 Change password
                             </Button>
