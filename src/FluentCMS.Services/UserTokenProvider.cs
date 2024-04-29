@@ -82,8 +82,6 @@ public class JwtUserTokenProvider : IUserTokenProvider
             new(JwtRegisteredClaimNames.Sub, userId),
             new(ClaimTypes.Sid, userId),
             new(ClaimTypes.NameIdentifier, user.UserName?? string.Empty),
-            new(ClaimTypes.Name, user.FirstName?? string.Empty),
-            new(ClaimTypes.Surname, user.LastName?? string.Empty),
             new("IsSuperAdmin", isSuperAdmin.ToString()),
         };
         if (!string.IsNullOrWhiteSpace(user.NormalizedEmail))
