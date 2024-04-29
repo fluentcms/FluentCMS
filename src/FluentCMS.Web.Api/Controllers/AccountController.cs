@@ -54,14 +54,14 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
 
     [HttpGet]
     [JwtAuthorize]
-    public async Task<IApiResult<UserDetailResponse>> GetCurrent(CancellationToken cancellationToken = default)
+    public async Task<IApiResult<UserDetailResponse>> GetUserDetails(CancellationToken cancellationToken = default)
     {
         var user = await userService.GetById(authContext.UserId, cancellationToken);
         return Ok(mapper.Map<UserDetailResponse>(user));
     }
     [HttpPost]
     [JwtAuthorize]
-    public async Task<IApiResult<UserDetailResponse>> UpdateCurrent(AccountUpdateRequest userUpdateRequest)
+    public async Task<IApiResult<UserDetailResponse>> UpdateUserDetails(AccountUpdateRequest userUpdateRequest)
     {
         var user = await userService.GetById(authContext.UserId);
         user.FirstName = userUpdateRequest.FirstName;
