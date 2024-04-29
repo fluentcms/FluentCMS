@@ -1,30 +1,44 @@
 ﻿namespace FluentCMS.Services;
 
-public class PermissionService(IPermissionRepository permissionRepository)
+public interface IPermissionService : IAutoRegisterService
 {
+    Task<IEnumerable<Permission>> GetByRole(Guid roleId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Permission>> UpdateByRole(Guid roleId, IEnumerable<Tuple<string, string>> areaActions, CancellationToken cancellationToken);
 }
 
-public interface IPermissionManager
+public class PermissionService(IPermissionRepository permissionRepository) : IPermissionService
 {
-    Task<bool> HasPermission(string policyName);
-}
-
-public class PermissionManager(IAuthContext authContext) : IPermissionManager
-{
-    public Task<bool> HasPermission(string policyName)
+    public async Task<IEnumerable<Permission>> GetByRole(Guid roleId, CancellationToken cancellationToken = default)
     {
-        // get current user's role
+        return await permissionRepository.GetByRole(roleId, cancellationToken);
+    }
 
-        // get permissions for the entities
+    public async Task<IEnumerable<Permission>> UpdateByRole(Guid roleId, IEnumerable<Tuple<string, string>> areaActions, CancellationToken cancellationToken)
+    {
+        // delete all permissions for the role
+        await permissionRepository.DeleteByRole(roleId, cancellationToken);
 
-        // check if current user's role includes in the
-        //
-        return Task.FromResult(true);
+        // insert new permissions for the role
+        return await permissionRepository.CreateMany(areaActions.Select(x => new Permission { RoleId = roleId, Area = x.Item1, Action = x.Item2 }), cancellationToken) ??
+            throw new AppException(ExceptionCodes.PermissionUnableToCreate);
     }
 }
 
-public class Policies
-{
-    public const string GLOBAL_ADMIN = "Global:Admin";
-    public const string USERS_MANAGE = "Users:Manage";
-}
+//public interface IPermissionManager
+//{
+//    Task<bool> HasPermission(string policyName);
+//}
+
+//public class PermissionManager(IAuthContext authContext) : IPermissionManager
+//{
+//    public Task<bool> HasPermission(string policyName)
+//    {
+//        // get current user's role
+
+//        // get permissions for the entities
+
+//        // check if current user's role includes in the
+//        //
+//        return Task.FromResult(true);
+//    }
+//}

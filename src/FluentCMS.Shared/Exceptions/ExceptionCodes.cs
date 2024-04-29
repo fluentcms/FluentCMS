@@ -65,6 +65,12 @@ public class ExceptionCodes
 
     #endregion
 
+    #region Permission
+
+    public const string PermissionUnableToCreate = "Permission.UnableToCreated";
+
+    #endregion
+
     #region Content
     public const string ContentUnableToCreate = "Content.UnableToCreated";
     public const string ContentUnableToUpdate = "Content.UnableToUpdate";
