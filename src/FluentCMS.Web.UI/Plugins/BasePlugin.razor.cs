@@ -24,9 +24,9 @@ public partial class BasePlugin
         await OnLoadAsync();
     }
 
-    protected virtual Task OnLoadAsync()
+    protected virtual async Task OnLoadAsync()
     {
-        return Task.CompletedTask;
+        await Task.CompletedTask;
     }
 
     protected virtual void NavigateBack()
@@ -53,7 +53,6 @@ public partial class BasePlugin
             foreach (var propInfo in parameters.GetType().GetProperties())
                 queryParams[propInfo.Name] = propInfo.GetValue(parameters)?.ToString();
         }
-
         return QueryHelpers.AddQueryString(NavigationManager.Uri, queryParams);
     }
 
