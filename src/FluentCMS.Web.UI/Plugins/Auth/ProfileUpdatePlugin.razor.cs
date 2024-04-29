@@ -1,13 +1,14 @@
 ﻿namespace FluentCMS.Web.UI.Plugins.Auth;
+
 public partial class ProfileUpdatePlugin
 {
-    AccountUpdateRequest Model { get; set; } = new();
+    private AccountUpdateRequest Model { get; set; } = new();
 
-    UserDetailResponse View { get; set; } = new();
+    private UserDetailResponse View { get; set; } = new();
 
     protected override async Task OnInitializedAsync()
     {
-        View = (await GetApiClient<AccountClient>().GetUserDetailAsync()).Data;
+        View = (await GetApiClient<AccountClient>().GetUserDetailsAsync()).Data;
         Model = new()
         {
             Email = View.Email,
@@ -19,7 +20,7 @@ public partial class ProfileUpdatePlugin
 
     async Task OnSubmit()
     {
-        await GetApiClient<AccountClient>().UpdateCurrentAsync(Model);
+        await GetApiClient<AccountClient>().UpdateUserDetailsAsync(Model);
         NavigateBack();
     }
 }
