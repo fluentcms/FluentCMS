@@ -51,7 +51,7 @@ public class RoleController(IMapper mapper, IRoleService roleService) : BaseGlob
     [HttpGet]
     public async Task<IApiPagingResult<Policy>> GetAvailablePolicies(CancellationToken cancellationToken = default)
     {
-
+        // TODO: use api descriptor in api discovery 
         var policiesDict = new Dictionary<string, Policy>();
 
         var assembly = GetType().Assembly;
