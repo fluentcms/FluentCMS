@@ -9,7 +9,7 @@ namespace FluentCMS.Services;
 
 public interface IUserTokenProvider
 {
-    Task<UserToken> Generate(User user, bool isSuperAdmin);
+    Task<UserToken> Generate(User user);
     Task<Guid> Validate(string accessToken);
     Task<Guid> ValidateExpiredToken(string accessToken);
 }
@@ -23,11 +23,11 @@ public class JwtUserTokenProvider : IUserTokenProvider
         _options = options.Value;
     }
 
-    public virtual async Task<UserToken> Generate(User user, bool isSuperAdmin)
+    public virtual async Task<UserToken> Generate(User user)
     {
         return await Task.Run(() =>
         {
-            var token = GenerateToken(user, isSuperAdmin);
+            var token = GenerateToken(user);
             var refreshToken = GenerateRefreshToken(user);
             return new UserToken
             {
@@ -46,11 +46,11 @@ public class JwtUserTokenProvider : IUserTokenProvider
         return Convert.ToBase64String(randomNumber);
     }
 
-    private UserToken GenerateToken(User user, bool isSuperAdmin)
+    private UserToken GenerateToken(User user)
     {
         var jwtTokenHandler = new JwtSecurityTokenHandler();
         var key = SHA512.Create().ComputeHash(Encoding.UTF8.GetBytes(_options.Secret));
-        var claims = GetJwtClaims(user, isSuperAdmin);
+        var claims = GetJwtClaims(user);
 
         var tokenDescriptor = new SecurityTokenDescriptor
         {
@@ -72,17 +72,13 @@ public class JwtUserTokenProvider : IUserTokenProvider
         };
     }
 
-    private List<Claim> GetJwtClaims(User user, bool isSuperAdmin)
+    private List<Claim> GetJwtClaims(User user)
     {
         var userId = user.Id.ToString();
         var result = new List<Claim>
         {
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new(JwtRegisteredClaimNames.Iat, DateTime.Now.ToLongDateString()),
-            new(JwtRegisteredClaimNames.Sub, userId),
-            new(ClaimTypes.NameIdentifier, userId),
-            new(ClaimTypes.Name, user.UserName?? string.Empty),
-            new("IsSuperAdmin", isSuperAdmin.ToString()),
+            new(ClaimTypes.Sid, userId),
+            new(ClaimTypes.NameIdentifier, user.UserName?? string.Empty),
         };
         if (!string.IsNullOrWhiteSpace(user.NormalizedEmail))
             result.Add(new Claim(ClaimTypes.Email, user.NormalizedEmail));
