@@ -1,10 +1,12 @@
-﻿namespace FluentCMS;
+﻿using FluentCMS.Entities;
+
+namespace FluentCMS;
 
 public interface IAuthContext
 {
-    IEnumerable<Guid> RoleIds { get; }
+    Guid UserId { get; }
     string Username { get; }
     bool IsAuthenticated { get; }
-    bool IsSuperAdmin { get; }
-    Guid UserId { get; }
+    Task<User?> GetUser(CancellationToken cancellationToken = default);
+    Task<List<Role>> GetRoles(CancellationToken cancellationToken = default);
 }

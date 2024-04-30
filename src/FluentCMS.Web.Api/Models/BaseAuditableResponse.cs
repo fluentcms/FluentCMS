@@ -9,11 +9,6 @@ public abstract class BaseAuditableResponse
     public DateTime? ModifiedAt { get; set; }
 }
 
-public abstract class BaseAppAssociatedResponse : BaseAuditableResponse
-{
-    public Guid AppId { get; set; }
-}
-
 public abstract class BaseSiteAssociatedResponse : BaseAuditableResponse
 {
     public Guid SiteId { get; set; }
