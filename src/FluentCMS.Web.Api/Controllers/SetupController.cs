@@ -1,7 +1,10 @@
 ﻿using FluentCMS.Web.Api.Setup;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
 
+
+[AllowAnonymous]
 public class SetupController(SetupManager setupManager) : BaseGlobalController
 {
 

@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace FluentCMS.Web.Api.Models;
+﻿namespace FluentCMS.Web.Api.Models;
 
 public class UserUpdateRequest
 {
@@ -17,4 +15,7 @@ public class UserUpdateRequest
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public bool Enabled { get; set; }
+
+    [Required]
+    public List<Guid> RoleIds { get; set; } = [];
 }
