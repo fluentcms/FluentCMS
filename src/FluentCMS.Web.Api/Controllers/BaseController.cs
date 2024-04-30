@@ -1,7 +1,10 @@
-﻿namespace FluentCMS.Web.Api.Controllers;
+﻿using FluentCMS.Web.Api.Attributes;
+
+namespace FluentCMS.Web.Api.Controllers;
 
 [ApiController]
 [Produces("application/json")]
+[JwtAuthorize]
 public abstract class BaseController
 {
     public static ApiResult<T> Ok<T>(T item)

@@ -12,7 +12,7 @@ public class RoleController(IMapper mapper, IRoleService roleService) : BaseGlob
     public const string DELETE = "Delete";
 
     [HttpGet]
-    [AuthorizePolicy(AREA, READ)]
+    //[Policy(AREA, READ)]
     public async Task<IApiPagingResult<RoleDetailResponse>> GetAll(CancellationToken cancellationToken = default)
     {
         var roles = await roleService.GetAll(cancellationToken);
@@ -21,7 +21,7 @@ public class RoleController(IMapper mapper, IRoleService roleService) : BaseGlob
     }
 
     [HttpPost]
-    [AuthorizePolicy(AREA, CREATE)]
+    //[Policy(AREA, CREATE)]
     public async Task<IApiResult<RoleDetailResponse>> Create([FromBody] RoleCreateRequest request, CancellationToken cancellationToken = default)
     {
         var role = mapper.Map<Role>(request);
@@ -31,7 +31,7 @@ public class RoleController(IMapper mapper, IRoleService roleService) : BaseGlob
     }
 
     [HttpPut]
-    [AuthorizePolicy(AREA, UPDATE)]
+    //[Policy(AREA, UPDATE)]
     public async Task<IApiResult<RoleDetailResponse>> Update([FromBody] RoleUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var role = mapper.Map<Role>(request);
@@ -41,7 +41,7 @@ public class RoleController(IMapper mapper, IRoleService roleService) : BaseGlob
     }
 
     [HttpDelete("{id}")]
-    [AuthorizePolicy(AREA, DELETE)]
+    //[Policy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         await roleService.Delete(id, cancellationToken);
@@ -61,7 +61,7 @@ public class RoleController(IMapper mapper, IRoleService roleService) : BaseGlob
         {
             foreach (var methodInfo in controllerType.GetMethods())
             {
-                var customAttributes = methodInfo.GetCustomAttributes<AuthorizePolicyAttribute>(true);
+                var customAttributes = methodInfo.GetCustomAttributes<PolicyAttribute>(true);
                 if (customAttributes == null)
                     continue;
 
