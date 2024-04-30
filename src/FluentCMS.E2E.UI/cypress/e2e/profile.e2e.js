@@ -24,6 +24,10 @@ describe('Profile', () => {
     cy.navigateToProfileUpdatePage();
 
     cy.profileUpdate({email: config.setupEmail}, {email: 'updated@gmail.com'})
+
+    // Reset profile info
+    cy.navigateToProfileUpdatePage();
+    cy.profileUpdate({email: 'updated@gmail.com'},{email: config.setupEmail})
   })
 
   it("Should change password and undo change password", () => {
@@ -34,8 +38,8 @@ describe('Profile', () => {
     cy.visit('/auth/login').shortWait()
     cy.checkLogin(config.setupUsername, testPassword)
   
+    // Reset change password
     cy.navigateToProfileUpdatePage();
-
     cy.profileChangePassword(testPassword, config.setupPassword)
   })
 })
