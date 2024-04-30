@@ -39,19 +39,15 @@ public class UserService(
 
     public async Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default)
     {
-        var isSuperAdmin = false;
-
         // check if user is super admin
         if (!string.IsNullOrEmpty(user.UserName))
         {
             var globalSettings = await globalSettingsRepository.Get(cancellationToken) ??
                 throw new AppException(ExceptionCodes.GlobalSettingsNotFound);
-
-            isSuperAdmin = globalSettings.SuperUsers.Contains(user.UserName);
         }
 
         // Generate token
-        var userToken = await userTokenProvider.Generate(user, isSuperAdmin);
+        var userToken = await userTokenProvider.Generate(user);
 
         if (userToken is null || string.IsNullOrEmpty(userToken.AccessToken))
             throw new AppException(ExceptionCodes.UserTokenGenerationFailed);
