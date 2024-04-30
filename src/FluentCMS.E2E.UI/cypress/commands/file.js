@@ -48,7 +48,7 @@ Cypress.Commands.add('fileUpload', (files) => {
 
 Cypress.Commands.add('fileDetail', (name) => {
     console.log('fileDetail', name)
-    cy.contains(name).should('be.visible')
+    cy.contains(name).scrollIntoView().should('be.visible')
     cy.contains(name).click()
 
     cy.contains('Details').should('be.visible')
@@ -64,7 +64,7 @@ Cypress.Commands.add('fileUpdateCancel', (name, newName) => {
 
     cy.shortWait()
     cy.contains('Details').should('not.be.visible')  
-    cy.contains(name).should('be.visible')
+    cy.contains(name).scrollIntoView().should('be.visible')
     cy.contains(newName).should('not.exist')
 })
 
@@ -80,13 +80,13 @@ Cypress.Commands.add('fileUpdate', (name, newName) => {
     
     // TODO: Enable this line
     // cy.contains(name).should('not.exist')
-    cy.contains(newName).should('be.visible')
+    cy.contains(newName).scrollIntoView().should('be.visible')
 })
 
 Cypress.Commands.add('fileDeleteCancel', (name) => {
     cy.contains('.f-card', name).deleteRow(false, true)
 
-    cy.contains(name).should('be.visible')
+    cy.contains(name).scrollIntoView().should('be.visible')
 })
 
 Cypress.Commands.add('fileDelete', (name) => {
