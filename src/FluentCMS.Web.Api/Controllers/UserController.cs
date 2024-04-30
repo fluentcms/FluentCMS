@@ -11,6 +11,7 @@ public class UserController(IUserService userService, IMapper mapper) : BaseGlob
 
     [HttpGet]
     [AuthorizePolicy(AREA, READ)]
+    [JwtAuthorizeAttribute]
     public async Task<IApiPagingResult<UserDetailResponse>> GetAll(CancellationToken cancellationToken = default)
     {
         var users = await userService.GetAll(cancellationToken);

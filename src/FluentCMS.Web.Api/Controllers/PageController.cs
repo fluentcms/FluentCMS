@@ -5,6 +5,7 @@ using Microsoft.Extensions.Primitives;
 
 namespace FluentCMS.Web.Api.Controllers;
 
+[JwtAuthorizeAttribute]
 public class PageController(
     ISiteService siteService,
     IPageService pageService,
