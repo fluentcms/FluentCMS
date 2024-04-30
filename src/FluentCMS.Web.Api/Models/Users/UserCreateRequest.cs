@@ -18,4 +18,7 @@ public class UserCreateRequest
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public bool Enabled { get; set; }
+
+    [Required]
+    public List<Guid> RoleIds { get; set; } = [];
 }
