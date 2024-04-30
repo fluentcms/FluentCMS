@@ -1,86 +1,11 @@
-<Form Model="@Model"
-      OnSubmit="OnSubmit">
-    <Typography Size="TextSize.H5">
-        Your Best Work Starts Here
-    </Typography>
-    <Spacer />
-    <Input @bind-Value="Model.Username"
-           autofocus="true"
-           Id="registerUsernameInput"
-           Label="What should we call you?"
-           Name="Username"
-           Placeholder="Enter your name"
-           Required="true" />
-    <Input @bind-Value="Model.Email"
-           Id="registerEmailInput"
-           Label="Email"
-           Name="Email"
-           Placeholder="Enter your email"
-           Required="true" /> 
-    <Input @bind-Value="Model.Password"
-           Id="registerPasswordInput"
-           Label="Password"
-           Name="Password"
-           Placeholder="Enter your password"
-           Type="InputType.Password"
-           Required="true" />
-    <Input @bind-Value="Model.ConfirmPassword"
-           Id="registerConfirmPasswordInput"
-           Label="Confirm Password"
-           Name="ConfirmPassword"
-           Placeholder="Enter your password again"
-           Type="InputType.Password"
-           Required="true" />
-    <Checkbox>
-        <LabelFragment>
-            By signing up, you are creating a Sendinblue account, and you agree to FluentCMS’s
-            <Button Color="Color.Primary"
-                    Href="/"
-                    Link="true">
-                Terms of Use
-            </Button>
-            and
-            <Button Color="Color.Primary"
-                    Href="/"
-                    Link="true">
-                Privacy Policy
-            </Button>.
-        </LabelFragment>
-    </Checkbox>
-    <Checkbox Label="Email me about product updates and resources." />
-    <Button Block="true"
-            Color="Color.Primary"
-            Id="registerSubmitButton"
-            Type="ButtonType.Submit">
-        Sign Up
-    </Button>
-    <Spacer />
-    <Typography Color="Color.Secondary">
-        Already have an account?
-        <Button Color="Color.Primary"
-                Href="/auth/login"
-                Link="true">
-            Login here
-        </Button>
-    </Typography>
-</Form>
-
-@code {
-    [Inject]
-    AccountClient AccountClient { get; set; } = default!;
-
-    [Inject]
-    NavigationManager NavigationManager { get; set; } = default!;
-
-    UserRegisterRequest Model { get; set; } = new();
-
-    async Task OnSubmit()
-    {
-        var result = await AccountClient.RegisterAsync(Model);
-        if (result.Errors.Count == 0)
-        {
-            NavigationManager.NavigateTo("/");
-        }
-    }
-
-}
+@inherits BasePlugin
+<PluginForm Model="@Model" OnSubmit="@OnSubmit" Name="@FORM_NAME">
+    <InputText @bind-Value="Model.Username" Placeholder="Enter your name"/>
+    <InputText @bind-Value="Model.Email" Placeholder="Enter your email"/>
+    <InputText @bind-Value="Model.Password" Placeholder="Enter your password"/>
+    <InputText @bind-Value="Model.ConfirmPassword"Placeholder="Enter your password again"/>
+    <ButtonGroup>
+        <Button Block="@true" Color="@Color.Primary" Type="@ButtonType.Submit"> Sign Up </Button>
+        <Button Color="@Color.Primary" Href="/auth/login" Link="@true"> Login here </Button>
+    </ButtonGroup>
+</PluginForm>
