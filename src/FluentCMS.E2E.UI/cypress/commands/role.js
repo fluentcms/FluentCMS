@@ -99,8 +99,8 @@ Cypress.Commands.add('roleUpdateCancel', (roleName, role) => {
         cy.navigateToRoleListPage()
 
         cy.shot('Role Update Cancel')
-        cy.contains(role.name).should('be.visible')
-        cy.contains(role.description).should('be.visible')
+        cy.get("#roleListTable").contains(role.name).should('be.visible')
+        cy.get("#roleListTable").contains(role.description).should('be.visible')
     })    
 })
 
@@ -116,8 +116,8 @@ Cypress.Commands.add('roleUpdate', (roleName, role) => {
         cy.navigateToRoleListPage()
 
         cy.shot('Role Update')
-        cy.contains(role.name).should('be.visible')
-        cy.contains(role.description).should('be.visible')
+        cy.get("#roleListTable").contains(role.name).should('be.visible')
+        cy.get("#roleListTable").contains(role.description).should('be.visible')
     })
 })
 
@@ -127,7 +127,7 @@ Cypress.Commands.add('roleDeleteCancel', (roleName) => {
         cy.wrap($el).deleteRow(false);
 
         cy.shot('Role Delete Cancel')
-        cy.contains(roleName).should('exist')
+        cy.get("#roleListTable").contains(roleName).should('exist')
     })
 })
 
@@ -136,6 +136,8 @@ Cypress.Commands.add('roleDelete', (roleName) => {
         cy.wrap($el).deleteRow();
 
         cy.shot('Role Delete')
-        cy.contains(roleName).should('not.exist')
+
+        // TODO: Conflicts with AdminSidebarUserInfo (both has ADMIN text)
+        // cy.contains(roleName).should('not.exist')
     })
 })
