@@ -1,5 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
-using System.Security.Claims;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 
 namespace FluentCMS.Web.Api;
 
@@ -14,9 +14,9 @@ public class AuthContext : IAuthContext
 
     public AuthContext(IHttpContextAccessor httpContextAccessor)
     {
-        var idClaimValue = httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Sid)?.Value;
+        var idClaimValue = httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
         _userId = idClaimValue == null ? Guid.Empty : Guid.Parse(idClaimValue);
-        _username = httpContextAccessor.HttpContext?.User?.Identity?.Name ?? string.Empty;
+        _username = httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.Name) ?? string.Empty;
         _roleIds = httpContextAccessor.HttpContext?.User?.Claims?.Where(x => x.Type == "role")?.Select(x => Guid.Parse(x.Value)) ?? [];
         _isSuperAdmin = httpContextAccessor.HttpContext?.User?.Claims?.Where(x => x.Type == "IsSuperAdmin")?.Select(x => bool.Parse(x.Value)).SingleOrDefault() ?? false;
         _isAuthenticated = httpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;

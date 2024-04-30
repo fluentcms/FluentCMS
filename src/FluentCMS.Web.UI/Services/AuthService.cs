@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Authentication;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using System.Security.Claims;
 
 namespace FluentCMS.Web.UI.Services;
 
@@ -35,8 +35,8 @@ public class AuthService(IHttpClientFactory httpClientFactory) : IAuthService
 
         var identityClaims = new ClaimsIdentity(CookieAuthenticationDefaults.AuthenticationScheme);
 
-        identityClaims.AddClaim(new Claim(ClaimTypes.Sid, account.UserId.ToString()));
-        identityClaims.AddClaim(new Claim(ClaimTypes.NameIdentifier, account.UserName ?? string.Empty));
+        identityClaims.AddClaim(new Claim(ClaimTypes.NameIdentifier, account.UserId.ToString()));
+        identityClaims.AddClaim(new Claim(ClaimTypes.Name, account.UserName ?? string.Empty));
         identityClaims.AddClaim(new Claim(ClaimTypes.Email, account.Email ?? string.Empty));
         identityClaims.AddClaim(new Claim("jwt", account.Token ?? string.Empty));
 
