@@ -81,18 +81,6 @@
             ]
         },
         {
-            "Name": "Media Library",
-            "Description": "Media Library Plugin",
-            "Types": [
-                {
-                    "Name": "Media List",
-                    "Type": "MediaListPlugin",
-                    "IsDefault": true
-                }
-            ]
-        },
-        
-        {
             "Name": "Api Token Management",
             "Description": "Api Token Management Plugin",
             "Types": [
