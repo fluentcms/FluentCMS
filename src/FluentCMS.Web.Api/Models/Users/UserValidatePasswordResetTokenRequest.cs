@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace FluentCMS.Web.Api.Models.Users;
+﻿namespace FluentCMS.Web.Api.Models.Users;
 
 public class UserValidatePasswordResetTokenRequest
 {

@@ -17,7 +17,7 @@ public interface IUserService : IAutoRegisterService
     Task<string> GeneratePasswordResetToken(string email, CancellationToken cancellationToken = default);
     Task<bool> ValidatePasswordResetToken(string token, string email, string newPassword, CancellationToken cancellationToken = default);
     Task<bool> Any(CancellationToken cancellationToken = default);
-    Task<User?> GetByEmail(string requestEmail);
+    Task<User?> GetByEmail(string requestEmail, CancellationToken cancellationToken = default);
 }
 
 public class UserService(
@@ -175,7 +175,7 @@ public class UserService(
         return Task.Run(() => userManager.Users.Any(), cancellationToken);
     }
 
-    public Task<User?> GetByEmail(string requestEmail)
+    public Task<User?> GetByEmail(string requestEmail, CancellationToken cancellationToken = default)
     {
         return userManager.FindByEmailAsync(requestEmail);
     }

@@ -1,8 +1,5 @@
-﻿using FluentCMS.Web.Api.Attributes;
+﻿namespace FluentCMS.Web.Api.Controllers;
 
-namespace FluentCMS.Web.Api.Controllers;
-
-[JwtAuthorize]
 [Route("api/[controller]/{contentTypeSlug}/[action]")]
 public class ContentController(
     IMapper mapper,
