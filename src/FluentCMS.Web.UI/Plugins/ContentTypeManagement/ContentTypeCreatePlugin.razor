@@ -25,13 +25,12 @@
                                       Label="Description"
                                       Name="Description"
                                       Placeholder="Enter Description..." />
-                            <Spacer />
                             @if (!string.IsNullOrEmpty(Message))
                             {
+                                <Spacer />
                                 <Typography>
                                     @Message
                                 </Typography>
-                                <Spacer />
                             }
                         </CardBody>
                         <CardActions>

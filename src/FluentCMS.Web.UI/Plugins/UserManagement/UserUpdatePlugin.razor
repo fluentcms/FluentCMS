@@ -21,13 +21,12 @@
                                    Placeholder="name@example.com"
                                    Required="true" />
 
-                            <Spacer/>
                             @if(!string.IsNullOrEmpty(Message))
                             {
+                                <Spacer/>
                                 <Typography>
                                     @Message
                                 </Typography>
-                                <Spacer/>
                             }
                         </CardBody>
                         <CardActions>

@@ -18,14 +18,12 @@
                                 <Option Value="2">Test2</Option>
                                 <Option Value="3">Test3</Option>
                             </Select>
-
-                            <Spacer />
                             @if (!string.IsNullOrEmpty(Message))
                             {
+                                <Spacer />
                                 <Typography>
                                     @Message
                                 </Typography>
-                                <Spacer />
                             }
                         </CardBody>
                         <CardActions>

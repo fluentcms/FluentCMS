@@ -16,13 +16,12 @@
                                    Placeholder="Enter Profile Email..."
                                    Required="true" />
                             @*Disabled="true"*@
-                            <Spacer />
                             @if (!string.IsNullOrEmpty(Message))
                             {
+                                <Spacer />
                                 <Typography>
                                     @Message
                                 </Typography>
-                                <Spacer />
                             }
                         </CardBody>
                         <CardActions>
@@ -67,13 +66,12 @@
                                            Type="InputType.Password" />
                                 </GridItem>
                             </Grid>
-                            <Spacer />
                             @if (!string.IsNullOrEmpty(Message))
                             {
+                                <Spacer />
                                 <Typography>
                                     @Message
                                 </Typography>
-                                <Spacer />
                             }
                         </CardBody>
                         <CardActions>
