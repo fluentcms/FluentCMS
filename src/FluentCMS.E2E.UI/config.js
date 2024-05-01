@@ -77,7 +77,9 @@ export default {
         },
     ],
     files: [
-        {path: "./cypress/sample_files/main.jpeg", name: 'main.jpeg'},
-        {path: "./cypress/sample_files/empty-files.png", name: 'empty-files.png'}
+        {
+            path: "./cypress/sample_files/image.png",
+            name: 'image.png'
+        }
     ]
 }
