@@ -1,0 +1,29 @@
+﻿@typeparam TValue
+
+@inherits Input<TValue>
+
+@namespace FluentCMS.Web.UI
+
+<PluginFormField Col="Col">
+    <Input @attributes="AdditionalAttributes"
+           @bind-Value="Value"
+           Dense="@Dense"
+           Disabled="@Disabled"
+           Hint="@Hint"
+           IconEnd="@IconEnd"
+           IconStart="@IconStart"
+           Id="@Id"
+           Label="@Label"
+           LabelFragment="@LabelFragment"
+           Name="@Name"
+           Placeholder="@Placeholder"
+           Required="@Required"
+           Size="@Size"
+           Type="@Type" />
+</PluginFormField>
+
+@code {
+    [Parameter]
+    [CSSProperty]
+    public PluginFormFieldColumn Col { get; set; } = PluginFormFieldColumn.Twelve;
+}

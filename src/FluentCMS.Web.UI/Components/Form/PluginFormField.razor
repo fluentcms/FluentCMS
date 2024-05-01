@@ -1,0 +1,14 @@
+﻿@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI
+
+<GridItem Small="GridItemColumn.Twelve"
+          Medium="(GridItemColumn)Col">
+    @ChildContent
+</GridItem>
+
+@code {
+    [Parameter]
+    public PluginFormFieldColumn Col { get; set; } = PluginFormFieldColumn.Twelve;
+}
+
