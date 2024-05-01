@@ -2,9 +2,9 @@
 
 @inherits Input<TValue>
 
-@namespace FluentCMS.Web.UI
+@namespace FluentCMS.Web.UI.Plugins
 
-<PluginFormField Cols="Cols">
+<PluginFormField Cols="@Cols">
     <Input @attributes="AdditionalAttributes"
            @bind-Value="Value"
            Dense="@Dense"

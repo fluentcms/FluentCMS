@@ -1,6 +1,6 @@
-﻿@namespace FluentCMS.Web.UI
+﻿@namespace FluentCMS.Web.UI.Plugins
 
-<PluginSection Title="@Title">
+<PluginBody Title="@Title">
     <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="@Name" Enhance>
         <DataAnnotationsValidator />
         <Spacer />
@@ -18,4 +18,4 @@
             </Alert>
         }
     </EditForm>
-</PluginSection>
+</PluginBody>

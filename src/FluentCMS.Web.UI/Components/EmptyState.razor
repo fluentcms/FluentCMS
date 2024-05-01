@@ -1,4 +1,6 @@
-@inherits BaseComponent
+@using FluentCMS.Web.UI.Components
+
+@namespace FluentCMS.Web.UI.Plugins.Components
 
 <Card>
     <Spacer Size="SpacerSize.Large" />
@@ -24,10 +26,3 @@
     <Spacer Size="SpacerSize.Large" />
     <Spacer Size="SpacerSize.Large" />
 </Card>
-
-@code {
-    [Parameter]
-    public IconName Icon {get; set;} = IconName.Default;
-    [Parameter]
-    public string Message { get; set; } = "No results found!";
-}

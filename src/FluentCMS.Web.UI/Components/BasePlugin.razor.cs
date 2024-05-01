@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.WebUtilities;
 
-namespace FluentCMS.Web.UI.Plugins;
+namespace FluentCMS.Web.UI.Plugins.Components;
 
 public partial class BasePlugin
 {

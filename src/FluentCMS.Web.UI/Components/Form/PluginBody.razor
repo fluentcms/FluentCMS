@@ -1,5 +1,6 @@
-﻿@namespace FluentCMS.Web.UI
+﻿@namespace FluentCMS.Web.UI.Plugins
 
+@* TODO: change class to f-plugin-body *@
 <div class="m-4">
     @if (!string.IsNullOrEmpty(Title))
     {
@@ -22,8 +23,3 @@
         }
     </Card>
 </div>
-
-@code {
-    [Parameter]
-    public RenderFragment? ActionsFragment { get; set; }
-}
