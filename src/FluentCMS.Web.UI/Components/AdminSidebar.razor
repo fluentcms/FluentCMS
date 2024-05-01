@@ -1,6 +1,6 @@
 <Sidebar Id="adminSidebar">
     <Header>
-        <a href="/" class="items-center pl-2.5 mb-5 hidden lg:flex">
+        <a href="/" class="items-center pl-2 mb-5 hidden lg:flex">
             <Logo id="adminSidebarLogoLink" />
             <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">FluentCMS</span>
         </a>
@@ -46,7 +46,12 @@
                      id="adminSidebarRolesLink">   
             Roles
         </SidebarItem>
-        
+        <SidebarItem Active="@Pathname.StartsWith("/admin/api-tokens")"
+                     Href="/admin/api-tokens" 
+                     Icon="IconName.Lock"
+                     id="adminSidebarApiTokensLink">
+            Api Tokens
+        </SidebarItem>
         <SidebarItem Active="@Pathname.StartsWith("/admin/settings")"
                      Href="/admin/settings" 
                      Icon="IconName.Cog"

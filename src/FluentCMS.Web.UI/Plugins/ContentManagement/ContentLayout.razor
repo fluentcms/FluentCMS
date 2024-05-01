@@ -10,10 +10,10 @@
             </PageHeader>
             <PageBody>
                 <EmptyState Message="There is no Content-Type yet!">
-                    @* TODO: Should not throw error from Section.razor component *@
+                    @* TODO: Should navigate to create ContentType page instead of list page *@
                     <Button autofocus="true"
                             Color="Color.Primary"
-                            Href="@NavigationManager.Plugin("ContentType Management", "Create ContentType")"
+                            Href="/admin/content-types"
                             id="contentCreateButton"
                             Size="ButtonSize.Small">
                         <Icon Name="IconName.Plus" />
