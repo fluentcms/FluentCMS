@@ -1,8 +1,8 @@
 ﻿@inherits BasePlugin
 
 <PluginForm Name="@FORM_NAME" Model="@Model"  Title="Create New User" OnSubmit="OnSubmit">
-    <PluginFormInput @bind-Value="Model.FirstName" Placeholder="Enter FirstName..." Col="6" />
-    <PluginFormInput @bind-Value="Model.LastName" Placeholder="Enter LastName..." Col="6" />
+    <PluginFormInput @bind-Value="Model.FirstName" Placeholder="Enter FirstName..." Cols="6" />
+    <PluginFormInput @bind-Value="Model.LastName" Placeholder="Enter LastName..." Cols="6" />
     <PluginFormInput @bind-Value="Model.PhoneNumber" Placeholder="Enter Phone Number..." />
     <PluginFormInput @bind-Value="Model.Username" Placeholder="Enter Username..." />
     <PluginFormInput @bind-Value="Model.Email" Placeholder="Enter Email..." />

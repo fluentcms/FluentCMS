@@ -4,7 +4,7 @@
 
 @namespace FluentCMS.Web.UI
 
-<PluginFormField Col="Col">
+<PluginFormField Cols="Cols">
     <Input @attributes="AdditionalAttributes"
            @bind-Value="Value"
            Dense="@Dense"
@@ -25,5 +25,5 @@
 @code {
     [Parameter]
     [CSSProperty]
-    public int Col { get; set; } = 12;
+    public int Cols { get; set; } = 12;
 }

@@ -3,12 +3,12 @@
 @namespace FluentCMS.Web.UI
 
 <GridItem Small="GridItemColumn.Twelve"
-          Medium="(GridItemColumn)(Col + 1)">
+          Medium="(GridItemColumn)(Cols + 1)">
     @ChildContent
 </GridItem>
 
 @code {
     [Parameter]
-    public int Col { get; set; } = 12;
+    public int Cols { get; set; } = 12;
 }
 
