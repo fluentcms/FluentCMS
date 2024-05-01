@@ -6,6 +6,7 @@ public interface IRoleService : IAutoRegisterService
     Task<Role> Create(Role role, CancellationToken cancellationToken = default);
     Task<Role> Update(Role role, CancellationToken cancellationToken = default);
     Task<Role> Delete(Guid roleId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Role>> GetByIds(IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);
 }
 
 public class RoleService(IRoleRepository roleRepository) : IRoleService
@@ -39,4 +40,8 @@ public class RoleService(IRoleRepository roleRepository) : IRoleService
             throw new AppException(ExceptionCodes.RoleUnableToDelete);
     }
 
+    public Task<IEnumerable<Role>> GetByIds(IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default)
+    {
+        return roleRepository.GetByIds(roleIds, cancellationToken);
+    }
 }

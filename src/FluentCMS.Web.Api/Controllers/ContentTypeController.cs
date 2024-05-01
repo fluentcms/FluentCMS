@@ -1,11 +1,17 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using FluentCMS.Web.Api.Attributes;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-[Authorize]
 public class ContentTypeController(IMapper mapper, IContentTypeService contentTypeService) : BaseGlobalController
 {
+    public const string AREA = "Content Type Management";
+    public const string READ = "Read";
+    public const string UPDATE = "Update";
+    public const string CREATE = "Create";
+    public const string DELETE = "Delete";
+
     [HttpGet("{slug}")]
+    [Policy(AREA, READ)]
     public async Task<IApiResult<ContentTypeDetailResponse>> GetBySlug([FromRoute] string slug, CancellationToken cancellationToken = default)
     {
         var contentTypes = await contentTypeService.GetBySlug(slug, cancellationToken);
@@ -14,6 +20,7 @@ public class ContentTypeController(IMapper mapper, IContentTypeService contentTy
     }
 
     [HttpGet("{id}")]
+    [Policy(AREA, READ)]
     public async Task<IApiResult<ContentTypeDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var contentTypes = await contentTypeService.GetById(id, cancellationToken);
@@ -22,6 +29,7 @@ public class ContentTypeController(IMapper mapper, IContentTypeService contentTy
     }
 
     [HttpGet]
+    [Policy(AREA, READ)]
     public async Task<IApiPagingResult<ContentTypeDetailResponse>> GetAll(CancellationToken cancellationToken = default)
     {
         var contentTypes = await contentTypeService.GetAll(cancellationToken);
@@ -30,6 +38,7 @@ public class ContentTypeController(IMapper mapper, IContentTypeService contentTy
     }
 
     [HttpPost]
+    [Policy(AREA, CREATE)]
     public async Task<IApiResult<ContentTypeDetailResponse>> Create([FromBody] ContentTypeCreateRequest request, CancellationToken cancellationToken = default)
     {
         var contentType = mapper.Map<ContentType>(request);
@@ -39,6 +48,7 @@ public class ContentTypeController(IMapper mapper, IContentTypeService contentTy
     }
 
     [HttpPut]
+    [Policy(AREA, UPDATE)]
     public async Task<IApiResult<ContentTypeDetailResponse>> Update([FromBody] ContentTypeUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var contentType = mapper.Map<ContentType>(request);
@@ -48,6 +58,7 @@ public class ContentTypeController(IMapper mapper, IContentTypeService contentTy
     }
 
     [HttpDelete("{id}")]
+    [Policy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         await contentTypeService.Delete(id, cancellationToken);
@@ -55,6 +66,7 @@ public class ContentTypeController(IMapper mapper, IContentTypeService contentTy
     }
 
     [HttpPut("{id}")]
+    [Policy(AREA, UPDATE)]
     public async Task<IApiResult<ContentTypeDetailResponse>> SetField([FromRoute] Guid id, ContentTypeField request, CancellationToken cancellationToken = default)
     {
         var updated = await contentTypeService.SetField(id, request, cancellationToken);
@@ -63,6 +75,7 @@ public class ContentTypeController(IMapper mapper, IContentTypeService contentTy
     }
 
     [HttpDelete("{id}/{name}")]
+    [Policy(AREA, UPDATE)]
     public async Task<IApiResult<ContentTypeDetailResponse>> DeleteField([FromRoute] Guid id, [FromRoute] string name, CancellationToken cancellationToken = default)
     {
         var updated = await contentTypeService.DeleteField(id, name, cancellationToken);

@@ -1,12 +1,16 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using FluentCMS.Web.Api.Attributes;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-[Authorize]
 public class UserController(IUserService userService, IMapper mapper) : BaseGlobalController
 {
+    public const string AREA = "User Management";
+    public const string READ = "Read";
+    public const string UPDATE = "Update";
+    public const string CREATE = "Create";
 
     [HttpGet]
+    [Policy(AREA, READ)]
     public async Task<IApiPagingResult<UserDetailResponse>> GetAll(CancellationToken cancellationToken = default)
     {
         var users = await userService.GetAll(cancellationToken);
@@ -15,6 +19,7 @@ public class UserController(IUserService userService, IMapper mapper) : BaseGlob
     }
 
     [HttpGet("{userId}")]
+    [Policy(AREA, READ)]
     public async Task<IApiResult<UserDetailResponse>> Get([FromRoute] Guid userId, CancellationToken cancellationToken = default)
     {
         var user = await userService.GetById(userId, cancellationToken);
@@ -23,6 +28,7 @@ public class UserController(IUserService userService, IMapper mapper) : BaseGlob
     }
 
     [HttpPut]
+    [Policy(AREA, UPDATE)]
     public async Task<IApiResult<UserDetailResponse>> Update([FromBody] UserUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var user = mapper.Map<User>(request);
@@ -32,6 +38,7 @@ public class UserController(IUserService userService, IMapper mapper) : BaseGlob
     }
 
     [HttpPost]
+    [Policy(AREA, CREATE)]
     public async Task<IApiResult<UserDetailResponse>> Create([FromBody] UserCreateRequest request, CancellationToken cancellationToken = default)
     {
         var user = mapper.Map<User>(request);

@@ -1,91 +1,98 @@
-﻿<Page>
-    <PageHeader HasBack="true"
-                Title="User Detail">
-    </PageHeader>
-    <PageBody>
-        <Grid Gutter="GridGutter.Large">
-            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Seven" Large="GridItemColumn.Nine">
-                <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
-                    <GridItem Small="GridItemColumn.Twelve">
-                        <Typography><strong>Username:</strong></Typography>
+﻿@inherits BasePlugin
+
+<PluginView Title="User Detail">
+    <Grid Gutter="GridGutter.Large">
+        <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Seven" Large="GridItemColumn.Nine">
+            <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
+                <GridItem Small="GridItemColumn.Twelve">
+                    <input type="checkbox" checked="@User.Enabled" readonly disabled/> <label>Enabled</label>
+                </GridItem>
+                <GridItem Small="GridItemColumn.Twelve">
+                    <Typography>
+                        <strong>FirstName:</strong>
+                    </Typography>
+                    <Typography>
+                        @User.FirstName
+                    </Typography>
+                </GridItem>
+                <GridItem Small="GridItemColumn.Twelve">
+                    <Typography>
+                        <strong>LastName:</strong>
+                    </Typography>
+                    <Typography>
+                        @User.LastName
+                    </Typography>
+                </GridItem>
+                <GridItem Small="GridItemColumn.Twelve">
+                    <Typography>
+                        <strong>Phone:</strong>
+                    </Typography>
+                    <Typography>
+                        @User.PhoneNumber
+                    </Typography>
+                </GridItem>
+                <GridItem Small="GridItemColumn.Twelve">
+                    <Typography>
+                        <strong>Username:</strong>
+                    </Typography>
+                    <Typography>
+                        @User.Username
+                    </Typography>
+                </GridItem>
+                <GridItem Small="GridItemColumn.Twelve">
+                    <Typography>
+                        <strong>Email:</strong>
+                    </Typography>
+                    <Typography>
+                        @User.Email
+                    </Typography>
+                </GridItem>
+            </Grid>
+        </GridItem>
+        <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Five" Large="GridItemColumn.Three">
+            <Card>
+                <CardBody>
+                    @if (!string.IsNullOrEmpty(User.CreatedBy))
+                    {
                         <Typography>
-                            @View.Username
+                            <strong>Created By</strong>
                         </Typography>
-                    </GridItem>
-                    <GridItem Small="GridItemColumn.Twelve">
-                        <Typography><strong>Email:</strong></Typography>
+                        <Typography>@User.CreatedBy</Typography>
+                        <Spacer/>
+                    }
+                    @if (!string.IsNullOrEmpty(User.CreatedAt.ToString()))
+                    {
                         <Typography>
-                            @View.Email
+                            <strong>Created At</strong>
                         </Typography>
-                    </GridItem>
-                </Grid>
-            </GridItem>
-            <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Five" Large="GridItemColumn.Three">
-                <Card>
-                    <CardBody>
-                        @if (!string.IsNullOrEmpty(View.CreatedBy))
-                        {
-                            <Typography><strong>Created By</strong></Typography>
-                            <Typography>@View.CreatedBy</Typography>
-                            <Spacer />
-                        }
-                        @if (!string.IsNullOrEmpty(View.CreatedAt.ToString()))
-                        {
-                            <Typography><strong>Created At</strong></Typography>
-                            <Typography>@View.CreatedAt</Typography>
-                            <Spacer />
-                        }
-                        @if (!string.IsNullOrEmpty(View.ModifiedBy))
-                        {
-                            <Typography><strong>Modified By</strong></Typography>
-                            <Typography>@View.ModifiedBy</Typography>
-                            <Spacer />
-                        }
-                        @if (!string.IsNullOrEmpty(View.ModifiedAt.ToString()))
-                        {
-                            <Typography><strong>Modified At</strong></Typography>
-                            <Typography>@View.ModifiedAt</Typography>
-                        }
-                    </CardBody>
-                </Card>
-                <Spacer /> 
-                <Button Block="true" Color="Color.Primary"
-                        Href="@NavigationManager.Plugin("User Management", "Update User", new { id = View.Id })"
-                        Item="true"
-                        Outline="true">
-                    <Icon Name="IconName.Edit" />
-                    Edit
-                </Button>
-            </GridItem>
-        </Grid>
-    </PageBody>
-</Page>
-
-@code {
-    [Inject]
-    NavigationManager NavigationManager { set; get; } = default!;
-
-    [Inject]
-    UserClient UserClient { get; set; } = default!;
-
-    Guid? Id { get; set; }
-
-    string? Message { get; set; }
-
-    UserDetailResponse View { get; set; } = new();
-
-    protected override async Task OnInitializedAsync()
-    {
-
-        var userId = NavigationManager.GetIdFromQuery();
-        if (userId != null)
-            try
-            {
-                View = (await UserClient.GetAsync(userId.Value)).Data;
-            }
-            catch (Exception)
-            {
-                Message = "An error occured!";
-            }
-    }
-}
+                        <Typography>@User.CreatedAt</Typography>
+                        <Spacer/>
+                    }
+                    @if (!string.IsNullOrEmpty(User.ModifiedBy))
+                    {
+                        <Typography>
+                            <strong>Modified By</strong>
+                        </Typography>
+                        <Typography>@User.ModifiedBy</Typography>
+                        <Spacer/>
+                    }
+                    @if (!string.IsNullOrEmpty(User.ModifiedAt.ToString()))
+                    {
+                        <Typography>
+                            <strong>Modified At</strong>
+                        </Typography>
+                        <Typography>@User.ModifiedAt</Typography>
+                    }
+                </CardBody>
+            </Card>
+            <Spacer/>
+            <Button Block="true" Color="Color.Primary"
+                    Href="@NavigationManager.Plugin("User Management", "Update User", new { id = User.Id })"
+                    Item="true"
+                    Outline="true">
+                <Icon Name="IconName.Edit"/>
+                Edit
+            </Button>
+        </GridItem>
+    </Grid>
+</PluginView>

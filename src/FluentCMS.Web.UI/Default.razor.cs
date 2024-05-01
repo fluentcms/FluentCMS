@@ -1,10 +1,8 @@
-﻿using FluentCMS.Web.UI.Services;
-using HtmlAgilityPack;
-using Microsoft.AspNetCore.Components;
+﻿using HtmlAgilityPack;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components.Sections;
-using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Web.UI;
 
@@ -15,29 +13,31 @@ public partial class Default : IDisposable
 
     public PageFullDetailResponse? Page { get; set; }
 
-    [Inject] public NavigationManager NavigationManager { set; get; } = default!;
+    [Parameter]
+    public string? Route { get; set; }
 
-    [Inject] public SetupManager SetupManager { set; get; } = default!;
+    [Inject]
+    public NavigationManager NavigationManager { set; get; } = default!;
 
-    [Inject] public PageClient PageClient { set; get; } = default!;
+    [Inject]
+    public SetupManager SetupManager { set; get; } = default!;
 
-    [Inject] public SiteClient SiteClient { set; get; } = default!;
+    [Inject]
+    public IHttpClientFactory HttpClientFactory { set; get; } = default!;
 
-    [Inject] public PluginDefinitionClient PluginDefinitionClient { set; get; } = default!;
+    [CascadingParameter]
+    public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
 
-    [Inject] public ToastService ToastService { set; get; }
+    public UserLoginResponse? UserLogin { get; set; }
 
-    [Inject] public ILogger<Default> Logger { get; set; }
-    [Inject(Key = ErrorMessageExtension.ErrorMessageFactoryKey)] public required Func<Exception, string[]> ErrorMessageFactory { get; set; }
-
-    [Parameter] public string? Route { get; set; }
-
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        await base.OnInitializedAsync();
         NavigationManager.LocationChanged += LocationChanged;
+        UserLogin = await AuthenticationStateTask.GetLogin();
     }
 
-    void LocationChanged(object sender, LocationChangedEventArgs e)
+    void LocationChanged(object? sender, LocationChangedEventArgs e)
     {
         StateHasChanged();
     }
@@ -55,15 +55,11 @@ public partial class Default : IDisposable
             return;
         }
 
-        try
-        {
-            var pageResponse = await PageClient.GetByUrlAsync(NavigationManager.Uri);
-            if (pageResponse.Data != null)
-                Page = pageResponse.Data;
-        }
-        catch
-        {
-        }
+        var pageClient = HttpClientFactory.CreateApiClient<PageClient>(UserLogin);
+        var pageResponse = await pageClient.GetByUrlAsync(NavigationManager.Uri);
+
+        if (pageResponse.Data != null)
+            Page = pageResponse.Data;
     }
 
     protected RenderFragment ChildComponents() => builder =>
@@ -184,19 +180,5 @@ public partial class Default : IDisposable
             .Union([typeof(SectionContent)])
             .FirstOrDefault(x => x.Name == typeName);
         return typeInfo;
-    }
-
-    private async Task OnError(Exception ex)
-    {
-        if (ToastService == null || ToastService.ToastProvider == null)
-        {
-            Logger.LogError(ex, "Toast Not Initialized");
-            return;
-        }
-        var message = ErrorMessageFactory.Invoke(ex);
-        foreach (var error in message)
-        {
-            ToastService!.ToastProvider!.Show(error, ToastType.Danger);
-        }
     }
 }
