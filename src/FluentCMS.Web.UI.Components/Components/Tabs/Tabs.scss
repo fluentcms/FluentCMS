@@ -1,7 +1,23 @@
 $tabs: $prefix + 'tabs';
 
 .#{$tabs} {
+    &:has(&-header) {
+        grid-template-areas: "header list" "panels panels";
+        grid-template-columns: 1fr auto;
+
+        @apply grid;
+    }
+
+    &-header {
+        grid-area: header;
+
+        @apply flex items-center border-b border-gray-200 dark:border-gray-700;
+    }
+
+
     &-list {
+        grid-area: list;
+
         @apply flex flex-wrap text-sm font-medium text-center text-gray-500 border-b border-gray-200 dark:text-gray-400 dark:border-gray-700;
     }
 
@@ -13,18 +29,22 @@ $tabs: $prefix + 'tabs';
         }
     }
 
+    &-panels {
+        grid-area: panels;
+    }
+
     &-tab {
         @apply me-2;
 
-        &-active-true > a {
+        &-active-true > button {
             @apply text-blue-600 border-blue-600 dark:text-blue-500 dark:border-blue-500;
         }
 
-        &-disabled-true > a {
+        &-disabled-true > button {
             @apply text-gray-400 border-b-0 cursor-not-allowed dark:text-gray-500;
         }
 
-        & > a {
+        & > button {
             @apply inline-block p-4 border-b-2 cursor-pointer border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300;
         }
     }
