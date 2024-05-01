@@ -27,20 +27,18 @@
                                 </Typography>
                                 <Spacer />
                             }
-                            <Stack Justify="StackJustify.End">
-                                <ButtonGroup>
-                                    <Button id="settingsCancelButton" 
-                                            OnClick="GoBack">
-                                        Cancel
-                                    </Button>
-                                    <Button id="settingsSubmitButton" 
-                                            Color="Color.Primary"
-                                            Type="ButtonType.Submit">
-                                        Save
-                                    </Button>
-                                </ButtonGroup>
-                            </Stack>
                         </CardBody>
+                        <CardActions>
+                            <Button id="settingsCancelButton" 
+                                    OnClick="GoBack">
+                                Cancel
+                            </Button>
+                            <Button id="settingsSubmitButton" 
+                                    Color="Color.Primary"
+                                    Type="ButtonType.Submit">
+                                Save
+                            </Button>
+                        </CardActions>
                     </Card>
                 </Form>
             </GridItem>

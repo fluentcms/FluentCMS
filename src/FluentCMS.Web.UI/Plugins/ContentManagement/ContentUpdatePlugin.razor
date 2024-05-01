@@ -21,20 +21,18 @@
                                        ValueChanged="x => Model.Value![field.Slug!] = x"
                                        />
                             }
-                            <Stack Justify="StackJustify.End">
-                                <ButtonGroup>
-                                    <Button id="contentUpdateCancelButton"
-                                            OnClick="GoBack">
-                                        Cancel
-                                    </Button>
-                                    <Button Color="Color.Primary"
-                                            id="contentUpdateSubmitButton"
-                                            Type="ButtonType.Submit">
-                                        Save
-                                    </Button>
-                                </ButtonGroup>
-                            </Stack>
                         </CardBody>
+                        <CardActions>
+                            <Button id="contentUpdateCancelButton"
+                                    OnClick="GoBack">
+                                Cancel
+                            </Button>
+                            <Button Color="Color.Primary"
+                                    id="contentUpdateSubmitButton"
+                                    Type="ButtonType.Submit">
+                                Save
+                            </Button>
+                        </CardActions>
                     </Card>
                 </Form>
             }
