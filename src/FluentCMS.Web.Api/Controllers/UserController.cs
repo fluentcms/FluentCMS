@@ -19,7 +19,7 @@ public class UserController(IUserService userService, IRoleService roleService, 
         foreach (var userResponse in usersResponse)
         {
             var userRoles = userResponse.Roles.Select(r => r.Id).ToList();
-            userResponse.Roles = mapper.Map<List<RoleSimpleResponse>>(userRoles);
+            userResponse.Roles = mapper.Map<List<RoleDetailResponse>>(userRoles);
         }
 
         return OkPaged(usersResponse);
@@ -60,10 +60,10 @@ public class UserController(IUserService userService, IRoleService roleService, 
         return Ok(userResponse);
     }
 
-    private async Task<List<RoleSimpleResponse>> GetUsersRoles(User user, CancellationToken cancellationToken = default)
+    private async Task<List<RoleDetailResponse>> GetUsersRoles(User user, CancellationToken cancellationToken = default)
     {
         var roles = await roleService.GetAll(cancellationToken);
         var userRoles = roles.Where(r => user.RoleIds.Contains(r.Id)).ToList();
-        return mapper.Map<List<RoleSimpleResponse>>(userRoles);
+        return mapper.Map<List<RoleDetailResponse>>(userRoles);
     }
 }
