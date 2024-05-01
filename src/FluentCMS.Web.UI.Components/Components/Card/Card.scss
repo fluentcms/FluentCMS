@@ -20,10 +20,10 @@ $card: $prefix + 'card';
     }
 
     &-actions {
-        @apply p-3 flex gap-2 items-center justify-end;
+        @apply px-3 pb-3 flex gap-2 items-center justify-end;
 
         @screen sm {
-            @apply p-4;
+            @apply px-4 pb-4;
         }
     }
 }
