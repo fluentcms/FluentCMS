@@ -11,14 +11,12 @@
                         <CardBody>
                             <Grid Gutter="GridGutter.Medium">
                                 <GridItem Small="GridItemColumn.Twelve">
-
                                     <Input @bind-Value="Model.Name"
                                         Id="apiTokenCreateNameInput"
                                         Label="Name"
                                         Name="Name"
                                         Placeholder="Enter Name..." />
                                 </GridItem>
-
                                 <GridItem Small="GridItemColumn.Twelve">
                                     <Textarea @bind-Value="Model.Description"
                                             Id="apiTokenCreateDescriptionInput"
@@ -26,7 +24,6 @@
                                             Name="Description"
                                             Placeholder="Enter Description..." />
                                 </GridItem>
-
                                 <GridItem Small="GridItemColumn.Twelve">
                                     <Select @bind-Value="Model.Duration"
                                             Id="apiTokenCreateDurationInput"
@@ -41,7 +38,6 @@
                                     </Select>
                                 </GridItem>
                             </Grid>
-
                             <div>
                                 <Typography Size="TextSize.Small"
                                             Weight="TextWeight.Medium">
@@ -179,12 +175,13 @@
     {
         try
         {
-            @* var newApiToken = await ApiTokenClient.CreateAsync(Model);
-            Message = "Done!";
-            if (newApiToken?.Data?.Id != null)
-            {
-                GoBack();
-            } *@
+            // TODO: Enable after adding api
+            // var newApiToken = await ApiTokenClient.CreateAsync(Model);
+            // Message = "Done!";
+            // if (newApiToken?.Data?.Id != null)
+            // {
+            //     GoBack();
+            // }
         }
         catch (Exception ex)
         {

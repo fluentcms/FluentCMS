@@ -1,5 +1,7 @@
+<!-- TODO: Enable commented codes after adding the api  -->
 <Page>
-    <PageHeader HasBack="false" Title="API Token List">
+    <PageHeader HasBack="false" 
+                Title="API Token List (Draft)">
         <PageHeaderActions>
             <ButtonGroup>
                 <Button autofocus="true"
@@ -105,7 +107,6 @@
         if (!result) return;
 
         // @* await ApiTokenClient.DeleteAsync(token.Id); *@
-
         // @* await Load(); *@
     }
 
@@ -113,16 +114,17 @@
     protected override async Task OnInitializedAsync()
     {
         // TODO: ApiTokenClient
-        var response = await UserClient!.GetAllAsync();
+        // var response = await ApiTokenClient!.GetAllAsync();
 
-        if (response?.Data != null)
-        {
-            // Tokens = []; //response.Data.ToList();
-        }
+        // if (response?.Data != null)
+        // {
+        //     Tokens = []; //response.Data.ToList();
+        // }
     }
 
     async Task TableRowDefaultAction(object token) 
     {
+        // TODO: use token.id instead of 123 after adding Api
         var url = NavigationManager.Plugin("Api Token Management", "Update Api Token", new { id= "123" });
         NavigationManager.NavigateTo(url);
     }

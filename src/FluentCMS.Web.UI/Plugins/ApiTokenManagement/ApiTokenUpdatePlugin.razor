@@ -1,3 +1,4 @@
+<!-- TODO: Enable commented codes after adding the api  -->
 <Page>
     <PageHeader HasBack="true"
                 Title="Update API Token">
@@ -11,14 +12,12 @@
                         <CardBody>
                             <Grid Gutter="GridGutter.Medium">
                                 <GridItem Small="GridItemColumn.Twelve">
-
                                     <Input @bind-Value="Model.Name"
                                         Id="apiTokenUpdateNameInput"
                                         Label="Name"
                                         Name="Name"
                                         Placeholder="Enter Name..." />
                                 </GridItem>
-
                                 <GridItem Small="GridItemColumn.Twelve">
                                     <Textarea @bind-Value="Model.Description"
                                             Id="apiTokenUpdateDescriptionInput"
@@ -26,7 +25,6 @@
                                             Name="Description"
                                             Placeholder="Enter Description..." />
                                 </GridItem>
-
                                 <GridItem Small="GridItemColumn.Twelve">
                                     <Select @bind-Value="Model.Duration"
                                             Id="apiTokenUpdateDurationInput"
@@ -41,13 +39,11 @@
                                     </Select>
                                 </GridItem>
                             </Grid>
-
                             <div>
                                 <Typography Size="TextSize.Small"
                                             Weight="TextWeight.Medium">
                                     Permissions
                                 </Typography>
-
                                 <Spacer Size="SpacerSize.Small"/>
                                 <div>
                                     @foreach(var permission in Permissions)
@@ -74,7 +70,6 @@
                                     }
                                 </div>
                             </div>
-                        
                             <Spacer />
                             @if (!string.IsNullOrEmpty(Message))
                             {
@@ -194,7 +189,7 @@
             // Message = "Done!";
             // if (newApiToken?.Data?.Id != null)
             // {
-            //     GoBack();
+                GoBack();
             // } *@
         }
         catch (Exception ex)
