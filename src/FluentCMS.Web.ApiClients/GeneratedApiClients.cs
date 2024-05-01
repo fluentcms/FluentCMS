@@ -7376,6 +7376,24 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RoleSimpleResponse
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        public string? Name { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+        public string? Description { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("policies")]
+        public System.Collections.Generic.ICollection<Policy>? Policies { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RoleUpdateRequest
     {
 
@@ -7757,6 +7775,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("enabled")]
         public bool Enabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("roles")]
+        public System.Collections.Generic.ICollection<RoleSimpleResponse>? Roles { get; set; } = default!;
 
     }
 
