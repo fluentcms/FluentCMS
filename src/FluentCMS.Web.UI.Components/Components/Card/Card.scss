@@ -18,4 +18,12 @@ $card: $prefix + 'card';
     &-title {
         @apply text-2xl font-bold text-gray-900 dark:text-white;
     }
+
+    &-actions {
+        @apply p-3 flex gap-2 items-center justify-end;
+
+        @screen sm {
+            @apply p-4;
+        }
+    }
 }
