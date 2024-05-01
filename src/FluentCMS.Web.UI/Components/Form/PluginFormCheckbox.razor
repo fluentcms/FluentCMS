@@ -1,0 +1,22 @@
+﻿@inherits Checkbox
+
+@namespace FluentCMS.Web.UI
+
+<PluginFormField Col="Col">
+    <Checkbox @attributes="AdditionalAttributes"
+              @bind-Value="Value"
+              Dense="@Dense"
+              Disabled="@Disabled"
+              Hint="@Hint"
+              Id="@Id"
+              Label="@Label"
+              LabelFragment="@LabelFragment"
+              Name="@Name"
+              Required="@Required" />
+</PluginFormField>
+
+@code {
+    [Parameter]
+    [CSSProperty]
+    public PluginFormFieldColumn Col { get; set; } = PluginFormFieldColumn.Twelve;
+}
