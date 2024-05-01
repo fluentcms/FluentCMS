@@ -70,26 +70,25 @@
                                 </Card>
                                 <Spacer />
                             </div>
-                            <Spacer/>
                             @if(!string.IsNullOrEmpty(Message))
                             {
+                                <Spacer/>
                                 <Typography>
                                     @Message
                                 </Typography>
-                                <Spacer/>
                             }
-                            <ButtonGroup>
-                                <Button id="roleUpdateCancelButton" 
-                                        OnClick="GoBack">
-                                    Cancel
-                                </Button>
-                                <Button Color="Color.Primary"
-                                        id="roleUpdateSubmitButton"
-                                        Type="ButtonType.Submit" >
-                                    Submit
-                                </Button>
-                            </ButtonGroup>
                         </CardBody>
+                        <CardActions>
+                            <Button id="roleUpdateCancelButton" 
+                                    OnClick="GoBack">
+                                Cancel
+                            </Button>
+                            <Button Color="Color.Primary"
+                                    id="roleUpdateSubmitButton"
+                                    Type="ButtonType.Submit" >
+                                Submit
+                            </Button>
+                        </CardActions>
                     </Card>
                 </Form>
             </GridItem>

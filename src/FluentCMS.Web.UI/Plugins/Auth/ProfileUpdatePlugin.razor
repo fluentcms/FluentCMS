@@ -16,26 +16,25 @@
                                    Placeholder="Enter Profile Email..."
                                    Required="true" />
                             @*Disabled="true"*@
-                            <Spacer />
                             @if (!string.IsNullOrEmpty(Message))
                             {
+                                <Spacer />
                                 <Typography>
                                     @Message
                                 </Typography>
-                                <Spacer />
                             }
-                            <ButtonGroup>
-                                <Button id="appUpdateCancelButton"
-                                        OnClick="GoBack">
-                                    Cancel
-                                </Button>
-                                <Button Color="Color.Primary"
-                                        id="appUpdateSubmitButton"
-                                        Type="ButtonType.Submit">
-                                    Submit
-                                </Button>
-                            </ButtonGroup>
                         </CardBody>
+                        <CardActions>
+                            <Button id="appUpdateCancelButton"
+                                    OnClick="GoBack">
+                                Cancel
+                            </Button>
+                            <Button Color="Color.Primary"
+                                    id="appUpdateSubmitButton"
+                                    Type="ButtonType.Submit">
+                                Submit
+                            </Button>
+                        </CardActions>
                     </Card>
                 </Form>
             </GridItem>
@@ -67,20 +66,21 @@
                                            Type="InputType.Password" />
                                 </GridItem>
                             </Grid>
+                            @if (!string.IsNullOrEmpty(Message))
+                            {
+                                <Spacer />
+                                <Typography>
+                                    @Message
+                                </Typography>
+                            }
+                        </CardBody>
+                        <CardActions>
                             <Button Color="Color.Primary" 
                                     id="changePasswordSubmitButton"
                                     Type="ButtonType.Submit">
                                 Change password
                             </Button>
-                            <Spacer />
-                            @if (!string.IsNullOrEmpty(Message))
-                            {
-                                <Typography>
-                                    @Message
-                                </Typography>
-                                <Spacer />
-                            }
-                        </CardBody>
+                        </CardActions>
                     </Card>
                 </Form>
             </GridItem>
