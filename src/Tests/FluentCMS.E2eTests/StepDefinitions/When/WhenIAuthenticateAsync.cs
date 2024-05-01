@@ -15,12 +15,11 @@ public partial class StepDefinitions
         {
             var response = await accountClient.AuthenticateAsync(authBody);
             context.Set(response);
-            context.Set(response.Errors);
         }
         catch (ApiClientException e)
         {
             // todo: fetch error messages
-            context.Set(e.Data.Errors);
+            context.Set(e);
         }
     }
 }
