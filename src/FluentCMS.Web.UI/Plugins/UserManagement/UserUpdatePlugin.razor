@@ -1,13 +1,13 @@
 ﻿@inherits BasePlugin
 
-<PluginForm Model="@Model" OnSubmit="OnSubmit">
-    <InputCheckbox @bind-Value="Model.Enabled" /> <label>Enabled</label>
-    <InputText @bind-Value="Model.FirstName" Placeholder="Enter FirstName..." />
-    <InputText @bind-Value="Model.LastName" Placeholder="Enter LastName..." />
-    <InputText @bind-Value="Model.PhoneNumber" placeholder="Enter Phone Number..." />
-    <InputText @bind-Value="User.Username" Placeholder="Enter Username..." />
-    <InputText @bind-Value="Model.Email" Placeholder="name@example.com" />
-    <ValidationMessage For="()=>Model.Email" />
+<PluginForm Model="@Model" Title="Update User" OnSubmit="OnSubmit">
+    <PluginFormCheckbox @bind-Value="Model.Enabled" Label="Enabled" />
+    <PluginFormInput @bind-Value="Model.FirstName" Placeholder="Enter FirstName..." />
+    <PluginFormInput @bind-Value="Model.LastName" Placeholder="Enter LastName..." />
+    <PluginFormInput @bind-Value="Model.PhoneNumber" placeholder="Enter Phone Number..." />
+    <PluginFormInput @bind-Value="User.Username" Placeholder="Enter Username..." />
+    <PluginFormInput @bind-Value="Model.Email" Placeholder="name@example.com" />
+    <ValidationMessage For="() => Model.Email" />
     <PluginFormActions>
         <Button Color="Color.Primary" Type="ButtonType.Submit">
             Submit
