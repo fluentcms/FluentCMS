@@ -62,6 +62,13 @@ public class MappingProfile : Profile
 
         #endregion
 
+        #region API Token
+
+        CreateMap<ApiTokenCreateRequest, ApiToken>();
+        CreateMap<ApiToken, ApiTokenDetailResponse>();
+
+        #endregion
+
         #region ContentType
 
         CreateMap<ContentTypeCreateRequest, ContentType>();
