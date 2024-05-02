@@ -1,13 +1,15 @@
-﻿namespace FluentCMS.Web.Api.Models.Users;
+﻿namespace FluentCMS.Web.Api.Models;
 
 public class UserValidatePasswordResetTokenRequest
 {
     [Required]
     [EmailAddress]
-    public string Email { get; set; } = string.Empty;
-    [Required]
-    public string Token { get; set; } = string.Empty;
+    public string Email { get; set; } = default!;
 
     [Required]
-    public string NewPassword { get; set; } = string.Empty;
+    public string Token { get; set; } = default!;
+
+
+    [Required]
+    public string NewPassword { get; set; } = default!;
 }
