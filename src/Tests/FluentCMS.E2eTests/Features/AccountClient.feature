@@ -49,6 +49,17 @@ Feature: Account Client
         Then Response Errors Should be Empty
         Then I Should Have a Token
 
-@RequiresRegisteredUser
-Scenario: Register and Authenticate and Change Password
-
+    @RequiresAuthenticatedAdmin
+    Scenario: Change Password
+        Given I have a dto "UserChangePasswordRequest"
+          | field       | value        |
+          | OldPassword | Passw0rd!    |
+          | NewPassword | NewPassw0rd! |
+        When I ChangePassword
+        Then Response Errors Should be Empty
+        Given I have Credentials
+          | field    | value        |
+          | username | superadmin   |
+          | password | NewPassw0rd! |
+        When I Authenticate
+        Then Response Errors Should be Empty
