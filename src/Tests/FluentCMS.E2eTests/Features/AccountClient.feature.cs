@@ -80,12 +80,12 @@ namespace FluentCMS.E2eTests.Features
         public virtual void FeatureBackground()
         {
 #line 4
-#line hidden
+    #line hidden
 #line 5
- testRunner.Given("I have a \"SetupClient\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+        testRunner.Given("I have a \"SetupClient\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 6
- testRunner.Given("I have an \"AccountClient\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+        testRunner.Given("I have an \"AccountClient\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
         }
         
@@ -103,7 +103,7 @@ namespace FluentCMS.E2eTests.Features
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Authenticate with Valid Credentials", null, tagsOfScenario, argumentsOfScenario, featureTags);
 #line 8
-this.ScenarioInitialize(scenarioInfo);
+    this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -113,7 +113,7 @@ this.ScenarioInitialize(scenarioInfo);
             {
                 this.ScenarioStart();
 #line 4
-this.FeatureBackground();
+    this.FeatureBackground();
 #line hidden
                 TechTalk.SpecFlow.Table table1 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
@@ -125,16 +125,16 @@ this.FeatureBackground();
                             "password",
                             "Passw0rd!"});
 #line 9
- testRunner.Given("I have Credentials", ((string)(null)), table1, "Given ");
+        testRunner.Given("I have Credentials", ((string)(null)), table1, "Given ");
 #line hidden
 #line 13
- testRunner.When("I Authenticate", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+        testRunner.When("I Authenticate", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 14
- testRunner.Then("Response Errors Should be Empty", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+        testRunner.Then("Response Errors Should be Empty", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
 #line 15
- testRunner.Then("I Should Have a Token", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+        testRunner.Then("I Should Have a Token", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
@@ -148,8 +148,8 @@ this.FeatureBackground();
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Authenticate with Invalid Credentials", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 18
-this.ScenarioInitialize(scenarioInfo);
+#line 17
+    this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -159,7 +159,7 @@ this.ScenarioInitialize(scenarioInfo);
             {
                 this.ScenarioStart();
 #line 4
-this.FeatureBackground();
+    this.FeatureBackground();
 #line hidden
                 TechTalk.SpecFlow.Table table2 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
@@ -170,14 +170,14 @@ this.FeatureBackground();
                 table2.AddRow(new string[] {
                             "password",
                             "InvalidPassw0rd!"});
-#line 19
- testRunner.Given("I have Credentials", ((string)(null)), table2, "Given ");
+#line 18
+        testRunner.Given("I have Credentials", ((string)(null)), table2, "Given ");
+#line hidden
+#line 22
+        testRunner.When("I Authenticate", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 23
- testRunner.When("I Authenticate", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
-#line hidden
-#line 24
- testRunner.Then("Response Errors Should not be Empty", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+        testRunner.Then("Response Errors Should not be Empty", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
@@ -191,8 +191,8 @@ this.FeatureBackground();
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Register", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 26
-this.ScenarioInitialize(scenarioInfo);
+#line 25
+    this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -202,7 +202,7 @@ this.ScenarioInitialize(scenarioInfo);
             {
                 this.ScenarioStart();
 #line 4
-this.FeatureBackground();
+    this.FeatureBackground();
 #line hidden
                 TechTalk.SpecFlow.Table table3 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
@@ -214,16 +214,19 @@ this.FeatureBackground();
                             "password",
                             "DummyPassw0rd!"});
                 table3.AddRow(new string[] {
+                            "confirmpassword",
+                            "DummyPassw0rd!"});
+                table3.AddRow(new string[] {
                             "email",
                             "DummyUser@localhost"});
-#line 27
- testRunner.Given("I have Credentials", ((string)(null)), table3, "Given ");
+#line 26
+        testRunner.Given("I have Credentials", ((string)(null)), table3, "Given ");
 #line hidden
 #line 32
- testRunner.When("I Register", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+        testRunner.When("I Register", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 33
- testRunner.Then("Response Errors Should be Empty", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+        testRunner.Then("Response Errors Should be Empty", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
@@ -232,15 +235,13 @@ this.FeatureBackground();
         [Xunit.SkippableFactAttribute(DisplayName="Register and Authenticate")]
         [Xunit.TraitAttribute("FeatureTitle", "Account Client")]
         [Xunit.TraitAttribute("Description", "Register and Authenticate")]
-        [Xunit.TraitAttribute("Category", "RequiresRegisteredUser")]
         public void RegisterAndAuthenticate()
         {
-            string[] tagsOfScenario = new string[] {
-                    "RequiresRegisteredUser"};
+            string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Register and Authenticate", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 36
-this.ScenarioInitialize(scenarioInfo);
+#line 35
+    this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -250,24 +251,69 @@ this.ScenarioInitialize(scenarioInfo);
             {
                 this.ScenarioStart();
 #line 4
-this.FeatureBackground();
+    this.FeatureBackground();
+#line hidden
+                TechTalk.SpecFlow.Table table4 = new TechTalk.SpecFlow.Table(new string[] {
+                            "field",
+                            "value"});
+                table4.AddRow(new string[] {
+                            "username",
+                            "DummyUser"});
+                table4.AddRow(new string[] {
+                            "password",
+                            "DummyPassw0rd!"});
+                table4.AddRow(new string[] {
+                            "confirmpassword",
+                            "DummyPassw0rd!"});
+                table4.AddRow(new string[] {
+                            "email",
+                            "DummyUser@localhost"});
+#line 36
+        testRunner.Given("I have Credentials", ((string)(null)), table4, "Given ");
+#line hidden
+#line 42
+        testRunner.When("I Register", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 43
+        testRunner.Then("Response Errors Should be Empty", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+                TechTalk.SpecFlow.Table table5 = new TechTalk.SpecFlow.Table(new string[] {
+                            "field",
+                            "value"});
+                table5.AddRow(new string[] {
+                            "username",
+                            "DummyUser"});
+                table5.AddRow(new string[] {
+                            "password",
+                            "DummyPassw0rd!"});
+#line 44
+        testRunner.Given("I have Credentials", ((string)(null)), table5, "Given ");
+#line hidden
+#line 48
+        testRunner.When("I Authenticate", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 49
+        testRunner.Then("Response Errors Should be Empty", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 50
+        testRunner.Then("I Should Have a Token", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Register and Authenticate and Change Password")]
+        [Xunit.SkippableFactAttribute(DisplayName="Change Password")]
         [Xunit.TraitAttribute("FeatureTitle", "Account Client")]
-        [Xunit.TraitAttribute("Description", "Register and Authenticate and Change Password")]
-        [Xunit.TraitAttribute("Category", "RequiresRegisteredUser")]
-        public void RegisterAndAuthenticateAndChangePassword()
+        [Xunit.TraitAttribute("Description", "Change Password")]
+        [Xunit.TraitAttribute("Category", "RequiresAuthenticatedAdmin")]
+        public void ChangePassword()
         {
             string[] tagsOfScenario = new string[] {
-                    "RequiresRegisteredUser"};
+                    "RequiresAuthenticatedAdmin"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Register and Authenticate and Change Password", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 40
-this.ScenarioInitialize(scenarioInfo);
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Change Password", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 53
+    this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -277,7 +323,43 @@ this.ScenarioInitialize(scenarioInfo);
             {
                 this.ScenarioStart();
 #line 4
-this.FeatureBackground();
+    this.FeatureBackground();
+#line hidden
+                TechTalk.SpecFlow.Table table6 = new TechTalk.SpecFlow.Table(new string[] {
+                            "field",
+                            "value"});
+                table6.AddRow(new string[] {
+                            "OldPassword",
+                            "Passw0rd!"});
+                table6.AddRow(new string[] {
+                            "NewPassword",
+                            "NewPassw0rd!"});
+#line 54
+        testRunner.Given("I have a dto \"UserChangePasswordRequest\"", ((string)(null)), table6, "Given ");
+#line hidden
+#line 58
+        testRunner.When("I ChangePassword", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 59
+        testRunner.Then("Response Errors Should be Empty", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+                TechTalk.SpecFlow.Table table7 = new TechTalk.SpecFlow.Table(new string[] {
+                            "field",
+                            "value"});
+                table7.AddRow(new string[] {
+                            "username",
+                            "superadmin"});
+                table7.AddRow(new string[] {
+                            "password",
+                            "NewPassw0rd!"});
+#line 60
+        testRunner.Given("I have Credentials", ((string)(null)), table7, "Given ");
+#line hidden
+#line 64
+        testRunner.When("I Authenticate", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 65
+        testRunner.Then("Response Errors Should be Empty", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
