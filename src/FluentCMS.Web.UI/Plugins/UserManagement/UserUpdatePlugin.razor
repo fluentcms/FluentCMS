@@ -1,106 +1,16 @@
-﻿<Page>
-    <PageHeader HasBack="true"
-                Title="Update User">
-    </PageHeader>
-    <PageBody>
-        <Grid Gutter="GridGutter.Medium">
-            <GridItem Small="GridItemColumn.Twelve">
-                <Form Model="@Model"
-                      OnSubmit="OnSubmit">
-                    <Card>
-                        <CardBody>
-                            <Input Value="@View.Username"
-                                   Label="Username"
-                                   Name="Username"
-                                   Placeholder="username"
-                                   Disabled="true"
-                                   Required="true"/>
-                            <Input @bind-Value="Model.Email"
-                                   Id="userUpdateEmailInput"
-                                   Label="Email"
-                                   Name="Email"
-                                   Placeholder="name@example.com"
-                                   Required="true" />
+@inherits BasePlugin
 
-                            <Spacer/>
-                            @if(!string.IsNullOrEmpty(Message))
-                            {
-                                <Typography>
-                                    @Message
-                                </Typography>
-                                <Spacer/>
-                            }
-                            <ButtonGroup>
-                                <Button Id="userUpdateCancelButton" 
-                                        OnClick="GoBack">
-                                    Cancel
-                                </Button>
-                                <Button Color="Color.Primary"
-                                        Id="userUpdateSubmitButton" 
-                                        Type="ButtonType.Submit" >
-                                    Submit
-                                </Button>
-                            </ButtonGroup>
-                        </CardBody>
-                    </Card>
-                </Form>
-            </GridItem>
-        </Grid>
-    </PageBody>
-</Page>
-
-@code {
-    [Inject]
-    IJSRuntime JsRuntime { set; get; } = default!;
-
-    [Inject]
-    NavigationManager NavigationManager { set; get; } = default!;
-
-    [Inject]
-    UserClient UserClient { get; set; } = default!;
-
-    Guid? Id { get; set; }
-
-    string Message { get; set; } = string.Empty;
-
-    UserUpdateRequest Model { get; set; } = new();
-
-    UserDetailResponse View { get; set; } = new();
-
-    async Task GoBack()
-    {
-        await JsRuntime.InvokeAsync<object>("history.back");
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-
-        var userId = NavigationManager.GetIdFromQuery();
-        if (userId != null)
-            try
-            {
-                View = (await UserClient.GetAsync(userId.Value)).Data;
-                Model.Id = userId.Value;
-                Model.Email = View.Email;
-            }
-            catch (Exception)
-            {
-                Message = "An error occured!";
-            }
-    }
-
-    async Task OnSubmit()
-    {
-        try
-        {
-            await UserClient.UpdateAsync(Model);
-            Message = "Done!";
-            GoBack();
-        }
-        catch (Exception exception)
-        {
-            Message = exception.ToString();
-        }
-
-    }
-}
+<PluginForm Model="@Model" OnSubmit="OnSubmit">
+    <InputCheckbox @bind-Value="Model.Enabled" id="userUpdateEnabledInput"/> <label>Enabled</label>
+    <InputText @bind-Value="Model.FirstName" id="userUpdateFirstNameInput" Placeholder="Enter FirstName..." />
+    <InputText @bind-Value="Model.LastName" id="userUpdateLastNameInput" Placeholder="Enter LastName..." />
+    <InputText @bind-Value="Model.PhoneNumber" id="userUpdatePhoneNumberInput" placeholder="Enter Phone Number..." />
+    <InputText @bind-Value="User.Username" id="userUpdateUsernameInput" Placeholder="Enter Username..." />
+    <InputText @bind-Value="Model.Email" id="userUpdateEmailInput" Placeholder="name@example.com" />
+    <ValidationMessage For="()=>Model.Email" />
+    <PluginFormActions>
+        <Button Color="Color.Primary" id="userUpdateSubmitButton" Type="ButtonType.Submit">
+            Submit
+        </Button>
+    </PluginFormActions>
+</PluginForm>

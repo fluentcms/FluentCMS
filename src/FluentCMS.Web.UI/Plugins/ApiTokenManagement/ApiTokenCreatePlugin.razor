@@ -1,0 +1,189 @@
+<Page>
+    <PageHeader HasBack="true"
+                Title="Create API Token">
+    </PageHeader>
+    <PageBody>
+        <Grid Gutter="GridGutter.Medium">
+            <GridItem Small="GridItemColumn.Twelve">
+                <Form Model="@Model"
+                      OnSubmit="OnSubmit">
+                    <Card>
+                        <CardBody>
+                            <Grid Gutter="GridGutter.Medium">
+                                <GridItem Small="GridItemColumn.Twelve">
+                                    <Input @bind-Value="Model.Name"
+                                        Id="apiTokenCreateNameInput"
+                                        Label="Name"
+                                        Name="Name"
+                                        Placeholder="Enter Name..." />
+                                </GridItem>
+                                <GridItem Small="GridItemColumn.Twelve">
+                                    <Textarea @bind-Value="Model.Description"
+                                            Id="apiTokenCreateDescriptionInput"
+                                            Label="Description"
+                                            Name="Description"
+                                            Placeholder="Enter Description..." />
+                                </GridItem>
+                                <GridItem Small="GridItemColumn.Twelve">
+                                    <Select @bind-Value="Model.Duration"
+                                            Id="apiTokenCreateDurationInput"
+                                            Label="Duration"
+                                            Name="Duration"
+                                            Placeholder="Choose Duration...">
+                                        <Option Value="30">One Month</Option>
+                                        <Option Value="90">Three Month</Option>
+                                        <Option Value="180">Six Month</Option>
+                                        <Option Value="365">One Year</Option>
+                                        <Option Value="0">Unlimited</Option>
+                                    </Select>
+                                </GridItem>
+                            </Grid>
+                            <div>
+                                <Typography Size="TextSize.Small"
+                                            Weight="TextWeight.Medium">
+                                    Permissions
+                                </Typography>
+                                <Spacer Size="SpacerSize.Small"/>
+                                <div>
+                                    @foreach(var permission in Permissions)
+                                    {
+                                        <Accordion Summary="@permission.Title">
+                                            @foreach(var item in permission.Body)
+                                            {
+                                                @if(!string.IsNullOrEmpty(item.Title))
+                                                {
+                                                    <Divider Placement="DividerPlacement.Start">@item.Title</Divider>
+                                                }
+                                                <Grid>
+                                                    @foreach(var checkbox in item.Items)
+                                                    {
+                                                        <GridItem Small="GridItemColumn.Six">
+                                                            <Checkbox Dense="true"
+                                                                        Label="@checkbox"/>
+                                                            <Spacer Size="SpacerSize.Small"/>
+                                                        </GridItem>
+                                                    }
+                                                </Grid>
+                                            }
+                                        </Accordion>
+                                    }
+                                </div>
+                            </div>
+                            <Spacer />
+                            @if (!string.IsNullOrEmpty(Message))
+                            {
+                                <Typography>
+                                    @Message
+                                </Typography>
+                                <Spacer />
+                            }
+                            <Stack Justify="StackJustify.End">
+                                <ButtonGroup>
+                                    <Button id="apiToken CreateCancelButton"
+                                            OnClick="GoBack">
+                                        Cancel
+                                    </Button>
+                                    <Button id="apiToken CreateSubmitButton"
+                                            Color="Color.Primary"
+                                            Type="ButtonType.Submit">
+                                        Save
+                                    </Button>
+                                </ButtonGroup>
+                            </Stack>
+                        </CardBody>
+                    </Card>
+                    <Spacer/>
+                </Form>
+            </GridItem>
+        </Grid>
+    </PageBody>
+</Page>
+
+@code {
+    // TODO: Enable after adding API
+    // @* [Inject] *@
+    // @* ApiTokenClient ApiTokenClient { get; set; } = default!; *@
+
+    [Inject]
+    IJSRuntime JsRuntime { set; get; } = default!;
+
+    [Inject]
+    NavigationManager NavigationManager { set; get; } = default!;
+
+    string? Message { get; set; }
+
+    class TokenPermissionBody {
+        public string? Title {get; set;}
+        public List<string> Items {get; set;} = [];
+    }
+
+    class TokenPermission {
+        public string Title {get; set;}
+        public List<TokenPermissionBody> Body {get; set;} = [];
+    }
+
+    List<TokenPermission> Permissions = new List<TokenPermission> {
+        new TokenPermission {
+            Title = "Books",
+            Body = new List<TokenPermissionBody> {
+                new TokenPermissionBody {
+                    Items = new List<string> { "findOne", "findMany", "create", "update", "delete" }    
+                }
+            }
+        },
+        new TokenPermission {
+            Title = "Users",
+            Body = new List<TokenPermissionBody> {
+                new TokenPermissionBody {
+                    Items = new List<string> { "findOne", "findMany", "create", "update", "delete" }    
+                },
+                new TokenPermissionBody {
+                    Title = "Auth",
+                    Items = new List<string> { "login", "register", "reset" }    
+                },
+            }
+        },
+        new TokenPermission {
+            Title = "Email",
+            Body = new List<TokenPermissionBody> {
+                new TokenPermissionBody {
+                    Title = "Email",
+                    Items = new List<string> { "send" }    
+                }
+            }
+        },
+    };
+
+    class ApiTokenCreateRequest {
+        public string Name {get; set;}
+        public string Description {get; set;}
+        public string Duration {get; set;}
+        public string Type {get; set;}
+        public List<string> Permissions {get; set;}
+            
+    }
+    ApiTokenCreateRequest Model { get; set; } = new();
+
+    void GoBack()
+    {
+        NavigationManager.NavigateTo("/admin/api-tokens");
+    }
+
+    async Task OnSubmit()
+    {
+        try
+        {
+            // TODO: Enable after adding api
+            // var newApiToken = await ApiTokenClient.CreateAsync(Model);
+            // Message = "Done!";
+            // if (newApiToken?.Data?.Id != null)
+            // {
+            //     GoBack();
+            // }
+        }
+        catch (Exception ex)
+        {
+            Message = ex.ToString();
+        }
+    }
+}

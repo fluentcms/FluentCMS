@@ -1,10 +1,12 @@
 ﻿using FluentCMS.Web.Api.Setup;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Hosting;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class SetupController(SetupManager setupManager) : BaseGlobalController
+[AllowAnonymous]
+public class SetupController(SetupManager setupManager, IHostEnvironment hostEnvironment) : BaseGlobalController
 {
-
     [HttpGet]
     public async Task<IApiResult<bool>> IsInitialized()
     {
@@ -20,6 +22,9 @@ public class SetupController(SetupManager setupManager) : BaseGlobalController
     [HttpPost]
     public async Task<IApiResult<bool>> Reset()
     {
+        if (!hostEnvironment.IsStaging())
+            throw new AppException(ExceptionCodes.SetupSettingsOnlyAvailableOnStagingEnvironment);
+
         await setupManager.Reset();
         return Ok(await setupManager.IsInitialized());
     }

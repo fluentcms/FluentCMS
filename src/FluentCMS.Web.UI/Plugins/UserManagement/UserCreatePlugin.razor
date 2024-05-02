@@ -1,89 +1,15 @@
-﻿<Page>
-    <PageHeader HasBack="true"
-                Title="Create User">
-    </PageHeader>
-    <PageBody>
-        <Grid Gutter="GridGutter.Medium">
-            <GridItem Small="GridItemColumn.Twelve">
-                <Form Model="@Model"
-                      OnSubmit="OnSubmit">
-                    <Card>
-                        <CardBody>
-                            <Input @bind-Value="Model.Username"
-                                   Id="userCreateUsernameInput"
-                                   Label="Username"
-                                   Name="Username"
-                                   Placeholder="Enter Username..."
-                                   Required="true"/>
-                            <Input @bind-Value="Model.Email"
-                                   Id="userCreateEmailInput"
-                                   Label="Email"
-                                   Name="Email"
-                                   Placeholder="Enter Email..."
-                                   Required="true" />
-                            <Input @bind-Value="Model.Password"
-                                   Id="userCreatePasswordInput"
-                                   Label="Password"
-                                   Name="Password"
-                                   Placeholder="Enter Password..."
-                                   Type="InputType.Password"/>
-                            <Spacer/>
-                            @if(!string.IsNullOrEmpty(Message))
-                            {
-                                <Typography>
-                                    @Message
-                                </Typography>
-                                <Spacer/>
-                            }
-                            <ButtonGroup>
-                                <Button Id="userCreateCancelButton"
-                                        OnClick="GoBack">
-                                    Cancel
-                                </Button>
-                                <Button Color="Color.Primary"
-                                        Id="userCreateSubmitButton"
-                                        Type="ButtonType.Submit">
-                                    Save
-                                </Button>
-                            </ButtonGroup>
-                        </CardBody>
-                    </Card>
-                </Form>
-            </GridItem>
-        </Grid>
-    </PageBody>
-</Page>
+﻿@inherits BasePlugin
 
-@code {
-    [Inject]
-    IJSRuntime JsRuntime { set; get; } = default!;
-
-    [Inject]
-    NavigationManager NavigationManager { set; get; } = default!;
-
-    [Inject]
-    UserClient UserClient { get; set; } = default!;
-
-    string? Message { get; set; }
-
-    UserCreateRequest Model { get; set; } = new();
-
-    async Task GoBack()
-    {
-        await JsRuntime.InvokeVoidAsync("history.back");
-    }
-
-    async Task OnSubmit()
-    {
-        try
-        {
-            var newUser = await UserClient.CreateAsync(Model);
-            Message = "Done!";
-            GoBack();
-        }
-        catch (Exception ex)
-        {
-            Message = ex.ToString();
-        }
-    }
-}
+<PluginForm Model="@Model" OnSubmit="OnSubmit" Name="@FORM_NAME">
+    <InputText @bind-Value="Model.FirstName" id="userCreateFirstNameInput" Placeholder="Enter FirstName..." />
+    <InputText @bind-Value="Model.LastName" id="userCreateLastNameInput" Placeholder="Enter LastName..." />
+    <InputText @bind-Value="Model.PhoneNumber" id="userCreatePhoneNumberInput" placeholder="Enter Phone Number..." />
+    <InputText @bind-Value="Model.Username" id="userCreateUsernameInput" placeholder="Enter Username..." />
+    <InputText @bind-Value="Model.Email" id="userCreateEmailInput" Placeholder="Enter Email..." />
+    <InputText @bind-Value="Model.Password" id="userCreatePasswordInput" Placeholder="Enter Password..." />
+    <PluginFormActions>
+        <Button Color="Color.Primary" id="userCreateSubmitButton" Type="ButtonType.Submit">
+            Save
+        </Button>
+    </PluginFormActions>
+</PluginForm>

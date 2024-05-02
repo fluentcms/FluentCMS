@@ -1,20 +1,21 @@
 ﻿@if (Page.Sections.ContainsKey(Name))
 {
-<div>
-    @foreach (var Plugin in Page.Sections[Name].OrderBy(p => p.Order))
-    {
-        <CascadingValue Value="@Page">
-            <CascadingValue Value="@Plugin">
-                <PluginContainer>
-                    <DynamicComponent Type=@GetType(Plugin) />
-                </PluginContainer>
+    <div>
+        @foreach (var Plugin in Page.Sections[Name].OrderBy(p => p.Order))
+        {
+            <CascadingValue Value="@Page">
+                <CascadingValue Value="@Plugin">
+                    <PluginContainer @key="@Plugin">
+                        <DynamicComponent Type=@GetType(Plugin)/>
+                    </PluginContainer>
+                </CascadingValue>
             </CascadingValue>
-        </CascadingValue>
-    }
-</div>
+        }
+    </div>
 }
 
 @code {
+
     [Parameter]
     public string Name { get; set; } = default!;
 
@@ -40,4 +41,5 @@
 
         return assembly.DefinedTypes.FirstOrDefault(x => x.Name == pluginDefType.Type);
     }
+
 }

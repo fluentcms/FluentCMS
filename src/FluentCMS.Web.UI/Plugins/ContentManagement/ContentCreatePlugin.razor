@@ -20,19 +20,18 @@
                                 Value="@(Model[field.Slug!] as string)"
                                 ValueChanged="str => Model[field.Slug!] = str"/>
                         }
-
-                        <ButtonGroup>
-                            <Button id="contentCreateCancelButton"
-                                    OnClick="GoBack">
-                                Cancel
-                            </Button>
-                            <Button Color="Color.Primary"
-                                    id="contentCreateSubmitButton"
-                                    Type="ButtonType.Submit">
-                                Save
-                            </Button>
-                        </ButtonGroup>
                     </CardBody>
+                    <CardActions>
+                        <Button id="contentCreateCancelButton"
+                                OnClick="GoBack">
+                            Cancel
+                        </Button>
+                        <Button Color="Color.Primary"
+                                id="contentCreateSubmitButton"
+                                Type="ButtonType.Submit">
+                            Save
+                        </Button>
+                    </CardActions>
                 </Card>
             </Form>
         </PageBody>

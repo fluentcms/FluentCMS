@@ -8,6 +8,7 @@ public interface IApiResult
     string UniqueId { get; set; }
     double Duration { get; set; }
     int Status { get; set; }
+    bool IsSuccess { get; set; }
 }
 public interface IApiResult<TData> : IApiResult
 {
@@ -23,6 +24,7 @@ public class ApiResult<TData> : IApiResult<TData>
     public double Duration { get; set; }
     public int Status { get; set; }
     public TData? Data { get; }
+    public bool IsSuccess { get; set; } = true;
 
     public ApiResult()
     {

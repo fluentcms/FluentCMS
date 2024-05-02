@@ -18,11 +18,42 @@ public static class ApiServiceExtensions
     {
         services.AddApplicationServices();
 
-        services.AddControllers(config =>
-        {
-            config.Filters.Add<ApiResultActionFilter>();
-            config.Filters.Add<ApiResultExceptionFilter>();
-        });
+        services
+            .AddControllers(config =>
+            {
+                config.Filters.Add<ApiResultActionFilter>();
+                config.Filters.Add<ApiResultExceptionFilter>();
+            })
+            .ConfigureApiBehaviorOptions(options =>
+            {
+                options.InvalidModelStateResponseFactory = (context) =>
+                {
+                    var apiExecutionContext = services.BuildServiceProvider().GetRequiredService<ApiExecutionContext>();
+                    var apiResult = new ApiResult<object>
+                    {
+                        Duration = (DateTime.UtcNow - apiExecutionContext.StartDate).TotalMilliseconds,
+                        SessionId = apiExecutionContext.SessionId,
+                        TraceId = apiExecutionContext.TraceId,
+                        UniqueId = apiExecutionContext.UniqueId,
+                        Status = 400,
+                        IsSuccess = false
+                    };
+
+                    foreach (var item in context.ModelState)
+                    {
+                        var errors = item.Value.Errors;
+                        if (errors?.Count > 0)
+                        {
+                            foreach (var error in errors)
+                            {
+                                apiResult.Errors.Add(new AppError { Code = item.Key, Description = error.ErrorMessage });
+                            }
+                        }
+                    }
+
+                    return new BadRequestObjectResult(apiResult);
+                };
+            });
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer((c) =>
@@ -64,8 +95,6 @@ public static class ApiServiceExtensions
     public static WebApplication UseApiService(this WebApplication app)
     {
         app.UseApiDocumentation();
-
-        app.UseAntiforgery();
 
         app.UseWhen(context => context.Request.Path.StartsWithSegments("/api"), app =>
         {

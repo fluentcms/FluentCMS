@@ -1,5 +1,5 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization;
-
+@using System.Security.Claims
 <AuthorizeView>
     <Authorized>
         @* TODO: remove classes *@
@@ -9,12 +9,12 @@
                   GutterX="GridGutter.Large">
                 <GridItem>
                     <Avatar>
-                        @context.User.Identity?.Name?.First()
+                        @context.User.FindFirstValue(ClaimTypes.NameIdentifier)?.First()
                     </Avatar>
                 </GridItem>
                 <GridItem>
                     <Typography Weight="TextWeight.SemiBold">
-                        @context.User.Identity?.Name.ToUpper()
+                        @context.User.FindFirstValue(ClaimTypes.NameIdentifier).ToUpper()
                     </Typography>
                 </GridItem>
             </Grid>
