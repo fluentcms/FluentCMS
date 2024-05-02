@@ -2,9 +2,18 @@
 
 <GridItem>
     <ButtonGroup>
-        <Button Href="@GetBackUrl()">
-            Cancel
-        </Button>
+        @if (Cancel ?? false)
+        {
+            <Button Href="@GetBackUrl()">
+                Cancel
+            </Button>
+        }
+        @if (Submit ?? false)
+        {
+            <Button Color="Color.Primary" Type="ButtonType.Submit">
+                Submit
+            </Button>
+        }
         @ChildContent
     </ButtonGroup>
 </GridItem>
