@@ -1,12 +1,10 @@
 ﻿namespace FluentCMS.Web.Api.Models;
 
-public class UserLoginRequest
+public class UserSetPasswordRequest
 {
     [Required]
-    public string Username { get; set; } = default!;
+    public Guid UserId { get; set; }
 
     [Required]
     public string Password { get; set; } = default!;
-
-    public bool RememberMe { get; set; }
 }

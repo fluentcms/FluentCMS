@@ -48,6 +48,15 @@ public class UserController(IUserService userService, IRoleService roleService, 
         return Ok(userResponse);
     }
 
+    [HttpPut]
+    [Policy(AREA, UPDATE)]
+    public async Task<IApiResult<bool>> SetPassword([FromBody] UserSetPasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await userService.GetById(request.UserId, cancellationToken);
+        await userService.ChangePassword(user, request.Password, cancellationToken);
+        return Ok(true);
+    }
+
     [HttpPost]
     [Policy(AREA, CREATE)]
     public async Task<IApiResult<UserDetailResponse>> Create([FromBody] UserCreateRequest request, CancellationToken cancellationToken = default)

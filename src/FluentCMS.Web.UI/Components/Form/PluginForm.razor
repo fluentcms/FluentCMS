@@ -1,8 +1,12 @@
-﻿<PluginView Title="@Title">
+﻿@namespace FluentCMS.Web.UI.Plugins.Components
+
+<PluginBody Title="@Title">
     <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="@Name" Enhance>
         <DataAnnotationsValidator />
         <Spacer />
-        @ChildContent
+        <Grid GutterX="GridGutter.Large">
+            @ChildContent
+        </Grid>
         <Spacer />
         @if (Errors.Count > 0)
         {
@@ -14,4 +18,4 @@
             </Alert>
         }
     </EditForm>
-</PluginView>
+</PluginBody>
