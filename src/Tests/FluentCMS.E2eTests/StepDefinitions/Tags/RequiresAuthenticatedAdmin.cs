@@ -1,7 +1,7 @@
 ﻿namespace FluentCMS.E2eTests.StepDefinitions;
 public partial class StepDefinitions
 {
-    [Before("RequiresAuthenticatedAdmin", Order = 25)]
+    [Before("RequiresAuthenticatedAdmin", Order = 30)]
     public async Task RequiresAuthenticatedAdmin()
     {
 
