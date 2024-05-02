@@ -17,6 +17,8 @@ public class UserCreateRequest
 
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
+
+    [Required]
     public bool Enabled { get; set; }
 
     [Required]
