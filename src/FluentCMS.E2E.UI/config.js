@@ -75,5 +75,25 @@ export default {
                 }
             }
         },
-    ]
+    ],
+    users: [
+        {
+            enabled: true,
+            firstName: 'John',
+            lastName: 'Doe',
+            phoneNumber: '+1234567890',
+            username: 'johndoe',
+            email: 'johndoe@example.com',
+            password: 'Passw0rd!',
+        },
+        {
+            enabled: true,
+            firstName: 'Jane',
+            lastName: 'Smith',
+            phoneNumber: '+0987654321',
+            username: 'janesmith',
+            email: 'janesmith@example.com',
+            password: 'Test123!',
+        }
+    ],
 }

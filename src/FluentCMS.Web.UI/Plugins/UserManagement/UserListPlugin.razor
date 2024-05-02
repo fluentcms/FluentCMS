@@ -17,7 +17,7 @@
             <TableCell>Phone</TableCell>
             <TableCell Width="TableColumnWidth.Small"></TableCell>
         </TableHead>
-        <TableBody>
+        <TableBody id="userListTable">
             @foreach (var user in Users)
             {
                 <TableRow>
@@ -31,7 +31,7 @@
                     <TableCell>@user.PhoneNumber</TableCell>
                     <TableCell>
                         <ButtonGroup>
-                            <Button Ghost="true" Href="@GetUrl("User Detail", new { id = user.Id })" Size="ButtonSize.Small">
+                            <Button data-test="preview-btn" Ghost="true" Href="@GetUrl("User Detail", new { id = user.Id })" Size="ButtonSize.Small">
                                 <Icon Name="IconName.Eye"/>
                             </Button>
                             <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
