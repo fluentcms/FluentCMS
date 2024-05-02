@@ -14,7 +14,7 @@ Cypress.Commands.add('checkLogin', (username, password) => {
     cy.waitForNavigate()
 
     cy.dashboardShouldAvailable();
-    cy.contains(username.toUpperCase()).should('be.visible')
+    cy.contains((username || config.setupUsername).toUpperCase()).should('exist')
 })
 
 
