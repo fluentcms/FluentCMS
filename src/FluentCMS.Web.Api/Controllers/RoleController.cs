@@ -1,9 +1,12 @@
 ﻿using FluentCMS.Web.Api.Attributes;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Routing;
 using System.Reflection;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class RoleController(IMapper mapper, IRoleService roleService) : BaseGlobalController
+public class RoleController(IMapper mapper, IRoleService roleService, IEnumerable<EndpointDataSource> endpointSources) : BaseGlobalController
 {
     public const string AREA = "Role Management";
     public const string READ = "Read";
@@ -49,30 +52,27 @@ public class RoleController(IMapper mapper, IRoleService roleService) : BaseGlob
     }
 
     [HttpGet]
-    public async Task<IApiPagingResult<Policy>> GetAvailablePolicies(CancellationToken cancellationToken = default)
+    [AllowAnonymous]
+    public async Task<IApiPagingResult<Policy>> GetPolicies(CancellationToken cancellationToken = default)
     {
-        // TODO: use api descriptor in api discovery 
         var policiesDict = new Dictionary<string, Policy>();
 
-        var assembly = GetType().Assembly;
-        var controllerTypes = assembly.GetTypes().Where(x => x.Name.EndsWith("Controller"));
-
-        foreach (var controllerType in controllerTypes)
+        var endpoints = endpointSources.SelectMany(es => es.Endpoints).OfType<RouteEndpoint>();
+        foreach (var endpoint in endpoints)
         {
-            foreach (var methodInfo in controllerType.GetMethods())
+            var actionDescriptor = endpoint.Metadata.OfType<ControllerActionDescriptor>().FirstOrDefault();
+            if (actionDescriptor == null)
+                continue;
+
+            var policyAttributes = actionDescriptor.MethodInfo.GetCustomAttributes<PolicyAttribute>(true);
+
+            foreach (var policyAttribute in policyAttributes)
             {
-                var customAttributes = methodInfo.GetCustomAttributes<PolicyAttribute>(true);
-                if (customAttributes == null)
-                    continue;
+                if (!policiesDict.ContainsKey(policyAttribute.Area))
+                    policiesDict.Add(policyAttribute.Area, new Policy { Area = policyAttribute.Area, Actions = [] });
 
-                foreach (var authorizeAttribute in customAttributes)
-                {
-                    if (!policiesDict.ContainsKey(authorizeAttribute.Area))
-                        policiesDict.Add(authorizeAttribute.Area, new Policy { Area = authorizeAttribute.Area, Actions = [] });
-
-                    if (!policiesDict[authorizeAttribute.Area].Actions.Where(x => x == authorizeAttribute.Action).Any())
-                        policiesDict[authorizeAttribute.Area].Actions.Add(authorizeAttribute.Action);
-                }
+                if (!policiesDict[policyAttribute.Area].Actions.Where(x => x == policyAttribute.Action).Any())
+                    policiesDict[policyAttribute.Area].Actions.Add(policyAttribute.Action);
             }
         }
 
