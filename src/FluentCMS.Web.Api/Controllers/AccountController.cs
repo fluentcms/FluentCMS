@@ -1,4 +1,3 @@
-using FluentCMS.Web.Api.Models.Users;
 using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
