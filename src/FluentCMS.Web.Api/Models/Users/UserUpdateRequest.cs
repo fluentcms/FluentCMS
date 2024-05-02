@@ -1,11 +1,21 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace FluentCMS.Web.Api.Models;
+﻿namespace FluentCMS.Web.Api.Models;
 
 public class UserUpdateRequest
 {
     [Required]
     public required Guid Id { get; set; }
+
     [Required]
+    [EmailAddress]
     public required string Email { get; set; }
+
+    [Phone]
+    public string? PhoneNumber { get; set; }
+
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public bool Enabled { get; set; }
+
+    [Required]
+    public List<Guid> RoleIds { get; set; } = [];
 }

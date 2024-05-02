@@ -16,26 +16,25 @@
                                    Placeholder="Enter Profile Email..."
                                    Required="true" />
                             @*Disabled="true"*@
-                            <Spacer />
                             @if (!string.IsNullOrEmpty(Message))
                             {
+                                <Spacer />
                                 <Typography>
                                     @Message
                                 </Typography>
-                                <Spacer />
                             }
-                            <ButtonGroup>
-                                <Button id="appUpdateCancelButton"
-                                        OnClick="GoBack">
-                                    Cancel
-                                </Button>
-                                <Button Color="Color.Primary"
-                                        id="appUpdateSubmitButton"
-                                        Type="ButtonType.Submit">
-                                    Submit
-                                </Button>
-                            </ButtonGroup>
                         </CardBody>
+                        <CardActions>
+                            <Button id="appUpdateCancelButton"
+                                    OnClick="GoBack">
+                                Cancel
+                            </Button>
+                            <Button Color="Color.Primary"
+                                    id="appUpdateSubmitButton"
+                                    Type="ButtonType.Submit">
+                                Submit
+                            </Button>
+                        </CardActions>
                     </Card>
                 </Form>
             </GridItem>
@@ -67,20 +66,21 @@
                                            Type="InputType.Password" />
                                 </GridItem>
                             </Grid>
+                            @if (!string.IsNullOrEmpty(Message))
+                            {
+                                <Spacer />
+                                <Typography>
+                                    @Message
+                                </Typography>
+                            }
+                        </CardBody>
+                        <CardActions>
                             <Button Color="Color.Primary" 
                                     id="changePasswordSubmitButton"
                                     Type="ButtonType.Submit">
                                 Change password
                             </Button>
-                            <Spacer />
-                            @if (!string.IsNullOrEmpty(Message))
-                            {
-                                <Typography>
-                                    @Message
-                                </Typography>
-                                <Spacer />
-                            }
-                        </CardBody>
+                        </CardActions>
                     </Card>
                 </Form>
             </GridItem>
@@ -101,7 +101,7 @@
     string Message { get; set; } = string.Empty;
 
     UserChangePasswordRequest ChangePasswordModel { get; set; } = new();
-    UserUpdateProfileRequest Model { get; set; } = new();
+    UserUpdateRequest Model { get; set; } = new();
 
     UserDetailResponse View { get; set; } = new();
 
@@ -113,10 +113,10 @@
     protected override async Task OnInitializedAsync()
     {
 
-        View = (await AccountClient.GetUserDetailAsync()).Data;
+        // View = (await AccountClient.GetUserDetailAsync()).Data;
         
-        Model.Email = View.Email;
-        ChangePasswordModel.UserId = View.Id;
+        // Model.Email = View.Email;
+        // ChangePasswordModel.UserId = View.Id;
         @* Model.Username = View.Username; *@
         @* Model.PhoneNumber = View.PhoneNumber; *@
     }
@@ -131,9 +131,9 @@
     {
         try
         {
-            await AccountClient.SetUserDetailAsync(Model);
-            Message = "Done!";
-            await GoBack();
+            // await AccountClient.SetUserDetailAsync(Model);
+            // Message = "Done!";
+            // await GoBack();
         }
         catch (Exception exception)
         {

@@ -59,17 +59,6 @@
             ]
         },
         {
-            "Name": "Logout",
-            "Description": "Logout Plugin",
-            "Types": [
-                {
-                    "Name": "Logout",
-                    "Type": "LogoutViewPlugin",
-                    "IsDefault": true
-                }
-            ]
-        },
-        {
             "Name": "Home",
             "Description": "Home Plugin",
             "Types": [
@@ -77,6 +66,29 @@
                     "Name": "Home",
                     "Type": "HomeViewPlugin",
                     "IsDefault": true
+                }
+            ]
+        },
+        {
+            "Name": "Api Token Management",
+            "Description": "Api Token Management Plugin",
+            "Types": [
+                {
+                    "Name": "Api Token List",
+                    "Type": "ApiTokenListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create Api Token",
+                    "Type": "ApiTokenCreatePlugin"
+                },
+                {
+                    "Name": "Update Api Token",
+                    "Type": "ApiTokenUpdatePlugin"
+                },
+                {
+                    "Name": "Api Token Detail",
+                    "Type": "ApiTokenDetailPlugin"
                 }
             ]
         },
@@ -283,6 +295,16 @@
                     ]
                 },
                 {
+                    "Title": "Api Tokens",
+                    "Path": "/api-tokens",
+                    "Plugins": [
+                        {
+                            "Definition": "Api Token Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
                     "Title": "Settings",
                     "Path": "/settings",
                     "Plugins": [
@@ -368,17 +390,6 @@
                     "Plugins": [
                         {
                             "Definition": "Profile",
-                            "Section": "Main"
-                        }
-                    ]
-                },
-                {
-                    "Title": "Logout",
-                    "Path": "/logout",
-                    "Layout": "AuthLayout",
-                    "Plugins": [
-                        {
-                            "Definition": "Logout",
                             "Section": "Main"
                         }
                     ]

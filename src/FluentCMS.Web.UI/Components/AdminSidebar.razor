@@ -46,7 +46,12 @@
                      id="adminSidebarRolesLink">   
             Roles
         </SidebarItem>
-        
+        <SidebarItem Active="@Pathname.StartsWith("/admin/api-tokens")"
+                     Href="/admin/api-tokens" 
+                     Icon="IconName.Lock"
+                     id="adminSidebarApiTokensLink">
+            Api Tokens
+        </SidebarItem>
         <SidebarItem Active="@Pathname.StartsWith("/admin/settings")"
                      Href="/admin/settings" 
                      Icon="IconName.Cog"
@@ -64,7 +69,7 @@
     </ChildContent>
     <Footer>
         <ThemeSwitcher id="adminThemeButton" />
-        <UserInfoViewPlugin />
+        <UserInfo/>
     </Footer>
 </Sidebar>
 

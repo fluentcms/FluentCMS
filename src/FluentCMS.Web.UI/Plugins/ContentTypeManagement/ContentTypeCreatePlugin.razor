@@ -25,26 +25,25 @@
                                       Label="Description"
                                       Name="Description"
                                       Placeholder="Enter Description..." />
-                            <Spacer />
                             @if (!string.IsNullOrEmpty(Message))
                             {
+                                <Spacer />
                                 <Typography>
                                     @Message
                                 </Typography>
-                                <Spacer />
                             }
-                            <ButtonGroup>
-                                <Button id="contentTypeCreateCancelButton"
-                                        OnClick="GoBack">
-                                    Cancel
-                                </Button>
-                                <Button id="contentTypeCreateSubmitButton"
-                                        Color="Color.Primary"
-                                        Type="ButtonType.Submit">
-                                    Save
-                                </Button>
-                            </ButtonGroup>
                         </CardBody>
+                        <CardActions>
+                            <Button id="contentTypeCreateCancelButton"
+                                    OnClick="GoBack">
+                                Cancel
+                            </Button>
+                            <Button id="contentTypeCreateSubmitButton"
+                                    Color="Color.Primary"
+                                    Type="ButtonType.Submit">
+                                Save
+                            </Button>
+                        </CardActions>
                     </Card>
                 </Form>
             </GridItem>

@@ -14,6 +14,7 @@ public class ExceptionCodes
     public const string SetupSettingsAdminTemplatesPathNotDefined = "SetupSettings.AdminTemplatesPathNotDefined";
     public const string SetupSettingsAdminTemplatesFolderNotFound = "SetupSettings.AdminTemplatesFolderNotFound";
     public const string SetupSettingsHostingEnvironmentIsNull = "SetupSettings.HostingEnvironmentIsNull";
+    public const string SetupSettingsOnlyAvailableOnStagingEnvironment = "SetupSettings.OnlyAvailableOnStagingEnvironment";
 
     #endregion
 
@@ -40,7 +41,7 @@ public class ExceptionCodes
 
     public const string AppNotFound = "App.NotFound";
     public const string AppSlugNotUnique = "App.SlugNotUnique";
-    public const string AppUnableToCreate = "App.UnableToCreated";
+    public const string AppUnableToCreate = "App.UnableToCreate";
     public const string AppUnableToUpdate = "App.UnableToUpdate";
     public const string AppUnableToDelete = "App.UnableToDelete";
 
@@ -49,14 +50,14 @@ public class ExceptionCodes
     #region AppTemplate
 
     public const string AppTemplateNotFound = "AppTemplate.NotFound";
-    public const string AppTemplateUnableToCreate = "AppTemplate.UnableToCreated";
+    public const string AppTemplateUnableToCreate = "AppTemplate.UnableToCreate";
 
     #endregion
 
     #region Role
 
 
-    public const string RoleUnableToCreate = "Role.UnableToCreated";
+    public const string RoleUnableToCreate = "Role.UnableToCreate";
     public const string RoleUnableToUpdate = "Role.UnableToUpdate";
     public const string RoleUnableToDelete = "Role.UnableToDelete";
     public const string RoleNotFound = "Role.NotFound";
@@ -66,7 +67,7 @@ public class ExceptionCodes
     #endregion
 
     #region Content
-    public const string ContentUnableToCreate = "Content.UnableToCreated";
+    public const string ContentUnableToCreate = "Content.UnableToCreate";
     public const string ContentUnableToUpdate = "Content.UnableToUpdate";
     public const string ContentUnableToDelete = "Content.UnableToDelete";
     public const string ContentNotFound = "Content.NotFound";
@@ -76,7 +77,7 @@ public class ExceptionCodes
 
     #region ContentType
 
-    public const string ContentTypeUnableToCreate = "ContentType.UnableToCreated";
+    public const string ContentTypeUnableToCreate = "ContentType.UnableToCreate";
     public const string ContentTypeUnableToUpdate = "ContentType.UnableToUpdate";
     public const string ContentTypeUnableToDelete = "ContentType.UnableToDelete";
     public const string ContentTypeNotFound = "ContentType.NotFound";
@@ -90,7 +91,7 @@ public class ExceptionCodes
 
     #region Plugin
 
-    public const string PluginUnableToCreate = "Plugin.UnableToCreated";
+    public const string PluginUnableToCreate = "Plugin.UnableToCreate";
     public const string PluginUnableToUpdate = "Plugin.UnableToUpdate";
     public const string PluginUnableToDelete = "Plugin.UnableToDelete";
     public const string PluginNotFound = "Plugin.NotFound";
@@ -99,7 +100,7 @@ public class ExceptionCodes
 
     #region PluginDefinition
 
-    public const string PluginDefinitionUnableToCreate = "PluginDefinition.UnableToCreated";
+    public const string PluginDefinitionUnableToCreate = "PluginDefinition.UnableToCreate";
     public const string PluginDefinitionUnableToUpdate = "PluginDefinition.UnableToUpdate";
     public const string PluginDefinitionUnableToDelete = "PluginDefinition.UnableToDelete";
     public const string PluginDefinitionNotFound = "PluginDefinition.NotFound";
@@ -108,7 +109,7 @@ public class ExceptionCodes
 
     #region Layout
 
-    public const string LayoutUnableToCreate = "Layout.UnableToCreated";
+    public const string LayoutUnableToCreate = "Layout.UnableToCreate";
     public const string LayoutUnableToUpdate = "Layout.UnableToUpdate";
     public const string LayoutUnableToDelete = "Layout.UnableToDelete";
     public const string LayoutNotFound = "Layout.NotFound";
@@ -119,7 +120,7 @@ public class ExceptionCodes
 
     public const string SiteNotFound = "Site.NotFound";
     public const string SiteUrlMustBeUnique = "Site.UrlMustBeUnique";
-    public const string SiteUnableToCreate = "Site.UnableToCreated";
+    public const string SiteUnableToCreate = "Site.UnableToCreate";
     public const string SiteUnableToUpdate = "Site.UnableToUpdate";
     public const string SiteUnableToDelete = "Site.UnableToDelete";
 
@@ -127,7 +128,7 @@ public class ExceptionCodes
 
     #region Page
 
-    public const string PageUnableToCreate = "Page.UnableToCreated";
+    public const string PageUnableToCreate = "Page.UnableToCreate";
     public const string PageUnableToUpdate = "Page.UnableToUpdate";
     public const string PageUnableToDelete = "Page.UnableToDelete";
     public const string PagePathMustBeUnique = "Page.PathMustBeUnique";

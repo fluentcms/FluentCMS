@@ -1,5 +1,4 @@
-﻿using FluentCMS.Web.Api.Models.Users;
-using FluentCMS.Web.Api.ValueConverters;
+﻿using FluentCMS.Web.Api.ValueConverters;
 
 namespace FluentCMS.Web.Api;
 
@@ -50,7 +49,6 @@ public class MappingProfile : Profile
 
         CreateMap<UserCreateRequest, User>();
         CreateMap<UserUpdateRequest, User>();
-        CreateMap<UserUpdateProfileRequest, User>();
         CreateMap<UserRegisterRequest, User>();
         CreateMap<User, UserDetailResponse>();
 

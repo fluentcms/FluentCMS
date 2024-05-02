@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace FluentCMS.Web.Api.Models;
+﻿namespace FluentCMS.Web.Api.Models;
 
 public class SetupRequest
 {
@@ -12,7 +10,14 @@ public class SetupRequest
 
     [Required]
     public string Password { get; set; } = default!;
+
+    [Required]
     public string AppTemplateName { get; set; } = default!;
+
+    [Required]
     public string SiteTemplateName { get; set; } = default!;
+
+    [Required]
+    [DomainName]
     public string AdminDomain { get; set; } = default!;
 }

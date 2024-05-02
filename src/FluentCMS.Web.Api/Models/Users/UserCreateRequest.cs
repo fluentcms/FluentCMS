@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace FluentCMS.Web.Api.Models;
+﻿namespace FluentCMS.Web.Api.Models;
 
 public class UserCreateRequest
 {
@@ -13,4 +11,14 @@ public class UserCreateRequest
 
     [Required]
     public string Password { get; set; } = default!;
+
+    [Phone]
+    public string? PhoneNumber { get; set; }
+
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public bool Enabled { get; set; }
+
+    [Required]
+    public List<Guid> RoleIds { get; set; } = [];
 }

@@ -1,7 +1,4 @@
-﻿using FluentCMS.Web.Api.Validation;
-using System.ComponentModel.DataAnnotations;
-
-namespace FluentCMS.Web.Api.Models;
+﻿namespace FluentCMS.Web.Api.Models;
 
 public class ContentTypeCreateRequest
 {
