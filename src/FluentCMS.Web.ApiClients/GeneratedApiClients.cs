@@ -4072,12 +4072,12 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PolicyIApiPagingResult> GetAvailablePoliciesAsync();
+        System.Threading.Tasks.Task<PolicyIApiPagingResult> GetPoliciesAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PolicyIApiPagingResult> GetAvailablePoliciesAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PolicyIApiPagingResult> GetPoliciesAsync(System.Threading.CancellationToken cancellationToken);
 
     }
 
@@ -4435,15 +4435,15 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<PolicyIApiPagingResult> GetAvailablePoliciesAsync()
+        public virtual System.Threading.Tasks.Task<PolicyIApiPagingResult> GetPoliciesAsync()
         {
-            return GetAvailablePoliciesAsync(System.Threading.CancellationToken.None);
+            return GetPoliciesAsync(System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PolicyIApiPagingResult> GetAvailablePoliciesAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PolicyIApiPagingResult> GetPoliciesAsync(System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -4456,8 +4456,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/Role/GetAvailablePolicies"
-                    urlBuilder_.Append("api/Role/GetAvailablePolicies");
+                    // Operation Path: "api/Role/GetPolicies"
+                    urlBuilder_.Append("api/Role/GetPolicies");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
