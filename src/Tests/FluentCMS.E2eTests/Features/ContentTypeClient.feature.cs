@@ -148,20 +148,20 @@ this.ScenarioInitialize(scenarioInfo);
 #line 5
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table4 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table8 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table4.AddRow(new string[] {
+                table8.AddRow(new string[] {
                             "title",
                             "test"});
-                table4.AddRow(new string[] {
+                table8.AddRow(new string[] {
                             "description",
                             "test description"});
-                table4.AddRow(new string[] {
+                table8.AddRow(new string[] {
                             "slug",
                             "test-slug"});
 #line 14
- testRunner.Given("I have a ContentTypeCreateRequest", ((string)(null)), table4, "Given ");
+ testRunner.Given("I have a ContentTypeCreateRequest", ((string)(null)), table8, "Given ");
 #line hidden
 #line 19
  testRunner.When("I create a content type", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
@@ -196,17 +196,17 @@ this.ScenarioInitialize(scenarioInfo);
 #line 5
 this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table5 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table9 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table5.AddRow(new string[] {
+                table9.AddRow(new string[] {
                             "title",
                             "test-updated"});
-                table5.AddRow(new string[] {
+                table9.AddRow(new string[] {
                             "description",
                             "test updated description"});
 #line 24
- testRunner.Given("I have a ContentTypeUpdateRequest", ((string)(null)), table5, "Given ");
+ testRunner.Given("I have a ContentTypeUpdateRequest", ((string)(null)), table9, "Given ");
 #line hidden
 #line 28
  testRunner.When("I update a content type", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");

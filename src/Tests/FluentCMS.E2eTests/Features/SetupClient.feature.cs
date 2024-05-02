@@ -78,12 +78,12 @@ namespace FluentCMS.E2eTests.Features
         public virtual void FeatureBackground()
         {
 #line 3
-#line hidden
+    #line hidden
 #line 4
- testRunner.Given("I have a \"SetupClient\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+        testRunner.Given("I have a \"SetupClient\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 5
- testRunner.When("I Reset Setup", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+        testRunner.When("I Reset Setup", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
         }
         
@@ -100,8 +100,8 @@ namespace FluentCMS.E2eTests.Features
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Reset Setup", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 8
-this.ScenarioInitialize(scenarioInfo);
+#line 9
+    this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -111,16 +111,16 @@ this.ScenarioInitialize(scenarioInfo);
             {
                 this.ScenarioStart();
 #line 3
-this.FeatureBackground();
-#line hidden
-#line 9
- testRunner.When("I Reset Setup", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+    this.FeatureBackground();
 #line hidden
 #line 10
- testRunner.When("I Fetch Setup IsInitialized", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+        testRunner.When("I Reset Setup", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 11
- testRunner.Then("Setup initialization status should be false", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+        testRunner.When("I Fetch Setup IsInitialized", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 12
+        testRunner.Then("Setup initialization status should be false", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
@@ -136,8 +136,8 @@ this.FeatureBackground();
                     "RequiresResetSetup"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Start Setup", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 15
-this.ScenarioInitialize(scenarioInfo);
+#line 17
+    this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -147,40 +147,40 @@ this.ScenarioInitialize(scenarioInfo);
             {
                 this.ScenarioStart();
 #line 3
-this.FeatureBackground();
+    this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table8 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table12 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table8.AddRow(new string[] {
+                table12.AddRow(new string[] {
                             "username",
                             "superadmin"});
-                table8.AddRow(new string[] {
+                table12.AddRow(new string[] {
                             "email",
                             "superadmin@localhost"});
-                table8.AddRow(new string[] {
+                table12.AddRow(new string[] {
                             "password",
                             "Passw0rd!"});
-                table8.AddRow(new string[] {
+                table12.AddRow(new string[] {
                             "AppTemplateName",
                             "Blank"});
-                table8.AddRow(new string[] {
+                table12.AddRow(new string[] {
                             "SiteTemplateName",
                             "Blank"});
-                table8.AddRow(new string[] {
+                table12.AddRow(new string[] {
                             "AdminDomain",
-                            "https://localhost:7230"});
-#line 16
- testRunner.When("I Start Setup", ((string)(null)), table8, "When ");
-#line hidden
-#line 24
- testRunner.Then("Wait 2 seconds", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
-#line hidden
-#line 25
- testRunner.When("I Fetch Setup IsInitialized", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+                            "localhost:5000"});
+#line 18
+        testRunner.When("I Start Setup", ((string)(null)), table12, "When ");
 #line hidden
 #line 26
- testRunner.Then("Setup initialization status should be true", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+        testRunner.Then("Wait 2 seconds", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 27
+        testRunner.When("I Fetch Setup IsInitialized", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 28
+        testRunner.Then("Setup initialization status should be true", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
@@ -196,8 +196,8 @@ this.FeatureBackground();
                     "RequiresResetSetup"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Reinitializing should throw Error", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 30
-this.ScenarioInitialize(scenarioInfo);
+#line 33
+    this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -207,37 +207,37 @@ this.ScenarioInitialize(scenarioInfo);
             {
                 this.ScenarioStart();
 #line 3
-this.FeatureBackground();
+    this.FeatureBackground();
 #line hidden
-                TechTalk.SpecFlow.Table table9 = new TechTalk.SpecFlow.Table(new string[] {
+                TechTalk.SpecFlow.Table table13 = new TechTalk.SpecFlow.Table(new string[] {
                             "field",
                             "value"});
-                table9.AddRow(new string[] {
+                table13.AddRow(new string[] {
                             "username",
                             "superadmin"});
-                table9.AddRow(new string[] {
+                table13.AddRow(new string[] {
                             "email",
                             "superadmin@localhost"});
-                table9.AddRow(new string[] {
+                table13.AddRow(new string[] {
                             "password",
                             "Passw0rd!"});
-                table9.AddRow(new string[] {
+                table13.AddRow(new string[] {
                             "AppTemplateName",
                             "Blank"});
-                table9.AddRow(new string[] {
+                table13.AddRow(new string[] {
                             "SiteTemplateName",
                             "Blank"});
-                table9.AddRow(new string[] {
+                table13.AddRow(new string[] {
                             "AdminDomain",
-                            "https://localhost:7230"});
-#line 31
- testRunner.When("I Start Setup", ((string)(null)), table9, "When ");
+                            "localhost:5000"});
+#line 34
+        testRunner.When("I Start Setup", ((string)(null)), table13, "When ");
 #line hidden
-#line 39
- testRunner.Then("Wait 2 seconds", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line 42
+        testRunner.Then("Wait 2 seconds", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 40
- testRunner.When("I Start Setup again should throw Error", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line 43
+        testRunner.When("I Start Setup again should throw Error", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
             }
             this.ScenarioCleanup();
@@ -253,8 +253,8 @@ this.FeatureBackground();
                     "RequiresResetSetup"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Test RequiresResetSetup decorator", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 44
-this.ScenarioInitialize(scenarioInfo);
+#line 48
+    this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -264,13 +264,13 @@ this.ScenarioInitialize(scenarioInfo);
             {
                 this.ScenarioStart();
 #line 3
-this.FeatureBackground();
+    this.FeatureBackground();
 #line hidden
-#line 45
- testRunner.When("I Fetch Setup IsInitialized", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line 49
+        testRunner.When("I Fetch Setup IsInitialized", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 46
- testRunner.Then("Setup initialization status should be false", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line 50
+        testRunner.Then("Setup initialization status should be false", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
