@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using FluentCMS.Web.ApiClients;
+using Microsoft.Extensions.Configuration;
 using System.Net.Http.Headers;
 
 namespace Microsoft.Extensions.DependencyInjection;

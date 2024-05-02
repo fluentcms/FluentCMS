@@ -10,4 +10,5 @@ public class UserDetailResponse : BaseAuditableResponse
     public DateTime? LastLoginAt { get; set; }
     public int LoginCount { get; set; }
     public bool Enabled { get; set; }
+    public List<RoleDetailResponse> Roles { get; set; } = [];
 }

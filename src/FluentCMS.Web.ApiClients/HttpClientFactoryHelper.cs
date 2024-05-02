@@ -1,6 +1,6 @@
 ﻿using System.Net.Http.Headers;
 
-namespace FluentCMS.Web.UI.Services;
+namespace FluentCMS.Web.ApiClients;
 
 public static class HttpClientFactoryHelper
 {

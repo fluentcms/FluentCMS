@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class UserController(IUserService userService, IMapper mapper) : BaseGlobalController
+public class UserController(IUserService userService, IRoleService roleService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "User Management";
     public const string READ = "Read";
@@ -15,6 +15,13 @@ public class UserController(IUserService userService, IMapper mapper) : BaseGlob
     {
         var users = await userService.GetAll(cancellationToken);
         var usersResponse = mapper.Map<List<UserDetailResponse>>(users);
+        var roles = await roleService.GetAll(cancellationToken);
+        foreach (var userResponse in usersResponse)
+        {
+            var userRoles = userResponse.Roles.Select(r => r.Id).ToList();
+            userResponse.Roles = mapper.Map<List<RoleDetailResponse>>(userRoles);
+        }
+
         return OkPaged(usersResponse);
     }
 
@@ -24,6 +31,8 @@ public class UserController(IUserService userService, IMapper mapper) : BaseGlob
     {
         var user = await userService.GetById(userId, cancellationToken);
         var userResponse = mapper.Map<UserDetailResponse>(user);
+        userResponse.Roles = await GetUsersRoles(user, cancellationToken);
+
         return Ok(userResponse);
     }
 
@@ -34,6 +43,8 @@ public class UserController(IUserService userService, IMapper mapper) : BaseGlob
         var user = mapper.Map<User>(request);
         var updated = await userService.Update(user, cancellationToken);
         var userResponse = mapper.Map<UserDetailResponse>(updated);
+        userResponse.Roles = await GetUsersRoles(user, cancellationToken);
+
         return Ok(userResponse);
     }
 
@@ -44,6 +55,15 @@ public class UserController(IUserService userService, IMapper mapper) : BaseGlob
         var user = mapper.Map<User>(request);
         var created = await userService.Create(user, request.Password, cancellationToken);
         var userResponse = mapper.Map<UserDetailResponse>(created);
+        userResponse.Roles = await GetUsersRoles(user, cancellationToken);
+
         return Ok(userResponse);
+    }
+
+    private async Task<List<RoleDetailResponse>> GetUsersRoles(User user, CancellationToken cancellationToken = default)
+    {
+        var roles = await roleService.GetAll(cancellationToken);
+        var userRoles = roles.Where(r => user.RoleIds.Contains(r.Id)).ToList();
+        return mapper.Map<List<RoleDetailResponse>>(userRoles);
     }
 }
