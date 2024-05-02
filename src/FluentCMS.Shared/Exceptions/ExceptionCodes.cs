@@ -140,4 +140,13 @@ public class ExceptionCodes
     public const string PageHasChildren = "Page.PageHasChildren";
 
     #endregion
+
+    #region API Token
+
+    public const string ApiTokenUnableToCreate = "ApiToken.UnableToCreate";
+    public const string ApiTokenNotFound = "ApiToken.NotFound";
+    public const string ApiTokenUnableToUpdate = "ApiToken.UnableToUpdate";
+    public const string ApiTokenUnableToDelete = "ApiToken.UnableToDelete";
+
+    #endregion
 }
