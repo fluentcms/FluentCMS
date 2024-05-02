@@ -6,13 +6,7 @@ public partial class StepDefinitions
     {
         var accountClient = context.Get<AccountClient>();
         var credentials = context.Get<UserRegisterRequest>();
-        var registerBody = new UserRegisterRequest()
-        {
-            Username = credentials.Username,
-            Password = credentials.Password,
-            Email = credentials.Email
-        };
-        var response = await accountClient.RegisterAsync(registerBody);
+        var response = await accountClient.RegisterAsync(credentials);
         context.Set(response);
         context.Set(response.Errors);
     }
