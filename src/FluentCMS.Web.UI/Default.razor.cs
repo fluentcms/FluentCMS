@@ -1,4 +1,5 @@
-﻿using HtmlAgilityPack;
+﻿using FluentCMS.Web.UI.Plugins.Components;
+using HtmlAgilityPack;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Routing;

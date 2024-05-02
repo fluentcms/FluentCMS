@@ -1,0 +1,25 @@
+﻿@namespace FluentCMS.Web.UI.Plugins.Components
+
+@* TODO: change class to f-plugin-body *@
+<div class="m-4">
+    @if (!string.IsNullOrEmpty(Title))
+    {
+        <Grid ItemsSmall="GridItems.Center" JustifySmall="GridJustify.Between">
+            <GridItem>
+                <Typography Size="TextSize.H5">@Title</Typography>
+            </GridItem>
+            <GridItem>
+                @ActionsFragment
+            </GridItem>
+        </Grid>
+        <Spacer />
+    }
+    <Card>
+        @if (ChildContent != null)
+        {
+            <CardBody>
+                @ChildContent
+            </CardBody>
+        }
+    </Card>
+</div>

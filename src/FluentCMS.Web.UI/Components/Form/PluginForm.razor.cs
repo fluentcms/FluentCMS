@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
 
-namespace FluentCMS.Web.UI.Plugins;
+namespace FluentCMS.Web.UI.Plugins.Components;
 
 public partial class PluginForm
 {
@@ -11,7 +11,7 @@ public partial class PluginForm
     public RenderFragment? ChildContent { get; set; }
 
     [Parameter]
-    public string Name { get; set; } = default!; // Form Name
+    public string? Name { get; set; } = default!; // Form Name
 
     [Parameter]
     public virtual object? Model { get; set; }
