@@ -14,7 +14,7 @@ public partial class StepDefinitions
         try
         {
             var response = await accountClient.AuthenticateAsync(authBody);
-            context.Set(response);
+            context.Set(response.Data);
         }
         catch (ApiClientException e)
         {

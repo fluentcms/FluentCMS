@@ -4,6 +4,7 @@ using System.Reflection;
 using FluentCMS.Web.UI.Services;
 
 namespace FluentCMS.E2eTests.StepDefinitions;
+
 public partial class StepDefinitions
 {
     [Given("I have a(n) {string}")]
@@ -21,13 +22,13 @@ public partial class StepDefinitions
             var httpClientFactory = context.GetServiceProvider().GetRequiredService<IHttpClientFactory>();
 
             // get latest login response
-            var loginResponse = context.GetServiceProvider().GetService<UserLoginResponse>();
+            var loggedIn = context.TryGetValue(typeof(UserLoginResponse).FullName, out UserLoginResponse loginResponse);
 
             // get HttpClientFactoryHelper.CreateApiClient<T>(UserLoginResponse) extension method
             var helperMethod = typeof(HttpClientFactoryHelper).GetMethod(nameof(HttpClientFactoryHelper.CreateApiClient), genericParameterCount: 1, types: [typeof(IHttpClientFactory), typeof(UserLoginResponse)]);
 
             // create & keep client
-            var client = helperMethod?.MakeGenericMethod(serviceType).Invoke(null, [httpClientFactory, loginResponse]);
+            var client = helperMethod?.MakeGenericMethod(serviceType).Invoke(null, [httpClientFactory, loggedIn ? loginResponse : null]) as IApiClient;
             context[serviceType.FullName!] = client;
         }
         else
