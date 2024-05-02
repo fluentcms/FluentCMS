@@ -11,7 +11,7 @@ var configuration = builder.Configuration;
 
 services.AddSiteServices(configuration);
 
-services.AddLiteDbRepositories("LiteDb");
+services.AddMongoDbRepositories("MongoDb");
 
 services.AddApiServices();
 
