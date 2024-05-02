@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
-
-namespace FluentCMS.Web.Api.Controllers;
+﻿namespace FluentCMS.Web.Api.Controllers;
 
 public class PluginController(IPluginService pluginService, IMapper mapper) : BaseGlobalController
 {
@@ -21,7 +19,6 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
     }
 
     [HttpPost]
-    [Authorize]
     public async Task<IApiResult<PluginDetailResponse>> Create([FromBody] PluginCreateRequest request, CancellationToken cancellationToken = default)
     {
         var plugin = mapper.Map<Plugin>(request);
@@ -31,7 +28,6 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
     }
 
     [HttpPut]
-    [Authorize]
     public async Task<IApiResult<PluginDetailResponse>> Update([FromBody] PluginUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var plugin = mapper.Map<Plugin>(request);
@@ -41,7 +37,6 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
     }
 
     [HttpDelete("{id}")]
-    [Authorize]
     public async Task<IApiResult<bool>> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         await pluginService.Delete(id, cancellationToken);

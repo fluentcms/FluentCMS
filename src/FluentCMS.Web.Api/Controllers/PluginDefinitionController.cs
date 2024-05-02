@@ -1,11 +1,8 @@
-﻿using Microsoft.AspNetCore.Authorization;
-
-namespace FluentCMS.Web.Api.Controllers;
+﻿namespace FluentCMS.Web.Api.Controllers;
 
 public class PluginDefinitionController(IMapper mapper, IPluginDefinitionService pluginDefinitionService) : BaseGlobalController
 {
     [HttpPost]
-    [Authorize]
     public async Task<IApiResult<PluginDefinitionDetailResponse>> Create([FromBody] PluginDefinitionCreateRequest request, CancellationToken cancellationToken = default)
     {
         var entity = mapper.Map<PluginDefinition>(request);

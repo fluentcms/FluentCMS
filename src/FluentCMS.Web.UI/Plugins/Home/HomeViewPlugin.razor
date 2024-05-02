@@ -46,14 +46,16 @@
                                         </Button>
                                     </StepperItem>
                                 </Stepper>
-                                <Button Color="Color.Primary" 
-                                        id="homeTourSkipButton"
-                                        Outline="true" 
-                                        OnClick="() => showTour = false">
-                                    Skip the tour
-                                </Button>
                             </Stack>
                         </CardBody>
+                        <CardActions>
+                            <Button Color="Color.Primary" 
+                                    id="homeTourSkipButton"
+                                    Outline="true" 
+                                    OnClick="() => showTour = false">
+                                Skip the tour
+                            </Button>
+                        </CardActions>
                     </Card>
                 } else {
                     <a href="/api/doc"

@@ -9,7 +9,8 @@ export function close(dotnet, element) {
 export function open(dotnet, element) {
     const modal = modals.get(element);
 
-    modal.show();
+    modal.show(); 
+    element.focus();
 }
 
 export function initialize(dotnet, element, config) {

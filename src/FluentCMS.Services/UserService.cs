@@ -17,7 +17,7 @@ public interface IUserService : IAutoRegisterService
     Task<string> GeneratePasswordResetToken(string email, CancellationToken cancellationToken = default);
     Task<bool> ValidatePasswordResetToken(string token, string email, string newPassword, CancellationToken cancellationToken = default);
     Task<bool> Any(CancellationToken cancellationToken = default);
-    Task<User?> GetByEmail(string requestEmail);
+    Task<User?> GetByEmail(string requestEmail, CancellationToken cancellationToken = default);
 }
 
 public class UserService(
@@ -39,19 +39,15 @@ public class UserService(
 
     public async Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default)
     {
-        var isSuperAdmin = false;
-
         // check if user is super admin
         if (!string.IsNullOrEmpty(user.UserName))
         {
             var globalSettings = await globalSettingsRepository.Get(cancellationToken) ??
                 throw new AppException(ExceptionCodes.GlobalSettingsNotFound);
-
-            isSuperAdmin = globalSettings.SuperUsers.Contains(user.UserName);
         }
 
         // Generate token
-        var userToken = await userTokenProvider.Generate(user, isSuperAdmin);
+        var userToken = await userTokenProvider.Generate(user);
 
         if (userToken is null || string.IsNullOrEmpty(userToken.AccessToken))
             throw new AppException(ExceptionCodes.UserTokenGenerationFailed);
@@ -179,7 +175,7 @@ public class UserService(
         return Task.Run(() => userManager.Users.Any(), cancellationToken);
     }
 
-    public Task<User?> GetByEmail(string requestEmail)
+    public Task<User?> GetByEmail(string requestEmail, CancellationToken cancellationToken = default)
     {
         return userManager.FindByEmailAsync(requestEmail);
     }

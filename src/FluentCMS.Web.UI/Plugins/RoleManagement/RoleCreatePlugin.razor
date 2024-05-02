@@ -76,26 +76,26 @@
                                 </Card>
                                 <Spacer />
                             </div>
-                            <Spacer />
                             @if (!string.IsNullOrEmpty(Message))
                             {
+                                <Spacer />
                                 <Typography>
                                     @Message
                                 </Typography>
-                                <Spacer />
                             }
-                            <ButtonGroup>
-                                <Button id="roleCreateCancelButton" 
-                                        OnClick="GoBack">
-                                    Cancel
-                                </Button>
-                                <Button id="roleCreateSubmitButton" 
-                                        Color="Color.Primary"
-                                        Type="ButtonType.Submit">
-                                    Save
-                                </Button>
-                            </ButtonGroup>
                         </CardBody>
+                        <CardActions>
+                            <Button id="roleCreateCancelButton" 
+                                    OnClick="GoBack">
+                                Cancel
+                            </Button>
+                            <Button id="roleCreateSubmitButton" 
+                                    Color="Color.Primary"
+                                    Type="ButtonType.Submit">
+                                Save
+                            </Button>
+                        </CardActions>
+
                     </Card>
                 </Form>
             </GridItem>

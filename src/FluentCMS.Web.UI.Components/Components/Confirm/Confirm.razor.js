@@ -10,6 +10,7 @@ export function open(dotnet, element) {
     const confirm = confirms.get(element);
 
     confirm.show();
+    element.focus();
 }
 
 export function initialize(dotnet, element, config) {
@@ -28,6 +29,7 @@ export function initialize(dotnet, element, config) {
 
     if (config.open) {
         confirm.show();
+        element.focus();
     }
 }
 
