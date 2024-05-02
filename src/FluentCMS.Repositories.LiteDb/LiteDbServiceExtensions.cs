@@ -7,9 +7,6 @@ public static class LiteDbServiceExtensions
 {
     public static IServiceCollection AddLiteDbRepositories(this IServiceCollection services, string connectionString)
     {
-        // Configure BsonSerializers for accurate data representation in LiteDB
-        ConfigureBsonSerializers();
-
         // Register LiteDB context and options
         services.AddSingleton(provider => CreateLiteDBOptions(provider, connectionString));
         services.AddSingleton<ILiteDBContext, LiteDBContext>();
@@ -18,22 +15,6 @@ public static class LiteDbServiceExtensions
         RegisterRepositories(services);
 
         return services;
-    }
-
-    private static void ConfigureBsonSerializers()
-    {
-        // todo use https://www.litedb.org/docs/object-mapping/ to implement this
-        // if (BsonSerializer.LookupSerializer<decimal>() == null)
-        //     BsonSerializer.RegisterSerializer(typeof(decimal), new DecimalSerializer(BsonType.Decimal128));
-        //
-        // if (BsonSerializer.LookupSerializer<decimal?>() == null)
-        //     BsonSerializer.RegisterSerializer(typeof(decimal?), new NullableSerializer<decimal>(new DecimalSerializer(BsonType.Decimal128)));
-        //
-        // if (BsonSerializer.LookupSerializer<Guid>() == null)
-        //     BsonSerializer.RegisterSerializer(typeof(Guid), new GuidSerializer(GuidRepresentation.Standard));
-        //
-        // // Standard GUID representation is set for consistency across the application
-        // BsonDefaults.GuidRepresentation = GuidRepresentation.Standard;
     }
 
     private static LiteDBOptions<LiteDBContext> CreateLiteDBOptions(IServiceProvider provider, string connectionString)
