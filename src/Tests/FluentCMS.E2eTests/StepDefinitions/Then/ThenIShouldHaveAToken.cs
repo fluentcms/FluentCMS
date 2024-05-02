@@ -4,7 +4,7 @@ public partial class StepDefinitions
     [Then("I Should Have a Token")]
     public void ThenIShouldHaveAToken()
     {
-        var authResponse = context.Get<UserLoginResponseIApiResult>();
-        authResponse.Data.Token.ShouldNotBeEmpty();
+        var authResponse = context.Get<UserLoginResponse>();
+        authResponse.Token.ShouldNotBeEmpty();
     }
 }
