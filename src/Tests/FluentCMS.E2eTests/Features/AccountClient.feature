@@ -32,9 +32,22 @@ Feature: Account Client
         When I Register
         Then Response Errors Should be Empty
 
-@RequiresRegisteredUser
-Scenario: Register and Authenticate
-
+    Scenario: Register and Authenticate
+        Given I have Credentials
+          | field           | value               |
+          | username        | DummyUser           |
+          | password        | DummyPassw0rd!      |
+          | confirmpassword | DummyPassw0rd!      |
+          | email           | DummyUser@localhost |
+        When I Register
+        Then Response Errors Should be Empty
+        Given I have Credentials
+          | field    | value          |
+          | username | DummyUser      |
+          | password | DummyPassw0rd! |
+        When I Authenticate
+        Then Response Errors Should be Empty
+        Then I Should Have a Token
 
 @RequiresRegisteredUser
 Scenario: Register and Authenticate and Change Password
