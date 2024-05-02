@@ -19,7 +19,7 @@ public partial class StepDefinitions
         table.AddRow("email", "superadmin@localhost");
         table.AddRow("AppTemplateName", "Blank");
         table.AddRow("SiteTemplateName", "Blank");
-        table.AddRow("AdminDomain", "https://localhost:7230");
+        table.AddRow("AdminDomain", "localhost:5000");
 
         await WhenIStartSetup(table);
         await ThenWaitSeconds(2);
