@@ -45,11 +45,11 @@ Cypress.Commands.add('dashboardShouldAvailable', () => {
     cy.get('main').contains('Welcome').should('be.visible')
 })
 
-Cypress.Commands.add('deleteRow', {prevSubject: 'element'}, ($el, confirm = true) => {
+Cypress.Commands.add('deleteRow', {prevSubject: 'element'}, ($el, confirm = true, force = false) => {
     cy.shortWait()
     cy.get('.f-confirm').should('not.exist')
   
-    cy.wrap($el).find('[data-test="delete-btn"]').click()
+    cy.wrap($el).find('[data-test="delete-btn"]').click({force})
     cy.get('.f-confirm-content').should('be.visible')
     if(confirm) {
         cy.get('.f-confirm-content').contains('Yes, I\'m sure').click()

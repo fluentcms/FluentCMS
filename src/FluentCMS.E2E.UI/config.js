@@ -75,5 +75,11 @@ export default {
                 }
             }
         },
+    ],
+    files: [
+        {
+            path: "./cypress/sample_files/image.png",
+            name: 'image.png'
+        }
     ]
 }

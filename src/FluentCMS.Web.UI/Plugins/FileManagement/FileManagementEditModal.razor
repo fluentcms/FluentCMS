@@ -65,6 +65,7 @@
                     </Grid>
                     <Spacer />
                     <Input @bind-Value="model.Name"
+                           Id="fileManagementEditModalNameInput"
                            Label="File name" />
                 </GridItem>
             </Grid>
@@ -72,10 +73,12 @@
     </ModalBody>
     <ModalFooter>
         <ButtonGroup>
-            <Button OnClick="() => OnChange.InvokeAsync()">
+            <Button id="fileManagementEditModalCancelButton"
+                    OnClick="() => OnChange.InvokeAsync()">
                 Cancel
             </Button>
             <Button Color="Color.Primary"
+                    id="fileManagementEditModalUpdateButton"
                     OnClick="Update">
                 Update
             </Button>

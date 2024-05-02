@@ -26,6 +26,7 @@
                 </GridItem>
                 <GridItem>
                     <Button Color="Color.Primary"
+                            id="fileManagementUploadModalAddNewButton"
                             OnClick="() => selecting = true">
                         Add new files
                     </Button>
@@ -47,13 +48,15 @@
     </ModalBody>
     <ModalFooter>
         <ButtonGroup>
-            <Button OnClick="() => OnSelect.InvokeAsync()">
+            <Button id="fileManagementUploadModalCancelButton" 
+                    OnClick="() => OnSelect.InvokeAsync()">
                 Cancel
             </Button>
             @if (!selecting && files.Count != 0)
             {
                 <Button Color="Color.Primary"
                         Disabled="busy"
+                        id="fileManagementUploadModalUploadButton"
                         OnClick="Upload">
                     Upload
                 </Button>
