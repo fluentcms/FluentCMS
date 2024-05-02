@@ -30,24 +30,20 @@ public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntit
     public virtual async Task<IEnumerable<TEntity>> GetAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var filter = Query.All();
-        var findResult = await Collection.FindAsync(filter);
+        var findResult = await Collection.Query().ToListAsync();
         return findResult.ToList();
     }
 
     public virtual async Task<TEntity?> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var idFilter = Query.EQ(nameof(IEntity.Id), id);
-        var findResult = await Collection.FindAsync(idFilter);
-        return findResult.SingleOrDefault();
+        return await Collection.Query().Where(x => x.Id == id).SingleOrDefaultAsync();
     }
 
     public virtual async Task<IEnumerable<TEntity>> GetByIds(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var idsFilter = Query.In(nameof(IEntity.Id), ids.Select(x => new BsonValue(x)));
-        var findResult = await Collection.FindAsync(idsFilter);
+        var findResult = await Collection.Query().Where(x => ids.Contains(x.Id)).ToListAsync();
         return findResult.ToList();
     }
 
@@ -76,7 +72,7 @@ public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntit
     public virtual async Task<TEntity?> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var entity = await Collection.FindOneAsync(Query.EQ(nameof(IEntity.Id), id));
+        var entity = await Collection.Query().Where(x=>x.Id == id).SingleOrDefaultAsync();
         await Collection.DeleteAsync(id);
         return entity;
     }

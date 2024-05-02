@@ -1,6 +1,5 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories.Abstractions;
-using LiteDB;
 
 namespace FluentCMS.Repositories.LiteDb;
 
@@ -14,18 +13,12 @@ public abstract class SiteAssociatedRepository<TEntity> : AuditableEntityReposit
     public async Task<IEnumerable<TEntity>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var filter = Query.EQ(nameof(ISiteAssociatedEntity.SiteId), siteId);
-        var findResult = await Collection.FindAsync(filter);
-        return findResult.ToList();
+        return await Collection.Query().Where(x => x.SiteId == siteId).ToListAsync();
     }
 
     public async Task<TEntity?> GetByIdForSite(Guid id, Guid siteId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var idFilter = Query.EQ(nameof(ISiteAssociatedEntity.Id), id);
-        var siteIdFilter = Query.EQ(nameof(ISiteAssociatedEntity.SiteId), siteId);
-        var combinedFilter = Query.And(idFilter, siteIdFilter);
-        var findResult = await Collection.FindAsync(combinedFilter);
-        return findResult.SingleOrDefault();
+        return await Collection.Query().Where(x => x.Id == id && x.SiteId == siteId).SingleOrDefaultAsync();
     }
 }

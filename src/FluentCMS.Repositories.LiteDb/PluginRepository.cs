@@ -1,6 +1,5 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories.Abstractions;
-using LiteDB;
 
 namespace FluentCMS.Repositories.LiteDb;
 
@@ -14,8 +13,6 @@ public class PluginRepository : SiteAssociatedRepository<Plugin>, IPluginReposit
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var filter = Query.EQ(nameof(Plugin.PageId), pageId);
-        var result = await Collection.FindAsync(filter);
-        return result.ToList();
+        return await Collection.Query().Where(x => x.PageId == pageId).ToListAsync();
     }
 }

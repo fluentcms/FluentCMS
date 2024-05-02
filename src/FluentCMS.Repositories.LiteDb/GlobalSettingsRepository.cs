@@ -1,6 +1,5 @@
 ﻿using FluentCMS.Entities;
 using FluentCMS.Repositories.Abstractions;
-using LiteDB;
 using LiteDB.Async;
 
 namespace FluentCMS.Repositories.LiteDb;
@@ -13,7 +12,7 @@ public class GlobalSettingsRepository(ILiteDBContext liteDbContext, IAuthContext
     public async Task<GlobalSettings?> Get(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return (await _collection.FindAsync(Query.All())).SingleOrDefault();
+        return await _collection.Query().SingleOrDefaultAsync();
     }
 
     public async Task<GlobalSettings?> Update(GlobalSettings settings, CancellationToken cancellationToken = default)
