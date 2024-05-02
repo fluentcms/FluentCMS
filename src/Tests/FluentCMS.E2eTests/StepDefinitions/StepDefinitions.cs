@@ -1,7 +1,9 @@
 ﻿using FluentCMS.E2eTests.Extensions;
 using Microsoft.Extensions.DependencyInjection;
+using TechTalk.SpecFlow.Assist;
 
 namespace FluentCMS.E2eTests.StepDefinitions;
+
 [Binding]
 public partial class StepDefinitions(ScenarioContext context)
 {
@@ -11,5 +13,6 @@ public partial class StepDefinitions(ScenarioContext context)
         var services = new ServiceCollection().ConfigureServices();
         context[ScenarioContextExtensions.ServiceProviderKey] = services.BuildServiceProvider();
     }
+
 
 }
