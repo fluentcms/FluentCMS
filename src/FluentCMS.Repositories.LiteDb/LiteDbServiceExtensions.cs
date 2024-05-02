@@ -5,7 +5,7 @@ namespace Microsoft.Extensions.DependencyInjection;
 
 public static class LiteDbServiceExtensions
 {
-    public static IServiceCollection AddLiteDBRepositories(this IServiceCollection services, string connectionString)
+    public static IServiceCollection AddLiteDbRepositories(this IServiceCollection services, string connectionString)
     {
         // Configure BsonSerializers for accurate data representation in LiteDB
         ConfigureBsonSerializers();
