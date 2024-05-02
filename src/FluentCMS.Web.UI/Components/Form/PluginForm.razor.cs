@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
 
-namespace FluentCMS.Web.UI.Plugins;
+namespace FluentCMS.Web.UI.Plugins.Components;
 
 public partial class PluginForm
 {
