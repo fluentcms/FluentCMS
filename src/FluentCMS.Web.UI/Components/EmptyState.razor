@@ -4,14 +4,9 @@
     <Spacer Size="SpacerSize.Large" />
     <Spacer Size="SpacerSize.Large" />
     <Stack Vertical="true">
-        @if(Icon != IconName.Default)
-        {
-            <GridItem>
-                <Icon Color="Color.Secondary"
-                    Name="Icon"
-                    Size="IconSize.X3" />
-            </GridItem>
-        }
+        <GridItem Visible="Icon != IconName.Default">
+            <Icon Color="Color.Secondary" Name="Icon" Size="IconSize.X3" />
+        </GridItem>
         <Typography Color="Color.Secondary">@Message</Typography>
         <Grid JustifySmall="GridJustify.Center" ItemsSmall="GridItems.Center">
             <GridItem>
