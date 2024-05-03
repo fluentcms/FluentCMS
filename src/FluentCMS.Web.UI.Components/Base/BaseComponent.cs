@@ -11,24 +11,21 @@ public abstract class BaseComponent : ComponentBase
     public RenderFragment ChildContent { get; set; } = default!;
 
     [Parameter]
-    public string Class { get; set; } = string.Empty;
+    public string? Class { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object> AdditionalAttributes { get; set; } = default!;
 
-    public string ComponentName { get; } = string.Empty;
+    [Parameter]
+    public string? CSSName { get; set; }
 
-    public BaseComponent()
+    public string GetDefaultCSSName()
     {
         var type = GetType();
         if (type.IsGenericType)
-        {
-            ComponentName = type.Name.Split("`").First().FromPascalCaseToKebabCase();
-        }
+            return type.Name.Split("`").First().FromPascalCaseToKebabCase();
         else
-        {
-            ComponentName = type.Name.FromPascalCaseToKebabCase();
-        }
+            return type.Name.FromPascalCaseToKebabCase();
     }
 
     public override Task SetParametersAsync(ParameterView parameters)

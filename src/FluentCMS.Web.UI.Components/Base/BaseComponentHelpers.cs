@@ -4,7 +4,7 @@ public static class BaseComponentHelper
 {
 
     // css prefix for auto-generated classes
-    public const string PREFIX = "f";
+    public const string CSS_PREFIX = "f";
 
     public const string SEPARATOR = "-";
 
@@ -12,7 +12,7 @@ public static class BaseComponentHelper
     {
         ArgumentNullException.ThrowIfNull(baseComponent);
 
-        return string.Join(SEPARATOR, [PREFIX, Name.FromPascalCaseToKebabCase()]);
+        return string.Join(SEPARATOR, [CSS_PREFIX, Name.FromPascalCaseToKebabCase()]);
     }
 
     public static List<string> ClassNames(this BaseComponent baseComponent)
@@ -24,6 +24,8 @@ public static class BaseComponentHelper
             GetProperties().
             Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CSSPropertyAttribute)));
 
+        var cssName = baseComponent.CSSName?.FromPascalCaseToKebabCase() ?? baseComponent.GetDefaultCSSName();
+
         foreach (var property in properties)
         {
             if (property.GetValue(baseComponent, null) is var value)
@@ -31,7 +33,7 @@ public static class BaseComponentHelper
                 if (value != null)
                 {
                     var propertyValue = value.ToString()?.FromPascalCaseToKebabCase() ?? string.Empty;
-                    classes.Add(string.Join(SEPARATOR, [PREFIX, baseComponent.ComponentName, property.Name.FromPascalCaseToKebabCase(), propertyValue]));
+                    classes.Add(string.Join(SEPARATOR, [CSS_PREFIX, cssName, property.Name.FromPascalCaseToKebabCase(), propertyValue]));
                 }
             }
         }
@@ -41,11 +43,17 @@ public static class BaseComponentHelper
 
     public static string GetClasses(this BaseComponent baseComponent)
     {
+        var cssName = baseComponent.CSSName?.FromPascalCaseToKebabCase() ?? baseComponent.GetDefaultCSSName();
+
         // component's class name from its name (f-button, f-badge, etc.)
-        var componentCss = string.Join(SEPARATOR, [PREFIX, baseComponent.ComponentName]);
+        var componentCss = string.Join(SEPARATOR, [CSS_PREFIX, cssName]);
 
         // add css properties
-        List<string> classes = [componentCss, .. ClassNames(baseComponent), baseComponent.Class];
+        List<string> classes = [componentCss, .. ClassNames(baseComponent)];
+
+        // if class is set by user, add the same class name
+        if (!string.IsNullOrEmpty(baseComponent.Class))
+            classes = [.. classes, baseComponent.Class];
 
         return string.Join(" ", classes);
     }
