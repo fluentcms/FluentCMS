@@ -19,7 +19,7 @@ public abstract class BaseComponent : ComponentBase
     [Parameter]
     public string? CSSName { get; set; }
 
-    public string GetDefaultCSSName()
+    public virtual string GetDefaultCSSName()
     {
         var type = GetType();
         if (type.IsGenericType)
