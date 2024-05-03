@@ -72,7 +72,7 @@ public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntit
     public virtual async Task<TEntity?> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var entity = await Collection.Query().Where(x=>x.Id == id).SingleOrDefaultAsync();
+        var entity = await Collection.Query().Where(x => x.Id == id).SingleOrDefaultAsync();
         await Collection.DeleteAsync(id);
         return entity;
     }
