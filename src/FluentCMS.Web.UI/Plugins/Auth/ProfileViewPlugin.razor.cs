@@ -2,15 +2,11 @@ namespace FluentCMS.Web.UI.Plugins.Auth;
 
 public partial class ProfileViewPlugin
 {
-    [Inject]
-    public AccountClient AccountClient { get; set; } = default!;
+    private UserDetailResponse View { get; set; } = new();
 
-    public UserDetailResponse? View { get; set; }
-
-
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnLoadAsync()
     {
-        await base.OnInitializedAsync();
-        View = (await AccountClient.GetCurrentAsync()).Data;
+        await base.OnLoadAsync();
+        View = (await GetApiClient<AccountClient>().GetCurrentAsync()).Data;
     }
 }

@@ -1,81 +1,58 @@
-<Page>
-    <PageHeader Title="Profile (Draft)">
+@inherits BasePlugin
 
-    </PageHeader>
-    <PageBody>
-        @if (View != null)
-        {
-            <Grid Gutter="GridGutter.Large">
-                <GridItem Small="GridItemColumn.Twelve"
-                          Medium="GridItemColumn.Seven"
-                          Large="GridItemColumn.Nine">
-                    <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
-                        <GridItem Small="GridItemColumn.Twelve">
-                            <Typography><strong>Email:</strong></Typography>
-                            <Typography>
-                                @View.Email
-                            </Typography>
-                        </GridItem>
-                        <GridItem Small="GridItemColumn.Twelve">
-                            <Typography><strong>Phone Number:</strong></Typography>
-                            <Typography>
-                                @View.PhoneNumber
-                            </Typography>
-                        </GridItem>
-                        <GridItem Small="GridItemColumn.Twelve">
-                            <Typography><strong>Username:</strong></Typography>
-                            <Typography>
-                                @View.Username
-                            </Typography>
-                        </GridItem>
-                    </Grid>
+<PluginBody Title="Profile (Draft)" >
+    <Grid Gutter="GridGutter.Large">
+        <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Seven" Large="GridItemColumn.Nine">
+            <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
+                <GridItem Small="GridItemColumn.Twelve">
+                    <Typography><strong>Email:</strong></Typography>
+                    <Typography> @View.Email </Typography>
                 </GridItem>
-                <GridItem Small="GridItemColumn.Twelve"
-                          Medium="GridItemColumn.Five"
-                          Large="GridItemColumn.Three">
-                    <Card>
-                        <CardBody>
-                            @if (!string.IsNullOrEmpty(View.CreatedBy))
-                            {
-                                <Typography><strong>Created By</strong></Typography>
-                                <Typography>@View.CreatedBy</Typography>
-                                <Spacer />
-                            }
-                            @if (!string.IsNullOrEmpty(View.CreatedAt.ToString()))
-                            {
-                                <Typography><strong>Created At</strong></Typography>
-                                <Typography>@View.CreatedAt</Typography>
-                                <Spacer />
-                            }
-                            @if (!string.IsNullOrEmpty(View.ModifiedBy))
-                            {
-                                <Typography><strong>Modified By</strong></Typography>
-                                <Typography>@View.ModifiedBy</Typography>
-                                <Spacer />
-                            }
-                            @if (!string.IsNullOrEmpty(View.ModifiedAt.ToString()))
-                            {
-                                <Typography><strong>Modified At</strong></Typography>
-                                <Typography>@View.ModifiedAt</Typography>
-                            }
-                        </CardBody>
-                    </Card>
-                    <Spacer />
-                    <Button Block="true"
-                            Color="Color.Primary"
-                            Href="@NavigationManager.Plugin("Profile", "Update")"
-                            Item="true"
-                            Outline="true">
-                        <Icon Name="IconName.Edit" />
-                        Edit
-                    </Button>
+                <GridItem Small="GridItemColumn.Twelve">
+                    <Typography><strong>Phone Number:</strong></Typography>
+                    <Typography> @View.PhoneNumber </Typography>
+                </GridItem>
+                <GridItem Small="GridItemColumn.Twelve">
+                    <Typography> <strong>Username:</strong> </Typography>
+                    <Typography> @View.Username </Typography>
                 </GridItem>
             </Grid>
-        }
-    </PageBody>
-</Page>
-
-@code {
-    [Inject]
-    NavigationManager NavigationManager {get; set;}
-}
+        </GridItem>
+        <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Five" Large="GridItemColumn.Three">
+            <Card>
+                <CardBody>
+                    @if (!string.IsNullOrEmpty(View.CreatedBy))
+                    {
+                        <Typography> <strong>Created By</strong> </Typography>
+                        <Typography>@View.CreatedBy</Typography>
+                        <Spacer/>
+                    }
+                    <Typography> <strong>Created At</strong> </Typography>
+                    <Typography>@View.CreatedAt</Typography>
+                    <Spacer/>
+                    @if (!string.IsNullOrEmpty(View.ModifiedBy))
+                    {
+                        <Typography> <strong>Modified By</strong> </Typography>
+                        <Typography>@View.ModifiedBy</Typography>
+                        <Spacer/>
+                    }
+                    @if (!string.IsNullOrEmpty(View.ModifiedAt.ToString()))
+                    {
+                        <Typography> <strong>Modified At</strong> </Typography>
+                        <Typography>@View.ModifiedAt</Typography>
+                    }
+                </CardBody>
+            </Card>
+            <Spacer/>
+            <Button Block="true" Color="Color.Primary" Href="@GetUrl("Profile", "Update")" Item="true" Outline="true">
+                <Icon Name="IconName.Edit"/>
+                Edit
+            </Button>
+            <Spacer/>
+            <Button Block="true" Color="Color.Primary" Href="@GetUrl("Profile", "ChangePassword")" Item="true" Outline="true">
+                <Icon Name="IconName.Lock"/>
+                Change Password
+            </Button>
+        </GridItem>
+    </Grid>
+</PluginBody>
