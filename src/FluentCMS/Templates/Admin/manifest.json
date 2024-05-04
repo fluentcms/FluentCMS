@@ -233,6 +233,10 @@
                 {
                     "Name": "Update",
                     "Type": "ProfileUpdatePlugin"
+                },
+                {
+                    "Name": "ChangePassword",
+                    "Type": "ProfileChangePasswordPlugin"
                 }
             ]
         },
