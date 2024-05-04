@@ -60,4 +60,14 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
         var user = await userService.GetById(authContext.UserId, cancellationToken);
         return Ok(mapper.Map<UserDetailResponse>(user));
     }
+
+    [HttpPost]
+    [Authorize]
+    public async Task<IApiResult<UserDetailResponse>> UpdateCurrent(AccountUpdateRequest userUpdateRequest)
+    {
+        var user = await userService.GetById(authContext.UserId);
+        mapper.Map(userUpdateRequest, user);
+        await userService.Update(user);
+        return Ok(mapper.Map<UserDetailResponse>(user));
+    }
 }
