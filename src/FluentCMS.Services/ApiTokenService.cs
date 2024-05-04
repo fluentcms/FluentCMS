@@ -33,7 +33,7 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IOptions<Jw
         apiToken =  await apiTokenRepository.Create(apiToken, cancellationToken) ??
                throw new AppException(ExceptionCodes.ApiTokenUnableToCreate);
         apiToken.Token = GenerateToken(apiToken);
-        await apiTokenRepository.Update(apiToken);
+        await apiTokenRepository.Update(apiToken, cancellationToken);
         return apiToken;
     }
 
