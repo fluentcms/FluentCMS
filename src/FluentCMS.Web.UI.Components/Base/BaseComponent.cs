@@ -27,20 +27,4 @@ public abstract class BaseComponent : ComponentBase
         else
             return type.Name.FromPascalCaseToKebabCase();
     }
-
-    public override Task SetParametersAsync(ParameterView parameters)
-    {
-        parameters.SetParameterProperties(this);
-
-        if (Visible)
-            return base.SetParametersAsync(parameters);
-
-        return Task.CompletedTask;
-    }
-
-    // Prevents rendering if StateHasChanged is called
-    protected override bool ShouldRender()
-    {
-        return Visible;
-    }
 }
