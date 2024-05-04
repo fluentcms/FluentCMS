@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Services;
 
-public interface IApiTokenService
+public interface IApiTokenService : IAutoRegisterService
 {
     Task<ApiToken> Create(ApiToken apiToken, CancellationToken cancellationToken = default);
     Task<ApiToken> Delete(Guid tokenId, CancellationToken cancellationToken = default);
