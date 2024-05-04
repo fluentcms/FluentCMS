@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Web.Api.Controllers;
+﻿namespace FluentCMS.Web.Api.Models;
 
 public class AccountUpdateRequest
 {
