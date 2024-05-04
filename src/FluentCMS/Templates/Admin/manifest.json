@@ -390,10 +390,26 @@
                 },
                 {
                     "Title": "Profile",
-                    "Path": "/profile",
+                    "Path": "/profile-view",
                     "Plugins": [
                         {
                             "Definition": "Profile",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Edit Profile",
+                    "Path": "/profile-update",
+                    "Plugins": [
+                        {
+                            "Definition": "Profile",
+                            "Type": "Update",
+                            "Section": "Main"
+                        },
+                        {
+                            "Definition": "Profile",
+                            "Type": "ChangePassword",
                             "Section": "Main"
                         }
                     ]
