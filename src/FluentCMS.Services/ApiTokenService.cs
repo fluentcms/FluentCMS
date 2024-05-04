@@ -45,7 +45,7 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IOptions<Jw
         var tokenDescriptor = new SecurityTokenDescriptor()
         {
             Issuer = options.Value.Issuer,
-            Audience = "M2M",
+            Audience = "m2m",
             Subject = new ClaimsIdentity(claims),
             Expires = apiToken.ExpiredAt ?? DateTime.MaxValue,
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha512Signature),
