@@ -49,6 +49,7 @@ public class MappingProfile : Profile
 
         CreateMap<UserCreateRequest, User>();
         CreateMap<UserUpdateRequest, User>();
+        CreateMap<AccountUpdateRequest, User>();
         CreateMap<UserRegisterRequest, User>();
         CreateMap<User, UserDetailResponse>();
 
