@@ -6,7 +6,7 @@ public class UserController(IUserService userService, IRoleService roleService, 
 {
     public const string AREA = "User Management";
     public const string READ = "Read";
-    public const string UPDATE = "Update";
+    public const string UPDATE = $"Update/{READ}";
     public const string CREATE = "Create";
 
     [HttpGet]
