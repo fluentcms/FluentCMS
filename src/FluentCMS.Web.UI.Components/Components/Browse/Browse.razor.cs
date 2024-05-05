@@ -1,7 +1,10 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Browse
+public partial class Browse : IAsyncDisposable
 {
+    [Inject]
+    public IJSRuntime? JS { get; set; }
+    
     [Parameter]
     public string? Accept { get; set; }
 

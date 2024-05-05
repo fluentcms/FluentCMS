@@ -1,7 +1,10 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class MarkdownEditor
+public partial class MarkdownEditor : IAsyncDisposable
 {
+    [Inject]
+    public IJSRuntime? JS { get; set; }
+    
     public ElementReference element;
 
     private IJSObjectReference module = default!;

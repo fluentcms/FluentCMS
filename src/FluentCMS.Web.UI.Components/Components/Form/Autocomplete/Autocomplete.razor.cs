@@ -1,7 +1,10 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Autocomplete
+public partial class Autocomplete : IAsyncDisposable
 {
+    [Inject]
+    public IJSRuntime? JS { get; set; }
+    
     public ElementReference element;
 
     private IJSObjectReference module = default!;
