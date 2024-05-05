@@ -29,18 +29,3 @@
         }
     </li>
 }
-
-@code {
-    [Parameter]
-    [CSSProperty]
-    public Color Color { get; set; } = Color.Default;
-
-    [Parameter]
-    public IconName Icon { get; set; } = IconName.Default;
-
-    [Parameter]
-    public string? Subtitle { get; set; }
-
-    [Parameter]
-    public string? Title { get; set; }
-}

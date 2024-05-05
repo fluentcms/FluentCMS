@@ -21,7 +21,7 @@ public class PageController(
 
     [HttpGet("{siteUrl}")]
     [DecodeQueryParam]
-    [Policy(AREA,READ)]
+    [Policy(AREA, READ)]
     public async Task<IApiPagingResult<PageDetailResponse>> GetAll([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
     {
         var site = await siteService.GetByUrl(siteUrl, cancellationToken);
@@ -31,7 +31,7 @@ public class PageController(
     }
 
     [HttpGet("{id}")]
-    [Policy(AREA,READ)]
+    [Policy(AREA, READ)]
     public async Task<IApiResult<PageDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var entity = await pageService.GetById(id, cancellationToken);
@@ -41,7 +41,7 @@ public class PageController(
 
     [HttpGet]
     [DecodeQueryParam]
-    [Policy(AREA,READ)]
+    [Policy(AREA, READ)]
     public async Task<IApiResult<PageFullDetailResponse>> GetByUrl([FromQuery] string url, CancellationToken cancellationToken = default)
     {
         var uri = new Uri(url);
@@ -161,7 +161,7 @@ public class PageController(
     }
 
     [HttpPost]
-    [Policy(AREA,CREATE)]
+    [Policy(AREA, CREATE)]
     public async Task<IApiResult<PageDetailResponse>> Create(PageCreateRequest request, CancellationToken cancellationToken = default)
     {
         var entity = mapper.Map<Page>(request);
@@ -171,7 +171,7 @@ public class PageController(
     }
 
     [HttpPut]
-    [Policy(AREA,UPDATE)]
+    [Policy(AREA, UPDATE)]
     public async Task<IApiResult<PageDetailResponse>> Update(PageUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var entity = mapper.Map<Page>(request);
@@ -181,7 +181,7 @@ public class PageController(
     }
 
     [HttpDelete("{id}")]
-    [Policy(AREA,DELETE)]
+    [Policy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
     {
         await pageService.Delete(id);

@@ -25,13 +25,3 @@
         }
     </div>
 }
-@code {
-    [Parameter]
-    public bool Closable { get; set; } = true;
-
-    [CascadingParameter]
-    public Modal Modal { get; set; } = default!;
-
-    [Parameter]
-    public string? Title { get; set; }
-}

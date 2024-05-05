@@ -36,21 +36,3 @@
         <div class="@this.ClassName("SidebarBackdrop") hidden" id="@(Id + "Backdrop")"></div>
     }
 }
-
-@code {
-    [Parameter]
-    public RenderFragment? Header { get; set; }
-
-    [Parameter]
-    public string? Id { get; set; }
-
-    [Parameter]
-    public RenderFragment? Footer { get; set; }
-
-    [Parameter]
-    [CSSProperty]
-    public bool Secondary { get; set; }
-
-    [Parameter]
-    public string? Title { get; set; }
-}
