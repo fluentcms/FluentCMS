@@ -2,46 +2,49 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<HeadContent>
-    @if(!string.IsNullOrEmpty(Title)) 
-    {
-        <title>@Title</title>
-    }
-</HeadContent>
-
-<nav @attributes="AdditionalAttributes"
-    class="@this.GetClasses()">
-    @if (HasBack)
-    {
-        <PageBackButton />
-    }
-
-    <div class="@this.ClassName("PageHeaderBody")">
-        <h1 class="@this.ClassName("PageHeaderTitle")">
-            @Title
-        </h1>
-        @if (PageHeaderActions != null)
+@if(Visible)
+{
+    <HeadContent>
+        @if(!string.IsNullOrEmpty(Title)) 
         {
-            <div class="@this.ClassName("PageHeaderActions")">
-                @PageHeaderActions
-            </div>
+            <title>@Title</title>
         }
-    </div>
-     
-    @if (PageHeaderActions != null || PageHeaderSubtitle != null || !string.IsNullOrEmpty(SubTitle))
-    {
-        <div class="@this.ClassName("PageHeaderSubtitle")">
-            @if (PageHeaderSubtitle != null)
+    </HeadContent>
+
+    <nav @attributes="AdditionalAttributes"
+        class="@this.GetClasses()">
+        @if (HasBack)
+        {
+            <PageBackButton />
+        }
+
+        <div class="@this.ClassName("PageHeaderBody")">
+            <h1 class="@this.ClassName("PageHeaderTitle")">
+                @Title
+            </h1>
+            @if (PageHeaderActions != null)
             {
-                @PageHeaderSubtitle
-            }
-            else
-            {
-                @SubTitle
+                <div class="@this.ClassName("PageHeaderActions")">
+                    @PageHeaderActions
+                </div>
             }
         </div>
-    }
-</nav>
+     
+        @if (PageHeaderActions != null || PageHeaderSubtitle != null || !string.IsNullOrEmpty(SubTitle))
+        {
+            <div class="@this.ClassName("PageHeaderSubtitle")">
+                @if (PageHeaderSubtitle != null)
+                {
+                    @PageHeaderSubtitle
+                }
+                else
+                {
+                    @SubTitle
+                }
+            </div>
+        }
+    </nav>
+}
 
 @code {
     [Parameter]

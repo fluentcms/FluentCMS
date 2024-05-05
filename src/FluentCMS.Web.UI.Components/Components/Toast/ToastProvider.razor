@@ -2,16 +2,19 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<div @attributes="AdditionalAttributes"
-     class="@this.GetClasses()">
-    @foreach (var toast in toasts)
-    {
-        <Toast Dismissible="true"
-               Type="toast.Type">
-            @toast.Message
-        </Toast>
-    }
-</div>
+@if(Visible)
+{
+    <div @attributes="AdditionalAttributes"
+         class="@this.GetClasses()">
+        @foreach (var toast in toasts)
+        {
+            <Toast Dismissible="true"
+                   Type="toast.Type">
+                @toast.Message
+            </Toast>
+        }
+    </div>
+}
 
 @code
 {

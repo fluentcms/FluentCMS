@@ -3,26 +3,29 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<div @attributes="AdditionalAttributes"
-     @ref="Element"
-     class="@this.GetClasses()">
-    <label class="dark:hover:bg-bray-800 dark:hover:border-gray-500 dark:hover:bg-gray-600"
-           for="dropzone-file">
-        <Icon Name="IconName.CloudArrowUp"
-              Size="IconSize.X2" />
-        <p class="text-sm">
-            <span class="font-semibold">
-                Click to upload
-            </span>
-            or drag and drop
-        </p>
-        <p class="text-xs">
-            @ChildContent
-        </p>
-        <InputFile accept="@Accept"
-                   id="dropzone-file"
-                   multiple="@Multiple"
-                   type="file"
-                   OnChange="HandleChange" />
-    </label>
-</div>
+@if(Visible)
+{
+    <div @attributes="AdditionalAttributes"
+         @ref="Element"
+         class="@this.GetClasses()">
+        <label class="dark:hover:bg-bray-800 dark:hover:border-gray-500 dark:hover:bg-gray-600"
+               for="dropzone-file">
+            <Icon Name="IconName.CloudArrowUp"
+                  Size="IconSize.X2" />
+            <p class="text-sm">
+                <span class="font-semibold">
+                    Click to upload
+                </span>
+                or drag and drop
+            </p>
+            <p class="text-xs">
+                @ChildContent
+            </p>
+            <InputFile accept="@Accept"
+                       id="dropzone-file"
+                       multiple="@Multiple"
+                       type="file"
+                       OnChange="HandleChange" />
+        </label>
+    </div>
+}

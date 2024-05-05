@@ -2,27 +2,29 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<div @attributes="AdditionalAttributes"
-     class="@this.GetClasses()">
-    @if (ChildContent == null)
-    {
-        @if (!string.IsNullOrEmpty(Title))
+@if(Visible)
+{
+    <div @attributes="AdditionalAttributes"
+         class="@this.GetClasses()">
+        @if (ChildContent == null)
         {
-            <ModalTitle>
-                @Title
-            </ModalTitle>
+            @if (!string.IsNullOrEmpty(Title))
+            {
+                <ModalTitle>
+                    @Title
+                </ModalTitle>
+            }
         }
-    }
-    else
-    {
-        @ChildContent
-    }
-    @if (Closable)
-    {
-        <CloseButton OnClick="Modal.Close" />
-    }
-</div>
-
+        else
+        {
+            @ChildContent
+        }
+        @if (Closable)
+        {
+            <CloseButton OnClick="Modal.Close" />
+        }
+    </div>
+}
 @code {
     [Parameter]
     public bool Closable { get; set; } = true;

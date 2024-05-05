@@ -4,11 +4,14 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<div @attributes="AdditionalAttributes"
-     @ref="element"
-     class="@this.GetClasses()">
-    @ChildContent
-</div>
+@if(Visible)
+{
+    <div @attributes="AdditionalAttributes"
+         @ref="element"
+         class="@this.GetClasses()">
+        @ChildContent
+    </div>
+}
 
 @code {
     public ElementReference element;

@@ -2,41 +2,44 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<nav @attributes="AdditionalAttributes"
-     class="@this.GetClasses()">
-    <ul>
-        <PaginationItem Disabled="!this.CanPrevious()"
-                        OnClick="Previous">
-            @if (ShowIcons)
-            {
-                <Icon Name="IconName.Previous" />
-            }
-            else
-            {
-                <text>Previous</text>
-            }
-        </PaginationItem>
-        @foreach (var Page in this.Pages())
-        {
-            <PaginationItem @key="Page"
-                            Active="Page == Current"
-                            OnClick="() => GoTo(Page)">
-                @(Page == 0 ? "..." : Page)
+@if(Visible)
+{
+    <nav @attributes="AdditionalAttributes"
+         class="@this.GetClasses()">
+        <ul>
+            <PaginationItem Disabled="!this.CanPrevious()"
+                            OnClick="Previous">
+                @if (ShowIcons)
+                {
+                    <Icon Name="IconName.Previous" />
+                }
+                else
+                {
+                    <text>Previous</text>
+                }
             </PaginationItem>
-        }
-        <PaginationItem Disabled="!this.CanNext()"
-                        OnClick="Next">
-            @if (ShowIcons)
+            @foreach (var Page in this.Pages())
             {
-                <Icon Name=IconName.Next />
+                <PaginationItem @key="Page"
+                                Active="Page == Current"
+                                OnClick="() => GoTo(Page)">
+                    @(Page == 0 ? "..." : Page)
+                </PaginationItem>
             }
-            else
-            {
-                <text>Next</text>
-            }
-        </PaginationItem>
-    </ul>
-</nav>
+            <PaginationItem Disabled="!this.CanNext()"
+                            OnClick="Next">
+                @if (ShowIcons)
+                {
+                    <Icon Name=IconName.Next />
+                }
+                else
+                {
+                    <text>Next</text>
+                }
+            </PaginationItem>
+        </ul>
+    </nav>
+}
 
 @code {
     [Parameter]

@@ -4,22 +4,25 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<FormField Appearance="FormFieldAppearance.Select"
-           Field="this">
-    <InputSelect @attributes="AdditionalAttributes"
-                 @bind-Value="Value"
-                 class="@this.GetClasses()"
-                 disabled="@Disabled"
-                 id="@Id"
-                 multiple="@Multiple"
-                 name="@Name">
-        @if (!string.IsNullOrEmpty(this.Placeholder))
-        {
-            <option selected>@Placeholder</option>
-        }
-        @ChildContent
-    </InputSelect>
-</FormField>
+@if(Visible)
+{
+    <FormField Appearance="FormFieldAppearance.Select"
+               Field="this">
+        <InputSelect @attributes="AdditionalAttributes"
+                     @bind-Value="Value"
+                     class="@this.GetClasses()"
+                     disabled="@Disabled"
+                     id="@Id"
+                     multiple="@Multiple"
+                     name="@Name">
+            @if (!string.IsNullOrEmpty(this.Placeholder))
+            {
+                <option selected>@Placeholder</option>
+            }
+            @ChildContent
+        </InputSelect>
+    </FormField>
+}
 
 @code {
     [Parameter]

@@ -4,18 +4,21 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<FormField Appearance="FormFieldAppearance.Input"
-           Field="this">
-    <input @attributes="AdditionalAttributes"
-           class="@this.GetClasses()"
-           value="@value"
-           disabled="@Disabled"
-           id="@Id"
-           name="@Name"
-           placeholder="@Placeholder"
-           type="@this.Type.ToString().FromPascalCaseToKebabCase()"
-           @oninput="OnInput" />
-</FormField>
+@if(Visible)
+{
+    <FormField Appearance="FormFieldAppearance.Input"
+               Field="this">
+        <input @attributes="AdditionalAttributes"
+               class="@this.GetClasses()"
+               value="@value"
+               disabled="@Disabled"
+               id="@Id"
+               name="@Name"
+               placeholder="@Placeholder"
+               type="@this.Type.ToString().FromPascalCaseToKebabCase()"
+               @oninput="OnInput" />
+    </FormField>
+}
 
 @code {
     [Parameter]

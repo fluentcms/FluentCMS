@@ -2,10 +2,13 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<button @attributes="AdditionalAttributes"
-        class="@this.GetClasses()"
-        type="button"
-        @onclick="OnClick">
-    <Icon Name="IconName.Close"
-          Size="IconSize.Large" />
-</button>
+@if(Visible)
+{
+    <button @attributes="AdditionalAttributes"
+            class="@this.GetClasses()"
+            type="button"
+            @onclick="OnClick">
+        <Icon Name="IconName.Close"
+              Size="IconSize.Large" />
+    </button>
+}

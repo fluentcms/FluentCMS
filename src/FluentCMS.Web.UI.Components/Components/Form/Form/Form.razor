@@ -2,16 +2,19 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<EditForm @attributes="AdditionalAttributes"
-          class="@this.GetClasses()"
-          EditContext="@Context"
-          FormName="@FormName"
-          method="@Method"
-          novalidate
-          OnValidSubmit="@OnValidSubmit">
-    <DataAnnotationsValidator />
-    @ChildContent
-</EditForm>
+@if(Visible)
+{
+    <EditForm @attributes="AdditionalAttributes"
+              class="@this.GetClasses()"
+              EditContext="@Context"
+              FormName="@FormName"
+              method="@Method"
+              novalidate
+              OnValidSubmit="@OnValidSubmit">
+        <DataAnnotationsValidator />
+        @ChildContent
+    </EditForm>
+}
 
 @code {
     [Parameter]

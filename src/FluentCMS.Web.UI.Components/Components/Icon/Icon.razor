@@ -3,10 +3,13 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<span @attributes="AdditionalAttributes"
-    class="@this.GetClasses()">
-    @Content
-</span>
+@if(Visible)
+{
+    <span @attributes="AdditionalAttributes"
+          class="@this.GetClasses()">
+        @Content
+    </span>
+}
 
 @code {
     private MarkupString? Content { get; set; }
