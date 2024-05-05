@@ -1,4 +1,6 @@
-namespace FluentCMS.Web.UI.Components
+using System.Resources;
+
+namespace FluentCMS.Web.UI.Components;
 
 public partial class Icon
 {

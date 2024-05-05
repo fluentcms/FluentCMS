@@ -1,4 +1,4 @@
-namespace FluentCMS.Web.UI.Components
+namespace FluentCMS.Web.UI.Components;
 
 public partial class Typography
 {

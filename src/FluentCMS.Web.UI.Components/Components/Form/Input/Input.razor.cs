@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Input
+public partial class Input<TValue>
 {
     [Parameter]
     [CSSProperty]
