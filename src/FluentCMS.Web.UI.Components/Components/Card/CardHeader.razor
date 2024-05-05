@@ -2,16 +2,19 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<div @attributes="AdditionalAttributes"
-     class="@this.GetClasses()">
-    @if (!string.IsNullOrEmpty(Title))
-    {
-        <CardTitle>
-            @Title
-        </CardTitle>
-    }
-    @ChildContent
-</div>
+@if(Visible)
+{
+    <div @attributes="AdditionalAttributes"
+         class="@this.GetClasses()">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <CardTitle>
+                @Title
+            </CardTitle>
+        }
+        @ChildContent
+    </div>
+}
 
 @code {
     [Parameter]

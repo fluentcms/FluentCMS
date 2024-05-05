@@ -4,18 +4,21 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<div @attributes="AdditionalAttributes"
-     @ref="element"
-     class="@this.GetClasses()"
-     tabindex="-1">
-    <div class="@this.ClassName("ModalWrapper")">
-        <CascadingValue Value="this">
-            <ModalContent>
-                @ChildContent
-            </ModalContent>
-        </CascadingValue>
+@if(Visible)
+{
+    <div @attributes="AdditionalAttributes"
+         @ref="element"
+         class="@this.GetClasses()"
+         tabindex="-1">
+        <div class="@this.ClassName("ModalWrapper")">
+            <CascadingValue Value="this">
+                <ModalContent>
+                    @ChildContent
+                </ModalContent>
+            </CascadingValue>
+        </div>
     </div>
-</div>
+}
 
 @code {
     public ElementReference element;

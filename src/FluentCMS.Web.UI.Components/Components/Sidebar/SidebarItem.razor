@@ -2,30 +2,33 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<li @attributes="AdditionalAttributes"
-    class="@this.GetClasses()">
-    @if (string.IsNullOrEmpty(Href))
-    {
-        <span class="@this.ClassName("SidebarItemText")">
-            @ChildContent
-        </span>
-    }
-    else
-    {
-        @* TODO: checked the usage of class *@
-        <a class="group" 
-           href="@Href"
-           target="@Target">
-            @if (this.Icon != IconName.Default)
-            {
-                <Icon class="@this.ClassName("SidebarItemIcon")" Name="Icon" />
-            }
+@if(Visible)
+{
+    <li @attributes="AdditionalAttributes"
+        class="@this.GetClasses()">
+        @if (string.IsNullOrEmpty(Href))
+        {
             <span class="@this.ClassName("SidebarItemText")">
                 @ChildContent
             </span>
-        </a>
-    }
-</li>
+        }
+        else
+        {
+            @* TODO: checked the usage of class *@
+            <a class="group" 
+               href="@Href"
+               target="@Target">
+                @if (this.Icon != IconName.Default)
+                {
+                    <Icon class="@this.ClassName("SidebarItemIcon")" Name="Icon" />
+                }
+                <span class="@this.ClassName("SidebarItemText")">
+                    @ChildContent
+                </span>
+            </a>
+        }
+    </li>
+}
 
 @code {
     [Parameter]

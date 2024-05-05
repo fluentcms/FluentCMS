@@ -2,7 +2,10 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<h3 @attributes="AdditionalAttributes"
-    class="@this.GetClasses()">
-    @ChildContent
-</h3>
+@if(Visible)
+{
+    <h3 @attributes="AdditionalAttributes"
+        class="@this.GetClasses()">
+        @ChildContent
+    </h3>
+}

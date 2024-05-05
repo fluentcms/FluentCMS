@@ -2,21 +2,24 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<li @attributes="AdditionalAttributes"
-    class="@this.GetClasses()">
-    @if (!string.IsNullOrEmpty(Href))
-    {
-        <a href="@Href">
-            @ChildContent
-        </a>
-    }
-    else
-    {
-        <span @onclick="OnClicked">
-            @ChildContent
-        </span>
-    }
-</li>
+@if(Visible)
+{
+    <li @attributes="AdditionalAttributes"
+        class="@this.GetClasses()">
+        @if (!string.IsNullOrEmpty(Href))
+        {
+            <a href="@Href">
+                @ChildContent
+            </a>
+        }
+        else
+        {
+            <span @onclick="OnClicked">
+                @ChildContent
+            </span>
+        }
+    </li>
+}
 
 @code {
     [Parameter]

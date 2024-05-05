@@ -3,22 +3,25 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<div @attributes="AdditionalAttributes"
-     class="@this.GetClasses()">
-    <select @ref="element"
-            autocomplete="off"
-            disabled="@Disabled"
-            multiple="@Multiple">
-        @foreach (var Option in Options)
-        {
-            <option @key="Option.Id"
-                    selected="@Value.Contains(Option.Id)"
-                    value="@Option.Id">
-                @Option.Title
-            </option>
-        }
-    </select>
-</div>
+@if(Visible)
+{
+    <div @attributes="AdditionalAttributes"
+         class="@this.GetClasses()">
+        <select @ref="element"
+                autocomplete="off"
+                disabled="@Disabled"
+                multiple="@Multiple">
+            @foreach (var Option in Options)
+            {
+                <option @key="Option.Id"
+                        selected="@Value.Contains(Option.Id)"
+                        value="@Option.Id">
+                    @Option.Title
+                </option>
+            }
+        </select>
+    </div>
+}
 
 @code {
     public ElementReference element;

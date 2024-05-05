@@ -2,30 +2,33 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<li @attributes="AdditionalAttributes"
-    class="@this.GetClasses()">
-    <span class="@this.ClassName("StepperItemIcon")">
-        @if (Icon != IconName.Default)
+@if(Visible)
+{
+    <li @attributes="AdditionalAttributes"
+        class="@this.GetClasses()">
+        <span class="@this.ClassName("StepperItemIcon")">
+            @if (Icon != IconName.Default)
+            {
+                <Icon Name="Icon"
+                    Color="Color" />
+            }
+        </span>
+        <h3 class="@this.ClassName("StepperItemTitle")">
+            @Title
+        </h3>
+        @if (!string.IsNullOrEmpty(Subtitle))
         {
-            <Icon Name="Icon"
-                  Color="Color" />
+            <p class="@this.ClassName("StepperItemSubtitle")">
+                @Subtitle
+            </p>
         }
-    </span>
-    <h3 class="@this.ClassName("StepperItemTitle")">
-        @Title
-    </h3>
-    @if (!string.IsNullOrEmpty(Subtitle))
-    {
-        <p class="@this.ClassName("StepperItemSubtitle")">
-            @Subtitle
-        </p>
-    }
-    @if (ChildContent != null)
-    {
-        <Spacer />
-        @ChildContent
-    }
-</li>
+        @if (ChildContent != null)
+        {
+            <Spacer />
+            @ChildContent
+        }
+    </li>
+}
 
 @code {
     [Parameter]

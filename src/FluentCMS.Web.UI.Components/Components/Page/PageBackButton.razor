@@ -2,14 +2,17 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<Button autofocus="true"
-        class="@this.GetClasses()"
-        Link="true"
-        tabindex="0"
-        OnClick="() => GoBack()">
-    <Icon Name="@IconName.Previous" />
-    Back
-</Button>
+@if(Visible)
+{
+    <Button autofocus="true"
+            class="@this.GetClasses()"
+            Link="true"
+            tabindex="0"
+            OnClick="() => GoBack()">
+        <Icon Name="@IconName.Previous" />
+        Back
+    </Button>
+}
 
 @code {
     [Inject]

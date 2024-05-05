@@ -2,13 +2,16 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<li @attributes="AdditionalAttributes"
-    class="@this.GetClasses()">
-    <button type="button" 
-            @onclick="() => Parent?.Activate(Name)">
-        @ChildContent
-    </button>
-</li>
+@if(Visible)
+{
+    <li @attributes="AdditionalAttributes"
+        class="@this.GetClasses()">
+        <button type="button" 
+                @onclick="() => Parent?.Activate(Name)">
+            @ChildContent
+        </button>
+    </li>
+}
 
 @code {
     [CSSProperty]
