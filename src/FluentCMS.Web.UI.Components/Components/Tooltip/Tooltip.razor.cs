@@ -4,7 +4,7 @@ public partial class Tooltip : IAsyncDisposable
 {
     [Inject]
     public IJSRuntime? JS { get; set; }
-    
+
     public ElementReference element;
 
     private IJSObjectReference module = default!;

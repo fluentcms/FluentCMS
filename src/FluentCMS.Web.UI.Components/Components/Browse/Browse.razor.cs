@@ -4,7 +4,7 @@ public partial class Browse : IAsyncDisposable
 {
     [Inject]
     public IJSRuntime? JS { get; set; }
-    
+
     [Parameter]
     public string? Accept { get; set; }
 

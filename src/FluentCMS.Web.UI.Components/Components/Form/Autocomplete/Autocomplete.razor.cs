@@ -4,7 +4,7 @@ public partial class Autocomplete : IAsyncDisposable
 {
     [Inject]
     public IJSRuntime? JS { get; set; }
-    
+
     public ElementReference element;
 
     private IJSObjectReference module = default!;
@@ -73,7 +73,7 @@ public partial class Autocomplete : IAsyncDisposable
     {
         await module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
     }
-    
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
