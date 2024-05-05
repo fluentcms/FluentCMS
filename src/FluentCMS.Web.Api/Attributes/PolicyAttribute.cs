@@ -19,15 +19,11 @@ public class PolicyAttribute : Attribute, IAsyncAuthorizationFilter
     {
         var authContext = context.HttpContext.RequestServices.GetRequiredService<IAuthContext>();
 
-        if (authContext.IsApi)
-        {
+        if (authContext.Type == AuthType.Api)
             await AuthorizeApiToken(context, authContext);
-        }
-        else
-        {
-            await AuthorizeUser(context, authContext);
-        }
 
+        if (authContext.Type == AuthType.User)
+            await AuthorizeUser(context, authContext);
     }
 
     private async Task AuthorizeApiToken(AuthorizationFilterContext context, IAuthContext authContext, CancellationToken cancellationToken = default)

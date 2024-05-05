@@ -15,7 +15,7 @@ public class AuthContext : IAuthContext
     private List<Role>? _roles = [];
     private bool _isUserLoaded = false;
     private bool _areRolesLoaded = false;
-    private readonly bool _isApi = false;
+    private readonly AuthType _type = AuthType.None;
     private bool _isApiTokenLoaded = false;
     private ApiToken? _apiToken = null;
 
@@ -33,14 +33,14 @@ public class AuthContext : IAuthContext
             _userId = idClaimValue == null ? Guid.Empty : Guid.Parse(idClaimValue);
             _username = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
             _isAuthenticated = user?.Identity?.IsAuthenticated ?? false;
-            _isApi = user?.FindFirstValue(ClaimTypes.Actor) == "m2m";
+            _type = user?.FindFirstValue(ClaimTypes.Actor) == "m2m" ? AuthType.Api : AuthType.User;
         }
     }
 
     public string Username => _username;
     public bool IsAuthenticated => _isAuthenticated;
 
-    public bool IsApi => _isApi;
+    public AuthType Type => _type;
 
     public Guid UserId => _userId;
 
@@ -52,7 +52,7 @@ public class AuthContext : IAuthContext
         var apiTokenService = _serviceProvider?.GetRequiredService<IApiTokenService>();
 
         if (apiTokenService != null)
-            _apiToken = await apiTokenService.GetById(_userId);
+            _apiToken = await apiTokenService.GetById(_userId, cancellationToken);
 
         _isApiTokenLoaded = true;
 
