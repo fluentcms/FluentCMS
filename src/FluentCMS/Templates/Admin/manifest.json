@@ -189,17 +189,6 @@
             ]
         },
         {
-            "Name": "Counter",
-            "Description": "Counter Plugin",
-            "Types": [
-                {
-                    "Name": "Counter",
-                    "Type": "Counter",
-                    "IsDefault": true
-                }
-            ]
-        },
-        {
             "Name": "File Management",
             "Description": "File Management Plugin",
             "Types": [

@@ -35,11 +35,6 @@
             "Type": "ResetPasswordViewPlugin"
         },
         {
-            "Name": "Counter",
-            "Description": "Counter plugin",
-            "Type": "CounterViewPlugin"
-        },
-        {
             "Name": "HelloWorld",
             "Description": "Hello World plugin",
             "ViewType": "HelloWorldViewPlugin",
