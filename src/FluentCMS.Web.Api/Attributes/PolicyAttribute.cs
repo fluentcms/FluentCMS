@@ -21,11 +21,11 @@ public class PolicyAttribute : Attribute, IAsyncAuthorizationFilter
 
         if (authContext.IsApi)
         {
-            await AuthorizeApiToken(context,authContext);
+            await AuthorizeApiToken(context, authContext);
         }
         else
         {
-            await AuthorizeUser(context,authContext);
+            await AuthorizeUser(context, authContext);
         }
 
     }
