@@ -49,7 +49,7 @@ public class ContentController(
     }
 
     [HttpDelete("{id}")]
-    [Policy(AREA,DELETE)]
+    [Policy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] string contentTypeSlug, [FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var contentType = await contentTypeService.GetBySlug(contentTypeSlug, cancellationToken);

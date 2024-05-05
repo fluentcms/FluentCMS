@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Modal 
+public partial class Modal
 {
     public ElementReference element;
 

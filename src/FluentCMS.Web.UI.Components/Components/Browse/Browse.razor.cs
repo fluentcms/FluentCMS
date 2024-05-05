@@ -1,7 +1,7 @@
 namespace FluentCMS.Web.UI.Components;
 
 public partial class Browse
-{    
+{
     [Parameter]
     public string? Accept { get; set; }
 

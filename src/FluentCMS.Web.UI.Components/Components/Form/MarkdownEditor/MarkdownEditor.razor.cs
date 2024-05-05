@@ -7,10 +7,10 @@ public partial class MarkdownEditor
     private IJSObjectReference module = default!;
 
     [Parameter]
-    public bool Readonly {get; set;} = false;
+    public bool Readonly { get; set; } = false;
 
     [Parameter]
-    public string? Placeholder {get; set;}
+    public string? Placeholder { get; set; }
 
     private string? content;
 

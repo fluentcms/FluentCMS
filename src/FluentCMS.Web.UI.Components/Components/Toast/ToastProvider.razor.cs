@@ -10,11 +10,11 @@ public partial class ToastProvider
     public void Show(string message, ToastType? type)
     {
         var toast = new ToastModel()
-            {
-                Duration = 5000,
-                Message = message,
-                Type = type ?? ToastType.Default
-            };
+        {
+            Duration = 5000,
+            Message = message,
+            Type = type ?? ToastType.Default
+        };
 
         toasts.Add(toast);
 

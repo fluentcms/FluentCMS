@@ -1,6 +1,7 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Dropdown {
+public partial class Dropdown
+{
     [Parameter]
     public bool AutoClose { get; set; } = true;
 
@@ -40,7 +41,7 @@ public partial class Dropdown {
 
     [JSInvokable]
     public async void Update(bool open)
-    {                                  
+    {
         await OpenChanged.InvokeAsync(Open = open);
     }
 

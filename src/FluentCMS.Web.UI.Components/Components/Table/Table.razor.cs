@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Table 
+public partial class Table
 {
     [Parameter]
     [CSSProperty]

@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Autocomplete 
+public partial class Autocomplete
 {
     public ElementReference element;
 

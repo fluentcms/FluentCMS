@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class StepperItem 
+public partial class StepperItem
 {
     [Parameter]
     [CSSProperty]

@@ -1,5 +1,4 @@
-﻿using FluentCMS.Web.UI.Components;
-using System.Resources;
+﻿using System.Resources;
 
 namespace Microsoft.Extensions.DependencyInjection;
 

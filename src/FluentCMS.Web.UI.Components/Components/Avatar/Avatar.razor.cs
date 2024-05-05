@@ -1,5 +1,5 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Avatar 
+public partial class Avatar
 {
 }
