@@ -18,6 +18,30 @@ public class PolicyAttribute : Attribute, IAsyncAuthorizationFilter
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
         var authContext = context.HttpContext.RequestServices.GetRequiredService<IAuthContext>();
+
+        if (authContext.Type == AuthType.Api)
+            await AuthorizeApiToken(context, authContext);
+
+        if (authContext.Type == AuthType.User)
+            await AuthorizeUser(context, authContext);
+    }
+
+    private async Task AuthorizeApiToken(AuthorizationFilterContext context, IAuthContext authContext, CancellationToken cancellationToken = default)
+    {
+        var apiToken = await authContext.GetApiToken(cancellationToken);
+
+        if (apiToken == null)
+        {
+            context.Result = new UnauthorizedResult();
+            return;
+        }
+
+        CheckPolicies(context, apiToken.Policies);
+
+    }
+
+    private async Task AuthorizeUser(AuthorizationFilterContext context, IAuthContext authContext, CancellationToken cancellationToken = default)
+    {
         var globalSettingService = context.HttpContext.RequestServices.GetRequiredService<IGlobalSettingsService>();
 
         var globalSetting = await globalSettingService.Get();
@@ -27,8 +51,8 @@ public class PolicyAttribute : Attribute, IAsyncAuthorizationFilter
         if (globalSetting?.SuperUsers != null && globalSetting.SuperUsers.Contains(authContext.Username))
             return;
 
-        var user = await authContext.GetUser();
-        var roles = await authContext.GetRoles();
+        var user = await authContext.GetUser(cancellationToken);
+        var roles = await authContext.GetRoles(cancellationToken);
 
         if (user == null || roles.Count == 0)
         {
@@ -38,6 +62,11 @@ public class PolicyAttribute : Attribute, IAsyncAuthorizationFilter
 
         // check if roles contains the required policy
         var policies = roles.SelectMany(r => r.Policies);
+        CheckPolicies(context, policies);
+    }
+
+    private void CheckPolicies(AuthorizationFilterContext context, IEnumerable<Policy> policies)
+    {
         var accessibleArea = policies.Where(p => p.Area == Area).FirstOrDefault();
         if (accessibleArea == null)
         {

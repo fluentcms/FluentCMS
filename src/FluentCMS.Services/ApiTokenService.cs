@@ -9,7 +9,7 @@ public interface IApiTokenService : IAutoRegisterService
     Task<ApiToken> Update(Guid tokenId, string name, string? description, bool enabled, List<Policy> policies, CancellationToken cancellationToken = default);
 }
 
-public class ApiTokenService(IApiTokenRepository apiTokenRepository) : IApiTokenService
+public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenProvider apiTokenProvider) : IApiTokenService
 {
     public async Task<IEnumerable<ApiToken>> GetAll(CancellationToken cancellationToken = default)
     {
@@ -23,8 +23,16 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository) : IApiToken
 
     public async Task<ApiToken> Create(ApiToken apiToken, CancellationToken cancellationToken = default)
     {
-        return await apiTokenRepository.Create(apiToken, cancellationToken) ??
+        apiToken = await apiTokenRepository.Create(apiToken, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenUnableToCreate);
+        await UpdateJwt(apiToken);
+        return apiToken;
+    }
+
+    private async Task UpdateJwt(ApiToken apiToken)
+    {
+        apiToken.Token = apiTokenProvider.GenerateToken(apiToken);
+        await apiTokenRepository.Update(apiToken);
     }
 
     public async Task<ApiToken> Update(Guid tokenId, string name, string? description, bool enabled, List<Policy> policies, CancellationToken cancellationToken = default)
