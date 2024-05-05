@@ -2,13 +2,16 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<span @attributes="AdditionalAttributes"
-      class="@this.GetClasses()">
-    Showing
-    <span>@Current-@Size</span>
-    of
-    <span>@Total</span>
-</span>
+@if(Visible)
+{
+    <span @attributes="AdditionalAttributes"
+          class="@this.GetClasses()">
+        Showing
+        <span>@Current-@Size</span>
+        of
+        <span>@Total</span>
+    </span>
+}
 
 @code {
     [Parameter]

@@ -3,18 +3,21 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<button @attributes="AdditionalAttributes"
-   class="@this.GetClasses()"
-   @onclick="OnClick">
-    @if (IsLight)
-    {
-        <Icon Name="IconName.Moon" />
-    }
-    else
-    {
-        <Icon Name="IconName.Sun" />
-    }
-</button>
+@if(Visible)
+{
+    <button @attributes="AdditionalAttributes"
+            class="@this.GetClasses()"
+            @onclick="OnClick">
+        @if (IsLight)
+        {
+            <Icon Name="IconName.Moon" />
+        }
+        else
+        {
+            <Icon Name="IconName.Sun" />
+        }
+    </button>
+}
 
 @code {
     private IJSObjectReference module = default!;

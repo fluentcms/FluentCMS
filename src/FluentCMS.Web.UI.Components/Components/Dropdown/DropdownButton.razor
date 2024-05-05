@@ -2,15 +2,18 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<Button @attributes="AdditionalAttributes"
-        Color="@Color"
-        Disabled="@Disabled"
-        Ghost="@Ghost"
-        Href="@Href"
-        Loading="@Loading"
-        Outline="@Outline"
-        Size="@Size"
-        Type="@Type">
-    @ChildContent
-    <Icon Name="IconName.AngleDown" />
-</Button>
+@if(Visible)
+{
+    <Button @attributes="AdditionalAttributes"
+            Color="@Color"
+            Disabled="@Disabled"
+            Ghost="@Ghost"
+            Href="@Href"
+            Loading="@Loading"
+            Outline="@Outline"
+            Size="@Size"
+            Type="@Type">
+        @ChildContent
+        <Icon Name="IconName.AngleDown" />
+    </Button>
+}

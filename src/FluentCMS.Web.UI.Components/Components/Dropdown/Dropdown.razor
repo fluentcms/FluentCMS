@@ -3,13 +3,16 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<div @attributes="AdditionalAttributes"
-     @ref="Element"
-     class="@this.GetClasses()">
-    <CascadingValue Value="this">
-        @ChildContent
-    </CascadingValue>
-</div>
+@if(Visible)
+{
+    <div @attributes="AdditionalAttributes"
+         @ref="Element"
+         class="@this.GetClasses()">
+        <CascadingValue Value="this">
+            @ChildContent
+        </CascadingValue>
+    </div>
+}
 
 @code {
     [Parameter]

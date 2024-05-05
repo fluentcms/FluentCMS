@@ -2,9 +2,12 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<tfoot @attributes="AdditionalAttributes"
-    class="@this.GetClasses()">
-    <tr class="@this.ClassName("TableFootRow")">
-        @ChildContent
-    </tr>
-</tfoot>
+@if(Visible)
+{
+    <tfoot @attributes="AdditionalAttributes"
+           class="@this.GetClasses()">
+        <tr class="@this.ClassName("TableFootRow")">
+            @ChildContent
+        </tr>
+    </tfoot>
+}

@@ -2,36 +2,39 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-@* TODO: remove extra class *@
-<aside @attributes="AdditionalAttributes"
-       class="@this.GetClasses() -translate-x-full lg:!translate-x-0" id="@Id">
-    <div class="@this.ClassName("SidebarMain")">
-        @if (!string.IsNullOrEmpty(Title))
-        {
-            <h4 class="@this.ClassName("SidebarTitle")">
-                @Title
-            </h4>
-        }
-        @Header
-        <ul>
-            <li>
-                <ul>
-                    @ChildContent
-                </ul>
-            </li>
-        </ul>
-    </div>
-    @if (Footer != null)
-    {
-        <div class="@this.ClassName("SidebarFooter")">
-            @Footer
-        </div>
-    }
-</aside>
-
-@if(!Secondary)
+@if(Visible)
 {
-    <div class="@this.ClassName("SidebarBackdrop") hidden" id="@(Id + "Backdrop")"></div>
+    @* TODO: remove extra class *@
+    <aside @attributes="AdditionalAttributes"
+           class="@this.GetClasses() -translate-x-full lg:!translate-x-0" id="@Id">
+        <div class="@this.ClassName("SidebarMain")">
+            @if (!string.IsNullOrEmpty(Title))
+            {
+                <h4 class="@this.ClassName("SidebarTitle")">
+                    @Title
+                </h4>
+            }
+            @Header
+            <ul>
+                <li>
+                    <ul>
+                        @ChildContent
+                    </ul>
+                </li>
+            </ul>
+        </div>
+        @if (Footer != null)
+        {
+            <div class="@this.ClassName("SidebarFooter")">
+                @Footer
+            </div>
+        }
+    </aside>
+
+    @if(!Secondary)
+    {
+        <div class="@this.ClassName("SidebarBackdrop") hidden" id="@(Id + "Backdrop")"></div>
+    }
 }
 
 @code {

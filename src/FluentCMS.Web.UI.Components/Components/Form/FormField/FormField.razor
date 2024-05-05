@@ -5,99 +5,101 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<div @attributes="AdditionalAttributes"
-     class="@this.GetClasses()">
-    @if (!IsInlineLabel && (!string.IsNullOrEmpty(Field?.Label) || Field?.LabelFragment != null))
-    {
-        <label for="@Field?.Id"
-               class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-            @if (!string.IsNullOrEmpty(Field?.Label))
-            {
-                @Field?.Label
-            }
-            else
-            {
-                @Field?.LabelFragment
-            }
-            @(Field != null && Field.Required ? "\u00A0*" : "")
-
-        </label>
-    }
-    <div class="relative">
-        @if (IconStart != null)
+@if(Visible)
+{
+    <div @attributes="AdditionalAttributes"
+         class="@this.GetClasses()">
+        @if (!IsInlineLabel && (!string.IsNullOrEmpty(Field?.Label) || Field?.LabelFragment != null))
         {
-            <div class="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
-                <Icon Name="IconStart.GetValueOrDefault()" />
-            </div>
+            <label for="@Field?.Id"
+                   class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                @if (!string.IsNullOrEmpty(Field?.Label))
+                {
+                    @Field?.Label
+                }
+                else
+                {
+                    @Field?.LabelFragment
+                }
+                @(Field != null && Field.Required ? "\u00A0*" : "")
+            </label>
         }
-        @if (IsInlineLabel)
-        {
-            @if (Appearance == FormFieldAppearance.Switch)
+        <div class="relative">
+            @if (IconStart != null)
             {
-                <label class="relative inline-flex items-center cursor-pointer">
+                <div class="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
+                    <Icon Name="IconStart.GetValueOrDefault()" />
+                </div>
+            }
+            @if (IsInlineLabel)
+            {
+                @if (Appearance == FormFieldAppearance.Switch)
+                {
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        @ChildContent
+                        <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">
+                            @if (Field?.LabelFragment == null)
+                            {
+                                @Field?.Label
+                            }
+                            else
+                            {
+                                @Field?.LabelFragment
+                            }
+                            @(Field != null && Field.Required ? "\u00A0*" : "")
+                        </span>
+                    </label>
+                }
+                else
+                {
                     @ChildContent
-                    <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">
-                        @if (Field?.LabelFragment == null)
-                        {
-                            @Field?.Label
-                        }
-                        else
-                        {
-                            @Field?.LabelFragment
-                        }
-                        @(Field != null && Field.Required ? "\u00A0*" : "")
-                    </span>
-                </label>
+                    @if (!string.IsNullOrEmpty(Field?.Label) || Field?.LabelFragment != null)
+                    {
+                        <label for="@Field?.Id"
+                               class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                            @if (!string.IsNullOrEmpty(Field?.Label))
+                            {
+                                @Field?.Label
+                            }
+                            else
+                            {
+                                @Field?.LabelFragment
+                            }
+                            @(Field != null && Field.Required ? "\u00A0*" : "")
+                        </label>
+                    }
+                }
             }
             else
             {
                 @ChildContent
-                @if (!string.IsNullOrEmpty(Field?.Label) || Field?.LabelFragment != null)
-                {
-                    <label for="@Field?.Id"
-                           class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                        @if (!string.IsNullOrEmpty(Field?.Label))
-                        {
-                            @Field?.Label
-                        }
-                        else
-                        {
-                            @Field?.LabelFragment
-                        }
-                        @(Field != null && Field.Required ? "\u00A0*" : "")
-                    </label>
-                }
             }
-        }
-        else
+            @if (IconEnd != null)
+            {
+                <div class="absolute inset-y-0 end-0 flex items-center pe-3.5 pointer-events-none">
+                    <Icon Name="IconEnd.GetValueOrDefault()" />
+                </div>
+            }
+        </div>
+        @if (Field != null && !Field.Dense)
         {
-            @ChildContent
-        }
-        @if (IconEnd != null)
-        {
-            <div class="absolute inset-y-0 end-0 flex items-center pe-3.5 pointer-events-none">
-                <Icon Name="IconEnd.GetValueOrDefault()" />
-            </div>
+            @if (string.IsNullOrEmpty(Errors.FirstOrDefault()))
+            {
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    @(Field?.Hint ?? "\u00A0")
+                </p>
+            }
+            else
+            {
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400"
+                   id="@(Field?.Id)Error">
+                    @Errors.FirstOrDefault()
+                </p>
+            }
+            <div class="mb-2"></div>
         }
     </div>
-    @if (Field != null && !Field.Dense)
-    {
-        @if (string.IsNullOrEmpty(Errors.FirstOrDefault()))
-        {
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                @(Field?.Hint ?? "\u00A0")
-            </p>
-        }
-        else
-        {
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400"
-               id="@(Field?.Id)Error">
-                @Errors.FirstOrDefault()
-            </p>
-        }
-        <div class="mb-2"></div>
-    }
-</div>
+}
 
 @code
 {

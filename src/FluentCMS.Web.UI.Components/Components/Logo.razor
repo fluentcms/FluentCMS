@@ -2,7 +2,10 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<img @attributes="AdditionalAttributes"
-     alt="logo"
-     class="@this.GetClasses() w-8 h-8 mx-3"
-     src="/_content/FluentCMS.Web.UI.Components/img/logo.svg" />
+@if(Visible)
+{
+    <img @attributes="AdditionalAttributes"
+         alt="logo"
+         class="@this.GetClasses() w-8 h-8 mx-3"
+         src="/_content/FluentCMS.Web.UI.Components/img/logo.svg" />
+}

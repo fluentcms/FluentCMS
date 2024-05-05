@@ -4,34 +4,37 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<div @attributes="AdditionalAttributes"
-     @ref="element"
-     class="@this.GetClasses()"
-     tabindex="-1">
-    <div class="@this.ClassName("ConfirmWrapper")">
-        <div class="@this.ClassName("ConfirmContent")">
-            <CloseButton OnClick="Close" />
-            <div class="@this.ClassName("ConfirmBody")">
-                <Icon Name="IconName.ExclamationCircle"
-                      Size="IconSize.Large" />
-                <h3 class="@this.ClassName("ConfirmMessage")">
-                    @Message
-                </h3>
-                <ButtonGroup>
-                    <Button Color="Color.Danger"
-                            id="@(string.IsNullOrEmpty(Id) ? null : Id + "ConfirmButton")"
-                            OnClick="Confirmation">
-                        Yes, I'm sure
-                    </Button>
-                    <Button id="@(string.IsNullOrEmpty(Id) ? null : Id + "CancelButton")"
-                            OnClick="Close">
-                        No, cancel
-                    </Button>
-                </ButtonGroup>
+@if(Visible)
+{
+    <div @attributes="AdditionalAttributes"
+         @ref="element"
+         class="@this.GetClasses()"
+         tabindex="-1">
+        <div class="@this.ClassName("ConfirmWrapper")">
+            <div class="@this.ClassName("ConfirmContent")">
+                <CloseButton OnClick="Close" />
+                <div class="@this.ClassName("ConfirmBody")">
+                    <Icon Name="IconName.ExclamationCircle"
+                          Size="IconSize.Large" />
+                    <h3 class="@this.ClassName("ConfirmMessage")">
+                        @Message
+                    </h3>
+                    <ButtonGroup>
+                        <Button Color="Color.Danger"
+                                id="@(string.IsNullOrEmpty(Id) ? null : Id + "ConfirmButton")"
+                                OnClick="Confirmation">
+                            Yes, I'm sure
+                        </Button>
+                        <Button id="@(string.IsNullOrEmpty(Id) ? null : Id + "CancelButton")"
+                                OnClick="Close">
+                            No, cancel
+                        </Button>
+                    </ButtonGroup>
+                </div>
             </div>
         </div>
     </div>
-</div>
+}
 
 @code {
     public ElementReference element;
