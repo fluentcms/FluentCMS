@@ -34,7 +34,7 @@ public class AuthContext : IAuthContext
             _userId = idClaimValue == null ? Guid.Empty : Guid.Parse(idClaimValue);
             _username = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
             _isAuthenticated = user?.Identity?.IsAuthenticated ?? false;
-            _isApi = user?.FindFirstValue(JwtRegisteredClaimNames.Aud) == "m2m";
+            _isApi = user?.FindFirstValue(ClaimTypes.Actor) == "m2m";
         }
     }
 

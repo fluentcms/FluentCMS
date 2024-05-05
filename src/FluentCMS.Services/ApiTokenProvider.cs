@@ -24,7 +24,7 @@ public class JwtApiTokenProvider(IOptions<JwtOptions> options) : IApiTokenProvid
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Issuer = options.Value.Issuer,
-            Audience = "m2m",
+            Audience = options.Value.Audience,
             Subject = new ClaimsIdentity(claims),
             Expires = apiToken.ExpiredAt ?? DateTime.MaxValue,
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha512Signature),
@@ -40,5 +40,6 @@ public class JwtApiTokenProvider(IOptions<JwtOptions> options) : IApiTokenProvid
     {
         yield return new Claim(ClaimTypes.Sid, apiToken.Id.ToString("D"));
         yield return new Claim(ClaimTypes.NameIdentifier, $"api-{apiToken.Id:D}");
+        yield return new Claim(ClaimTypes.Actor, "m2m");
     }
 }
