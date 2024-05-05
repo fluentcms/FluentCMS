@@ -6,9 +6,9 @@ public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper
 {
     public const string AREA = "API Token Management";
     public const string READ = "Read";
-    public const string UPDATE = "Update";
+    public const string UPDATE = $"Update/{READ}";
     public const string CREATE = "Create";
-    public const string DELETE = "Delete";
+    public const string DELETE = $"Delete/{READ}";
 
     [HttpGet]
     [Policy(AREA, READ)]
