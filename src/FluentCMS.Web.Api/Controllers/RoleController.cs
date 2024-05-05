@@ -1,8 +1,8 @@
-﻿using System.Reflection;
-using FluentCMS.Web.Api.Attributes;
+﻿using FluentCMS.Web.Api.Attributes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Routing;
+using System.Reflection;
 
 namespace FluentCMS.Web.Api.Controllers;
 
