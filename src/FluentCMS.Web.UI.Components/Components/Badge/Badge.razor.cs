@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Badge
+public partial class Badge : BaseComponent
 {
     [Parameter]
     [CSSProperty]
