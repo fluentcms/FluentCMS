@@ -1,7 +1,10 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Accordion
+public partial class Accordion : IAsyncDisposable
 {
+    [Inject]
+    public IJSRuntime? JS { get; set; }
+
     [Parameter]
     [CSSProperty]
     public bool Disabled { get; set; }
