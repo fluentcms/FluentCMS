@@ -1,7 +1,10 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Dropdown
+public partial class Dropdown : IAsyncDisposable
 {
+    [Inject]
+    public IJSRuntime? JS { get; set; }
+
     [Parameter]
     public bool AutoClose { get; set; } = true;
 
@@ -43,6 +46,11 @@ public partial class Dropdown
     public async void Update(bool open)
     {
         await OpenChanged.InvokeAsync(Open = open);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await Module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), Element);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

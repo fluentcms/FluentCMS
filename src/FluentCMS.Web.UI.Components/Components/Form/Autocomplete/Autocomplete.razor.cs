@@ -1,7 +1,10 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Autocomplete
+public partial class Autocomplete : IAsyncDisposable
 {
+    [Inject]
+    public IJSRuntime? JS { get; set; }
+
     public ElementReference element;
 
     private IJSObjectReference module = default!;
@@ -64,6 +67,11 @@ public partial class Autocomplete
     public void UpdateValue(List<string> Value)
     {
         this.Value = Value;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

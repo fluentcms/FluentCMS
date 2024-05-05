@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class FormField
+public partial class FormField : IDisposable
 {
     [Parameter]
     public FormFieldAppearance Appearance { get; set; }

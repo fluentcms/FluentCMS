@@ -1,7 +1,10 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Browse
+public partial class Browse : IAsyncDisposable
 {
+    [Inject]
+    public IJSRuntime? JS { get; set; }
+
     [Parameter]
     public string? Accept { get; set; }
 
@@ -18,6 +21,11 @@ public partial class Browse
     async Task HandleChange(InputFileChangeEventArgs evt)
     {
         OnChange.InvokeAsync(evt);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await Module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), Element);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

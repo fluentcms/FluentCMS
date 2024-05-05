@@ -88,7 +88,7 @@ export function initialize(dotnet, element, config) {
 export function dispose(dotnet, element) {
     const markdownEditor = markdownEditors.get(element);
 
-    markdownEditor?.destroy();
+    markdownEditor?.cleanup();
 
     markdownEditors.delete(element);
 }

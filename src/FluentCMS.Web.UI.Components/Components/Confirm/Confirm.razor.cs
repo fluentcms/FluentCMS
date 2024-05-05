@@ -1,7 +1,10 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Confirm
+public partial class Confirm : IAsyncDisposable
 {
+    [Inject]
+    public IJSRuntime? JS { get; set; }
+
     public ElementReference element;
 
     private IJSObjectReference module = default!;
@@ -72,7 +75,7 @@ public partial class Confirm
 
     public async ValueTask DisposeAsync()
     {
-        await module.InvokeVoidAsync("close", DotNetObjectReference.Create(this), element);
+        await module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

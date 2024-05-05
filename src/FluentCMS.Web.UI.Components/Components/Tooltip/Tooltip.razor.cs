@@ -1,7 +1,10 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Tooltip
+public partial class Tooltip : IAsyncDisposable
 {
+    [Inject]
+    public IJSRuntime? JS { get; set; }
+
     public ElementReference element;
 
     private IJSObjectReference module = default!;
@@ -9,7 +12,7 @@ public partial class Tooltip
     [Parameter]
     public TooltipPlacement? Placement { get; set; }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
     }
