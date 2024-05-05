@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Components;
 
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Alert : BaseComponent 
+public partial class Alert 
 {
     [Parameter]
     public bool Dismissible { get; set; }

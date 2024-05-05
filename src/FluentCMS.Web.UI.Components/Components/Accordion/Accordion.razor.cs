@@ -1,12 +1,10 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Accordion : BaseComponent 
+public partial class Accordion
 {
-    [Inject]
-    private IJSRuntime JS { get; set; }
-    
     [Parameter]
     [CSSProperty]
     public bool Disabled { get; set; }

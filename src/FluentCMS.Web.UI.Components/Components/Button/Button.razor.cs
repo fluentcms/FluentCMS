@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Button : BaseComponent
+public partial class Button
 {
     [Parameter]
     [CSSProperty]

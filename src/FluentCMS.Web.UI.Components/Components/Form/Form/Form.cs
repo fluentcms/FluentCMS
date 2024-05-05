@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Components;
 
 namespace FluentCMS.Web.UI.Components;
 
-public abstract class FormElements : BaseComponent
+public abstract class FormElements
 {
     [Parameter]
     public bool Dense { get; set; }
