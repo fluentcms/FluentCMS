@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 
@@ -15,6 +16,9 @@ public class AuthContext : IAuthContext
     private List<Role>? _roles = [];
     private bool _isUserLoaded = false;
     private bool _areRolesLoaded = false;
+    private readonly bool _isApi = false;
+    private bool _isApiTokenLoaded = false;
+    private ApiToken? _apiToken = null;
 
     public AuthContext(IHttpContextAccessor httpContextAccessor)
     {
@@ -30,12 +34,31 @@ public class AuthContext : IAuthContext
             _userId = idClaimValue == null ? Guid.Empty : Guid.Parse(idClaimValue);
             _username = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
             _isAuthenticated = user?.Identity?.IsAuthenticated ?? false;
+            _isApi = user?.FindFirstValue(JwtRegisteredClaimNames.Aud) == "m2m";
         }
     }
 
     public string Username => _username;
     public bool IsAuthenticated => _isAuthenticated;
+
+    public bool IsApi => _isApi;
+
     public Guid UserId => _userId;
+
+    public async Task<ApiToken?> GetApiToken(CancellationToken cancellationToken = default)
+    {
+        if (_isApiTokenLoaded || !_isAuthenticated)
+            return _apiToken;
+
+        var apiTokenService = _serviceProvider?.GetRequiredService<IApiTokenService>();
+
+        if (apiTokenService != null)
+            _apiToken = await apiTokenService.GetById(_userId);
+
+        _isApiTokenLoaded = true;
+
+        return _apiToken;
+    }
 
     public async Task<List<Role>> GetRoles(CancellationToken cancellationToken = default)
     {
