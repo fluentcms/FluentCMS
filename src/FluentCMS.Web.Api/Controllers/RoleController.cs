@@ -1,8 +1,8 @@
-﻿using FluentCMS.Web.Api.Attributes;
+﻿using System.Reflection;
+using FluentCMS.Web.Api.Attributes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Routing;
-using System.Reflection;
 
 namespace FluentCMS.Web.Api.Controllers;
 
@@ -10,9 +10,9 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
 {
     public const string AREA = "Role Management";
     public const string READ = "Read";
-    public const string UPDATE = "Update";
+    public const string UPDATE = $"Update/{READ}";
     public const string CREATE = "Create";
-    public const string DELETE = "Delete";
+    public const string DELETE = $"Delete/{READ}";
 
     [HttpGet]
     [Policy(AREA, READ)]
