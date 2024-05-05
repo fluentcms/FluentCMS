@@ -72,7 +72,7 @@ public partial class Confirm
 
     public async ValueTask DisposeAsync()
     {
-        await module.InvokeVoidAsync("close", DotNetObjectReference.Create(this), element);
+        await module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

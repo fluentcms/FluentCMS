@@ -66,6 +66,11 @@ public partial class Autocomplete
         this.Value = Value;
     }
 
+    public async ValueTask DisposeAsync()
+    {
+        await module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
+    }
+    
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;

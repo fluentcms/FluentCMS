@@ -9,7 +9,7 @@ public partial class Tooltip
     [Parameter]
     public TooltipPlacement? Placement { get; set; }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
     }

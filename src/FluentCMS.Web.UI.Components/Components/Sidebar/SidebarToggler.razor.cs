@@ -18,7 +18,13 @@ public partial class SidebarToggler
 
     async Task OnClick()
     {
-        await module.InvokeVoidAsync("toggle", DotNetObjectReference.Create(this), SidebarId, !IsOpen);
+        await module.InvokeVoidAsync("toggle", DotNetObjectReference.Create(this), SidebarId);
+        IsOpen = !IsOpen;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), SidebarId);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -27,6 +33,8 @@ public partial class SidebarToggler
 
         module = await JS.InvokeAsync<IJSObjectReference>("import",
         "/_content/FluentCMS.Web.UI.Components/Components/Sidebar/SidebarToggler.razor.js");
+
+        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), SidebarId);
 
         IsOpen = false;
     }

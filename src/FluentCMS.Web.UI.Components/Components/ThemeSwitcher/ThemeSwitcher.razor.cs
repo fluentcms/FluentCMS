@@ -18,6 +18,11 @@ public partial class ThemeSwitcher
         await module.InvokeVoidAsync("toggle", DotNetObjectReference.Create(this), !IsLight);
     }
 
+    public async ValueTask DisposeAsync()
+    {
+        await module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this));
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;

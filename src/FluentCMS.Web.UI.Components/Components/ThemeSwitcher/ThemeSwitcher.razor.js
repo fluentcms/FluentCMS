@@ -15,3 +15,7 @@ export function initialize(dotnet) {
 
     toggle(dotnet, theme == 'light');
 }
+
+export function dispose(dotnet) {
+    
+}

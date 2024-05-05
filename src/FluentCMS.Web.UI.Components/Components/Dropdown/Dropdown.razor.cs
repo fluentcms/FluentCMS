@@ -44,6 +44,11 @@ public partial class Dropdown
     {
         await OpenChanged.InvokeAsync(Open = open);
     }
+    
+    public async ValueTask DisposeAsync()
+    {
+        await Module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), Element);
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

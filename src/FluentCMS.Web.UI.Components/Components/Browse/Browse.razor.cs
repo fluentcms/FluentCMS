@@ -20,6 +20,11 @@ public partial class Browse
         OnChange.InvokeAsync(evt);
     }
 
+    public async ValueTask DisposeAsync()
+    {
+        await Module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), Element);
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
