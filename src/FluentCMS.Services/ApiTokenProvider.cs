@@ -39,5 +39,6 @@ public class JwtApiTokenProvider(IOptions<JwtOptions> options) : IApiTokenProvid
     private IEnumerable<Claim>? GetJwtClaims(ApiToken apiToken)
     {
         yield return new Claim(ClaimTypes.NameIdentifier, apiToken.Id.ToString("D"));
+        yield return new Claim(ClaimTypes.Name, $"api-{apiToken.Id:D}");
     }
 }
