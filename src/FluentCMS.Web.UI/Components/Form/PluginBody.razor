@@ -2,18 +2,17 @@
 
 @* TODO: change class to f-plugin-body *@
 <div class="m-4">
-    <Grid Visible="!string.IsNullOrEmpty(Title)" ItemsSmall="GridItems.Center" JustifySmall="GridJustify.Between">
-        <GridItem>
-            <Typography Size="TextSize.H5">@Title</Typography>
-        </GridItem>
-        <GridItem>
-            @ActionsFragment
-        </GridItem>
-    </Grid>
+    @if(!string.IsNullOrEmpty(Title))
+    {        
+        <div class="flex items-center justify-between">
+            <h1 class="text-xl font-semibold text-gray-900 sm:text-2xl dark:text-white">@Title</h1>
+            <div class="flex items-center ml-auto space-x-2 sm:space-x-3">
+                @ActionsFragment
+            </div>
+        </div>
+    }
     <Spacer Visible="!string.IsNullOrEmpty(Title)" />
     <Card Visible="ChildContent != null">
-        <CardBody>
-            @ChildContent
-        </CardBody>
+        @ChildContent
     </Card>
 </div>
