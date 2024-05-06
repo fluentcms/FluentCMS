@@ -8,13 +8,15 @@
     <link rel="stylesheet" href="/_content/FluentCMS.Web.UI.Components/css/app.min.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <base href="/" />
-    <script src="/js/before-render.js"></script>
 
     <HeadOutlet @rendermode="@RenderModeForPage" />
 </head>
 <body>
     <Routes @rendermode="@RenderModeForPage" />
     <script src="_framework/blazor.web.js"></script>
+
+    <script src="/js/app.bundle.js"></script>
+    <script src="/js/flowbite.min.js"></script>
 </body>
 </html>
 @code{
