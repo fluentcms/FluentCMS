@@ -4,13 +4,6 @@
 
 @if(Visible)
 {
-    <HeadContent>
-        @if(!string.IsNullOrEmpty(Title)) 
-        {
-            <title>@Title</title>
-        }
-    </HeadContent>
-
     <nav @attributes="AdditionalAttributes"
         class="@this.GetClasses()">
         @if (HasBack)
