@@ -5,8 +5,7 @@
         <PageHeader Title="@PageTitle">
             <PageHeaderActions>
                 <ButtonGroup>
-                    <Button autofocus="true"
-                            Color="Color.Primary"
+                    <Button Color="Color.Primary"
                             Href="@NavigationManager.Plugin("Content Management", "Create Content", new { contentTypeSlug = ContentTypeSlug })"
                             id="contentCreateButton" Size="ButtonSize.Small">
                         <Icon Name="IconName.Plus" />
@@ -89,8 +88,7 @@
             else if (Data.Count == 0)
             {
                 <EmptyState Message="There is no Content yet!">
-                    <Button autofocus="true"
-                            Color="Color.Primary"
+                    <Button Color="Color.Primary"
                             Href="@NavigationManager.Plugin("Content Management", "Create Content", new { contentTypeSlug = ContentTypeSlug })"
                             id="contentCreateButton"
                             Size="ButtonSize.Small">

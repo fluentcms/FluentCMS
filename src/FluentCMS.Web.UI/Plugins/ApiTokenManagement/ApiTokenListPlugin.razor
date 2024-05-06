@@ -4,8 +4,7 @@
                 Title="API Token List (Draft)">
         <PageHeaderActions>
             <ButtonGroup>
-                <Button autofocus="true"
-                        Color="Color.Primary" 
+                <Button Color="Color.Primary" 
                         Href="@NavigationManager.Plugin("Api Token Management", "Create Api Token")"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
@@ -61,8 +60,7 @@
             </Card>
         } else {
             <EmptyState Message="No API Tokens Found!">
-                <Button autofocus="true"
-                        Color="Color.Primary" 
+                <Button Color="Color.Primary" 
                         Href="?PluginDef=Api Token Management&typeName=Create Api Token"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />

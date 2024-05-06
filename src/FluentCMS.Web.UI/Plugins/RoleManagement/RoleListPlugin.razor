@@ -2,8 +2,7 @@
     <PageHeader HasBack="false" Title="Roles (Draft)">
         <PageHeaderActions>
             <ButtonGroup>
-                <Button autofocus="true" 
-                        Color="Color.Primary" 
+                <Button Color="Color.Primary" 
                         Href="@NavigationManager.Plugin("Role Management", "Create Role")"
                         Id="roleCreateButton"
                         Size="ButtonSize.Small">
@@ -68,8 +67,7 @@
             </Card>
         } else {
             <EmptyState Message="No Roles Found!">
-                <Button autofocus="true"
-                        Color="Color.Primary" 
+                <Button Color="Color.Primary" 
                         Href="@NavigationManager.Plugin("Role Management", "Create Role")"
                         Id="roleEmptyCreateButton" 
                         Size="ButtonSize.Small">
