@@ -3,8 +3,6 @@
 <CascadingValue Value="UserLogin">
     <HeadContent>
         <PageTitle>@Page?.Title</PageTitle>
-        <SectionOutlet SectionName="head">
-        </SectionOutlet>
         @if (Page?.Layout?.Head != null)
         {
             @((MarkupString)Page.Layout.Head)
