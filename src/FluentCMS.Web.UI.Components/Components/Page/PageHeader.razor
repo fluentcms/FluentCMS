@@ -4,12 +4,12 @@
 
 @if(Visible)
 {
-    <HeadContent>
-        @if(!string.IsNullOrEmpty(Title)) 
+    <SectionContent SectionName="head">
+        @if(!string.IsNullOrEmpty(Title))
         {
             <title>@Title</title>
         }
-    </HeadContent>
+    </SectionContent>
 
     <nav @attributes="AdditionalAttributes"
         class="@this.GetClasses()">

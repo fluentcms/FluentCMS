@@ -1,8 +1,10 @@
 ﻿@page "/{**Route:nonfile}"
 
 <CascadingValue Value="UserLogin">
-    <PageTitle>@Page?.Title</PageTitle>
     <HeadContent>
+        <PageTitle>@Page?.Title</PageTitle>
+        <SectionOutlet SectionName="head">
+        </SectionOutlet>
         @if (Page?.Layout?.Head != null)
         {
             @((MarkupString)Page.Layout.Head)
