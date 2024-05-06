@@ -11,11 +11,8 @@
         <Table Hoverable>
             <TableHead>
                 <tr>
-                    <th scope="col" class="p-4">
-                        <div class="flex items-center">
-                            <input id="checkbox-all" aria-describedby="checkbox-1" type="checkbox" class="w-4 h-4 bg-gray-50 rounded border-gray-300 focus:ring-3 focus:ring-primary-300 dark:focus:ring-primary-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600">
-                            <label for="checkbox-all" class="sr-only">checkbox</label>
-                        </div>
+                    <th scope="col" class="p-4 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-400">
+                        Email
                     </th>
                     <th scope="col" class="p-4 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-400">
                         Name
@@ -24,10 +21,7 @@
                         Username
                     </th>
                     <th scope="col" class="p-4 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-400">
-                        Phone Number
-                    </th>
-                    <th scope="col" class="p-4 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-400">
-                        Status
+                        Enabled
                     </th>
                     <th scope="col" class="p-4">
                     </th>
@@ -37,27 +31,16 @@
                 @foreach (var user in Users)
                 {
                     <TableRow>
-                        <td class="p-4 w-4">
-                            <div class="flex items-center">
-                                <input id="checkbox-1" aria-describedby="checkbox-1" type="checkbox" class="w-4 h-4 bg-gray-50 rounded border-gray-300 focus:ring-3 focus:ring-primary-300 dark:focus:ring-primary-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600">
-                                <label for="checkbox-1" class="sr-only">checkbox</label>
-                            </div>
-                        </td>
-                        <td class="flex items-center p-4 mr-12 space-x-6 whitespace-nowrap lg:mr-0">
-                            <div class="text-sm font-normal text-gray-500 dark:text-gray-400">
-                                <div class="text-base font-semibold text-gray-900 dark:text-white">@user.FirstName @user.LastName</div>
-                                <div class="text-sm font-normal text-gray-500 dark:text-gray-400">@user.Email</div>
-                            </div>
-                        </td>
+                        <td class="p-4 text-base font-medium text-gray-900 whitespace-nowrap dark:text-white">@user.Email</td>
+                        <td class="p-4 text-base font-medium text-gray-900 whitespace-nowrap dark:text-white">@user.FirstName @user.LastName</td>
                         <td class="p-4 text-base font-medium text-gray-900 whitespace-nowrap dark:text-white">@user.Username</td>
-                        <td class="p-4 text-base font-medium text-gray-900 whitespace-nowrap dark:text-white">@user.PhoneNumber</td>
                         <td class="p-4 text-base font-normal text-gray-900 whitespace-nowrap dark:text-white">
                             <div class="flex items-center">
                                 @if(user.Enabled)
                                 {
                                     <text>
                                         <div class="h-2.5 w-2.5 rounded-full bg-green-400 mr-2"></div> 
-                                        Active
+                                        Enabled
                                     </text>
                                 } 
                                 else 
