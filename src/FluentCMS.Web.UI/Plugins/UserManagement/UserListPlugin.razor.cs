@@ -9,4 +9,10 @@ public partial class UserListPlugin
         var usersResponse = await GetApiClient<UserClient>().GetAllAsync();
         Users = usersResponse?.Data?.ToList() ?? [];
     }
+
+    protected void OnRowDefaultAction(Guid Id)
+    {
+        var url = GetUrl("User Detail", new { id = Id });
+        NavigationManager.NavigateTo(url);
+    }
 }
