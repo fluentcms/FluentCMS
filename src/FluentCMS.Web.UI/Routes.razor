@@ -2,7 +2,7 @@
     <Router AppAssembly="@this.GetType().Assembly">
         <Found Context="routeData">
             <RouteView RouteData="@routeData" />
-            <ExtendedFocusOnNavigate RouteData="@routeData" Selector="[autofocus]" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
         </Found>
     </Router>
 </CascadingAuthenticationState>
