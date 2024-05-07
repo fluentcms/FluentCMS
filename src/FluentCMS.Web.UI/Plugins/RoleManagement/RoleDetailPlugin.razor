@@ -1,179 +1,78 @@
-﻿<Page>
-    <PageHeader HasBack="true"
-                Title="Role Detail">
-    </PageHeader>
-    <PageBody>
-        <Grid Gutter="GridGutter.Large">
-            <GridItem Small="GridItemColumn.Twelve"
-                      Medium="GridItemColumn.Seven"
-                      Large="GridItemColumn.Nine">
-                <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
-                    <GridItem Small="GridItemColumn.Twelve">
-                        <Typography><strong>Name:</strong></Typography>
+﻿@inherits BasePlugin
+
+<PluginBody Title="Role Detail">
+    <Grid Gutter="GridGutter.Large">
+        <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Seven" Large="GridItemColumn.Nine">
+            <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
+                <GridItem Small="GridItemColumn.Twelve">
+                    <Typography>
+                        <strong>Name:</strong>
+                    </Typography>
+                    <Typography>
+                        @Role.Name
+                    </Typography>
+                </GridItem>
+                <GridItem Small="GridItemColumn.Twelve">
+                    <Typography>
+                        <strong>Description:</strong>
+                    </Typography>
+                    <Typography>
+                        @Role.Description
+                    </Typography>
+                </GridItem>
+                <GridItem Small="GridItemColumn.Twelve">
+                    <Typography>
+                        <strong>Permissions:</strong>
+                    </Typography>
+                    <FormPolicies Disabled="true" Policies="Policies" Value="Role.Policies?.ToList() ?? []" />
+                </GridItem>
+            </Grid>
+        </GridItem>
+        <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Five" Large="GridItemColumn.Three">
+            <Card>
+                <CardBody>
+                    @if (!string.IsNullOrEmpty(Role.CreatedBy))
+                    {
                         <Typography>
-                            @View.Name
+                            <strong>Created By</strong>
                         </Typography>
-                    </GridItem>
-                    <GridItem Small="GridItemColumn.Twelve">
-                        <Typography><strong>Description:</strong></Typography>
+                        <Typography>@Role.CreatedBy</Typography>
+                        <Spacer/>
+                    }
+                    @if (!string.IsNullOrEmpty(Role.CreatedAt.ToString()))
+                    {
                         <Typography>
-                            @View.Description
+                            <strong>Created At</strong>
                         </Typography>
-                    </GridItem>
-                    <GridItem Small="GridItemColumn.Twelve">
-                        <Typography><strong>Permissions:</strong></Typography>
-                            <Spacer Size="SpacerSize.Small"/>
-                        <Card>
-                            <Table>
-                                <TableHead>
-                                    <TableCell>Content Type</TableCell>
-                                    <TableCell Width="TableColumnWidth.Small">Create</TableCell>
-                                    <TableCell Width="TableColumnWidth.Small">Read</TableCell>
-                                    <TableCell Width="TableColumnWidth.Small">Update</TableCell>
-                                    <TableCell Width="TableColumnWidth.Small">Delete</TableCell>
-                                    <TableCell Width="TableColumnWidth.Small">Publish</TableCell>
-                                </TableHead>
-                                <TableBody>
-                                    @foreach (var contentType in ContentTypes)
-                                    {
-                                        <TableRow>
-                                            <TableCell>
-                                                @contentType.Title
-                                            </TableCell>
-                                            <TableCell>
-                                                true
-                                            </TableCell>
-                                            <TableCell>
-                                                false
-                                            </TableCell>
-                                            <TableCell>
-                                                true
-                                            </TableCell>
-                                            <TableCell>
-                                                false
-                                            </TableCell>
-                                            <TableCell>
-                                                false
-                                            </TableCell>
-                                        </TableRow>
-                                    }
-                                </TableBody>
-                            </Table>
-                        </Card>
-                    </GridItem>
-                </Grid>
-            </GridItem>
-            <GridItem Small="GridItemColumn.Twelve"
-                      Medium="GridItemColumn.Five"
-                      Large="GridItemColumn.Three">
-                <Card>
-                    <CardBody>
-                        @if(!string.IsNullOrEmpty(View.CreatedBy))
-                        {
-                            <Typography><strong>Created By</strong></Typography>
-                            <Typography>@View.CreatedBy</Typography>
-                            <Spacer />
-                        }
-                        @if(!string.IsNullOrEmpty(View.CreatedAt.ToString()))
-                        {
-                            <Typography><strong>Created At</strong></Typography>
-                            <Typography>@View.CreatedAt</Typography>
-                            <Spacer />
-                        }
-                        @if(!string.IsNullOrEmpty(View.ModifiedBy))
-                        {
-                            <Typography><strong>Modified By</strong></Typography>
-                            <Typography>@View.ModifiedBy</Typography>
-                            <Spacer />
-                        }
-                        @if(!string.IsNullOrEmpty(View.ModifiedAt.ToString()))
-                        {
-                            <Typography><strong>Modified At</strong></Typography>
-                            <Typography>@View.ModifiedAt</Typography>
-                        }
-                    </CardBody>
-                </Card>
-                <Spacer/>
-                <Button Block="true"
-                        Color="Color.Primary"
-                        Href="@NavigationManager.Plugin("Role Management", "Update Role", new { id = View.Id })"
-                        Item="true"
-                        Outline="true">
-                    <Icon Name="IconName.Edit" />
-                    Edit
-                </Button>
-                <Spacer Size="SpacerSize.Small" />
-                <Button Block="true"
-                        Color="Color.Danger"
-                        Item="true"
-                        Outline="true"
-                        OnClick="OnDelete">
-                    <Icon Name="IconName.Edit" />
-                    Delete
-                </Button>
-            </GridItem>
-            
-        </Grid>
-    </PageBody>
-</Page>
-
-@code {
-    [Inject]
-    ConfirmService Confirm { set; get; } = default!;
-
-    [Inject]
-    IJSRuntime JsRuntime { set; get; } = default!;
-
-    [Inject]
-    NavigationManager NavigationManager { set; get; } = default!;
-
-    [Inject]
-    RoleClient RoleClient { get; set; } = default!;
-
-    [Inject]
-    ContentTypeClient ContentTypeClient { get; set; } = default!;
-
-    string? Message { get; set; }
-
-
-    List<ContentTypeDetailResponse> ContentTypes {get; set;} = [];
-        
-    RoleDetailResponse View { get; set; } = new();
-
-    async Task GoBack()
-    {
-        await JsRuntime.InvokeVoidAsync("history.back");
-    }
-
-    async Task OnDelete() 
-    {
-        var result = await Confirm.Show("Are you sure to remove this role?");
-
-        if(result) {
-            await RoleClient.DeleteAsync(View.Id);  
-            await GoBack(); 
-        }
-    }
-    protected override async Task OnInitializedAsync()
-    {
-        var id = NavigationManager.GetIdFromQuery();
-
-        if (id != null)
-        {
-            try
-            {
-                View = (await RoleClient.GetAllAsync()).Data.ToList<RoleDetailResponse>().Find(x => x.Id == id);
-
-                var result = await ContentTypeClient.GetAllAsync();
-                if(result?.Data != null) 
-                {
-                    ContentTypes = result.Data.ToList();
-                }
-            }
-            catch (Exception)
-            {
-                Message = "An error occured!";
-            }
-        }
-    }
-}
+                        <Typography>@Role.CreatedAt</Typography>
+                        <Spacer/>
+                    }
+                    @if (!string.IsNullOrEmpty(Role.ModifiedBy))
+                    {
+                        <Typography>
+                            <strong>Modified By</strong>
+                        </Typography>
+                        <Typography>@Role.ModifiedBy</Typography>
+                        <Spacer/>
+                    }
+                    @if (!string.IsNullOrEmpty(Role.ModifiedAt.ToString()))
+                    {
+                        <Typography>
+                            <strong>Modified At</strong>
+                        </Typography>
+                        <Typography>@Role.ModifiedAt</Typography>
+                    }
+                </CardBody>
+            </Card>
+            <Spacer/>
+            @* TODO: Use @GetUrl("Update Role", new { id = Role.Id }) for Href, when issue #1304 resolved *@
+            <Button Block="true" Color="Color.Primary"
+                    Href="@NavigationManager.Plugin("Role Management", "Update Role", new { id = Role.Id })"
+                    Item="true"
+                    Outline="true">
+                <Icon Name="IconName.Edit"/>
+                Edit
+            </Button>
+        </GridItem>
+    </Grid>
+</PluginBody>
