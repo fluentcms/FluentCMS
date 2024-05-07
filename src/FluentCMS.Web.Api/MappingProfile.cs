@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Web.Api.ValueConverters;
+using Microsoft.AspNetCore.Http;
 
 namespace FluentCMS.Web.Api;
 
@@ -85,6 +86,21 @@ public class MappingProfile : Profile
         CreateMap<ContentUpdateRequest, Content>().ForMember(x => x.Value,
             expression => expression.ConvertUsing(new ObjectDictionaryValueConverter()!));
         CreateMap<Content, ContentDetailResponse>();
+
+        #endregion
+
+        #region File
+
+        CreateMap<IFormFile, FileEntity>().ConstructUsing(formFile => new FileEntity()
+        {
+            Size = formFile.Length,
+            ContentType = formFile.ContentType,
+            FileName = formFile.FileName,
+            FileExtension = Path.GetExtension(formFile.FileName)
+        });
+
+        CreateMap<FileEntity, FileDetailResponse>()
+            .AfterMap((entity, response) => response.Url = $"/api/file/download/{entity.Id}");
 
         #endregion
     }

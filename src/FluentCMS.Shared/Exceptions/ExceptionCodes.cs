@@ -149,4 +149,12 @@ public class ExceptionCodes
     public const string ApiTokenUnableToDelete = "ApiToken.UnableToDelete";
 
     #endregion
+
+    #region File
+
+    public const string FileUnableToCreate = "File.UnableToCreate";
+    public const string FileNotFound = "File.NotFound";
+    public const string FileUnableToDelete = "File.UnableToDelete";
+
+    #endregion
 }
