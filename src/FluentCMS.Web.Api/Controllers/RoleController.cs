@@ -52,7 +52,7 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
     }
 
     [HttpGet]
-    [AllowAnonymous]
+    [Policy(AREA, READ)]
     public async Task<IApiPagingResult<Policy>> GetPolicies(CancellationToken cancellationToken = default)
     {
         var policiesDict = new Dictionary<string, Policy>();
