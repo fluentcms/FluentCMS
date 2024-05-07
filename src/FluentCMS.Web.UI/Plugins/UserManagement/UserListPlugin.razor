@@ -1,18 +1,15 @@
 @inherits BasePlugin
 
 <div class="m-4">
-    @if(!string.IsNullOrEmpty(Title))
-    {        
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-gray-900 sm:text-2xl dark:text-white">Users List</h1>
-            <div class="flex items-center ml-auto space-x-2 sm:space-x-3">
-                <a href="@GetUrl("Create User")" type="button" data-modal-toggle="add-user-modal" class="inline-flex justify-center items-center py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-                    <svg class="mr-2 -ml-1 w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
-                    Add user
-                </a>
-            </div>
+    <div class="flex items-center justify-between">
+        <h1 class="text-xl font-semibold text-gray-900 sm:text-2xl dark:text-white">Users List</h1>
+        <div class="flex items-center ml-auto space-x-2 sm:space-x-3">
+            <a href="@GetUrl("Create User")" type="button" data-modal-toggle="add-user-modal" class="inline-flex justify-center items-center py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+                <svg class="mr-2 -ml-1 w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
+                Add user
+            </a>
         </div>
-    }
+    </div>
     <Spacer />
     <Card>
         <Table Hoverable>
