@@ -2,8 +2,7 @@
     <PageHeader HasBack="false" Title="Roles (Draft)">
         <PageHeaderActions>
             <ButtonGroup>
-                <Button autofocus="true" 
-                        Color="Color.Primary" 
+                <Button Color="Color.Primary"
                         Href="@NavigationManager.Plugin("Role Management", "Create Role")"
                         Id="roleCreateButton"
                         Size="ButtonSize.Small">
@@ -14,7 +13,7 @@
         </PageHeaderActions>
     </PageHeader>
     <PageBody>
-        @if(Roles.Count > 0) 
+        @if (Roles.Count > 0)
         {
             <Card>
                 <Table Hoverable>
@@ -66,12 +65,13 @@
                     </TableBody>
                 </Table>
             </Card>
-        } else {
+        }
+        else
+        {
             <EmptyState Message="No Roles Found!">
-                <Button autofocus="true"
-                        Color="Color.Primary" 
+                <Button Color="Color.Primary"
                         Href="@NavigationManager.Plugin("Role Management", "Create Role")"
-                        Id="roleEmptyCreateButton" 
+                        Id="roleEmptyCreateButton"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
                     Add New Role
@@ -118,9 +118,9 @@
         await Load();
     }
 
-    async Task TableRowDefaultAction(RoleDetailResponse role) 
+    async Task TableRowDefaultAction(RoleDetailResponse role)
     {
-        var url = NavigationManager.Plugin("Role Management", "Role Detail", new { id= role.Id });
+        var url = NavigationManager.Plugin("Role Management", "Role Detail", new { id = role.Id });
         NavigationManager.NavigateTo(url);
     }
 }

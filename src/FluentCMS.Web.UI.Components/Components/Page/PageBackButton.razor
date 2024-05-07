@@ -2,10 +2,9 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-@if(Visible)
+@if (Visible)
 {
-    <Button autofocus="true"
-            class="@this.GetClasses()"
+    <Button class="@this.GetClasses()"
             Link="true"
             tabindex="0"
             OnClick="() => GoBack()">
