@@ -39,11 +39,11 @@
                                 </TableCell>
                                 <TableCell>
                                     <ButtonGroup>
-                                       @* TODO: Add preview when preview page designed *@
+                                        @* TODO: Add preview when preview page designed *@
                                         <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
 
                                         <Button data-test="edit-btn"
-                                                Ghost="true"  
+                                                Ghost="true"
                                                 Href="@NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = contentType.Id })"
                                                 Size="ButtonSize.Small"
                                                 StopPropagation="true">
@@ -66,7 +66,9 @@
                     </TableBody>
                 </Table>
             </Card>
-        } else {
+        }
+        else
+        {
             <EmptyState Message="No Content Types Found!">
                 <Button Color="Color.Primary"
                         Href="@NavigationManager.Plugin("ContentType Management", "Create ContentType")"
@@ -123,9 +125,9 @@
         await Load();
     }
 
-    async Task TableRowDefaultAction(ContentTypeDetailResponse contentType) 
+    async Task TableRowDefaultAction(ContentTypeDetailResponse contentType)
     {
-        var url = NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id= contentType.Id });
+        var url = NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = contentType.Id });
         NavigationManager.NavigateTo(url);
     }
 }

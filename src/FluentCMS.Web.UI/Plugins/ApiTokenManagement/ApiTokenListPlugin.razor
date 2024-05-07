@@ -1,10 +1,10 @@
 <!-- TODO: Enable commented codes after adding the api  -->
 <Page>
-    <PageHeader HasBack="false" 
+    <PageHeader HasBack="false"
                 Title="API Token List (Draft)">
         <PageHeaderActions>
             <ButtonGroup>
-                <Button Color="Color.Primary" 
+                <Button Color="Color.Primary"
                         Href="@NavigationManager.Plugin("Api Token Management", "Create Api Token")"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
@@ -27,7 +27,7 @@
                     <TableBody>
                         @foreach (var token in Tokens)
                         {
-                            <TableRow  OnClick="@(evt => TableRowDefaultAction(token))">
+                            <TableRow OnClick="@(evt => TableRowDefaultAction(token))">
                                 <TableCell> @token.Name </TableCell>
                                 <TableCell> @token.Description </TableCell>
                                 <TableCell> @token.Duration </TableCell>
@@ -35,10 +35,10 @@
                                     <ButtonGroup>
                                         @* TODO: Enable Detail page *@
                                         <Button data-test="edit-btn"
-                                            Ghost="true"
-                                            Href="@NavigationManager.Plugin("Api Token Management", "Update Api Token", new { id = token.Id })"
-                                            Size="ButtonSize.Small"
-                                            StopPropagation="true">
+                                                Ghost="true"
+                                                Href="@NavigationManager.Plugin("Api Token Management", "Update Api Token", new { id = token.Id })"
+                                                Size="ButtonSize.Small"
+                                                StopPropagation="true">
                                             <Icon Name="IconName.Edit" />
                                         </Button>
                                         <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
@@ -58,9 +58,11 @@
                     </TableBody>
                 </Table>
             </Card>
-        } else {
+        }
+        else
+        {
             <EmptyState Message="No API Tokens Found!">
-                <Button Color="Color.Primary" 
+                <Button Color="Color.Primary"
                         Href="?PluginDef=Api Token Management&typeName=Create Api Token"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
@@ -81,11 +83,12 @@
     [Inject]
     NavigationManager NavigationManager { get; set; } = default!;
 
-    class TokenDetailResponse {
-        public Guid Id {get; set;}
-        public string Name {get; set;}
-        public string Description {get; set;}
-        public string Duration {get; set;}
+    class TokenDetailResponse
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string Duration { get; set; }
     };
 
 
@@ -120,10 +123,10 @@
         // }
     }
 
-    async Task TableRowDefaultAction(object token) 
+    async Task TableRowDefaultAction(object token)
     {
         // TODO: use token.id instead of 123 after adding Api
-        var url = NavigationManager.Plugin("Api Token Management", "Update Api Token", new { id= "123" });
+        var url = NavigationManager.Plugin("Api Token Management", "Update Api Token", new { id = "123" });
         NavigationManager.NavigateTo(url);
     }
 }

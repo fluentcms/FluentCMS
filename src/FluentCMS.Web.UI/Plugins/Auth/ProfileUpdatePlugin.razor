@@ -39,28 +39,28 @@
                 </Form>
             </GridItem>
             <GridItem Small="GridItemColumn.Twelve">
-                <Form Model="@ChangePasswordModel" 
+                <Form Model="@ChangePasswordModel"
                       OnSubmit="OnChangePasswordSubmit">
                     <Card>
                         <CardBody>
                             <Grid Gutter="GridGutter.Medium">
                                 <GridItem Small="GridItemColumn.Six">
-                                    <Input @bind-Value="ChangePasswordModel.OldPassword" 
+                                    <Input @bind-Value="ChangePasswordModel.OldPassword"
                                            Id="changePasswordOldInput"
-                                           Label="Old Password" 
-                                           Name="oldPassword" 
+                                           Label="Old Password"
+                                           Name="oldPassword"
                                            Placeholder="Enter your old password..."
-                                           Required="true" 
+                                           Required="true"
                                            Type="InputType.Password" />
                                 </GridItem>
                                 <GridItem Small="GridItemColumn.Six">
 
-                                    <Input @bind-Value="ChangePasswordModel.NewPassword" 
+                                    <Input @bind-Value="ChangePasswordModel.NewPassword"
                                            Id="changePasswordNewInput"
-                                           Label="New Password" 
-                                           Name="newPassword" 
+                                           Label="New Password"
+                                           Name="newPassword"
                                            Placeholder="Enter new password..."
-                                           Required="true" 
+                                           Required="true"
                                            Type="InputType.Password" />
                                 </GridItem>
                             </Grid>
@@ -73,7 +73,7 @@
                             }
                         </CardBody>
                         <CardActions>
-                            <Button Color="Color.Primary" 
+                            <Button Color="Color.Primary"
                                     id="changePasswordSubmitButton"
                                     Type="ButtonType.Submit">
                                 Change password
@@ -111,15 +111,15 @@
     protected override async Task OnInitializedAsync()
     {
 
-        // View = (await AccountClient.GetUserDetailAsync()).Data;
-        
+    // View = (await AccountClient.GetUserDetailAsync()).Data;
+
         // Model.Email = View.Email;
         // ChangePasswordModel.UserId = View.Id;
         @* Model.Username = View.Username; *@
         @* Model.PhoneNumber = View.PhoneNumber; *@
     }
 
-    async Task OnChangePasswordSubmit() 
+    async Task OnChangePasswordSubmit()
     {
         await AccountClient.ChangePasswordAsync(ChangePasswordModel);
         await GoBack();
