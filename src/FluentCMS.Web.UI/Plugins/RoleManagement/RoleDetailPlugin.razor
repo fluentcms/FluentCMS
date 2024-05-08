@@ -24,7 +24,9 @@
                     <Typography>
                         <strong>Permissions:</strong>
                     </Typography>
-                    <FormPolicies Disabled="true" Policies="Policies" Value="Role.Policies?.ToList() ?? []" />
+                    <Grid>
+                        <PluginFormPolicies Disabled="true" Policies="Policies" Value="Role.Policies?.ToList() ?? []" />
+                    </Grid>
                 </GridItem>
             </Grid>
         </GridItem>

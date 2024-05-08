@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Plugins.Components;
 
-public partial class FormPolicies 
+public partial class PluginFormPolicies 
 {
     [Parameter]
     public bool Disabled { get; set; }   

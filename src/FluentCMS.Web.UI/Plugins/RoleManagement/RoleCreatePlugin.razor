@@ -3,8 +3,6 @@
 <PluginForm Name="@FORM_NAME" Model="@Model" Title="Create New Role" OnSubmit="OnSubmit">
     <PluginFormInput @bind-Value="Model.Name" Label="Name"  Placeholder="Enter Name..." />
     <PluginFormTextarea @bind-Value="Model.Description" Label="Description" Placeholder="Enter Description..." />
-    <PluginFormField>
-        <FormPolicies Label="Permissions" Policies="Policies" />
-    </PluginFormField>
+    <PluginFormPolicies Label="Permissions" Policies="Policies" />
     <PluginFormActions Submit="true" Cancel="true" />
 </PluginForm>

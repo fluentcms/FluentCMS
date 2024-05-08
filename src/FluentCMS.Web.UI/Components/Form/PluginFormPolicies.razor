@@ -1,0 +1,28 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Plugins.Components
+
+<PluginFormField>    
+    <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white" Visible="!string.IsNullOrEmpty(Label)">
+        @Label
+    </label>
+    @* TODO: Should remove Alert when Checkbox Group component added *@
+    <Card>
+        <CardBody>
+            <Alert Type="AlertType.Info">Permissions doesn't work yet!</Alert>
+
+            @foreach(var policy in Policies)
+            {
+                <Divider>@policy.Area</Divider>
+                <div class="flex items-center flex-wrap gap-4">
+                    @* TODO: When Checkbox group component added, Disabled should be equal to @Disabled *@
+                    @foreach(var action in policy.Actions)
+                    {                        
+                        <Checkbox Dense="true" Disabled="true" Label="@action"/>
+                    }
+                </div>
+            }
+        </CardBody>
+    </Card>
+    <Spacer Size="SpacerSize.Large" />
+</PluginFormField>
