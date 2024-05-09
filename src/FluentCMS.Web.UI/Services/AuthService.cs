@@ -54,6 +54,6 @@ public class AuthService(IHttpClientFactory httpClientFactory) : IAuthService
                 ExpiresUtc = DateTimeOffset.UtcNow.AddDays(10) // 100 days
             });
 
-        httpContext.Response.Redirect("/");
+        httpContext.Response.Redirect("/admin");
     }
 }

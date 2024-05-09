@@ -1,14 +1,14 @@
 <Sidebar Id="adminSidebar">
     <Header>
-        <a href="/" class="items-center pl-2 mb-5 hidden lg:flex">
+        <a href="/admin" class="items-center pl-2 mb-5 hidden lg:flex">
             <Logo id="adminSidebarLogoLink" />
             <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">FluentCMS</span>
         </a>
     </Header>
 
     <ChildContent>
-        <SidebarItem Active="@(Pathname == "/")"
-                     Href="/" id="adminSidebarHomeLink"
+        <SidebarItem Active="@(Pathname == "/admin")"
+                     Href="/admin" id="adminSidebarHomeLink"
                      Icon="IconName.Home">
             Home
         </SidebarItem>

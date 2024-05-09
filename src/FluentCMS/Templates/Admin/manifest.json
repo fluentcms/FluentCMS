@@ -11,6 +11,10 @@
         {
             "Name": "AuthLayout",
             "IsDefault": false
+        },
+        {
+            "Name": "BlankLayout",
+            "IsDefault": false
         }
     ],
     "PluginDefinitions": [
@@ -54,6 +58,17 @@
                 {
                     "Name": "Reset Password",
                     "Type": "ResetPasswordViewPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
+            "Name": "AdminDashboard",
+            "Description": "Admin Dashboard",
+            "Types": [
+                {
+                    "Name": "AdminDashboard",
+                    "Type": "AdminDashboardViewPlugin",
                     "IsDefault": true
                 }
             ]
@@ -246,12 +261,18 @@
                     "Definition": "Home",
                     "Section": "Main"
                 }
-            ]
+            ],
+            "Layout": "BlankLayout"
         },
         {
             "Title": "Admin",
             "Path": "/admin",
-            "Plugins": [],
+            "Plugins": [
+                {
+                    "Definition": "AdminDashboard",
+                    "Section": "Main"
+                }
+            ],
             "Children": [
                 {
                     "Title": "Content Management",
