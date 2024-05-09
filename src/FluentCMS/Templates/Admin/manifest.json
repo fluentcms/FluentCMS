@@ -11,6 +11,10 @@
         {
             "Name": "AuthLayout",
             "IsDefault": false
+        },
+        {
+            "Name": "SiteLayout",
+            "IsDefault": false
         }
     ],
     "PluginDefinitions": [
@@ -54,6 +58,17 @@
                 {
                     "Name": "Reset Password",
                     "Type": "ResetPasswordViewPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
+            "Name": "Landing",
+            "Description": "Landing Plugin",
+            "Types": [
+                {
+                    "Name": "Landing",
+                    "Type": "LandingViewPlugin",
                     "IsDefault": true
                 }
             ]
@@ -238,6 +253,17 @@
         }
     ],
     "Pages": [
+        {
+            "Title": "FluentCMS | AI-Powered Content Management System",
+            "Path": "/landing-template",
+            "Layout": "SiteLayout",
+            "Plugins": [
+                {
+                    "Definition": "Landing",
+                    "Section": "Main"
+                }
+            ]
+        },
         {
             "Title": "Home",
             "Path": "/",
