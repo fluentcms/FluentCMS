@@ -1,0 +1,17 @@
+﻿@inherits InputText
+
+@namespace FluentCMS.Web.UI.Components
+
+@if (Visible)
+{
+    <FormField Appearance="FormFieldAppearance.Input"
+               Field="this">
+        @* TODO: When a solution to override `CssClass` is found, this element should be converted into a `RenderBase()` *@
+        <input @attributes="AdditionalAttributes"
+               name="@NameAttributeValue"
+               class="@this.GetClasses(CssClass)"
+               value="@CurrentValueAsString"
+               @onchange="EventCallback.Factory.CreateBinder<string?>(this, __value => CurrentValueAsString = __value, CurrentValueAsString)"
+               @ref="Element" />
+    </FormField>
+}

@@ -6,7 +6,7 @@ public partial class FormField : IDisposable
     public FormFieldAppearance Appearance { get; set; }
 
     [Parameter]
-    public FormElements? Field { get; set; }
+    public object? Field { get; set; }
 
     [CSSProperty]
     public bool HasIconEnd { get => IconEnd != null; }
@@ -58,12 +58,46 @@ public partial class FormField : IDisposable
     {
         get
         {
-            if (Context == null || Field?.Name == null)
+            if (Context == null || Name == null)
             {
                 return null;
             }
 
-            return Context.Field(Field.Name);
+            return Context.Field(Name);
+        }
+    }
+
+    bool Dense => (bool)(Field?.GetType().GetProperty("Dense")?.GetValue(Field) ?? false);
+
+    string? Hint => (string?)Field?.GetType().GetProperty("Hint")?.GetValue(Field);
+
+    string? Label => (string?)Field?.GetType().GetProperty("Label")?.GetValue(Field);
+
+    string? Name => (string?)Field?.GetType().GetProperty("Name")?.GetValue(Field);
+
+    RenderFragment? LabelFragment => (RenderFragment?)Field?.GetType().GetProperty("LabelFragment")?.GetValue(Field);
+
+    string? Id
+    {
+        get
+        {
+            if (AdditionalAttributes?.TryGetValue("id", out var value) ?? false)
+            {
+                return (string?)value;
+            }
+            return (string?)Field?.GetType().GetProperty("Id")?.GetValue(Field);
+        }
+    }
+
+    bool Required
+    {
+        get
+        {
+            if (AdditionalAttributes?.TryGetValue("required", out var value) ?? false)
+            {
+                return true;
+            }
+            return (bool)(Field?.GetType().GetProperty("Required")?.GetValue(Field) ?? false);
         }
     }
 
