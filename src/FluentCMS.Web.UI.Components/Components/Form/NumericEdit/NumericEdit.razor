@@ -1,0 +1,17 @@
+﻿@typeparam TValue
+
+@inherits InputNumber<TValue>
+
+@namespace FluentCMS.Web.UI.Components
+
+<FormField Appearance="FormFieldAppearance.Input">
+    @* TODO: When a solution to override `CssClass` is found, this element should be converted into a `RenderBase()` *@
+    <input @attributes="AdditionalAttributes"
+           type="number"
+           name="@NameAttributeValue"
+           class="@this.GetClasses(CssClass)"
+           value="@CurrentValueAsString"
+           @onchange="EventCallback.Factory.CreateBinder<string?>(this, __value => CurrentValueAsString = __value, CurrentValueAsString)"
+           @ref="Element" />
+</FormField>
+
