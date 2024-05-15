@@ -9,18 +9,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Content Remove="wwwroot\js\admin-sidebar.js" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <_ContentIncludedByDefault Remove="wwwroot\js\admin-sidebar.js" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <None Include="wwwroot\js\admin-sidebar.js" />
-    </ItemGroup>
-
-    <ItemGroup>
         <ProjectReference Include="..\FluentCMS.Repositories.MongoDB\FluentCMS.Repositories.MongoDB.csproj" />
         <ProjectReference Include="..\FluentCMS.Web.Api\FluentCMS.Web.Api.csproj" />
         <ProjectReference Include="..\FluentCMS.Web.UI\FluentCMS.Web.UI.csproj" />
