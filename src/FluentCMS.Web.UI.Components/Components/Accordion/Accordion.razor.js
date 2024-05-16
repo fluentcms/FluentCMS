@@ -32,13 +32,9 @@ export function initialize(dotnet, element, config) {
         {
             onOpen: (item) => {
                 dotnet.invokeMethodAsync("Update", true);
-                console.log('accordion item has been shown');
-                console.log(item);
             },
             onClose: (item) => {
                 dotnet.invokeMethodAsync("Update", false);
-                console.log('accordion item has been hidden');
-                console.log(item);
             },
         }
     );
