@@ -6,14 +6,12 @@ public partial class Alert
     public bool Dismissible { get; set; }
 
     [Parameter]
-    public bool Show { get; set; } = true;
-
-    [Parameter]
     [CSSProperty]
     public AlertType Type { get; set; }
 
-    public void Close()
+    private Task Close()
     {
-        Show = false;
+        Visible = false;
+        return Task.CompletedTask;
     }
 }
