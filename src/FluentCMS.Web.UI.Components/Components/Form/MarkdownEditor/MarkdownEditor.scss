@@ -1,6 +1,11 @@
 $markdown-editor: $prefix + "markdown-editor";
 
 .#{$markdown-editor} {
+
+    &-disabled-true + div * {
+        @apply pointer-events-none cursor-not-allowed opacity-80;
+    }
+
     .EasyMDEContainer {
         @apply w-full mb-4 border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600;
     }

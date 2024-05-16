@@ -2,15 +2,16 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-@if(Visible)
+@if (Visible)
 {
     <FormField Appearance="FormFieldAppearance.Checkbox"
                Field="this">
         <InputCheckbox @attributes="AdditionalAttributes"
-                       @bind-Value="Value"
-                       class="@this.GetClasses()"
+                       Value="@Value"
+                       ValueChanged="@ValueChanged"
+                       ValueExpression="@ValueExpression"
+                       class="@this.GetClasses("Checkbox")"
                        disabled="@Disabled"
-                       id="@Id"
-                       name="@Name" />
+                       id="@Id" />
     </FormField>
 }

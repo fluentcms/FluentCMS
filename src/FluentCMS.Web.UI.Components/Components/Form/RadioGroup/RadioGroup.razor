@@ -1,0 +1,19 @@
+@typeparam TValue
+
+@inherits FormCheckboxesType<TValue>
+
+@namespace FluentCMS.Web.UI.Components
+
+@if (Visible)
+{
+    <FormField Appearance="FormFieldAppearance.Input"
+               Field="this">
+        <InputRadioGroup @attributes="AdditionalAttributes"
+                         Value="@Value"
+                         ValueChanged="@ValueChanged"
+                         ValueExpression="@ValueExpression"
+                         class="@this.GetClasses("RadioGroup")">
+            @ChildContent
+        </InputRadioGroup>
+    </FormField>
+}

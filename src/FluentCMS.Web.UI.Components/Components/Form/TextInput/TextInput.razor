@@ -1,0 +1,19 @@
+@inherits FormInputsType<string>
+
+@namespace FluentCMS.Web.UI.Components
+
+@if (Visible)
+{
+    <FormField Appearance="FormFieldAppearance.Textarea"
+               Field="this">
+        <InputText @attributes="AdditionalAttributes"
+                   Value="@Value"
+                   ValueChanged="@ValueChanged"
+                   ValueExpression="@ValueExpression"
+                   class="@this.GetClasses("TextInput")"
+                   disabled="@Disabled"
+                   id="@Id"
+                   placeholder="@Placeholder"
+                   type="@this.Type.ToString().FromPascalCaseToKebabCase()" />
+    </FormField>
+}

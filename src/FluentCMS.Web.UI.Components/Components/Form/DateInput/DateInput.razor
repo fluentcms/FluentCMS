@@ -1,0 +1,20 @@
+﻿@typeparam TValue
+
+@inherits FormInputsType<TValue>
+
+@namespace FluentCMS.Web.UI.Components
+
+@if (Visible)
+{
+    <FormField Appearance="FormFieldAppearance.Input"
+               Field="this">
+        <InputDate @attributes="AdditionalAttributes"
+                   Value="@Value"
+                   ValueChanged="@ValueChanged"
+                   ValueExpression="@ValueExpression"
+                   class="@this.GetClasses("DateInput")"
+                   disabled="@Disabled"
+                   id="@Id"
+                   placeholder="@Placeholder" />
+    </FormField>
+}

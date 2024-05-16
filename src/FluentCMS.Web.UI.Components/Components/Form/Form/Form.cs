@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+
 namespace FluentCMS.Web.UI.Components;
 
 public abstract class FormElements : BaseComponent
@@ -36,7 +38,7 @@ public abstract class FormElementsValuable<T> : FormElements
     public EventCallback<T> OnChange { get; set; }
 
     [Parameter]
-    public T? Value
+    public virtual T? Value
     {
         get => CurrentValue;
         set
@@ -52,6 +54,9 @@ public abstract class FormElementsValuable<T> : FormElements
 
     [Parameter]
     public EventCallback<T> ValueChanged { get; set; }
+
+    [Parameter]
+    public Expression<Func<T>>? ValueExpression { get; set; }
 }
 
 public abstract class FormCheckboxesType<T> : FormElementsValuable<T>

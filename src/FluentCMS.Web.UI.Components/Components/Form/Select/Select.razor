@@ -4,17 +4,18 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-@if(Visible)
+@if (Visible)
 {
     <FormField Appearance="FormFieldAppearance.Select"
                Field="this">
         <InputSelect @attributes="AdditionalAttributes"
-                     @bind-Value="Value"
-                     class="@this.GetClasses()"
+                     Value="@Value"
+                     ValueChanged="@ValueChanged"
+                     ValueExpression="@ValueExpression"
+                     class="@this.GetClasses("Select")"
                      disabled="@Disabled"
                      id="@Id"
-                     multiple="@Multiple"
-                     name="@Name">
+                     multiple="@Multiple">
             @if (!string.IsNullOrEmpty(this.Placeholder))
             {
                 <option selected>@Placeholder</option>
