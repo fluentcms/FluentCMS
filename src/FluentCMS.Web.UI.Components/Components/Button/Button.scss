@@ -3,14 +3,10 @@
 $button: $prefix + "button";
 
 .#{$button} {
-    @apply inline-block font-medium rounded-lg relative focus:z-10 focus:outline-none;
-
-    & > span {
-        @apply items-center gap-2 text-center inline-flex;
-    }
+    @apply inline-flex items-center gap-2 text-center font-medium rounded-lg relative focus:z-10 focus:outline-none;
 
     &-block-true {
-        @apply inline-block w-full;
+        @apply w-full;
     }
 
     &-icon-true {
@@ -27,14 +23,6 @@ $button: $prefix + "button";
 
     &-icon {
         @apply w-2.5 h-2.5 ml-2.5;
-    }
-
-    .#{$prefix + "spinner"} {
-        @apply absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 opacity-100;
-    }
-
-    &-loading-true > * {
-        @apply opacity-0;
     }
 
     &-size-default.#{$button}-link-false {
