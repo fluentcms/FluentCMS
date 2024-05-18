@@ -11,13 +11,7 @@
            disabled="@Disabled"
            href="@Href"
            @onclick:stopPropagation="StopPropagation">
-            <span>
-                @ChildContent
-            </span>
-            @if (Loading)
-            {
-                <Spinner Color="Color" />
-            }
+            @ChildContent
         </a>
     }
     else
@@ -28,13 +22,7 @@
                 type="@Type.ToString()"
                 @onclick:stopPropagation="StopPropagation"
                 @onclick="OnClick">
-            <span>
-                @ChildContent
-            </span>
-            @if (Loading)
-            {
-                <Spinner Color="Color" />
-            }
+            @ChildContent
         </button>
     }
 }

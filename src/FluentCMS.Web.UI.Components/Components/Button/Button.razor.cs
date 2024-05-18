@@ -35,10 +35,6 @@ public partial class Button
 
     [Parameter]
     [CSSProperty]
-    public bool Loading { get; set; }
-
-    [Parameter]
-    [CSSProperty]
     public bool Outline { get; set; }
 
     [Parameter]

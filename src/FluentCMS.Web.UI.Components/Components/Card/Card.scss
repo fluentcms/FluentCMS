@@ -3,10 +3,6 @@ $card: $prefix + 'card';
 .#{$card} {
     @apply bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-700/20 dark:border-gray-700;
 
-    &-clickable-true {
-        @apply cursor-pointer;
-    }
-
     &-body {
         @apply p-3;
 
