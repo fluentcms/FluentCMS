@@ -59,7 +59,6 @@ body {
 @import '../Components/Modal/Modal';
 @import '../Components/Page/Page';
 @import '../Components/Pagination/Pagination';
-@import '../Components/Sidebar/Sidebar';
 @import '../Components/Spacer/Spacer';
 @import '../Components/Spinner/Spinner';
 @import '../Components/Stack/Stack';
@@ -69,3 +68,6 @@ body {
 @import '../Components/Toast/Toast';
 @import '../Components/Tooltip/Tooltip';
 @import '../Components/Typography/Typography';
+
+// TODO: Should move this file somewhere else.
+@import './Sidebar';
