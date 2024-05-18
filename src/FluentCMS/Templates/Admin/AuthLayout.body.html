@@ -1,8 +1,22 @@
-﻿<ConfirmProvider fluentcms />
+﻿<section class="bg-white dark:bg-gray-900">
+    <div class="grid lg:h-screen lg:grid-cols-2">
+        <div class="flex justify-center items-center py-6 px-4 lg:py-0 sm:px-0">
+            <Section Name="Main" fluentcms />
+        </div>
+        <div class="flex justify-center items-center py-6 px-4 bg-primary-600 lg:py-0 sm:px-0">
+            <div class="max-w-md xl:max-w-xl">
+                <a href="#" class="flex items-center mb-4 text-2xl font-semibold text-white">
+                    <img src="/images/logo-shape.svg" class="dark:hidden mr-2 h-8" alt="FluentCMS Logo">
+                    <img src="/images/logo-shape-dark.svg" class="hidden dark:block mr-2 h-8" alt="FluentCMS Logo">
+                    FluentCMS
+                </a>
+                <h1 class="mb-4 text-3xl font-extrabold tracking-tight leading-none text-white xl:text-5xl">Explore
+                    the world’s leading design portfolios.</h1>
+                <p class="mb-4 font-light text-primary-200 lg:mb-8">Millions of designers and agencies around the world showcase their portfolio work on FluentCMS - the home to the world’s best design and creative professionals.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<ConfirmProvider fluentcms />
 <ToastProvider fluentcms />
-
-<AuthLayout fluentcms>
-    <Section Name="Main" fluentcms />
-</AuthLayout>
-
-<script src="/_content/FluentCMS.Web.UI.Components/js/flowbite.min.js"></script>

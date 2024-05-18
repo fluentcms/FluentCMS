@@ -136,8 +136,8 @@ public class SetupManager
             Title = "Setup",
             Layout = new LayoutDetailResponse
             {
-                Body = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, "SetupLayout.body.html")),
-                Head = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, "SetupLayout.head.html"))
+                Body = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, "AuthLayout.body.html")),
+                Head = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, "AuthLayout.head.html"))
             },
             Site = new(),
             Sections = new Dictionary<string, List<PluginDetailResponse>>
