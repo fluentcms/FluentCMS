@@ -1,0 +1,43 @@
+﻿@typeparam TItem
+
+@typeparam TValue
+
+@inherits RadioGroup<TValue>
+
+@namespace FluentCMS.Web.UI.Plugins.Components
+
+@if (Visible)
+{
+    <PluginFormField Cols="Cols">
+        <RadioGroup @attributes="AdditionalAttributes"
+                    Dense="@Dense"
+                    Hint="@Hint"
+                    Id="@Id"
+                    Label="@Label"
+                    LabelFragment="@LabelFragment"
+                    Required="@Required"
+                    Value="@Value"
+                    ValueChanged="@ValueChanged"
+                    ValueExpression="@ValueExpression">
+            @if (ChildContent == null && TextField != null)
+            {
+                <Grid>
+                    @foreach (var item in Data)
+                    {
+                        <GridItem Small="Vertical ? GridItemColumn.Twelve : GridItemColumn.Six">
+                            <Radio Dense Value="@GetValue(item)">
+                                <LabelFragment>
+                                    @TextField(item)
+                                </LabelFragment>
+                            </Radio>
+                        </GridItem>
+                    }
+                </Grid>
+            }
+            else
+            {
+                @ChildContent
+            }
+        </RadioGroup>
+    </PluginFormField>
+}

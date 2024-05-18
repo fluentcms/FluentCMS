@@ -1,17 +1,19 @@
-@inherits FormCheckboxesType<bool>
+@typeparam TValue
+
+@inherits FormCheckboxesType<TValue>
 
 @namespace FluentCMS.Web.UI.Components
 
-@if(Visible)
+@if (Visible)
 {
     <FormField Appearance="FormFieldAppearance.Radio"
                Field="this">
-        <input @attributes="AdditionalAttributes"
-               @bind="@Value"
-               class="@this.GetClasses()"
-               disabled="@Disabled"
-               id="@Id"
-               name="@Name"
-               type="radio" />
+        <InputRadio @attributes="AdditionalAttributes"
+                    Value="@Value"
+                    ValueChanged="@ValueChanged"
+                    ValueExpression="@ValueExpression"
+                    class="@this.GetClasses()"
+                    disabled="@Disabled"
+                    id="@Id" />
     </FormField>
 }

@@ -1,4 +1,4 @@
-@typeparam TValue
+﻿@typeparam TValue
 
 @inherits FormInputsType<TValue>
 
@@ -6,21 +6,15 @@
 
 @if (Visible)
 {
-    <FormField Appearance="FormFieldAppearance.Select"
+    <FormField Appearance="FormFieldAppearance.Input"
                Field="this">
-        <InputSelect @attributes="AdditionalAttributes"
+        <InputNumber @attributes="AdditionalAttributes"
                      Value="@Value"
                      ValueChanged="@ValueChanged"
                      ValueExpression="@ValueExpression"
                      class="@this.GetClasses()"
                      disabled="@Disabled"
                      id="@Id"
-                     multiple="@Multiple">
-            @if (!string.IsNullOrEmpty(this.Placeholder))
-            {
-                <option selected>@Placeholder</option>
-            }
-            @ChildContent
-        </InputSelect>
+                     placeholder="@Placeholder" />
     </FormField>
 }

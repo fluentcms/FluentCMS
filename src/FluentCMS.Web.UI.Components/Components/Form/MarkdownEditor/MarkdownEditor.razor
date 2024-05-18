@@ -1,18 +1,20 @@
-@inherits FormElements
+@inherits FormInputsType<string>
 
 @namespace FluentCMS.Web.UI.Components
 
-@if(Visible)
+@if (Visible)
 {
     <FormField Appearance="FormFieldAppearance.Textarea"
                Field="this">
-        <div class="@this.GetClasses()">
-            <textarea @attributes="AdditionalAttributes"
-                    @ref="element" 
-                    placeholder="@Placeholder"
-                    readonly="@Readonly">
-                @Value
-            </textarea>
-        </div>
+        <textarea @attributes="AdditionalAttributes"
+                  @ref="element"
+                  Value="@Value"
+                  ValueChanged="@ValueChanged"
+                  ValueExpression="@ValueExpression"
+                  class="@this.GetClasses()"
+                  id="@Id"
+                  placeholder="@Placeholder">
+            @Value
+        </textarea>
     </FormField>
 }

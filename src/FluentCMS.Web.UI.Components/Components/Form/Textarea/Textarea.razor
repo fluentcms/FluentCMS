@@ -2,17 +2,18 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-@if(Visible)
+@if (Visible)
 {
     <FormField Appearance="FormFieldAppearance.Textarea"
                Field="this">
         <InputTextArea @attributes="AdditionalAttributes"
-                    @bind-Value="Value"
-                    class="@this.GetClasses()"
-                    disabled="@Disabled"
-                    id="@Id"
-                    name="@Name"
-                    placeholder="@Placeholder"
-                    rows="@Rows" />
+                       Value="@Value"
+                       ValueChanged="@ValueChanged"
+                       ValueExpression="@ValueExpression"
+                       class="@this.GetClasses()"
+                       disabled="@Disabled"
+                       id="@Id"
+                       placeholder="@Placeholder"
+                       rows="@Rows" />
     </FormField>
 }

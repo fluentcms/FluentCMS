@@ -9,16 +9,10 @@ public partial class MarkdownEditor : IAsyncDisposable
 
     private IJSObjectReference module = default!;
 
-    [Parameter]
-    public bool Readonly { get; set; } = false;
-
-    [Parameter]
-    public string? Placeholder { get; set; }
-
     private string? content;
 
     [Parameter]
-    public string Value
+    public override string Value
     {
         get
         {
@@ -34,8 +28,10 @@ public partial class MarkdownEditor : IAsyncDisposable
         }
     }
 
-    [Parameter]
-    public EventCallback<string> ValueChanged { get; set; }
+    public override string GetDefaultCSSName()
+    {
+        return "MarkdownEditor";
+    }
 
     [JSInvokable]
     public async Task UpdateValue(string value)

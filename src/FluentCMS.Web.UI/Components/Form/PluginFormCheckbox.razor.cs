@@ -3,6 +3,7 @@
 public partial class PluginFormCheckbox
 {
     [Parameter]
-    [CSSProperty]
     public int Cols { get; set; } = 12;
+
+    private RenderFragment RenderBase() => (builder) => base.BuildRenderTree(builder);
 }

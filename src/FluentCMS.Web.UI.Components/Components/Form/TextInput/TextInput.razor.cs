@@ -1,16 +1,16 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Select<TValue>
+public partial class TextInput
 {
-    [Parameter]
-    public bool Multiple { get; set; }
-
     [Parameter]
     [CSSProperty]
     public InputSize? Size { get; set; }
 
+    [Parameter]
+    public TextInputType Type { get; set; } = TextInputType.Text;
+
     public override string GetDefaultCSSName()
     {
-        return "Select";
+        return "TextInput";
     }
 }

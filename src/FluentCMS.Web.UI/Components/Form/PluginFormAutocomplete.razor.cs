@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Plugins.Components;
 
-public partial class PluginFormTextarea
+public partial class PluginFormAutocomplete
 {
     [Parameter]
     public int Cols { get; set; } = 12;
