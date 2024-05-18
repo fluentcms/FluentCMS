@@ -7,26 +7,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
     rel="stylesheet">
-<link rel="stylesheet" href="/app.css">
 <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32.png">
 <link rel="stylesheet" href="/_content/FluentCMS.Web.UI.Components/css/app.min.css" />
-<style>
-    body {
-        /* bg-gray-50 */
-        --tw-bg-opacity: 1;
-        background-color: rgb(249 250 251 / var(--tw-bg-opacity));
-    }
+<link rel="stylesheet" href="/css/app.css" />
 
-    body:is(.dark *) {
-        /* dark:bg-gray-900 */
-        --tw-bg-opacity: 1;
-        background-color: rgb(17 24 39 / var(--tw-bg-opacity));
-    }
-</style>
-<script>
-    if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark');
-    } else {
-        document.documentElement.classList.remove('dark')
-    }
-</script>
+<script src="/js/app.head.js"></script>
