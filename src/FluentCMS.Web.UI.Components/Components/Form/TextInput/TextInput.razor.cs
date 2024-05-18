@@ -9,4 +9,8 @@ public partial class TextInput
     [Parameter]
     public TextInputType Type { get; set; } = TextInputType.Text;
 
+    public override string GetDefaultCSSName()
+    {
+        return "TextInput";
+    }
 }

@@ -15,14 +15,16 @@ public static class BaseComponentHelper
         return string.Join(SEPARATOR, [CSS_PREFIX, Name.FromPascalCaseToKebabCase()]);
     }
 
-    public static List<string> ClassNames(this BaseComponent baseComponent,string cssName)
+    public static List<string> ClassNames(this BaseComponent baseComponent)
     {
         var classes = new List<string>();
 
         // get properties with CSSProperty Attribute
-        var properties = baseComponent.GetType().GetProperties().Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CSSPropertyAttribute)));
+        var properties = baseComponent.GetType().
+            GetProperties().
+            Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CSSPropertyAttribute)));
 
-        // var cssName = baseComponent.CSSName?.FromPascalCaseToKebabCase() ?? baseComponent.GetDefaultCSSName();
+        var cssName = baseComponent.CSSName?.FromPascalCaseToKebabCase() ?? baseComponent.GetDefaultCSSName();
 
         foreach (var property in properties)
         {
@@ -39,15 +41,15 @@ public static class BaseComponentHelper
         return classes;
     }
 
-    public static string GetClasses(this BaseComponent baseComponent, string nameOverride = "")
+    public static string GetClasses(this BaseComponent baseComponent)
     {
-        var cssName = string.IsNullOrEmpty(nameOverride) ? baseComponent.CSSName?.FromPascalCaseToKebabCase() ?? baseComponent.GetDefaultCSSName() : nameOverride.FromPascalCaseToKebabCase();
+        var cssName = baseComponent.CSSName?.FromPascalCaseToKebabCase() ?? baseComponent.GetDefaultCSSName();
 
         // component's class name from its name (f-button, f-badge, etc.)
         var componentCss = string.Join(SEPARATOR, [CSS_PREFIX, cssName]);
 
         // add css properties
-        List<string> classes = [componentCss, .. ClassNames(baseComponent, cssName)];
+        List<string> classes = [componentCss, .. ClassNames(baseComponent)];
 
         // if class is set by user, add the same class name
         if (!string.IsNullOrEmpty(baseComponent.Class))

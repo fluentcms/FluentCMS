@@ -8,4 +8,9 @@ public partial class Select<TValue>
     [Parameter]
     [CSSProperty]
     public InputSize? Size { get; set; }
+
+    public override string GetDefaultCSSName()
+    {
+        return "Select";
+    }
 }

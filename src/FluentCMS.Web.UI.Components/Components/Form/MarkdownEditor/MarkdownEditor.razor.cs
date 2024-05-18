@@ -28,6 +28,11 @@ public partial class MarkdownEditor : IAsyncDisposable
         }
     }
 
+    public override string GetDefaultCSSName()
+    {
+        return "MarkdownEditor";
+    }
+
     [JSInvokable]
     public async Task UpdateValue(string value)
     {
