@@ -1,18 +1,19 @@
 ﻿@inherits BasePlugin
 
+@* TODO: do we need to the Initialized *@
 @if (!Initialized)
 {
     @* TODO: remove div and card border *@
     <div class="w-full max-w-md space-y-4 md:space-y-6 xl:max-w-xl">
-        <PluginForm Model="@Model" OnSubmit="OnSubmit" Name="@FORM_NAME" Title="@($"Welcome To FluentCMS {Model.Username}")">
-            <PluginFormTextInput @bind-Value="Model.Username" Placeholder="Enter your username" />
-            <PluginFormTextInput @bind-Value="Model.Email" Placeholder="Enter your email" />
-            <PluginFormTextInput @bind-Value="Model.Password" Placeholder="Enter your password" Type="TextInputType.Password" />
-            <PluginFormTextInput @bind-Value="Model.AppTemplateName" Cols="6" />
-            <PluginFormTextInput @bind-Value="Model.SiteTemplateName" Cols="6" />
-            <PluginFormTextInput @bind-Value="Model.AdminDomain" />
+        <PluginForm Model="@Model" Name="@FORM_NAME" Title="@($"Welcome To FluentCMS {Model.Username}")" OnSubmit="OnSubmit">
+            <PluginFormTextInput @bind-Value="Model.Username" Label="Username" Placeholder="Enter your username" Required />
+            <PluginFormTextInput @bind-Value="Model.Email" Label="Email" Placeholder="Enter your email" Required />
+            <PluginFormTextInput @bind-Value="Model.Password" Label="Password" Placeholder="Enter your password" Required Type="TextInputType.Password" />
+            <PluginFormTextInput @bind-Value="Model.AppTemplateName" Cols="6" Label="App Template Name" Placeholder="Enter your app template name" Required />
+            <PluginFormTextInput @bind-Value="Model.SiteTemplateName" Cols="6" Label="Site Template Name" Placeholder="Enter your site template name" Required />
+            <PluginFormTextInput @bind-Value="Model.AdminDomain" Label="Admin Domain" Placeholder="Enter your admin domain" Required />
             <PluginFormActions>
-                <Button Block="true" Color="Color.Primary" Type="ButtonType.Submit">
+                <Button Block Color="Color.Primary" Type="ButtonType.Submit">
                     Setup
                 </Button>
             </PluginFormActions>
@@ -24,7 +25,7 @@ else
     <Typography Size="TextSize.H5">
         Setup completed successfully!
     </Typography>
-    <Button Block="true" Color="Color.Primary" Href="/">
+    <Button Block Color="Color.Primary" Href="/">
         Continue...
     </Button>
 }
