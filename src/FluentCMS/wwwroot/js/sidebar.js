@@ -1,51 +1,3 @@
-// Dark mode
-var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-
-// Change the icons inside the button based on previous settings
-if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    themeToggleLightIcon.classList.remove('hidden');
-} else {
-    themeToggleDarkIcon.classList.remove('hidden');
-}
-
-var themeToggleBtn = document.getElementById('theme-toggle');
-
-let event = new Event('dark-mode');
-
-themeToggleBtn.addEventListener('click', function () {
-
-    // toggle icons
-    themeToggleDarkIcon.classList.toggle('hidden');
-    themeToggleLightIcon.classList.toggle('hidden');
-
-    // if set via local storage previously
-    if (localStorage.getItem('color-theme')) {
-        if (localStorage.getItem('color-theme') === 'light') {
-            document.documentElement.classList.add('dark');
-            localStorage.setItem('color-theme', 'dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-            localStorage.setItem('color-theme', 'light');
-        }
-
-        // if NOT set via local storage previously
-    } else {
-        if (document.documentElement.classList.contains('dark')) {
-            document.documentElement.classList.remove('dark');
-            localStorage.setItem('color-theme', 'light');
-        } else {
-            document.documentElement.classList.add('dark');
-            localStorage.setItem('color-theme', 'dark');
-        }
-    }
-
-    document.dispatchEvent(event);
-
-});
-
-
-// Sidebar
 const isSidebarExpanded = toggleSidebarEl => {
     return toggleSidebarEl.getAttribute('aria-expanded') === 'true' ? true : false;
 }
@@ -126,22 +78,23 @@ if (localStorage.getItem('sidebarExpanded') !== null) {
     }
 }
 
-toggleSidebarEl.addEventListener('click', () => {
+function onToggleSidebarElClicked() {
     localStorage.setItem('sidebarExpanded', !isSidebarExpanded(toggleSidebarEl));
     toggleSidebar(sidebar, !isSidebarExpanded(toggleSidebarEl), true);
-});
+}
 
-sidebar.addEventListener('mouseenter', () => {
+function onSidebarMouseEntered() {
     if (!isSidebarExpanded(toggleSidebarEl)) {
         toggleSidebar(sidebar, true);
     }
-});
+}
 
-sidebar.addEventListener('mouseleave', () => {
+function onSidebarMouseLeaved() {
     if (!isSidebarExpanded(toggleSidebarEl)) {
         toggleSidebar(sidebar, false);
     }
-});
+}
+
 
 const toggleSidebarMobile = (sidebar, sidebarBackdrop, toggleSidebarMobileHamburger, toggleSidebarMobileClose) => {
     sidebar.classList.toggle('hidden');
@@ -154,16 +107,39 @@ const toggleSidebarMobileEl = document.getElementById('toggleSidebarMobile');
 const sidebarBackdrop = document.getElementById('sidebarBackdrop');
 const toggleSidebarMobileHamburger = document.getElementById('toggleSidebarMobileHamburger');
 const toggleSidebarMobileClose = document.getElementById('toggleSidebarMobileClose');
-const toggleSidebarMobileSearch = document.getElementById('toggleSidebarMobileSearch');
 
-toggleSidebarMobileSearch.addEventListener('click', () => {
+function onToggleSidebarMobileElClicked() {
     toggleSidebarMobile(sidebar, sidebarBackdrop, toggleSidebarMobileHamburger, toggleSidebarMobileClose);
-});
+}
 
-toggleSidebarMobileEl.addEventListener('click', () => {
+function onSidebarBackdropClicked() {
     toggleSidebarMobile(sidebar, sidebarBackdrop, toggleSidebarMobileHamburger, toggleSidebarMobileClose);
-});
+}
 
-sidebarBackdrop.addEventListener('click', () => {
-    toggleSidebarMobile(sidebar, sidebarBackdrop, toggleSidebarMobileHamburger, toggleSidebarMobileClose);
-});
+function initialize() {
+    toggleSidebarEl.addEventListener('click', onToggleSidebarElClicked);
+    sidebar.addEventListener('mouseenter', onSidebarMouseEntered);
+    sidebar.addEventListener('mouseleave', onSidebarMouseLeaved);
+    toggleSidebarMobileEl.addEventListener('click', onToggleSidebarMobileElClicked);
+    sidebarBackdrop.addEventListener('click', onSidebarBackdropClicked);
+}
+
+function destroy() {
+    toggleSidebarEl.removeEventListener('click', onToggleSidebarElClicked);
+    sidebar.removeEventListener('mouseenter', onSidebarMouseEntered);
+    sidebar.removeEventListener('mouseleave', onSidebarMouseLeaved);
+    toggleSidebarMobileEl.removeEventListener('click', onToggleSidebarMobileElClicked);
+    sidebarBackdrop.removeEventListener('click', onSidebarBackdropClicked);
+}
+
+window.addEventListener('fluentcms:beforeenhanced', () => {
+    destroy()
+})
+
+window.addEventListener('fluentcms:afterenhanced', () => {
+    initialize()
+})
+
+window.addEventListener('fluentcms:init', () => {
+    initialize()
+})
