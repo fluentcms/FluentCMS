@@ -33,13 +33,13 @@
 
             const response = await originalFetch(...args);
 
-            if (isEnhancedNavRequest) {
-                const responseContentType = response.headers.get('content-type');
-                if (responseContentType?.startsWith('text/html')) {
-                    let afterEnhancedFetchEvent = new CustomEvent("fluentcms:afterenhanced", { bubbles: true, detail: response });
-                    document.dispatchEvent(afterEnhancedFetchEvent);
-                }
-            }
+            // if (isEnhancedNavRequest) {
+            //     const responseContentType = response.headers.get('content-type');
+            //     if (responseContentType?.startsWith('text/html')) {
+            //         let afterEnhancedFetchEvent = new CustomEvent("fluentcms:afterenhanced", { bubbles: true, detail: response });
+            //         document.dispatchEvent(afterEnhancedFetchEvent);
+            //     }
+            // }
 
             return response;
         }
@@ -47,6 +47,10 @@
         let initEvent = new CustomEvent("fluentcms:init", { bubbles: true });
         document.dispatchEvent(initEvent);
 
+        Blazor.addEventListener('enhancedload', () => {
+            let initEvent = new CustomEvent("fluentcms:afterenhanced", { bubbles: true });
+            document.dispatchEvent(initEvent);
+        })
     </script>
 </body>
 </html>

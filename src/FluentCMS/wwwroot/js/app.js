@@ -11,16 +11,16 @@ window.addEventListener('fluentcms:afterenhanced', () => {
     theme = createTheme()
     sidebar = createSidebar()
     
-    theme.initialize()
-    sidebar.initialize()
+    if(theme) theme.initialize()
+    if(sidebar) sidebar.initialize()
 })
 
 window.addEventListener('fluentcms:init', () => {
     theme = createTheme();
     sidebar = createSidebar();
 
-    theme.initialize()
-    sidebar.initialize()
+    if(theme) theme.initialize()
+    if(sidebar) sidebar.initialize()
 })
 
 function createSidebar() {
@@ -79,6 +79,10 @@ function createSidebar() {
 
     const toggleSidebarEl = document.getElementById('toggleSidebar');
     const sidebar = document.getElementById('sidebar');
+
+    if(!sidebar) {
+        return null;
+    }
 
     document.querySelectorAll('#' + sidebar.getAttribute('id') + ' ul > li > ul > li > a').forEach(e => {
         var fullText = e.textContent;
@@ -172,6 +176,18 @@ function createTheme() {
 
     var themeToggleBtn = document.getElementById('theme-toggle');
 
+    if(!themeToggleBtn) {
+        return null;
+    }
+    
+    function initTheme() {
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark')
+        }
+    }
+    
     let event = new Event('dark-mode');
 
     function onToggleThemeBtnClicked() {
@@ -214,7 +230,7 @@ function createTheme() {
     }
 
     function initialize() {
-        initTheme() // defined in app.head.js
+        initTheme()
         updateThemeIcon()
         themeToggleBtn.addEventListener('click', onToggleThemeBtnClicked);
     }
