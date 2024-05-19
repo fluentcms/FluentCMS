@@ -1,13 +1,13 @@
 ﻿@inherits BasePlugin
 
-<PluginForm Name="@FORM_NAME" Model="@Model" Title="Create New User" OnSubmit="OnSubmit">
-    <PluginFormTextInput @bind-Value="Model.Username" Label="UserName" Placeholder="Enter Username..." Cols="6" />
-    <PluginFormTextInput @bind-Value="Model.Email" Label="Email" Placeholder="Enter Email..." Cols="6" />
-    <PluginFormTextInput @bind-Value="Model.FirstName" Label="FirstName" Placeholder="Enter FirstName..." Cols="6" />
-    <PluginFormTextInput @bind-Value="Model.LastName" Label="LastName" Placeholder="Enter LastName..." Cols="6" />
-    <PluginFormTextInput @bind-Value="Model.PhoneNumber" Label="Phone Number" Placeholder="Enter Phone Number..." Cols="6" />
-    <PluginFormTextInput @bind-Value="Model.Password" Label="Password" Placeholder="Enter Password..." Cols="6" />
-    <PluginFormCheckboxGroup @bind-Value="RoleIds" Label="Roles" Data="Roles" TextField="item => item.Name" ValueField="Id" />
-    <PluginFormActions Submit="true" Cancel="true" />
+<PluginForm Model="@Model" Name="@FORM_NAME" Title="Create New User" OnSubmit="OnSubmit">
+    <PluginFormTextInput @bind-Value="Model.Username" Cols="6" Label="Username" Placeholder="Enter Username" Required />
+    <PluginFormTextInput @bind-Value="Model.Email" Cols="6" Label="Email" Placeholder="Enter Email" Required />
+    <PluginFormTextInput @bind-Value="Model.FirstName" Cols="6" Label="First Name" Placeholder="Enter First Name" />
+    <PluginFormTextInput @bind-Value="Model.LastName" Cols="6" Label="Last Name" Placeholder="Enter Last Name" />
+    <PluginFormTextInput @bind-Value="Model.PhoneNumber" Cols="6" Label="Phone Number" Placeholder="Enter Phone Number" />
+    <PluginFormTextInput @bind-Value="Model.Password" Cols="6" Label="Password" Placeholder="Enter Password" Required Type="TextInputType.Password" />
+    <PluginFormCheckboxGroup @bind-Value="RoleIds" Data="Roles" Label="Roles" TextField="item => item.Name" ValueField="Id" Required />
+    <PluginFormActions Cancel Submit />
 </PluginForm>
 

@@ -2,20 +2,20 @@
 
 <PluginBody Title="Users List">
     <ActionsFragment>
-        <Button Color="Color.Primary" Href="@GetUrl("Create User")">
+        <Button Color="Color.Success" Href="@GetUrl("Create User")">
             <Icon Name="IconName.Plus" />
-            Add user
+            Add User
         </Button>
     </ActionsFragment>
     <ChildContent>
         <Table Hoverable>
             <TableHead>
                 <TableRow>
-                    <TableCell>Username</TableCell>
-                    <TableCell>Email</TableCell>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Enabled</TableCell>
-                    <TableCell>Actions</TableCell>
+                    <TableCell Head>Username</TableCell>
+                    <TableCell Head>Email</TableCell>
+                    <TableCell Head>Full Name</TableCell>
+                    <TableCell Head>Phone Number</TableCell>
+                    <TableCell Head>Enabled</TableCell>
                 </TableRow>
             </TableHead>
             <TableBody>
@@ -25,6 +25,7 @@
                         <TableCell>@user.Username</TableCell>
                         <TableCell>@user.Email</TableCell>
                         <TableCell>@user.FirstName @user.LastName</TableCell>
+                        <TableCell>@user.PhoneNumber</TableCell>
                         <TableCell>
                             @if (user.Enabled)
                             {
@@ -40,11 +41,7 @@
                             }
                         </TableCell>
                         <TableCell>
-                            <Button Color="Color.Primary" Href="@GetUrl("User Detail", new { id = user.Id })" StopPropagation>
-                                <Icon Name="IconName.Eye" />
-                                Details
-                            </Button>
-                            <Button Color="Color.Primary" Href="@GetUrl("Update User", new { id = user.Id })" StopPropagation Outline>
+                            <Button Color="Color.Primary" Href="@GetUrl("Update User", new { id = user.Id })" Outline StopPropagation>
                                 <Icon Name="IconName.Edit" />
                                 Edit
                             </Button>

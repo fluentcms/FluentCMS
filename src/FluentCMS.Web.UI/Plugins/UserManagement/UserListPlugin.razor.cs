@@ -12,7 +12,7 @@ public partial class UserListPlugin
 
     protected void OnRowDefaultAction(Guid id)
     {
-        var url = GetUrl("User Detail", new { id = id });
+        var url = GetUrl("User User", new { id = id });
         NavigationManager.NavigateTo(url);
     }
 }
