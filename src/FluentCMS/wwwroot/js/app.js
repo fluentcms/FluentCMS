@@ -1,20 +1,38 @@
 const theme = createTheme()
 const sidebar = createSidebar()
+const loadingBar = createLoadingBar()
 
 window.addEventListener('blazor:enhanceload', () => {
     console.log('enhanceload')
     theme.init()
     sidebar.init()
+    loadingBar.hide()
 })
 
 window.addEventListener('blazor:beforeenhanceload', () => {
     console.log('beforeenhanceload')
     theme.destroy()
     sidebar.destroy()
+    loadingBar.show()
 })
 
 theme.init()
 sidebar.init()
+loadingBar.hide()
+
+function createLoadingBar() {
+    const loadingBar = document.getElementById('loading-bar')
+    function show() {
+        loadingBar.classList.remove('h-0')
+        loadingBar.classList.add('h-1')
+    }
+
+    function hide() {
+        loadingBar.classList.add('h-0')
+        loadingBar.classList.remove('h-1')
+    }
+    return { show, hide }
+}
 
 function createTheme() {
     // Dark mode
@@ -26,10 +44,7 @@ function createTheme() {
     let event = new Event('dark-mode');
 
     function onToggleThemeBtnClicked() {
-        // toggle icons
-        themeToggleDarkIcon.classList.toggle('hidden');
-        themeToggleLightIcon.classList.toggle('hidden');
-
+        
         // if set via local storage previously
         if (localStorage.getItem('color-theme')) {
             if (localStorage.getItem('color-theme') === 'light') {
@@ -51,14 +66,27 @@ function createTheme() {
             }
         }
 
+        setTimeout(() => {
+            // toggle icons
+            if(document.documentElement.classList.contains('dark')) {
+                themeToggleDarkIcon.classList.add('hidden');
+                themeToggleLightIcon.classList.remove('hidden');
+            } else {
+                themeToggleDarkIcon.classList.remove('hidden');
+                themeToggleLightIcon.classList.add('hidden');
+            }
+        })
+
         document.dispatchEvent(event);
     }
 
     function init() {
         console.log('Should initialize dark mode')
 
+        initTheme()
+
         // Change the icons inside the button based on previous settings
-        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        if (document.documentElement.classList.contains('dark')) {
             themeToggleLightIcon.classList.remove('hidden');
         } else {
             themeToggleDarkIcon.classList.remove('hidden');
