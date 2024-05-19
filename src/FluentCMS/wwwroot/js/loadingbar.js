@@ -15,16 +15,13 @@ const showLoadingBar = () => {
 }
 
 window.addEventListener('fluentcms:beforeenhanced', () => {
-    console.log('fluentcms:beforeenhanced')
     showLoadingBar()
 })
 
 window.addEventListener('fluentcms:afterenhanced', () => {
-    console.log('fluentcms:afterenhanced')
     hideLoadingBar()
 })
 
 window.addEventListener('fluentcms:init', () => {
-    console.log('fluentcms:init')
     hideLoadingBar()
 })
