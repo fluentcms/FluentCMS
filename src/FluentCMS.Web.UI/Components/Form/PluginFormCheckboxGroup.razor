@@ -2,13 +2,38 @@
 
 @typeparam TValue
 
-@inherits FormElementsValuable<TValue>
+@inherits FormElementsValuable<ICollection<TValue>>
 
 @namespace FluentCMS.Web.UI.Plugins.Components
 
-@if (true)
+@if (Visible)
 {
     <PluginFormField Cols="Cols">
-        TODO
+        <FormField Appearance="FormFieldAppearance.Input"
+                   Field="this">
+            @if (ChildContent == null && TextField != null)
+            {
+                <Grid>
+                    @foreach (var item in Data)
+                    {
+                        <GridItem Small="Vertical ? GridItemColumn.Twelve : GridItemColumn.Six">
+                            @* TODO *@
+                            <div class="f-form-field">
+                                <div class="relative">
+                                    <input checked="@IsChecked(item)" class="f-checkbox" id="@GetValue(item)" name="NameAttributeValue" type="checkbox" value="@GetValue(item)">
+                                    <label class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300" for="@GetValue(item)">
+                                        @TextField(item)
+                                    </label>
+                                </div>
+                            </div>        
+                        </GridItem>
+                    }
+                </Grid>
+            }
+            else
+            {
+                @ChildContent
+            }
+        </FormField>
     </PluginFormField>
-}
+}                  

@@ -1,7 +1,7 @@
 ﻿@namespace FluentCMS.Web.UI.Plugins.Components
 
 <PluginBody Title="@Title">
-    <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="@Name" Enhance>
+    <EditForm Enhance FormName="@Name" Model="@Model" OnSubmit="HandleSubmit">
         <DataAnnotationsValidator />
         <Spacer />
         <Grid GutterX="GridGutter.Large">
