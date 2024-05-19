@@ -11,6 +11,6 @@ public partial class TextInput
 
     public override string GetDefaultCSSName()
     {
-        return "TextInput";
+        return "text-input";
     }
 }

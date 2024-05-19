@@ -4,7 +4,7 @@ public partial class Radio<TValue>
 {
     public override string GetDefaultCSSName()
     {
-        return "Radio";
+        return "radio";
     }
 
     protected override void OnInitialized()

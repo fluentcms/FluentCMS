@@ -4,7 +4,7 @@ public partial class Checkbox
 {
     public override string GetDefaultCSSName()
     {
-        return "Checkbox";
+        return "checkbox";
     }
 
     protected override void OnInitialized()

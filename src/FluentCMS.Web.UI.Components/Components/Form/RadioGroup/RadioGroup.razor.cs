@@ -4,6 +4,6 @@ public partial class RadioGroup<TValue>
 {
     public override string GetDefaultCSSName()
     {
-        return "RadioGroup";
+        return "radio-group";
     }
 }

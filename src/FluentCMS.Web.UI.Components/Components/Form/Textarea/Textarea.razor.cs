@@ -7,6 +7,6 @@ public partial class Textarea
 
     public override string GetDefaultCSSName()
     {
-        return "Textarea";
+        return "textarea";
     }
 }

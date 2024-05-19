@@ -11,6 +11,6 @@ public partial class Select<TValue>
 
     public override string GetDefaultCSSName()
     {
-        return "Select";
+        return "select";
     }
 }

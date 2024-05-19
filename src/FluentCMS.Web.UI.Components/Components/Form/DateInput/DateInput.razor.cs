@@ -8,6 +8,6 @@ public partial class DateInput<TValue>
 
     public override string GetDefaultCSSName()
     {
-        return "DateInput";
+        return "date-input";
     }
 }

@@ -8,6 +8,6 @@ public partial class NumberInput<TValue>
 
     public override string GetDefaultCSSName()
     {
-        return "NumberInput";
+        return "number-input";
     }
 }

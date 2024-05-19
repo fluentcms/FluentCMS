@@ -30,7 +30,7 @@ public partial class MarkdownEditor : IAsyncDisposable
 
     public override string GetDefaultCSSName()
     {
-        return "MarkdownEditor";
+        return "markdown-editor";
     }
 
     [JSInvokable]
