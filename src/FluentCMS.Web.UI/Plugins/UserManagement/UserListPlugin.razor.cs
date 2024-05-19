@@ -10,9 +10,9 @@ public partial class UserListPlugin
         Users = usersResponse?.Data?.ToList() ?? [];
     }
 
-    protected void OnRowDefaultAction(Guid Id)
+    protected void OnRowDefaultAction(Guid id)
     {
-        var url = GetUrl("User Detail", new { id = Id });
+        var url = GetUrl("User Detail", new { id = id });
         NavigationManager.NavigateTo(url);
     }
 }

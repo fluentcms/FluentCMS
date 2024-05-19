@@ -1,74 +1,57 @@
 @inherits BasePlugin
 
-<div class="m-4">
-    <div class="flex items-center justify-between">
-        <h1 class="text-xl font-semibold text-gray-900 sm:text-2xl dark:text-white">Users List</h1>
-        <div class="flex items-center ml-auto space-x-2 sm:space-x-3">
-            <a href="@GetUrl("Create User")" type="button" data-modal-toggle="add-user-modal" class="inline-flex justify-center items-center py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-                <svg class="mr-2 -ml-1 w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
-                Add user
-            </a>
-        </div>
-    </div>
-    <Spacer />
-    <Card>
+<PluginBody Title="Users List">
+    <ActionsFragment>
+        <Button Color="Color.Primary" Href="@GetUrl("Create User")">
+            <Icon Name="IconName.Plus" />
+            Add user
+        </Button>
+    </ActionsFragment>
+    <ChildContent>
         <Table Hoverable>
             <TableHead>
-                <tr>
-                    <th scope="col" class="p-4 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-400">
-                        Username
-                    </th>
-                    <th scope="col" class="p-4 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-400">
-                        Email
-                    </th>
-                    <th scope="col" class="p-4 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-400">
-                        Name
-                    </th>
-                    <th scope="col" class="p-4 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-400">
-                        Enabled
-                    </th>
-                    <th scope="col" class="p-4">
-                    </th>
-                </tr>
+                <TableRow>
+                    <TableCell>Username</TableCell>
+                    <TableCell>Email</TableCell>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Enabled</TableCell>
+                    <TableCell>Actions</TableCell>
+                </TableRow>
             </TableHead>
             <TableBody>
                 @foreach (var user in Users)
                 {
                     <TableRow @onclick="() => OnRowDefaultAction(user.Id)">
-                        <td class="p-4 text-base font-medium text-gray-900 whitespace-nowrap dark:text-white">@user.Username</td>
-                        <td class="p-4 text-base font-medium text-gray-900 whitespace-nowrap dark:text-white">@user.Email</td>
-                        <td class="p-4 text-base font-medium text-gray-900 whitespace-nowrap dark:text-white">@user.FirstName @user.LastName</td>
-                        <td class="p-4 text-base font-normal text-gray-900 whitespace-nowrap dark:text-white">
-                            <div class="flex items-center">
-                                @if(user.Enabled)
-                                {
-                                    <text>
-                                        <div class="h-2.5 w-2.5 rounded-full bg-green-400 mr-2"></div> 
-                                        Enabled
-                                    </text>
-                                } 
-                                else 
-                                {
-                                    <text>
-                                        <div class="h-2.5 w-2.5 rounded-full bg-red-400 mr-2"></div> 
-                                        Disabled
-                                    </text>
-                                }
-                            </div>
-                        </td>
-                        <td class="p-4 space-x-2 whitespace-nowrap">
-                            <a @onclick:stopPropagation="true" Href="@GetUrl("User Detail", new { id = user.Id })" type="button" data-modal-toggle="user-modal" class="inline-flex items-center py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-                                <svg class="mr-2 w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 14">    <path d="M10 0C4.612 0 0 5.336 0 7c0 1.742 3.546 7 10 7 6.454 0 10-5.258 10-7 0-1.664-4.612-7-10-7Zm0 10a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z"/>  </svg>
+                        <TableCell>@user.Username</TableCell>
+                        <TableCell>@user.Email</TableCell>
+                        <TableCell>@user.FirstName @user.LastName</TableCell>
+                        <TableCell>
+                            @if (user.Enabled)
+                            {
+                                <Badge Color="Color.Success">
+                                    Enabled
+                                </Badge>
+                            }
+                            else
+                            {
+                                <Badge Color="Color.Danger">
+                                    Enabled
+                                </Badge>
+                            }
+                        </TableCell>
+                        <TableCell>
+                            <Button Color="Color.Primary" Href="@GetUrl("User Detail", new { id = user.Id })" StopPropagation>
+                                <Icon Name="IconName.Eye" />
                                 Details
-                            </a>
-                            <a @onclick:stopPropagation="true" Href="@GetUrl("Update User", new { id = user.Id })" type="button" data-modal-toggle="user-modal" class="inline-flex items-center text-blue-700 hover:text-white border border-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-3 py-2 text-center me-2 mb-2 dark:border-blue-500 dark:text-blue-500 dark:hover:text-white dark:hover:bg-blue-500 dark:focus:ring-blue-800">
-                                <svg class="mr-2 w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z"></path><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd"></path></svg>
+                            </Button>
+                            <Button Color="Color.Primary" Href="@GetUrl("Update User", new { id = user.Id })" StopPropagation Outline>
+                                <Icon Name="IconName.Edit" />
                                 Edit
-                            </a>
-                        </td>
+                            </Button>
+                        </TableCell>
                     </TableRow>
                 }
             </TableBody>
         </Table>
-    </Card>
-</div>
+    </ChildContent>
+</PluginBody>
