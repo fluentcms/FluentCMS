@@ -1,4 +1,7 @@
-﻿<section class="bg-white dark:bg-gray-900">
+﻿<div id="loading-bar" class="fixed start-0 transition-transform bg-gray-100 dark:bg-gray-800 w-full overflow-hidden top-0">
+    <div class="loading-bar-animate w-full h-full bg-blue-500"></div>
+</div>
+<section class="bg-white dark:bg-gray-900">
     <div class="grid lg:h-screen lg:grid-cols-2">
         <div class="flex justify-center items-center py-6 px-4 lg:py-0 sm:px-0">
             <Section Name="Main" fluentcms />
@@ -8,10 +11,15 @@
                 <a href="#" class="flex items-center mb-4 text-2xl font-semibold text-white">
                     <img src="/images/logo-dark.svg" class="h-8" alt="FluentCMS Logo">
                 </a>
-                <h1 class="mb-4 text-3xl font-extrabold tracking-tight leading-none text-white xl:text-5xl">Explore
-                    the world’s leading design portfolios.</h1>
-                <p class="mb-4 font-light text-primary-200 lg:mb-8">Millions of designers and agencies around the world showcase their portfolio work on FluentCMS - the home to the world’s best design and creative professionals.</p>
+                <h1 class="mb-4 text-3xl font-extrabold tracking-tight leading-none text-white xl:text-5xl">
+                    Explore the world’s leading design portfolios.
+                </h1>
+                <p class="mb-4 font-light text-primary-200 lg:mb-8">
+                    Millions of designers and agencies around the world showcase their portfolio work on FluentCMS - the home to the world’s best design and creative professionals.
+                </p>
             </div>
         </div>
     </div>
 </section>
+
+<script src="/js/loadingbar.js"></script>
