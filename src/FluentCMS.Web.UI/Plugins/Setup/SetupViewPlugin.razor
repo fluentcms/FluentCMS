@@ -2,19 +2,22 @@
 
 @if (!Initialized)
 {
-    <PluginForm Model="@Model" OnSubmit="OnSubmit" Name="@FORM_NAME" Title="@($"Welcome To FluentCMS {Model.Username}")">
-        <InputText @bind-Value="Model.Username" Placeholder="Enter your username" />
-        <InputText @bind-Value="Model.Email" Placeholder="Enter your email" />
-        <InputText @bind-Value="Model.Password" Placeholder="Enter your password" type="password" />
-        <InputText @bind-Value="Model.AppTemplateName" />
-        <InputText @bind-Value="Model.SiteTemplateName" />
-        <InputText @bind-Value="Model.AdminDomain" />
-        <PluginFormActions>
-            <Button Block="true"  Color="Color.Primary" Type="ButtonType.Submit">
-                Setup
-            </Button>
-        </PluginFormActions>
-    </PluginForm>
+    @* TODO: remove div and card border *@
+    <div class="w-full max-w-md space-y-4 md:space-y-6 xl:max-w-xl">
+        <PluginForm Model="@Model" OnSubmit="OnSubmit" Name="@FORM_NAME" Title="@($"Welcome To FluentCMS {Model.Username}")">
+            <PluginFormTextInput @bind-Value="Model.Username" Placeholder="Enter your username" />
+            <PluginFormTextInput @bind-Value="Model.Email" Placeholder="Enter your email" />
+            <PluginFormTextInput @bind-Value="Model.Password" Placeholder="Enter your password" Type="TextInputType.Password" />
+            <PluginFormTextInput @bind-Value="Model.AppTemplateName" Cols="6" />
+            <PluginFormTextInput @bind-Value="Model.SiteTemplateName" Cols="6" />
+            <PluginFormTextInput @bind-Value="Model.AdminDomain" />
+            <PluginFormActions>
+                <Button Block="true" Color="Color.Primary" Type="ButtonType.Submit">
+                    Setup
+                </Button>
+            </PluginFormActions>
+        </PluginForm>
+    </div>
 }
 else
 {
