@@ -1,6 +1,6 @@
 @inherits BasePlugin
 
-<PluginBody Title="Users List">
+<PluginBody Title="Users List">             
     <ActionsFragment>
         <Button Color="Color.Success" Href="@GetUrl("Create User")">
             <Icon Name="IconName.Plus" />
@@ -21,7 +21,7 @@
             <TableBody>
                 @foreach (var user in Users)
                 {
-                    <TableRow @onclick="() => OnRowDefaultAction(user.Id)">
+                    <TableRow>
                         <TableCell>@user.Username</TableCell>
                         <TableCell>@user.Email</TableCell>
                         <TableCell>@user.FirstName @user.LastName</TableCell>
