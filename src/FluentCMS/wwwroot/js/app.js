@@ -13,6 +13,8 @@ window.addEventListener('fluentcms:afterenhanced', () => {
     
     if(theme) theme.initialize()
     if(sidebar) sidebar.initialize()
+
+    initFlowbite()
 })
 
 window.addEventListener('fluentcms:init', () => {
@@ -125,7 +127,6 @@ function createSidebar() {
         }
     }
 
-
     const toggleSidebarMobile = (sidebar, sidebarBackdrop, toggleSidebarMobileHamburger, toggleSidebarMobileClose) => {
         sidebar.classList.toggle('hidden');
         sidebarBackdrop.classList.toggle('hidden');
@@ -145,8 +146,6 @@ function createSidebar() {
     function onSidebarBackdropClicked() {
         toggleSidebarMobile(sidebar, sidebarBackdrop, toggleSidebarMobileHamburger, toggleSidebarMobileClose);
     }
-
-
 
     function initialize() {
         toggleSidebarEl.addEventListener('click', onToggleSidebarElClicked);
