@@ -31,7 +31,6 @@ function createSidebar() {
     }
 
     const toggleSidebar = (sidebarEl, expand, setExpanded = false) => {
-        const bottomMenuEl = document.querySelector('[sidebar-bottom-menu]');
         const mainContentEl = document.getElementById('main-content');
         if (expand) {
             sidebarEl.classList.add('lg:w-64');
@@ -52,8 +51,6 @@ function createSidebar() {
                 e.childNodes[1].classList.add('hidden');
             });
 
-            bottomMenuEl.classList.remove('flex-col', 'space-y-4', 'p-2');
-            bottomMenuEl.classList.add('space-x-4', 'p-4');
             setExpanded ? toggleSidebarEl.setAttribute('aria-expanded', 'true') : null;
         } else {
             sidebarEl.classList.remove('lg:w-64');
@@ -73,8 +70,6 @@ function createSidebar() {
                 e.childNodes[1].classList.remove('hidden');
             });
 
-            bottomMenuEl.classList.add('flex-col', 'space-y-4', 'p-2');
-            bottomMenuEl.classList.remove('space-x-4', 'p-4');
             setExpanded ? toggleSidebarEl.setAttribute('aria-expanded', 'false') : null;
         }
     }

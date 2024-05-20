@@ -35,17 +35,6 @@
                 </a>
             </div>
             <div class="flex items-center">
-                <!-- TODO: if we don't want to touch sidebar.js file, we need to have this element in the DOM -->
-                <button id="toggleSidebarMobileSearch" type="button"
-                        class="hidden p-2 text-gray-500 rounded-lg lg:hidden hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
-                    <span class="sr-only">Search</span>
-
-                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd"
-                              d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-                              clip-rule="evenodd"></path>
-                    </svg>
-                </button>
                 <button id="theme-toggle" data-tooltip-target="tooltip-toggle" type="button"
                         class="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 rounded-lg text-sm p-2.5">
                     <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"
@@ -72,7 +61,6 @@
                             <span class="relative inline-flex items-center justify-center w-10 h-10 overflow-hidden bg-gray-100 rounded-full dark:bg-gray-600">
                                 <span class="font-medium text-gray-600 dark:text-gray-300">A</span>
                             </span>
-                            <!-- <img class="w-8 h-8 rounded-full" src="../images/users/neil-sims.png" alt="user photo"> -->
                         </button>
                     </div>
                     <div class="hidden z-50 my-4 text-base list-none bg-white rounded divide-y divide-gray-100 shadow dark:bg-gray-700 dark:divide-gray-600"
@@ -121,17 +109,6 @@
             <div class="flex overflow-y-auto flex-col flex-1 pt-5 pb-4">
                 <div class="flex-1 px-3 space-y-1 bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
                     <ul class="pb-2 space-y-2">
-                        <li class="hidden">
-                            <form action="#" method="GET" class="lg:hidden">
-                                <label for="mobile-search" class="sr-only">Search</label>
-                                <div class="relative">
-                                    <div class="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
-                                        <svg class="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"></path></svg>
-                                    </div>
-                                    <input type="text" name="email" id="mobile-search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-gray-200 dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Search">
-                                </div>
-                            </form>
-                        </li>
                         <li>
                             <a id="adminSidebarHomeLink" href="/" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700">
                                 <svg class="w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
@@ -210,10 +187,6 @@
                     </ul>
                 </div>
             </div>
-            <div class="hidden absolute bottom-0 left-0 justify-center p-4 space-x-4 w-full"
-                 sidebar-bottom-menu>
-                <!-- We need [sidebar-bottom-menu] element -->
-            </div>
         </div>
     </aside>
     <div class="hidden fixed inset-0 z-10 bg-gray-900/50 dark:bg-gray-900/90" id="sidebarBackdrop"></div>
@@ -222,9 +195,6 @@
         <main>
             <Section Name="Main" fluentcms />
         </main>
-        <footer class="hidden">
-            FOOTER Section
-        </footer>
     </div>
 </div>
 <script src="/js/flowbite.min.js"></script>
