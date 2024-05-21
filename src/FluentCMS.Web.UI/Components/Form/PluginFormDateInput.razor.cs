@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
-using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
 namespace FluentCMS.Web.UI.Plugins.Components;
@@ -10,10 +10,10 @@ public partial class PluginFormDateInput<TValue>
     [Parameter]
     public int Cols { get; set; } = 12;
 
-    private const string DateFormat = "yyyy-MM-dd";                     
-    private const string DateTimeLocalFormat = "yyyy-MM-ddTHH:mm:ss";   
-    private const string MonthFormat = "yyyy-MM";                       
-    private const string TimeFormat = "HH:mm:ss";                       
+    private const string DateFormat = "yyyy-MM-dd";
+    private const string DateTimeLocalFormat = "yyyy-MM-ddTHH:mm:ss";
+    private const string MonthFormat = "yyyy-MM";
+    private const string TimeFormat = "HH:mm:ss";
 
     private string _typeAttributeValue = default!;
     private string _format = default!;
@@ -23,7 +23,7 @@ public partial class PluginFormDateInput<TValue>
     public InputDateType Type { get; set; } = InputDateType.Date;
 
     [Parameter]
-    public string ParsingErrorMessage { get; set; } = string.Empty; 
+    public string ParsingErrorMessage { get; set; } = string.Empty;
 
     public PluginFormDateInput()
     {

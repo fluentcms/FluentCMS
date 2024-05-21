@@ -31,7 +31,7 @@ public partial class PluginFormNumberInput<TValue>
     }
 
     [Parameter]
-    public string ParsingErrorMessage { get; set; } = "The {0} field must be a number."; 
+    public string ParsingErrorMessage { get; set; } = "The {0} field must be a number.";
 
     protected override bool TryParseValueFromString(string? value, [MaybeNullWhen(false)] out TValue result, [NotNullWhen(false)] out string? validationErrorMessage)
     {

@@ -79,7 +79,7 @@ public static class BaseComponentHelper
         // get properties with CSSProperty Attribute
         var properties = baseComponent.GetType().
             GetProperties().
-            Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CSSPropertyAttribute))); 
+            Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CSSPropertyAttribute)));
 
         foreach (var property in properties)
         {
