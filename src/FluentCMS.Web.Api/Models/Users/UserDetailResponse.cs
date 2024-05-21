@@ -7,7 +7,7 @@ public class UserDetailResponse : BaseAuditableResponse
     public string? PhoneNumber { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
-    public DateTime? LastLoginAt { get; set; }
+    public DateTime? LoginAt { get; set; }
     public int LoginCount { get; set; }
     public bool Enabled { get; set; }
     public List<RoleDetailResponse> Roles { get; set; } = [];

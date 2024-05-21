@@ -16,7 +16,7 @@
                 <Badge Color="Color.Success" Visible="@context.Enabled">Enable</Badge>
                 <Badge Color="Color.Danger" Visible="@(!context.Enabled)">Disable</Badge>
             </DataTableItem>
-            <DataTableItem Label="Last Login">@context.LastLoginAt</DataTableItem>
+            <DataTableItem Label="Last Login">@context.LoginAt</DataTableItem>
             <DataTableItem>
                 <Button Color="Color.Primary" Href="@GetUrl("Update User", new { id = @context.Id })" Outline>
                     <Icon Name="IconName.Edit" />Edit
