@@ -1,12 +1,13 @@
 ﻿@inherits BasePlugin
 
 <PluginForm Name="@FORM_NAME" Model="@Model" Title="Create New User" OnSubmit="OnSubmit">
-    <PluginFormInput @bind-Value="Model.Username" Label="UserName" Placeholder="Enter Username..." Cols="6" />
-    <PluginFormInput @bind-Value="Model.Email" Label="Email" Placeholder="Enter Email..." Cols="6" />
-    <PluginFormInput @bind-Value="Model.FirstName" Label="FirstName" Placeholder="Enter FirstName..." Cols="6" />
-    <PluginFormInput @bind-Value="Model.LastName" Label="LastName" Placeholder="Enter LastName..." Cols="6" />
-    <PluginFormInput @bind-Value="Model.PhoneNumber" Label="Phone Number" Placeholder="Enter Phone Number..." Cols="6" />
-    <PluginFormInput @bind-Value="Model.Password" Label="Password" Placeholder="Enter Password..." Cols="6" />
+    <InputText class="f-input mb-4" Name="Model.Username" @bind-Value="Model.Username" Label="UserName" Placeholder="Enter Username..." />
+    <InputText class="f-input mb-4" Name="Model.Email" @bind-Value="Model.Email" Label="Email" Placeholder="Enter Email..." />
+    <InputText class="f-input mb-4" Name="Model.FirstName" @bind-Value="Model.FirstName" Label="FirstName" Placeholder="Enter FirstName..." />
+    <InputText class="f-input mb-4" Name="Model.LastName" @bind-Value="Model.LastName" Label="LastName" Placeholder="Enter LastName..." />
+    <InputText class="f-input mb-4" Name="Model.PhoneNumber" @bind-Value="Model.PhoneNumber" Label="Phone Number" Placeholder="Enter Phone Number..." />
+    <InputText class="f-input mb-4" Name="Model.Password" @bind-Value="Model.Password" Label="Password" Placeholder="Enter Password..." />
+    <InputCheckbox class="f-checkbox mb-4" Name="Model.Enabled" @bind-Value="Model.Enabled" Label="Enabled" />
     <PluginFormActions Submit="true" Cancel="true" />
 </PluginForm>
 

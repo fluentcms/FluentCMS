@@ -8,6 +8,11 @@ public partial class UserUpdatePlugin
 
     private UserUpdateRequest Model { get; set; } = new();
 
+    [CascadingParameter]
+    protected HttpContext HttpContext { get; set; } = default!;
+
+    public const string FORM_NAME = "UserUpdatePlugin";
+
     private UserDetailResponse User { get; set; } = new();
 
     protected override async Task OnLoadAsync()
@@ -28,6 +33,8 @@ public partial class UserUpdatePlugin
     private async Task OnSubmit()
     {
         await GetApiClient<UserClient>().UpdateAsync(Model);
-        NavigateBack();
+
+        // TODO: User Helper
+        HttpContext.Response.Redirect("/admin/users");
     }
 }

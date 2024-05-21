@@ -1,10 +1,11 @@
 ﻿@inherits BasePlugin
 
-<PluginForm Model="@Model" Title="Update User" OnSubmit="OnSubmit">
-    <PluginFormInput Value="User.Username" Label="UserName" Disabled="true" Cols="6" />
-    <PluginFormInput @bind-Value="Model.Email" Label="Email" Placeholder="Enter Email..." Cols="6" />
-    <PluginFormInput @bind-Value="Model.FirstName" Label="FirstName" Placeholder="Enter FirstName..." Cols="6" />
-    <PluginFormInput @bind-Value="Model.LastName" Label="LastName" Placeholder="Enter LastName..." Cols="6" />
-    <PluginFormInput @bind-Value="Model.PhoneNumber" Label="Phone Number" Placeholder="Enter Phone Number..." Cols="6" />
+<PluginForm Name="@FORM_NAME" Model="@Model" Title="Update User" OnSubmit="OnSubmit">
+    <InputText class="f-input mb-4" @bind-Value="User.Username" Label="UserName" Disabled="true" Cols="6" />
+    <InputText class="f-input mb-4" @bind-Value="Model.Email" Label="Email" Placeholder="Enter Email..." Cols="6" />
+    <InputText class="f-input mb-4" @bind-Value="Model.FirstName" Label="FirstName" Placeholder="Enter FirstName..." Cols="6" />
+    <InputText class="f-input mb-4" @bind-Value="Model.LastName" Label="LastName" Placeholder="Enter LastName..." Cols="6" />
+    <InputText class="f-input mb-4" @bind-Value="Model.PhoneNumber" Label="Phone Number" Placeholder="Enter Phone Number..." Cols="6" />
+    <InputCheckbox class="f-checkbox mb-4" Name="@Model.Enabled" @bind-Value="Model.Enabled" Label="Enabled" />
     <PluginFormActions Submit="true" Cancel="true" />
 </PluginForm>
