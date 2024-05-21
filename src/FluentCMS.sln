@@ -33,7 +33,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.UI.Components
 EndProject
 Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "FluentCMS.E2E.UI", "FluentCMS.E2E.UI\FluentCMS.E2E.UI.esproj", "{6430AFBE-EA3B-458F-8BCA-44F80E4073BF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Repositories.LiteDb", "FluentCMS.Repositories.LiteDb\FluentCMS.Repositories.LiteDb.csproj", "{41E720B6-BD36-4506-B741-A413C3778D2F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Repositories.LiteDb", "FluentCMS.Repositories.LiteDb\FluentCMS.Repositories.LiteDb.csproj", "{41E720B6-BD36-4506-B741-A413C3778D2F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
