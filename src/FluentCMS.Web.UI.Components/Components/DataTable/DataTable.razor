@@ -1,0 +1,19 @@
+﻿@inherits BaseComponent
+@typeparam TItem
+
+@namespace FluentCMS.Web.UI.Components
+
+@if (Visible)
+{
+    <div class="@this.ClassName("TableParent")">
+        <table class="@this.GetClasses()" @attributes="AdditionalAttributes">
+
+            @ChildContent
+        </table>
+    </div>
+}
+
+
+@code {
+    [Parameter] public IReadOnlyList<TItem>? Items { get; set; }
+}
