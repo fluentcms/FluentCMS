@@ -8,7 +8,7 @@ public static class BaseComponentHelper
 
     public const string SEPARATOR = "-";
 
-    public static string ClassName(this BaseComponent baseComponent, string Name)
+    public static string ClassName(this ComponentBase baseComponent, string Name)
     {
         ArgumentNullException.ThrowIfNull(baseComponent);
 

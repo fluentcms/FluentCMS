@@ -1,54 +1,27 @@
 @inherits BasePlugin
 
-<PluginBody Title="Users List">             
+<PluginBody Title="Users List">
     <ActionsFragment>
-        <Button Color="Color.Success" Href="@GetUrl("Create User")">
-            <Icon Name="IconName.Plus" />
-            Add User
+        <Button Href="@GetUrl("Create User")" Color="Color.Primary">
+            <Icon Name="IconName.Plus" />Add User
         </Button>
     </ActionsFragment>
     <ChildContent>
-        <Table Hoverable>
-            <TableHead>
-                <TableRow>
-                    <TableCell>Username</TableCell>
-                    <TableCell>Email</TableCell>
-                    <TableCell>Full Name</TableCell>
-                    <TableCell>Phone Number</TableCell>
-                    <TableCell>Enabled</TableCell>
-                </TableRow>
-            </TableHead>
-            <TableBody>
-                @foreach (var user in Users)
-                {
-                    <TableRow>
-                        <TableCell>@user.Username</TableCell>
-                        <TableCell>@user.Email</TableCell>
-                        <TableCell>@user.FirstName @user.LastName</TableCell>
-                        <TableCell>@user.PhoneNumber</TableCell>
-                        <TableCell>
-                            @if (user.Enabled)
-                            {
-                                <Badge Color="Color.Success">
-                                    Enabled
-                                </Badge>
-                            }
-                            else
-                            {
-                                <Badge Color="Color.Danger">
-                                    Enabled
-                                </Badge>
-                            }
-                        </TableCell>
-                        <TableCell>
-                            <Button Color="Color.Primary" Href="@GetUrl("Update User", new { id = user.Id })" Outline StopPropagation>
-                                <Icon Name="IconName.Edit" />
-                                Edit
-                            </Button>
-                        </TableCell>
-                    </TableRow>
-                }
-            </TableBody>
-        </Table>
+        <DataTable Items="Users">
+            <DataTableItem Label="UserName">@context.Username</DataTableItem>
+            <DataTableItem Label="Email">@context.Email</DataTableItem>
+            <DataTableItem Label="Full Name">@context.FirstName @context.LastName</DataTableItem>
+            <DataTableItem Label="Phone">@context.PhoneNumber</DataTableItem>
+            <DataTableItem>
+                <Badge Color="Color.Success" Visible="@context.Enabled">Enable</Badge>
+                <Badge Color="Color.Danger" Visible="@(!context.Enabled)">Disable</Badge>
+            </DataTableItem>
+            <DataTableItem Label="Last Login">@context.LastLoginAt</DataTableItem>
+            <DataTableItem>
+                <Button Color="Color.Primary" Href="@GetUrl("Update User", new { id = @context.Id })" Outline>
+                    <Icon Name="IconName.Edit" />Edit
+                </Button>
+            </DataTableItem>
+        </DataTable>
     </ChildContent>
 </PluginBody>
