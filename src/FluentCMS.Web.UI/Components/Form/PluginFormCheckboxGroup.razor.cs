@@ -5,13 +5,13 @@ namespace FluentCMS.Web.UI.Plugins.Components;
 public partial class PluginFormCheckboxGroup<TItem, TValue>
 {
     [Parameter]
-    public int Cols { get; set; } = 12; 
+    public int Cols { get; set; } = 12;
 
     [Parameter]
     public ICollection<TItem> Data { get; set; } = [];
 
     [Parameter]
-    public string? TextField { get; set; } 
+    public string? TextField { get; set; }
 
     [Parameter]
     public string? ValueField { get; set; }
