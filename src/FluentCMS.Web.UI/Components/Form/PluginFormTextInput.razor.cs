@@ -2,13 +2,10 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace FluentCMS.Web.UI.Plugins.Components;
 
-public partial class PluginFormTextarea
+public partial class PluginFormTextInput
 {
     [Parameter]
     public int Cols { get; set; } = 12;
-
-    [Parameter]
-    public int Rows { get; set; } = 5;
 
     protected override bool TryParseValueFromString(string? value, out string? result, [NotNullWhen(false)] out string? validationErrorMessage)
     {
