@@ -7,6 +7,9 @@ public partial class UserUpdatePlugin
     [SupplyParameterFromQuery(Name = "id")]
     private Guid Id { get; set; }
 
+    [CascadingParameter]
+    protected HttpContext HttpContext { get; set; } = default!;
+
     [SupplyParameterFromForm(FormName = FORM_NAME)]
     private UserUpdateRequest Model { get; set; } = new();
 
@@ -36,6 +39,6 @@ public partial class UserUpdatePlugin
     private async Task OnSubmit()
     {
         await GetApiClient<UserClient>().UpdateAsync(Model);
-        NavigateBack();
+        HttpContext.Response.Redirect("/admin/users");
     }
 }

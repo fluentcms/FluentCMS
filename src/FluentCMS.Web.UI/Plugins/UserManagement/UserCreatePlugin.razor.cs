@@ -4,6 +4,9 @@ public partial class UserCreatePlugin
 {
     public const string FORM_NAME = "UserCreateForm";
 
+    [CascadingParameter]
+    protected HttpContext HttpContext { get; set; } = default!;
+
     [SupplyParameterFromForm(FormName = FORM_NAME)]
     private UserCreateRequest Model { get; set; } = new();
 
@@ -13,11 +16,12 @@ public partial class UserCreatePlugin
     {
         var rolesResponse = await GetApiClient<RoleClient>().GetAllAsync();
         Roles = rolesResponse?.Data?.ToList() ?? [];
+        Model.RoleIds = [];
     }
 
     private async Task OnSubmit()
     {
         await GetApiClient<UserClient>().CreateAsync(Model);
-        NavigateBack();
+        HttpContext.Response.Redirect("/admin/users");
     }
 }
