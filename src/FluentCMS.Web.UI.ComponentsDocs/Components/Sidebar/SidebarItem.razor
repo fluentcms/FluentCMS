@@ -4,28 +4,20 @@
 
 @if(Visible)
 {
-    <li @attributes="AdditionalAttributes"
-        class="@this.GetClasses()">
-        @if (string.IsNullOrEmpty(Href))
+    <li @attributes="AdditionalAttributes">
+        @if(!string.IsNullOrEmpty(Href))
         {
-            <span class="@this.ClassName("SidebarItemText")">
-                @ChildContent
-            </span>
-        }
-        else
-        {
-            @* TODO: checked the usage of class *@
-            <a class="group" 
-               href="@Href"
-               target="@Target">
+            <a href="@Href" class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
                 @if (this.Icon != IconName.Default)
                 {
-                    <Icon class="@this.ClassName("SidebarItemIcon")" Name="Icon" />
+                    <Icon class="w-auto h-auto" Name="Icon" />
                 }
-                <span class="@this.ClassName("SidebarItemText")">
-                    @ChildContent
-                </span>
+               <span class="ms-3">@ChildContent</span>
             </a>
+        }
+        else 
+        {
+            <h5 class="mb-2 text-sm font-semibold tracking-wide text-gray-900 uppercase lg:text-xs dark:text-white">@ChildContent</h5>
         }
     </li>
 }
