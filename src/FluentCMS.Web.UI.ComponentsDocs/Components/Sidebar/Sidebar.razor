@@ -4,13 +4,12 @@
 
 @if(Visible)
 {
-    @* TODO: remove extra class *@
     <aside @attributes="AdditionalAttributes"
-           class="@this.GetClasses() -translate-x-full lg:!translate-x-0" id="@Id">
-        <div class="@this.ClassName("SidebarMain")">
+           class="@Class" id="@Id">
+        <div class="@MainClass">
             @if (!string.IsNullOrEmpty(Title))
             {
-                <h4 class="@this.ClassName("SidebarTitle")">
+                <h4 class="text-xl text-gray-900 dark:text-white py-5">
                     @Title
                 </h4>
             }
@@ -25,7 +24,7 @@
         </div>
         @if (Footer != null)
         {
-            <div class="@this.ClassName("SidebarFooter")">
+            <div class="justify-center w-full flex flex-col bg-white dark:bg-gray-800">
                 @Footer
             </div>
         }
@@ -33,6 +32,6 @@
 
     @if(!Secondary)
     {
-        <div class="@this.ClassName("SidebarBackdrop") hidden" id="@(Id + "Backdrop")"></div>
+        <div class="fixed inset-0 z-10 bg-gray-900/50 dark:bg-gray-900/50 hidden" id="@(Id + "Backdrop")"></div>
     }
 }
