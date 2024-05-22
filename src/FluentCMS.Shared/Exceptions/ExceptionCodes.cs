@@ -14,7 +14,6 @@ public class ExceptionCodes
     public const string SetupSettingsAdminTemplatesPathNotDefined = "SetupSettings.AdminTemplatesPathNotDefined";
     public const string SetupSettingsAdminTemplatesFolderNotFound = "SetupSettings.AdminTemplatesFolderNotFound";
     public const string SetupSettingsHostingEnvironmentIsNull = "SetupSettings.HostingEnvironmentIsNull";
-    public const string SetupSettingsOnlyAvailableOnStagingEnvironment = "SetupSettings.OnlyAvailableOnStagingEnvironment";
 
     #endregion
 

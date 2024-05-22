@@ -33,7 +33,6 @@ public class SetupManager
     private List<Page> _pages = [];
     private User _superAdmin = default!;
 
-
     public SetupManager(
         IConfiguration configuration,
         ISiteService siteService,
@@ -347,7 +346,3 @@ public class SetupManager
 
     #endregion
 }
-
-
-
-

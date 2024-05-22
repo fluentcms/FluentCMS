@@ -1,30 +1,15 @@
 ﻿@inherits BasePlugin
 
-@if (!Initialized)
-{
-    @* TODO: remove div and card border *@
-    <div class="w-full max-w-md space-y-4 md:space-y-6 xl:max-w-xl">
-        <PluginForm Model="@Model" Name="@FORM_NAME" Title="@($"Welcome To FluentCMS {Model.Username}")" OnSubmit="OnSubmit">
-            <PluginFormTextInput @bind-Value="Model.Username" Label="Username" Placeholder="Enter your username" Required />
-            <PluginFormTextInput @bind-Value="Model.Email" Label="Email" Placeholder="Enter your email" Required />
-            <PluginFormTextInput @bind-Value="Model.Password" Label="Password" Placeholder="Enter your password" Required type="password" />
-            <PluginFormTextInput @bind-Value="Model.AppTemplateName" Cols="6" Label="App Template Name" Placeholder="Enter your app template name" Required />
-            <PluginFormTextInput @bind-Value="Model.SiteTemplateName" Cols="6" Label="Site Template Name" Placeholder="Enter your site template name" Required />
-            <PluginFormTextInput @bind-Value="Model.AdminDomain" Label="Admin Domain" Placeholder="Enter your admin domain" Required />
-            <PluginFormActions>
-                <Button Block Color="Color.Primary" Type="ButtonType.Submit">
-                    Setup
-                </Button>
-            </PluginFormActions>
-        </PluginForm>
-    </div>
-}
-else
-{
-    <Typography Size="TextSize.H5">
-        Setup completed successfully!
-    </Typography>
-    <Button Block Color="Color.Primary" Href="/">
-        Continue...
-    </Button>
-}
+@* TODO: remove div and card border *@
+<div class="w-full max-w-md space-y-4 md:space-y-6 xl:max-w-xl">
+    <PluginForm Model="@Model" Name="@FORM_NAME" Title="Welcome To FluentCMS" OnSubmit="OnSubmit">
+        <PluginFormTextInput @bind-Value="Model.Username" Label="Username" Placeholder="Enter your username" Required />
+        <PluginFormTextInput @bind-Value="Model.Email" Label="Email" Placeholder="Enter your email" Required />
+        <PluginFormTextInput @bind-Value="Model.Password" Label="Password" Placeholder="Enter your password" Required type="password" />
+        <PluginFormActions>
+            <Button Block Color="Color.Primary" Type="ButtonType.Submit">
+                Setup
+            </Button>
+        </PluginFormActions>
+    </PluginForm>
+</div>
