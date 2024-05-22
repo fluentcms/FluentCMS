@@ -9,7 +9,6 @@ public class SetupManager
 {
     private static bool? _initialized;
 
-    private readonly SetupConfig _setupConfig;
     private readonly ISiteService _siteService;
     private readonly IGlobalSettingsService _globalSettingsService;
     private readonly IPluginDefinitionService _pluginDefinitionService;
@@ -18,19 +17,17 @@ public class SetupManager
     private readonly IPageService _pageService;
     private readonly IPluginService _pluginService;
     private readonly IAppTemplateService _appTemplateService;
-    private readonly IHostEnvironment _env;
 
-    private readonly string _appTemplatePhysicalPath;
-    private readonly string _siteTemplatePhysicalPath;
-    private readonly string _adminTemplatePhysicalPath;
+    public const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Templates/Admin";
+    public const string APP_TEMPLATE_PHYSICAL_PATH = "Templates/App";
 
     private SetupRequest _setupRequest = default!;
     private AdminTemplate _adminTemplate = default!;
     private GlobalSettings _globalSettings = default!;
     private Site _site = default!;
-    private List<PluginDefinition> _pluginDefinitions = [];
-    private List<Layout> _layouts = [];
-    private List<Page> _pages = [];
+    private readonly List<PluginDefinition> _pluginDefinitions = [];
+    private readonly List<Layout> _layouts = [];
+    private readonly List<Page> _pages = [];
     private User _superAdmin = default!;
 
     public SetupManager(
@@ -48,33 +45,6 @@ public class SetupManager
         if (env == null)
             throw new AppException(ExceptionCodes.SetupSettingsHostingEnvironmentIsNull);
 
-        _setupConfig = configuration.GetInstance<SetupConfig>("SetupConfig") ??
-            throw new AppException(ExceptionCodes.SetupSettingsNotDefined);
-
-        if (_setupConfig.AppTemplatePath == null)
-            throw new AppException(ExceptionCodes.SetupSettingsAppTemplatesPathNotDefined);
-
-        _appTemplatePhysicalPath = Path.Combine(env.ContentRootPath, _setupConfig.AppTemplatePath);
-
-        if (!Directory.Exists(_appTemplatePhysicalPath))
-            throw new AppException(ExceptionCodes.SetupSettingsAppTemplatesFolderNotFound);
-
-        if (_setupConfig.SiteTemplatePath == null)
-            throw new AppException(ExceptionCodes.SetupSettingsSiteTemplatesPathNotDefined);
-
-        _siteTemplatePhysicalPath = Path.Combine(env.ContentRootPath, _setupConfig.SiteTemplatePath);
-
-        if (!Directory.Exists(_siteTemplatePhysicalPath))
-            throw new AppException(ExceptionCodes.SetupSettingsSiteTemplatesFolderNotFound);
-
-
-        if (_setupConfig.AdminTemplatePath == null)
-            throw new AppException(ExceptionCodes.SetupSettingsAdminTemplatesPathNotDefined);
-
-        _adminTemplatePhysicalPath = Path.Combine(env.ContentRootPath, _setupConfig.AdminTemplatePath);
-
-        if (!Directory.Exists(_adminTemplatePhysicalPath))
-            throw new AppException(ExceptionCodes.SetupSettingsAdminTemplatesFolderNotFound);
         _siteService = siteService;
         _globalSettingsService = globalSettingsService;
         _pluginDefinitionService = pluginDefinitionService;
@@ -83,10 +53,7 @@ public class SetupManager
         _pageService = pageService;
         _pluginService = pluginService;
         _appTemplateService = appTemplateService;
-        _siteTemplatePhysicalPath = _setupConfig.SiteTemplatePath;
-        _adminTemplatePhysicalPath = _setupConfig.AdminTemplatePath;
 
-        _env = env;
     }
 
     public async Task<bool> IsInitialized()
@@ -135,8 +102,8 @@ public class SetupManager
             Title = "Setup",
             Layout = new LayoutDetailResponse
             {
-                Body = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, "AuthLayout.body.html")),
-                Head = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, "AuthLayout.head.html"))
+                Body = File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.body.html")),
+                Head = File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.head.html"))
             },
             Site = new(),
             Sections = new Dictionary<string, List<PluginDetailResponse>>
@@ -198,7 +165,7 @@ public class SetupManager
 
     private async Task InitializeAppTemplates()
     {
-        foreach (var folder in Directory.GetDirectories(_appTemplatePhysicalPath))
+        foreach (var folder in Directory.GetDirectories(APP_TEMPLATE_PHYSICAL_PATH))
         {
 
             var appTemplateFile = Path.Combine(folder, "manifest.json");
@@ -220,7 +187,7 @@ public class SetupManager
 
     private async Task InitializeAdminUI()
     {
-        var appTemplateFile = Path.Combine(_adminTemplatePhysicalPath, "manifest.json");
+        var appTemplateFile = Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "manifest.json");
 
         if (!File.Exists(appTemplateFile))
             return;
@@ -263,8 +230,6 @@ public class SetupManager
 
     private async Task InitLayouts()
     {
-        _layouts = [];
-
         foreach (var layoutTemplate in _adminTemplate.Layouts)
         {
             var layout = new Layout
@@ -272,8 +237,8 @@ public class SetupManager
                 Name = layoutTemplate.Name,
                 SiteId = _site.Id,
                 IsDefault = layoutTemplate.IsDefault,
-                Body = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, $"{layoutTemplate.Name}.body.html")),
-                Head = File.ReadAllText(Path.Combine(_adminTemplatePhysicalPath, $"{layoutTemplate.Name}.head.html"))
+                Body = File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, $"{layoutTemplate.Name}.body.html")),
+                Head = File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, $"{layoutTemplate.Name}.head.html"))
             };
             _layouts.Add(await _layoutService.Create(layout));
         }
