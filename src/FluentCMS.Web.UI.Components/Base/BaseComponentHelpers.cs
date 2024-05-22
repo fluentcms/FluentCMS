@@ -8,7 +8,7 @@ public static class BaseComponentHelper
 
     public const string SEPARATOR = "-";
 
-    public static string ClassName(this BaseComponent baseComponent, string Name)
+    public static string ClassName(this ComponentBase baseComponent, string Name)
     {
         ArgumentNullException.ThrowIfNull(baseComponent);
 
@@ -79,7 +79,7 @@ public static class BaseComponentHelper
         // get properties with CSSProperty Attribute
         var properties = baseComponent.GetType().
             GetProperties().
-            Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CSSPropertyAttribute))); 
+            Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CSSPropertyAttribute)));
 
         foreach (var property in properties)
         {

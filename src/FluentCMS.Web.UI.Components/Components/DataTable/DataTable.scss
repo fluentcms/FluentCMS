@@ -1,0 +1,35 @@
+$data-table: $prefix + "data-table";
+
+.#{$data-table} {
+    @apply w-full text-sm text-left text-gray-500 dark:text-gray-400 dark:border-gray-700;
+
+    &-cell {
+        @apply px-6 py-3;
+
+        &-width-small {
+            @apply w-0;
+        }
+    }
+
+    &-head {
+        @apply text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400;
+    }
+
+    &-wrapper {
+        @apply rounded relative overflow-x-auto;
+
+        @screen sm {
+            @apply rounded-lg;
+        }
+    }
+
+    &-row {
+        @apply bg-white border-b dark:bg-gray-800 dark:border-gray-700;
+    }
+
+    &-hoverable-true {
+        .#{$data-table}-row {
+            @apply hover:bg-gray-50 dark:hover:bg-gray-600;
+        }
+    }
+}
