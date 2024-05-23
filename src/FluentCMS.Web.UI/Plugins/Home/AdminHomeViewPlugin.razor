@@ -1,4 +1,5 @@
 @inherits BasePlugin
+@using System.Reflection
 
 <div class="m-4">
     <Typography Size="TextSize.H5">Welcome</Typography>
@@ -10,135 +11,139 @@
 </div>
 <Grid>
     <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Eight">
-        <PluginBody>
-            @if(showTour)
-            {
-                <CardTitle>There are a few steps to get started</CardTitle>
-                <Stack Vertical="true" Items="StackItems.Start">
-                    <Spacer/>
-                    <Stepper>
-                        <StepperItem Icon="IconName.TableColumn"
-                                    Title="ContentType"
-                                    Subtitle="First step is to create a content Type">
-                            <Button Color="Color.Primary"
-                                    Href="/admin/content-types">
-                                Create ContentType
-                            </Button>
-                        </StepperItem>
-                        <StepperItem Icon="IconName.PenNib"
-                                    Title="Content"
-                                    Subtitle="Then you can create content">
-                            <Button Color="Color.Primary"
-                                    Href="/admin/content">
-                                Create Content
-                            </Button>
-                        </StepperItem>
-                        <StepperItem Icon="IconName.ClipboardList"
-                                    Title="Api"
-                                    Subtitle="Finally you are able to use the API">
-                            <Button Color="Color.Primary">
-                                Test API
-                            </Button>
-                        </StepperItem>
-                    </Stepper>
-                </Stack>
-                <Stack Justify="StackJustify.End">
-                    <Button Color="Color.Primary" 
-                        Outline="true" 
-                        OnClick="() => showTour = false">
-                    Skip the tour
-                </Button>
-                </Stack>
-            } else {
-                <a href="/api/doc"
-                target="_blank">
+        <Card class="m-4">
+            <CardBody>
+                @if(showTour)
+                {
+                    <CardTitle>There are a few steps to get started</CardTitle>
+                    <Stack Vertical="true" Items="StackItems.Start">
+                        <Spacer/>
+                        <Stepper>
+                            <StepperItem Icon="IconName.TableColumn"
+                                        Title="ContentType"
+                                        Subtitle="First step is to create a content Type">
+                                <Button Color="Color.Primary"
+                                        Href="/admin/content-types">
+                                    Create ContentType
+                                </Button>
+                            </StepperItem>
+                            <StepperItem Icon="IconName.PenNib"
+                                        Title="Content"
+                                        Subtitle="Then you can create content">
+                                <Button Color="Color.Primary"
+                                        Href="/admin/content">
+                                    Create Content
+                                </Button>
+                            </StepperItem>
+                            <StepperItem Icon="IconName.ClipboardList"
+                                        Title="Api"
+                                        Subtitle="Finally you are able to use the API">
+                                <Button Color="Color.Primary">
+                                    Test API
+                                </Button>
+                            </StepperItem>
+                        </Stepper>
+                    </Stack>
+                    <Stack Justify="StackJustify.End">
+                        <Button Color="Color.Primary" 
+                            Outline="true" 
+                            OnClick="() => showTour = false">
+                        Skip the tour
+                    </Button>
+                    </Stack>
+                } else {
+                    <a href="/api/doc"
+                    target="_blank">
 
-                    <Card>
-                        <CardBody>
-                            <Stack>
-                                <Icon Color="Color.Primary" Name="IconName.Documentation" Size="IconSize.X2" />
-                                <div>
-                                    <Typography Size="TextSize.H5">Documentation</Typography>
-                                    <Typography Size="TextSize.Small">
-                                        Discover the essential concepts, guides and instructions.
-                                    </Typography>
-                                </div>
-                            </Stack>
-                        </CardBody>
-                    </Card>
-                </a>
+                        <Card>
+                            <CardBody>
+                                <Stack>
+                                    <Icon Color="Color.Primary" Name="IconName.Documentation" Size="IconSize.X2" />
+                                    <div>
+                                        <Typography Size="TextSize.H5">Documentation</Typography>
+                                        <Typography Size="TextSize.Small">
+                                            Discover the essential concepts, guides and instructions.
+                                        </Typography>
+                                    </div>
+                                </Stack>
+                            </CardBody>
+                        </Card>
+                    </a>
 
+                    <Spacer Size="SpacerSize.Small" />
+                    <a href="https://github.com/fluentcms/FluentCMS/blob/dev/CHANGELOG.md"
+                    target="_blank">
+
+                        <Card>
+                            <CardBody>
+                                <Stack>
+                                    <Icon Color="Color.Success" Name="IconName.Clock" Size="IconSize.X2" />
+                                    <div>
+                                        <Typography Size="TextSize.H5">Changelog</Typography>
+                                        <Typography Size="TextSize.Small">
+                                            See how FluentCMS is evolving over time.
+                                        </Typography>
+
+                                    </div>
+                                </Stack>
+                            </CardBody>
+                        </Card>
+                    </a>
+                    <Spacer Size="SpacerSize.Small" />
+                    <a href="https://github.com/fluentcms/FluentCMS"
+                    target="_blank">
+                        <Card>
+                            <CardBody>
+                                <Stack>
+                                    <Icon Color="Color.Warning" Name="IconName.Code" Size="IconSize.X2" />
+                                    <div>
+                                        <Typography Size="TextSize.H5">Code Examples</Typography>
+                                        <Typography Size="TextSize.Small">
+                                            Learn by testing real projects developed the community.
+                                        </Typography>
+                                    </div>
+                                </Stack>
+                            </CardBody>
+                        </Card>
+                    </a>
+                }
                 <Spacer Size="SpacerSize.Small" />
-                <a href="https://github.com/fluentcms/FluentCMS/blob/dev/CHANGELOG.md"
-                target="_blank">
-
-                    <Card>
-                        <CardBody>
-                            <Stack>
-                                <Icon Color="Color.Success" Name="IconName.Clock" Size="IconSize.X2" />
-                                <div>
-                                    <Typography Size="TextSize.H5">Changelog</Typography>
-                                    <Typography Size="TextSize.Small">
-                                        See how FluentCMS is evolving over time.
-                                    </Typography>
-
-                                </div>
-                            </Stack>
-                        </CardBody>
-                    </Card>
-                </a>
-                <Spacer Size="SpacerSize.Small" />
-                <a href="https://github.com/fluentcms/FluentCMS"
-                target="_blank">
-                    <Card>
-                        <CardBody>
-                            <Stack>
-                                <Icon Color="Color.Warning" Name="IconName.Code" Size="IconSize.X2" />
-                                <div>
-                                    <Typography Size="TextSize.H5">Code Examples</Typography>
-                                    <Typography Size="TextSize.Small">
-                                        Learn by testing real projects developed the community.
-                                    </Typography>
-                                </div>
-                            </Stack>
-                        </CardBody>
-                    </Card>
-                </a>
-            }
-            <Spacer Size="SpacerSize.Small" />
-            <!-- TODO: Do not use tailwind classes -->
-            <Version Class="hidden md:block" Assembly="Assembly.GetEntryAssembly()"></Version>
-        </PluginBody>
+                <!-- TODO: Do not use tailwind classes -->
+                <Version Class="hidden md:block" Assembly="Assembly.GetEntryAssembly()"></Version>
+            </CardBody>
+        </Card>
     </GridItem>
     <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Four">
-        <PluginBody>
-            <Typography Size="TextSize.H5" Weight="TextWeight.Bold">
-                Join the community
-            </Typography>
-            <Spacer />
-            <Typography Size="TextSize.Small">
-                Discuss with team members, contributors
-                and developers on different channels.
-            </Typography>
-            <Spacer />
-            <Card>
-                <Button Block="true" Color="Color.Primary" Ghost="true"
-                    Href="https://github.com/fluentcms/FluentCMS"
-                    target="_blank">
-                    <Icon Name="IconName.Github" />
-                    Github
-                </Button>
-            </Card>
-            <Spacer />
-            <Card>
-                <Button Block="true" Color="Color.Primary" Ghost="true"
-                    Href="https://discord.gg/WyqYuC6YbY"
-                    target="_blank">
-                    <Icon Name="IconName.Discord" />
-                    Discord
-                </Button>
-            </Card>
-        </PluginBody>
+        <Card class="m-4">
+            <CardBody>
+                <Typography Size="TextSize.H5" Weight="TextWeight.Bold">
+                    Join the community
+                </Typography>
+                <Spacer />
+                <Typography Size="TextSize.Small">
+                    Discuss with team members, contributors
+                    and developers on different channels.
+                </Typography>
+                <Spacer />
+                <Card>
+                    <Button Block="true" Color="Color.Primary" Ghost="true"
+                        Href="https://github.com/fluentcms/FluentCMS"
+                        target="_blank">
+                        <Icon Name="IconName.Github" />
+                        Github
+                    </Button>
+                </Card>
+                <Spacer />
+                <Card>
+                    <Button Block="true" Color="Color.Primary" Ghost="true"
+                        Href="https://discord.gg/WyqYuC6YbY"
+                        target="_blank">
+                        <Icon Name="IconName.Discord" />
+                        Discord
+                    </Button>
+                </Card>
+            </CardBody>
+        </Card>
         <!-- TODO: Do not use tailwind classes -->
         <Version Class="md:hidden" Assembly="Assembly.GetEntryAssembly()"></Version>
     </GridItem>
