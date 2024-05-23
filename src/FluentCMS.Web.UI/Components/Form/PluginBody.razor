@@ -12,15 +12,6 @@
     </Grid>
     <Spacer Visible="!string.IsNullOrEmpty(Title)" />
     <Card Visible="ChildContent != null">
-        @if (Padding)
-        {
-            <CardBody>
-                @ChildContent
-            </CardBody>
-        }
-        else
-        {
-            @ChildContent
-        }
+        @ChildContent
     </Card>
 </div>
