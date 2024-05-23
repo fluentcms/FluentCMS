@@ -1,0 +1,24 @@
+﻿@inherits BasePlugin
+
+@namespace FluentCMS.Web.UI.Plugins
+
+<PluginForm Model="@Model" Name="@FORM_NAME" Title="Create New Layout" OnSubmit="OnSubmit">
+    <PluginFormTextInput @bind-Value="Model.Name" Cols="6" Label="Username" Placeholder="Enter layout name" Required />
+    <PluginFormCheckbox @bind-Value="Model.IsDefault" Cols="6" Label="Default" />
+    <PluginFormTextarea @bind-Value="Model.Head" Cols="6" Label="Layout Head" Placeholder="Enter layout head section" Required />
+    <PluginFormTextarea @bind-Value="Model.Body" Cols="6" Label="Layout Body" Placeholder="Enter layout body section" Required />
+    <PluginFormActions Cancel Submit />
+</PluginForm>
+
+@code {
+    public const string FORM_NAME = "LayoutCreateForm";
+
+    [SupplyParameterFromForm(FormName = FORM_NAME)]
+    private LayoutCreateRequest Model { get; set; } = new();
+
+    private async Task OnSubmit()
+    {
+        await GetApiClient<LayoutClient>().CreateAsync(Model);
+        NavigateBack();
+    }
+}

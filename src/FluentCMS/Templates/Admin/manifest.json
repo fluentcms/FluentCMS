@@ -257,6 +257,25 @@
                     "IsDefault": true
                 }
             ]
+        },
+        {
+            "Name": "Layout Management",
+            "Description": "Layout Management Plugin",
+            "Types": [
+                {
+                    "Name": "Layouts List",
+                    "Type": "LayoutListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create Layout",
+                    "Type": "LayoutCreatePlugin"
+                },
+                {
+                    "Name": "Update Layout",
+                    "Type": "LayoutUpdatePlugin"
+                }
+            ]
         }
     ],
     "Pages": [
@@ -354,6 +373,17 @@
                     "Plugins": [
                         {
                             "Definition": "Role Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Layouts",
+                    "Path": "/layouts",
+                    "Layout": "AdminLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "Layout Management",
                             "Section": "Main"
                         }
                     ]

@@ -1,0 +1,40 @@
+﻿@inherits BasePlugin
+
+@namespace FluentCMS.Web.UI.Plugins
+
+<PluginBody Title="Layouts List">
+    <ActionsFragment>
+        <Button Href="@GetUrl("Create Layout")" Color="Color.Primary">
+            <Icon Name="IconName.Plus" />Add Layout
+        </Button>
+    </ActionsFragment>
+    <ChildContent>
+        <DataTable Items="Layouts">
+            <DataTableItem Label="UserName">
+                @context.Name
+                <Badge Color="Color.Primary" Visible="@context.IsDefault">Default</Badge>
+            </DataTableItem>
+            <DataTableItem Label="Created By">@(context.CreatedBy ?? string.Empty)</DataTableItem>
+            <DataTableItem Label="Created At">@context.CreatedAt</DataTableItem>
+            <DataTableItem Label="Modified By">@(context.ModifiedBy ?? string.Empty)</DataTableItem>
+            <DataTableItem Label="Modified At">@context.ModifiedAt</DataTableItem>
+            <DataTableItem>
+                <Button Color="Color.Primary" Href="@GetUrl("Update Layout", new { id = @context.Id })" Outline>
+                    <Icon Name="IconName.Edit" />Edit
+                </Button>
+            </DataTableItem>
+        </DataTable>
+    </ChildContent>
+</PluginBody>
+
+
+@code {
+    private List<LayoutDetailResponse> Layouts { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await GetApiClient<LayoutClient>().GetAllAsync();
+        Layouts = response?.Data?.ToList() ?? [];
+    }
+}
+
