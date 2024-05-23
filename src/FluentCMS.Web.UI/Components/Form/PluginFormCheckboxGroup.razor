@@ -16,7 +16,7 @@
                 @(Required ? "\u00A0*" : "")
             </label>
         }
-        @if (ChildContent == null && TextField != null)
+        @if (ChildContent == null)
         {
             <div class="flex-wrap @(Vertical ? "" : "flex")">
                 @foreach (var item in Data)
