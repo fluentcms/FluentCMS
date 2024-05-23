@@ -138,6 +138,25 @@
             ]
         },
         {
+            "Name": "Site Management",
+            "Description": "Site Management Plugin",
+            "Types": [
+                {
+                    "Name": "Sites List",
+                    "Type": "SiteListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create Site",
+                    "Type": "SiteCreatePlugin"
+                },
+                {
+                    "Name": "Update Site",
+                    "Type": "SiteUpdatePlugin"
+                }
+            ]
+        },
+        {
             "Name": "Content Management",
             "Description": "Content Management Plugin",
             "Types": [
@@ -354,6 +373,17 @@
                     "Plugins": [
                         {
                             "Definition": "Role Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Sites",
+                    "Path": "/sites",
+                    "Layout": "AdminLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "Site Management",
                             "Section": "Main"
                         }
                     ]

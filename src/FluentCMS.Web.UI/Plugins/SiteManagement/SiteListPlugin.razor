@@ -1,0 +1,30 @@
+﻿@inherits BasePlugin
+
+@namespace FluentCMS.Web.UI.Plugins
+
+<PluginBody Title="Sites List">
+    <ActionsFragment>
+        <Button Href="@GetUrl("Create Site")" Color="Color.Primary">
+            <Icon Name="IconName.Plus" />Add Site
+        </Button>
+    </ActionsFragment>
+    <ChildContent>
+        <DataTable Items="Sites">
+            <DataTableItem Label="Name">@context.Name</DataTableItem>
+            <DataTableItem Label="Description">@context.Description</DataTableItem>
+            <DataTableItem Label="Url">
+                @if (context.Urls != null)
+                    @foreach (var url in context.Urls)
+                    {
+                        <Badge Color="Color.Primary">@url</Badge>
+                    })
+                )
+            </DataTableItem>
+            <DataTableItem>
+                <Button Color="Color.Primary" Href="@GetUrl("Update Site", new { id = @context.Id })">
+                    <Icon Name="IconName.Edit" />Edit
+                </Button>
+            </DataTableItem>
+        </DataTable>
+    </ChildContent>
+</PluginBody>
