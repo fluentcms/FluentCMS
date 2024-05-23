@@ -1,27 +1,25 @@
-﻿using FluentCMS.Web.Api.Attributes;
-using FluentCMS.Web.Api.Filters;
+﻿using FluentCMS.Web.Api.Filters;
+using FluentCMS.Web.Api.Setup;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Primitives;
 
 namespace FluentCMS.Web.Api.Controllers;
 
+[AllowAnonymous]
 public class PageController(
     ISiteService siteService,
     IPageService pageService,
     IPluginDefinitionService pluginDefinitionService,
     IPluginService pluginService,
     ILayoutService layoutService,
+    SetupManager setupManager,
     IMapper mapper) : BaseGlobalController
 {
-    public const string AREA = "Page Management";
-    public const string READ = "Read";
-    public const string UPDATE = $"Update/{READ}";
-    public const string CREATE = "Create";
-    public const string DELETE = $"Delete/{READ}";
+    public const string PLUGIN_DEFINIOTION_NAME = "PluginDef";
 
     [HttpGet("{siteUrl}")]
     [DecodeQueryParam]
-    [Policy(AREA, READ)]
     public async Task<IApiPagingResult<PageDetailResponse>> GetAll([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
     {
         var site = await siteService.GetByUrl(siteUrl, cancellationToken);
@@ -31,7 +29,6 @@ public class PageController(
     }
 
     [HttpGet("{id}")]
-    [Policy(AREA, READ)]
     public async Task<IApiResult<PageDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var entity = await pageService.GetById(id, cancellationToken);
@@ -41,7 +38,6 @@ public class PageController(
 
     [HttpGet]
     [DecodeQueryParam]
-    [Policy(AREA, READ)]
     public async Task<IApiResult<PageFullDetailResponse>> GetByUrl([FromQuery] string url, CancellationToken cancellationToken = default)
     {
         var uri = new Uri(url);
@@ -49,14 +45,66 @@ public class PageController(
         var path = uri.AbsolutePath;
         var query = QueryHelpers.ParseQuery(uri.Query);
 
+        var initialized = await setupManager.IsInitialized();
+        if (!initialized && string.Equals(path, "/setup"))
+            return Ok(await setupManager.GetSetupPage());
+
         if (query.TryGetValue(PLUGIN_DEFINIOTION_NAME, out _))
             return await GetDynamicPage(domain, path, query, cancellationToken);
         else
             return await GetRealPage(domain, path, cancellationToken);
     }
 
-    public const string PLUGIN_DEFINIOTION_NAME = "PluginDef";
+    [HttpPost]
+    public async Task<IApiResult<PageDetailResponse>> Create(PageCreateRequest request, CancellationToken cancellationToken = default)
+    {
+        var entity = mapper.Map<Page>(request);
+        var newEntity = await pageService.Create(entity, cancellationToken);
+        var pageResponse = mapper.Map<PageDetailResponse>(newEntity);
+        return Ok(pageResponse);
+    }
 
+    [HttpPut]
+    public async Task<IApiResult<PageDetailResponse>> Update(PageUpdateRequest request, CancellationToken cancellationToken = default)
+    {
+        var entity = mapper.Map<Page>(request);
+        var updatedEntity = await pageService.Update(entity, cancellationToken);
+        var entityResponse = mapper.Map<PageDetailResponse>(updatedEntity);
+        return Ok(entityResponse);
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
+    {
+        await pageService.Delete(id);
+        return Ok(true);
+    }
+
+    #region Private Methods
+    // defining a dictionary of nested paths (full paths) to page ids
+    private static Dictionary<string, Guid> GetFullPaths(Dictionary<Guid, Page> pages)
+    {
+        var fullPaths = new Dictionary<string, Guid>();
+        foreach (var page in pages.Values)
+        {
+            fullPaths.Add(GetFullPath(pages, page.Id), page.Id);
+        }
+        return fullPaths;
+    }
+
+    // this function will return a full path for a page based on its nested parent
+    private static string GetFullPath(Dictionary<Guid, Page> pages, Guid pageId)
+    {
+        var page = pages[pageId];
+        var path = page.Path;
+        if (page.ParentId.HasValue)
+        {
+            var parentPage = pages[page.ParentId.Value];
+            path = GetFullPath(pages, parentPage.Id) + path;
+        }
+
+        return path;
+    }
     private async Task<IApiResult<PageFullDetailResponse>> GetRealPage(string domain, string path, CancellationToken cancellationToken = default)
     {
         var site = await siteService.GetByUrl(domain, cancellationToken);
@@ -158,60 +206,6 @@ public class PageController(
             SiteId = siteId,
             DefinitionId = pluginDefId
         };
-    }
-
-    [HttpPost]
-    [Policy(AREA, CREATE)]
-    public async Task<IApiResult<PageDetailResponse>> Create(PageCreateRequest request, CancellationToken cancellationToken = default)
-    {
-        var entity = mapper.Map<Page>(request);
-        var newEntity = await pageService.Create(entity, cancellationToken);
-        var pageResponse = mapper.Map<PageDetailResponse>(newEntity);
-        return Ok(pageResponse);
-    }
-
-    [HttpPut]
-    [Policy(AREA, UPDATE)]
-    public async Task<IApiResult<PageDetailResponse>> Update(PageUpdateRequest request, CancellationToken cancellationToken = default)
-    {
-        var entity = mapper.Map<Page>(request);
-        var updatedEntity = await pageService.Update(entity, cancellationToken);
-        var entityResponse = mapper.Map<PageDetailResponse>(updatedEntity);
-        return Ok(entityResponse);
-    }
-
-    [HttpDelete("{id}")]
-    [Policy(AREA, DELETE)]
-    public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
-    {
-        await pageService.Delete(id);
-        return Ok(true);
-    }
-
-    #region Private Methods
-    // defining a dictionary of nested paths (full paths) to page ids
-    private static Dictionary<string, Guid> GetFullPaths(Dictionary<Guid, Page> pages)
-    {
-        var fullPaths = new Dictionary<string, Guid>();
-        foreach (var page in pages.Values)
-        {
-            fullPaths.Add(GetFullPath(pages, page.Id), page.Id);
-        }
-        return fullPaths;
-    }
-
-    // this function will return a full path for a page based on its nested parent
-    private static string GetFullPath(Dictionary<Guid, Page> pages, Guid pageId)
-    {
-        var page = pages[pageId];
-        var path = page.Path;
-        if (page.ParentId.HasValue)
-        {
-            var parentPage = pages[page.ParentId.Value];
-            path = GetFullPath(pages, parentPage.Id) + path;
-        }
-
-        return path;
     }
     #endregion
 }

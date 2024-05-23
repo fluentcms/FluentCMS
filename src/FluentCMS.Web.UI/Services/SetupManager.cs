@@ -25,7 +25,6 @@ public class SetupManager
         return _initialized;
     }
 
-
     public async Task<bool> Start(SetupRequest request)
     {
         if (_initialized)
@@ -44,16 +43,6 @@ public class SetupManager
         var response = await setupClient.StartAsync(request);
 
         _initialized = response.Data;
-        return response.Data;
-    }
-
-    public async Task<PageFullDetailResponse> GetSetupPage()
-    {
-        var httpClient = _httpClientFactory.CreateApiClient();
-        var setupClient = new SetupClient(httpClient);
-
-        var response = await setupClient.GetSetupPageAsync();
-
         return response.Data;
     }
 }

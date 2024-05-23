@@ -37,6 +37,24 @@ public partial class Default : IDisposable
         NavigationManager.LocationChanged += LocationChanged;
         UserLogin = await AuthenticationStateTask.GetLogin();
     }
+    protected override async Task OnParametersSetAsync()
+    {
+        // check if setup is not done
+        // if not it should be redirected to /setup route
+        if (!await SetupManager.IsInitialized() && !NavigationManager.Uri.ToLower().EndsWith("/setup"))
+        {
+            NavigationManager.NavigateTo("/setup", true);
+            return;
+        }
+
+        var pageClient = HttpClientFactory.CreateApiClient<PageClient>(UserLogin);
+        var pageResponse = await pageClient.GetByUrlAsync(NavigationManager.Uri);
+
+        if (pageResponse.Data != null)
+            Page = pageResponse.Data;
+
+        await base.OnParametersSetAsync();
+    }
 
     void LocationChanged(object? sender, LocationChangedEventArgs e)
     {
@@ -46,21 +64,6 @@ public partial class Default : IDisposable
     void IDisposable.Dispose()
     {
         NavigationManager.LocationChanged -= LocationChanged;
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        if (!await SetupManager.IsInitialized())
-        {
-            Page = await SetupManager.GetSetupPage();
-            return;
-        }
-
-        var pageClient = HttpClientFactory.CreateApiClient<PageClient>(UserLogin);
-        var pageResponse = await pageClient.GetByUrlAsync(NavigationManager.Uri);
-
-        if (pageResponse.Data != null)
-            Page = pageResponse.Data;
     }
 
     protected RenderFragment ChildComponents() => builder =>
