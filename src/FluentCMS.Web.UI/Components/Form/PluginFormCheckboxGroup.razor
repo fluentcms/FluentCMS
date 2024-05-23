@@ -18,24 +18,22 @@
         }
         @if (ChildContent == null && TextField != null)
         {
-            <Grid>
+            <div class="flex-wrap @(Vertical ? "" : "flex")">
                 @foreach (var item in Data)
                 {
-                    <GridItem Small="Vertical ? GridItemColumn.Twelve : GridItemColumn.Six">
+                    <div class="mr-4 mb-2">
                         <input checked="@IsChecked(item)"
                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:focus:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                                id="@GetValue(item)"
                                name="@NameAttributeValue"
                                type="checkbox"
                                value="@GetValue(item)">
-                        @* @onchange="EventCallback.Factory.CreateBinder<bool>(this, __value => CurrentValue = __value, CurrentValue)" *@
                         <label for="@GetValue(item)" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
                             @GetText(item)
                         </label>
-                        <div class="mb-2"></div>
-                    </GridItem>
+                    </div>
                 }
-            </Grid>
+            </div>
         }
         else
         {
