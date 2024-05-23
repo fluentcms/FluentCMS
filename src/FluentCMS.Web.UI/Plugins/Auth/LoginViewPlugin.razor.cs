@@ -2,7 +2,7 @@
 
 public partial class LoginViewPlugin
 {
-    private const string FORM_NAME = "LoginForm";
+    public const string FORM_NAME = "LoginForm";
 
     [Inject]
     private IAuthService AuthService { get; set; } = default!;

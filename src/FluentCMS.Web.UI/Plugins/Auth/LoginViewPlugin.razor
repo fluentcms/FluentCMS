@@ -1,11 +1,11 @@
 @inherits BasePlugin
 <PluginForm Model="@Model" OnSubmit="@OnSubmit" Name="@FORM_NAME">
-    <InputText @bind-Value="Model.Username" placeholder="Enter your username"/>
-    <InputText @bind-Value="Model.Password" Placeholder="Enter your password"/>
-    <Checkbox @bind-Value="Model.RememberMe"></Checkbox>
-    <ButtonGroup>
+    <PluginFormTextInput @bind-Value="Model.Username" Label="Username" Placeholder="Enter your username" />
+    <PluginFormTextInput @bind-Value="Model.Password" Label="Password" Placeholder="Enter your password" />
+    <PluginFormCheckbox @bind-Value="Model.RememberMe" Label="Remember Me"></PluginFormCheckbox>
+    <PluginFormActions>
         <Button Color="Color.Primary" Href="/auth/forgot-password" Link="true">Forgot Password?</Button>
-        <Button Block="true" Color="Color.Primary" Type="ButtonType.Submit">Sign In</Button>
+        <Button Block Color="Color.Primary" Type="ButtonType.Submit">Sign In</Button>
         <Button Color="Color.Primary" Href="/auth/register" Link="true"> Sign up </Button>
-    </ButtonGroup>
+    </PluginFormActions>
 </PluginForm>
