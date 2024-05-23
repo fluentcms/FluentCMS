@@ -5,7 +5,7 @@
     <HeadContent>
         @if (Page?.Layout?.Head != null)
         {
-            @((MarkupString)Page.Layout.Head)
+            @((MarkupString)GetParsedContent(Page.Layout.Head))
         }
     </HeadContent>
     @ChildComponents()
