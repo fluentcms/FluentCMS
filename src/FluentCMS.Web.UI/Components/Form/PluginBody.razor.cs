@@ -10,4 +10,7 @@ public partial class PluginBody
 
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public bool Padding { get; set; } = true;
 }
