@@ -35,6 +35,7 @@ public partial class SetupViewPlugin
         {
             Initialized = await SetupManager.IsInitialized();
             await AuthService.Login(HttpContext, Model.Username, Model.Password, true);
+            NavigateTo("/");
         }
     }
 }

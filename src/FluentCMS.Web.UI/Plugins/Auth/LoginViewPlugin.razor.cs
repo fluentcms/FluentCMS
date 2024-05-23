@@ -15,5 +15,6 @@ public partial class LoginViewPlugin
     private async Task OnSubmit()
     {
         await AuthService.Login(HttpContext, Model.Username, Model.Password, Model.RememberMe);
+        NavigateTo("/");
     }
 }
