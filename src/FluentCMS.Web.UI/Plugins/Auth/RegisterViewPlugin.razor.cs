@@ -10,6 +10,6 @@ public partial class RegisterViewPlugin
     private async Task OnSubmit()
     {
         await GetApiClient<AccountClient>().RegisterAsync(Model);
-        NavigationManager.NavigateTo("/auth/login", true);
+        NavigateTo("/");
     }
 }
