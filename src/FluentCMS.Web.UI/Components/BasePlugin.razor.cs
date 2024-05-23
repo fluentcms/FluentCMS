@@ -19,6 +19,9 @@ public partial class BasePlugin
     [Inject]
     protected IHttpClientFactory HttpClientFactory { get; set; } = default!;
 
+    [Inject]
+    protected IHttpContextAccessor? HttpContextAccessor { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         await OnLoadAsync();
@@ -32,7 +35,18 @@ public partial class BasePlugin
     protected virtual void NavigateBack()
     {
         var url = new Uri(NavigationManager.Uri).LocalPath;
-        NavigationManager.NavigateTo(url);
+        NavigateTo(url);
+    }
+
+    // due to open issue in NavigationManager
+    // https://github.com/dotnet/aspnetcore/issues/55685
+    // https://github.com/dotnet/aspnetcore/issues/53996
+    protected virtual void NavigateTo(string path)
+    {
+        if (HttpContextAccessor?.HttpContext != null)
+            HttpContextAccessor.HttpContext.Response.Redirect(path);
+        else
+            NavigationManager.NavigateTo(path);
     }
 
     protected virtual string GetUrl(string viewTypeName, object? parameters = null)

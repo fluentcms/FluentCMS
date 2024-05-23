@@ -17,8 +17,6 @@ public class AuthService(IHttpClientFactory httpClientFactory) : IAuthService
         ArgumentNullException.ThrowIfNull(httpContext);
 
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-
-        httpContext.Response.Redirect("/");
     }
 
     public async Task Login(HttpContext httpContext, string username, string password, bool isPersist)
@@ -55,7 +53,5 @@ public class AuthService(IHttpClientFactory httpClientFactory) : IAuthService
                 IssuedUtc = DateTimeOffset.UtcNow,
                 ExpiresUtc = DateTimeOffset.UtcNow.AddDays(10) // 100 days
             });
-
-        httpContext.Response.Redirect("/");
     }
 }
