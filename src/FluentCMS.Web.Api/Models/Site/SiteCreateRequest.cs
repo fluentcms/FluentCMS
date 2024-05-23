@@ -7,7 +7,5 @@ public class SiteCreateRequest
     public List<string> Urls { get; set; } = [];
     public List<string> Languages { get; set; } = [];
     public string LayoutName { get; set; } = default!;
-    public string LayoutBody { get; set; } = default!;
-    public string LayoutHead { get; set; } = default!;
     public string DefaultPageTitle { get; set; } = default!;
 }
