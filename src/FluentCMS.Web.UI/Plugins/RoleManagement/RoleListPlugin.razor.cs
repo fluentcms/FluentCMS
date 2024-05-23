@@ -9,11 +9,5 @@ public partial class RoleListPlugin
         var rolesResponse = await GetApiClient<RoleClient>().GetAllAsync();
         Roles = rolesResponse?.Data?.ToList() ?? [];
     }
-
-    protected void OnRowDefaultAction(Guid id)
-    {
-        var url = GetUrl("Update Role", new { id = id });
-        NavigationManager.NavigateTo(url);
-    }
 }
 
