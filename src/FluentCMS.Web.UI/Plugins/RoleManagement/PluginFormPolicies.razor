@@ -1,0 +1,25 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Plugins.RoleManagement
+
+<PluginFormField>    
+    <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white" Visible="!string.IsNullOrEmpty(Label)">
+        @Label
+    </label>
+    <Card>
+        <CardBody>
+            @foreach(var policy in Policies)
+            {
+                <Divider>@policy.Area</Divider>
+                <div class="flex items-center flex-wrap gap-4">
+                    @foreach(var action in policy.Actions) 
+                    {
+                        <Checkbox Label="@action" />
+                    }
+                    @* <CheckboxGroup Data="@policy.Actions" ValueField="(item) => item" TextField="(item) => item"/> *@
+                </div>
+            }
+        </CardBody>
+    </Card>
+    <Spacer Size="SpacerSize.Large" />
+</PluginFormField>
