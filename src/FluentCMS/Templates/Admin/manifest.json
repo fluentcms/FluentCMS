@@ -26,6 +26,17 @@
             ]
         },
         {
+            "Name": "Logout",
+            "Description": "Logout Plugin",
+            "Types": [
+                {
+                    "Name": "Logout",
+                    "Type": "LogoutViewPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
             "Name": "Register",
             "Description": "Register Plugin",
             "Types": [
@@ -332,6 +343,16 @@
                     "Plugins": [
                         {
                             "Definition": "Login",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Logout",
+                    "Path": "/logout",
+                    "Plugins": [
+                        {
+                            "Definition": "Logout",
                             "Section": "Main"
                         }
                     ]
