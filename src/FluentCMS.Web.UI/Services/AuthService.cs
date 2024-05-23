@@ -17,6 +17,8 @@ public class AuthService(IHttpClientFactory httpClientFactory) : IAuthService
         ArgumentNullException.ThrowIfNull(httpContext);
 
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+        httpContext.Response.Redirect("/");
     }
 
     public async Task Login(HttpContext httpContext, string username, string password, bool isPersist)
