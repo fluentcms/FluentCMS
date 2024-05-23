@@ -17,6 +17,7 @@ public partial class UserCreatePlugin
 
     private async Task OnSubmit()
     {
+        Model.RoleIds ??= [];
         await GetApiClient<UserClient>().CreateAsync(Model);
         NavigateBack();
     }
