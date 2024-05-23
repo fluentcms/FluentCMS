@@ -35,6 +35,7 @@ public partial class UserUpdatePlugin
 
     private async Task OnSubmit()
     {
+        Model.RoleIds ??= [];
         await GetApiClient<UserClient>().UpdateAsync(Model);
         NavigateBack();
     }
