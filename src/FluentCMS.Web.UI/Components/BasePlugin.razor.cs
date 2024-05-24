@@ -22,16 +22,6 @@ public partial class BasePlugin
     [Inject]
     protected IHttpContextAccessor? HttpContextAccessor { get; set; }
 
-    protected override async Task OnInitializedAsync()
-    {
-        await OnLoadAsync();
-    }
-
-    protected virtual async Task OnLoadAsync()
-    {
-        await Task.CompletedTask;
-    }
-
     protected virtual void NavigateBack()
     {
         var url = new Uri(NavigationManager.Uri).LocalPath;
