@@ -16,13 +16,7 @@ public partial class LayoutUpdatePlugin
         {
             var layoutResponse = await GetApiClient<LayoutClient>().GetAsync(Id);
             var layout = layoutResponse.Data;
-            Model = new LayoutUpdateRequest
-            {
-                Id = Id,
-                Name = layout.Name,
-                Head = layout.Head,
-                Body = layout.Body
-            };
+            Model = Mapper.Map<LayoutUpdateRequest>(layout);
         }
     }
 
