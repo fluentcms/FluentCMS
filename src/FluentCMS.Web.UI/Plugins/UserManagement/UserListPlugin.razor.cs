@@ -9,10 +9,4 @@ public partial class UserListPlugin
         var usersResponse = await GetApiClient<UserClient>().GetAllAsync();
         Users = usersResponse?.Data?.ToList() ?? [];
     }
-
-    protected void OnRowDefaultAction(Guid id)
-    {
-        var url = GetUrl("Update User", new { id = id });
-        NavigationManager.NavigateTo(url);
-    }
 }

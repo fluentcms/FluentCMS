@@ -8,34 +8,41 @@ public partial class UserUpdatePlugin
     private Guid Id { get; set; }
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
-    private UserUpdateRequest Model { get; set; } = new();
+    private UserUpdateRequest? Model { get; set; }
 
-    private List<RoleDetailResponse> Roles { get; set; } = [];
+    private List<RoleDetailResponse>? Roles { get; set; }
 
-    private UserDetailResponse User { get; set; } = new();
-
-    protected override async Task OnLoadAsync()
+    protected override async Task OnInitializedAsync()
     {
-        var rolesResponse = await GetApiClient<RoleClient>().GetAllAsync();
-        Roles = rolesResponse?.Data?.ToList() ?? [];
-
-        var userResponse = await GetApiClient<UserClient>().GetAsync(Id);
-        User = userResponse.Data;
-        Model = new UserUpdateRequest
+        if (Roles is null)
         {
-            Id = Id,
-            Email = User.Email ?? string.Empty,
-            PhoneNumber = User.PhoneNumber,
-            FirstName = User.FirstName,
-            LastName = User.LastName,
-            Enabled = User.Enabled,
-            RoleIds = [],
-        };
+            var rolesResponse = await GetApiClient<RoleClient>().GetAllAsync();
+            Roles = rolesResponse?.Data?.ToList() ?? [];
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Model is null)
+        {
+            var userResponse = await GetApiClient<UserClient>().GetAsync(Id);
+            var user = userResponse.Data;
+            Model ??= new UserUpdateRequest
+            {
+                Id = Id,
+                Email = user.Email ?? string.Empty,
+                PhoneNumber = user.PhoneNumber,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Enabled = user.Enabled,
+                RoleIds = [],
+            };
+        }
     }
 
     private async Task OnSubmit()
     {
-        Model.RoleIds ??= [];
+        Model!.RoleIds ??= [];
         await GetApiClient<UserClient>().UpdateAsync(Model);
         NavigateBack();
     }
