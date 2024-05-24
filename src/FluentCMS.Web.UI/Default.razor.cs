@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components.Sections;
-using Scriban.Runtime;
 using Scriban;
+using Scriban.Runtime;
 
 namespace FluentCMS.Web.UI;
 

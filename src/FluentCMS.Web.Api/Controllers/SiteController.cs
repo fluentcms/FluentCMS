@@ -18,7 +18,7 @@ public class SiteController(ISiteService siteService, ILayoutService layoutServi
     {
         var site = await siteService.GetByUrl(siteUrl, cancellationToken);
         var siteResponse = mapper.Map<SiteFullDetailResponse>(site);
-        var layouts = await layoutService.GetAll(site.Id, cancellationToken);
+        var layouts = await layoutService.GetAll(cancellationToken);
         siteResponse.Layouts = mapper.Map<List<LayoutDetailResponse>>(layouts);
         return Ok(siteResponse);
     }
@@ -38,7 +38,7 @@ public class SiteController(ISiteService siteService, ILayoutService layoutServi
     {
         var site = await siteService.GetById(id, cancellationToken);
         var siteResponse = mapper.Map<SiteFullDetailResponse>(site);
-        var layouts = await layoutService.GetAll(id, cancellationToken);
+        var layouts = await layoutService.GetAll(cancellationToken);
         siteResponse.Layouts = mapper.Map<List<LayoutDetailResponse>>(layouts);
         return Ok(siteResponse);
     }
@@ -60,17 +60,6 @@ public class SiteController(ISiteService siteService, ILayoutService layoutServi
             SiteId = newSite.Id
         };
         await pageService.Create(page, cancellationToken);
-
-        // creating default layout for the site
-        var layout = new Layout
-        {
-            Name = request.Name,
-            SiteId = newSite.Id,
-            Body = request.LayoutBody,
-            Head = request.LayoutHead,
-            IsDefault = true
-        };
-        await layoutService.Create(layout, cancellationToken);
 
         var response = mapper.Map<SiteDetailResponse>(newSite);
 

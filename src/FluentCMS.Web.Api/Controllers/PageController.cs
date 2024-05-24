@@ -109,7 +109,7 @@ public class PageController(
     {
         var site = await siteService.GetByUrl(domain, cancellationToken);
         var pages = (await pageService.GetBySiteId(site.Id, cancellationToken)).ToDictionary(x => x.Id);
-        var layouts = await layoutService.GetAll(site.Id, cancellationToken);
+        var layouts = await layoutService.GetAll(cancellationToken);
         var pluginDefinitions = (await pluginDefinitionService.GetAll(cancellationToken)).ToDictionary(x => x.Id);
 
         // defining a dictionary of nested paths (full paths) to page ids
@@ -155,7 +155,7 @@ public class PageController(
         // example.com?pluginDef=pluginDefName&typeName=pluginDefTypeName&layout=layoutName
         var site = await siteService.GetByUrl(domain, cancellationToken);
         var pages = (await pageService.GetBySiteId(site.Id, cancellationToken)).ToDictionary(x => x.Id);
-        var layouts = await layoutService.GetAll(site.Id, cancellationToken);
+        var layouts = await layoutService.GetAll(cancellationToken);
         var pluginDefinitions = (await pluginDefinitionService.GetAll(cancellationToken)).ToList();
 
         var pluginDefinitionName = query[PLUGIN_DEFINIOTION_NAME].FirstOrDefault() ??

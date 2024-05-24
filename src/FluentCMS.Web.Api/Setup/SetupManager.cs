@@ -235,7 +235,6 @@ public class SetupManager
             var layout = new Layout
             {
                 Name = layoutTemplate.Name,
-                SiteId = _site.Id,
                 IsDefault = layoutTemplate.IsDefault,
                 Body = File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, $"{layoutTemplate.Name}.body.html")),
                 Head = File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, $"{layoutTemplate.Name}.head.html"))
