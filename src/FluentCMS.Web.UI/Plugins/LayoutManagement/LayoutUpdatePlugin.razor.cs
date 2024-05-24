@@ -14,9 +14,6 @@ public partial class LayoutUpdatePlugin
     {
         if (Model is null)
         {
-            // We should instantiate the model here to avoid the below bug:
-            // https://github.com/dotnet/aspnetcore/issues/55868
-            Model = new();
             var layoutResponse = await GetApiClient<LayoutClient>().GetAsync(Id);
             var layout = layoutResponse.Data;
             Model = new LayoutUpdateRequest
