@@ -26,15 +26,3 @@
         </DataTable>
     </ChildContent>
 </PluginBody>
-
-
-@code {
-    private List<LayoutDetailResponse> Layouts { get; set; } = [];
-
-    protected override async Task OnInitializedAsync()
-    {
-        var response = await GetApiClient<LayoutClient>().GetAllAsync();
-        Layouts = response?.Data?.ToList() ?? [];
-    }
-}
-
