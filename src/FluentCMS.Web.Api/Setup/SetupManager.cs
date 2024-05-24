@@ -29,6 +29,7 @@ public class SetupManager
     private readonly List<Layout> _layouts = [];
     private readonly List<Page> _pages = [];
     private User _superAdmin = default!;
+    private Guid _defaultLayoutId;
 
     public SetupManager(
         IConfiguration configuration,
@@ -202,15 +203,16 @@ public class SetupManager
         if (_adminTemplate == null)
             return;
 
-        await InitSite();
-        await InitPluginDefinitions();
         await InitLayouts();
+        await InitPluginDefinitions();
+        await InitSite();
         await InitPages();
     }
 
     private async Task InitSite()
     {
         _adminTemplate.Site.Urls = [_setupRequest.AdminDomain];
+        _adminTemplate.Site.LayoutId = _defaultLayoutId;
         _site = await _siteService.Create(_adminTemplate.Site);
     }
 
@@ -235,11 +237,12 @@ public class SetupManager
             var layout = new Layout
             {
                 Name = layoutTemplate.Name,
-                IsDefault = layoutTemplate.IsDefault,
                 Body = File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, $"{layoutTemplate.Name}.body.html")),
                 Head = File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, $"{layoutTemplate.Name}.head.html"))
             };
             _layouts.Add(await _layoutService.Create(layout));
+            if (layoutTemplate.IsDefault)
+                _defaultLayoutId = layout.Id;
         }
     }
 

@@ -6222,12 +6222,12 @@ namespace FluentCMS.Web.ApiClients
     {
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<SiteFullDetailResponseIApiResult> GetByUrlAsync(string siteUrl);
+        System.Threading.Tasks.Task<SiteDetailResponseIApiResult> GetByUrlAsync(string siteUrl);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<SiteFullDetailResponseIApiResult> GetByUrlAsync(string siteUrl, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<SiteDetailResponseIApiResult> GetByUrlAsync(string siteUrl, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -6240,12 +6240,12 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<SiteFullDetailResponseIApiResult> GetByIdAsync(System.Guid id);
+        System.Threading.Tasks.Task<SiteDetailResponseIApiResult> GetByIdAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<SiteFullDetailResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<SiteDetailResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -6306,7 +6306,7 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<SiteFullDetailResponseIApiResult> GetByUrlAsync(string siteUrl)
+        public virtual System.Threading.Tasks.Task<SiteDetailResponseIApiResult> GetByUrlAsync(string siteUrl)
         {
             return GetByUrlAsync(siteUrl, System.Threading.CancellationToken.None);
         }
@@ -6314,7 +6314,7 @@ namespace FluentCMS.Web.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<SiteFullDetailResponseIApiResult> GetByUrlAsync(string siteUrl, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<SiteDetailResponseIApiResult> GetByUrlAsync(string siteUrl, System.Threading.CancellationToken cancellationToken)
         {
             if (siteUrl == null)
                 throw new System.ArgumentNullException("siteUrl");
@@ -6359,7 +6359,7 @@ namespace FluentCMS.Web.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<SiteFullDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<SiteDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -6466,7 +6466,7 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<SiteFullDetailResponseIApiResult> GetByIdAsync(System.Guid id)
+        public virtual System.Threading.Tasks.Task<SiteDetailResponseIApiResult> GetByIdAsync(System.Guid id)
         {
             return GetByIdAsync(id, System.Threading.CancellationToken.None);
         }
@@ -6474,7 +6474,7 @@ namespace FluentCMS.Web.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<SiteFullDetailResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<SiteDetailResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -6519,7 +6519,7 @@ namespace FluentCMS.Web.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<SiteFullDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<SiteDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -8100,9 +8100,6 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("head")]
         public string? Head { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("isDefault")]
-        public bool IsDefault { get; set; } = default!;
-
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -8132,9 +8129,6 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("head")]
         public string? Head { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isDefault")]
-        public bool IsDefault { get; set; } = default!;
 
     }
 
@@ -8228,9 +8222,6 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("head")]
         public string? Head { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isDefault")]
-        public bool IsDefault { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
         public System.Guid Id { get; set; } = default!;
@@ -9012,8 +9003,8 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("languages")]
         public System.Collections.Generic.ICollection<string>? Languages { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("layoutName")]
-        public string? LayoutName { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("layoutId")]
+        public System.Guid LayoutId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("defaultPageTitle")]
         public string? DefaultPageTitle { get; set; } = default!;
@@ -9050,6 +9041,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("urls")]
         public System.Collections.Generic.ICollection<string>? Urls { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("layoutId")]
+        public System.Guid LayoutId { get; set; } = default!;
 
     }
 
@@ -9132,72 +9126,6 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class SiteFullDetailResponse
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid Id { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("createdBy")]
-        public string? CreatedBy { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
-        public System.DateTime CreatedAt { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
-        public string? ModifiedBy { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
-        public System.DateTime? ModifiedAt { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("siteId")]
-        public System.Guid SiteId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("name")]
-        public string? Name { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("description")]
-        public string? Description { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("urls")]
-        public System.Collections.Generic.ICollection<string>? Urls { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("layouts")]
-        public System.Collections.Generic.ICollection<LayoutDetailResponse>? Layouts { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class SiteFullDetailResponseIApiResult
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public SiteFullDetailResponse Data { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
-        public string? UniqueId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
-        public bool IsSuccess { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SiteUpdateRequest
     {
 
@@ -9213,8 +9141,8 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("languages")]
         public System.Collections.Generic.ICollection<string>? Languages { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("layoutName")]
-        public string? LayoutName { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("layoutId")]
+        public System.Guid LayoutId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("defaultPageTitle")]
         public string? DefaultPageTitle { get; set; } = default!;

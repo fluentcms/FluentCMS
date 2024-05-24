@@ -109,7 +109,6 @@ public class PageController(
     {
         var site = await siteService.GetByUrl(domain, cancellationToken);
         var pages = (await pageService.GetBySiteId(site.Id, cancellationToken)).ToDictionary(x => x.Id);
-        var layouts = await layoutService.GetAll(cancellationToken);
         var pluginDefinitions = (await pluginDefinitionService.GetAll(cancellationToken)).ToDictionary(x => x.Id);
 
         // defining a dictionary of nested paths (full paths) to page ids
@@ -126,16 +125,9 @@ public class PageController(
         pageResponse.FullPath = path;
         pageResponse.Site = mapper.Map<SiteDetailResponse>(site);
 
-        if (page.LayoutId.HasValue)
-        {
-            var layout = layouts.Where(l => l.Id == page.LayoutId.Value).First();
-            pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
-        }
-        else
-        {
-            var layout = layouts.Where(l => l.IsDefault).First();
-            pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
-        }
+        var layoutId = page.LayoutId ?? site.LayoutId;
+        var layout = await layoutService.GetById(layoutId, cancellationToken);
+        pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
 
         foreach (var plugin in plugins)
         {
@@ -155,7 +147,6 @@ public class PageController(
         // example.com?pluginDef=pluginDefName&typeName=pluginDefTypeName&layout=layoutName
         var site = await siteService.GetByUrl(domain, cancellationToken);
         var pages = (await pageService.GetBySiteId(site.Id, cancellationToken)).ToDictionary(x => x.Id);
-        var layouts = await layoutService.GetAll(cancellationToken);
         var pluginDefinitions = (await pluginDefinitionService.GetAll(cancellationToken)).ToList();
 
         var pluginDefinitionName = query[PLUGIN_DEFINIOTION_NAME].FirstOrDefault() ??
@@ -177,16 +168,9 @@ public class PageController(
         pageResponse.FullPath = path;
         pageResponse.Site = mapper.Map<SiteDetailResponse>(site);
 
-        if (page.LayoutId.HasValue)
-        {
-            var layout = layouts.Where(l => l.Id == page.LayoutId.Value).First();
-            pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
-        }
-        else
-        {
-            var layout = layouts.Where(l => l.IsDefault).First();
-            pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
-        }
+        var layoutId = page.LayoutId ?? site.LayoutId;
+        var layout = await layoutService.GetById(layoutId, cancellationToken);
+        pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
 
         pageResponse.Sections = [];
         var pluginResponse = mapper.Map<PluginDetailResponse>(GetRuntimePlugin(site.Id, page.Id, pluginDefinition.Id));
