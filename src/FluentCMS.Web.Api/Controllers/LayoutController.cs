@@ -1,5 +1,4 @@
-﻿using FluentCMS.Services;
-using FluentCMS.Web.Api.Attributes;
+﻿using FluentCMS.Web.Api.Attributes;
 
 namespace FluentCMS.Web.Api.Controllers;
 

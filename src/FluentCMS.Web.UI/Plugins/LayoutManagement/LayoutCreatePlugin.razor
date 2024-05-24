@@ -2,10 +2,10 @@
 
 @namespace FluentCMS.Web.UI.Plugins
 
-<PluginForm Model="@Model" Name="@FORM_NAME" Title="Create New Layout" OnSubmit="OnSubmit">
-    <PluginFormTextInput @bind-Value="Model.Name" Cols="8" Label="Name" Placeholder="Enter layout name" Required />
-    <PluginFormCheckbox @bind-Value="Model.IsDefault" Cols="4" Label="Default" />
-    <PluginFormTextarea @bind-Value="Model.Head" Label="Layout Head" Placeholder="Enter layout head section" Required />
-    <PluginFormTextarea @bind-Value="Model.Body" Label="Layout Body" Placeholder="Enter layout body section" Required />
+<PluginForm Model="@Model" Name="@FORM_NAME" Title="Create New Layout" OnSubmit="@OnSubmit">
+    <PluginFormTextInput @bind-Value="Model!.Name" Cols="8" Label="Name" Placeholder="Enter layout name" Required />
+    <PluginFormCheckbox @bind-Value="Model!.IsDefault" Cols="4" Label="Default" />
+    <PluginFormTextarea @bind-Value="Model!.Head" Label="Layout Head" Placeholder="Enter layout head section" Required />
+    <PluginFormTextarea @bind-Value="Model!.Body" Label="Layout Body" Placeholder="Enter layout body section" Required />
     <PluginFormActions Cancel Submit />
 </PluginForm>
