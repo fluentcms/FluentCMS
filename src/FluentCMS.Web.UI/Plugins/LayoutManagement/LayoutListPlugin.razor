@@ -10,10 +10,7 @@
     </ActionsFragment>
     <ChildContent>
         <DataTable Items="Layouts">
-            <DataTableItem Label="UserName">
-                @context.Name
-                <Badge Color="Color.Primary" Visible="@context.IsDefault">Default</Badge>
-            </DataTableItem>
+            <DataTableItem Label="Name">@context.Name</DataTableItem>
             <DataTableItem Label="Created By">@(context.CreatedBy ?? string.Empty)</DataTableItem>
             <DataTableItem Label="Created At">@context.CreatedAt</DataTableItem>
             <DataTableItem Label="Modified By">@(context.ModifiedBy ?? string.Empty)</DataTableItem>

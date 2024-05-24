@@ -19,7 +19,6 @@ public partial class LayoutUpdatePlugin
             Model = new LayoutUpdateRequest
             {
                 Id = Id,
-                IsDefault = layout.IsDefault,
                 Name = layout.Name,
                 Head = layout.Head,
                 Body = layout.Body
