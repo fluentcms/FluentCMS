@@ -1,9 +1,13 @@
-﻿using Microsoft.AspNetCore.WebUtilities;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace FluentCMS.Web.UI.Plugins.Components;
 
 public partial class BasePlugin
 {
+    [Inject]
+    protected IMapper Mapper { get; set; } = default!;
+
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = default!;
 

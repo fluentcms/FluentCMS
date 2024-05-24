@@ -27,16 +27,8 @@ public partial class UserUpdatePlugin
         {
             var userResponse = await GetApiClient<UserClient>().GetAsync(Id);
             var user = userResponse.Data;
-            Model ??= new UserUpdateRequest
-            {
-                Id = Id,
-                Email = user.Email ?? string.Empty,
-                PhoneNumber = user.PhoneNumber,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Enabled = user.Enabled,
-                RoleIds = [],
-            };
+            Model = Mapper.Map<UserUpdateRequest>(user);
+            Model.RoleIds = user.Roles?.Select(r => r.Id).ToList() ?? [];
         }
     }
 

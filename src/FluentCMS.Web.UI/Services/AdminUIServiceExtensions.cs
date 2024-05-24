@@ -7,6 +7,7 @@ public static class AdminUIServiceExtensions
 {
     public static IServiceCollection AddAdminUIServices(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddAutoMapper(typeof(AdminUIServiceExtensions));
         services.AddScoped<IAuthService, AuthService>();
         services.AddAuthorization();
         services.AddAuthentication(options =>
