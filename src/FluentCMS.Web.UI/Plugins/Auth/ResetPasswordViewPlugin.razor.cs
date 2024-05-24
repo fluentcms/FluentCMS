@@ -14,9 +14,8 @@ public partial class ResetPasswordViewPlugin
         NavigationManager.NavigateTo("/auth/login", true);
     }
 
-    protected override async Task OnLoadAsync()
+    protected override async Task OnInitializedAsync()
     {
-        await base.OnLoadAsync();
         if (string.IsNullOrEmpty(Email))
         {
             throw new ArgumentNullException(nameof(Email));
