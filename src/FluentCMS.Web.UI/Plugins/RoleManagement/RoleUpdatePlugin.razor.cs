@@ -14,7 +14,7 @@ public partial class RoleUpdatePlugin
 
     private RoleDetailResponse Role { get; set; } = new();
 
-    protected override async Task OnLoadAsync()
+    protected override async Task OnInitializedAsync()
     {
         var policiesResponse = await GetApiClient<RoleClient>().GetPoliciesAsync();
         Policies = policiesResponse?.Data?.ToList() ?? [];

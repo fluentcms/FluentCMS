@@ -8,16 +8,10 @@
     </label>
     <Card>
         <CardBody>
-            @foreach(var policy in Policies)
+            @for(var index = 0; index < Policies.Count - 1; index++)
             {
-                <Divider>@policy.Area</Divider>
-                <div class="flex items-center flex-wrap gap-4">
-                    @foreach(var action in policy.Actions) 
-                    {
-                        <Checkbox Label="@action" />
-                    }
-                    @* <CheckboxGroup Data="@policy.Actions" ValueField="(item) => item" TextField="(item) => item"/> *@
-                </div>
+                <span>@Policies[index].Area</span>
+                <PluginFormCheckboxGroup @bind-Value="_value[index].Actions" Data="Policies[index].Actions" />
             }
         </CardBody>
     </Card>

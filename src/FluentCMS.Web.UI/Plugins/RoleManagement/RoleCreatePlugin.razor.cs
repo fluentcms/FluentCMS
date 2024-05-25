@@ -9,11 +9,18 @@ public partial class RoleCreatePlugin
 
     private List<Policy> Policies { get; set; } = [];
 
-    protected override async Task OnLoadAsync()
+    protected override async Task OnInitializedAsync()
     {
         var policiesResponse = await GetApiClient<RoleClient>().GetPoliciesAsync();
         Policies = policiesResponse?.Data?.ToList() ?? [];
-        Model.Policies = [];
+        
+        Model.Policies = Policies.Select(x => {
+            Console.WriteLine(x.Area);
+            return new Policy {
+                Area = x.Area,
+                Actions = []
+            };
+        }).ToArray();
     }
 
     private async Task OnSubmit()
