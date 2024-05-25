@@ -29,7 +29,12 @@ public abstract class AuditableEntityRepository<TEntity> : EntityRepository<TEnt
     public override async Task<TEntity?> Update(TEntity entity, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        SetAuditableFieldsForUpdate(entity);
+
+        var existing = await GetById(entity.Id, cancellationToken);
+        if (existing == null)
+            return default;
+
+        SetAuditableFieldsForUpdate(entity, existing);
         return await base.Update(entity, cancellationToken);
     }
 
@@ -39,8 +44,10 @@ public abstract class AuditableEntityRepository<TEntity> : EntityRepository<TEnt
         entity.CreatedBy = AuthContext.Username;
     }
 
-    private void SetAuditableFieldsForUpdate(TEntity entity)
+    private void SetAuditableFieldsForUpdate(TEntity entity, TEntity oldEntity)
     {
+        entity.CreatedAt = oldEntity.CreatedAt;
+        entity.CreatedBy = oldEntity.CreatedBy;
         entity.ModifiedAt = DateTime.UtcNow;
         entity.ModifiedBy = AuthContext.Username;
     }

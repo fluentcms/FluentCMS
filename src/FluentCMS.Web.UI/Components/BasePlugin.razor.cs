@@ -1,9 +1,13 @@
-﻿using Microsoft.AspNetCore.WebUtilities;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace FluentCMS.Web.UI.Plugins.Components;
 
 public partial class BasePlugin
 {
+    [Inject]
+    protected IMapper Mapper { get; set; } = default!;
+
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = default!;
 
@@ -19,20 +23,24 @@ public partial class BasePlugin
     [Inject]
     protected IHttpClientFactory HttpClientFactory { get; set; } = default!;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await OnLoadAsync();
-    }
-
-    protected virtual async Task OnLoadAsync()
-    {
-        await Task.CompletedTask;
-    }
+    [Inject]
+    protected IHttpContextAccessor? HttpContextAccessor { get; set; }
 
     protected virtual void NavigateBack()
     {
         var url = new Uri(NavigationManager.Uri).LocalPath;
-        NavigationManager.NavigateTo(url);
+        NavigateTo(url);
+    }
+
+    // due to open issue in NavigationManager
+    // https://github.com/dotnet/aspnetcore/issues/55685
+    // https://github.com/dotnet/aspnetcore/issues/53996
+    protected virtual void NavigateTo(string path)
+    {
+        if (HttpContextAccessor?.HttpContext != null)
+            HttpContextAccessor.HttpContext.Response.Redirect(path);
+        else
+            NavigationManager.NavigateTo(path);
     }
 
     protected virtual string GetUrl(string viewTypeName, object? parameters = null)

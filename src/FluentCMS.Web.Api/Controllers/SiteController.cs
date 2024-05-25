@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class SiteController(ISiteService siteService, ILayoutService layoutService, IPageService pageService, IMapper mapper) : BaseGlobalController
+public class SiteController(ISiteService siteService, IPageService pageService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "Site Management";
     public const string READ = "Read";
@@ -14,12 +14,10 @@ public class SiteController(ISiteService siteService, ILayoutService layoutServi
     [AllowAnonymous]
     [HttpGet("{siteUrl}")]
     [Policy(AREA, READ)]
-    public async Task<IApiResult<SiteFullDetailResponse>> GetByUrl([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<SiteDetailResponse>> GetByUrl([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
     {
         var site = await siteService.GetByUrl(siteUrl, cancellationToken);
-        var siteResponse = mapper.Map<SiteFullDetailResponse>(site);
-        var layouts = await layoutService.GetAll(site.Id, cancellationToken);
-        siteResponse.Layouts = mapper.Map<List<LayoutDetailResponse>>(layouts);
+        var siteResponse = mapper.Map<SiteDetailResponse>(site);
         return Ok(siteResponse);
     }
 
@@ -34,12 +32,10 @@ public class SiteController(ISiteService siteService, ILayoutService layoutServi
 
     [HttpGet("{id}")]
     [Policy(AREA, READ)]
-    public async Task<IApiResult<SiteFullDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<SiteDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var site = await siteService.GetById(id, cancellationToken);
-        var siteResponse = mapper.Map<SiteFullDetailResponse>(site);
-        var layouts = await layoutService.GetAll(id, cancellationToken);
-        siteResponse.Layouts = mapper.Map<List<LayoutDetailResponse>>(layouts);
+        var siteResponse = mapper.Map<SiteDetailResponse>(site);
         return Ok(siteResponse);
     }
 
@@ -60,17 +56,6 @@ public class SiteController(ISiteService siteService, ILayoutService layoutServi
             SiteId = newSite.Id
         };
         await pageService.Create(page, cancellationToken);
-
-        // creating default layout for the site
-        var layout = new Layout
-        {
-            Name = request.Name,
-            SiteId = newSite.Id,
-            Body = request.LayoutBody,
-            Head = request.LayoutHead,
-            IsDefault = true
-        };
-        await layoutService.Create(layout, cancellationToken);
 
         var response = mapper.Map<SiteDetailResponse>(newSite);
 

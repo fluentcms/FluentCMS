@@ -28,7 +28,7 @@ public partial class PluginFormCheckboxGroup<TItem, TValue>
     {
         if (string.IsNullOrEmpty(TextField))
         {
-            return default!;
+            return item!.ToString();
         }
         return (string?)item!.GetType().GetProperty(TextField)?.GetValue(item);
     }
@@ -37,7 +37,7 @@ public partial class PluginFormCheckboxGroup<TItem, TValue>
     {
         if (string.IsNullOrEmpty(ValueField))
         {
-            return default!;
+            return (TValue?)(object)item!;
         }
         return (TValue?)item!.GetType().GetProperty(ValueField)?.GetValue(item);
     }

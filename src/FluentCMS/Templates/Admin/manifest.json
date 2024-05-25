@@ -5,8 +5,12 @@
     },
     "Layouts": [
         {
-            "Name": "AdminLayout",
+            "Name": "DefaultLayout",
             "IsDefault": true
+        },
+        {
+            "Name": "AdminLayout",
+            "IsDefault": false
         },
         {
             "Name": "AuthLayout",
@@ -21,6 +25,17 @@
                 {
                     "Name": "Login",
                     "Type": "LoginViewPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
+            "Name": "Logout",
+            "Description": "Logout Plugin",
+            "Types": [
+                {
+                    "Name": "Logout",
+                    "Type": "LogoutViewPlugin",
                     "IsDefault": true
                 }
             ]
@@ -65,6 +80,17 @@
                 {
                     "Name": "Home",
                     "Type": "HomeViewPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
+            "Name": "Admin Home",
+            "Description": "Admin Home Plugin",
+            "Types": [
+                {
+                    "Name": "Admin Home",
+                    "Type": "AdminHomeViewPlugin",
                     "IsDefault": true
                 }
             ]
@@ -231,6 +257,25 @@
                     "IsDefault": true
                 }
             ]
+        },
+        {
+            "Name": "Layout Management",
+            "Description": "Layout Management Plugin",
+            "Types": [
+                {
+                    "Name": "Layouts List",
+                    "Type": "LayoutListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create Layout",
+                    "Type": "LayoutCreatePlugin"
+                },
+                {
+                    "Name": "Update Layout",
+                    "Type": "LayoutUpdatePlugin"
+                }
+            ]
         }
     ],
     "Pages": [
@@ -247,11 +292,18 @@
         {
             "Title": "Admin",
             "Path": "/admin",
-            "Plugins": [],
+            "Layout": "AdminLayout",
+            "Plugins": [
+                {
+                    "Definition": "Admin Home",
+                    "Section": "Main"
+                }
+            ],
             "Children": [
                 {
                     "Title": "Content Management",
                     "Path": "/content",
+                    "Layout": "AdminLayout",
                     "Plugins": [
                         {
                             "Definition": "Content Management",
@@ -262,6 +314,7 @@
                 {
                     "Title": "Content Type Builder",
                     "Path": "/content-types",
+                    "Layout": "AdminLayout",
                     "Plugins": [
                         {
                             "Definition": "ContentType Management",
@@ -272,6 +325,7 @@
                 {
                     "Title": "Users",
                     "Path": "/users",
+                    "Layout": "AdminLayout",
                     "Plugins": [
                         {
                             "Definition": "User Management",
@@ -282,6 +336,7 @@
                 {
                     "Title": "Api Tokens",
                     "Path": "/api-tokens",
+                    "Layout": "AdminLayout",
                     "Plugins": [
                         {
                             "Definition": "Api Token Management",
@@ -292,6 +347,7 @@
                 {
                     "Title": "Settings",
                     "Path": "/settings",
+                    "Layout": "AdminLayout",
                     "Plugins": [
                         {
                             "Definition": "Settings",
@@ -302,6 +358,7 @@
                 {
                     "Title": "File Management",
                     "Path": "/file-management",
+                    "Layout": "AdminLayout",
                     "Plugins": [
                         {
                             "Definition": "File Management",
@@ -312,9 +369,21 @@
                 {
                     "Title": "Roles",
                     "Path": "/roles",
+                    "Layout": "AdminLayout",
                     "Plugins": [
                         {
                             "Definition": "Role Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Layouts",
+                    "Path": "/layouts",
+                    "Layout": "AdminLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "Layout Management",
                             "Section": "Main"
                         }
                     ]
@@ -332,6 +401,16 @@
                     "Plugins": [
                         {
                             "Definition": "Login",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Logout",
+                    "Path": "/logout",
+                    "Plugins": [
+                        {
+                            "Definition": "Logout",
                             "Section": "Main"
                         }
                     ]

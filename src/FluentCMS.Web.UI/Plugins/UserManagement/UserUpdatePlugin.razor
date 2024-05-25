@@ -1,12 +1,12 @@
 ﻿@inherits BasePlugin
 
 <PluginForm Model="@Model" Name="@FORM_NAME" Title="Update User" OnSubmit="OnSubmit">
-    <PluginFormTextInput @bind-Value="User.Username" Cols="6" Disabled Label="Username" Required />
-    <PluginFormTextInput @bind-Value="Model.Email" Cols="6" Label="Email" Placeholder="Enter Email" Required />
-    <PluginFormTextInput @bind-Value="Model.FirstName" Cols="6" Label="First Name" Placeholder="Enter First Name" />
-    <PluginFormTextInput @bind-Value="Model.LastName" Cols="6" Label="Last Name" Placeholder="Enter Last Name" />
-    <PluginFormTextInput @bind-Value="Model.PhoneNumber" Cols="6" Label="Phone Number" Placeholder="Enter Phone Number" />
-    <PluginFormCheckbox @bind-Value="Model.Enabled" Label="Enabled" />
-    <PluginFormCheckboxGroup @bind-Value="Model.RoleIds" Data="Roles" Label="Roles" TextField="Name" ValueField="Id" Required />
+    <PluginFormHiddenInput @bind-Value="Model!.Id" />
+    <PluginFormTextInput @bind-Value="Model!.Email" Cols="6" Label="Email" Placeholder="Enter Email" Required />
+    <PluginFormTextInput @bind-Value="Model!.FirstName" Cols="6" Label="First Name" Placeholder="Enter First Name" />
+    <PluginFormTextInput @bind-Value="Model!.LastName" Cols="6" Label="Last Name" Placeholder="Enter Last Name" />
+    <PluginFormTextInput @bind-Value="Model!.PhoneNumber" Cols="6" Label="Phone Number" Placeholder="Enter Phone Number" />
+    <PluginFormCheckbox @bind-Value="Model!.Enabled" Label="Enabled" />
+    <PluginFormCheckboxGroup @bind-Value="Model!.RoleIds" Data="Roles" Label="Roles" TextField="Name" ValueField="Id" />
     <PluginFormActions Cancel Submit />
 </PluginForm>

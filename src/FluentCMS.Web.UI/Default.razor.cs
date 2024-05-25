@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components.Sections;
+using Scriban;
+using Scriban.Runtime;
 
 namespace FluentCMS.Web.UI;
 
@@ -72,7 +74,9 @@ public partial class Default : IDisposable
             return;
 
         var _body = Page.Layout?.Body ?? string.Empty;
+        _body = GetParsedContent(_body);
 
+        // apply html agility pack to parse the html
         var doc = new HtmlDocument();
 
         doc.LoadHtml(_body);
@@ -82,6 +86,27 @@ public partial class Default : IDisposable
         // add children to the dom
         AddChildrenToDom(builder, children);
     };
+
+    private string GetParsedContent(string? content)
+    {
+        if (string.IsNullOrEmpty(content))
+            return string.Empty;
+
+        var scriptObject = new ScriptObject
+        {
+            ["user"] = new
+            {
+                username = UserLogin?.UserName ?? string.Empty,
+                email = UserLogin?.Email ?? string.Empty
+            }
+        };
+
+        var context = new TemplateContext();
+        context.PushGlobal(scriptObject);
+
+        var template = Template.Parse(content);
+        return template.Render(context);
+    }
 
     private void AddChildrenToDom(RenderTreeBuilder builder, IEnumerable<HtmlNode> children)
     {
