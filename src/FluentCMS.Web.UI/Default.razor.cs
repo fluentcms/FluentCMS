@@ -1,9 +1,6 @@
-﻿using FluentCMS.Web.UI.Plugins.Components;
+﻿using FluentCMS.Web.UI.DynamicRendering;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Routing;
-using Scriban;
-using Scriban.Runtime;
-using System.Text.RegularExpressions;
 
 namespace FluentCMS.Web.UI;
 
@@ -66,174 +63,37 @@ public partial class Default : IDisposable
         NavigationManager.LocationChanged -= LocationChanged;
     }
 
-    private Type GetTypeByName(string typeName)
-    {
-        var type = GetType().Assembly.GetType(typeName);
-
-        return type ??
-            throw new Exception($"Component type {typeName} not found");
-    }
-
-    protected RenderFragment ChildComponents() => builder =>
-    {
-        if (Page == null)
-            return;
-
-        var _body = Page.Layout?.Body ?? string.Empty;
-        _body = GetParsedContent(_body);
-
-        var componentTree = GetFluentCMSAttributes(_body);
-
-        var index = 0;
-        var start_index = 0;
-        for (int i = 0; i < componentTree.Count; i++)
-        {
-            var htmlMarkup = _body.Substring(start_index, int.Parse(componentTree[i]["start_index"]) - start_index);
-            builder.AddContent(index, (MarkupString)htmlMarkup);
-
-            index++;
-            var component = componentTree[i];
-            builder.OpenComponent(index, GetTypeByName(component["_type"]));
-
-            var attributeIndex = 0;
-            foreach (var attribute in component)
-            {
-                if (attribute.Key == "_type" || attribute.Key == "start_index" || attribute.Key == "end_index")
-                    continue;
-                builder.AddComponentParameter(attributeIndex, attribute.Key, attribute.Value);
-                attributeIndex++;
-            }
-
-            builder.CloseComponent();
-
-            index++;
-            start_index = int.Parse(component["end_index"]) + 1;
-        }
-
-        componentTree[componentTree.Count - 1]["end_index"] = _body.Length.ToString();
-
-        //// find [[content]] and split
-        //var htmlContents = _body.Split("[[content]]");
-
-        //if (htmlContents.Length == 1)
-        //{
-        //    builder.AddContent(0, (MarkupString)htmlContents[0]);
-        //    return;
-        //}
-
-        //var index = 0;
-        //for (int i = 0; i < htmlContents.Length - 1; i++)
-        //{
-        //    builder.AddContent(index, (MarkupString)htmlContents[i]);
-        //    index++;
-        //    builder.OpenComponent(index, typeof(Section));
-        //    builder.AddComponentParameter(0, "Name", "Main");
-        //    builder.AddComponentParameter(1, "Page", Page);
-        //    builder.CloseComponent();
-        //    index++;
-        //}
-        //builder.AddContent(index, (MarkupString)htmlContents[htmlContents.Length - 1]);
-    };
-
-    private string GetParsedContent(string? content)
+    protected RenderFragment RenderDynamicContent(string content) => builder =>
     {
         if (string.IsNullOrEmpty(content))
-            return string.Empty;
+            return;
 
-        var scriptObject = new ScriptObject
+        var processor = new LayoutProcessor(UserLogin ?? new UserLoginResponse());
+
+        var segments = processor.ProcessSegments(content);
+        var index = 0;
+        foreach (var segment in segments)
         {
-            ["user"] = new
+            if (segment.GetType() == typeof(HtmlSegment))
             {
-                username = UserLogin?.UserName ?? string.Empty,
-                email = UserLogin?.Email ?? string.Empty
+                var htmlSegment = segment as HtmlSegment;
+                builder.AddContent(index, (MarkupString)htmlSegment!.Content);
             }
-        };
-
-        var context = new TemplateContext();
-        context.PushGlobal(scriptObject);
-
-        var template = Template.Parse(content);
-        return template.Render(context);
-    }
-    public static List<Dictionary<string, string>> GetFluentCMSAttributes(string htmlContent)
-    {
-        var result = new List<Dictionary<string, string>>();
-
-        // Regular expression to find tags with fluentcms attribute
-        var tagPattern = new Regex(@"<(?<tag>\w+)(?<attributes>[^>]*?\sfluentcms\s[^>]*?)\/?>", RegexOptions.IgnoreCase);
-
-        // Regular expression to extract attributes
-        var attributePattern = new Regex(@"(?<name>\w+)=['""](?<value>[^'""]*)['""]", RegexOptions.IgnoreCase);
-
-        var matches = tagPattern.Matches(htmlContent);
-
-        foreach (Match match in matches)
-        {
-            var tagName = match.Groups["tag"].Value;
-            var attributesString = match.Groups["attributes"].Value;
-
-            var attributes = new Dictionary<string, string>
+            else if (segment.GetType() == typeof(ComponentSegment))
             {
-                { "_type", tagName }
-            };
+                var componentSegment = segment as ComponentSegment;
+                builder.OpenComponent(index, componentSegment!.Type);
 
-            var attributeMatches = attributePattern.Matches(attributesString);
+                var attributeIndex = 0;
+                foreach (var attribute in componentSegment.Attributes)
+                {
+                    builder.AddComponentParameter(attributeIndex, attribute.Key, attribute.Value);
+                    attributeIndex++;
+                }
 
-            foreach (Match attributeMatch in attributeMatches)
-            {
-                attributes[attributeMatch.Groups["name"].Value] = attributeMatch.Groups["value"].Value;
+                builder.CloseComponent();
             }
-
-            //// Adding the "fluentcms" attribute as its presence is what we are checking
-            //if (!attributes.ContainsKey("fluentcms"))
-            //{
-            //    attributes["fluentcms"] = string.Empty;
-            //}
-
-            // Add the start and end indices
-            attributes["start_index"] = match.Index.ToString();
-            attributes["end_index"] = (match.Index + match.Length - 1).ToString();
-
-            result.Add(attributes);
+            index++;
         }
-
-        return result;
-    }
-
-    //public static List<Dictionary<string, string>> GetFluentCMSAttributes(string htmlContent)
-    //{
-    //    var result = new List<Dictionary<string, string>>();
-
-    //    // Regular expression to find tags with fluentcms attribute
-    //    var tagPattern = new Regex(@"<(?<tag>\w+)(?<attributes>[^>]*?\sfluentcms\s[^>]*?)\/?>", RegexOptions.IgnoreCase);
-
-    //    // Regular expression to extract attributes
-    //    var attributePattern = new Regex(@"(?<name>\w+)=['""](?<value>[^'""]*)['""]", RegexOptions.IgnoreCase);
-
-    //    var matches = tagPattern.Matches(htmlContent);
-
-    //    foreach (Match match in matches)
-    //    {
-    //        var attributesString = match.Groups["attributes"].Value;
-
-    //        var attributes = new Dictionary<string, string>();
-    //        var attributeMatches = attributePattern.Matches(attributesString);
-
-    //        foreach (Match attributeMatch in attributeMatches)
-    //        {
-    //            attributes[attributeMatch.Groups["name"].Value] = attributeMatch.Groups["value"].Value;
-    //        }
-
-    //        //// Adding the "fluentcms" attribute as its presence is what we are checking
-    //        //if (!attributes.ContainsKey("fluentcms"))
-    //        //{
-    //        //    attributes["fluentcms"] = string.Empty;
-    //        //}
-
-    //        result.Add(attributes);
-    //    }
-
-    //    return result;
-    //}
-
+    };
 }

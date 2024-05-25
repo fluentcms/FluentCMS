@@ -8,8 +8,7 @@ public partial class Section
     // this will be set while dynamically rendering the template
     public string Name { get; set; } = default!;
 
-    [Parameter]
-    // this will be set while dynamically rendering the template
+    [CascadingParameter]
     public PageFullDetailResponse? Page { get; set; }
 
     [Inject]

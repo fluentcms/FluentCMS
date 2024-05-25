@@ -5,12 +5,10 @@
     <div class="f-section f-section-@Name.FromPascalCaseToKebabCase()">
         @foreach (var Plugin in Page.Sections[Name].OrderBy(p => p.Order))
         {
-            <CascadingValue Value="@Page">
-                <CascadingValue Value="@Plugin">
-                    <PluginContainer @key="@Plugin">
-                        <DynamicComponent Type=@GetType(Plugin) />
-                    </PluginContainer>
-                </CascadingValue>
+            <CascadingValue Value="@Plugin">
+                <PluginContainer @key="@Plugin">
+                    <DynamicComponent Type=@GetType(Plugin) />
+                </PluginContainer>
             </CascadingValue>
         }
     </div>
