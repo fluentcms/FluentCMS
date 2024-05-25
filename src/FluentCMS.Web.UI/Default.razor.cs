@@ -1,9 +1,6 @@
 ﻿using FluentCMS.Web.UI.Plugins.Components;
-using HtmlAgilityPack;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Routing;
-using Microsoft.AspNetCore.Components.Sections;
 using Scriban;
 using Scriban.Runtime;
 
@@ -76,15 +73,27 @@ public partial class Default : IDisposable
         var _body = Page.Layout?.Body ?? string.Empty;
         _body = GetParsedContent(_body);
 
-        // apply html agility pack to parse the html
-        var doc = new HtmlDocument();
+        // find [[content]] and split
+        var htmlContents = _body.Split("[[content]]");
 
-        doc.LoadHtml(_body);
+        if (htmlContents.Length == 1)
+        {
+            builder.AddContent(0, (MarkupString)htmlContents[0]);
+            return;
+        }
 
-        var children = GetChildren(doc.DocumentNode);
-
-        // add children to the dom
-        AddChildrenToDom(builder, children);
+        var index = 0;
+        for (int i = 0; i < htmlContents.Length - 1; i++)
+        {
+            builder.AddContent(index, (MarkupString)htmlContents[i]);
+            index++;
+            builder.OpenComponent(index, typeof(Section));
+            builder.AddComponentParameter(0, "Name", "Main");
+            builder.AddComponentParameter(1, "Page", Page);
+            builder.CloseComponent();
+            index++;
+        }
+        builder.AddContent(index, (MarkupString)htmlContents[htmlContents.Length - 1]);
     };
 
     private string GetParsedContent(string? content)
@@ -108,106 +117,4 @@ public partial class Default : IDisposable
         return template.Render(context);
     }
 
-    private void AddChildrenToDom(RenderTreeBuilder builder, IEnumerable<HtmlNode> children)
-    {
-        foreach (var child in children)
-        {
-            // render Inner Content
-            if (child.NodeType == HtmlNodeType.Text)
-            {
-                builder.AddContent(0, child.InnerHtml);
-                continue;
-            }
-
-            var isDynamicNode =
-                child.Attributes.Any(x => x.Name.Equals(ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase));
-            // render static node
-            if (child.NodeType == HtmlNodeType.Element && !isDynamicNode)
-            {
-                builder.OpenRegion(0);
-                builder.OpenElement(1, child.Name);
-                // add attributes
-                foreach (var attribute in child.Attributes)
-                {
-                    builder.AddAttribute(2, attribute.Name, attribute.Value);
-                }
-
-                // add children
-                if (child.HasChildNodes)
-                    AddChildrenToDom(builder, child.ChildNodes);
-                // if does not have child but have content
-
-                builder.CloseElement();
-                builder.CloseRegion();
-                continue;
-            }
-
-            // render dynamic node
-            builder.OpenRegion(0);
-            // get component Type from Node tag name
-            var type = GetType(child.OriginalName);
-            if (type != null && !type.IsSubclassOf(typeof(LayoutComponentBase)))
-            {
-                builder.OpenComponent(1, type);
-                // add attributes
-                // filter out FluentCMS
-                var attributes = child.Attributes.Where(x =>
-                    !x.Name.Equals(ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase));
-                foreach (var attribute in attributes)
-                {
-                    builder.AddComponentParameter(2, attribute.OriginalName, attribute.Value);
-                    if (type.GetProperty("Page") != null)
-                    {
-                        builder.AddComponentParameter(3, "Page", Page);
-                    }
-                }
-
-                // add children
-                // AddChildrenToDom(builder, GetChildren(child));
-                // check if has children
-                if (child.HasChildNodes)
-                {
-                    var slots = child.ChildNodes.Where(x => x.Attributes.Any(x => x.Name.Equals(SLOT_ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase)));
-
-                    foreach (var slot in slots)
-                    {
-                        builder.AddAttribute(2, slot.OriginalName, (RenderFragment)((b) => AddChildrenToDom(b, slot.ChildNodes)));
-                    }
-
-                    builder.AddAttribute(3, "ChildContent",
-                        (RenderFragment)((b) => AddChildrenToDom(b, child.ChildNodes.Where(x => x.Attributes.All(x => !x.Name.Equals(SLOT_ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase))))));
-                }
-
-                builder.CloseComponent();
-            }
-            else
-            {
-                builder.OpenComponent(1, typeof(LayoutView));
-                builder.AddComponentParameter(2, "Layout", type);
-                builder.AddComponentParameter(2, "ChildContent", (RenderFragment)((b) => AddChildrenToDom(b, child.ChildNodes)));
-                builder.CloseComponent();
-            }
-
-            builder.CloseRegion();
-        }
-    }
-
-    private static IEnumerable<HtmlNode> GetChildren(HtmlNode doc)
-    {
-        // traverse through the document
-        return doc.ChildNodes.Where(n => n.NodeType == HtmlNodeType.Element);
-    }
-
-    private static Type? GetType(string typeName)
-    {
-        // FluentCMS.Web.UI
-        var uiAssembly = typeof(Section).Assembly;
-        // FluentCMS.Web.UI.Components
-        var componentsAssembly = typeof(BaseComponent).Assembly;
-
-        var typeInfo = uiAssembly.DefinedTypes.Union(componentsAssembly.DefinedTypes)
-            .Union([typeof(SectionContent)])
-            .FirstOrDefault(x => x.Name == typeName);
-        return typeInfo;
-    }
 }

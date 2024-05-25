@@ -13,7 +13,6 @@
 
 	<ItemGroup>
 		<PackageReference Include="AutoMapper" Version="13.0.1" />
-		<PackageReference Include="HtmlAgilityPack" Version="1.11.61" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="8.0.5" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.5" />
 		<PackageReference Include="Scriban" Version="5.10.0" />
