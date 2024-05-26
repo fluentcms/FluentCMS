@@ -6,6 +6,7 @@
     <PluginFormTextInput @bind-Value="Model!.FirstName" Cols="6" Label="First Name" Placeholder="Enter First Name" />
     <PluginFormTextInput @bind-Value="Model!.LastName" Cols="6" Label="Last Name" Placeholder="Enter Last Name" />
     <PluginFormTextInput @bind-Value="Model!.PhoneNumber" Cols="6" Label="Phone Number" Placeholder="Enter Phone Number" />
+    <PluginFormTextInput @bind-Value="Model!.Password" Cols="6" Label="Password" Placeholder="Enter Password" Required type="password" />
     <PluginFormCheckbox @bind-Value="Model!.Enabled" Label="Enabled" Text="Activate account and enable system access" />
     <PluginFormCheckboxGroup @bind-Value="Model!.RoleIds" Data="Roles" Label="Roles" TextField="Name" ValueField="Id" />
     <PluginFormActions Cancel Submit />
