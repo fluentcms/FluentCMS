@@ -1,6 +1,0 @@
-import './admin-layout'
-import './auth'
-import './content'
-import './content-type'
-import './role'
-import './setup'
