@@ -9,7 +9,7 @@ public partial class UserCreatePlugin
 
     private List<RoleDetailResponse>? Roles { get; set; }
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnInitializedAsync()
     {
         if (Roles is null)
         {
