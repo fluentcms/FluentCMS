@@ -1,0 +1,53 @@
+@typeparam TValue
+
+@inherits FormElementInputs<TValue>
+
+@namespace FluentCMS.Web.UI.Plugins.Components
+
+@if (Visible)
+{
+    <PluginFormField Cols="Cols">  
+        @if (!string.IsNullOrEmpty(Label))
+        {
+            <label for="@Id" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                @Label
+                @(Required ? "\u00A0*" : "")
+            </label>
+        }
+        @if (_isMultipleSelect)
+        {
+            <select @attributes="AdditionalAttributes"
+                    class="@CssClass bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                    disabled="@Disabled"
+                    id="@Id"
+                    multiple="@_isMultipleSelect"
+                    name="@NameAttributeValue"
+                    value="@BindConverter.FormatValue(CurrentValue)?.ToString()"
+                    @onchange="EventCallback.Factory.CreateBinder<string?[]?>(this, SetCurrentValueAsStringArray, default)">
+                @if (!string.IsNullOrEmpty(this.Placeholder))
+                {
+                    <option disabled selected value="">@Placeholder</option>
+                }
+                @ChildContent
+            </select>
+        }
+        else
+        {
+            <select @attributes="AdditionalAttributes"
+                    class="@CssClass bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                    disabled="@Disabled"
+                    id="@Id"
+                    multiple="@_isMultipleSelect"
+                    name="@NameAttributeValue"
+                    value="@CurrentValueAsString"
+                    @onchange="EventCallback.Factory.CreateBinder<string?>(this, __value => CurrentValueAsString = __value, default)">
+                @if (!string.IsNullOrEmpty(this.Placeholder))
+                {
+                    <option disabled selected value="">@Placeholder</option>
+                }
+                @ChildContent
+            </select>
+        }
+        <div class="mb-5"></div>
+    </PluginFormField>
+}

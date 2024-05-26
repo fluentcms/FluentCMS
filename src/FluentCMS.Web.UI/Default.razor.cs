@@ -1,11 +1,6 @@
-﻿using FluentCMS.Web.UI.Plugins.Components;
-using HtmlAgilityPack;
+﻿using FluentCMS.Web.UI.DynamicRendering;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Routing;
-using Microsoft.AspNetCore.Components.Sections;
-using Scriban;
-using Scriban.Runtime;
 
 namespace FluentCMS.Web.UI;
 
@@ -68,146 +63,37 @@ public partial class Default : IDisposable
         NavigationManager.LocationChanged -= LocationChanged;
     }
 
-    protected RenderFragment ChildComponents() => builder =>
-    {
-        if (Page == null)
-            return;
-
-        var _body = Page.Layout?.Body ?? string.Empty;
-        _body = GetParsedContent(_body);
-
-        // apply html agility pack to parse the html
-        var doc = new HtmlDocument();
-
-        doc.LoadHtml(_body);
-
-        var children = GetChildren(doc.DocumentNode);
-
-        // add children to the dom
-        AddChildrenToDom(builder, children);
-    };
-
-    private string GetParsedContent(string? content)
+    protected RenderFragment RenderDynamicContent(string content) => builder =>
     {
         if (string.IsNullOrEmpty(content))
-            return string.Empty;
+            return;
 
-        var scriptObject = new ScriptObject
+        var processor = new LayoutProcessor(UserLogin ?? new UserLoginResponse());
+
+        var segments = processor.ProcessSegments(content);
+        var index = 0;
+        foreach (var segment in segments)
         {
-            ["user"] = new
+            if (segment.GetType() == typeof(HtmlSegment))
             {
-                username = UserLogin?.UserName ?? string.Empty,
-                email = UserLogin?.Email ?? string.Empty
+                var htmlSegment = segment as HtmlSegment;
+                builder.AddContent(index, (MarkupString)htmlSegment!.Content);
             }
-        };
-
-        var context = new TemplateContext();
-        context.PushGlobal(scriptObject);
-
-        var template = Template.Parse(content);
-        return template.Render(context);
-    }
-
-    private void AddChildrenToDom(RenderTreeBuilder builder, IEnumerable<HtmlNode> children)
-    {
-        foreach (var child in children)
-        {
-            // render Inner Content
-            if (child.NodeType == HtmlNodeType.Text)
+            else if (segment.GetType() == typeof(ComponentSegment))
             {
-                builder.AddContent(0, child.InnerHtml);
-                continue;
-            }
+                var componentSegment = segment as ComponentSegment;
+                builder.OpenComponent(index, componentSegment!.Type);
 
-            var isDynamicNode =
-                child.Attributes.Any(x => x.Name.Equals(ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase));
-            // render static node
-            if (child.NodeType == HtmlNodeType.Element && !isDynamicNode)
-            {
-                builder.OpenRegion(0);
-                builder.OpenElement(1, child.Name);
-                // add attributes
-                foreach (var attribute in child.Attributes)
+                var attributeIndex = 0;
+                foreach (var attribute in componentSegment.Attributes)
                 {
-                    builder.AddAttribute(2, attribute.Name, attribute.Value);
-                }
-
-                // add children
-                if (child.HasChildNodes)
-                    AddChildrenToDom(builder, child.ChildNodes);
-                // if does not have child but have content
-
-                builder.CloseElement();
-                builder.CloseRegion();
-                continue;
-            }
-
-            // render dynamic node
-            builder.OpenRegion(0);
-            // get component Type from Node tag name
-            var type = GetType(child.OriginalName);
-            if (type != null && !type.IsSubclassOf(typeof(LayoutComponentBase)))
-            {
-                builder.OpenComponent(1, type);
-                // add attributes
-                // filter out FluentCMS
-                var attributes = child.Attributes.Where(x =>
-                    !x.Name.Equals(ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase));
-                foreach (var attribute in attributes)
-                {
-                    builder.AddComponentParameter(2, attribute.OriginalName, attribute.Value);
-                    if (type.GetProperty("Page") != null)
-                    {
-                        builder.AddComponentParameter(3, "Page", Page);
-                    }
-                }
-
-                // add children
-                // AddChildrenToDom(builder, GetChildren(child));
-                // check if has children
-                if (child.HasChildNodes)
-                {
-                    var slots = child.ChildNodes.Where(x => x.Attributes.Any(x => x.Name.Equals(SLOT_ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase)));
-
-                    foreach (var slot in slots)
-                    {
-                        builder.AddAttribute(2, slot.OriginalName, (RenderFragment)((b) => AddChildrenToDom(b, slot.ChildNodes)));
-                    }
-
-                    builder.AddAttribute(3, "ChildContent",
-                        (RenderFragment)((b) => AddChildrenToDom(b, child.ChildNodes.Where(x => x.Attributes.All(x => !x.Name.Equals(SLOT_ATTRIBUTE, StringComparison.InvariantCultureIgnoreCase))))));
+                    builder.AddComponentParameter(attributeIndex, attribute.Key, attribute.Value);
+                    attributeIndex++;
                 }
 
                 builder.CloseComponent();
             }
-            else
-            {
-                builder.OpenComponent(1, typeof(LayoutView));
-                builder.AddComponentParameter(2, "Layout", type);
-                builder.AddComponentParameter(2, "ChildContent", (RenderFragment)((b) => AddChildrenToDom(b, child.ChildNodes)));
-                builder.CloseComponent();
-            }
-
-            builder.CloseRegion();
+            index++;
         }
-    }
-
-    private static IEnumerable<HtmlNode> GetChildren(HtmlNode doc)
-    {
-        // traverse through the document
-        return doc.ChildNodes.Where(n => n.NodeType == HtmlNodeType.Element);
-    }
-
-    private static Type? GetType(string typeName)
-    {
-        // FluentCMS.Web.UI
-        var uiAssembly = typeof(Section).Assembly;
-        // FluentCMS.Web.UI.Components
-        var componentsAssembly = typeof(BaseComponent).Assembly;
-
-        var typeInfo = uiAssembly.DefinedTypes.Union(componentsAssembly.DefinedTypes)
-            .Union([typeof(SectionContent)])
-            .FirstOrDefault(x => x.Name == typeName);
-        return typeInfo;
-    }
+    };
 }

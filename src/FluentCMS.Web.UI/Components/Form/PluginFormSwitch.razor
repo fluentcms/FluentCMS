@@ -12,23 +12,24 @@
                 @(Required ? "\u00A0*" : "")
             </label>
         }
-        <div class="flex items-center">
+        <label class="inline-flex items-center cursor-pointer">
             <input @attributes="AdditionalAttributes"
                    checked="@BindConverter.FormatValue(CurrentValue)"
-                   class="@CssClass w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:focus:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                   class="@CssClass sr-only peer"
                    disabled="@Disabled"
                    id="@Id"
                    name="@NameAttributeValue"
                    type="checkbox"
                    value="@bool.TrueString"
                    @onchange="EventCallback.Factory.CreateBinder<bool>(this, __value => CurrentValue = __value, CurrentValue)" />
+            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:w-5 after:h-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
             @if (!string.IsNullOrEmpty(Text))
             {
-                <label for="@Id" class="ms-2 text-sm text-gray-500 dark:text-gray-400">
+                <span class="ms-3 text-sm text-gray-500 dark:text-gray-400">
                     @Text
-                </label>
+                </span>
             }
-        </div>
+        </label>
         <div class="mb-5"></div>
     </PluginFormField>
 }

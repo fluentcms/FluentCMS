@@ -2,41 +2,29 @@ namespace FluentCMS.Web.UI.Plugins.Settings;
 
 public partial class SettingsViewPlugin
 {
-    [Inject]
-    GlobalSettingsClient GlobalSettingsClient { get; set; } = default!;
 
-    string? SuperUser { get; set; }
-    string? Message { get; set; }
+    public const string FORM_NAME = "UserCreateForm";
 
-    GlobalSettings View = new();
-    GlobalSettingsUpdateRequest Model = new();
+    [SupplyParameterFromForm(FormName = FORM_NAME)]
+    private GlobalSettingsUpdateRequest? Model { get; set; }
 
-    protected override async Task OnInitializedAsync()
+    private List<UserDetailResponse>? Users { get; set; }
+
+    protected override async Task OnParametersSetAsync()
     {
-        await base.OnInitializedAsync();
-        var result = await GlobalSettingsClient!.GetAsync();
-
-        if (result?.Data != null)
+        if (Users is null)
         {
-            View = result.Data;
-            Model = new()
-            {
-                SuperUsers = View.SuperUsers
-            };
-            SuperUser = View.SuperUsers?.ToList<string>().First();
+            var usersResponse = await GetApiClient<UserClient>().GetAllAsync();
+            Users = usersResponse?.Data?.ToList() ?? [];
         }
+        Model ??= new();
     }
 
-    async Task OnSubmit()
+    private async Task OnSubmit()
     {
-        try
-        {
-            await GlobalSettingsClient!.UpdateAsync(new() { SuperUsers = [SuperUser!] });
-            Message = "Done!";
-        }
-        catch (Exception ex)
-        {
-            Message = ex.ToString();
-        }
+        await GetApiClient<GlobalSettingsClient>().UpdateAsync(Model);
+        NavigateBack();
     }
 }
+
+
