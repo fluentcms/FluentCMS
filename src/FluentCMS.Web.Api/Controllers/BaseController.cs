@@ -1,10 +1,13 @@
-﻿using FluentCMS.Web.Api.Attributes;
+﻿using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
 
 [ApiController]
 [Produces("application/json")]
-[JwtAuthorize]
+// TODO: Uncomment the following line to enable JWT authorization
+// after resolving API client issue in server interactive render mode
+//[JwtAuthorize]
+[AllowAnonymous]
 public abstract class BaseController
 {
     public static ApiResult<T> Ok<T>(T item)
