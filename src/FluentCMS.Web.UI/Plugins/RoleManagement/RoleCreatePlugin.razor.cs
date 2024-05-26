@@ -16,13 +16,15 @@ public partial class RoleCreatePlugin
         var policiesResponse = await GetApiClient<RoleClient>().GetPoliciesAsync();
         Policies = policiesResponse?.Data?.ToList() ?? [];
         
-        ModelPolicies = Policies.Select(x => {
-            Console.WriteLine(x.Area);
-            return new Policy {
-                Area = x.Area,
-                Actions = []
-            };
-        }).ToList();
+        if(ModelPolicies.Count == 0) {
+            ModelPolicies = Policies.Select(x => {
+                Console.WriteLine(x.Area);
+                return new Policy {
+                    Area = x.Area,
+                    Actions = []
+                };
+            }).ToList();
+        }
     }
 
     private async Task OnSubmit()
