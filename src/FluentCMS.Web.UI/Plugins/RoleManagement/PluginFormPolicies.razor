@@ -8,10 +8,13 @@
     </label>
     <Card>
         <CardBody>
-            @for(var index = 0; index < Policies.Count - 1; index++)
+            @for(var i = 0; i < Policies.Count; i++)
             {
-                <span>@Policies[index].Area</span>
-                <PluginFormCheckboxGroup @bind-Value="_value[index].Actions" Data="Policies[index].Actions" />
+                int index = i;   
+                <div>
+                    <Divider>@Policies[index].Area</Divider>
+                    <PluginFormCheckboxGroup @bind-Value="@Value[index].Actions" Data="Policies[index].Actions" />
+                </div>
             }
         </CardBody>
     </Card>

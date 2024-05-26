@@ -12,10 +12,6 @@ public partial class PluginFormPolicies
     public List<Policy> Policies { get; set; } = [];   
 
     [Parameter]
-    public ICollection<Policy> Value { get; set; } = [];
+    public List<Policy> Value { get; set; } = [];
 
-    protected override void OnInitialized() 
-    {
-        _value = Policies.ToList();
-    }
 }
