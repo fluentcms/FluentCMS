@@ -9,14 +9,20 @@
     <ChildContent>
         <DataTable Items="Users">
             <DataTableItem Label="UserName">@context.Username</DataTableItem>
+            <DataTableItem Label="First Name">@context.FirstName</DataTableItem>
+            <DataTableItem Label="Last Name">@context.LastName</DataTableItem>
             <DataTableItem Label="Email">@context.Email</DataTableItem>
-            <DataTableItem Label="Full Name">@context.FirstName @context.LastName</DataTableItem>
             <DataTableItem Label="Phone">@context.PhoneNumber</DataTableItem>
-            <DataTableItem>
+            <DataTableItem Label="Status">
                 <Badge Color="Color.Success" Visible="@context.Enabled">Enable</Badge>
                 <Badge Color="Color.Danger" Visible="@(!context.Enabled)">Disable</Badge>
             </DataTableItem>
-            <DataTableItem Label="Last Login">@context.LoginAt</DataTableItem>
+            <DataTableItem Label="Create Date">@context.CreatedAt</DataTableItem>
+            <DataTableItem Label="Last Login Date">@context.LoginAt</DataTableItem>
+            <DataTableItem Label="Login Count">@context.LoginCount</DataTableItem>
+            <DataTableItem Label="Roles">
+                @string.Join(',', context.Roles?.Select(_ => _.Name).Where(name => !string.IsNullOrEmpty(name)) ?? [])
+            </DataTableItem>
             <DataTableItem>
                 <Button Color="Color.Primary" Href="@GetUrl("Update User", new { id = @context.Id })" Outline>
                     <Icon Name="IconName.Edit" />Edit

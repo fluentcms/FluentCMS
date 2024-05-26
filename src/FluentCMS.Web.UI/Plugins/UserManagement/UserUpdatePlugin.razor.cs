@@ -19,10 +19,6 @@ public partial class UserUpdatePlugin
             var rolesResponse = await GetApiClient<RoleClient>().GetAllAsync();
             Roles = rolesResponse?.Data?.ToList() ?? [];
         }
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
         if (Model is null)
         {
             var userResponse = await GetApiClient<UserClient>().GetAsync(Id);
