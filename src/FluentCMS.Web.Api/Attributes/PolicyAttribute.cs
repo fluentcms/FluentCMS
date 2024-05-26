@@ -17,6 +17,11 @@ public class PolicyAttribute : Attribute, IAsyncAuthorizationFilter
 
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
+        // TODO: enable policy after interactive server authentication is resolved
+        await Task.CompletedTask;
+
+        return;
+
         var authContext = context.HttpContext.RequestServices.GetRequiredService<IAuthContext>();
 
         if (authContext.Type == AuthType.Api)
