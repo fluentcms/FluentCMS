@@ -56,12 +56,12 @@ public partial class PluginFormSelect<TValue>
             }
 
             result = default;
-            validationErrorMessage = $"The {this.DisplayName ?? this.FieldIdentifier.FieldName} field is not valid.";
+            validationErrorMessage = $"The {DisplayName ?? FieldIdentifier.FieldName} field is not valid.";
             return false;
         }
         catch (InvalidOperationException ex)
         {
-            throw new InvalidOperationException($"{this.GetType()} does not support the type '{typeof(TValue)}'.", ex);
+            throw new InvalidOperationException($"{GetType()} does not support the type '{typeof(TValue)}'.", ex);
         }
     }
 
