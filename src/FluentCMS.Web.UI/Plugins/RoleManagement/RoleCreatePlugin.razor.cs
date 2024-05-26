@@ -5,7 +5,7 @@ public partial class RoleCreatePlugin
     public const string FORM_NAME = "RoleCreateForm";
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
-    private RoleCreateRequest Model { get; set; } = new();
+    private RoleCreateRequest? Model { get; set; } = new();
 
     private List<Policy> Policies { get; set; } = [];
 
@@ -13,12 +13,16 @@ public partial class RoleCreatePlugin
 
     protected override async Task OnInitializedAsync()
     {
-        var policiesResponse = await GetApiClient<RoleClient>().GetPoliciesAsync();
-        Policies = policiesResponse?.Data?.ToList() ?? [];
-        
-        if(ModelPolicies.Count == 0) {
+        if (Policies.Count == 0)
+        {
+            var policiesResponse = await GetApiClient<RoleClient>().GetPoliciesAsync();
+            Policies = policiesResponse?.Data?.ToList() ?? [];
+        }
+
+        if(ModelPolicies.Count == 0)
+        {
+            Model.Policies = [];
             ModelPolicies = Policies.Select(x => {
-                Console.WriteLine(x.Area);
                 return new Policy {
                     Area = x.Area,
                     Actions = []
@@ -31,14 +35,9 @@ public partial class RoleCreatePlugin
     {
         Model.Policies = [];
 
-        Console.WriteLine($"OnSubmit {Model.Policies.Count} - {ModelPolicies.Count}");
-        Console.WriteLine($"OnSubmit {ModelPolicies[0].Actions.Count}");
         foreach(var policy in ModelPolicies) {
-            Console.WriteLine(policy.Actions.Count);
             Model.Policies.Add(policy);
         }
-        Console.WriteLine($"Model.Policies {Model.Policies.Count}");
-
         
         await GetApiClient<RoleClient>().CreateAsync(Model);
         NavigateBack();
