@@ -25,7 +25,7 @@
                     <TableBody id="roleListTable">
                         @foreach (var role in Roles)
                         {
-                            <TableRow OnClick="@(evt => TableRowDefaultAction(role))">
+                            <TableRow @onclick="@(evt => TableRowDefaultAction(role))">
                                 <TableCell> @role.Name </TableCell>
                                 <TableCell> @role.Description </TableCell>
                                 <TableCell>
@@ -52,7 +52,7 @@
                                                 Ghost="true"
                                                 Size="ButtonSize.Small"
                                                 StopPropagation="true"
-                                                OnClick="@(evt => OnDelete(role))">
+                                                @onclick="@(evt => OnDelete(role))">
 
                                             <Icon Name="IconName.Delete" />
                                         </Button>
