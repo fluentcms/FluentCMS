@@ -2,13 +2,15 @@
 
 public partial class ForgotPasswordViewPlugin
 {
-    private UserSendPasswordResetTokenRequest Model { get; } = new();
+    public const string FORM_NAME = "ForgotPasswordForm";
 
+    [SupplyParameterFromForm(FormName = FORM_NAME)]
+    private UserSendPasswordResetTokenRequest Model { get; set; } = new();
 
     private async Task OnSubmit()
     {
         await GetApiClient<AccountClient>().SendPasswordResetTokenAsync(Model);
 
-        NavigationManager.NavigateTo("/auth/reset-password?email=" + Model.Email);
+        NavigateTo("/auth/reset-password?email=" + Model.Email);
     }
 }

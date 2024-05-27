@@ -2,16 +2,18 @@
 
 public partial class ResetPasswordViewPlugin
 {
+    public const string FORM_NAME = "ResetPasswordForm";
+
     [SupplyParameterFromQuery(Name = nameof(Email))]
     public string Email { get; set; } = default!;
 
+    [SupplyParameterFromForm(FormName = FORM_NAME)]
     private UserValidatePasswordResetTokenRequest Model { get; set; } = new();
 
     private async Task OnSubmit()
     {
         await GetApiClient<AccountClient>().ValidatePasswordResetTokenAsync(Model);
-
-        NavigationManager.NavigateTo("/auth/login", true);
+        NavigateTo("/auth/login");
     }
 
     protected override async Task OnInitializedAsync()
@@ -21,5 +23,5 @@ public partial class ResetPasswordViewPlugin
             throw new ArgumentNullException(nameof(Email));
         }
         Model.Email = Email;
-    }
+    } 
 }

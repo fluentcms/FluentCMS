@@ -3,7 +3,7 @@
 $button: $prefix + "button";
 
 .#{$button} {
-    @apply inline-flex items-center gap-2 text-center font-medium rounded-lg relative focus:z-10 focus:outline-none;
+    @apply inline-flex items-center gap-2 text-center font-medium rounded-lg relative focus:z-10 focus:outline-none justify-center whitespace-nowrap;
 
     &-block-true {
         @apply w-full;
