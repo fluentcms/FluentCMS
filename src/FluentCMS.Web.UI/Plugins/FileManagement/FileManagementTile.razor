@@ -25,16 +25,14 @@
                     <Button Color="Color.Default"
                             Outline="true"
                             Size="ButtonSize.Small"
-                            StopPropagation="true"
-                            OnClick="() => OnEdit.InvokeAsync()">
+                            @onclick="() => OnEdit.InvokeAsync()">
                         <Icon Name="IconName.Edit" />
                     </Button>
                 }
                 <Button Color="Color.Danger"
                         Outline="true"
                         Size="ButtonSize.Small"
-                        StopPropagation="true"
-                        OnClick="() => OnDelete.InvokeAsync()">
+                        @onclick="() => OnDelete.InvokeAsync()">
                     <Icon Name="IconName.Delete" />
                 </Button>
             </ButtonGroup>

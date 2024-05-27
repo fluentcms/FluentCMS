@@ -9,8 +9,7 @@
         <a @attributes="AdditionalAttributes"
            class="@this.GetClasses()"
            disabled="@Disabled"
-           href="@Href"
-           @onclick:stopPropagation="StopPropagation">
+           href="@Href">
             @ChildContent
         </a>
     }
@@ -19,9 +18,7 @@
         <button @attributes="AdditionalAttributes"
                 class="@this.GetClasses()"
                 disabled="@Disabled"
-                type="@Type.ToString()"
-                @onclick:stopPropagation="StopPropagation"
-                @onclick="OnClick">
+                type="@Type.ToString()">
             @ChildContent
         </button>
     }
