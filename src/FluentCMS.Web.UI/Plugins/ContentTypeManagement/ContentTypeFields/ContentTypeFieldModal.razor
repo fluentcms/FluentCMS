@@ -14,7 +14,7 @@
                             Ghost="true"
                             Icon="true"
                             Size="ButtonSize.Small"
-                            OnClick="Back">
+                            @onclick="Back">
                         <Icon Name="IconName.Previous" />
                     </Button>
                     <span>&nbsp;&nbsp;</span>
@@ -65,8 +65,7 @@
                                 Type="ButtonType.Submit">
                             Submit
                         </Button>
-                        <Button id="contentTypeFieldModalCancelButton"
-                                OnClick="() => OnCancel.InvokeAsync()">
+                        <Button id="contentTypeFieldModalCancelButton" @onclick="() => OnCancel.InvokeAsync()">
                             Cancel
                         </Button>
                     </ButtonGroup>

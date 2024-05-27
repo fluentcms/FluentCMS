@@ -5,8 +5,7 @@
 @if(Visible)
 {
     <tr @attributes="AdditionalAttributes"
-        class="@this.GetClasses()"
-        @onclick="OnClick">
+        class="@this.GetClasses()">
         @ChildContent
     </tr>
 }

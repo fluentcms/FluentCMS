@@ -32,7 +32,7 @@
                         <TableBody id="contentListTable">
                             @foreach (var item in Data)
                             {
-                                <TableRow OnClick="@(evt => TableRowDefaultAction(item))">
+                                <TableRow @onclick="@(evt => TableRowDefaultAction(item))">
                                     @foreach (var field in ContentType.Fields.ToList())
                                     {
                                         <TableCell>
@@ -44,16 +44,14 @@
                                             <Button data-test="preview-btn"
                                                     Ghost="true"
                                                     Href="@NavigationManager.Plugin("Content Management", "Content Detail", new { contentTypeSlug = ContentTypeSlug, id = item.Id })"
-                                                    Size="ButtonSize.Small"
-                                                    StopPropagation="true">
+                                                    Size="ButtonSize.Small">
                                                 <Icon Name="IconName.Eye" />
                                             </Button>
                                             <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
                                             <Button data-test="edit-btn"
                                                     Ghost="true"
                                                     Href="@NavigationManager.Plugin("Content Management", "Update Content", new { contentTypeSlug = ContentTypeSlug, id = item.Id })"
-                                                    Size="ButtonSize.Small"
-                                                    StopPropagation="true">
+                                                    Size="ButtonSize.Small">
                                                 <Icon Name="IconName.Edit" />
                                             </Button>
                                             <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
@@ -61,8 +59,7 @@
                                             <Button data-test="delete-btn"
                                                     Ghost="true"
                                                     Size="ButtonSize.Small"
-                                                    StopPropagation="true"
-                                                    OnClick="@(evt => OnDelete(item))">
+                                                    @onclick="@(evt => OnDelete(item))">
                                                 <Icon Name="IconName.Delete" />
                                             </Button>
                                             <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>

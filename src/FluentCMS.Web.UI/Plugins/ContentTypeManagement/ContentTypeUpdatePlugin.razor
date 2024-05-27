@@ -41,7 +41,7 @@
                                     <TableBody>
                                         @foreach (var field in Fields)
                                         {
-                                            <TableRow OnClick="() => OnEditField(field)">
+                                            <TableRow @onclick="() => OnEditField(field)">
                                                 <TableCell>
                                                     @field.Slug
                                                 </TableCell>
@@ -55,16 +55,14 @@
                                                     <ButtonGroup>
                                                         <Button Ghost="true"
                                                                 Size="ButtonSize.Small"
-                                                                StopPropagation="true"
-                                                                OnClick="() => OnDeleteField(field.Slug)">
+                                                                @onclick="() => OnDeleteField(field.Slug)">
                                                             <Icon Name="IconName.Delete" />
                                                         </Button>
                                                         <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
 
                                                         <Button Ghost="true"
                                                                 Size="ButtonSize.Small"
-                                                                StopPropagation="true"
-                                                                OnClick="() => OnEditField(field)">
+                                                                @onclick="() => OnEditField(field)">
                                                             <Icon Name="IconName.Edit" />
                                                         </Button>
                                                         <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
@@ -76,7 +74,7 @@
                                             <TableCell colspan="4">
                                                 <Button Color="Color.Primary"
                                                         Ghost="true"
-                                                        OnClick="OpenAddFieldModal">
+                                                        @onclick="OpenAddFieldModal">
                                                     <Icon Name="IconName.Plus" />
                                                     Add Field
                                                 </Button>
@@ -95,8 +93,7 @@
                             }
                         </CardBody>
                         <CardActions>
-                            <Button id="contentTypeUpdateCancelButton"
-                                    OnClick="GoBack">
+                            <Button id="contentTypeUpdateCancelButton" @onclick="GoBack">
                                 Cancel
                             </Button>
                             <Button Color="Color.Primary"
