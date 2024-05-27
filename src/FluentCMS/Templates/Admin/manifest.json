@@ -17,6 +17,12 @@
             "IsDefault": false
         }
     ],
+    "Roles": [
+        {
+            "Name": "Admin",
+            "Description": "Default administrators role"
+        }
+    ],
     "PluginDefinitions": [
         {
             "Name": "Login",
