@@ -9477,6 +9477,9 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("enabled")]
         public bool Enabled { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("locked")]
+        public bool Locked { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("roleIds")]
         [System.ComponentModel.DataAnnotations.Required]
         public System.Collections.Generic.ICollection<System.Guid> RoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
