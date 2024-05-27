@@ -12,20 +12,35 @@
             <DataTableItem Label="First Name">@context.FirstName</DataTableItem>
             <DataTableItem Label="Last Name">@context.LastName</DataTableItem>
             <DataTableItem Label="Email">@context.Email</DataTableItem>
+            <DataTableItem Label="Email Confirmed">
+                <Badge Color="Color.Success" Visible="@context.EmailConfirmed">YES</Badge>
+                <Badge Color="Color.Danger" Visible="@(!context.EmailConfirmed)">NO</Badge>
+            </DataTableItem>
             <DataTableItem Label="Phone">@context.PhoneNumber</DataTableItem>
-            <DataTableItem Label="Status">
-                <Badge Color="Color.Success" Visible="@context.Enabled">Enable</Badge>
-                <Badge Color="Color.Danger" Visible="@(!context.Enabled)">Disable</Badge>
+            <DataTableItem Label="Phone Confirmed">
+                <Badge Color="Color.Success" Visible="@context.PhoneConfirmed">YES</Badge>
+                <Badge Color="Color.Danger" Visible="@(!context.PhoneConfirmed)">NO</Badge>
+            </DataTableItem>
+            <DataTableItem Label="Enable">
+                <Badge Color="Color.Success" Visible="@context.Enabled">YES</Badge>
+                <Badge Color="Color.Danger" Visible="@(!context.Enabled)">NO</Badge>   
             </DataTableItem>
             <DataTableItem Label="Create Date">@context.CreatedAt</DataTableItem>
             <DataTableItem Label="Last Login Date">@context.LoginAt</DataTableItem>
             <DataTableItem Label="Login Count">@context.LoginCount</DataTableItem>
+            <DataTableItem Label="Locked">
+                <Badge Color="Color.Success" Visible="@(!context.Locked)">NO</Badge>
+                <Badge Color="Color.Danger" Visible="@context.Locked">YES</Badge>
+            </DataTableItem>
             <DataTableItem Label="Roles">
-                @string.Join(',', context.Roles?.Select(_ => _.Name).Where(name => !string.IsNullOrEmpty(name)) ?? [])
+                @foreach (var role in context.Roles?.Where(_ => !string.IsNullOrEmpty(_.Name)) ?? [])
+                {
+                    <Badge Color="Color.Info">@role.Name</Badge>
+                }
             </DataTableItem>
             <DataTableItem>
-                <Button Color="Color.Primary" Href="@GetUrl("Update User", new { id = @context.Id })" Outline>
-                    <Icon Name="IconName.Edit" />Edit
+                <Button Color="Color.Primary" Href="@GetUrl("Update User", new { id = @context.Id })">
+                    <Icon Name="IconName.EditOutline" />Edit User
                 </Button>
             </DataTableItem>
         </DataTable>

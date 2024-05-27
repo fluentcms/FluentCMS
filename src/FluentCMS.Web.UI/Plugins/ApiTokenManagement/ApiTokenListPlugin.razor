@@ -27,7 +27,7 @@
                     <TableBody>
                         @foreach (var token in Tokens)
                         {
-                            <TableRow OnClick="@(evt => TableRowDefaultAction(token))">
+                            <TableRow @onclick="@(evt => TableRowDefaultAction(token))">
                                 <TableCell> @token.Name </TableCell>
                                 <TableCell> @token.Description </TableCell>
                                 <TableCell> @token.Duration </TableCell>
@@ -47,7 +47,7 @@
                                                 Ghost="true"
                                                 Size="ButtonSize.Small"
                                                 StopPropagation="true"
-                                                OnClick="@(evt => OnDelete(token))">
+                                                @onclick="@(evt => OnDelete(token))">
                                             <Icon Name="IconName.Delete" />
                                         </Button>
                                         <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>

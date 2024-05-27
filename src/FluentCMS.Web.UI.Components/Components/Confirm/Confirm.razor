@@ -20,11 +20,11 @@
                     <ButtonGroup>
                         <Button Color="Color.Danger"
                                 id="@(string.IsNullOrEmpty(Id) ? null : Id + "ConfirmButton")"
-                                OnClick="Confirmation">
+                                @onclick="Confirmation">
                             Yes, I'm sure
                         </Button>
                         <Button id="@(string.IsNullOrEmpty(Id) ? null : Id + "CancelButton")"
-                                OnClick="Close">
+                                @onclick="Close">
                             No, cancel
                         </Button>
                     </ButtonGroup>

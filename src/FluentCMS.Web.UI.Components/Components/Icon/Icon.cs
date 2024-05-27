@@ -23,6 +23,7 @@ public enum IconName
     Documentation,
     Eye,
     Edit,
+    EditOutline,
     ExclamationCircle,
     File,
     Filter,

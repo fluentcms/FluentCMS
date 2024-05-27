@@ -8,11 +8,10 @@ public partial class RoleUpdatePlugin
     private Guid Id { get; set; }
 
     private RoleUpdateRequest Model { get; set; } = new();
-    private List<Policy>? ModelPolicies { get; set; }
 
-    private List<Policy> Policies { get; set; }
+    private List<Policy>? Policies { get; set; } 
 
-    private RoleDetailResponse Role { get; set; } = new();
+    private RoleDetailResponse? Role { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -22,12 +21,17 @@ public partial class RoleUpdatePlugin
             Policies = policiesResponse?.Data?.ToList() ?? [];
         }
 
-        if(ModelPolicies is null)
+        if(Role is null)
         {
             var rolesResponse = await GetApiClient<RoleClient>().GetAllAsync();
             Role = rolesResponse.Data.ToList().Find(x => x.Id == Id);
             Model = Mapper.Map<RoleUpdateRequest>(Role);
-            ModelPolicies = Model.Policies.ToList();
+
+            Model.Policies = Policies.Select(x => new Policy
+            {
+                Area = x.Area,
+                Actions = Role.Policies.FirstOrDefault(y => y.Area == x.Area)?.Actions ?? []
+            }).ToArray();
         }
     }
 

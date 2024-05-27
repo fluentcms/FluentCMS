@@ -10,6 +10,7 @@ public class SetupManager
     private static bool? _initialized;
 
     private readonly ISiteService _siteService;
+    private readonly IRoleService _roleService;
     private readonly IGlobalSettingsService _globalSettingsService;
     private readonly IPluginDefinitionService _pluginDefinitionService;
     private readonly ILayoutService _layoutService;
@@ -34,6 +35,7 @@ public class SetupManager
     public SetupManager(
         IConfiguration configuration,
         ISiteService siteService,
+        IRoleService roleService,
         IGlobalSettingsService globalSettingsService,
         IPluginDefinitionService pluginDefinitionService,
         ILayoutService layoutService,
@@ -47,6 +49,7 @@ public class SetupManager
             throw new AppException(ExceptionCodes.SetupSettingsHostingEnvironmentIsNull);
 
         _siteService = siteService;
+        _roleService = roleService;
         _globalSettingsService = globalSettingsService;
         _pluginDefinitionService = pluginDefinitionService;
         _layoutService = layoutService;
@@ -206,7 +209,16 @@ public class SetupManager
         await InitLayouts();
         await InitPluginDefinitions();
         await InitSite();
+        await InitRoles();
         await InitPages();
+
+    }
+    private async Task InitRoles()
+    {
+        foreach (var role in _adminTemplate.Roles)
+        {
+            await _roleService.Create(role);
+        }
     }
 
     private async Task InitSite()
