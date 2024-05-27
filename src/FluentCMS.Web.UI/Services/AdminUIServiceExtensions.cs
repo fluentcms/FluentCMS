@@ -21,6 +21,7 @@ public static class AdminUIServiceExtensions
         services.AddApiClients(configuration);
         services.AddScoped<SetupManager>();
         services.AddScoped<AuthManager>();
+        services.AddCascadingAuthenticationState();
 
         return services;
     }
