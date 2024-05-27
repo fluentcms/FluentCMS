@@ -3,19 +3,33 @@
 <PluginBody Title="Roles List">
     <ActionsFragment>
         <Button Href="@GetUrl("Create Role")" Color="Color.Primary">
-            <Icon Name="IconName.Plus" />Add Role
+            <Icon Name="IconName.Plus" />Add New Role
         </Button>
     </ActionsFragment>
     <ChildContent>
-        <DataTable Items="Roles">
-            <DataTableItem Label="Name">@context.Name</DataTableItem>
-            <DataTableItem Label="Description">@context.Description</DataTableItem>
-            <DataTableItem>
-                <Button Color="Color.Primary" Href="@GetUrl("Update Role", new { id = @context.Id })" Outline>
-                    <Icon Name="IconName.Edit" />Edit
+        @if(Roles != null && Roles.Count > 0)
+        {
+            <DataTable Items="Roles">
+                <DataTableItem Label="Name">@context.Name</DataTableItem>
+                <DataTableItem Label="Description">@context.Description</DataTableItem>
+                <DataTableItem>
+                    <Button Color="Color.Primary" Href="@GetUrl("Update Role", new { id = @context.Id })" Outline>
+                        <Icon Name="IconName.Edit" />Edit
+                    </Button>
+                </DataTableItem>
+            </DataTable>
+        }
+        else 
+        {
+            <EmptyState Message="No Roles Found!">
+                <Button Color="Color.Primary"
+                        Href="@GetUrl("Create Role")"
+                        Size="ButtonSize.Small">
+                    <Icon Name="IconName.Plus" />
+                    Add New Role
                 </Button>
-            </DataTableItem>
-        </DataTable>
+            </EmptyState>
+        }
     </ChildContent>
 </PluginBody>
 
