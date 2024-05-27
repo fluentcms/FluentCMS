@@ -9247,6 +9247,15 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("enabled")]
         public bool Enabled { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("emailConfirmed")]
+        public bool EmailConfirmed { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("phoneConfirmed")]
+        public bool PhoneConfirmed { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("locked")]
+        public bool Locked { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("roles")]
         public System.Collections.Generic.ICollection<RoleDetailResponse>? Roles { get; set; } = default!;
 
@@ -9467,6 +9476,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("enabled")]
         public bool Enabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("locked")]
+        public bool Locked { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("roleIds")]
         [System.ComponentModel.DataAnnotations.Required]
