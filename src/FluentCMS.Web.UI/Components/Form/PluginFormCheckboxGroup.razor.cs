@@ -19,6 +19,9 @@ public partial class PluginFormCheckboxGroup<TItem, TValue>
     [Parameter]
     public bool Vertical { get; set; }
 
+    [Parameter]
+    public EventCallback<ICollection<TValue>> OnChange { get; set; }
+
     private bool IsChecked(TItem item)
     {
         return Value?.Contains(GetValue(item)) ?? false;
@@ -45,5 +48,16 @@ public partial class PluginFormCheckboxGroup<TItem, TValue>
     protected override bool TryParseValueFromString(string? value, out ICollection<TValue> result, [NotNullWhen(false)] out string? validationErrorMessage)
     {
         throw new NotSupportedException();
+    }
+
+    public Task HandleChange(ChangeEventArgs args, TValue value)
+    {
+        if (Value.Contains(value))
+            Value.Remove(value);
+        else
+            Value.Add(value);
+
+        OnChange.InvokeAsync(Value);
+        return Task.CompletedTask;
     }
 }
