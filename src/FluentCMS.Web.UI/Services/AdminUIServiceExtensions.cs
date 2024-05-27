@@ -12,17 +12,11 @@ public static class AdminUIServiceExtensions
         services.AddAuthorization();
         services.AddAuthentication(options =>
         {
-
             options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
             options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
             options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
 
-        }).AddCookie(options =>
-        {
-            options.LoginPath = "/auth/login";
-            options.LogoutPath = "/auth/logout";
-            options.AccessDeniedPath = "/auth/access-denied";
-        });
+        }).AddCookie();
 
         services.AddLocalStorage();
         services.AddCookies();
