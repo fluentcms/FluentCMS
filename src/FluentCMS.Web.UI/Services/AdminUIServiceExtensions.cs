@@ -18,8 +18,6 @@ public static class AdminUIServiceExtensions
 
         }).AddCookie();
 
-        services.AddLocalStorage();
-        services.AddCookies();
         services.AddApiClients(configuration);
         services.AddScoped<SetupManager>();
         services.AddScoped<AuthManager>();

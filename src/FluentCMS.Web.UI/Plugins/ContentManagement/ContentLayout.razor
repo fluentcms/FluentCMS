@@ -1,4 +1,3 @@
-@using FluentCMS.Web.UI.Services.LocalStorage
 @inherits BaseComponent
 
 @if(Loaded) {
@@ -54,9 +53,6 @@
 
     [Inject]
     ContentTypeClient ContentTypeClient { get; set; } = default!;
-
-    [Inject]
-    ILocalStorageService LocalStorageService { get; set; } = default!;
 
     [Inject]
     NavigationManager NavigationManager { get; set; } = default!;
