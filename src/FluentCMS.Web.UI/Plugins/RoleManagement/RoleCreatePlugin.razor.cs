@@ -4,8 +4,8 @@ public partial class RoleCreatePlugin
 {
     public const string FORM_NAME = "RoleCreateForm";
 
-    private RoleCreateRequest? Model { get; set; } = new();
-    private List<Policy>? ModelPolicies { get; set; } 
+    [SupplyParameterFromForm(FormName = FORM_NAME)]
+    private RoleCreateRequest Model { get; set; } = new();
 
     private List<Policy>? Policies { get; set; } 
 
@@ -17,26 +17,19 @@ public partial class RoleCreatePlugin
             Policies = policiesResponse?.Data?.ToList() ?? [];
         }
 
-        if(ModelPolicies is null)
+        if(Model.Policies == null || Model.Policies.Count == 0)
         {
-           Model.Policies = [];
-           ModelPolicies = Policies.Select(x => {
-               return new Policy {
-                   Area = x.Area,
-                   Actions = []
-               };
-           }).ToList();
+            Model.Policies = Policies.Select(x => {
+                return new Policy {
+                    Area = x.Area,
+                    Actions = []
+                };
+            }).ToArray();
         }
     }
 
     private async Task OnSubmit()
     {
-        Model.Policies = [];
-
-        foreach(var policy in ModelPolicies) {
-            Model.Policies.Add(policy);
-        }
-        
         await GetApiClient<RoleClient>().CreateAsync(Model);
         NavigateBack();
     }
