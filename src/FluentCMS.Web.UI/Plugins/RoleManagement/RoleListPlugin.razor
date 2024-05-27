@@ -25,7 +25,7 @@
                     <TableBody id="roleListTable">
                         @foreach (var role in Roles)
                         {
-                            <TableRow OnClick="@(evt => TableRowDefaultAction(role))">
+                            <TableRow @onclick="@(evt => TableRowDefaultAction(role))">
                                 <TableCell> @role.Name </TableCell>
                                 <TableCell> @role.Description </TableCell>
                                 <TableCell>
@@ -33,8 +33,7 @@
                                         <Button data-test="preview-btn"
                                                 Href="@NavigationManager.Plugin("Role Management", "Role Detail", new { id= role.Id })"
                                                 Ghost="true"
-                                                Size="ButtonSize.Small"
-                                                StopPropagation="true">
+                                                Size="ButtonSize.Small">
                                             <Icon Name="IconName.Eye" />
                                         </Button>
                                         <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
@@ -42,8 +41,7 @@
                                         <Button data-test="edit-btn"
                                                 Ghost="true"
                                                 Href="@NavigationManager.Plugin("Role Management", "Update Role", new { id= role.Id })"
-                                                Size="ButtonSize.Small"
-                                                StopPropagation="true">
+                                                Size="ButtonSize.Small">
                                             <Icon Name="IconName.Edit" />
                                         </Button>
                                         <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
@@ -51,8 +49,7 @@
                                         <Button data-test="delete-btn"
                                                 Ghost="true"
                                                 Size="ButtonSize.Small"
-                                                StopPropagation="true"
-                                                OnClick="@(evt => OnDelete(role))">
+                                                @onclick="@(evt => OnDelete(role))">
 
                                             <Icon Name="IconName.Delete" />
                                         </Button>
