@@ -9465,9 +9465,6 @@ namespace FluentCMS.Web.ApiClients
         [System.ComponentModel.DataAnnotations.Required]
         public string Email { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("password")]
-        public string Password { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("phoneNumber")]
         public string? PhoneNumber { get; set; } = default!;
 
