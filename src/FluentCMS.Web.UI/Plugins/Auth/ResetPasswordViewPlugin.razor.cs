@@ -10,18 +10,18 @@ public partial class ResetPasswordViewPlugin
     [SupplyParameterFromForm(FormName = FORM_NAME)]
     private UserValidatePasswordResetTokenRequest Model { get; set; } = new();
 
-    private async Task OnSubmit()
-    {
-        await GetApiClient<AccountClient>().ValidatePasswordResetTokenAsync(Model);
-        NavigateTo("/auth/login");
-    }
-
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         if (string.IsNullOrEmpty(Email))
         {
             throw new ArgumentNullException(nameof(Email));
         }
         Model.Email = Email;
-    } 
+    }
+
+    private async Task OnSubmit()
+    {
+        await GetApiClient<AccountClient>().ValidatePasswordResetTokenAsync(Model);
+        NavigateTo("/auth/login");
+    }
 }

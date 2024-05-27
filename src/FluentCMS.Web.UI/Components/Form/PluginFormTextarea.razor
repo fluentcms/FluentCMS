@@ -18,6 +18,7 @@
                   id="@Id"
                   name="@NameAttributeValue"
                   placeholder="@Placeholder"
+                  readonly="@Readonly"
                   rows="@Rows"
                   value="@CurrentValueAsString"
                   @onchange="EventCallback.Factory.CreateBinder<string?>(this, __value => CurrentValueAsString = __value, CurrentValueAsString)" />

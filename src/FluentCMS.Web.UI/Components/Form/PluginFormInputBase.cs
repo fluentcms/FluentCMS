@@ -21,6 +21,9 @@ public abstract class FormElement<T> : InputBase<T>
     public string? Name { get; set; }
 
     [Parameter]
+    public bool Readonly { get; set; }
+
+    [Parameter]
     public bool Required { get; set; }
 
     [Parameter]
