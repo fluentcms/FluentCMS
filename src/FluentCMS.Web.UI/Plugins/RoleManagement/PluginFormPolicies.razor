@@ -8,11 +8,13 @@
         <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white" Visible="!string.IsNullOrEmpty(Label)">
             @Label
         </label>
-        @foreach (var policy in Policies)
+        @for (var i = 0; i < Policies.Count; i++)
         {
+            int index = i;
+            var policy = Policies[index];
             <div>
                 <Divider>@policy.Area</Divider>
-                <PluginFormCheckboxGroup @bind-Value="Value" Data="policy.Actions" @key="@policy" @onchange="OnChange(policy)" />
+                <PluginFormCheckboxGroup @bind-Value="Value[index].Actions" Data="policy.Actions" @key="@policy" />
             </div>
         }
     </PluginFormField>

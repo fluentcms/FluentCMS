@@ -9,15 +9,8 @@ public partial class PluginFormPolicies
     public string? Label { get; set; }   
 
     [Parameter]
-    public ICollection<Policy> Policies { get; set; } = [];   
+    public List<Policy> Policies { get; set; } = [];   
 
     [Parameter]
-    public ICollection<Policy> Value { get; set; } = [];
-
-    private Task OnChange(Policy policy)
-    {
-        Value = Policies.Where(x => x.Selected).ToList();
-        return Task.CompletedTask;
-    }
-
+    public List<Policy> Value { get; set; } = [];
 }

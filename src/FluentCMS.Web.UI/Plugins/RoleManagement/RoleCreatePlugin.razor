@@ -4,6 +4,6 @@
 <PluginForm Model="@Model" Name="@FORM_NAME" Title="Create New Role" OnSubmit="OnSubmit">
     <PluginFormTextInput @bind-Value="Model!.Name" Cols="12" Label="Name" Placeholder="Enter Name" Required />
     <PluginFormTextarea @bind-Value="Model!.Description" Cols="12" Label="Description" Placeholder="Enter Description" Required />
-    <PluginFormPolicies @bind-Value="Model!.Policies" Policies="@Policies" />
+    <PluginFormPolicies @bind-Value="ModelPolicies" Policies="@Policies" />
     <PluginFormActions Cancel Submit />
 </PluginForm>

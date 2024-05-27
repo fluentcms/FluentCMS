@@ -7,27 +7,28 @@ public partial class RoleUpdatePlugin
     [SupplyParameterFromQuery(Name = "id")]
     private Guid Id { get; set; }
 
-    [SupplyParameterFromForm(FormName = FORM_NAME)]
     private RoleUpdateRequest Model { get; set; } = new();
+    private List<Policy>? ModelPolicies { get; set; }
 
-    private List<Policy> Policies { get; set; } = [];
+    private List<Policy> Policies { get; set; }
 
     private RoleDetailResponse Role { get; set; } = new();
 
     protected override async Task OnInitializedAsync()
     {
-        var policiesResponse = await GetApiClient<RoleClient>().GetPoliciesAsync();
-        Policies = policiesResponse?.Data?.ToList() ?? [];
-
-        var rolesResponse = await GetApiClient<RoleClient>().GetAllAsync();
-        Role = rolesResponse.Data.ToList().Find(x => x.Id == Id);
-        Model = new RoleUpdateRequest
+        if(Policies is null)
         {
-            Id = Id,
-            Name = Role.Name,
-            Description = Role.Description,
-            Policies = [],
-        };
+            var policiesResponse = await GetApiClient<RoleClient>().GetPoliciesAsync();
+            Policies = policiesResponse?.Data?.ToList() ?? [];
+        }
+
+        if(ModelPolicies is null)
+        {
+            var rolesResponse = await GetApiClient<RoleClient>().GetAllAsync();
+            Role = rolesResponse.Data.ToList().Find(x => x.Id == Id);
+            Model = Mapper.Map<RoleUpdateRequest>(Role);
+            ModelPolicies = Model.Policies.ToList();
+        }
     }
 
     private async Task OnSubmit()
