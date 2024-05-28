@@ -1,4 +1,5 @@
 ﻿@inherits BasePlugin
+@rendermode InteractiveServer
 
 <PluginBody Title="Roles List">
     <ActionsFragment>
@@ -11,11 +12,18 @@
             <DataTableItem Label="Name">@context.Name</DataTableItem>
             <DataTableItem Label="Description">@context.Description</DataTableItem>
             <DataTableItem>
-                <Button Color="Color.Primary" Href="@GetUrl("Update Role", new { id = @context.Id })" Outline>
-                    <Icon Name="IconName.Edit" />Edit
-                </Button>
+                <div class="flex gap-2">
+                    <Button Color="Color.Primary" Href="@GetUrl("Update Role", new { id = @context.Id })" Outline>
+                        <Icon Name="IconName.Edit" />Edit
+                    </Button>
+                    <Button Color="Color.Danger" Outline @onclick="() => OnDelete(context)">
+                        <Icon Name="IconName.Delete" />Delete
+                    </Button>
+                </div>
             </DataTableItem>
         </DataTable>
     </ChildContent>
 </PluginBody>
 
+@* TODO: ConfirmProvider should be placed in layout. (page should have only one instance of it) *@
+<ConfirmProvider />
