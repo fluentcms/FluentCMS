@@ -1,8 +1,8 @@
 @inherits BasePlugin
 
-<PluginBody Title="Api Tokens List">
+<PluginBody Title="API Tokens List">
     <ActionsFragment>
-        <Button Href="@GetUrl("Create ApiToken")" Color="Color.Primary">
+        <Button Href="@GetUrl("Create Api Token")" Color="Color.Primary">
             <Icon Name="IconName.Plus" />Add New API Token
         </Button>
     </ActionsFragment>
@@ -11,7 +11,7 @@
             <DataTableItem Label="Name">@context.Name</DataTableItem>
             <DataTableItem Label="Description">@context.Description</DataTableItem>
             <DataTableItem>
-                <Button Color="Color.Primary" Href="@GetUrl("Update ApiToken", new { id = @context.Id })" Outline>
+                <Button Color="Color.Primary" Href="@GetUrl("Update Api Token", new { id = @context.Id })" Outline>
                     <Icon Name="IconName.Edit" />Edit
                 </Button>
             </DataTableItem>
