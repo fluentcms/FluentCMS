@@ -4,13 +4,7 @@ using System.Security.Claims;
 
 namespace FluentCMS.Web.UI.Services;
 
-public interface IAuthService
-{
-    Task Login(HttpContext httpContext, string username, string password, bool isPersist);
-    Task Logout(HttpContext httpContext);
-}
-
-public class AuthService(IHttpClientFactory httpClientFactory) : IAuthService
+public class AuthManager(IHttpClientFactory httpClientFactory)
 {
     public async Task Logout(HttpContext httpContext)
     {

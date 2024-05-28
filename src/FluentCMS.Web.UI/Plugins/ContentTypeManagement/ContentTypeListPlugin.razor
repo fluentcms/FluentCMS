@@ -1,5 +1,4 @@
-﻿@using FluentCMS.Web.UI.Services.LocalStorage
-<Page>
+﻿<Page>
     <PageHeader HasBack="false" Title="Content Types List (Draft)">
         <PageHeaderActions>
             <ButtonGroup>
@@ -91,9 +90,6 @@
 
     [CascadingParameter]
     public System.Net.Http.HttpContent? HttpContext { get; set; }
-
-    [Inject]
-    ILocalStorageService LocalStorageService { get; set; } = default!;
 
     [Inject]
     NavigationManager NavigationManager { get; set; } = default!;

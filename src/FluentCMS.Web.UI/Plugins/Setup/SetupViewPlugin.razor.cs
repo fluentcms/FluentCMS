@@ -11,7 +11,7 @@ public partial class SetupViewPlugin
     private SetupManager SetupManager { get; set; } = default!;
 
     [Inject]
-    private IAuthService AuthService { get; set; } = default!;
+    private AuthManager AuthManager { get; set; } = default!;
 
     [CascadingParameter]
     protected HttpContext HttpContext { get; set; } = default!;
@@ -34,7 +34,7 @@ public partial class SetupViewPlugin
     {
         if (await SetupManager.Start(Model!))
         {
-            await AuthService.Login(HttpContext, Model!.Username, Model.Password, true);
+            await AuthManager.Login(HttpContext, Model!.Username, Model.Password, true);
             NavigateTo("/");
         }
     }

@@ -1,6 +1,4 @@
 @using FluentCMS.Web.UI.Plugins.ContentManagement
-@using FluentCMS.Web.UI.Services.LocalStorage
-
 <ContentLayout>
     <Page>
         <PageHeader Title="Content Management (Draft)" />
@@ -41,9 +39,6 @@
 
     [Inject]
     ContentTypeClient ContentTypeClient { get; set; } = default!;
-
-    [Inject]
-    ILocalStorageService LocalStorageService { get; set; } = default!;
 
     [Inject]
     NavigationManager NavigationManager { get; set; } = default!;

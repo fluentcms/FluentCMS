@@ -3,7 +3,7 @@
 public partial class LogoutViewPlugin
 {
     [Inject]
-    private IAuthService AuthService { get; set; } = default!;
+    private AuthManager AuthManager { get; set; } = default!;
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
@@ -11,7 +11,7 @@ public partial class LogoutViewPlugin
     protected override async Task OnInitializedAsync()
     {
         if (HttpContext != null)
-            await AuthService.Logout(HttpContext);
+            await AuthManager.Logout(HttpContext);
 
         NavigateTo("/");
     }

@@ -16,6 +16,7 @@ public partial class UserUpdatePlugin
 
     protected override async Task OnInitializedAsync()
     {
+        await base.OnInitializedAsync();
         if (Roles is null)
         {
             var rolesResponse = await GetApiClient<RoleClient>().GetAllAsync();

@@ -30,9 +30,8 @@ public partial class Default : IDisposable
 
     protected override async Task OnInitializedAsync()
     {
-        await base.OnInitializedAsync();
-        NavigationManager.LocationChanged += LocationChanged;
         UserLogin = await AuthenticationStateTask.GetLogin();
+        NavigationManager.LocationChanged += LocationChanged;
     }
     protected override async Task OnParametersSetAsync()
     {
@@ -49,8 +48,6 @@ public partial class Default : IDisposable
 
         if (pageResponse.Data != null)
             Page = pageResponse.Data;
-
-        await base.OnParametersSetAsync();
     }
 
     void LocationChanged(object? sender, LocationChangedEventArgs e)
