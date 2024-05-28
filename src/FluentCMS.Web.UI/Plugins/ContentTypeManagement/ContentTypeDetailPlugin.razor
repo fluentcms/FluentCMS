@@ -28,31 +28,12 @@
                     </GridItem>
                     <GridItem Small="GridItemColumn.Twelve">
                         <Typography><strong>Fields:</strong></Typography>
-                        <Table>
-                            <TableHead>
-                                <TableCell>
-                                    Slug
-                                </TableCell>
-                                <TableCell>
-                                    Title
-                                </TableCell>
-                                <TableCell>
-                                    Type
-                                </TableCell>
-                            </TableHead>
-                            <TableBody>
-                                @foreach (var field in Fields)
-                                {
-                                    <TableRow>
-                                        <TableCell>@field.Slug</TableCell>
-                                        <TableCell>@field.Title</TableCell>
-                                        <TableCell>Text</TableCell>
-                                    </TableRow>
-                                }
-                            </TableBody>
-
-                        </Table>
-
+                        @* TODO: this DataTable is not tested yet *@
+                        <DataTable Items="Fields">
+                            <DataTableItem Label="Slug">@context.Slug</DataTableItem>
+                            <DataTableItem Label="Title">@context.Title</DataTableItem>
+                            <DataTableItem Label="Type">Text</DataTableItem>
+                        </DataTable>
                     </GridItem>
                 </Grid>
             </GridItem>
