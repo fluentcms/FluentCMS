@@ -47,7 +47,7 @@ public partial class BasePlugin
     // https://github.com/dotnet/aspnetcore/issues/53996
     protected virtual void NavigateTo(string path)
     {
-        if (HttpContextAccessor?.HttpContext != null)
+        if (HttpContextAccessor?.HttpContext != null && !HttpContextAccessor.HttpContext.Response.HasStarted)
             HttpContextAccessor.HttpContext.Response.Redirect(path);
         else
             NavigationManager.NavigateTo(path);
