@@ -7,9 +7,9 @@ public partial class RoleUpdatePlugin
     [SupplyParameterFromQuery(Name = "id")]
     private Guid Id { get; set; }
 
-    private RoleUpdateRequest Model { get; set; } = new();
+    private RoleUpdateRequest? Model { get; set; }
 
-    private List<Policy>? Policies { get; set; } 
+    private List<Policy>? Policies { get; set; }
 
     private RoleDetailResponse? Role { get; set; }
 
@@ -22,16 +22,16 @@ public partial class RoleUpdatePlugin
             Policies = policiesResponse?.Data?.ToList() ?? [];
         }
 
-        if(Role is null)
+        if (Role is null)
         {
-            var rolesResponse = await GetApiClient<RoleClient>().GetAllAsync();
-            Role = rolesResponse.Data.ToList().Find(x => x.Id == Id);
+            var roleResponse = await GetApiClient<RoleClient>().GetByIdAsync(Id);
+            Role = roleResponse.Data;
             Model = Mapper.Map<RoleUpdateRequest>(Role);
 
             Model.Policies = Policies.Select(x => new Policy
             {
                 Area = x.Area,
-                Actions = Role.Policies.FirstOrDefault(y => y.Area == x.Area)?.Actions ?? []
+                Actions = Role?.Policies?.FirstOrDefault(y => y.Area == x.Area)?.Actions ?? []
             }).ToArray();
         }
     }
