@@ -1,90 +1,85 @@
-<Page>
-    <PageHeader HasBack="true"
-                Title="Update Profile">
-    </PageHeader>
-    <PageBody>
-        <Grid Gutter="GridGutter.Large">
-            <GridItem Small="GridItemColumn.Twelve">
-                <Form Model="@Model"
-                      OnSubmit="OnSubmit">
-                    <Card>
-                        <CardBody>
-                            <Input @bind-Value="Model.Email"
-                                   Id="appUpdateEmailInput"
-                                   Label="Email"
-                                   Name="Email"
-                                   Placeholder="Enter Profile Email..."
-                                   Required="true" />
-                            @*Disabled="true"*@
-                            @if (!string.IsNullOrEmpty(Message))
-                            {
-                                <Spacer />
-                                <Typography>
-                                    @Message
-                                </Typography>
-                            }
-                        </CardBody>
-                        <CardActions>
-                            <Button id="appUpdateCancelButton"
-                                    @onclick="GoBack">
-                                Cancel
-                            </Button>
-                            <Button Color="Color.Primary"
-                                    id="appUpdateSubmitButton"
-                                    Type="ButtonType.Submit">
-                                Submit
-                            </Button>
-                        </CardActions>
-                    </Card>
-                </Form>
-            </GridItem>
-            <GridItem Small="GridItemColumn.Twelve">
-                <Form Model="@ChangePasswordModel"
-                      OnSubmit="OnChangePasswordSubmit">
-                    <Card>
-                        <CardBody>
-                            <Grid Gutter="GridGutter.Medium">
-                                <GridItem Small="GridItemColumn.Six">
-                                    <Input @bind-Value="ChangePasswordModel.OldPassword"
-                                           Id="changePasswordOldInput"
-                                           Label="Old Password"
-                                           Name="oldPassword"
-                                           Placeholder="Enter your old password..."
-                                           Required="true"
-                                           Type="InputType.Password" />
-                                </GridItem>
-                                <GridItem Small="GridItemColumn.Six">
+<PluginBody Title="Update Profile">
+    <Grid Gutter="GridGutter.Large">
+        <GridItem Small="GridItemColumn.Twelve">
+            <Form Model="@Model"
+                    OnSubmit="OnSubmit">
+                <Card>
+                    <CardBody>
+                        <Input @bind-Value="Model.Email"
+                                Id="appUpdateEmailInput"
+                                Label="Email"
+                                Name="Email"
+                                Placeholder="Enter Profile Email..."
+                                Required="true" />
+                        @*Disabled="true"*@
+                        @if (!string.IsNullOrEmpty(Message))
+                        {
+                            <Spacer />
+                            <Typography>
+                                @Message
+                            </Typography>
+                        }
+                    </CardBody>
+                    <CardActions>
+                        <Button id="appUpdateCancelButton"
+                                @onclick="GoBack">
+                            Cancel
+                        </Button>
+                        <Button Color="Color.Primary"
+                                id="appUpdateSubmitButton"
+                                Type="ButtonType.Submit">
+                            Submit
+                        </Button>
+                    </CardActions>
+                </Card>
+            </Form>
+        </GridItem>
+        <GridItem Small="GridItemColumn.Twelve">
+            <Form Model="@ChangePasswordModel"
+                    OnSubmit="OnChangePasswordSubmit">
+                <Card>
+                    <CardBody>
+                        <Grid Gutter="GridGutter.Medium">
+                            <GridItem Small="GridItemColumn.Six">
+                                <Input @bind-Value="ChangePasswordModel.OldPassword"
+                                        Id="changePasswordOldInput"
+                                        Label="Old Password"
+                                        Name="oldPassword"
+                                        Placeholder="Enter your old password..."
+                                        Required="true"
+                                        Type="InputType.Password" />
+                            </GridItem>
+                            <GridItem Small="GridItemColumn.Six">
 
-                                    <Input @bind-Value="ChangePasswordModel.NewPassword"
-                                           Id="changePasswordNewInput"
-                                           Label="New Password"
-                                           Name="newPassword"
-                                           Placeholder="Enter new password..."
-                                           Required="true"
-                                           Type="InputType.Password" />
-                                </GridItem>
-                            </Grid>
-                            @if (!string.IsNullOrEmpty(Message))
-                            {
-                                <Spacer />
-                                <Typography>
-                                    @Message
-                                </Typography>
-                            }
-                        </CardBody>
-                        <CardActions>
-                            <Button Color="Color.Primary"
-                                    id="changePasswordSubmitButton"
-                                    Type="ButtonType.Submit">
-                                Change password
-                            </Button>
-                        </CardActions>
-                    </Card>
-                </Form>
-            </GridItem>
-        </Grid>
-    </PageBody>
-</Page>
+                                <Input @bind-Value="ChangePasswordModel.NewPassword"
+                                        Id="changePasswordNewInput"
+                                        Label="New Password"
+                                        Name="newPassword"
+                                        Placeholder="Enter new password..."
+                                        Required="true"
+                                        Type="InputType.Password" />
+                            </GridItem>
+                        </Grid>
+                        @if (!string.IsNullOrEmpty(Message))
+                        {
+                            <Spacer />
+                            <Typography>
+                                @Message
+                            </Typography>
+                        }
+                    </CardBody>
+                    <CardActions>
+                        <Button Color="Color.Primary"
+                                id="changePasswordSubmitButton"
+                                Type="ButtonType.Submit">
+                            Change password
+                        </Button>
+                    </CardActions>
+                </Card>
+            </Form>
+        </GridItem>
+    </Grid>
+</PluginBody>
 
 @code {
     [Inject]

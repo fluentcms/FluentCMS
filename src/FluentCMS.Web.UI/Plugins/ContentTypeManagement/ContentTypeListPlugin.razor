@@ -1,18 +1,14 @@
-﻿<Page>
-    <PageHeader HasBack="false" Title="Content Types List (Draft)">
-        <PageHeaderActions>
-            <ButtonGroup>
-                <Button Color="Color.Primary"
-                        Href="@NavigationManager.Plugin("ContentType Management", "Create ContentType")"
-                        id="contentTypeCreateButton"
-                        Size="ButtonSize.Small">
-                    <Icon Name="IconName.Plus" />
-                    Add New Content Type
-                </Button>
-            </ButtonGroup>
-        </PageHeaderActions>
-    </PageHeader>
-    <PageBody>
+﻿<PluginBody Title="Content Types List (Draft)">
+    <ActionsFragment>
+        <Button Color="Color.Primary"
+                Href="@NavigationManager.Plugin("ContentType Management", "Create ContentType")"
+                id="contentTypeCreateButton"
+                Size="ButtonSize.Small">
+            <Icon Name="IconName.Plus" />
+            Add New Content Type
+        </Button>
+    </ActionsFragment>
+    <ChildContent>
         @if (ContentTypes.Count > 0)
         {
             <Card>
@@ -78,8 +74,9 @@
                 </Button>
             </EmptyState>
         }
-    </PageBody>
-</Page>
+    </ChildContent>
+</PluginBody>
+
 
 @code {
     [Inject]

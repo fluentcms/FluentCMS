@@ -1,17 +1,13 @@
-<Page>
-    <PageHeader Title="File Management (Draft)">
-        <PageHeaderActions>
-            <ButtonGroup>
-                <Button Color="Color.Primary"
-                        @onclick="OpenBrowseModal"
-                        Size="ButtonSize.Small">
-                    <Icon Name="IconName.Plus" />
-                    Add New Files
-                </Button>
-            </ButtonGroup>
-        </PageHeaderActions>
-    </PageHeader>
-    <PageBody>
+<PluginBody Title="File Management (Draft)">
+    <ActionsFragment>
+        <Button Color="Color.Primary"
+                @onclick="OpenBrowseModal"
+                Size="ButtonSize.Small">
+            <Icon Name="IconName.Plus" />
+            Add New Files
+        </Button>
+    </ActionsFragment>
+    <ChildContent>
         <Typography>
             Files (@files.Count)
         </Typography>
@@ -42,8 +38,8 @@
                 </Button>
             </EmptyState>
         }
-    </PageBody>
-</Page>
+    </ChildContent>
+</PluginBody>
 
 <FileManagementUploadModal Open="openBrowseModal"
                            OnSelect="OnSelectBrowseModal" />
