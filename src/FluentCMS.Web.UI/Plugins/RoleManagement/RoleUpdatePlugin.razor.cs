@@ -15,7 +15,8 @@ public partial class RoleUpdatePlugin
 
     protected override async Task OnInitializedAsync()
     {
-        if(Policies is null)
+        await base.OnInitializedAsync();
+        if (Policies is null)
         {
             var policiesResponse = await GetApiClient<RoleClient>().GetPoliciesAsync();
             Policies = policiesResponse?.Data?.ToList() ?? [];
