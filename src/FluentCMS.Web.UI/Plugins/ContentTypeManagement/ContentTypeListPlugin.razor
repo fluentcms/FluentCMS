@@ -27,7 +27,7 @@
                     <TableBody id="contentTypeListTable">
                         @foreach (var contentType in ContentTypes)
                         {
-                            <TableRow OnClick="@(evt => TableRowDefaultAction(contentType))">
+                            <TableRow @onclick="@(evt => TableRowDefaultAction(contentType))">
                                 <TableCell>
                                     @contentType.Slug
                                 </TableCell>
@@ -55,7 +55,7 @@
                                                 Ghost="true"
                                                 Size="ButtonSize.Small"
                                                 StopPropagation="true"
-                                                OnClick="@(evt => OnDelete(contentType))">
+                                                @onclick="@(evt => OnDelete(contentType))">
                                             <Icon Name="IconName.Delete" />
                                         </Button>
                                         <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>

@@ -26,66 +26,66 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IAccountClient : IApiClient
     {
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserDetailResponseIApiResult> RegisterAsync(UserRegisterRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserDetailResponseIApiResult> RegisterAsync(UserRegisterRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserLoginResponseIApiResult> AuthenticateAsync(UserLoginRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserLoginResponseIApiResult> AuthenticateAsync(UserLoginRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(UserChangePasswordRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(UserChangePasswordRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> SendPasswordResetTokenAsync(UserSendPasswordResetTokenRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> SendPasswordResetTokenAsync(UserSendPasswordResetTokenRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> ValidatePasswordResetTokenAsync(UserValidatePasswordResetTokenRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> ValidatePasswordResetTokenAsync(UserValidatePasswordResetTokenRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetCurrentAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetCurrentAsync(System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateCurrentAsync(AccountUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateCurrentAsync(AccountUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
 
@@ -119,7 +119,7 @@ namespace FluentCMS.Web.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<UserDetailResponseIApiResult> RegisterAsync(UserRegisterRequest? body)
         {
@@ -127,7 +127,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiResult> RegisterAsync(UserRegisterRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -201,7 +201,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<UserLoginResponseIApiResult> AuthenticateAsync(UserLoginRequest? body)
         {
@@ -209,7 +209,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<UserLoginResponseIApiResult> AuthenticateAsync(UserLoginRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -283,7 +283,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(UserChangePasswordRequest? body)
         {
@@ -291,7 +291,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(UserChangePasswordRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -365,7 +365,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanIApiResult> SendPasswordResetTokenAsync(UserSendPasswordResetTokenRequest? body)
         {
@@ -373,7 +373,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<BooleanIApiResult> SendPasswordResetTokenAsync(UserSendPasswordResetTokenRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -447,7 +447,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanIApiResult> ValidatePasswordResetTokenAsync(UserValidatePasswordResetTokenRequest? body)
         {
@@ -455,7 +455,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<BooleanIApiResult> ValidatePasswordResetTokenAsync(UserValidatePasswordResetTokenRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -529,7 +529,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetCurrentAsync()
         {
@@ -537,7 +537,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetCurrentAsync(System.Threading.CancellationToken cancellationToken)
         {
@@ -607,7 +607,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateCurrentAsync(AccountUpdateRequest? body)
         {
@@ -615,7 +615,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateCurrentAsync(AccountUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -801,48 +801,48 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IApiTokenClient : IApiClient
     {
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ApiTokenDetailResponseIApiPagingResult> GetAllAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ApiTokenDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ApiTokenDetailResponseIApiResult> GetByIdAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ApiTokenDetailResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ApiTokenDetailResponseIApiResult> CreateAsync(ApiTokenCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ApiTokenDetailResponseIApiResult> CreateAsync(ApiTokenCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ApiTokenDetailResponseIApiResult> UpdateAsync(ApiTokenUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ApiTokenDetailResponseIApiResult> UpdateAsync(ApiTokenUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
@@ -876,7 +876,7 @@ namespace FluentCMS.Web.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ApiTokenDetailResponseIApiPagingResult> GetAllAsync()
         {
@@ -884,7 +884,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ApiTokenDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
         {
@@ -954,7 +954,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ApiTokenDetailResponseIApiResult> GetByIdAsync(System.Guid id)
         {
@@ -962,7 +962,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ApiTokenDetailResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
@@ -1036,7 +1036,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ApiTokenDetailResponseIApiResult> CreateAsync(ApiTokenCreateRequest? body)
         {
@@ -1044,7 +1044,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ApiTokenDetailResponseIApiResult> CreateAsync(ApiTokenCreateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -1118,7 +1118,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ApiTokenDetailResponseIApiResult> UpdateAsync(ApiTokenUpdateRequest? body)
         {
@@ -1126,7 +1126,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ApiTokenDetailResponseIApiResult> UpdateAsync(ApiTokenUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -1200,7 +1200,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id)
         {
@@ -1208,7 +1208,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
@@ -1394,39 +1394,39 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IContentClient : IApiClient
     {
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentDetailResponseIApiPagingResult> GetAllAsync(string contentTypeSlug);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentDetailResponseIApiPagingResult> GetAllAsync(string contentTypeSlug, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string contentTypeSlug, ContentCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string contentTypeSlug, ContentCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string contentTypeSlug, ContentUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string contentTypeSlug, ContentUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string contentTypeSlug, System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string contentTypeSlug, System.Guid id, System.Threading.CancellationToken cancellationToken);
 
@@ -1460,7 +1460,7 @@ namespace FluentCMS.Web.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentDetailResponseIApiPagingResult> GetAllAsync(string contentTypeSlug)
         {
@@ -1468,7 +1468,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentDetailResponseIApiPagingResult> GetAllAsync(string contentTypeSlug, System.Threading.CancellationToken cancellationToken)
         {
@@ -1543,7 +1543,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string contentTypeSlug, ContentCreateRequest? body)
         {
@@ -1551,7 +1551,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string contentTypeSlug, ContentCreateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -1630,7 +1630,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string contentTypeSlug, ContentUpdateRequest? body)
         {
@@ -1638,7 +1638,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string contentTypeSlug, ContentUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -1717,7 +1717,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string contentTypeSlug, System.Guid id)
         {
@@ -1725,7 +1725,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string contentTypeSlug, System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
@@ -1916,75 +1916,75 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IContentTypeClient : IApiClient
     {
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetBySlugAsync(string slug);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetBySlugAsync(string slug, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetByIdAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetAllAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> CreateAsync(ContentTypeCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> CreateAsync(ContentTypeCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> UpdateAsync(ContentTypeUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> UpdateAsync(ContentTypeUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> SetFieldAsync(System.Guid id, ContentTypeField? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> SetFieldAsync(System.Guid id, ContentTypeField? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> DeleteFieldAsync(System.Guid id, string name);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> DeleteFieldAsync(System.Guid id, string name, System.Threading.CancellationToken cancellationToken);
 
@@ -2018,7 +2018,7 @@ namespace FluentCMS.Web.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetBySlugAsync(string slug)
         {
@@ -2026,7 +2026,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetBySlugAsync(string slug, System.Threading.CancellationToken cancellationToken)
         {
@@ -2100,7 +2100,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetByIdAsync(System.Guid id)
         {
@@ -2108,7 +2108,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
@@ -2182,7 +2182,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetAllAsync()
         {
@@ -2190,7 +2190,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
         {
@@ -2260,7 +2260,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> CreateAsync(ContentTypeCreateRequest? body)
         {
@@ -2268,7 +2268,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> CreateAsync(ContentTypeCreateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -2342,7 +2342,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> UpdateAsync(ContentTypeUpdateRequest? body)
         {
@@ -2350,7 +2350,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> UpdateAsync(ContentTypeUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -2424,7 +2424,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id)
         {
@@ -2432,7 +2432,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
@@ -2506,7 +2506,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> SetFieldAsync(System.Guid id, ContentTypeField? body)
         {
@@ -2514,7 +2514,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> SetFieldAsync(System.Guid id, ContentTypeField? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -2592,7 +2592,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> DeleteFieldAsync(System.Guid id, string name)
         {
@@ -2600,7 +2600,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ContentTypeDetailResponseIApiResult> DeleteFieldAsync(System.Guid id, string name, System.Threading.CancellationToken cancellationToken)
         {
@@ -2791,21 +2791,21 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IGlobalSettingsClient : IApiClient
     {
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<GlobalSettingsIApiResult> GetAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<GlobalSettingsIApiResult> GetAsync(System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<GlobalSettingsIApiResult> UpdateAsync(GlobalSettingsUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<GlobalSettingsIApiResult> UpdateAsync(GlobalSettingsUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
 
@@ -2839,7 +2839,7 @@ namespace FluentCMS.Web.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<GlobalSettingsIApiResult> GetAsync()
         {
@@ -2847,7 +2847,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<GlobalSettingsIApiResult> GetAsync(System.Threading.CancellationToken cancellationToken)
         {
@@ -2917,7 +2917,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<GlobalSettingsIApiResult> UpdateAsync(GlobalSettingsUpdateRequest? body)
         {
@@ -2925,7 +2925,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<GlobalSettingsIApiResult> UpdateAsync(GlobalSettingsUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -3111,48 +3111,48 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface ILayoutClient : IApiClient
     {
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<LayoutDetailResponseIApiPagingResult> GetAllAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<LayoutDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<LayoutDetailResponseIApiResult> GetAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<LayoutDetailResponseIApiResult> GetAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<LayoutDetailResponseIApiResult> CreateAsync(LayoutCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<LayoutDetailResponseIApiResult> CreateAsync(LayoutCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<LayoutDetailResponseIApiResult> UpdateAsync(LayoutUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<LayoutDetailResponseIApiResult> UpdateAsync(LayoutUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
@@ -3186,7 +3186,7 @@ namespace FluentCMS.Web.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<LayoutDetailResponseIApiPagingResult> GetAllAsync()
         {
@@ -3194,7 +3194,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<LayoutDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
         {
@@ -3264,7 +3264,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<LayoutDetailResponseIApiResult> GetAsync(System.Guid id)
         {
@@ -3272,7 +3272,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<LayoutDetailResponseIApiResult> GetAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
@@ -3346,7 +3346,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<LayoutDetailResponseIApiResult> CreateAsync(LayoutCreateRequest? body)
         {
@@ -3354,7 +3354,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<LayoutDetailResponseIApiResult> CreateAsync(LayoutCreateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -3428,7 +3428,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<LayoutDetailResponseIApiResult> UpdateAsync(LayoutUpdateRequest? body)
         {
@@ -3436,7 +3436,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<LayoutDetailResponseIApiResult> UpdateAsync(LayoutUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -3510,7 +3510,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id)
         {
@@ -3518,7 +3518,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
@@ -3704,57 +3704,57 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IPageClient : IApiClient
     {
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(string siteUrl);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(string siteUrl, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageDetailResponseIApiResult> GetByIdAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageDetailResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageFullDetailResponseIApiResult> GetByUrlAsync(string? url);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageFullDetailResponseIApiResult> GetByUrlAsync(string? url, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageDetailResponseIApiResult> CreateAsync(PageCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageDetailResponseIApiResult> CreateAsync(PageCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageDetailResponseIApiResult> UpdateAsync(PageUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageDetailResponseIApiResult> UpdateAsync(PageUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
@@ -3788,7 +3788,7 @@ namespace FluentCMS.Web.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(string siteUrl)
         {
@@ -3796,7 +3796,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(string siteUrl, System.Threading.CancellationToken cancellationToken)
         {
@@ -3870,7 +3870,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PageDetailResponseIApiResult> GetByIdAsync(System.Guid id)
         {
@@ -3878,7 +3878,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PageDetailResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
@@ -3952,7 +3952,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PageFullDetailResponseIApiResult> GetByUrlAsync(string? url)
         {
@@ -3960,7 +3960,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PageFullDetailResponseIApiResult> GetByUrlAsync(string? url, System.Threading.CancellationToken cancellationToken)
         {
@@ -4036,7 +4036,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PageDetailResponseIApiResult> CreateAsync(PageCreateRequest? body)
         {
@@ -4044,7 +4044,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PageDetailResponseIApiResult> CreateAsync(PageCreateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -4118,7 +4118,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PageDetailResponseIApiResult> UpdateAsync(PageUpdateRequest? body)
         {
@@ -4126,7 +4126,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PageDetailResponseIApiResult> UpdateAsync(PageUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -4200,7 +4200,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id)
         {
@@ -4208,7 +4208,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
@@ -4394,48 +4394,48 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IPluginClient : IApiClient
     {
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PluginDetailResponseIApiPagingResult> GetByPageIdAsync(System.Guid pageId);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PluginDetailResponseIApiPagingResult> GetByPageIdAsync(System.Guid pageId, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PluginDetailResponseIApiResult> GetByIdAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PluginDetailResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PluginDetailResponseIApiResult> CreateAsync(PluginCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PluginDetailResponseIApiResult> CreateAsync(PluginCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PluginDetailResponseIApiResult> UpdateAsync(PluginUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PluginDetailResponseIApiResult> UpdateAsync(PluginUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
@@ -4469,7 +4469,7 @@ namespace FluentCMS.Web.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PluginDetailResponseIApiPagingResult> GetByPageIdAsync(System.Guid pageId)
         {
@@ -4477,7 +4477,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PluginDetailResponseIApiPagingResult> GetByPageIdAsync(System.Guid pageId, System.Threading.CancellationToken cancellationToken)
         {
@@ -4551,7 +4551,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PluginDetailResponseIApiResult> GetByIdAsync(System.Guid id)
         {
@@ -4559,7 +4559,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PluginDetailResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
@@ -4633,7 +4633,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PluginDetailResponseIApiResult> CreateAsync(PluginCreateRequest? body)
         {
@@ -4641,7 +4641,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PluginDetailResponseIApiResult> CreateAsync(PluginCreateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -4715,7 +4715,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PluginDetailResponseIApiResult> UpdateAsync(PluginUpdateRequest? body)
         {
@@ -4723,7 +4723,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PluginDetailResponseIApiResult> UpdateAsync(PluginUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -4797,7 +4797,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id)
         {
@@ -4805,7 +4805,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
@@ -4991,21 +4991,21 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IPluginDefinitionClient : IApiClient
     {
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PluginDefinitionDetailResponseIApiResult> CreateAsync(PluginDefinitionCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PluginDefinitionDetailResponseIApiResult> CreateAsync(PluginDefinitionCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PluginDefinitionDetailResponseIApiPagingResult> GetAllAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PluginDefinitionDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
 
@@ -5039,7 +5039,7 @@ namespace FluentCMS.Web.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PluginDefinitionDetailResponseIApiResult> CreateAsync(PluginDefinitionCreateRequest? body)
         {
@@ -5047,7 +5047,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PluginDefinitionDetailResponseIApiResult> CreateAsync(PluginDefinitionCreateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -5121,7 +5121,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PluginDefinitionDetailResponseIApiPagingResult> GetAllAsync()
         {
@@ -5129,7 +5129,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PluginDefinitionDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
         {
@@ -5311,48 +5311,48 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IRoleClient : IApiClient
     {
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<RoleDetailResponseIApiPagingResult> GetAllAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<RoleDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(RoleCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(RoleUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PolicyIApiPagingResult> GetPoliciesAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PolicyIApiPagingResult> GetPoliciesAsync(System.Threading.CancellationToken cancellationToken);
 
@@ -5386,7 +5386,7 @@ namespace FluentCMS.Web.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<RoleDetailResponseIApiPagingResult> GetAllAsync()
         {
@@ -5394,7 +5394,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<RoleDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
         {
@@ -5464,7 +5464,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(RoleCreateRequest? body)
         {
@@ -5472,7 +5472,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -5546,7 +5546,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(RoleUpdateRequest? body)
         {
@@ -5554,7 +5554,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -5628,7 +5628,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id)
         {
@@ -5636,7 +5636,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
@@ -5710,7 +5710,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PolicyIApiPagingResult> GetPoliciesAsync()
         {
@@ -5718,7 +5718,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<PolicyIApiPagingResult> GetPoliciesAsync(System.Threading.CancellationToken cancellationToken)
         {
@@ -5900,21 +5900,21 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface ISetupClient : IApiClient
     {
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> IsInitializedAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> IsInitializedAsync(System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> StartAsync(SetupRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> StartAsync(SetupRequest? body, System.Threading.CancellationToken cancellationToken);
 
@@ -5948,7 +5948,7 @@ namespace FluentCMS.Web.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanIApiResult> IsInitializedAsync()
         {
@@ -5956,7 +5956,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<BooleanIApiResult> IsInitializedAsync(System.Threading.CancellationToken cancellationToken)
         {
@@ -6026,7 +6026,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanIApiResult> StartAsync(SetupRequest? body)
         {
@@ -6034,7 +6034,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<BooleanIApiResult> StartAsync(SetupRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -6220,57 +6220,57 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface ISiteClient : IApiClient
     {
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteDetailResponseIApiResult> GetByUrlAsync(string siteUrl);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteDetailResponseIApiResult> GetByUrlAsync(string siteUrl, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteDetailResponseIApiPagingResult> GetAllAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteDetailResponseIApiResult> GetByIdAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteDetailResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteDetailResponseIApiResult> CreateAsync(SiteCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteDetailResponseIApiResult> CreateAsync(SiteCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteDetailResponseIApiResult> UpdateAsync(SiteUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SiteDetailResponseIApiResult> UpdateAsync(SiteUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid siteId);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid siteId, System.Threading.CancellationToken cancellationToken);
 
@@ -6304,7 +6304,7 @@ namespace FluentCMS.Web.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<SiteDetailResponseIApiResult> GetByUrlAsync(string siteUrl)
         {
@@ -6312,7 +6312,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<SiteDetailResponseIApiResult> GetByUrlAsync(string siteUrl, System.Threading.CancellationToken cancellationToken)
         {
@@ -6386,7 +6386,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<SiteDetailResponseIApiPagingResult> GetAllAsync()
         {
@@ -6394,7 +6394,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<SiteDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
         {
@@ -6464,7 +6464,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<SiteDetailResponseIApiResult> GetByIdAsync(System.Guid id)
         {
@@ -6472,7 +6472,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<SiteDetailResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
@@ -6546,7 +6546,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<SiteDetailResponseIApiResult> CreateAsync(SiteCreateRequest? body)
         {
@@ -6554,7 +6554,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<SiteDetailResponseIApiResult> CreateAsync(SiteCreateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -6628,7 +6628,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<SiteDetailResponseIApiResult> UpdateAsync(SiteUpdateRequest? body)
         {
@@ -6636,7 +6636,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<SiteDetailResponseIApiResult> UpdateAsync(SiteUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -6710,7 +6710,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid siteId)
         {
@@ -6718,7 +6718,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid siteId, System.Threading.CancellationToken cancellationToken)
         {
@@ -6904,48 +6904,48 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial interface IUserClient : IApiClient
     {
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserDetailResponseIApiPagingResult> GetAllAsync();
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetAsync(System.Guid userId);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetAsync(System.Guid userId, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateAsync(UserUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateAsync(UserUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> SetPasswordAsync(UserSetPasswordRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> SetPasswordAsync(UserSetPasswordRequest? body, System.Threading.CancellationToken cancellationToken);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserDetailResponseIApiResult> CreateAsync(UserCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<UserDetailResponseIApiResult> CreateAsync(UserCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
@@ -6979,7 +6979,7 @@ namespace FluentCMS.Web.ApiClients
         partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, System.Text.StringBuilder urlBuilder);
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<UserDetailResponseIApiPagingResult> GetAllAsync()
         {
@@ -6987,7 +6987,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
         {
@@ -7057,7 +7057,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetAsync(System.Guid userId)
         {
@@ -7065,7 +7065,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiResult> GetAsync(System.Guid userId, System.Threading.CancellationToken cancellationToken)
         {
@@ -7139,7 +7139,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateAsync(UserUpdateRequest? body)
         {
@@ -7147,7 +7147,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateAsync(UserUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -7221,7 +7221,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanIApiResult> SetPasswordAsync(UserSetPasswordRequest? body)
         {
@@ -7229,7 +7229,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<BooleanIApiResult> SetPasswordAsync(UserSetPasswordRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -7303,7 +7303,7 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<UserDetailResponseIApiResult> CreateAsync(UserCreateRequest? body)
         {
@@ -7311,7 +7311,7 @@ namespace FluentCMS.Web.ApiClients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiResult> CreateAsync(UserCreateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
@@ -7579,6 +7579,30 @@ namespace FluentCMS.Web.ApiClients
     public partial class ApiTokenDetailResponseIApiPagingResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+        public string? TraceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        public string? SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+        public string? UniqueId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+        public double Duration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public int Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
+        public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public System.Collections.Generic.ICollection<ApiTokenDetailResponse>? Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
         public int PageSize { get; set; } = default!;
 
@@ -7597,39 +7621,12 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
         public bool HasNext { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public System.Collections.Generic.ICollection<ApiTokenDetailResponse>? Data { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
-        public string? UniqueId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
-        public bool IsSuccess { get; set; } = default!;
-
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ApiTokenDetailResponseIApiResult
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public ApiTokenDetailResponse Data { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
         public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
@@ -7650,6 +7647,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
         public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public ApiTokenDetailResponse Data { get; set; } = default!;
 
     }
 
@@ -7693,9 +7693,6 @@ namespace FluentCMS.Web.ApiClients
     public partial class BooleanIApiResult
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public bool Data { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
         public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
@@ -7716,6 +7713,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
         public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public bool Data { get; set; } = default!;
 
     }
 
@@ -7762,6 +7762,30 @@ namespace FluentCMS.Web.ApiClients
     public partial class ContentDetailResponseIApiPagingResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+        public string? TraceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        public string? SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+        public string? UniqueId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+        public double Duration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public int Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
+        public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public System.Collections.Generic.ICollection<ContentDetailResponse>? Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
         public int PageSize { get; set; } = default!;
 
@@ -7780,39 +7804,12 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
         public bool HasNext { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public System.Collections.Generic.ICollection<ContentDetailResponse>? Data { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
-        public string? UniqueId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
-        public bool IsSuccess { get; set; } = default!;
-
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentDetailResponseIApiResult
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public ContentDetailResponse Data { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
         public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
@@ -7833,6 +7830,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
         public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public ContentDetailResponse Data { get; set; } = default!;
 
     }
 
@@ -7890,6 +7890,30 @@ namespace FluentCMS.Web.ApiClients
     public partial class ContentTypeDetailResponseIApiPagingResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+        public string? TraceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        public string? SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+        public string? UniqueId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+        public double Duration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public int Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
+        public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public System.Collections.Generic.ICollection<ContentTypeDetailResponse>? Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
         public int PageSize { get; set; } = default!;
 
@@ -7908,39 +7932,12 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
         public bool HasNext { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public System.Collections.Generic.ICollection<ContentTypeDetailResponse>? Data { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
-        public string? UniqueId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
-        public bool IsSuccess { get; set; } = default!;
-
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentTypeDetailResponseIApiResult
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public ContentTypeDetailResponse Data { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
         public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
@@ -7961,6 +7958,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
         public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public ContentTypeDetailResponse Data { get; set; } = default!;
 
     }
 
@@ -8052,9 +8052,6 @@ namespace FluentCMS.Web.ApiClients
     public partial class GlobalSettingsIApiResult
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public GlobalSettings Data { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
         public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
@@ -8075,6 +8072,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
         public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public GlobalSettings Data { get; set; } = default!;
 
     }
 
@@ -8136,6 +8136,30 @@ namespace FluentCMS.Web.ApiClients
     public partial class LayoutDetailResponseIApiPagingResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+        public string? TraceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        public string? SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+        public string? UniqueId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+        public double Duration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public int Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
+        public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public System.Collections.Generic.ICollection<LayoutDetailResponse>? Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
         public int PageSize { get; set; } = default!;
 
@@ -8154,39 +8178,12 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
         public bool HasNext { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public System.Collections.Generic.ICollection<LayoutDetailResponse>? Data { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
-        public string? UniqueId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
-        public bool IsSuccess { get; set; } = default!;
-
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class LayoutDetailResponseIApiResult
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public LayoutDetailResponse Data { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
         public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
@@ -8207,6 +8204,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
         public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public LayoutDetailResponse Data { get; set; } = default!;
 
     }
 
@@ -8295,6 +8295,30 @@ namespace FluentCMS.Web.ApiClients
     public partial class PageDetailResponseIApiPagingResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+        public string? TraceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        public string? SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+        public string? UniqueId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+        public double Duration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public int Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
+        public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public System.Collections.Generic.ICollection<PageDetailResponse>? Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
         public int PageSize { get; set; } = default!;
 
@@ -8313,39 +8337,12 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
         public bool HasNext { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public System.Collections.Generic.ICollection<PageDetailResponse>? Data { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
-        public string? UniqueId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
-        public bool IsSuccess { get; set; } = default!;
-
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageDetailResponseIApiResult
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public PageDetailResponse Data { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
         public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
@@ -8366,6 +8363,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
         public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public PageDetailResponse Data { get; set; } = default!;
 
     }
 
@@ -8421,9 +8421,6 @@ namespace FluentCMS.Web.ApiClients
     public partial class PageFullDetailResponseIApiResult
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public PageFullDetailResponse Data { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
         public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
@@ -8444,6 +8441,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
         public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public PageFullDetailResponse Data { get; set; } = default!;
 
     }
 
@@ -8538,6 +8538,30 @@ namespace FluentCMS.Web.ApiClients
     public partial class PluginDefinitionDetailResponseIApiPagingResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+        public string? TraceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        public string? SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+        public string? UniqueId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+        public double Duration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public int Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
+        public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public System.Collections.Generic.ICollection<PluginDefinitionDetailResponse>? Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
         public int PageSize { get; set; } = default!;
 
@@ -8556,39 +8580,12 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
         public bool HasNext { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public System.Collections.Generic.ICollection<PluginDefinitionDetailResponse>? Data { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
-        public string? UniqueId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
-        public bool IsSuccess { get; set; } = default!;
-
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginDefinitionDetailResponseIApiResult
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public PluginDefinitionDetailResponse Data { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
         public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
@@ -8609,6 +8606,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
         public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public PluginDefinitionDetailResponse Data { get; set; } = default!;
 
     }
 
@@ -8670,6 +8670,30 @@ namespace FluentCMS.Web.ApiClients
     public partial class PluginDetailResponseIApiPagingResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+        public string? TraceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        public string? SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+        public string? UniqueId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+        public double Duration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public int Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
+        public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public System.Collections.Generic.ICollection<PluginDetailResponse>? Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
         public int PageSize { get; set; } = default!;
 
@@ -8688,39 +8712,12 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
         public bool HasNext { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public System.Collections.Generic.ICollection<PluginDetailResponse>? Data { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
-        public string? UniqueId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
-        public bool IsSuccess { get; set; } = default!;
-
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginDetailResponseIApiResult
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public PluginDetailResponse Data { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
         public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
@@ -8741,6 +8738,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
         public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public PluginDetailResponse Data { get; set; } = default!;
 
     }
 
@@ -8775,27 +8775,6 @@ namespace FluentCMS.Web.ApiClients
     public partial class PolicyIApiPagingResult
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
-        public int PageSize { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
-        public int TotalPages { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
-        public int PageNumber { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
-        public long TotalCount { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
-        public bool HasPrevious { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
-        public bool HasNext { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public System.Collections.Generic.ICollection<Policy>? Data { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
         public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
@@ -8816,6 +8795,27 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
         public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public System.Collections.Generic.ICollection<Policy>? Data { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
+        public int PageSize { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
+        public int TotalPages { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
+        public int PageNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
+        public long TotalCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
+        public bool HasPrevious { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
+        public bool HasNext { get; set; } = default!;
 
     }
 
@@ -8870,6 +8870,30 @@ namespace FluentCMS.Web.ApiClients
     public partial class RoleDetailResponseIApiPagingResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+        public string? TraceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        public string? SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+        public string? UniqueId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+        public double Duration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public int Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
+        public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public System.Collections.Generic.ICollection<RoleDetailResponse>? Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
         public int PageSize { get; set; } = default!;
 
@@ -8888,39 +8912,12 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
         public bool HasNext { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public System.Collections.Generic.ICollection<RoleDetailResponse>? Data { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
-        public string? UniqueId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
-        public bool IsSuccess { get; set; } = default!;
-
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RoleDetailResponseIApiResult
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public RoleDetailResponse Data { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
         public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
@@ -8941,6 +8938,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
         public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public RoleDetailResponse Data { get; set; } = default!;
 
     }
 
@@ -9051,6 +9051,30 @@ namespace FluentCMS.Web.ApiClients
     public partial class SiteDetailResponseIApiPagingResult
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+        public string? TraceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        public string? SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+        public string? UniqueId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+        public double Duration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public int Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
+        public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public System.Collections.Generic.ICollection<SiteDetailResponse>? Data { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
         public int PageSize { get; set; } = default!;
 
@@ -9069,39 +9093,12 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
         public bool HasNext { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public System.Collections.Generic.ICollection<SiteDetailResponse>? Data { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
-        public string? UniqueId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
-        public bool IsSuccess { get; set; } = default!;
-
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SiteDetailResponseIApiResult
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public SiteDetailResponse Data { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
         public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
@@ -9122,6 +9119,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
         public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public SiteDetailResponse Data { get; set; } = default!;
 
     }
 
@@ -9247,6 +9247,15 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("enabled")]
         public bool Enabled { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("emailConfirmed")]
+        public bool EmailConfirmed { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("phoneConfirmed")]
+        public bool PhoneConfirmed { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("locked")]
+        public bool Locked { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("roles")]
         public System.Collections.Generic.ICollection<RoleDetailResponse>? Roles { get; set; } = default!;
 
@@ -9255,6 +9264,30 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserDetailResponseIApiPagingResult
     {
+
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+        public string? TraceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        public string? SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+        public string? UniqueId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+        public double Duration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public int Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
+        public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public System.Collections.Generic.ICollection<UserDetailResponse>? Data { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
         public int PageSize { get; set; } = default!;
@@ -9274,39 +9307,12 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
         public bool HasNext { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public System.Collections.Generic.ICollection<UserDetailResponse>? Data { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
-        public string? UniqueId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
-        public bool IsSuccess { get; set; } = default!;
-
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserDetailResponseIApiResult
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public UserDetailResponse Data { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
         public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
@@ -9327,6 +9333,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
         public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public UserDetailResponse Data { get; set; } = default!;
 
     }
 
@@ -9372,9 +9381,6 @@ namespace FluentCMS.Web.ApiClients
     public partial class UserLoginResponseIApiResult
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public UserLoginResponse Data { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
         public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
 
@@ -9395,6 +9401,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
         public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public UserLoginResponse Data { get; set; } = default!;
 
     }
 
@@ -9467,6 +9476,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("enabled")]
         public bool Enabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("locked")]
+        public bool Locked { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("roleIds")]
         [System.ComponentModel.DataAnnotations.Required]

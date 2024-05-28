@@ -3,7 +3,7 @@
         <PageHeaderActions>
             <ButtonGroup>
                 <Button Color="Color.Primary"
-                        OnClick="OpenBrowseModal"
+                        @onclick="OpenBrowseModal"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
                     Add New Files
@@ -35,7 +35,7 @@
             <EmptyState Icon="IconName.File"
                         Message="No Files Found!">
                 <Button Color="Color.Primary"
-                        OnClick="OpenBrowseModal"
+                        @onclick="OpenBrowseModal"
                         Size="ButtonSize.Small">
                     <Icon Name="IconName.Plus" />
                     Add New Files

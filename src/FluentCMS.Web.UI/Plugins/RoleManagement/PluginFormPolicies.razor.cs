@@ -12,5 +12,5 @@ public partial class PluginFormPolicies
     public List<Policy> Policies { get; set; } = [];   
 
     [Parameter]
-    public List<Policy> Value { get; set; } = [];
+    public ICollection<Policy> Value { get; set; } = [];
 }
