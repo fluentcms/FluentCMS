@@ -11,4 +11,3 @@ public partial class ApiTokenListPlugin
         ApiTokens = apiTokensResponse?.Data?.ToList() ?? [];
     }
 }
-

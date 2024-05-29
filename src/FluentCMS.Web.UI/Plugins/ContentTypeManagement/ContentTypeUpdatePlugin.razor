@@ -27,58 +27,28 @@
                                         Weight="TextWeight.Medium">
                                 Fields
                             </Typography>
-                            <Table Hoverable>
-                                <TableHead>
-                                    <TableCell>Slug</TableCell>
-                                    <TableCell>Title</TableCell>
-                                    <TableCell>Type</TableCell>
-                                    <TableCell Width="TableColumnWidth.Small"></TableCell>
-                                </TableHead>
-                                <TableBody>
-                                    @foreach (var field in Fields)
-                                    {
-                                        <TableRow @onclick="() => OnEditField(field)">
-                                            <TableCell>
-                                                @field.Slug
-                                            </TableCell>
-                                            <TableCell>
-                                                @field.Title
-                                            </TableCell>
-                                            <TableCell>
-                                                Text
-                                            </TableCell>
-                                            <TableCell>
-                                                <ButtonGroup>
-                                                    <Button Ghost="true"
-                                                            Size="ButtonSize.Small"
-                                                            @onclick="() => OnDeleteField(field.Slug)">
-                                                        <Icon Name="IconName.Delete" />
-                                                    </Button>
-                                                    <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
-
-                                                    <Button Ghost="true"
-                                                            Size="ButtonSize.Small"
-                                                            @onclick="() => OnEditField(field)">
-                                                        <Icon Name="IconName.Edit" />
-                                                    </Button>
-                                                    <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
-                                                </ButtonGroup>
-                                            </TableCell>
-                                        </TableRow>
-                                    }
-                                    <TableRow>
-                                        <TableCell colspan="4">
-                                            <Button Color="Color.Primary"
-                                                    Ghost="true"
-                                                    @onclick="OpenAddFieldModal">
-                                                <Icon Name="IconName.Plus" />
-                                                Add Field
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
-                            <Spacer />
+                            @* TODO: this Button and DataTable are not tested yet *@
+                            <Button Color="Color.Primary"
+                                    Ghost="true"
+                                    @onclick="OpenAddFieldModal">
+                                <Icon Name="IconName.Plus" />
+                                Add Field
+                            </Button>
+                            <DataTable Items="Fields">
+                                <DataTableItem Label="Slug">@context.Slug</DataTableItem>
+                                <DataTableItem Label="Title">@context.Title</DataTableItem>
+                                <DataTableItem Label="Type">Text</DataTableItem>
+                                <DataTableItem>
+                                    <div class="flex gap-2">
+                                        <Button Color="Color.Primary" Outline="true" Size="ButtonSize.Small">
+                                            <Icon Name="IconName.Edit" />Edit
+                                        </Button>
+                                        <Button Color="Color.Danger" Outline="true" Size="ButtonSize.Small">
+                                            <Icon Name="IconName.Delete" />Delete
+                                        </Button>
+                                    </div>
+                                </DataTableItem>
+                            </DataTable>
                         </div>
                         @if (!string.IsNullOrEmpty(Message))
                         {
