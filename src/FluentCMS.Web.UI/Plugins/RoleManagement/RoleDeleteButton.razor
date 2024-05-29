@@ -1,0 +1,25 @@
+@rendermode InteractiveServer
+
+<DeleteButton Id="@Id" Message="Are you sure to remove this Role?" OnDelete="OnDelete"/>
+
+@code {
+    [CascadingParameter]
+    public UserLoginResponse UserLogin { get; set; }
+     
+    [Inject]
+    protected IHttpClientFactory HttpClientFactory { get; set; } = default!;
+
+    [Parameter]
+    public Guid Id { get; set; }
+     
+    protected TClient GetApiClient<TClient>() where TClient : class, IApiClient
+    {
+        return HttpClientFactory.CreateApiClient<TClient>(UserLogin);
+    }
+
+    public async Task OnDelete(Guid Id) 
+    {
+        Console.WriteLine($"OnDelete: {Id}");
+        await GetApiClient<RoleClient>().DeleteAsync(Id);
+    }
+}
