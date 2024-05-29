@@ -1,4 +1,4 @@
-namespace FluentCMS.Web.UI.Plugins.RoleManagement;
+namespace FluentCMS.Web.UI.Plugins.Components;
 
 public partial class PluginFormPolicies 
 {

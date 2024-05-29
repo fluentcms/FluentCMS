@@ -1,84 +1,78 @@
 @using System.Text.Json
-<ContentLayout>
-    <Page>
-        <PageHeader HasBack="true"
-                    Title="@PageTitle" />
-        <PageBody>
-            @if (Model != null)
-            {
-                <Grid Gutter="GridGutter.Large">
-                    <GridItem Small="GridItemColumn.Twelve"
-                              Medium="GridItemColumn.Seven"
-                              Large="GridItemColumn.Nine">
-                        <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
+<PluginBody Title="@PageTitle">
+    @if (Model != null)
+    {
+        <Grid Gutter="GridGutter.Large">
+            <GridItem Small="GridItemColumn.Twelve"
+                        Medium="GridItemColumn.Seven"
+                        Large="GridItemColumn.Nine">
+                <Grid Gutter="GridGutter.Large" JustifySmall="GridJustify.End">
 
-                            @foreach (var field in Fields)
-                            {
-                                <GridItem Small="GridItemColumn.Twelve">
-                                    <Typography><strong>@(String.IsNullOrEmpty(field.Label) ? field.Title : field.Label):</strong></Typography>
-                                    <Typography>
-                                        @ParseValue(Model.Value![field.Slug!])
-                                    </Typography>
-                                </GridItem>
-                            }
+                    @foreach (var field in Fields)
+                    {
+                        <GridItem Small="GridItemColumn.Twelve">
+                            <Typography><strong>@(String.IsNullOrEmpty(field.Label) ? field.Title : field.Label):</strong></Typography>
+                            <Typography>
+                                @ParseValue(Model.Value![field.Slug!])
+                            </Typography>
+                        </GridItem>
+                    }
 
 
-                        </Grid>
-                    </GridItem>
-                    <GridItem Small="GridItemColumn.Twelve"
-                              Medium="GridItemColumn.Five"
-                              Large="GridItemColumn.Three">
-                        <Card>
-                            <CardBody>
-                                @if (!string.IsNullOrEmpty(View.CreatedBy))
-                                {
-                                    <Typography><strong>Created By</strong></Typography>
-                                    <Typography>@View.CreatedBy</Typography>
-                                    <Spacer />
-                                }
-                                @if (!string.IsNullOrEmpty(View.CreatedAt.ToString()))
-                                {
-                                    <Typography><strong>Created At</strong></Typography>
-                                    <Typography>@View.CreatedAt</Typography>
-                                    <Spacer />
-                                }
-                                @if (!string.IsNullOrEmpty(View.ModifiedBy))
-                                {
-                                    <Typography><strong>Modified By</strong></Typography>
-                                    <Typography>@View.ModifiedBy</Typography>
-                                    <Spacer />
-                                }
-                                @if (!string.IsNullOrEmpty(View.ModifiedAt.ToString()))
-                                {
-                                    <Typography><strong>Modified At</strong></Typography>
-                                    <Typography>@View.ModifiedAt</Typography>
-                                }
-                            </CardBody>
-                        </Card>
-                        <Spacer />
-                        <Button Block="true"
-                                Color="Color.Primary"
-                                Href="@NavigationManager.Plugin("Content Management", "Update Content", new { contentTypeSlug = ContentType.Slug, id = View.Id })"
-                                Item="true"
-                                Outline="true">
-                            <Icon Name="IconName.Edit" />
-                            Edit
-                        </Button>
-                        <Spacer Size="SpacerSize.Small" />
-                        <Button Block="true"
-                                Color="Color.Danger"
-                                Item="true"
-                                Outline="true"
-                                @onclick="OnDelete">
-                            <Icon Name="IconName.Edit" />
-                            Delete
-                        </Button>
-                    </GridItem>
                 </Grid>
-            }
-        </PageBody>
-    </Page>
-</ContentLayout>
+            </GridItem>
+            <GridItem Small="GridItemColumn.Twelve"
+                        Medium="GridItemColumn.Five"
+                        Large="GridItemColumn.Three">
+                <Card>
+                    <CardBody>
+                        @if (!string.IsNullOrEmpty(View.CreatedBy))
+                        {
+                            <Typography><strong>Created By</strong></Typography>
+                            <Typography>@View.CreatedBy</Typography>
+                            <Spacer />
+                        }
+                        @if (!string.IsNullOrEmpty(View.CreatedAt.ToString()))
+                        {
+                            <Typography><strong>Created At</strong></Typography>
+                            <Typography>@View.CreatedAt</Typography>
+                            <Spacer />
+                        }
+                        @if (!string.IsNullOrEmpty(View.ModifiedBy))
+                        {
+                            <Typography><strong>Modified By</strong></Typography>
+                            <Typography>@View.ModifiedBy</Typography>
+                            <Spacer />
+                        }
+                        @if (!string.IsNullOrEmpty(View.ModifiedAt.ToString()))
+                        {
+                            <Typography><strong>Modified At</strong></Typography>
+                            <Typography>@View.ModifiedAt</Typography>
+                        }
+                    </CardBody>
+                </Card>
+                <Spacer />
+                <Button Block="true"
+                        Color="Color.Primary"
+                        Href="@NavigationManager.Plugin("Content Management", "Update Content", new { contentTypeSlug = ContentType.Slug, id = View.Id })"
+                        Item="true"
+                        Outline="true">
+                    <Icon Name="IconName.Edit" />
+                    Edit
+                </Button>
+                <Spacer Size="SpacerSize.Small" />
+                <Button Block="true"
+                        Color="Color.Danger"
+                        Item="true"
+                        Outline="true"
+                        @onclick="OnDelete">
+                    <Icon Name="IconName.Edit" />
+                    Delete
+                </Button>
+            </GridItem>
+        </Grid>
+    }
+</PluginBody>
 
 @code {
     [Inject]

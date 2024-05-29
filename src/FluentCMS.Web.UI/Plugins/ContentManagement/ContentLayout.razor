@@ -3,23 +3,18 @@
 @if(Loaded) {
     @if(Collections.Count == 0)
     {
-        <Page>
-            <PageHeader Title="Content Management (Draft)">
-
-            </PageHeader>
-            <PageBody>
-                <EmptyState Message="There is no Content-Type yet!">
-                    @* TODO: Should navigate to create ContentType page instead of list page *@
-                    <Button Color="Color.Primary"
-                            Href="/admin/content-types"
-                            id="contentCreateButton"
-                            Size="ButtonSize.Small">
-                        <Icon Name="IconName.Plus" />
-                        Add New Content Type
-                    </Button>
-                </EmptyState>
-            </PageBody>
-        </Page>
+        <PluginBody Title="Content Management (Draft)">
+            <EmptyState Message="There is no Content-Type yet!">
+                @* TODO: Should navigate to create ContentType page instead of list page *@
+                <Button Color="Color.Primary"
+                        Href="/admin/content-types"
+                        id="contentCreateButton"
+                        Size="ButtonSize.Small">
+                    <Icon Name="IconName.Plus" />
+                    Add New Content Type
+                </Button>
+            </EmptyState>
+        </PluginBody>
     } else {
         <Grid>
             <GridItem HideSmall="true"
