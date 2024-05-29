@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using FluentCMS.Providers;
+using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Services;
 
@@ -24,11 +25,17 @@ public class UserService(
     IGlobalSettingsRepository globalSettingsRepository,
     IUserTokenProvider userTokenProvider,
     UserManager<User> userManager,
+    ISmtpEmailProvider smtpEmailProvider,
     IAuthContext authContext) : IUserService
 {
     public const string LOCAL_LOGIN_PROVIDER = "local";
     public const string REFRESH_TOKEN_NAME = "refreshToken";
     public const string PASSWORD_RESET_PURPOSE = "passwordReset";
+
+    public async Task Send()
+    {
+        await smtpEmailProvider.Send("amir@admin.com", "rec@admin.com", "subject", "body");
+    }
 
     public async Task<User> Create(User user, string password, CancellationToken cancellationToken = default)
     {

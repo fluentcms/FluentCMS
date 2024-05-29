@@ -13,7 +13,7 @@
             "commandName": "Project",
             "dotnetRunMessages": true,
             "launchBrowser": true,
-            "launchUrl": "",
+            "launchUrl": "api/doc",
             "applicationUrl": "http://localhost:5000",
             "environmentVariables": {
                 "ASPNETCORE_ENVIRONMENT": "Development"
@@ -23,7 +23,7 @@
             "commandName": "Project",
             "dotnetRunMessages": true,
             "launchBrowser": true,
-            "launchUrl": "",
+            "launchUrl": "api/doc",
             "applicationUrl": "http://localhost:5000",
             "environmentVariables": {
                 "ASPNETCORE_ENVIRONMENT": "Staging"
@@ -32,7 +32,7 @@
         "IIS Express": {
             "commandName": "IISExpress",
             "launchBrowser": true,
-            "launchUrl": "",
+            "launchUrl": "api/doc",
             "environmentVariables": {
                 "ASPNETCORE_ENVIRONMENT": "Development"
             }

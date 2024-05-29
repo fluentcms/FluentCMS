@@ -8,9 +8,11 @@ public static class ServiceExtensions
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        services.AddSmtpEmailProvider();
+
         services.AddScoped<IUserTokenProvider, JwtUserTokenProvider>();
         services.AddScoped<IApiTokenProvider, JwtApiTokenProvider>();
-
+        
         AddIdentity(services);
 
         RegisterServices(services);
