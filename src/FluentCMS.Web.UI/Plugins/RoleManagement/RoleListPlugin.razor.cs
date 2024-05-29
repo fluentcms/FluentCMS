@@ -7,7 +7,8 @@ public partial class RoleListPlugin
 
     private List<RoleDetailResponse> Roles { get; set; } = [];
 
-    public async Task Load() {
+    public async Task Load()
+    {
         var rolesResponse = await GetApiClient<RoleClient>().GetAllAsync();
         Roles = rolesResponse?.Data?.ToList() ?? [];
     }
@@ -18,14 +19,30 @@ public partial class RoleListPlugin
         await Load();
     }
 
-    public async Task OnDelete(RoleDetailResponse role)
-    {
-        var result = await ConfirmService!.Show("Are you sure to remove this Role?");
+    #region Delete Role
 
-        if(result) {
-            await GetApiClient<RoleClient>().DeleteAsync(role.Id);
-            await Load();
-        }
+    private RoleDetailResponse? SelectedRole { get; set; }
+    public async Task OnDelete()
+    {
+        if (SelectedRole == null)
+            return;
+
+        await GetApiClient<RoleClient>().DeleteAsync(SelectedRole.Id);
+        await Load();
+        SelectedRole = default;
     }
+
+    public async Task OnConfirm(RoleDetailResponse role)
+    {
+        SelectedRole = role;
+        await Task.CompletedTask;
+    }
+    public async Task OnConfirmClose()
+    {
+        SelectedRole = default;
+        await Task.CompletedTask;
+    }
+    #endregion
+
 }
 

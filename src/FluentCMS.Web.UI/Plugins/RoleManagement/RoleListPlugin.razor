@@ -16,7 +16,7 @@
                     <Button Color="Color.Primary" Href="@GetUrl("Update Role", new { id = @context.Id })" Outline>
                         <Icon Name="IconName.Edit" />Edit
                     </Button>
-                    <Button Color="Color.Danger" Outline @onclick="() => OnDelete(context)">
+                    <Button Color="Color.Danger" Outline @onclick="() => OnConfirm(context)">
                         <Icon Name="IconName.Delete" />Delete
                     </Button>
                 </div>
@@ -25,5 +25,4 @@
     </ChildContent>
 </PluginBody>
 
-@* TODO: ConfirmProvider should be placed in layout. (page should have only one instance of it) *@
-<ConfirmProvider />
+<Confirm Message="Are you sure to delete this role?" OnConfirm="OnDelete" OnCancel="OnConfirmClose" Open="SelectedRole != null"></Confirm>
