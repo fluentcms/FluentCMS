@@ -12,7 +12,7 @@ public static class ServiceExtensions
 
         services.AddScoped<IUserTokenProvider, JwtUserTokenProvider>();
         services.AddScoped<IApiTokenProvider, JwtApiTokenProvider>();
-        
+
         AddIdentity(services);
 
         RegisterServices(services);

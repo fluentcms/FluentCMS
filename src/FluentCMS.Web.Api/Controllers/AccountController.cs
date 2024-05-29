@@ -1,17 +1,9 @@
-using FluentCMS.Providers;
 using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class AccountController(IMapper mapper, IUserService userService, IAuthContext authContext, ISmtpEmailProvider smtpEmailProvider) : BaseGlobalController
+public class AccountController(IMapper mapper, IUserService userService, IAuthContext authContext) : BaseGlobalController
 {
-
-    [HttpPost]
-    public async Task Send()
-    {
-        await smtpEmailProvider.Send("john.doe@example.org", "ap@momentaj.com", "subject", "body");
-    }
-
     [HttpPost]
     [AllowAnonymous]
     public async Task<IApiResult<UserDetailResponse>> Register([FromBody] UserRegisterRequest request, CancellationToken cancellationToken = default)

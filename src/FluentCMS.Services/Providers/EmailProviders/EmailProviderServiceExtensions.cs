@@ -13,8 +13,8 @@ public static class EmailProviderServiceExtensions
             Port = 2525,
             Server = "sandbox.smtp.mailtrap.io",
             UseDefaultCredentials = false,
-            Username= "33b3d4be6eff7c",
-            Password= "3bc847fa1f6d59"
+            Username = "33b3d4be6eff7c",
+            Password = "3bc847fa1f6d59"
         });
 
         return services;
