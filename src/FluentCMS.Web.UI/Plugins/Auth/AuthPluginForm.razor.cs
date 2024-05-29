@@ -5,6 +5,9 @@ namespace FluentCMS.Web.UI.Plugins.Auth;
 public partial class AuthPluginForm
 {
     [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter]
     public string? Title { get; set; }
 
     [Parameter]

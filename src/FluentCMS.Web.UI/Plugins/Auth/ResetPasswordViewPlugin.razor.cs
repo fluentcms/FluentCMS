@@ -7,6 +7,9 @@ public partial class ResetPasswordViewPlugin
     [SupplyParameterFromQuery(Name = nameof(Email))]
     public string Email { get; set; } = default!;
 
+    [SupplyParameterFromQuery(Name = nameof(Token))]
+    public string Token { get; set; } = default!;
+
     [SupplyParameterFromForm(FormName = FORM_NAME)]
     private UserValidatePasswordResetTokenRequest Model { get; set; } = new();
 
@@ -16,7 +19,13 @@ public partial class ResetPasswordViewPlugin
         {
             throw new ArgumentNullException(nameof(Email));
         }
+
+        if (string.IsNullOrEmpty(Token))
+        {
+            throw new ArgumentNullException(nameof(Token));
+        }
         Model.Email = Email;
+        Model.Token = Token;
     }
 
     private async Task OnSubmit()

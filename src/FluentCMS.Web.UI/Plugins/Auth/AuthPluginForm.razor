@@ -4,6 +4,12 @@
     <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="@Name" Enhance>
         <DataAnnotationsValidator />
         <Spacer />
+        @if(!string.IsNullOrEmpty(Description))
+        {
+            <Typography>
+                @Description
+            </Typography>
+        }
         <Grid GutterX="GridGutter.Large">
             @ChildContent
         </Grid>
