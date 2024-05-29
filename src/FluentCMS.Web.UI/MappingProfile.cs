@@ -17,5 +17,17 @@ public class MappingProfile : Profile
         CreateMap<UserDetailResponse, UserUpdateRequest>();
 
         #endregion
+
+        #region Role
+
+        CreateMap<RoleDetailResponse, RoleUpdateRequest>();
+
+        #endregion
+
+        #region ApiToken
+
+        CreateMap<ApiTokenDetailResponse, ApiTokenUpdateRequest>();
+
+        #endregion
     }
 }

@@ -12,8 +12,11 @@ public partial class UserUpdatePlugin
 
     private List<RoleDetailResponse>? Roles { get; set; }
 
+    private string? Username { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
+        await base.OnInitializedAsync();
         if (Roles is null)
         {
             var rolesResponse = await GetApiClient<RoleClient>().GetAllAsync();
@@ -23,6 +26,7 @@ public partial class UserUpdatePlugin
         {
             var userResponse = await GetApiClient<UserClient>().GetAsync(Id);
             var user = userResponse.Data;
+            Username = user.Username;
             Model = Mapper.Map<UserUpdateRequest>(user);
             Model.RoleIds = user.Roles?.Select(r => r.Id).ToList() ?? [];
         }

@@ -13,6 +13,11 @@ public partial class PluginFormCheckbox
     [Parameter]
     public string? Text { get; set; }
 
+    public PluginFormCheckbox()
+    {
+        Id ??= Guid.NewGuid().ToString();
+    }
+
     protected override bool TryParseValueFromString(string? value, out bool result, [NotNullWhen(false)] out string? validationErrorMessage)
     {
         throw new NotSupportedException();

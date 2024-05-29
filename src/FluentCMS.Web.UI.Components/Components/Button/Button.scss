@@ -17,10 +17,6 @@ $button: $prefix + "button";
         @apply text-start;
     }
 
-    &-link-true > span {
-        @apply hover:underline;
-    }
-
     &-icon {
         @apply w-2.5 h-2.5 ml-2.5;
     }
@@ -43,6 +39,10 @@ $button: $prefix + "button";
 
     &-size-medium.#{$button}-link-false {
         @apply px-5 py-2.5 text-sm;
+
+        .#{$prefix}icon {
+            @apply w-5 h-5;
+        }
 
         &.#{$button}-icon-true {
             @apply p-2.5 text-xl;

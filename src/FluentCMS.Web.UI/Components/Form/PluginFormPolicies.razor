@@ -1,0 +1,21 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Plugins.Components
+
+@if (Policies != null && Policies.Count > 0 && Visible)
+{
+    <PluginFormField>
+        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white" Visible="!string.IsNullOrEmpty(Label)">
+            @Label
+        </label>
+
+        @{ var index = 0; }
+        @foreach(var policy in Value) {
+            var i = index++;
+            <div>
+                <Divider>@Policies[i].Area</Divider>
+                <PluginFormCheckboxGroup @bind-Value="policy.Actions" Data="@Policies[i].Actions" @key="@Policies[i]" />
+            </div>
+        }
+    </PluginFormField>
+}

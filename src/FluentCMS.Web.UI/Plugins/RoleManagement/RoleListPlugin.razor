@@ -1,126 +1,21 @@
-﻿<Page>
-    <PageHeader HasBack="false" Title="Roles (Draft)">
-        <PageHeaderActions>
-            <ButtonGroup>
-                <Button Color="Color.Primary"
-                        Href="@NavigationManager.Plugin("Role Management", "Create Role")"
-                        Id="roleCreateButton"
-                        Size="ButtonSize.Small">
-                    <Icon Name="IconName.Plus" />
-                    Add New Role
+﻿@inherits BasePlugin
+
+<PluginBody Title="Roles List">
+    <ActionsFragment>
+        <Button Href="@GetUrl("Create Role")" Color="Color.Primary">
+            <Icon Name="IconName.Plus" />Add New Role
+        </Button>
+    </ActionsFragment>
+    <ChildContent>
+        <DataTable Items="Roles">
+            <DataTableItem Label="Name">@context.Name</DataTableItem>
+            <DataTableItem Label="Description">@context.Description</DataTableItem>
+            <DataTableItem>
+                <Button Color="Color.Primary" Href="@GetUrl("Update Role", new { id = @context.Id })" Outline>
+                    <Icon Name="IconName.Edit" />Edit
                 </Button>
-            </ButtonGroup>
-        </PageHeaderActions>
-    </PageHeader>
-    <PageBody>
-        @if (Roles.Count > 0)
-        {
-            <Card>
-                <Table Hoverable>
-                    <TableHead>
-                        <TableCell>Name</TableCell>
-                        <TableCell>Description</TableCell>
-                        <TableCell Width="TableColumnWidth.Small"></TableCell>
-                    </TableHead>
-                    <TableBody id="roleListTable">
-                        @foreach (var role in Roles)
-                        {
-                            <TableRow OnClick="@(evt => TableRowDefaultAction(role))">
-                                <TableCell> @role.Name </TableCell>
-                                <TableCell> @role.Description </TableCell>
-                                <TableCell>
-                                    <ButtonGroup>
-                                        <Button data-test="preview-btn"
-                                                Href="@NavigationManager.Plugin("Role Management", "Role Detail", new { id= role.Id })"
-                                                Ghost="true"
-                                                Size="ButtonSize.Small"
-                                                StopPropagation="true">
-                                            <Icon Name="IconName.Eye" />
-                                        </Button>
-                                        <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
+            </DataTableItem>
+        </DataTable>
+    </ChildContent>
+</PluginBody>
 
-                                        <Button data-test="edit-btn"
-                                                Ghost="true"
-                                                Href="@NavigationManager.Plugin("Role Management", "Update Role", new { id= role.Id })"
-                                                Size="ButtonSize.Small"
-                                                StopPropagation="true">
-                                            <Icon Name="IconName.Edit" />
-                                        </Button>
-                                        <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
-
-                                        <Button data-test="delete-btn"
-                                                Ghost="true"
-                                                Size="ButtonSize.Small"
-                                                StopPropagation="true"
-                                                OnClick="@(evt => OnDelete(role))">
-
-                                            <Icon Name="IconName.Delete" />
-                                        </Button>
-                                        <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
-
-                                    </ButtonGroup>
-                                </TableCell>
-                            </TableRow>
-                        }
-                    </TableBody>
-                </Table>
-            </Card>
-        }
-        else
-        {
-            <EmptyState Message="No Roles Found!">
-                <Button Color="Color.Primary"
-                        Href="@NavigationManager.Plugin("Role Management", "Create Role")"
-                        Id="roleEmptyCreateButton"
-                        Size="ButtonSize.Small">
-                    <Icon Name="IconName.Plus" />
-                    Add New Role
-                </Button>
-            </EmptyState>
-        }
-    </PageBody>
-</Page>
-
-@code {
-    [Inject]
-    NavigationManager? NavigationManager { get; set; }
-
-    [Inject]
-    RoleClient? RoleClient { get; set; }
-
-    [Inject]
-    ConfirmService Confirm { get; set; }
-
-    List<RoleDetailResponse> Roles { get; set; } = [];
-
-    async Task Load()
-    {
-        var response = await RoleClient!.GetAllAsync();
-
-        if (response?.Data == null) return;
-
-        Roles = response.Data.ToList();
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        await Load();
-    }
-
-    private async Task OnDelete(RoleDetailResponse role)
-    {
-        var result = await Confirm.Show("Are you sure to remove this role?");
-
-        if (!result) return;
-
-        await RoleClient!.DeleteAsync(role.Id);
-
-        await Load();
-    }
-
-    async Task TableRowDefaultAction(RoleDetailResponse role)
-    {
-        var url = NavigationManager.Plugin("Role Management", "Role Detail", new { id = role.Id });
-        NavigationManager.NavigateTo(url);
-    }
-}

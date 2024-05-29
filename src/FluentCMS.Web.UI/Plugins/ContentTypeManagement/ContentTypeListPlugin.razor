@@ -1,133 +1,27 @@
-﻿@using FluentCMS.Web.UI.Services.LocalStorage
-<Page>
-    <PageHeader HasBack="false" Title="Content Types List (Draft)">
-        <PageHeaderActions>
-            <ButtonGroup>
-                <Button Color="Color.Primary"
-                        Href="@NavigationManager.Plugin("ContentType Management", "Create ContentType")"
-                        id="contentTypeCreateButton"
-                        Size="ButtonSize.Small">
-                    <Icon Name="IconName.Plus" />
-                    Add New Content Type
+﻿@inherits BasePlugin
+
+<PluginBody Title="Content Types List">
+    <ActionsFragment>
+        <Button Href="@GetUrl("Create ContentType")" Color="Color.Primary">
+            <Icon Name="IconName.Plus" />Add New Content Type
+        </Button>
+    </ActionsFragment>
+    <ChildContent>
+        <DataTable Items="ContentTypes">
+            <DataTableItem Label="Slug">
+                @context.Slug
+            </DataTableItem>
+            <DataTableItem Label="Title">
+                @context.Title
+            </DataTableItem>
+            <DataTableItem Label="Description">
+                @context.Description
+            </DataTableItem>
+            <DataTableItem>
+                <Button Color="Color.Primary" Href="@GetUrl("Update ContentType", new { id = @context.Id })" Outline>
+                    <Icon Name="IconName.Edit" />Edit
                 </Button>
-            </ButtonGroup>
-        </PageHeaderActions>
-    </PageHeader>
-    <PageBody>
-        @if (ContentTypes.Count > 0)
-        {
-            <Card>
-                <Table Hoverable>
-                    <TableHead>
-                        <TableCell>Slug</TableCell>
-                        <TableCell>Title</TableCell>
-                        <TableCell>Description</TableCell>
-                        <TableCell Width="TableColumnWidth.Small"></TableCell>
-                    </TableHead>
-                    <TableBody id="contentTypeListTable">
-                        @foreach (var contentType in ContentTypes)
-                        {
-                            <TableRow OnClick="@(evt => TableRowDefaultAction(contentType))">
-                                <TableCell>
-                                    @contentType.Slug
-                                </TableCell>
-                                <TableCell>
-                                    @contentType.Title
-                                </TableCell>
-                                <TableCell>
-                                    @contentType.Description
-                                </TableCell>
-                                <TableCell>
-                                    <ButtonGroup>
-                                        @* TODO: Add preview when preview page designed *@
-                                        <Tooltip Placement="TooltipPlacement.Top">Preview</Tooltip>
-
-                                        <Button data-test="edit-btn"
-                                                Ghost="true"
-                                                Href="@NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = contentType.Id })"
-                                                Size="ButtonSize.Small"
-                                                StopPropagation="true">
-                                            <Icon Name="IconName.Edit" />
-                                        </Button>
-                                        <Tooltip Placement="TooltipPlacement.Top">Edit</Tooltip>
-
-                                        <Button data-test="delete-btn"
-                                                Ghost="true"
-                                                Size="ButtonSize.Small"
-                                                StopPropagation="true"
-                                                OnClick="@(evt => OnDelete(contentType))">
-                                            <Icon Name="IconName.Delete" />
-                                        </Button>
-                                        <Tooltip Placement="TooltipPlacement.Top">Delete</Tooltip>
-                                    </ButtonGroup>
-                                </TableCell>
-                            </TableRow>
-                        }
-                    </TableBody>
-                </Table>
-            </Card>
-        }
-        else
-        {
-            <EmptyState Message="No Content Types Found!">
-                <Button Color="Color.Primary"
-                        Href="@NavigationManager.Plugin("ContentType Management", "Create ContentType")"
-                        id="contentTypeCreateButton"
-                        Size="ButtonSize.Small">
-                    <Icon Name="IconName.Plus" />
-                    Add New Content Type
-                </Button>
-            </EmptyState>
-        }
-    </PageBody>
-</Page>
-
-@code {
-    [Inject]
-    ConfirmService Confirm { get; set; } = default!;
-
-    [Inject]
-    ContentTypeClient ContentTypeClient { get; set; } = default!;
-
-    [CascadingParameter]
-    public System.Net.Http.HttpContent? HttpContext { get; set; }
-
-    [Inject]
-    ILocalStorageService LocalStorageService { get; set; } = default!;
-
-    [Inject]
-    NavigationManager NavigationManager { get; set; } = default!;
-
-    List<ContentTypeDetailResponse> ContentTypes { get; set; } = [];
-
-    async Task Load()
-    {
-        var response = await ContentTypeClient.GetAllAsync();
-
-        if (response?.Data == null) return;
-
-        ContentTypes = response.Data.ToList();
-    }
-
-    async Task OnDelete(ContentTypeDetailResponse contentType)
-    {
-        var result = await Confirm.Show("Are you sure you want to remove this contentType?");
-
-        if (!result) return;
-
-        await ContentTypeClient.DeleteAsync(contentType.Id);
-
-        await Load();
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        await Load();
-    }
-
-    async Task TableRowDefaultAction(ContentTypeDetailResponse contentType)
-    {
-        var url = NavigationManager.Plugin("ContentType Management", "Update ContentType", new { id = contentType.Id });
-        NavigationManager.NavigateTo(url);
-    }
-}
+            </DataTableItem>
+        </DataTable>
+    </ChildContent>
+</PluginBody>

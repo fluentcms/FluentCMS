@@ -1,43 +1,38 @@
 @using System.Text.Json
 <ContentLayout>
-    <Page>       
-        <PageHeader HasBack="true"
-                    Title="@PageTitle"/>
-        <PageBody>
-            @if (Model != null)
-            {
-                <Form Model="@Model"
-                      OnSubmit="OnSubmit">
-                    <Card>
-                        <CardBody>
-                            @foreach (var field in Fields)
-                            {
-                                <Input Id="@($"contentUpdate{field.Slug}Input")"
-                                       Label="@(String.IsNullOrEmpty(field.Label) ? field.Title : field.Label)"
-                                       Name="@field.Slug"
-                                       Placeholder="@(String.IsNullOrEmpty(field.Placeholder) ? $"Enter {field.Title}..." : field.Placeholder)"
-                                       TValue="string"
-                                       Value="@((string) ParseValue(Model.Value![field.Slug!]!)!)"
-                                       ValueChanged="x => Model.Value![field.Slug!] = x"
-                                       />
-                            }
-                        </CardBody>
-                        <CardActions>
-                            <Button id="contentUpdateCancelButton"
-                                    OnClick="GoBack">
-                                Cancel
-                            </Button>
-                            <Button Color="Color.Primary"
-                                    id="contentUpdateSubmitButton"
-                                    Type="ButtonType.Submit">
-                                Save
-                            </Button>
-                        </CardActions>
-                    </Card>
-                </Form>
-            }
-        </PageBody>
-    </Page>
+    <PluginBody Title="@PageTitle">
+        @if (Model != null)
+        {
+            <Form Model="@Model"
+                    OnSubmit="OnSubmit">
+                <Card>
+                    <CardBody>
+                        @foreach (var field in Fields)
+                        {
+                            <Input Id="@($"contentUpdate{field.Slug}Input")"
+                                    Label="@(String.IsNullOrEmpty(field.Label) ? field.Title : field.Label)"
+                                    Name="@field.Slug"
+                                    Placeholder="@(String.IsNullOrEmpty(field.Placeholder) ? $"Enter {field.Title}..." : field.Placeholder)"
+                                    TValue="string"
+                                    Value="@((string) ParseValue(Model.Value![field.Slug!]!)!)"
+                                    ValueChanged="x => Model.Value![field.Slug!] = x"
+                                    />
+                        }
+                    </CardBody>
+                    <CardActions>
+                        <Button id="contentUpdateCancelButton" @onclick="GoBack">
+                            Cancel
+                        </Button>
+                        <Button Color="Color.Primary"
+                                id="contentUpdateSubmitButton"
+                                Type="ButtonType.Submit">
+                            Save
+                        </Button>
+                    </CardActions>
+                </Card>
+            </Form>
+        }
+    </PluginBody>
 </ContentLayout>
 
 @code {

@@ -5,7 +5,7 @@ public partial class LoginViewPlugin
     public const string FORM_NAME = "LoginForm";
 
     [Inject]
-    private IAuthService AuthService { get; set; } = default!;
+    private AuthManager AuthManager { get; set; } = default!;
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
@@ -15,7 +15,7 @@ public partial class LoginViewPlugin
 
     private async Task OnSubmit()
     {
-        await AuthService.Login(HttpContext, Model.Username, Model.Password, Model.RememberMe);
+        await AuthManager.Login(HttpContext, Model.Username, Model.Password, Model.RememberMe);
         NavigateTo("/");
     }
 }

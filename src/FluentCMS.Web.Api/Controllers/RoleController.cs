@@ -23,6 +23,15 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
         return OkPaged(roleResponses);
     }
 
+    [HttpGet("{id}")]
+    [Policy(AREA, READ)]
+    public async Task<IApiResult<RoleDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    {
+        var role = await roleService.GetById(id, cancellationToken);
+        var roleResponse = mapper.Map<RoleDetailResponse>(role);
+        return Ok(roleResponse);
+    }
+
     [HttpPost]
     [Policy(AREA, CREATE)]
     public async Task<IApiResult<RoleDetailResponse>> Create([FromBody] RoleCreateRequest request, CancellationToken cancellationToken = default)

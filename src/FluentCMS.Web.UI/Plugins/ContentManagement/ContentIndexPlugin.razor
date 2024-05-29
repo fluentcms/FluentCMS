@@ -1,39 +1,32 @@
 @using FluentCMS.Web.UI.Plugins.ContentManagement
-@using FluentCMS.Web.UI.Services.LocalStorage
-
-<ContentLayout>
-    <Page>
-        <PageHeader Title="Content Management (Draft)" />
-        <PageBody>
-            <Spacer class="lg:hidden" />
-            <Grid class="lg:hidden"
-                  GutterY="GridGutter.Medium"
-                  Id="contentIndexCollectionList">
-                <GridItem HideLarge="true"
-                          Small="GridItemColumn.Twelve">
-                </GridItem>
-                @foreach (var collection in Collections)
-                {
-                    <GridItem Small="GridItemColumn.Twelve">
-                        <a Href="@NavigationManager.Plugin("Content Management", "Content List", new { contentTypeSlug = collection.Slug })"
-                           id="@($"contentIndex{@collection.Slug}Link")">
-                            <Card>
-                                <CardBody>
-                                    <CardTitle>
-                                        @collection.Title
-                                    </CardTitle>
-                                    <Typography>
-                                        @collection.Description
-                                    </Typography>
-                                </CardBody>
-                            </Card>
-                        </a>
-                    </GridItem>
-                }
-            </Grid>
-        </PageBody>
-    </Page>
-</ContentLayout>
+<PluginBody Title="Content Management (Draft)">
+    <Spacer class="lg:hidden" />
+    <Grid class="lg:hidden"
+            GutterY="GridGutter.Medium"
+            Id="contentIndexCollectionList">
+        <GridItem HideLarge="true"
+                    Small="GridItemColumn.Twelve">
+        </GridItem>
+        @foreach (var collection in Collections)
+        {
+            <GridItem Small="GridItemColumn.Twelve">
+                <a Href="@NavigationManager.Plugin("Content Management", "Content List", new { contentTypeSlug = collection.Slug })"
+                    id="@($"contentIndex{@collection.Slug}Link")">
+                    <Card>
+                        <CardBody>
+                            <CardTitle>
+                                @collection.Title
+                            </CardTitle>
+                            <Typography>
+                                @collection.Description
+                            </Typography>
+                        </CardBody>
+                    </Card>
+                </a>
+            </GridItem>
+        }
+    </Grid>
+</PluginBody>
 
 @code {
     [Inject]
@@ -41,9 +34,6 @@
 
     [Inject]
     ContentTypeClient ContentTypeClient { get; set; } = default!;
-
-    [Inject]
-    ILocalStorageService LocalStorageService { get; set; } = default!;
 
     [Inject]
     NavigationManager NavigationManager { get; set; } = default!;

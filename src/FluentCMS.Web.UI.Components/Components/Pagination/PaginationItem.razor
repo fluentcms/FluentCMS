@@ -7,7 +7,7 @@
     <li @attributes="AdditionalAttributes"
         class="@this.GetClasses()">
         <Button Disabled="Disabled"
-                OnClick="OnClick">
+                @onclick="OnClick">
             @ChildContent
         </Button>
     </li>
