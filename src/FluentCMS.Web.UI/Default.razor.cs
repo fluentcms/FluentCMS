@@ -9,7 +9,7 @@ public partial class Default : IDisposable
     public const string ATTRIBUTE = "FluentCMS";
     public const string SLOT_ATTRIBUTE = "FluentCMS-Slot";
 
-    [CascadingParameter]
+    [Inject]
     public UserLoginResponse? UserLogin { get; set; }
 
     [CascadingParameter]
@@ -27,17 +27,10 @@ public partial class Default : IDisposable
     [CascadingParameter]
     public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
 
-
-    public Default()
-    {
-        
-    }
-
     protected override async Task OnInitializedAsync()
     {
-        //var x = UserLogin;
-        //UserLogin = await AuthenticationStateTask.GetLogin();
         NavigationManager.LocationChanged += LocationChanged;
+        await Task.CompletedTask;
     }
 
     protected override async Task OnParametersSetAsync()
