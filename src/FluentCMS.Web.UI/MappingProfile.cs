@@ -15,6 +15,7 @@ public class MappingProfile : Profile
         #region User
 
         CreateMap<UserDetailResponse, UserUpdateRequest>();
+        CreateMap<UserDetailResponse, AccountUpdateRequest>();
 
         #endregion
 

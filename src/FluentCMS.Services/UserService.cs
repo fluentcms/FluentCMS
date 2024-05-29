@@ -10,7 +10,7 @@ public interface IUserService : IAutoRegisterService
     Task<User> Update(User user, CancellationToken cancellationToken = default);
     Task<User> Create(User user, string password, CancellationToken cancellationToken = default);
     Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default);
-    Task ChangePassword(User user, string newPassword, CancellationToken cancellationToken = default);
+    Task<bool> ChangePassword(User user, string newPassword, CancellationToken cancellationToken = default);
     Task<User> ChangePassword(Guid id, string oldPassword, string newPassword, CancellationToken cancellationToken = default);
     Task<string> GenerateToken(string purpose, User user, CancellationToken cancellationToken = default);
     Task<bool> ValidateToken(string token, string purpose, User user, CancellationToken cancellationToken = default);
@@ -76,12 +76,13 @@ public class UserService(
         return user;
     }
 
-    public async Task ChangePassword(User user, string newPassword, CancellationToken cancellationToken = default)
+    public async Task<bool> ChangePassword(User user, string newPassword, CancellationToken cancellationToken = default)
     {
         var token = await userManager.GeneratePasswordResetTokenAsync(user);
         var result = await userManager.ResetPasswordAsync(user, token, newPassword);
 
         result.ThrowIfInvalid();
+        return true;
     }
 
     public async Task<User> Update(User entity, CancellationToken cancellationToken = default)

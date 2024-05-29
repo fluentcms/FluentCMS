@@ -46,12 +46,12 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(UserChangePasswordRequest? body);
+        System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(AccountChangePasswordRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(UserChangePasswordRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(AccountChangePasswordRequest? body, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -285,7 +285,7 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(UserChangePasswordRequest? body)
+        public virtual System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(AccountChangePasswordRequest? body)
         {
             return ChangePasswordAsync(body, System.Threading.CancellationToken.None);
         }
@@ -293,7 +293,7 @@ namespace FluentCMS.Web.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(UserChangePasswordRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(AccountChangePasswordRequest? body, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -7586,6 +7586,20 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class AccountChangePasswordRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("oldPassword")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public string OldPassword { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("newPassword")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public string NewPassword { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class AccountUpdateRequest
     {
 
@@ -9240,24 +9254,6 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
         public System.Guid Id { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UserChangePasswordRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("userId")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public System.Guid UserId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("oldPassword")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public string OldPassword { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("newPassword")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public string NewPassword { get; set; } = default!;
 
     }
 
