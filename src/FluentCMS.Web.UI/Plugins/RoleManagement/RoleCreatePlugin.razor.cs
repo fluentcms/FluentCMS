@@ -7,7 +7,7 @@ public partial class RoleCreatePlugin
     [SupplyParameterFromForm(FormName = FORM_NAME)]
     private RoleCreateRequest Model { get; set; } = new();
 
-    private List<Policy>? Policies { get; set; } 
+    private List<Policy>? Policies { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -17,10 +17,12 @@ public partial class RoleCreatePlugin
             Policies = policiesResponse?.Data?.ToList() ?? [];
         }
 
-        if(Model.Policies == null || Model.Policies.Count == 0)
+        if (Model.Policies == null || Model.Policies.Count == 0)
         {
-            Model.Policies = Policies.Select(x => {
-                return new Policy {
+            Model.Policies = Policies.Select(x =>
+            {
+                return new Policy
+                {
                     Area = x.Area,
                     Actions = []
                 };
