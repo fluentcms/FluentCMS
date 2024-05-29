@@ -8,6 +8,9 @@ public partial class PluginFormCheckbox
     public int Cols { get; set; } = 12;
 
     [Parameter]
+    public bool Dense { get; set; }
+
+    [Parameter]
     public string? Text { get; set; }
 
     public PluginFormCheckbox()
