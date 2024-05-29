@@ -1,6 +1,6 @@
 ﻿@page "/{**Route:nonfile}"
 
-<PageTitle>Page?.Title</PageTitle>
+<PageTitle>@Page?.Title</PageTitle>
 <HeadContent>
     @RenderDynamicContent(Page?.Layout?.Head ?? string.Empty)
 </HeadContent>

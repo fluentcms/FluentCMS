@@ -4,7 +4,7 @@
     <ErrorBoundary>
         <ChildContent>
             <div class="f-plugin-container-content">
-                @ChildContent
+                <DynamicComponent Type=@GetPluginType() Parameters=@Parameters />
             </div>
         </ChildContent>
         <ErrorContent>

@@ -1,7 +1,5 @@
 ﻿using AutoMapper;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Web.UI.Plugins.Components;
 
@@ -19,11 +17,8 @@ public abstract class BasePlugin : ComponentBase
     [Parameter]
     public string? SectionName { get; set; }
 
-    [CascadingParameter]
-    protected PluginDetailResponse? Plugin { get; set; } = default!;
-
-    //[CascadingParameter]
-    //protected Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+    [Parameter]
+    public PluginDetailResponse? Plugin { get; set; } = default!;
 
     [Inject]
     protected UserLoginResponse? UserLogin { get; set; }
@@ -33,18 +28,6 @@ public abstract class BasePlugin : ComponentBase
 
     [Inject]
     protected IHttpContextAccessor? HttpContextAccessor { get; set; }
-
-    protected override async Task OnInitializedAsync()
-    {
-        // if the plugin is interactive, we should do this due to open issue
-        // https://github.com/dotnet/aspnetcore/issues/53482
-        //UserLogin = await AuthenticationStateTask.GetLogin();
-    }
-
-    protected override Task OnParametersSetAsync()
-    {
-        return base.OnParametersSetAsync();
-    }
 
     protected virtual void NavigateBack()
     {

@@ -24,9 +24,6 @@ public static class AdminUIServiceExtensions
         services.AddScoped<SetupManager>();
         services.AddScoped<AuthManager>();
 
-
-        //services.AddCascadingAuthenticationState();
-
         // add global cascade parameter for UserLogin (UserLoginResponse)
         services.AddScoped(sp =>
         {
@@ -34,10 +31,10 @@ public static class AdminUIServiceExtensions
             var authStateTask = authStateProvider.GetAuthenticationStateAsync();
             var authState = authStateTask.GetAwaiter().GetResult();
 
-            if (authState?.User?.Identity?.IsAuthenticated == null)
-                return default;
+            if (authState?.User?.Identity == null || !authState.User.Identity.IsAuthenticated)
+                return new UserLoginResponse();
 
-            var loginResponse = new UserLoginResponse
+            return new UserLoginResponse
             {
                 UserId = Guid.Parse(authState.User.FindFirstValue(ClaimTypes.Sid) ?? Guid.Empty.ToString()),
                 Email = authState.User.FindFirstValue(ClaimTypes.Email),
@@ -45,13 +42,11 @@ public static class AdminUIServiceExtensions
                 Token = authState.User.FindFirstValue("jwt"),
                 RoleIds = authState.User.FindAll(ClaimTypes.Role).Select(x => Guid.Parse(x.Value)).ToList()
             };
-            return loginResponse;
-
         });
 
 
         // add global cascade parameter for Page (PageFullDetailResponse)
-        services.AddScoped(sp =>
+        services.AddCascadingValue(sp =>
         {
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
             var navigationManager = sp.GetRequiredService<NavigationManager>();

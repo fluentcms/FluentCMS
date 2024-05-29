@@ -9,10 +9,10 @@ public partial class Default : IDisposable
     public const string ATTRIBUTE = "FluentCMS";
     public const string SLOT_ATTRIBUTE = "FluentCMS-Slot";
 
-    [Inject]
+    [CascadingParameter]
     public UserLoginResponse? UserLogin { get; set; }
 
-    [Inject]
+    [CascadingParameter]
     public PageFullDetailResponse? Page { get; set; }
 
     [Parameter]
