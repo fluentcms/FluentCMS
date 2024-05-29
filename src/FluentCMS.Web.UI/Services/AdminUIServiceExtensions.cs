@@ -24,7 +24,7 @@ public static class AdminUIServiceExtensions
         services.AddScoped<SetupManager>();
         services.AddScoped<AuthManager>();
 
-        // add global cascade parameter for UserLogin (UserLoginResponse)
+        // add UserLoginResponse as scoped to be supported in SSR and InteractiveMode
         services.AddScoped(sp =>
         {
             var authStateProvider = sp.GetRequiredService<AuthenticationStateProvider>();
@@ -46,6 +46,10 @@ public static class AdminUIServiceExtensions
 
 
         // add global cascade parameter for Page (PageFullDetailResponse)
+        // if we use cascading value in the component, it will be null in component which are rendered as InteractiveMode
+        // because the page is SSR and the cascading value is not available in the component
+        // so we set the cascading value globally in the service
+        // https://github.com/dotnet/aspnetcore/issues/53482
         services.AddCascadingValue(sp =>
         {
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
