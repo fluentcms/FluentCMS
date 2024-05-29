@@ -33,7 +33,7 @@ public partial class Confirm : IAsyncDisposable
 
             OpenChanged.InvokeAsync(Open);
 
-            module.InvokeVoidAsync(open ? "open" : "close", DotNetObjectReference.Create(this), element);
+            module?.InvokeVoidAsync(open ? "open" : "close", DotNetObjectReference.Create(this), element);
         }
     }
 
@@ -75,7 +75,10 @@ public partial class Confirm : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        await module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
+        if(module != null)
+        {
+            await module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

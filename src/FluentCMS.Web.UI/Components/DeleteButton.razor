@@ -1,0 +1,17 @@
+@namespace FluentCMS.Web.UI.Plugins.Components
+@rendermode InteractiveServer
+
+<Button Color="Color.Danger" Outline @onclick="HandleClick">
+    @if(ChildContent != null)
+    {
+        @ChildContent
+    } 
+    else
+    {
+        <text>
+            <Icon Name="IconName.Delete" />Delete
+        </text>
+    }
+</Button>
+
+<Confirm @bind-Open="confirmOpen" Message="@Message" OnConfirm="HandleConfirm" />

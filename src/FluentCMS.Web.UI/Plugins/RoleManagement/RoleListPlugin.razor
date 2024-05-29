@@ -14,6 +14,7 @@
                 <Button Color="Color.Primary" Href="@GetUrl("Update Role", new { id = @context.Id })" Outline>
                     <Icon Name="IconName.Edit" />Edit
                 </Button>
+                <DeleteButton Id="@context.Id" OnDelete="OnDelete" />
             </DataTableItem>
         </DataTable>
     </ChildContent>
