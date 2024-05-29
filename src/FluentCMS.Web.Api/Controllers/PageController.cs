@@ -46,7 +46,7 @@ public class PageController(
         var query = QueryHelpers.ParseQuery(uri.Query);
 
         var initialized = await setupManager.IsInitialized();
-        if (!initialized && string.Equals(path, "/setup"))
+        if (!initialized)
             return Ok(await setupManager.GetSetupPage());
 
         if (query.TryGetValue(PLUGIN_DEFINIOTION_NAME, out _))

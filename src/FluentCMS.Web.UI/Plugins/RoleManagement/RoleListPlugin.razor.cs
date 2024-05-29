@@ -15,7 +15,6 @@ public partial class RoleListPlugin
 
     protected override async Task OnInitializedAsync()
     {
-        await base.OnInitializedAsync();
         await Load();
     }
 

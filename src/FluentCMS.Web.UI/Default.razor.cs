@@ -9,6 +9,10 @@ public partial class Default : IDisposable
     public const string ATTRIBUTE = "FluentCMS";
     public const string SLOT_ATTRIBUTE = "FluentCMS-Slot";
 
+    [Inject]
+    public UserLoginResponse? UserLogin { get; set; }
+
+    [CascadingParameter]
     public PageFullDetailResponse? Page { get; set; }
 
     [Parameter]
@@ -20,19 +24,15 @@ public partial class Default : IDisposable
     [Inject]
     public SetupManager SetupManager { set; get; } = default!;
 
-    [Inject]
-    public IHttpClientFactory HttpClientFactory { set; get; } = default!;
-
     [CascadingParameter]
     public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
 
-    public UserLoginResponse? UserLogin { get; set; }
-
     protected override async Task OnInitializedAsync()
     {
-        UserLogin = await AuthenticationStateTask.GetLogin();
         NavigationManager.LocationChanged += LocationChanged;
+        await Task.CompletedTask;
     }
+
     protected override async Task OnParametersSetAsync()
     {
         // check if setup is not done
@@ -42,12 +42,6 @@ public partial class Default : IDisposable
             NavigationManager.NavigateTo("/setup", true);
             return;
         }
-
-        var pageClient = HttpClientFactory.CreateApiClient<PageClient>(UserLogin);
-        var pageResponse = await pageClient.GetByUrlAsync(NavigationManager.Uri);
-
-        if (pageResponse.Data != null)
-            Page = pageResponse.Data;
     }
 
     void LocationChanged(object? sender, LocationChangedEventArgs e)
