@@ -42,7 +42,8 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     public async Task<IApiResult<bool>> SendPasswordResetToken([FromBody] UserSendPasswordResetTokenRequest request, CancellationToken cancellationToken = default)
     {
         var token = await userService.GeneratePasswordResetToken(request.Email, cancellationToken);
-        // todo send token 
+        // todo send token to user's email address
+        Console.WriteLine($"http://localhost:5000/auth/reset-password?email={request.Email}&token={token}");
         return Ok(true);
     }
 
@@ -64,6 +65,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     [HttpPost]
     public async Task<IApiResult<UserDetailResponse>> UpdateCurrent(AccountUpdateRequest userUpdateRequest)
     {
+        Console.WriteLine($"Current ID: {authContext.UserId}");
         var user = await userService.GetById(authContext.UserId);
         mapper.Map(userUpdateRequest, user);
         await userService.Update(user);
