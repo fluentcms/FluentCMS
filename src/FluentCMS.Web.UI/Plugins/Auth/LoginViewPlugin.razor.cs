@@ -12,6 +12,7 @@ public partial class LoginViewPlugin
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
     private UserLoginRequest Model { get; set; } = new();
+
     private async Task OnSubmit()
     {
         await AuthManager.Login(HttpContext, Model.Username, Model.Password, Model.RememberMe);

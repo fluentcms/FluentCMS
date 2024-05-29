@@ -20,6 +20,7 @@
                id="@Id"
                name="@NameAttributeValue"
                placeholder="@Placeholder"
+               readonly="@Readonly"
                type="@_typeAttributeValue"
                value="@CurrentValueAsString"
                @onchange="EventCallback.Factory.CreateBinder<string?>(this, __value => CurrentValueAsString = __value, CurrentValueAsString)" />

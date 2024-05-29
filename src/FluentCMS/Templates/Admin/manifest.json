@@ -243,13 +243,9 @@
             "Description": "Profile Plugin",
             "Types": [
                 {
-                    "Name": "Profile",
-                    "Type": "ProfileViewPlugin",
-                    "IsDefault": true
-                },
-                {
                     "Name": "Update",
-                    "Type": "ProfileUpdatePlugin"
+                    "Type": "ProfileUpdatePlugin",
+                    "IsDefault": true
                 }
             ]
         },
@@ -457,6 +453,7 @@
                 {
                     "Title": "Profile",
                     "Path": "/profile",
+                    "Layout": "AdminLayout",
                     "Plugins": [
                         {
                             "Definition": "Profile",

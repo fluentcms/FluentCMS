@@ -15,7 +15,7 @@ public partial class SetupViewPlugin
 
     [CascadingParameter]
     protected HttpContext HttpContext { get; set; } = default!;
-
+ 
     protected override async Task OnParametersSetAsync()
     {
         if (await SetupManager.IsInitialized())

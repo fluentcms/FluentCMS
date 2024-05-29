@@ -1,11 +1,23 @@
 @inherits BasePlugin
-<PluginForm Model="@Model" OnSubmit="@OnSubmit" Name="@FORM_NAME">
-    <PluginFormTextInput @bind-Value="Model.Username" Label="Username" Placeholder="Enter your username" />
-    <PluginFormTextInput @bind-Value="Model.Password" Label="Password" Placeholder="Enter your password" />
-    <PluginFormCheckbox @bind-Value="Model.RememberMe" Label="Remember Me"></PluginFormCheckbox>
-    <PluginFormActions>
-        <Button Color="Color.Primary" Href="/auth/forgot-password" Link="true">Forgot Password?</Button>
-        <Button Block Color="Color.Primary" Type="ButtonType.Submit">Sign In</Button>
-        <Button Color="Color.Primary" Href="/auth/register" Link="true"> Sign up </Button>
-    </PluginFormActions>
-</PluginForm>
+
+<AuthPluginForm Model="@Model" Name="@FORM_NAME" Title="Welcome back" OnSubmit="@OnSubmit">
+    <PluginFormTextInput @bind-Value="Model!.Username" Label="Username" Placeholder="Enter your username" Required />
+    <PluginFormTextInput @bind-Value="Model!.Password" Label="Password" Placeholder="Enter your password" Required type="password" />
+    <PluginFormField>
+        <Grid ItemsSmall="GridItems.Center" JustifySmall="GridJustify.Between">
+            <PluginFormCheckbox @bind-Value="Model!.RememberMe" Cols="6" Dense Text="Remember Me" />
+            <GridItem>
+                <Button Color="Color.Primary" Href="/auth/forgot-password" Link>Forgot Password?</Button>
+            </GridItem>
+        </Grid>
+        <Spacer />
+        <Button Block Color="Color.Primary" Type="ButtonType.Submit">Sign in to your account</Button>
+        <Spacer />
+    </PluginFormField>
+    <PluginFormField>
+        <Typography>
+            Don't have an account?
+            <Button Color="Color.Primary" Href="/auth/register" Link>Sign up</Button>
+        </Typography>
+    </PluginFormField>
+</AuthPluginForm>
