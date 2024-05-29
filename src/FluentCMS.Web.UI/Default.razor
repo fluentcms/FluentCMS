@@ -1,11 +1,7 @@
 ﻿@page "/{**Route:nonfile}"
 
-<CascadingValue Value="UserLogin">
-    <CascadingValue Value="Page">
-        <PageTitle>@Page?.Title</PageTitle>
-        <HeadContent>
-            @RenderDynamicContent(Page?.Layout?.Head ?? string.Empty)
-        </HeadContent>
-        @RenderDynamicContent(Page?.Layout?.Body ?? string.Empty)
-    </CascadingValue>
-</CascadingValue>
+<PageTitle>Page?.Title</PageTitle>
+<HeadContent>
+    @RenderDynamicContent(Page?.Layout?.Head ?? string.Empty)
+</HeadContent>
+@RenderDynamicContent(Page?.Layout?.Body ?? string.Empty)
