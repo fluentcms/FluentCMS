@@ -6,7 +6,6 @@ public partial class ApiTokenListPlugin
 
     protected override async Task OnInitializedAsync()
     {
-        await base.OnInitializedAsync();
         var apiTokensResponse = await GetApiClient<ApiTokenClient>().GetAllAsync();
         ApiTokens = apiTokensResponse?.Data?.ToList() ?? [];
     }

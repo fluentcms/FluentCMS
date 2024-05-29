@@ -11,7 +11,6 @@ public partial class RoleCreatePlugin
 
     protected override async Task OnInitializedAsync()
     {
-        await base.OnInitializedAsync();
         if (Policies is null)
         {
             var policiesResponse = await GetApiClient<RoleClient>().GetPoliciesAsync();
