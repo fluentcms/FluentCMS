@@ -1,8 +1,9 @@
 ﻿@inherits BasePlugin
+@rendermode InteractiveServer
 
 <PluginBody Title="Roles List">
     <ActionsFragment>
-        <Button Href="@GetUrl("Create Role")" Color="Color.Primary">
+        <Button Href="@GetUrl("Role Management", "Create Role")" Color="Color.Primary">
             <Icon Name="IconName.Plus" />Add New Role
         </Button>
     </ActionsFragment>
@@ -11,11 +12,17 @@
             <DataTableItem Label="Name">@context.Name</DataTableItem>
             <DataTableItem Label="Description">@context.Description</DataTableItem>
             <DataTableItem>
-                <Button Color="Color.Primary" Href="@GetUrl("Update Role", new { id = @context.Id })" Outline>
-                    <Icon Name="IconName.Edit" />Edit
-                </Button>
+                <div class="flex gap-2">
+                    <Button Color="Color.Primary" Href="@GetUrl("Role Management", "Update Role", new { id = @context.Id })" Outline>
+                        <Icon Name="IconName.Edit" />Edit
+                    </Button>
+                    <Button Color="Color.Danger" Outline @onclick="() => OnConfirm(context)">
+                        <Icon Name="IconName.Delete" />Delete
+                    </Button>
+                </div>
             </DataTableItem>
         </DataTable>
     </ChildContent>
 </PluginBody>
 
+<Confirm Message="Are you sure to delete this role?" OnConfirm="OnDelete" OnCancel="OnConfirmClose" Open="SelectedRole != null"></Confirm>
