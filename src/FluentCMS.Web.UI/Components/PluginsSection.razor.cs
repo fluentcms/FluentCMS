@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Web.UI.Plugins.Components;
 
-public partial class Section
+public partial class PluginsSection
 {
     [Parameter]
     // this will be set while dynamically rendering the template
