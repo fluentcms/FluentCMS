@@ -18,8 +18,7 @@ public class SetupManager
     private readonly IPluginService _pluginService;
     private readonly IContentTypeService _contentTypeService;
 
-    public const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Templates/Admin";
-    public const string APP_TEMPLATE_PHYSICAL_PATH = "Templates/App";
+    public const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Template";
 
     private SetupRequest _setupRequest = default!;
     private AdminTemplate _adminTemplate = default!;
