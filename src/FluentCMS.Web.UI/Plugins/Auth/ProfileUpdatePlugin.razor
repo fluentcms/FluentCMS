@@ -10,7 +10,7 @@
 
 <PluginForm Model="@ChangePasswordModel" Name="@CHANGE_PASSWORD_FORM_NAME" Title="Change password" OnSubmit="OnChangePasswordSubmit">
     <PluginFormTextInput @bind-Value="ChangePasswordModel!.OldPassword" Cols="6" Label="Old Password" Placeholder="Enter Old Password" Required type="password" />
-    <FormField />
+    <FormFieldBreak />
     <PluginFormTextInput @bind-Value="ChangePasswordModel!.NewPassword" Cols="6" Label="New Password" Placeholder="Enter New Password" Required type="password" />
     <PluginFormTextInput @bind-Value="ChangePasswordModel!.NewPasswordConfirm" Cols="6" Label="Confirm New Password" Placeholder="Enter New Password" Required type="password" />
     <PluginFormActions Submit />
