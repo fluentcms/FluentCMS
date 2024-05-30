@@ -9,6 +9,9 @@ namespace FluentCMS.Web.Api.Controllers;
 [AllowAnonymous]
 public abstract class BaseController
 {
+    public const string ADMIN_AREA = "Admin";
+    public const string ADMIN_ACTION = "Full permission for administrators";
+
     public static ApiResult<T> Ok<T>(T item)
     {
         return new ApiResult<T>(item);
@@ -23,5 +26,4 @@ public abstract class BaseController
 [Route("api/[controller]/[action]")]
 public abstract class BaseGlobalController : BaseController
 {
-
 }

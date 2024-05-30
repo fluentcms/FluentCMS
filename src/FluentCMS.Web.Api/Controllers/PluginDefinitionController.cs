@@ -10,6 +10,7 @@ public class PluginDefinitionController(IMapper mapper, IPluginDefinitionService
 
     [HttpPost]
     [Policy(AREA, CREATE)]
+    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<PluginDefinitionDetailResponse>> Create([FromBody] PluginDefinitionCreateRequest request, CancellationToken cancellationToken = default)
     {
         var entity = mapper.Map<PluginDefinition>(request);
@@ -20,6 +21,7 @@ public class PluginDefinitionController(IMapper mapper, IPluginDefinitionService
 
     [HttpGet]
     [Policy(AREA, READ)]
+    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiPagingResult<PluginDefinitionDetailResponse>> GetAll(CancellationToken cancellationToken = default)
     {
         var entities = await pluginDefinitionService.GetAll(cancellationToken);

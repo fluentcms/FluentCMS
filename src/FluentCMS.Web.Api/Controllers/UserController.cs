@@ -11,6 +11,7 @@ public class UserController(IUserService userService, IRoleService roleService, 
 
     [HttpGet]
     [Policy(AREA, READ)]
+    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiPagingResult<UserDetailResponse>> GetAll(CancellationToken cancellationToken = default)
     {
         var users = await userService.GetAll(cancellationToken);
@@ -27,6 +28,7 @@ public class UserController(IUserService userService, IRoleService roleService, 
 
     [HttpGet("{userId}")]
     [Policy(AREA, READ)]
+    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<UserDetailResponse>> Get([FromRoute] Guid userId, CancellationToken cancellationToken = default)
     {
         var user = await userService.GetById(userId, cancellationToken);
@@ -38,6 +40,7 @@ public class UserController(IUserService userService, IRoleService roleService, 
 
     [HttpPut]
     [Policy(AREA, UPDATE)]
+    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<UserDetailResponse>> Update([FromBody] UserUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var user = mapper.Map<User>(request);
@@ -50,6 +53,7 @@ public class UserController(IUserService userService, IRoleService roleService, 
 
     [HttpPut]
     [Policy(AREA, UPDATE)]
+    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<bool>> SetPassword([FromBody] UserSetPasswordRequest request, CancellationToken cancellationToken = default)
     {
         var user = await userService.GetById(request.UserId, cancellationToken);
@@ -59,6 +63,7 @@ public class UserController(IUserService userService, IRoleService roleService, 
 
     [HttpPost]
     [Policy(AREA, CREATE)]
+    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<UserDetailResponse>> Create([FromBody] UserCreateRequest request, CancellationToken cancellationToken = default)
     {
         var user = mapper.Map<User>(request);

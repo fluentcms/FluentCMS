@@ -10,6 +10,7 @@ public class GlobalSettingsController(IGlobalSettingsService service, IMapper ma
 
     [HttpGet]
     [Policy(AREA, READ)]
+    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<GlobalSettings>> Get(CancellationToken cancellationToken = default)
     {
         var systemSettings = await service.Get(cancellationToken) ??
@@ -20,6 +21,7 @@ public class GlobalSettingsController(IGlobalSettingsService service, IMapper ma
 
     [HttpPost]
     [Policy(AREA, UPDATE)]
+    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<GlobalSettings>> Update(GlobalSettingsUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var settings = mapper.Map<GlobalSettings>(request);

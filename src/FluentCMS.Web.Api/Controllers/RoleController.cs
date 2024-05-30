@@ -16,6 +16,7 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
 
     [HttpGet]
     [Policy(AREA, READ)]
+    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiPagingResult<RoleDetailResponse>> GetAll(CancellationToken cancellationToken = default)
     {
         var roles = await roleService.GetAll(cancellationToken);
@@ -25,6 +26,7 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
 
     [HttpGet("{id}")]
     [Policy(AREA, READ)]
+    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<RoleDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var role = await roleService.GetById(id, cancellationToken);
@@ -34,6 +36,7 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
 
     [HttpPost]
     [Policy(AREA, CREATE)]
+    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<RoleDetailResponse>> Create([FromBody] RoleCreateRequest request, CancellationToken cancellationToken = default)
     {
         var role = mapper.Map<Role>(request);
@@ -44,6 +47,7 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
 
     [HttpPut]
     [Policy(AREA, UPDATE)]
+    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<RoleDetailResponse>> Update([FromBody] RoleUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var role = mapper.Map<Role>(request);
@@ -54,6 +58,7 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
 
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]
+    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         await roleService.Delete(id, cancellationToken);
