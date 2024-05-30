@@ -1,12 +1,10 @@
 ﻿using FluentCMS.Web.Api.Filters;
-using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
 
 [ApiController]
 [Produces("application/json")]
 [JwtAuthorize]
-[AllowAnonymous]
 [TypeFilter(typeof(PolicyAuthorizeFiler))]
 public abstract class BaseController
 {
