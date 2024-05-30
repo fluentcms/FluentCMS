@@ -30,7 +30,7 @@ public partial class PluginContainer
         var uri = new Uri(NavigationManager.Uri);
         var query = HttpUtility.ParseQueryString(uri.Query);
 
-        var assembly = typeof(Section).Assembly;
+        var assembly = GetType().Assembly;
         var pluginTypeName = query["typeName"];
         PluginDefinitionType? pluginDefType;
 
