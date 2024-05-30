@@ -1,9 +1,10 @@
 using System.Text.RegularExpressions;
 
 namespace FluentCMS.Web.Api.Validation;
+
 public class SlugAttribute : ValidationAttribute
 {
-    private static readonly Regex SlugRegex = new Regex(@"^[a-z0-9]+(?:-[a-z0-9]+)*$", RegexOptions.Compiled);
+    public static readonly Regex SlugRegex = new(@"^[a-z0-9]+(?:-[a-z0-9]+)*$", RegexOptions.Compiled);
 
     protected override ValidationResult IsValid(object value, ValidationContext validationContext)
     {

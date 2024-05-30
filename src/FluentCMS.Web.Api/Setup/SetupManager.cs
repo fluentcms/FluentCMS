@@ -205,9 +205,6 @@ public class SetupManager
     }
     private async Task InitializeGlobalSettings()
     {
-        // Creating default global settings
-        _globalSettings.SuperUsers = [_setupRequest.Username];
-
         _globalSettings = await _globalSettingsService.Init(_globalSettings);
     }
 

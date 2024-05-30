@@ -1,6 +1,4 @@
-﻿using FluentCMS.Web.Api.Attributes;
-
-namespace FluentCMS.Web.Api.Controllers;
+﻿namespace FluentCMS.Web.Api.Controllers;
 
 public class PluginController(IPluginService pluginService, IMapper mapper) : BaseGlobalController
 {
@@ -12,7 +10,6 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
 
     [HttpGet("{pageId}")]
     [Policy(AREA, READ)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiPagingResult<PluginDetailResponse>> GetByPageId([FromRoute] Guid pageId, CancellationToken cancellationToken = default)
     {
         var plugins = await pluginService.GetByPageId(pageId, cancellationToken);
@@ -22,7 +19,6 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
 
     [HttpGet("{id}")]
     [Policy(AREA, READ)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<PluginDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var plugin = await pluginService.GetById(id, cancellationToken);
@@ -32,7 +28,6 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
 
     [HttpPost]
     [Policy(AREA, CREATE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<PluginDetailResponse>> Create([FromBody] PluginCreateRequest request, CancellationToken cancellationToken = default)
     {
         var plugin = mapper.Map<Plugin>(request);
@@ -43,7 +38,6 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
 
     [HttpPut]
     [Policy(AREA, UPDATE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<PluginDetailResponse>> Update([FromBody] PluginUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var plugin = mapper.Map<Plugin>(request);
@@ -54,7 +48,6 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
 
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<bool>> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         await pluginService.Delete(id, cancellationToken);

@@ -32,6 +32,7 @@
             "Name": "Admin",
             "Description": "Default administrators role",
             "ReadOnly": true,
+            "IsAdmin": true,
             "Policies": [
                 {
                     "Area": "Admin",

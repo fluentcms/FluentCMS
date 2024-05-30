@@ -1,5 +1,4 @@
-﻿using FluentCMS.Web.Api.Attributes;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
 
@@ -23,7 +22,6 @@ public class SiteController(ISiteService siteService, IPageService pageService, 
 
     [HttpGet]
     [Policy(AREA, READ)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiPagingResult<SiteDetailResponse>> GetAll(CancellationToken cancellationToken = default)
     {
         var entities = await siteService.GetAll(cancellationToken);
@@ -33,7 +31,6 @@ public class SiteController(ISiteService siteService, IPageService pageService, 
 
     [HttpGet("{id}")]
     [Policy(AREA, READ)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<SiteDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var site = await siteService.GetById(id, cancellationToken);
@@ -43,7 +40,6 @@ public class SiteController(ISiteService siteService, IPageService pageService, 
 
     [HttpPost]
     [Policy(AREA, CREATE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<SiteDetailResponse>> Create([FromBody] SiteCreateRequest request, CancellationToken cancellationToken = default)
     {
         // creating new site
@@ -67,7 +63,6 @@ public class SiteController(ISiteService siteService, IPageService pageService, 
 
     [HttpPut]
     [Policy(AREA, UPDATE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<SiteDetailResponse>> Update([FromBody] SiteUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var entity = mapper.Map<Site>(request);
@@ -78,7 +73,6 @@ public class SiteController(ISiteService siteService, IPageService pageService, 
 
     [HttpDelete("{siteId}")]
     [Policy(AREA, DELETE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid siteId, CancellationToken cancellationToken = default)
     {
         await siteService.Delete(siteId, cancellationToken);

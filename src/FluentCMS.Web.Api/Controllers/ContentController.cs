@@ -1,6 +1,4 @@
-﻿using FluentCMS.Web.Api.Attributes;
-
-namespace FluentCMS.Web.Api.Controllers;
+﻿namespace FluentCMS.Web.Api.Controllers;
 
 [Route("api/[controller]/{contentTypeSlug}/[action]")]
 public class ContentController(
@@ -16,7 +14,6 @@ public class ContentController(
 
     [HttpGet]
     [Policy(AREA, READ)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiPagingResult<ContentDetailResponse>> GetAll([FromRoute] string contentTypeSlug, CancellationToken cancellationToken = default)
     {
         var contentType = await contentTypeService.GetBySlug(contentTypeSlug, cancellationToken);
@@ -27,7 +24,6 @@ public class ContentController(
 
     [HttpPost]
     [Policy(AREA, CREATE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<ContentDetailResponse>> Create([FromRoute] string contentTypeSlug, [FromBody] ContentCreateRequest request, CancellationToken cancellationToken = default)
     {
         var content = mapper.Map<Content>(request);
@@ -40,7 +36,6 @@ public class ContentController(
 
     [HttpPut]
     [Policy(AREA, UPDATE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<ContentDetailResponse>> Update([FromRoute] string contentTypeSlug, [FromBody] ContentUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var content = mapper.Map<Content>(request);
@@ -53,7 +48,6 @@ public class ContentController(
 
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<bool>> Delete([FromRoute] string contentTypeSlug, [FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var contentType = await contentTypeService.GetBySlug(contentTypeSlug, cancellationToken);

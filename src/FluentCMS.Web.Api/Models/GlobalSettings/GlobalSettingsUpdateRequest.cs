@@ -2,6 +2,5 @@
 
 public class GlobalSettingsUpdateRequest
 {
-    public List<string> SuperUsers { get; set; } = [];
     public SmtpServerConfiguration Email { get; set; } = default!;
 }

@@ -1,4 +1,4 @@
-﻿using FluentCMS.Web.Api.Attributes;
+﻿using FluentCMS.Web.Api.Filters;
 using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
@@ -7,11 +7,9 @@ namespace FluentCMS.Web.Api.Controllers;
 [Produces("application/json")]
 [JwtAuthorize]
 [AllowAnonymous]
+[TypeFilter(typeof(PolicyAuthorizeFiler))]
 public abstract class BaseController
 {
-    public const string ADMIN_AREA = "Admin";
-    public const string ADMIN_ACTION = "Full Access";
-
     public static ApiResult<T> Ok<T>(T item)
     {
         return new ApiResult<T>(item);

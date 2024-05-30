@@ -1,5 +1,4 @@
-﻿using FluentCMS.Web.Api.Attributes;
-using FluentCMS.Web.Api.Filters;
+﻿using FluentCMS.Web.Api.Filters;
 using FluentCMS.Web.Api.Setup;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.WebUtilities;
@@ -66,7 +65,6 @@ public class PageController(
 
     [HttpPost]
     [Policy(AREA, CREATE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<PageDetailResponse>> Create(PageCreateRequest request, CancellationToken cancellationToken = default)
     {
         var entity = mapper.Map<Page>(request);
@@ -77,7 +75,6 @@ public class PageController(
 
     [HttpPut]
     [Policy(AREA, UPDATE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<PageDetailResponse>> Update(PageUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var entity = mapper.Map<Page>(request);
@@ -88,7 +85,6 @@ public class PageController(
 
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
     {
         await pageService.Delete(id);

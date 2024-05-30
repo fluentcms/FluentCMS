@@ -1,6 +1,4 @@
-﻿using FluentCMS.Web.Api.Attributes;
-
-namespace FluentCMS.Web.Api.Controllers;
+﻿namespace FluentCMS.Web.Api.Controllers;
 
 public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper) : BaseGlobalController
 {
@@ -12,7 +10,6 @@ public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper
 
     [HttpGet]
     [Policy(AREA, READ)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiPagingResult<ApiTokenDetailResponse>> GetAll(CancellationToken cancellationToken = default)
     {
         var apiTokens = await apiTokenService.GetAll(cancellationToken);
@@ -22,7 +19,6 @@ public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper
 
     [HttpGet("{id}")]
     [Policy(AREA, READ)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<ApiTokenDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var apiToken = await apiTokenService.GetById(id, cancellationToken);
@@ -32,7 +28,6 @@ public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper
 
     [HttpPost]
     [Policy(AREA, CREATE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<ApiTokenDetailResponse>> Create([FromBody] ApiTokenCreateRequest request, CancellationToken cancellationToken = default)
     {
         var apiToken = mapper.Map<ApiToken>(request);
@@ -43,7 +38,6 @@ public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper
 
     [HttpPut]
     [Policy(AREA, UPDATE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<ApiTokenDetailResponse>> Update([FromBody] ApiTokenUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var apiToken = await apiTokenService.Update(request.Id, request.Name, request.Description, request.Enabled, request.Policies, cancellationToken);
@@ -53,7 +47,6 @@ public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper
 
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         await apiTokenService.Delete(id, cancellationToken);

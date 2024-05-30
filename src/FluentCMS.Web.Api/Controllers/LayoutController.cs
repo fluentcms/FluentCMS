@@ -1,6 +1,4 @@
-﻿using FluentCMS.Web.Api.Attributes;
-
-namespace FluentCMS.Web.Api.Controllers;
+﻿namespace FluentCMS.Web.Api.Controllers;
 
 public class LayoutController(IMapper mapper, ILayoutService layoutService) : BaseGlobalController
 {
@@ -12,7 +10,6 @@ public class LayoutController(IMapper mapper, ILayoutService layoutService) : Ba
 
     [HttpGet]
     [Policy(AREA, READ)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiPagingResult<LayoutDetailResponse>> GetAll(CancellationToken cancellationToken = default)
     {
         var layouts = await layoutService.GetAll(cancellationToken);
@@ -22,7 +19,6 @@ public class LayoutController(IMapper mapper, ILayoutService layoutService) : Ba
 
     [HttpGet("{id}")]
     [Policy(AREA, READ)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<LayoutDetailResponse>> Get([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var layout = await layoutService.GetById(id, cancellationToken);
@@ -32,7 +28,6 @@ public class LayoutController(IMapper mapper, ILayoutService layoutService) : Ba
 
     [HttpPost]
     [Policy(AREA, CREATE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<LayoutDetailResponse>> Create([FromBody] LayoutCreateRequest request, CancellationToken cancellationToken = default)
     {
         var layout = mapper.Map<Layout>(request);
@@ -43,7 +38,6 @@ public class LayoutController(IMapper mapper, ILayoutService layoutService) : Ba
 
     [HttpPut]
     [Policy(AREA, UPDATE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<LayoutDetailResponse>> Update([FromBody] LayoutUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var layout = mapper.Map<Layout>(request);
@@ -54,7 +48,6 @@ public class LayoutController(IMapper mapper, ILayoutService layoutService) : Ba
 
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]
-    [Policy(ADMIN_AREA, ADMIN_ACTION)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         await layoutService.Delete(id, cancellationToken);
