@@ -5,15 +5,20 @@ public partial class ForgotPasswordViewPlugin
     public const string FORM_NAME = "ForgotPasswordForm";
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
-    private UserSendPasswordResetTokenRequest Model { get; set; } = new();
+    private UserSendPasswordResetTokenRequest? Model { get; set; }
 
-    [SupplyParameterFromQuery(Name = nameof(Sent))]
-    public string Sent { get; set; }
+    private bool IsPosted { get; set; }
+
+    protected override Task OnInitializedAsync()
+    {
+        IsPosted = false;
+        Model ??= new();
+        return base.OnInitializedAsync();
+    }
 
     private async Task OnSubmit()
     {
         await GetApiClient<AccountClient>().SendPasswordResetTokenAsync(Model);
-
-        NavigateTo("/auth/forgot-password?sent=true");
+        IsPosted = true;
     }
 }
