@@ -3,7 +3,7 @@
     <EditForm Model="@Model" OnSubmit="OnSubmit">
         <Card>
             <CardBody>
-                @foreach (var field in Fields)
+               @*  @foreach (var field in Fields)
                 {
                     <Input Id="@($"contentCreate{@field.Slug}Input")"
                         Label="@(String.IsNullOrEmpty(field.Label) ? field.Title : field.Label)"
@@ -13,7 +13,7 @@
                         TValue="string"
                         Value="@(Model[field.Slug!] as string)"
                         ValueChanged="str => Model[field.Slug!] = str"/>
-                }
+                } *@
             </CardBody>
             <CardActions>
                 <Button id="contentCreateCancelButton"

@@ -11,7 +11,7 @@
                     @foreach (var field in Fields)
                     {
                         <GridItem Small="GridItemColumn.Twelve">
-                            <Typography><strong>@(String.IsNullOrEmpty(field.Label) ? field.Title : field.Label):</strong></Typography>
+                            @* <Typography><strong>@(String.IsNullOrEmpty(field.Label) ? field.Title : field.Label):</strong></Typography> *@
                             <Typography>
                                 @ParseValue(Model.Value![field.Slug!])
                             </Typography>

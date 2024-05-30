@@ -7,7 +7,7 @@
                     OnSubmit="OnSubmit">
                 <Card>
                     <CardBody>
-                        @foreach (var field in Fields)
+                       @*  @foreach (var field in Fields)
                         {
                             <Input Id="@($"contentUpdate{field.Slug}Input")"
                                     Label="@(String.IsNullOrEmpty(field.Label) ? field.Title : field.Label)"
@@ -17,7 +17,7 @@
                                     Value="@((string) ParseValue(Model.Value![field.Slug!]!)!)"
                                     ValueChanged="x => Model.Value![field.Slug!] = x"
                                     />
-                        }
+                        } *@
                     </CardBody>
                     <CardActions>
                         <Button id="contentUpdateCancelButton" @onclick="GoBack">

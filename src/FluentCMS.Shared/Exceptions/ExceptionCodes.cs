@@ -38,13 +38,6 @@ public class ExceptionCodes
 
     #endregion
 
-    #region AppTemplate
-
-    public const string AppTemplateNotFound = "AppTemplate.NotFound";
-    public const string AppTemplateUnableToCreate = "AppTemplate.UnableToCreate";
-
-    #endregion
-
     #region Role
 
 

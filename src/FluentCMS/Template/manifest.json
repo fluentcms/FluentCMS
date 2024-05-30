@@ -204,10 +204,6 @@
                 {
                     "Name": "Update ContentType",
                     "Type": "ContentTypeUpdatePlugin"
-                },
-                {
-                    "Name": "ContentType Detail",
-                    "Type": "ContentTypeDetailPlugin"
                 }
             ]
         },
@@ -456,6 +452,31 @@
                             "Section": "Main"
                         }
                     ]
+                }
+            ]
+        }
+    ],
+    "ContentTypes": [
+        {
+            "Slug": "blog",
+            "Title": "Blog Post",
+            "Description": "Blog Post Content Type",
+            "Fields": [
+                {
+                    "Slug":  "title",
+                    "Title": "Title",
+                    "Description": "Blog Post Title",
+                    "Type": "Text",
+                    "Placeholder": "Enter Blog Post Title",
+                    "IsRequired": true
+                },
+                {
+                    "Slug": "content",
+                    "Title": "Content",
+                    "Description": "Blog Post Content",
+                    "Type": "Text",
+                    "Placeholder": "Enter Blog Post Content",
+                    "IsRequired": false
                 }
             ]
         }

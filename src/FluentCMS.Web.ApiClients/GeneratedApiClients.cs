@@ -8083,20 +8083,14 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("title")]
         public string? Title { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
+        public string? Type { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string? Description { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("label")]
-        public string? Label { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("placeholder")]
         public string? Placeholder { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("hint")]
-        public string? Hint { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("defaultValue")]
-        public string? DefaultValue { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("isRequired")]
         public bool IsRequired { get; set; } = default!;
