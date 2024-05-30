@@ -1,14 +1,20 @@
 ﻿@inherits BasePlugin
 
-<PluginForm Model="@Model" Name="@FORM_NAME" Title="Update User" OnSubmit="OnSubmit">
-    <PluginFormHiddenInput @bind-Value="Model!.Id" />
+<PluginForm Model="@UpdateModel" Name="@FORM_NAME" Title="Update User" OnSubmit="OnSubmit">
+    <PluginFormHiddenInput @bind-Value="UpdateModel!.Id" />
     <PluginFormTextInput @bind-Value="Username" Cols="6" Disabled Label="Username" Placeholder="Enter Username" Required />
-    <PluginFormTextInput @bind-Value="Model!.Email" Cols="6" Label="Email" Placeholder="Enter Email" Required />
-    <PluginFormTextInput @bind-Value="Model!.FirstName" Cols="6" Label="First Name" Placeholder="Enter First Name" />
-    <PluginFormTextInput @bind-Value="Model!.LastName" Cols="6" Label="Last Name" Placeholder="Enter Last Name" />
-    <PluginFormTextInput @bind-Value="Model!.PhoneNumber" Cols="6" Label="Phone Number" Placeholder="Enter Phone Number" />
-    <PluginFormCheckbox @bind-Value="Model!.Enabled" Cols="6" Label="Enabled" Text="Activate account and enable system access" />
-    <PluginFormCheckbox @bind-Value="Model!.Locked" Cols="6" Label="Locked" Text="Lock the user access" />
-    <PluginFormCheckboxGroup @bind-Value="Model!.RoleIds" Data="Roles" Label="Roles" TextField="Name" ValueField="Id" />
+    <PluginFormTextInput @bind-Value="UpdateModel!.Email" Cols="6" Label="Email" Placeholder="Enter Email" Required />
+    <PluginFormTextInput @bind-Value="UpdateModel!.FirstName" Cols="6" Label="First Name" Placeholder="Enter First Name" />
+    <PluginFormTextInput @bind-Value="UpdateModel!.LastName" Cols="6" Label="Last Name" Placeholder="Enter Last Name" />
+    <PluginFormTextInput @bind-Value="UpdateModel!.PhoneNumber" Cols="6" Label="Phone Number" Placeholder="Enter Phone Number" />
+    <PluginFormCheckbox @bind-Value="UpdateModel!.Enabled" Cols="6" Label="Enabled" Text="Activate account and enable system access" />
+    <PluginFormCheckbox @bind-Value="UpdateModel!.Locked" Cols="6" Label="Locked" Text="Lock the user access" />
+    <PluginFormCheckboxGroup @bind-Value="UpdateModel!.RoleIds" Data="Roles" Label="Roles" TextField="Name" ValueField="Id" />
+    <PluginFormActions Cancel Submit />
+</PluginForm>
+
+<PluginForm Model="@SetPasswordModel" Name="@FORM_NAME_PASSWORD" Title="Set New Password" OnSubmit="OnChangePassword">
+    <PluginFormHiddenInput @bind-Value="SetPasswordModel!.UserId" />
+    <PluginFormTextInput @bind-Value="SetPasswordModel!.Password" Label="New Password" Placeholder="Enter Password" Required type="password" />
     <PluginFormActions Cancel Submit />
 </PluginForm>

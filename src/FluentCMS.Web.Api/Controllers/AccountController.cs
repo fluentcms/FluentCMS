@@ -31,9 +31,9 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     }
 
     [HttpPost]
-    public async Task<IApiResult<bool>> ChangePassword([FromBody] UserChangePasswordRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<bool>> ChangePassword([FromBody] AccountChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
-        await userService.ChangePassword(request.UserId, request.OldPassword, request.NewPassword, cancellationToken);
+        await userService.ChangePassword(authContext.UserId, request.OldPassword, request.NewPassword, cancellationToken);
         return Ok(true);
     }
 
@@ -41,17 +41,15 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     [AllowAnonymous]
     public async Task<IApiResult<bool>> SendPasswordResetToken([FromBody] UserSendPasswordResetTokenRequest request, CancellationToken cancellationToken = default)
     {
-        var token = await userService.GeneratePasswordResetToken(request.Email, cancellationToken);
-        // todo send token to user's email address
-        Console.WriteLine($"http://localhost:5000/auth/reset-password?email={request.Email}&token={token}");
-        return Ok(true);
+        var result = await userService.SendPasswordResetToken(request.Email, cancellationToken);
+        return Ok(result);
     }
 
     [HttpPost]
     [AllowAnonymous]
     public async Task<IApiResult<bool>> ValidatePasswordResetToken([FromBody] UserValidatePasswordResetTokenRequest request, CancellationToken cancellationToken = default)
     {
-        _ = await userService.ValidatePasswordResetToken(request.Token, request.Email, request.NewPassword, cancellationToken);
+        _ = await userService.ChangePasswordByResetToken(request.Email, request.Token, request.NewPassword, cancellationToken);
         return Ok(true);
     }
 
@@ -65,7 +63,6 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     [HttpPost]
     public async Task<IApiResult<UserDetailResponse>> UpdateCurrent(AccountUpdateRequest userUpdateRequest)
     {
-        Console.WriteLine($"Current ID: {authContext.UserId}");
         var user = await userService.GetById(authContext.UserId);
         mapper.Map(userUpdateRequest, user);
         await userService.Update(user);

@@ -1,4 +1,14 @@
 {
+    "GlobalSettings": {
+        "Email": {
+            "Server": "sandbox.smtp.mailtrap.io",
+            "Port": 2525,
+            "Username": "33b3d4be6eff7c",
+            "Password": "3bc847fa1f6d59",
+            "EnableSsl": true,
+            "From": "admin@fluentcms.com"
+        }
+    },
     "Site": {
         "Name": "FluentCMS Administration",
         "Description": "FluentCMS Administration Panel"

@@ -46,12 +46,12 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(UserChangePasswordRequest? body);
+        System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(AccountChangePasswordRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(UserChangePasswordRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(AccountChangePasswordRequest? body, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -285,7 +285,7 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(UserChangePasswordRequest? body)
+        public virtual System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(AccountChangePasswordRequest? body)
         {
             return ChangePasswordAsync(body, System.Threading.CancellationToken.None);
         }
@@ -293,7 +293,7 @@ namespace FluentCMS.Web.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(UserChangePasswordRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> ChangePasswordAsync(AccountChangePasswordRequest? body, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -7586,6 +7586,24 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class AccountChangePasswordRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("oldPassword")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public string OldPassword { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("newPassword")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public string NewPassword { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("newPasswordConfirm")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public string NewPasswordConfirm { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class AccountUpdateRequest
     {
 
@@ -8137,6 +8155,9 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("superUsers")]
         public System.Collections.Generic.ICollection<string>? SuperUsers { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("email")]
+        public SmtpServerConfiguration Email { get; set; } = default!;
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -8175,6 +8196,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("superUsers")]
         public System.Collections.Generic.ICollection<string>? SuperUsers { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("email")]
+        public SmtpServerConfiguration Email { get; set; } = default!;
 
     }
 
@@ -9244,20 +9268,26 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UserChangePasswordRequest
+    public partial class SmtpServerConfiguration
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("userId")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public System.Guid UserId { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("server")]
+        public string? Server { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("oldPassword")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public string OldPassword { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("port")]
+        public int Port { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("newPassword")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public string NewPassword { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("username")]
+        public string? Username { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("password")]
+        public string? Password { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("enableSsl")]
+        public bool EnableSsl { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("from")]
+        public string? From { get; set; } = default!;
 
     }
 
@@ -9581,17 +9611,21 @@ namespace FluentCMS.Web.ApiClients
     public partial class UserValidatePasswordResetTokenRequest
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("email")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public string Email { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("token")]
         [System.ComponentModel.DataAnnotations.Required]
         public string Token { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("email")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Email { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("newPassword")]
         [System.ComponentModel.DataAnnotations.Required]
         public string NewPassword { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("newPasswordConfirm")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public string NewPasswordConfirm { get; set; } = default!;
 
     }
 
