@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class FormField : IDisposable
+public partial class FormField2 : IDisposable
 {
     [Parameter]
     public FormFieldAppearance Appearance { get; set; }
@@ -13,12 +13,6 @@ public partial class FormField : IDisposable
 
     [CSSProperty]
     public bool HasIconStart { get => IconStart != null; }
-
-    [CSSProperty]
-    public FormFieldState State { get; set; }
-
-    [CascadingParameter]
-    EditContext? Context { get; set; }
 
     IconName? IconEnd
     {
@@ -51,19 +45,6 @@ public partial class FormField : IDisposable
             }
 
             return Context.GetValidationMessages(Identifier.GetValueOrDefault());
-        }
-    }
-
-    FieldIdentifier? Identifier
-    {
-        get
-        {
-            if (Context == null || Name == null)
-            {
-                return null;
-            }
-
-            return Context.Field(Name);
         }
     }
 
@@ -100,6 +81,26 @@ public partial class FormField : IDisposable
             return (bool)(Field?.GetType().GetProperty("Required")?.GetValue(Field) ?? false);
         }
     }
+
+    FieldIdentifier? Identifier
+    {
+        get
+        {
+            if (Context == null || Name == null)
+            {
+                return null;
+            }
+
+            return Context.Field(Name);
+        }
+    }
+
+    [CascadingParameter]
+    EditContext? Context { get; set; }
+
+    [CSSProperty]
+    public FormFieldState State { get; set; }
+
 
     void OnValidationRequested(object sender, ValidationRequestedEventArgs args)
     {

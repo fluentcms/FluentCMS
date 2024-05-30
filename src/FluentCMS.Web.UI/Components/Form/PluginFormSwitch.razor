@@ -4,7 +4,7 @@
 
 @if (Visible)
 {
-    <PluginFormField Cols="Cols" Id="@Id" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
+    <FormField Cols="Cols" Dense="@Dense" Id="@Id" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
         <label class="inline-flex items-center cursor-pointer">
             <input @attributes="AdditionalAttributes"
                    checked="@BindConverter.FormatValue(CurrentValue)"
@@ -23,6 +23,5 @@
                 </span>
             }
         </label>
-        <div class="mb-5"></div>
-    </PluginFormField>
+    </FormField>
 }

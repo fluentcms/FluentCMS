@@ -1,12 +1,12 @@
-﻿namespace FluentCMS.Web.UI.Plugins.Components;
+namespace FluentCMS.Web.UI.Components;
 
-public partial class PluginFormField
+public partial class FormField
 {
     [Parameter]
-    public RenderFragment ChildContent { get; set; } = default!;
+    public int Cols { get; set; } = 12;
 
     [Parameter]
-    public int Cols { get; set; } = 12;
+    public bool Dense { get; set; }
 
     [Parameter]
     public string Id { get; set; }
@@ -19,7 +19,4 @@ public partial class PluginFormField
 
     [Parameter]
     public bool Required { get; set; }
-
-    [Parameter]
-    public bool Visible { get; set; } = true;
 }

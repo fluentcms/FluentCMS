@@ -1,8 +1,10 @@
-﻿@namespace FluentCMS.Web.UI.Plugins.Components
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
 
 @if (Visible)
 {
-    <GridItem Small="GridItemColumn.Twelve" Medium="(GridItemColumn)(Cols + 1)">
+    <GridItem class="@this.GetClasses()" Small="GridItemColumn.Twelve" Medium="(GridItemColumn)(Cols + 1)">
         @if (!string.IsNullOrEmpty(Label) || LabelFragment != null)
         {
             <FormLabel Id="@Id" Required="@Required">
@@ -17,5 +19,9 @@
             </FormLabel>
         }
         @ChildContent
+        @if (!Dense)
+        {
+            <Spacer Size="SpacerSize.Medium" />
+        }
     </GridItem>
 }

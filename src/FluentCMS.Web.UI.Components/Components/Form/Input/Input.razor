@@ -5,7 +5,7 @@
 
 @if(Visible)
 {
-    <FormField Appearance="FormFieldAppearance.Input"
+    <FormField2 Appearance="FormFieldAppearance.Input"
                Field="this">
         <input @attributes="AdditionalAttributes"
                class="@this.GetClasses()"
@@ -16,5 +16,5 @@
                placeholder="@Placeholder"
                type="@this.Type.ToString().FromPascalCaseToKebabCase()"
                @oninput="OnInput" />
-    </FormField>
+    </FormField2>
 }

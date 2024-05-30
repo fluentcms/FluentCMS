@@ -4,7 +4,7 @@
 
 @if (Visible)
 {
-    <PluginFormField Cols="Cols" Id="@Id" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
+    <FormField Cols="Cols" Dense="@Dense" Id="@Id" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
         <textarea @attributes="AdditionalAttributes"
                   class="@CssClass block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                   disabled="@Disabled"
@@ -15,6 +15,5 @@
                   rows="@Rows"
                   value="@CurrentValueAsString"
                   @onchange="EventCallback.Factory.CreateBinder<string?>(this, __value => CurrentValueAsString = __value, CurrentValueAsString)" />
-        <div class="mb-5"></div>
-    </PluginFormField>
+    </FormField>
 }
