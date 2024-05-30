@@ -12,6 +12,10 @@ public abstract class FormElement<T> : InputBase<T>
     public bool Disabled { get; set; }
 
     [Parameter]
+    public bool Dense { get; set; }
+
+
+    [Parameter]
     public string? Id { get; set; }
 
     [Parameter]

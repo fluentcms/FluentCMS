@@ -5,15 +5,14 @@
     <PluginFormTextInput @bind-Value="Model!.Email" Label="Email" Placeholder="Enter your email" Required />
     <PluginFormTextInput @bind-Value="Model!.Password" Label="Password" Placeholder="Enter your password" Required type="password" />
     <PluginFormTextInput @bind-Value="Model!.ConfirmPassword" Label="Confirm Password" Placeholder="Enter your password again" Required type="password" />
-    <PluginFormField>
+    <FormField>
         <Spacer />
         <Button Block Color="@Color.Primary" Type="ButtonType.Submit">Create an account</Button>
-        <Spacer />
-    </PluginFormField>
-    <PluginFormField>
+    </FormField>
+    <FormField Dense>
         <Typography>
             Already have an account?
             <Button Color="@Color.Primary" Href="/auth/login" Link>Login here</Button>
         </Typography>
-    </PluginFormField>
+    </FormField>
 </AuthPluginForm>

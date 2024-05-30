@@ -4,7 +4,7 @@
 
 @if (Policies != null && Policies.Count > 0 && Visible)
 {
-    <PluginFormField Label="@Label">
+    <FormField Label="@Label">
         @{ var index = 0; }
         @foreach(var policy in Value) {
             var i = index++;
@@ -13,5 +13,5 @@
                 <PluginFormCheckboxGroup @bind-Value="policy.Actions" Data="@Policies[i].Actions" @key="@Policies[i]" />
             </div>
         }
-    </PluginFormField>
+    </FormField>
 }

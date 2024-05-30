@@ -8,7 +8,7 @@
 
 @if (Visible)
 {
-    <PluginFormField Cols="Cols" Id="@Id" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
+    <FormField Cols="Cols" Dense="@Dense" Id="@Id" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
         @if (ChildContent == null)
         {
             if (Data != null && Data.Any())
@@ -36,6 +36,6 @@
         {
             @ChildContent
         }
-        <div class="mb-5"></div>
-    </PluginFormField>
+        
+    </FormField>
 }

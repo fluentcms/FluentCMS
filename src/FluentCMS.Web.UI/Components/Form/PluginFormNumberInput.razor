@@ -6,7 +6,7 @@
 
 @if (Visible)
 {
-    <PluginFormField Cols="Cols" Id="@Id" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
+    <FormField Cols="Cols" Dense="@Dense" Id="@Id" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
         <input @attributes="AdditionalAttributes"
                class="@CssClass bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                disabled="@Disabled"
@@ -18,6 +18,5 @@
                type="number"
                value="@CurrentValueAsString"
                @onchange="EventCallback.Factory.CreateBinder<string?>(this, __value => CurrentValueAsString = __value, CurrentValueAsString)" />
-        <div class="mb-5"></div>
-    </PluginFormField>
+    </FormField>
 }

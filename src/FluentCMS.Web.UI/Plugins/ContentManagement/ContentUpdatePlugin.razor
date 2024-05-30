@@ -3,7 +3,7 @@
     <PluginBody Title="@PageTitle">
         @if (Model != null)
         {
-            <Form Model="@Model"
+            <EditForm Model="@Model"
                     OnSubmit="OnSubmit">
                 <Card>
                     <CardBody>
@@ -30,7 +30,7 @@
                         </Button>
                     </CardActions>
                 </Card>
-            </Form>
+            </EditForm>
         }
     </PluginBody>
 </ContentLayout>

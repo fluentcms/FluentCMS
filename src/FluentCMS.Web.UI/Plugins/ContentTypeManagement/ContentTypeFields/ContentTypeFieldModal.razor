@@ -5,7 +5,7 @@
        OnClose="() => OnCancel.InvokeAsync()">
     @if (Open && Model != null)
     {
-        <Form Model="@Model"
+        <EditForm Model="@Model"
               OnSubmit="OnFormSubmit">
             <ModalHeader Closable="true">
                 @if (!editing && type != null)
@@ -71,7 +71,7 @@
                     </ButtonGroup>
                 </ModalFooter>
             }
-        </Form>
+        </EditForm>
     }
 </Modal>
 

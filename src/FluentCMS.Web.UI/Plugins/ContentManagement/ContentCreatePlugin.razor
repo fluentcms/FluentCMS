@@ -1,7 +1,6 @@
 @using System.Text.Json
 <PluginBody Title="@PageTitle">
-    <Form Model="@Model"
-            OnSubmit="OnSubmit">
+    <EditForm Model="@Model" OnSubmit="OnSubmit">
         <Card>
             <CardBody>
                 @foreach (var field in Fields)
@@ -28,7 +27,7 @@
                 </Button>
             </CardActions>
         </Card>
-    </Form>
+    </EditForm>
 </PluginBody>
 
 @code {
