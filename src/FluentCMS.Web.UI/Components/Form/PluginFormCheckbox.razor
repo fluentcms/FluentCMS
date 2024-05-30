@@ -4,14 +4,7 @@
 
 @if (Visible)
 {
-    <PluginFormField Cols="Cols">
-        @if (!string.IsNullOrEmpty(Label))
-        {
-            <label for="@Id" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                @Label
-                @(Required ? "\u00A0*" : "")
-            </label>
-        }
+    <PluginFormField Cols="Cols" Id="@Id" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
         <div class="flex items-center">
             <input @attributes="AdditionalAttributes"
                    checked="@BindConverter.FormatValue(CurrentValue)"

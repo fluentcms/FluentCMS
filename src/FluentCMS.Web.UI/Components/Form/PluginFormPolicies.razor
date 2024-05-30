@@ -4,11 +4,7 @@
 
 @if (Policies != null && Policies.Count > 0 && Visible)
 {
-    <PluginFormField>
-        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white" Visible="!string.IsNullOrEmpty(Label)">
-            @Label
-        </label>
-
+    <PluginFormField Label="@Label">
         @{ var index = 0; }
         @foreach(var policy in Value) {
             var i = index++;

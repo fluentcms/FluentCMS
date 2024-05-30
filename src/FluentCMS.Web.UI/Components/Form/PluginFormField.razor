@@ -3,6 +3,19 @@
 @if (Visible)
 {
     <GridItem Small="GridItemColumn.Twelve" Medium="(GridItemColumn)(Cols + 1)">
+        @if (!string.IsNullOrEmpty(Label) || LabelFragment != null)
+        {
+            <FormLabel Id="@Id" Required="@Required">
+                @if (LabelFragment != null)
+                {
+                    @LabelFragment
+                } 
+                else
+                {
+                    @Label
+                }
+            </FormLabel>
+        }
         @ChildContent
     </GridItem>
 }
