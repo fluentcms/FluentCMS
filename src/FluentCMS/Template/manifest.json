@@ -204,10 +204,6 @@
                 {
                     "Name": "Update ContentType",
                     "Type": "ContentTypeUpdatePlugin"
-                },
-                {
-                    "Name": "ContentType Detail",
-                    "Type": "ContentTypeDetailPlugin"
                 }
             ]
         },
