@@ -13,10 +13,10 @@
             <DataTableItem Label="Description">@context.Description</DataTableItem>
             <DataTableItem>
                 <div class="flex gap-2">
-                    <Button Color="Color.Primary" Href="@GetUrl("Update Role", new { id = @context.Id })" Outline>
+                    <Button Color="Color.Primary" Href="@GetUrl("Update Role", new { id = @context.Id })" Size="ButtonSize.Small">
                         <Icon Name="IconName.Edit" />Edit
                     </Button>
-                    <Button Color="Color.Danger" Outline @onclick="() => OnConfirm(context)">
+                    <Button Color="Color.Danger" Outline @onclick="() => OnConfirm(context)" Size="ButtonSize.Small">
                         <Icon Name="IconName.Delete" />Delete
                     </Button>
                 </div>
