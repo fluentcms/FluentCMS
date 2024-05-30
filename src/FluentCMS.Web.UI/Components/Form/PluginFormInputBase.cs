@@ -18,6 +18,9 @@ public abstract class FormElement<T> : InputBase<T>
     public string? Label { get; set; }
 
     [Parameter]
+    public RenderFragment? LabelFragment { get; set; }
+
+    [Parameter]
     public string? Name { get; set; }
 
     [Parameter]
@@ -28,6 +31,12 @@ public abstract class FormElement<T> : InputBase<T>
 
     [Parameter]
     public bool Visible { get; set; } = true;
+
+    public FormElement()
+    {
+        Id ??= Guid.NewGuid().ToString();
+    }
+
 }
 
 public abstract class FormElementCheckboxes<T> : FormElement<T>

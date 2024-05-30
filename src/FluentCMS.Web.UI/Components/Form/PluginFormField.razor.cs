@@ -9,5 +9,17 @@ public partial class PluginFormField
     public int Cols { get; set; } = 12;
 
     [Parameter]
+    public string Id { get; set; }
+
+    [Parameter]
+    public string? Label { get; set; }
+
+    [Parameter]
+    public RenderFragment? LabelFragment { get; set; }
+
+    [Parameter]
+    public bool Required { get; set; }
+
+    [Parameter]
     public bool Visible { get; set; } = true;
 }
