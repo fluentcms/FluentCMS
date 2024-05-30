@@ -30,5 +30,11 @@ public class MappingProfile : Profile
         CreateMap<ApiTokenDetailResponse, ApiTokenUpdateRequest>();
 
         #endregion
+
+        #region ContentType
+
+        CreateMap<ContentTypeDetailResponse, ContentTypeUpdateRequest>();
+
+        #endregion
     }
 }

@@ -3,7 +3,7 @@
 <PluginBody Title="Content Types List">
     <ActionsFragment>
         <Button Href="@GetUrl("Create ContentType")" Color="Color.Primary">
-            <Icon Name="IconName.Plus" />Add New Content Type
+            <Icon Name="IconName.Plus" />Add Content Type
         </Button>
     </ActionsFragment>
     <ChildContent>
@@ -18,7 +18,7 @@
                 @context.Description
             </DataTableItem>
             <DataTableItem>
-                <Button Color="Color.Primary" Href="@GetUrl("Update ContentType", new { id = @context.Id })" Outline>
+                <Button Color="Color.Primary" Href="@GetUrl("Update ContentType", new { id = @context.Id })" Size="ButtonSize.Small">
                     <Icon Name="IconName.Edit" />Edit
                 </Button>
             </DataTableItem>
