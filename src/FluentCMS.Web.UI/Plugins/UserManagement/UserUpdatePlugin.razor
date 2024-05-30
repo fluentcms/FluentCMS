@@ -15,6 +15,6 @@
 
 <PluginForm Model="@SetPasswordModel" Name="@FORM_NAME_PASSWORD" Title="Set New Password" OnSubmit="OnChangePassword">
     <PluginFormHiddenInput @bind-Value="SetPasswordModel!.UserId" />
-    <PluginFormTextInput @bind-Value="SetPasswordModel!.Password" Label="New Password" Placeholder="Enter Password" Required />
+    <PluginFormTextInput @bind-Value="SetPasswordModel!.Password" Label="New Password" Placeholder="Enter Password" Required type="password" />
     <PluginFormActions Cancel Submit />
 </PluginForm>

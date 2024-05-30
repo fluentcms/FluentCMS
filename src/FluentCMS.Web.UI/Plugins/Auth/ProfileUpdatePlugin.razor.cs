@@ -25,12 +25,12 @@ public partial class ProfileUpdatePlugin
     private async Task OnProfileSubmit()
     {
         await GetApiClient<AccountClient>().UpdateCurrentAsync(ProfileModel);
-        NavigateBack();
+        NavigateTo("/admin");
     }
 
     private async Task OnChangePasswordSubmit()
     {
         await GetApiClient<AccountClient>().ChangePasswordAsync(ChangePasswordModel);
-        NavigateBack();
+        NavigateTo("/admin");
     }
 }
