@@ -268,17 +268,6 @@
             ]
         },
         {
-            "Name": "Settings",
-            "Description": "Settings Plugin",
-            "Types": [
-                {
-                    "Name": "Settings",
-                    "Type": "SettingsViewPlugin",
-                    "IsDefault": true
-                }
-            ]
-        },
-        {
             "Name": "Layout Management",
             "Description": "Layout Management Plugin",
             "Types": [
@@ -360,17 +349,6 @@
                     "Plugins": [
                         {
                             "Definition": "Api Token Management",
-                            "Section": "Main"
-                        }
-                    ]
-                },
-                {
-                    "Title": "Settings",
-                    "Path": "/settings",
-                    "Layout": "AdminLayout",
-                    "Plugins": [
-                        {
-                            "Definition": "Settings",
                             "Section": "Main"
                         }
                     ]
