@@ -1,20 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Web.Api.Filters;
 
 public class PolicyAuthorizeFiler : IAsyncAuthorizationFilter
 {
-    private readonly IAuthContext _authContext;
-    private readonly IUserService _userService;
-    private readonly IRoleService _roleService;
-
-    public PolicyAuthorizeFiler(IAuthContext authContext, IUserService userService, IRoleService roleService)
-    {
-        _authContext = authContext;
-        _userService = userService;
-        _roleService = roleService;
-    }
-
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
         // get all PolicyAttributes for the current method
@@ -29,12 +19,16 @@ public class PolicyAuthorizeFiler : IAsyncAuthorizationFilter
         if (policyAllAttribute != null)
             return;
 
+        var authContext = context.HttpContext.RequestServices.GetRequiredService<IAuthContext>();
+        var userService = context.HttpContext.RequestServices.GetRequiredService<IUserService>();
+        var roleService = context.HttpContext.RequestServices.GetRequiredService<IRoleService>();
+
         // check if user is authenticated
-        if (_authContext.IsAuthenticated)
+        if (authContext.IsAuthenticated)
         {
             // get current user and all roles
-            var userTask = _userService.GetById(_authContext.UserId);
-            var rolesTask = _roleService.GetAll();
+            var userTask = userService.GetById(authContext.UserId);
+            var rolesTask = roleService.GetAll();
             await Task.WhenAll(userTask, rolesTask);
 
             var user = userTask.Result;

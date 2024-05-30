@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
-
-namespace FluentCMS.Web.Api.Controllers;
+﻿namespace FluentCMS.Web.Api.Controllers;
 
 public class SiteController(ISiteService siteService, IPageService pageService, IMapper mapper) : BaseGlobalController
 {
@@ -10,7 +8,7 @@ public class SiteController(ISiteService siteService, IPageService pageService, 
     public const string CREATE = "Create";
     public const string DELETE = $"Delete/{READ}";
 
-    [AllowAnonymous]
+    [PolicyAll]
     [HttpGet("{siteUrl}")]
     [Policy(AREA, READ)]
     public async Task<IApiResult<SiteDetailResponse>> GetByUrl([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
