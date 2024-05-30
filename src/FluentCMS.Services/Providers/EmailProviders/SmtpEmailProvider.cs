@@ -3,12 +3,13 @@ using System.Net.Mail;
 
 namespace FluentCMS.Providers;
 
-public interface ISmtpEmailProvider
+public interface IEmailProvider
 {
     Task Send(string from, string recipients, string? subject, string? body, CancellationToken cancellationToken = default);
+    Task Send(string recipients, string? subject, string? body, CancellationToken cancellationToken = default);
 }
 
-public class SmtpEmailProvider(SmtpServerConfiguration smtpServerConfiguration) : ISmtpEmailProvider
+public class SmtpEmailProvider(SmtpServerConfiguration smtpServerConfiguration) : IEmailProvider
 {
     public async Task Send(string from, string recipients, string? subject, string? body, CancellationToken cancellationToken = default)
     {
@@ -18,14 +19,8 @@ public class SmtpEmailProvider(SmtpServerConfiguration smtpServerConfiguration) 
             var client = new SmtpClient(smtpServerConfiguration.Server, smtpServerConfiguration.Port)
             {
                 EnableSsl = smtpServerConfiguration.EnableSsl,
-                //DeliveryMethod = SmtpDeliveryMethod.Network
+                Credentials = new NetworkCredential(smtpServerConfiguration.Username, smtpServerConfiguration.Password)
             };
-
-            if (!string.IsNullOrEmpty(smtpServerConfiguration.Username))
-            {
-                //client.UseDefaultCredentials = false;
-                client.Credentials = new NetworkCredential(smtpServerConfiguration.Username, smtpServerConfiguration.Password);
-            }
 
             // Create email message
             var mailMessage = new MailMessage
@@ -45,9 +40,13 @@ public class SmtpEmailProvider(SmtpServerConfiguration smtpServerConfiguration) 
             // Send email
             await client.SendMailAsync(mailMessage, cancellationToken);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            var x = ex;
         }
+    }
+
+    public async Task Send(string recipients, string? subject, string? body, CancellationToken cancellationToken = default)
+    {
+        await Send(smtpServerConfiguration.From, recipients, subject, body, cancellationToken);
     }
 }

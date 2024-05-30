@@ -7597,6 +7597,10 @@ namespace FluentCMS.Web.ApiClients
         [System.ComponentModel.DataAnnotations.Required]
         public string NewPassword { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("newPasswordConfirm")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public string NewPasswordConfirm { get; set; } = default!;
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -8151,6 +8155,9 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("superUsers")]
         public System.Collections.Generic.ICollection<string>? SuperUsers { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("email")]
+        public SmtpServerConfiguration Email { get; set; } = default!;
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -8189,6 +8196,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("superUsers")]
         public System.Collections.Generic.ICollection<string>? SuperUsers { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("email")]
+        public SmtpServerConfiguration Email { get; set; } = default!;
 
     }
 
@@ -9258,6 +9268,30 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class SmtpServerConfiguration
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("server")]
+        public string? Server { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("port")]
+        public int Port { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("username")]
+        public string? Username { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("password")]
+        public string? Password { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("enableSsl")]
+        public bool EnableSsl { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("from")]
+        public string? From { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserCreateRequest
     {
 
@@ -9577,17 +9611,21 @@ namespace FluentCMS.Web.ApiClients
     public partial class UserValidatePasswordResetTokenRequest
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("email")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public string Email { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("token")]
         [System.ComponentModel.DataAnnotations.Required]
         public string Token { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("email")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Email { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("newPassword")]
         [System.ComponentModel.DataAnnotations.Required]
         public string NewPassword { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("newPasswordConfirm")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public string NewPasswordConfirm { get; set; } = default!;
 
     }
 

@@ -85,8 +85,6 @@ public class SetupManager
 
         await InitializeSuperAdmin();
 
-        await InitializeGlobalSettings();
-
         await InitializeAppTemplates();
 
         await InitializeAdminUI();
@@ -156,17 +154,6 @@ public class SetupManager
         _superAdmin = await _userService.Create(superAdmin, _setupRequest.Password);
     }
 
-    private async Task InitializeGlobalSettings()
-    {
-        // Creating default global settings
-        var settings = new GlobalSettings
-        {
-            SuperUsers = [_setupRequest.Username]
-        };
-
-        _globalSettings = await _globalSettingsService.Init(settings);
-    }
-
     private async Task InitializeAppTemplates()
     {
         foreach (var folder in Directory.GetDirectories(APP_TEMPLATE_PHYSICAL_PATH))
@@ -206,6 +193,9 @@ public class SetupManager
         if (_adminTemplate == null)
             return;
 
+        _globalSettings = _adminTemplate.GlobalSettings;
+
+        await InitializeGlobalSettings();
         await InitLayouts();
         await InitPluginDefinitions();
         await InitSite();
@@ -213,6 +203,14 @@ public class SetupManager
         await InitPages();
 
     }
+    private async Task InitializeGlobalSettings()
+    {
+        // Creating default global settings
+        _globalSettings.SuperUsers = [_setupRequest.Username];
+
+        _globalSettings = await _globalSettingsService.Init(_globalSettings);
+    }
+
     private async Task InitRoles()
     {
         foreach (var role in _adminTemplate.Roles)

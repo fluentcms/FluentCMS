@@ -1,5 +1,6 @@
 ﻿using FluentCMS.Providers;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
 
 namespace FluentCMS.Services;
 
@@ -13,10 +14,8 @@ public interface IUserService : IAutoRegisterService
     Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default);
     Task<bool> ChangePassword(User user, string newPassword, CancellationToken cancellationToken = default);
     Task<User> ChangePassword(Guid id, string oldPassword, string newPassword, CancellationToken cancellationToken = default);
-    Task<string> GenerateToken(string purpose, User user, CancellationToken cancellationToken = default);
-    Task<bool> ValidateToken(string token, string purpose, User user, CancellationToken cancellationToken = default);
-    Task<string> GeneratePasswordResetToken(string email, CancellationToken cancellationToken = default);
-    Task<bool> ValidatePasswordResetToken(string token, string email, string newPassword, CancellationToken cancellationToken = default);
+    Task<bool> SendPasswordResetToken(string email, CancellationToken cancellationToken = default);
+    Task<bool> ChangePasswordByResetToken(string email, string token, string newPassword, CancellationToken cancellationToken = default);
     Task<bool> Any(CancellationToken cancellationToken = default);
     Task<User?> GetByEmail(string requestEmail, CancellationToken cancellationToken = default);
 }
@@ -25,17 +24,14 @@ public class UserService(
     IGlobalSettingsRepository globalSettingsRepository,
     IUserTokenProvider userTokenProvider,
     UserManager<User> userManager,
-    ISmtpEmailProvider smtpEmailProvider,
+    IEmailProvider emailProvider,
+    IConfiguration configuration,
     IAuthContext authContext) : IUserService
 {
     public const string LOCAL_LOGIN_PROVIDER = "local";
     public const string REFRESH_TOKEN_NAME = "refreshToken";
     public const string PASSWORD_RESET_PURPOSE = "passwordReset";
-
-    public async Task Send()
-    {
-        await smtpEmailProvider.Send("amir@admin.com", "rec@admin.com", "subject", "body");
-    }
+    public const string PASSWORD_RESET_TOKEN_PROVIDER = "passwordResetProvider";
 
     public async Task<User> Create(User user, string password, CancellationToken cancellationToken = default)
     {
@@ -146,31 +142,22 @@ public class UserService(
         return user;
     }
 
-    public async Task<string> GenerateToken(string purpose, User user, CancellationToken cancellationToken = default)
+    public async Task<bool> SendPasswordResetToken(string email, CancellationToken cancellationToken = default)
     {
-        return await userManager.GenerateUserTokenAsync(user, GetTokenProvider(purpose), purpose);
+        var user = await userManager.FindByEmailAsync(email) ??
+            throw new AppException(ExceptionCodes.UserNotFound);
+
+        var token = await userManager.GenerateUserTokenAsync(user, PASSWORD_RESET_TOKEN_PROVIDER, PASSWORD_RESET_PURPOSE);
+
+        await emailProvider.Send(email, "Reset Password", $"{configuration["urls"]}/auth/reset-password?token={token}&email={email}", cancellationToken);
+
+        return true;
     }
 
-    public static string GetTokenProvider(string purpose)
-    {
-        return $"{purpose}Provider";
-    }
-
-    public async Task<bool> ValidateToken(string token, string purpose, User user, CancellationToken cancellationToken = default)
-    {
-        return await userManager.VerifyUserTokenAsync(user, GetTokenProvider(purpose), purpose, token);
-    }
-
-    public async Task<string> GeneratePasswordResetToken(string email, CancellationToken cancellationToken = default)
+    public async Task<bool> ChangePasswordByResetToken(string email, string token, string newPassword, CancellationToken cancellationToke = default)
     {
         var user = await userManager.FindByEmailAsync(email) ?? throw new AppException(ExceptionCodes.UserNotFound);
-        return await GenerateToken(PASSWORD_RESET_PURPOSE, user);
-    }
-
-    public async Task<bool> ValidatePasswordResetToken(string token, string email, string newPassword, CancellationToken cancellationToke = default)
-    {
-        var user = await userManager.FindByEmailAsync(email) ?? throw new AppException(ExceptionCodes.UserNotFound);
-        var result = await ValidateToken(token, PASSWORD_RESET_PURPOSE, user);
+        var result = await userManager.VerifyUserTokenAsync(user, PASSWORD_RESET_TOKEN_PROVIDER, PASSWORD_RESET_PURPOSE, token);
         if (result)
         {
             await ChangePassword(user, newPassword, cancellationToke);

@@ -11,21 +11,15 @@ public partial class ResetPasswordViewPlugin
     public string Token { get; set; } = default!;
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
-    private UserValidatePasswordResetTokenRequest Model { get; set; } = new();
+    private UserValidatePasswordResetTokenRequest? Model { get; set; }
 
     protected override void OnInitialized()
     {
-        if (string.IsNullOrEmpty(Email))
+        Model ??= new UserValidatePasswordResetTokenRequest
         {
-            throw new ArgumentNullException(nameof(Email));
-        }
-
-        if (string.IsNullOrEmpty(Token))
-        {
-            throw new ArgumentNullException(nameof(Token));
-        }
-        Model.Email = Email;
-        Model.Token = Token;
+            Email = Email,
+            Token = Token
+        };
     }
 
     private async Task OnSubmit()

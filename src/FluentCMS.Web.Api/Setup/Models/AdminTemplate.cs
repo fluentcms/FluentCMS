@@ -1,6 +1,7 @@
 ﻿namespace FluentCMS.Web.Api.Setup.Models;
 internal class AdminTemplate
 {
+    public GlobalSettings GlobalSettings { get; set; } = default!;
     public Site Site { get; set; } = default!;
     public List<LayoutTemplate> Layouts { get; set; } = [];
     public List<PluginDefinitionTemplate> PluginDefinitions { get; set; } = [];
