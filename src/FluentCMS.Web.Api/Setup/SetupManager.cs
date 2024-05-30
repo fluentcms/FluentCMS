@@ -213,10 +213,16 @@ public class SetupManager
 
     private async Task InitRoles()
     {
+        var adminRoles = new List<Role>();
         foreach (var role in _adminTemplate.Roles)
         {
             await _roleService.Create(role);
+            if (role.ReadOnly)
+                adminRoles.Add(role);
         }
+
+        _superAdmin.RoleIds.AddRange(adminRoles.Select(x => x.Id));
+        await _userService.Update(_superAdmin);
     }
 
     private async Task InitSite()
