@@ -24,6 +24,11 @@ public class PolicyAuthorizeFiler : IAsyncAuthorizationFilter
         if (!policyAttributes.Any())
             return;
 
+        // check if exists PolicyAllAttribute
+        var policyAllAttribute = policyAttributes.OfType<PolicyAllAttribute>().FirstOrDefault();
+        if (policyAllAttribute != null)
+            return;
+
         // check if user is authenticated
         if (_authContext.IsAuthenticated)
         {
