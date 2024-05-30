@@ -8152,9 +8152,6 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
         public System.DateTime? ModifiedAt { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("superUsers")]
-        public System.Collections.Generic.ICollection<string>? SuperUsers { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("email")]
         public SmtpServerConfiguration Email { get; set; } = default!;
 
@@ -8193,9 +8190,6 @@ namespace FluentCMS.Web.ApiClients
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class GlobalSettingsUpdateRequest
     {
-
-        [System.Text.Json.Serialization.JsonPropertyName("superUsers")]
-        public System.Collections.Generic.ICollection<string>? SuperUsers { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("email")]
         public SmtpServerConfiguration Email { get; set; } = default!;

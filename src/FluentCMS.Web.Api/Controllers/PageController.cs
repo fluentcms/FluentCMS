@@ -1,12 +1,10 @@
 ﻿using FluentCMS.Web.Api.Filters;
 using FluentCMS.Web.Api.Setup;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Primitives;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-[AllowAnonymous]
 public class PageController(
     ISiteService siteService,
     IPageService pageService,
@@ -16,10 +14,17 @@ public class PageController(
     SetupManager setupManager,
     IMapper mapper) : BaseGlobalController
 {
+
+    public const string AREA = "Page Management";
+    public const string UPDATE = $"Update";
+    public const string CREATE = "Create";
+    public const string DELETE = $"Delete";
+
     public const string PLUGIN_DEFINIOTION_NAME = "PluginDef";
 
     [HttpGet("{siteUrl}")]
     [DecodeQueryParam]
+    [PolicyAll]
     public async Task<IApiPagingResult<PageDetailResponse>> GetAll([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
     {
         var site = await siteService.GetByUrl(siteUrl, cancellationToken);
@@ -29,6 +34,7 @@ public class PageController(
     }
 
     [HttpGet("{id}")]
+    [PolicyAll]
     public async Task<IApiResult<PageDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var entity = await pageService.GetById(id, cancellationToken);
@@ -38,6 +44,7 @@ public class PageController(
 
     [HttpGet]
     [DecodeQueryParam]
+    [PolicyAll]
     public async Task<IApiResult<PageFullDetailResponse>> GetByUrl([FromQuery] string url, CancellationToken cancellationToken = default)
     {
         var uri = new Uri(url);
@@ -56,6 +63,7 @@ public class PageController(
     }
 
     [HttpPost]
+    [Policy(AREA, CREATE)]
     public async Task<IApiResult<PageDetailResponse>> Create(PageCreateRequest request, CancellationToken cancellationToken = default)
     {
         var entity = mapper.Map<Page>(request);
@@ -65,6 +73,7 @@ public class PageController(
     }
 
     [HttpPut]
+    [Policy(AREA, UPDATE)]
     public async Task<IApiResult<PageDetailResponse>> Update(PageUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var entity = mapper.Map<Page>(request);
@@ -74,6 +83,7 @@ public class PageController(
     }
 
     [HttpDelete("{id}")]
+    [Policy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
     {
         await pageService.Delete(id);

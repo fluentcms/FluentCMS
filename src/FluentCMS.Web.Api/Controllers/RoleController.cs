@@ -1,6 +1,4 @@
-﻿using FluentCMS.Web.Api.Attributes;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc.Controllers;
+﻿using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Routing;
 using System.Reflection;
 
@@ -61,7 +59,7 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
     }
 
     [HttpGet]
-    [AllowAnonymous]
+    [Policy(AREA, READ)]
     public async Task<IApiPagingResult<Policy>> GetPolicies(CancellationToken cancellationToken = default)
     {
         var policiesDict = new Dictionary<string, Policy>();

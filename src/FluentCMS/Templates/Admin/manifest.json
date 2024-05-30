@@ -30,7 +30,15 @@
     "Roles": [
         {
             "Name": "Admin",
-            "Description": "Default administrators role"
+            "Description": "Default administrators role",
+            "ReadOnly": true,
+            "IsAdmin": true,
+            "Policies": [
+                {
+                    "Area": "Admin",
+                    "Actions": [ "Full Access" ]
+                }
+            ]
         }
     ],
     "PluginDefinitions": [
