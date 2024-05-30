@@ -10,7 +10,7 @@ namespace FluentCMS.Web.Api.Controllers;
 public abstract class BaseController
 {
     public const string ADMIN_AREA = "Admin";
-    public const string ADMIN_ACTION = "Full permission for administrators";
+    public const string ADMIN_ACTION = "Full Access";
 
     public static ApiResult<T> Ok<T>(T item)
     {

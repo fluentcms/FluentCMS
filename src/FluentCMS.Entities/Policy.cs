@@ -1,4 +1,5 @@
 ﻿namespace FluentCMS.Entities;
+
 public class Policy
 {
     public string Area { get; set; } = default!;
