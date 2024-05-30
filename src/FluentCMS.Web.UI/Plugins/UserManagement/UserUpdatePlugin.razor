@@ -7,14 +7,14 @@
     <PluginFormTextInput @bind-Value="UpdateModel!.FirstName" Cols="6" Label="First Name" Placeholder="Enter First Name" />
     <PluginFormTextInput @bind-Value="UpdateModel!.LastName" Cols="6" Label="Last Name" Placeholder="Enter Last Name" />
     <PluginFormTextInput @bind-Value="UpdateModel!.PhoneNumber" Cols="6" Label="Phone Number" Placeholder="Enter Phone Number" />
-    <PluginFormCheckbox @bind-Value="UpdateModel!.Enabled" Cols="6" Label="Enabled" Text="Activate account and enable system access" />
-    <PluginFormCheckbox @bind-Value="UpdateModel!.Locked" Cols="6" Label="Locked" Text="Lock the user access" />
+    <PluginFormCheckbox @bind-Value="UpdateModel!.Enabled" Cols="3" Label="Enabled" Text="Enable/disable user account" />
+    <PluginFormCheckbox @bind-Value="UpdateModel!.Locked" Cols="3" Label="Locked" Text="Lock the user access" />
     <PluginFormCheckboxGroup @bind-Value="UpdateModel!.RoleIds" Data="Roles" Label="Roles" TextField="Name" ValueField="Id" />
     <PluginFormActions Cancel Submit />
 </PluginForm>
 
 <PluginForm Model="@SetPasswordModel" Name="@FORM_NAME_PASSWORD" Title="Set New Password" OnSubmit="OnChangePassword">
     <PluginFormHiddenInput @bind-Value="SetPasswordModel!.UserId" />
-    <PluginFormTextInput @bind-Value="SetPasswordModel!.Password" Label="New Password" Placeholder="Enter Password" Required type="password" />
+    <PluginFormTextInput @bind-Value="SetPasswordModel!.Password" Cols="6" Label="New Password" Placeholder="Enter Password" Required type="password" />
     <PluginFormActions Cancel Submit />
 </PluginForm>
