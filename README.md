@@ -90,7 +90,7 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
     - [ ] Page Management
     - [ ] Plugin Management
     - [x] Layout Management
-- [ ] Users
+- [x] Users
   - [x] User Registration
   - [x] User Login / Logout
   - [x] User Profile
