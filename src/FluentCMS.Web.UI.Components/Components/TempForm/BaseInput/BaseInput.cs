@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Components.Forms;
-
 namespace FluentCMS.Web.UI.Plugins.Components;
 
 public abstract class BaseInput<T> : InputBase<T>
@@ -67,9 +65,10 @@ public abstract class BaseInputBlock<T> : BaseInput<T>
     public string? Placeholder { get; set; }
 }
 
-public class BaseInputHelper {
-       
-     // css prefix for auto-generated classes
+public class BaseInputHelper
+{
+
+    // css prefix for auto-generated classes
     public const string CSS_PREFIX = "f";
 
     public const string SEPARATOR = "-";

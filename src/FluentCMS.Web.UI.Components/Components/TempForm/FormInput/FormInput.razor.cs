@@ -12,9 +12,9 @@ public partial class FormInput
         return EventCallback.Factory.CreateBinder<string?>(this, __value => CurrentValueAsString = __value, CurrentValueAsString);
     }
 
-    public string CssClasses 
-    { 
-        get => this.CssClass + " " + BaseInputHelper.GetClasses<string>(this); 
+    public string CssClasses
+    {
+        get => this.CssClass + " " + BaseInputHelper.GetClasses<string>(this);
     }
 
     protected override bool TryParseValueFromString(string? value, out string? result, [NotNullWhen(false)] out string? validationErrorMessage)
