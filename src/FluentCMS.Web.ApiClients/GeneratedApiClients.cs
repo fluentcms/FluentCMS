@@ -8077,14 +8077,14 @@ namespace FluentCMS.Web.ApiClients
     public partial class ContentTypeField
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("slug")]
-        public string? Slug { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        public string? Name { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("type")]
         public string? Type { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("label")]
+        public string? Label { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string? Description { get; set; } = default!;
@@ -8092,8 +8092,8 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("placeholder")]
         public string? Placeholder { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("isRequired")]
-        public bool IsRequired { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("required")]
+        public bool Required { get; set; } = default!;
 
     }
 

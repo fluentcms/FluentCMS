@@ -6,7 +6,6 @@ public partial class ContentTypeListPlugin
 
     protected override async Task OnInitializedAsync()
     {
-        await base.OnInitializedAsync();
         var contentTypesResponse = await GetApiClient<ContentTypeClient>().GetAllAsync();
         ContentTypes = contentTypesResponse?.Data?.ToList() ?? [];
     }
