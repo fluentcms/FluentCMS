@@ -12,8 +12,8 @@
         <DataTable Items="Data">
             @foreach (var field in Fields)
             {
-                <DataTableItem Label="@field.Title">
-                    @(context.Value[field.Slug])
+                <DataTableItem Label="@field.Label">
+                    @(context.Value[field.Name])
                 </DataTableItem>
             }
             <DataTableItem>

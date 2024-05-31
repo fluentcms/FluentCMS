@@ -463,16 +463,16 @@
             "Description": "Blog Post Content Type",
             "Fields": [
                 {
-                    "Slug":  "title",
-                    "Title": "Title",
+                    "Name": "Title",
+                    "Label": "Title",
                     "Description": "Blog Post Title",
                     "Type": "Text",
                     "Placeholder": "Enter Blog Post Title",
                     "IsRequired": true
                 },
                 {
-                    "Slug": "content",
-                    "Title": "Content",
+                    "Name": "Content",
+                    "Label": "Content",
                     "Description": "Blog Post Content",
                     "Type": "Text",
                     "Placeholder": "Enter Blog Post Content",
