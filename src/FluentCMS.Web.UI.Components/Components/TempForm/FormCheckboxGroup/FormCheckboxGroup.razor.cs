@@ -20,6 +20,9 @@ public partial class FormCheckboxGroup<TItem, TValue>
     public bool Vertical { get; set; }
 
     [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    [Parameter]
     public EventCallback<ICollection<TValue>> OnChange { get; set; }
 
     private bool IsChecked(TItem item)
