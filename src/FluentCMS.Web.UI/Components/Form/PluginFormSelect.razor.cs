@@ -8,12 +8,7 @@ public partial class PluginFormSelect<TValue>
     [Parameter]
     public int Cols { get; set; } = 12;
 
-    private readonly bool _isMultipleSelect;
-
-    public PluginFormSelect()
-    {
-        _isMultipleSelect = typeof(TValue).IsArray;
-    }
+    private readonly bool _isMultipleSelect = typeof(TValue).IsArray;
 
     protected override bool TryParseValueFromString(string? value, [MaybeNullWhen(false)] out TValue result, [NotNullWhen(false)] out string? validationErrorMessage)
     {

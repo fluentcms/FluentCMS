@@ -1,0 +1,11 @@
+@inherits BaseInputBlock<string?>
+
+@namespace FluentCMS.Web.UI.Components
+
+@if (Visible)
+{
+    <FormField Cols="Cols" Dense="@Dense" Id="@Id" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
+        <textarea @attributes="AdditionalAttributes" class="@this.GetClasses()" disabled="@Disabled" id="@Id" name="@NameAttributeValue"
+                  placeholder="@Placeholder" readonly="@Readonly" rows="@Rows" @bind="@CurrentValueAsString"></textarea>
+    </FormField>
+}

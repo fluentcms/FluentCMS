@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
-namespace FluentCMS.Web.UI.Plugins.Components;
+namespace FluentCMS.Web.UI.Components;
 
 public partial class PluginFormCheckbox
 {
