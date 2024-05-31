@@ -1,11 +1,10 @@
-﻿using Microsoft.AspNetCore.Components.Forms;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
-namespace FluentCMS.Web.UI.Plugins.Components;
+namespace FluentCMS.Web.UI.Components;
 
-public partial class PluginFormDateInput<TValue>
+public partial class FormDateInput<TValue>
 {
     [Parameter]
     public int Cols { get; set; } = 12;
@@ -25,7 +24,7 @@ public partial class PluginFormDateInput<TValue>
     [Parameter]
     public string ParsingErrorMessage { get; set; } = string.Empty;
 
-    public PluginFormDateInput()
+    public FormDateInput()
     {
         var type = Nullable.GetUnderlyingType(typeof(TValue)) ?? typeof(TValue);
 

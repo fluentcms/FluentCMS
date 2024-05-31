@@ -1,8 +1,8 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
-namespace FluentCMS.Web.UI.Plugins.Components;
+namespace FluentCMS.Web.UI.Components;
 
-public partial class PluginFormHiddenInput<TValue>
+public partial class FormHiddenInput<TValue>
 {
     protected override bool TryParseValueFromString(string? value, [MaybeNullWhen(false)] out TValue result, [NotNullWhen(false)] out string? validationErrorMessage)
     {

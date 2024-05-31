@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Web.UI.Plugins.Components;
 
-public partial class PluginFormActions
+public partial class FormActions
 {
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = default!;

@@ -1,11 +1,10 @@
-@* TODO: Cleanup css classes *@
 @typeparam TItem
 
 @typeparam TValue
 
 @inherits BaseInputInline<ICollection<TValue>>
 
-@namespace FluentCMS.Web.UI.Plugins.Components
+@namespace FluentCMS.Web.UI.Components
 
 @if (Visible)
 {
@@ -14,18 +13,14 @@
         {
             if (Data != null && Data.Any())
             {
-                <div class="flex-wrap @(Vertical ? "" : "flex")">
+                <div class="@this.GetClasses()">
                     @foreach (var item in Data)
                     {
-                        <div class="mr-4 mb-2">
-                            <input @attributes="AdditionalAttributes" checked="@IsChecked(item)"
-                                   @onchange="(e) => HandleChange(e, GetValue(item))"
-                                   class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:focus:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                                   id="@($"{Id}_{GetValue(item)}")"
-                                   name="@NameAttributeValue"
-                                   type="checkbox"
-                                   value="@GetValue(item)">
-                            <label for="@($"{Id}_{GetValue(item)}")" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                        <div class="@this.ClassName("FormCheckboxGroupInputWrapper")">
+                            <input @attributes="AdditionalAttributes" @onchange="(e) => HandleChange(e, GetValue(item))"
+                                   checked="@IsChecked(item)" class="@this.ClassName("FormCheckboxGroupInput")" 
+                                   id="@($"{Id}_{GetValue(item)}")" name="@NameAttributeValue" type="checkbox" value="@GetValue(item)">
+                            <label for="@($"{Id}_{GetValue(item)}")" class="@this.ClassName("FormCheckboxGroupLabel")">
                                 @GetText(item)
                             </label>
                         </div>
