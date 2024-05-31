@@ -1,33 +1,25 @@
 ﻿@inherits BasePlugin
+@rendermode InteractiveServer
 
-<PluginBody Title="Content Type Fields" Visible="ContentType?.Fields != null">
-    <ActionsFragment>
-        <Button Href="@GetUrl("Create ContentType")" Color="Color.Primary">
-            <Icon Name="IconName.Plus" />Add Content Type
-        </Button>
-    </ActionsFragment>
-    <ChildContent>
-        <DataTable Items="ContentType!.Fields!.ToList()">
-            <DataTableItem Label="Name">
-                @context.Name
-            </DataTableItem>
-            <DataTableItem Label="Type">
-                @context.Type
-            </DataTableItem>
-            <DataTableItem Label="Required">
-                @context.Required
-            </DataTableItem>
-            <DataTableItem Label="Label">
-                @context.Label
-            </DataTableItem>
-            <DataTableItem Label="Description">
-                @context.Description
-            </DataTableItem>
-            <DataTableItem>
-                <Button Color="Color.Primary" Href="@GetUrl("Update ContentType", new { id = @context.Name })" Size="ButtonSize.Small">
-                    <Icon Name="IconName.Edit" />Edit
-                </Button>
-            </DataTableItem>
-        </DataTable>
-    </ChildContent>
-</PluginBody>
+@if (CurrentState == State.List)
+{
+    <PluginBody Title="Content Type Fields" Visible="ContentType?.Fields != null">
+        <ActionsFragment>
+            <Button Color="Color.Primary" @onclick=OnCreateFieldClick>
+                <Icon Name="IconName.Plus" />Add Field
+            </Button>
+        </ActionsFragment>
+        <ChildContent>
+            <ContentTypeFieldsList ContentType=ContentType OnEdit="(x)=> OnEditFieldClick(x)" OnDelete="(x)=> OnDeleteFieldClick(x)" />
+        </ChildContent>
+    </PluginBody>
+}
+@if (CurrentState == State.Create)
+{
+    <ContentTypeFieldCreate Model=SelectedField OnSubmit=@OnFieldUpdate OnCancel=OnCancel />
+}
+@if (CurrentState == State.Edit)
+{
+    <ContentTypeFieldUpdate Model=SelectedField OnSubmit=@OnFieldUpdate OnCancel=OnCancel />
+}
+
