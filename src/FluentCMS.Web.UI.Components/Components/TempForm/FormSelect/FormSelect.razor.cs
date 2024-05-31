@@ -1,12 +1,15 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
-namespace FluentCMS.Web.UI.Plugins.Components;
+namespace FluentCMS.Web.UI.Components;
 
-public partial class PluginFormSelect<TValue>
+public partial class FormSelect<TValue>
 {
     [Parameter]
     public int Cols { get; set; } = 12;
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
 
     private readonly bool _isMultipleSelect = typeof(TValue).IsArray;
 

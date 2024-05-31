@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Web.UI.Components;
 
-public partial class PluginFormCheckbox
+public partial class FormCheckbox
 {
     [Parameter]
     public int Cols { get; set; } = 12;
