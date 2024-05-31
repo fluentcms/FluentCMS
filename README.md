@@ -1,15 +1,17 @@
 # FluentCMS
 
-FluentCMS is a modern Content Management System (CMS) built on the powerful ASP.NET framework and the innovative Blazor technology. Infused with cutting-edge AI capabilities, FluentCMS assists content writers in crafting content more efficiently. Designed to be fast, flexible, and user-friendly, it not only serves as a traditional content-based CMS but also excels as a headless CMS, making it perfect for a diverse range of digital applications.
+FluentCMS is a modern Content Management System (CMS) built on the powerful ASP.NET framework and the innovative Blazor technology. FluentCMS assists content writers in crafting content more efficiently. Designed to be fast, flexible, and user-friendly, it not only serves as a traditional content-based CMS but also excels as a headless CMS, making it perfect for a diverse range of digital applications.
+
+FluentCMS is an open-source project, and we welcome contributions from the community. If you're interested in helping us improve FluentCMS, please read our [CONTRIBUTING.md](./CONTRIBUTING.md) guide.
 
 ## Features
 
-- **AI-Powered Writing Assistance**: Utilize advanced AI to guide content creation, suggesting optimizations and improving readability.
 - **Blazing Fast**: Built on top of Blazor components for client-side operations.
 - **Extensible**: Easily extend with custom plugins and themes.
+- **SEO Friendly**: Built-in SEO tools to optimize content for search engines.
 - **Responsive**: Mobile-friendly out of the box.
 - **Modern UI**: Sleek and intuitive dashboard for content management.
-- ... _(Add more features as applicable)_
+- **Headless Capabilities**: API-first design for decoupled applications.
 
 ## Getting Started
 
@@ -49,11 +51,7 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
 
 ## Roadmap
 
-- Enhance AI recommendations with user feedback loops.
-- Extend headless capabilities with more API integrations.
-- Add multi-language support.
-- Develop a marketplace for plugins and themes.
-- ... _(Your future plans for the project)_
+See the [open issues]()
 
 ## License
 
