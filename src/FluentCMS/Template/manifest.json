@@ -162,33 +162,6 @@
             ]
         },
         {
-            "Name": "Content Management",
-            "Description": "Content Management Plugin",
-            "Types": [
-                {
-                    "Name": "Content Index",
-                    "Type": "ContentIndexPlugin",
-                    "IsDefault": true
-                },
-                {
-                    "Name": "Content List",
-                    "Type": "ContentListPlugin"
-                },
-                {
-                    "Name": "Create Content",
-                    "Type": "ContentCreatePlugin"
-                },
-                {
-                    "Name": "Update Content",
-                    "Type": "ContentUpdatePlugin"
-                },
-                {
-                    "Name": "Content Detail",
-                    "Type": "ContentDetailPlugin"
-                }
-            ]
-        },
-        {
             "Name": "ContentType Management",
             "Description": "ContentTypes Management Plugin",
             "Types": [
@@ -204,6 +177,10 @@
                 {
                     "Name": "Update ContentType",
                     "Type": "ContentTypeUpdatePlugin"
+                },
+                {
+                    "Name": "View ContentType",
+                    "Type": "ContentTypeDetailPlugin"
                 }
             ]
         },
@@ -305,17 +282,6 @@
                 }
             ],
             "Children": [
-                {
-                    "Title": "Content Management",
-                    "Path": "/content",
-                    "Layout": "AdminLayout",
-                    "Plugins": [
-                        {
-                            "Definition": "Content Management",
-                            "Section": "Main"
-                        }
-                    ]
-                },
                 {
                     "Title": "Content Type Builder",
                     "Path": "/content-types",
@@ -468,7 +434,7 @@
                     "Description": "Blog Post Title",
                     "Type": "Text",
                     "Placeholder": "Enter Blog Post Title",
-                    "IsRequired": true
+                    "Required": true
                 },
                 {
                     "Name": "Content",
@@ -476,7 +442,7 @@
                     "Description": "Blog Post Content",
                     "Type": "Text",
                     "Placeholder": "Enter Blog Post Content",
-                    "IsRequired": false
+                    "Required": false
                 }
             ]
         }

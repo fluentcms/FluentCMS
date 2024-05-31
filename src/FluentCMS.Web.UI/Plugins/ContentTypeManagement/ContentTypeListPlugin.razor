@@ -21,6 +21,9 @@
                 <Button Color="Color.Primary" Href="@GetUrl("Update ContentType", new { id = @context.Id })" Size="ButtonSize.Small">
                     <Icon Name="IconName.Edit" />Edit
                 </Button>
+                <Button Color="Color.Warning" Href="@GetUrl("View ContentType", new { id = @context.Id })" Size="ButtonSize.Small">
+                    <Icon Name="IconName.Eye" />View
+                </Button>
             </DataTableItem>
         </DataTable>
     </ChildContent>

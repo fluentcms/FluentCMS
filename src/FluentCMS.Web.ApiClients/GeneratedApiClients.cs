@@ -8092,8 +8092,8 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("placeholder")]
         public string? Placeholder { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("isRequired")]
-        public bool IsRequired { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("required")]
+        public bool Required { get; set; } = default!;
 
     }
 
