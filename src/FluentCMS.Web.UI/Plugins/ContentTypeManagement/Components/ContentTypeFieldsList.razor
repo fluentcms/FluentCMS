@@ -1,0 +1,30 @@
+﻿@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement
+
+@if (ContentType?.Fields != null)
+{
+    <DataTable Items="ContentType!.Fields!.ToList()">
+        <DataTableItem Label="Name">
+            @context.Name
+        </DataTableItem>
+        <DataTableItem Label="Type">
+            @context.Type
+        </DataTableItem>
+        <DataTableItem Label="Required">
+            @context.Required
+        </DataTableItem>
+        <DataTableItem Label="Label">
+            @context.Label
+        </DataTableItem>
+        <DataTableItem Label="Description">
+            @context.Description
+        </DataTableItem>
+        <DataTableItem>
+            <Button Color="Color.Primary" Size="ButtonSize.Small" @onclick="() => OnEditClick(context)">
+                <Icon Name="IconName.Edit" />Edit
+            </Button>
+            <Button Color="Color.Primary" Size="ButtonSize.Small" @onclick="() => OnDeleteClick(context)">
+                <Icon Name="IconName.Delete" />Delete
+            </Button>
+        </DataTableItem>
+    </DataTable>
+}
