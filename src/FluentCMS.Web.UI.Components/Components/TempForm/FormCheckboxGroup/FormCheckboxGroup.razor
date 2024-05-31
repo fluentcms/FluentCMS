@@ -1,8 +1,9 @@
-﻿@typeparam TItem
+@* TODO: Cleanup css classes *@
+@typeparam TItem
 
 @typeparam TValue
 
-@inherits FormElementCheckboxes<ICollection<TValue>>
+@inherits BaseInputInline<ICollection<TValue>>
 
 @namespace FluentCMS.Web.UI.Plugins.Components
 
@@ -36,6 +37,5 @@
         {
             @ChildContent
         }
-        
     </FormField>
 }

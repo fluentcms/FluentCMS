@@ -2,7 +2,7 @@
 @rendermode InteractiveServer
 
 <PluginForm Model="@Model" Name="@FORM_NAME" Title="Create New API Token" OnSubmit="OnSubmit">
-    <PluginFormTextInput @bind-Value="Model.Name" Label="Name" Placeholder="Enter Name" Required />
+    <FormInput @bind-Value="Model.Name" Label="Name" Placeholder="Enter Name" Required />
     <PluginFormTextarea @bind-Value="Model.Description" Label="Description" Placeholder="Enter Description" />
     <PluginFormPolicies @bind-Value="Model.Policies" Policies="@Policies" />
     <PluginFormActions Cancel Submit />

@@ -10,7 +10,7 @@
             var i = index++;
             <div>
                 <Divider>@Policies[i].Area</Divider>
-                <PluginFormCheckboxGroup @bind-Value="policy.Actions" Data="@Policies[i].Actions" @key="@Policies[i]" />
+                <FormCheckboxGroup @bind-Value="policy.Actions" Data="@Policies[i].Actions" @key="@Policies[i]" />
             </div>
         }
     </FormField>

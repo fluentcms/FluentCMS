@@ -1,8 +1,8 @@
-﻿using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 
 namespace FluentCMS.Web.UI.Plugins.Components;
 
-public partial class PluginFormCheckboxGroup<TItem, TValue>
+public partial class FormCheckboxGroup<TItem, TValue>
 {
     [Parameter]
     public int Cols { get; set; } = 12;
