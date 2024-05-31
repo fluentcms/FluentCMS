@@ -12,6 +12,17 @@ FluentCMS is an open-source project, and we welcome contributions from the commu
 - **Responsive**: Mobile-friendly out of the box.
 - **Modern UI**: Sleek and intuitive dashboard for content management.
 - **Headless Capabilities**: API-first design for decoupled applications.
+- **Multi-Language Support**: Easily manage content in multiple languages.
+- **Role-Based Access Control**: Granular control over user permissions.
+- **Media Management**: Upload, organize, and manage media files.
+- **Content Type Definition**: Define custom content types with various fields.
+- **Content Management**: Create, edit, and manage content with ease.
+- **User Management**: Manage users and roles with ease.
+- **Role Management**: Create and manage roles with custom permissions.
+- **Application Settings**: Configure application settings with ease.
+- **Multiple Site Support**: Manage multiple sites from a single dashboard.
+- **Page Management**: Create and manage pages with custom layouts.
+- **Plugin Management**: Extend functionality with custom plugins.
 
 ## Getting Started
 
@@ -55,7 +66,8 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
   - [x] User Management
   - [x] Role Management
   - [ ] Application Settings
-  - [ ] Haedleass Features
+  - [ ] Haedleass CMS Features
+    - [ ] Media Management
     - [ ] Content Type Definition
       - [ ] Text Field
       - [ ] TextArea Field
@@ -72,10 +84,17 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
       - [ ] Checkbox Field
       - [ ] File Field
     - [ ] Content Management
-    - [ ] Field Management
+    - [x] API Tokens Management
+  - CMS Features
+    - [ ] Site Management
     - [ ] Page Management
-    - [ ] Post Management
-    - [ ] Media Management
+    - [ ] Plugin Management
+    - [x] Layout Management
+- [ ] Users
+  - [x] User Registration
+  - [x] User Login / Logout
+  - [x] User Profile
+  - [x] User Forgot Password / Reset Password
 
 ## License
 
