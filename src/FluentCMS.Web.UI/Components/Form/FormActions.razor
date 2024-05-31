@@ -2,12 +2,12 @@
 
 <GridItem Small="GridItemColumn.Twelve">
     <ButtonGroup>
+        @ChildContent
         <Button Visible="Submit" Color="Color.Primary" Type="ButtonType.Submit">
             Submit
         </Button>
         <Button Visible="Cancel" Href="@GetBackUrl()">
             Cancel
         </Button>
-        @ChildContent
     </ButtonGroup>
 </GridItem>
