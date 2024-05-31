@@ -1,8 +1,8 @@
-﻿using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 
 namespace FluentCMS.Web.UI.Plugins.Components;
 
-public partial class PluginFormCheckboxGroup<TItem, TValue>
+public partial class FormCheckboxGroup<TItem, TValue>
 {
     [Parameter]
     public int Cols { get; set; } = 12;
@@ -18,6 +18,9 @@ public partial class PluginFormCheckboxGroup<TItem, TValue>
 
     [Parameter]
     public bool Vertical { get; set; }
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
 
     [Parameter]
     public EventCallback<ICollection<TValue>> OnChange { get; set; }

@@ -1,8 +1,8 @@
 @inherits BasePlugin
 
 <AuthPluginForm Model="@Model" Name="@FORM_NAME" Title="Welcome back" OnSubmit="@OnSubmit">
-    <PluginFormTextInput @bind-Value="Model!.Username" Label="Username" Placeholder="Enter your username" Required />
-    <PluginFormTextInput @bind-Value="Model!.Password" Label="Password" Placeholder="Enter your password" Required type="password" />
+    <FormInput @bind-Value="Model!.Username" Label="Username" Placeholder="Enter your username" Required />
+    <FormInput @bind-Value="Model!.Password" Label="Password" Placeholder="Enter your password" Required type="password" />
     <FormField Dense>
         <Grid ItemsSmall="GridItems.Center" JustifySmall="GridJustify.Between">
             <PluginFormCheckbox @bind-Value="Model!.RememberMe" Cols="6" Dense Text="Remember Me" />

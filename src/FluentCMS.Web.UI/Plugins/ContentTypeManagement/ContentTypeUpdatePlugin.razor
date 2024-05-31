@@ -2,7 +2,7 @@
 
 <PluginForm Model="@Model" Name="@FORM_NAME" Title="Create New Content Type" OnSubmit="OnSubmit">
     <PluginFormHiddenInput @bind-Value="Model!.Id" />
-    <PluginFormTextInput @bind-Value="Model!.Title" Label="Title" Placeholder="Enter Title" />
+    <FormInput @bind-Value="Model!.Title" Label="Title" Placeholder="Enter Title" />
     <PluginFormTextarea @bind-Value="Model!.Description" Label="Description" Placeholder="Enter Description" />
     <PluginFormActions Cancel Submit />
 </PluginForm>
