@@ -51,7 +51,31 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
 
 ## Roadmap
 
-See the [open issues]()
+- [ ] Aministration Dashboard
+  - [x] User Management
+  - [x] Role Management
+  - [ ] Application Settings
+  - [ ] Haedleass Features
+    - [ ] Content Type Definition
+      - [ ] Text Field
+      - [ ] TextArea Field
+      - [ ] Rich Text Field
+      - [ ] Markdown Field
+      - [ ] Number Field
+      - [ ] Date Field
+      - [ ] Time Field
+      - [ ] DateTime Field
+      - [ ] Boolean Field
+      - [ ] Select Field
+      - [ ] MultiSelect Field
+      - [ ] Radio Field
+      - [ ] Checkbox Field
+      - [ ] File Field
+    - [ ] Content Management
+    - [ ] Field Management
+    - [ ] Page Management
+    - [ ] Post Management
+    - [ ] Media Management
 
 ## License
 
