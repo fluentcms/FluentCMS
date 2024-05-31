@@ -5,9 +5,9 @@
     <FormInput @bind-Value="Model!.Label" Cols="6" Label="Label" Placeholder="Enter Field Label" Required />
     <FormInput @bind-Value="Model!.Placeholder" Cols="6" Label="Placeholder" Placeholder="Enter Field Placeholder" Required />
     <FormInput @bind-Value="Model!.Type" Cols="6" Label="Type" Placeholder="Enter Field Type" Required Disabled />
-    <PluginFormActions Submit>
+    <FormActions Submit>
         <Button @onclick=OnCancel>
             Cancel
         </Button>
-    </PluginFormActions>
+    </FormActions>
 </PluginForm>
