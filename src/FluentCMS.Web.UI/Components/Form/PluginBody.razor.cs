@@ -9,5 +9,8 @@ public partial class PluginBody
     public string? Title { get; set; }
 
     [Parameter]
+    public bool Visible { get; set; } = true;
+
+    [Parameter]
     public RenderFragment? ChildContent { get; set; }
 }

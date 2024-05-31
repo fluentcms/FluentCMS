@@ -1,0 +1,33 @@
+﻿@inherits BasePlugin
+
+<PluginBody Title="Content Type Fields" Visible="ContentType?.Fields != null">
+    <ActionsFragment>
+        <Button Href="@GetUrl("Create ContentType")" Color="Color.Primary">
+            <Icon Name="IconName.Plus" />Add Content Type
+        </Button>
+    </ActionsFragment>
+    <ChildContent>
+        <DataTable Items="ContentType!.Fields!.ToList()">
+            <DataTableItem Label="Name">
+                @context.Name
+            </DataTableItem>
+            <DataTableItem Label="Type">
+                @context.Type
+            </DataTableItem>
+            <DataTableItem Label="Required">
+                @context.Required
+            </DataTableItem>
+            <DataTableItem Label="Label">
+                @context.Label
+            </DataTableItem>
+            <DataTableItem Label="Description">
+                @context.Description
+            </DataTableItem>
+            <DataTableItem>
+                <Button Color="Color.Primary" Href="@GetUrl("Update ContentType", new { id = @context.Name })" Size="ButtonSize.Small">
+                    <Icon Name="IconName.Edit" />Edit
+                </Button>
+            </DataTableItem>
+        </DataTable>
+    </ChildContent>
+</PluginBody>

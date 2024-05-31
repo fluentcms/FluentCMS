@@ -8,7 +8,7 @@ public interface IContentTypeService : IAutoRegisterService
     Task<ContentType> Update(ContentType contentType, CancellationToken cancellationToken = default);
     Task<ContentType> Delete(Guid contentTypeId, CancellationToken cancellationToken = default);
     Task<ContentType> SetField(Guid contentTypeId, ContentTypeField field, CancellationToken cancellationToken = default);
-    Task<ContentType> DeleteField(Guid contentTypeId, string fieldSlug, CancellationToken cancellationToken = default);
+    Task<ContentType> DeleteField(Guid contentTypeId, string name, CancellationToken cancellationToken = default);
     Task<ContentType> GetById(Guid id, CancellationToken cancellationToken);
 }
 
@@ -70,7 +70,7 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
             throw new AppException(ExceptionCodes.ContentTypeNotFound);
 
         // check the field exists
-        var original = contentType.Fields.FirstOrDefault(f => f.Slug == field.Slug);
+        var original = contentType.Fields.FirstOrDefault(f => f.Name == field.Name);
 
         if (original == null)
             contentType.Fields.Add(field);
@@ -84,14 +84,14 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
             throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);
     }
 
-    public async Task<ContentType> DeleteField(Guid contentTypeId, string fieldSlug, CancellationToken cancellationToken = default)
+    public async Task<ContentType> DeleteField(Guid contentTypeId, string fieldName, CancellationToken cancellationToken = default)
     {
         // load the content type
         var contentType = await contentTypeRepository.GetById(contentTypeId, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeNotFound);
 
         // check the field exists
-        var original = contentType.Fields.FirstOrDefault(f => f.Slug == fieldSlug) ??
+        var original = contentType.Fields.FirstOrDefault(f => f.Name == fieldName) ??
             throw new AppException(ExceptionCodes.ContentTypeFieldNotFound);
 
         // remove the field
