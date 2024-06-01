@@ -6,10 +6,6 @@ public static class UIServiceExtensions
 {
     public static IServiceCollection AddFluentCmsUiComponents(this IServiceCollection services)
     {
-        services.AddScoped<ConfirmService>();
-
-        services.AddScoped<ToastService>();
-
         services.AddKeyedScoped(
             typeof(IconResource).FullName,
             (_, _) =>
