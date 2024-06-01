@@ -1,11 +1,7 @@
 $confirm: $prefix + "confirm";
 
 .#{$confirm} {
-    @apply hidden fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0 justify-center items-center;
-
-    &-open-true {
-        @apply flex;
-    }
+    @apply fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0 justify-center items-center flex;
 
     &-body {
         @apply p-4 md:p-5 text-center;

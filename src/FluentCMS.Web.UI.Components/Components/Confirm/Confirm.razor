@@ -2,29 +2,22 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-@if(Visible)
+@if (Visible)
 {
-    <div @attributes="AdditionalAttributes"
-         @ref="element"
-         class="@this.GetClasses()"
-         tabindex="-1">
+    <div @attributes="AdditionalAttributes" class="@this.GetClasses()" tabindex="-1" data-modal-backdrop="static" aria-hidden="true">
         <div class="@this.ClassName("ConfirmWrapper")">
             <div class="@this.ClassName("ConfirmContent")">
-                <CloseButton @onclick="Close" />
+                <CloseButton @onclick="CancelClicked" />
                 <div class="@this.ClassName("ConfirmBody")">
-                    <Icon Name="IconName.ExclamationCircle"
-                          Size="IconSize.Large" />
+                    <Icon Name="IconName.ExclamationCircle" Size="IconSize.Large" />
                     <h3 class="@this.ClassName("ConfirmMessage")">
-                        @Message
+                        @ChildContent
                     </h3>
                     <ButtonGroup>
-                        <Button Color="Color.Danger"
-                                id="@(string.IsNullOrEmpty(Id) ? null : Id + "ConfirmButton")"
-                                @onclick="Confirmation">
+                        <Button Color="Color.Danger" @onclick="ConfirmClicked">
                             Yes, I'm sure
                         </Button>
-                        <Button id="@(string.IsNullOrEmpty(Id) ? null : Id + "CancelButton")"
-                                @onclick="Close">
+                        <Button @onclick="CancelClicked">
                             No, cancel
                         </Button>
                     </ButtonGroup>
