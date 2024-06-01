@@ -25,4 +25,6 @@
     </ChildContent>
 </PluginBody>
 
-<Confirm Message="Are you sure to delete this role?" OnConfirm="OnDelete" OnCancel="OnConfirmClose" Open="SelectedRole != null"></Confirm>
+<Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedRole != null">
+    Are you sure to delete role @SelectedRole!.Name?
+</Confirm>

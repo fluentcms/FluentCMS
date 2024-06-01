@@ -2,9 +2,6 @@ namespace FluentCMS.Web.UI.Plugins.RoleManagement;
 
 public partial class RoleListPlugin
 {
-    [Inject]
-    public ConfirmService? ConfirmService { get; set; }
-
     private List<RoleDetailResponse> Roles { get; set; } = [];
 
     public async Task Load()
