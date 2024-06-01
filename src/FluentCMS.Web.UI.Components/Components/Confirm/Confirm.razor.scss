@@ -3,6 +3,10 @@ $confirm: $prefix + "confirm";
 .#{$confirm} {
     @apply fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0 justify-center items-center flex;
 
+    &-backdrop {
+        @apply bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40;
+    }
+    
     &-body {
         @apply p-4 md:p-5 text-center;
 
