@@ -13,8 +13,8 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\..\..\FluentCMS.Shared\FluentCMS.Shared.csproj" />
       <ProjectReference Include="..\FluentCMS.Repositories.Abstractions\FluentCMS.Repositories.Abstractions.csproj" />
-      <ProjectReference Include="..\FluentCMS.Shared\FluentCMS.Shared.csproj" />
     </ItemGroup>
 
 </Project>
