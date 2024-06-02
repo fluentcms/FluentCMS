@@ -36,5 +36,11 @@ public class MappingProfile : Profile
         CreateMap<ContentTypeDetailResponse, ContentTypeUpdateRequest>();
 
         #endregion
+
+        #region Site
+
+        CreateMap<SiteDetailResponse, SiteUpdateRequest>();
+
+        #endregion
     }
 }

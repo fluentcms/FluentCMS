@@ -1,4 +1,5 @@
 ﻿@inherits BasePlugin
+@rendermode InteractiveServer
 
 @namespace FluentCMS.Web.UI.Plugins
 
@@ -14,17 +15,32 @@
             <DataTableItem Label="Description">@context.Description</DataTableItem>
             <DataTableItem Label="Url">
                 @if (context.Urls != null)
-                    @foreach (var url in context.Urls)
-                    {
-                        <Badge Color="Color.Primary">@url</Badge>
-                    })
-                )
+                {
+                    <div class="flex gap-1">
+                        @foreach (var url in context.Urls)
+                        {
+                            <Badge Color="Color.Primary">@url</Badge>
+                        }
+                    </div>
+                }
+            </DataTableItem>
+            <DataTableItem Label="Layout">
+                @Layouts.Find(x => x.Id == context.LayoutId)?.Name
             </DataTableItem>
             <DataTableItem>
-                <Button Color="Color.Primary" Href="@GetUrl("Update Site", new { id = @context.Id })">
-                    <Icon Name="IconName.Edit" />Edit
-                </Button>
+                <div class="flex gap-2">
+                    <Button Size="@ButtonSize.Small" Color="Color.Primary" Href="@GetUrl("Update Site", new { id = @context.Id })">
+                        <Icon Name="IconName.Edit" />Edit
+                    </Button>
+                    <Button Size="@ButtonSize.Small" Color="Color.Danger" Outline @onclick="() => OnConfirm(context)">
+                        <Icon Name="IconName.Delete" />Delete
+                    </Button>
+                </div>
             </DataTableItem>
         </DataTable>
     </ChildContent>
 </PluginBody>
+
+<Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedSite != null">
+    Are you sure to delete site @SelectedSite!.Name?
+</Confirm>
