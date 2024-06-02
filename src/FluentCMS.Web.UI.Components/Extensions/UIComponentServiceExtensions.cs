@@ -2,9 +2,9 @@
 
 namespace Microsoft.Extensions.DependencyInjection;
 
-public static class UIServiceExtensions
+public static class UIComponentServiceExtensions
 {
-    public static IServiceCollection AddFluentCmsUiComponents(this IServiceCollection services)
+    public static IServiceCollection AddUIComponents(this IServiceCollection services)
     {
         services.AddKeyedScoped(
             typeof(IconResource).FullName,

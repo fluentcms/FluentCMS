@@ -1,15 +1,23 @@
-﻿using Microsoft.AspNetCore.Authentication.Cookies;
+﻿using FluentCMS.Web.UI;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
-public static class AdminUIServiceExtensions
+public static class CmsServiceExtensions
 {
-    public static IServiceCollection AddAdminUIServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddCmsServices(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddAutoMapper(typeof(AdminUIServiceExtensions));
+        services.AddUIComponents();
+
+        // Add services to the container.
+        services.AddRazorComponents()
+            .AddInteractiveServerComponents();
+
+        services.AddAutoMapper(typeof(CmsServiceExtensions));
 
         services.AddAuthorization();
         services.AddAuthentication(options =>
@@ -63,5 +71,15 @@ public static class AdminUIServiceExtensions
         });
 
         return services;
+    }
+
+    public static IApplicationBuilder UseCmsServices(this WebApplication app)
+    {
+        app.UseAntiforgery();
+
+        app.MapRazorComponents<App>()
+            .AddInteractiveServerRenderMode();
+
+        return app;
     }
 }
