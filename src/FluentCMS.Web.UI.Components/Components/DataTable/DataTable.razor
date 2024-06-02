@@ -7,29 +7,47 @@
 @if (Visible)
 {
     <div class="@this.ClassName("DataTableWrapper")">
-        <table class="@this.GetClasses()" @attributes="AdditionalAttributes">
-            <thead class="@this.ClassName("DataTableHead")">
-                <tr class="@this.ClassName("DataTableRow")">
-                    <CascadingValue Value="true" Name="DataTableColumnHeader" IsFixed="true">
-                        @ChildContent
-                    </CascadingValue>
-                </tr>
-            </thead>
-            <tbody class="@this.ClassName("DataTableBody")">
-                @if (Items != null)
-                {
-                    foreach (var item in Items)
+        @if(Items != null && Items.Count > 0)
+        {
+            <table class="@this.GetClasses()" @attributes="AdditionalAttributes">
+                <thead class="@this.ClassName("DataTableHead")">
+                    <tr class="@this.ClassName("DataTableRow")">
+                        <CascadingValue Value="true" Name="DataTableColumnHeader" IsFixed="true">
+                            @if (ColumnsFragment != null)
+                            {
+                                @ColumnsFragment
+                            }
+                            else
+                            {
+                                @ChildContent
+                            }
+                        </CascadingValue>
+                    </tr>
+                </thead>
+                <tbody class="@this.ClassName("DataTableBody")">
+                    @foreach (var item in Items)
                     {
                         <tr class="@this.ClassName("DataTableRow")" @key="item">
                             <CascadingValue Value="@item" IsFixed="true">
                                 <CascadingValue Value="false" Name="DataTableColumnHeader">
-                                    @ChildContent
+                                    @if (ColumnsFragment != null)
+                                    {
+                                        @ColumnsFragment
+                                    }
+                                    else
+                                    {
+                                        @ChildContent
+                                    }
                                 </CascadingValue>
                             </CascadingValue>
                         </tr>
                     }
-                }
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+        }
+        else
+        {
+            @EmptyStateFragment
+        }
     </div>
 }
