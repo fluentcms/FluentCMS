@@ -19,7 +19,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\FluentCMS.Shared\FluentCMS.Shared.csproj" />
 		<ProjectReference Include="..\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj" />
 		<ProjectReference Include="..\FluentCMS.Web.UI.Components\FluentCMS.Web.UI.Components.csproj" />
 	</ItemGroup>
