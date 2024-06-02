@@ -10,7 +10,10 @@ public static class ApiClientServiceExtensions
     {
         services.AddHttpClient(HttpClientFactoryHelper.HTTP_CLIENT_API_NAME, (sp, client) =>
         {
-            client.BaseAddress = new Uri(configuration["urls"]);
+            string apiServer = configuration?["ApiServer"] ??
+                throw new ArgumentNullException("ApiServer is not configured in appsettings.json");
+
+            client.BaseAddress = new Uri(apiServer);
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
