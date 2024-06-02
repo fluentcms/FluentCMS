@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace FluentCMS.Web.UI.Components;
 
 public partial class MarkdownEditor : IAsyncDisposable
@@ -56,5 +58,12 @@ public partial class MarkdownEditor : IAsyncDisposable
         module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Form/MarkdownEditor/MarkdownEditor.razor.js");
 
         await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { });
+    }
+
+    protected override bool TryParseValueFromString(string? value, out string? result, [NotNullWhen(false)] out string? validationErrorMessage)
+    {
+        result = value;
+        validationErrorMessage = null;
+        return true;
     }
 }

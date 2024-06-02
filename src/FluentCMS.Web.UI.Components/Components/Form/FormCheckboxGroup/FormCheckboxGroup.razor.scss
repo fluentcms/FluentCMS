@@ -14,6 +14,6 @@ $prefix-form-checkbox-group: $prefix + 'form-checkbox-group';
     }
 
     &-label {
-        @apply ms-2 text-sm font-medium text-gray-900 dark:text-gray-300;
+        @apply ms-2 text-sm text-gray-500 dark:text-gray-400;
     }
 }
