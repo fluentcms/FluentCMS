@@ -7,9 +7,6 @@ public partial class ContentTypeFieldCreate
     [Parameter]
     public ContentTypeField? Model { get; set; }
 
-    [CascadingParameter]
-    public List<FieldType> FieldTypes { get; set; }
-
     [Parameter]
     public EventCallback OnSubmit { get; set; }
 
@@ -17,6 +14,8 @@ public partial class ContentTypeFieldCreate
     public EventCallback OnCancel { get; set; }
 
     private FieldType? FieldType { get; set; }
+
+    private FieldTypes FieldTypes { get; set; } = [];
 
     private async Task OnBack()
     {

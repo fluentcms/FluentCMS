@@ -12,7 +12,7 @@ else
 {
     <PluginForm Model="@Model" Name="@FORM_NAME" Title="@($"Create New \"{FieldType.Title}\" Field")" OnSubmit=OnSubmit>
         <FormSelect @bind-Value="Model!.Type" Cols="6" Label="Type" Placeholder="Enter Field Type" Required Disabled>
-            @foreach (var type in FieldTypes)
+            @foreach (var type in FieldTypes.Values)
             {
                 <option value="@type.Key">@type.Title</option>
             }
