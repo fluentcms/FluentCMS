@@ -101,7 +101,3 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
 
 This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
 
-## Acknowledgments
-
-- Thanks to the ASP.NET community for continuous inspiration and support.
-- ... _(Any other acknowledgments or shout-outs you want to include)_
