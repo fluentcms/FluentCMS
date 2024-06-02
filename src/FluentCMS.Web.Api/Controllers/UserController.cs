@@ -11,13 +11,14 @@ public class UserController(IUserService userService, IRoleService roleService, 
     [Policy(AREA, READ)]
     public async Task<IApiPagingResult<UserDetailResponse>> GetAll(CancellationToken cancellationToken = default)
     {
-        var users = await userService.GetAll(cancellationToken);
+        var users = (await userService.GetAll(cancellationToken)).ToList();
         var usersResponse = mapper.Map<List<UserDetailResponse>>(users);
         var roles = await roleService.GetAll(cancellationToken);
-        foreach (var userResponse in usersResponse)
+
+        for (int i = 0; i < users.Count; i++)
         {
-            var userRoles = userResponse.Roles.Select(r => r.Id).ToList();
-            userResponse.Roles = mapper.Map<List<RoleDetailResponse>>(userRoles);
+            var userRoles = roles.Where(r => users[i].RoleIds.Contains(r.Id)).ToList();
+            usersResponse[i].Roles = mapper.Map<List<RoleDetailResponse>>(userRoles);
         }
 
         return OkPaged(usersResponse);
