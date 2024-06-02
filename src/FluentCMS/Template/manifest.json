@@ -432,7 +432,7 @@
                     "Name": "Title",
                     "Label": "Title",
                     "Description": "Blog Post Title",
-                    "Type": "Text",
+                    "Type": "text",
                     "Placeholder": "Enter Blog Post Title",
                     "Required": true
                 },
@@ -440,7 +440,7 @@
                     "Name": "Content",
                     "Label": "Content",
                     "Description": "Blog Post Content",
-                    "Type": "Text",
+                    "Type": "rich-text",
                     "Placeholder": "Enter Blog Post Content",
                     "Required": false
                 }

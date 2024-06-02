@@ -1,18 +1,36 @@
 ﻿@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement
 
-<Button @onclick="() => OnClick(FieldTypes.Text)">
-    Text
-</Button>
-<Button @onclick="() => OnClick(FieldTypes.TextArea)">
-    TextArea
-</Button>
-<Button @onclick="() => OnClick(FieldTypes.Number)">
-    Number
-</Button>
-<Button @onclick="() => OnClick(FieldTypes.Boolean)">
-    Boolean
-</Button>
-<br />
+<Grid Gutter="GridGutter.Large">
+    @foreach (var type in FieldTypes)
+    {
+        <GridItem @key="type.Key"
+                  Small="GridItemColumn.Twelve"
+                  Medium="GridItemColumn.Six">
+            <Button Block="true"
+                    style="height: 100%; justify-content: start"
+                    @onclick="() => OnClick(type)">
+                <Icon Name="@type.Icon" />
+                <span>
+                    &nbsp;
+                </span>
+                <div>
+                    <Typography Align="TextAlign.Start"
+                                Size="TextSize.Default"
+                                Weight="TextWeight.SemiBold">
+                        @type.Title
+                    </Typography>
+                    <Typography Align="TextAlign.Start"
+                                Size="TextSize.Small"
+                                Weight="TextWeight.Thin">
+                        @type.Description
+                    </Typography>
+                </div>
+            </Button>
+        </GridItem>
+    }
+</Grid>
+
+<Spacer />
 <Button @onclick=OnCancel>
     Cancel
 </Button>

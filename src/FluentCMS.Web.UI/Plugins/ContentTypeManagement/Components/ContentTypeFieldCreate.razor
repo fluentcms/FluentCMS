@@ -1,6 +1,6 @@
 ﻿@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement
 
-@if (string.IsNullOrEmpty(SelectedType))
+@if (FieldType == null)
 {
     <PluginBody Title="Select a field type">
         <CardBody>
@@ -10,14 +10,20 @@
 }
 else
 {
-    <PluginForm Model="@Model" Name="@FORM_NAME" Title="Create New Field" OnSubmit=OnSubmit>
+    <PluginForm Model="@Model" Name="@FORM_NAME" Title="@($"Create New \"{FieldType.Title}\" Field")" OnSubmit=OnSubmit>
+        <FormSelect @bind-Value="Model!.Type" Cols="6" Label="Type" Placeholder="Enter Field Type" Required Disabled>
+            @foreach (var type in FieldTypes)
+            {
+                <option value="@type.Key">@type.Title</option>
+            }
+        </FormSelect>
         <FormInput @bind-Value="Model!.Name" Cols="6" Label="Name" Placeholder="Enter Field Name" Required />
         <FormInput @bind-Value="Model!.Label" Cols="6" Label="Label" Placeholder="Enter Field Label" Required />
         <FormInput @bind-Value="Model!.Placeholder" Cols="6" Label="Placeholder" Placeholder="Enter Field Placeholder" Required />
-        <FormInput @bind-Value="Model!.Type" Cols="6" Label="Type" Placeholder="Enter Field Type" Required Disabled />
+        <FormTextarea @bind-Value="Model!.Description" Label="Description" Placeholder="Enter Field Description" Required />
         <FormActions Submit>
-            <Button @onclick=OnCancel>
-                Cancel
+            <Button @onclick="OnBack">
+                Back
             </Button>
         </FormActions>
     </PluginForm>
