@@ -47,7 +47,7 @@ public class SiteController(ISiteService siteService, IPageService pageService, 
         // creating default page for the site
         var page = new Page
         {
-            Title = request.DefaultPageTitle,
+            Title = "Default Page",
             Path = "/",
             Order = 0,
             SiteId = newSite.Id
