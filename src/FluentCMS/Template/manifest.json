@@ -181,33 +181,6 @@
             ]
         },
         {
-            "Name": "Content Management",
-            "Description": "Content Management Plugin",
-            "Types": [
-                {
-                    "Name": "Content Index",
-                    "Type": "ContentIndexPlugin",
-                    "IsDefault": true
-                },
-                {
-                    "Name": "Content List",
-                    "Type": "ContentListPlugin"
-                },
-                {
-                    "Name": "Create Content",
-                    "Type": "ContentCreatePlugin"
-                },
-                {
-                    "Name": "Update Content",
-                    "Type": "ContentUpdatePlugin"
-                },
-                {
-                    "Name": "Content Detail",
-                    "Type": "ContentDetailPlugin"
-                }
-            ]
-        },
-        {
             "Name": "ContentType Management",
             "Description": "ContentTypes Management Plugin",
             "Types": [
