@@ -11,7 +11,6 @@ public class MappingProfile : Profile
         CreateMap<SiteCreateRequest, Site>();
         CreateMap<SiteUpdateRequest, Site>();
         CreateMap<Site, SiteDetailResponse>();
-        CreateMap<Site, SiteFullDetailResponse>();
 
         #endregion
 
@@ -42,6 +41,8 @@ public class MappingProfile : Profile
         #region Layout
 
         CreateMap<Layout, LayoutDetailResponse>();
+        CreateMap<LayoutCreateRequest, Layout>();
+        CreateMap<LayoutUpdateRequest, Layout>();
 
         #endregion
 

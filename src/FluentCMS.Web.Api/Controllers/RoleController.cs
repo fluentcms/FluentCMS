@@ -1,6 +1,4 @@
-﻿using FluentCMS.Web.Api.Attributes;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc.Controllers;
+﻿using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Routing;
 using System.Reflection;
 
@@ -21,6 +19,15 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
         var roles = await roleService.GetAll(cancellationToken);
         var roleResponses = mapper.Map<IEnumerable<RoleDetailResponse>>(roles);
         return OkPaged(roleResponses);
+    }
+
+    [HttpGet("{id}")]
+    [Policy(AREA, READ)]
+    public async Task<IApiResult<RoleDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    {
+        var role = await roleService.GetById(id, cancellationToken);
+        var roleResponse = mapper.Map<RoleDetailResponse>(role);
+        return Ok(roleResponse);
     }
 
     [HttpPost]
@@ -52,7 +59,7 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
     }
 
     [HttpGet]
-    [AllowAnonymous]
+    [Policy(AREA, READ)]
     public async Task<IApiPagingResult<Policy>> GetPolicies(CancellationToken cancellationToken = default)
     {
         var policiesDict = new Dictionary<string, Policy>();
@@ -66,7 +73,7 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
 
             var policyAttributes = actionDescriptor.MethodInfo.GetCustomAttributes<PolicyAttribute>(true);
 
-            foreach (var policyAttribute in policyAttributes)
+            foreach (var policyAttribute in policyAttributes.Where(x => x.Area != PolicyAllAttribute.AREA))
             {
                 if (!policiesDict.ContainsKey(policyAttribute.Area))
                     policiesDict.Add(policyAttribute.Area, new Policy { Area = policyAttribute.Area, Actions = [] });

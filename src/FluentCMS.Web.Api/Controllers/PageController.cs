@@ -1,12 +1,10 @@
 ﻿using FluentCMS.Web.Api.Filters;
 using FluentCMS.Web.Api.Setup;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Primitives;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-[AllowAnonymous]
 public class PageController(
     ISiteService siteService,
     IPageService pageService,
@@ -16,10 +14,17 @@ public class PageController(
     SetupManager setupManager,
     IMapper mapper) : BaseGlobalController
 {
+
+    public const string AREA = "Page Management";
+    public const string UPDATE = $"Update";
+    public const string CREATE = "Create";
+    public const string DELETE = $"Delete";
+
     public const string PLUGIN_DEFINIOTION_NAME = "PluginDef";
 
     [HttpGet("{siteUrl}")]
     [DecodeQueryParam]
+    [PolicyAll]
     public async Task<IApiPagingResult<PageDetailResponse>> GetAll([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
     {
         var site = await siteService.GetByUrl(siteUrl, cancellationToken);
@@ -29,6 +34,7 @@ public class PageController(
     }
 
     [HttpGet("{id}")]
+    [PolicyAll]
     public async Task<IApiResult<PageDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var entity = await pageService.GetById(id, cancellationToken);
@@ -38,6 +44,7 @@ public class PageController(
 
     [HttpGet]
     [DecodeQueryParam]
+    [PolicyAll]
     public async Task<IApiResult<PageFullDetailResponse>> GetByUrl([FromQuery] string url, CancellationToken cancellationToken = default)
     {
         var uri = new Uri(url);
@@ -46,7 +53,7 @@ public class PageController(
         var query = QueryHelpers.ParseQuery(uri.Query);
 
         var initialized = await setupManager.IsInitialized();
-        if (!initialized && string.Equals(path, "/setup"))
+        if (!initialized)
             return Ok(await setupManager.GetSetupPage());
 
         if (query.TryGetValue(PLUGIN_DEFINIOTION_NAME, out _))
@@ -56,6 +63,7 @@ public class PageController(
     }
 
     [HttpPost]
+    [Policy(AREA, CREATE)]
     public async Task<IApiResult<PageDetailResponse>> Create(PageCreateRequest request, CancellationToken cancellationToken = default)
     {
         var entity = mapper.Map<Page>(request);
@@ -65,6 +73,7 @@ public class PageController(
     }
 
     [HttpPut]
+    [Policy(AREA, UPDATE)]
     public async Task<IApiResult<PageDetailResponse>> Update(PageUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var entity = mapper.Map<Page>(request);
@@ -74,6 +83,7 @@ public class PageController(
     }
 
     [HttpDelete("{id}")]
+    [Policy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
     {
         await pageService.Delete(id);
@@ -109,7 +119,6 @@ public class PageController(
     {
         var site = await siteService.GetByUrl(domain, cancellationToken);
         var pages = (await pageService.GetBySiteId(site.Id, cancellationToken)).ToDictionary(x => x.Id);
-        var layouts = await layoutService.GetAll(site.Id, cancellationToken);
         var pluginDefinitions = (await pluginDefinitionService.GetAll(cancellationToken)).ToDictionary(x => x.Id);
 
         // defining a dictionary of nested paths (full paths) to page ids
@@ -126,16 +135,9 @@ public class PageController(
         pageResponse.FullPath = path;
         pageResponse.Site = mapper.Map<SiteDetailResponse>(site);
 
-        if (page.LayoutId.HasValue)
-        {
-            var layout = layouts.Where(l => l.Id == page.LayoutId.Value).First();
-            pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
-        }
-        else
-        {
-            var layout = layouts.Where(l => l.IsDefault).First();
-            pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
-        }
+        var layoutId = page.LayoutId ?? site.LayoutId;
+        var layout = await layoutService.GetById(layoutId, cancellationToken);
+        pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
 
         foreach (var plugin in plugins)
         {
@@ -155,7 +157,6 @@ public class PageController(
         // example.com?pluginDef=pluginDefName&typeName=pluginDefTypeName&layout=layoutName
         var site = await siteService.GetByUrl(domain, cancellationToken);
         var pages = (await pageService.GetBySiteId(site.Id, cancellationToken)).ToDictionary(x => x.Id);
-        var layouts = await layoutService.GetAll(site.Id, cancellationToken);
         var pluginDefinitions = (await pluginDefinitionService.GetAll(cancellationToken)).ToList();
 
         var pluginDefinitionName = query[PLUGIN_DEFINIOTION_NAME].FirstOrDefault() ??
@@ -177,16 +178,9 @@ public class PageController(
         pageResponse.FullPath = path;
         pageResponse.Site = mapper.Map<SiteDetailResponse>(site);
 
-        if (page.LayoutId.HasValue)
-        {
-            var layout = layouts.Where(l => l.Id == page.LayoutId.Value).First();
-            pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
-        }
-        else
-        {
-            var layout = layouts.Where(l => l.IsDefault).First();
-            pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
-        }
+        var layoutId = page.LayoutId ?? site.LayoutId;
+        var layout = await layoutService.GetById(layoutId, cancellationToken);
+        pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
 
         pageResponse.Sections = [];
         var pluginResponse = mapper.Map<PluginDetailResponse>(GetRuntimePlugin(site.Id, page.Id, pluginDefinition.Id));

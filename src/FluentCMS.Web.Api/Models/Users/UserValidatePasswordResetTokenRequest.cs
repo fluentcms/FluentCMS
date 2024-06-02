@@ -3,13 +3,15 @@
 public class UserValidatePasswordResetTokenRequest
 {
     [Required]
-    [EmailAddress]
+    public string Token { get; set; } = default!;
+
+    [Required]
     public string Email { get; set; } = default!;
 
     [Required]
-    public string Token { get; set; } = default!;
-
+    public string NewPassword { get; set; } = default!;
 
     [Required]
-    public string NewPassword { get; set; } = default!;
+    [Compare(nameof(NewPassword))]
+    public string NewPasswordConfirm { get; set; } = default!;
 }

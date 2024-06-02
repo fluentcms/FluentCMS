@@ -8,7 +8,7 @@
          class="@this.GetClasses()">
         <ul>
             <PaginationItem Disabled="!this.CanPrevious()"
-                            OnClick="Previous">
+                            @onclick="Previous">
                 @if (ShowIcons)
                 {
                     <Icon Name="IconName.Previous" />
@@ -22,12 +22,12 @@
             {
                 <PaginationItem @key="Page"
                                 Active="Page == Current"
-                                OnClick="() => GoTo(Page)">
+                                @onclick="() => GoTo(Page)">
                     @(Page == 0 ? "..." : Page)
                 </PaginationItem>
             }
             <PaginationItem Disabled="!this.CanNext()"
-                            OnClick="Next">
+                            @onclick="Next">
                 @if (ShowIcons)
                 {
                     <Icon Name=IconName.Next />

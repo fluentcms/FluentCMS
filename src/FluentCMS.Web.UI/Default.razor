@@ -1,12 +1,7 @@
 ﻿@page "/{**Route:nonfile}"
 
-<CascadingValue Value="UserLogin">
-    <PageTitle>@Page?.Title</PageTitle>
-    <HeadContent>
-        @if (Page?.Layout?.Head != null)
-        {
-            @((MarkupString)GetParsedContent(Page.Layout.Head))
-        }
-    </HeadContent>
-    @ChildComponents()
-</CascadingValue>
+<PageTitle>@Page?.Title</PageTitle>
+<HeadContent>
+    @RenderDynamicContent(Page?.Layout?.Head ?? string.Empty)
+</HeadContent>
+@RenderDynamicContent(Page?.Layout?.Body ?? string.Empty)

@@ -3,7 +3,7 @@
 $button: $prefix + "button";
 
 .#{$button} {
-    @apply inline-flex items-center gap-2 text-center font-medium rounded-lg relative focus:z-10 focus:outline-none;
+    @apply inline-flex items-center gap-2 text-center font-medium rounded-lg relative focus:z-10 focus:outline-none justify-center whitespace-nowrap;
 
     &-block-true {
         @apply w-full;
@@ -15,10 +15,6 @@ $button: $prefix + "button";
 
     &-item-true {
         @apply text-start;
-    }
-
-    &-link-true > span {
-        @apply hover:underline;
     }
 
     &-icon {
@@ -36,6 +32,10 @@ $button: $prefix + "button";
     &-size-small.#{$button}-link-false {
         @apply px-3 py-2 text-xs;
 
+        .#{$prefix}icon {
+            @apply w-5 h-5;
+        }
+
         &.#{$button}-icon-true {
             @apply p-2 text-base;
         }
@@ -44,6 +44,10 @@ $button: $prefix + "button";
     &-size-medium.#{$button}-link-false {
         @apply px-5 py-2.5 text-sm;
 
+        .#{$prefix}icon {
+            @apply w-6 h-6;
+        }
+
         &.#{$button}-icon-true {
             @apply p-2.5 text-xl;
         }
@@ -51,6 +55,10 @@ $button: $prefix + "button";
 
     &-size-large.#{$button}-link-false {
         @apply px-5 py-3 text-base;
+
+        .#{$prefix}icon {
+            @apply w-7 h-7;
+        }
 
         &.#{$button}-icon-true {
             @apply p-3 text-2xl;

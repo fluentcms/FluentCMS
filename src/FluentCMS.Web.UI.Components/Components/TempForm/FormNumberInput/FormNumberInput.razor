@@ -1,0 +1,22 @@
+﻿@typeparam TValue
+
+@inherits BaseInputBlock<TValue>
+
+@namespace FluentCMS.Web.UI.Components
+
+@if (Visible)
+{
+    <FormField Cols="Cols" Dense="@Dense" Id="@Id" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
+        <input @attributes="AdditionalAttributes"
+               class="@this.GetClasses()"
+               disabled="@Disabled"
+               id="@Id"
+               name="@NameAttributeValue"
+               placeholder="@Placeholder"
+               readonly="@Readonly"
+               step="@_stepAttributeValue"
+               type="number"
+               value="@CurrentValueAsString"
+               @onchange="EventCallback.Factory.CreateBinder<string?>(this, __value => CurrentValueAsString = __value, CurrentValueAsString)" />
+    </FormField>
+}

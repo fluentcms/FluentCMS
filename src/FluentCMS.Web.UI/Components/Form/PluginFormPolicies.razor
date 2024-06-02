@@ -1,0 +1,17 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Plugins.Components
+
+@if (Policies != null && Policies.Count > 0 && Visible)
+{
+    <FormField Label="@Label">
+        @{ var index = 0; }
+        @foreach(var policy in Value) {
+            var i = index++;
+            <div>
+                <Divider>@Policies[i].Area</Divider>
+                <FormCheckboxGroup @bind-Value="policy.Actions" Data="@Policies[i].Actions" @key="@Policies[i]" />
+            </div>
+        }
+    </FormField>
+}

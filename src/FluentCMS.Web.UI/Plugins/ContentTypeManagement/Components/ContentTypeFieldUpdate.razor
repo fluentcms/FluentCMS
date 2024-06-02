@@ -1,0 +1,13 @@
+﻿@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement
+
+<PluginForm Model="@Model" Name="@FORM_NAME" Title="Update Field" OnSubmit=OnSubmit>
+    <FormInput @bind-Value="Model!.Name" Cols="6" Label="Name" Placeholder="Enter Field Name" Required Disabled />
+    <FormInput @bind-Value="Model!.Label" Cols="6" Label="Label" Placeholder="Enter Field Label" Required />
+    <FormInput @bind-Value="Model!.Placeholder" Cols="6" Label="Placeholder" Placeholder="Enter Field Placeholder" Required />
+    <FormInput @bind-Value="Model!.Type" Cols="6" Label="Type" Placeholder="Enter Field Type" Required Disabled />
+    <FormActions Submit>
+        <Button @onclick=OnCancel>
+            Cancel
+        </Button>
+    </FormActions>
+</PluginForm>

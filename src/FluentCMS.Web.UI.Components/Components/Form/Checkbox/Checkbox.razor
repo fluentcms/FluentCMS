@@ -4,7 +4,7 @@
 
 @if(Visible)
 {
-    <FormField Appearance="FormFieldAppearance.Checkbox"
+    <FormField2 Appearance="FormFieldAppearance.Checkbox"
                Field="this">
         <InputCheckbox @attributes="AdditionalAttributes"
                        @bind-Value="Value"
@@ -12,5 +12,5 @@
                        disabled="@Disabled"
                        id="@Id"
                        name="@Name" />
-    </FormField>
+    </FormField2>
 }

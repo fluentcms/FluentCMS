@@ -3,40 +3,52 @@ namespace FluentCMS.Web.UI.Plugins.UserManagement;
 public partial class UserUpdatePlugin
 {
     public const string FORM_NAME = "UserUpdateForm";
+    public const string FORM_NAME_PASSWORD = "UserSetPasswordForm";
 
     [SupplyParameterFromQuery(Name = "id")]
     private Guid Id { get; set; }
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
-    private UserUpdateRequest Model { get; set; } = new();
+    private UserUpdateRequest? UpdateModel { get; set; }
 
-    private List<RoleDetailResponse> Roles { get; set; } = [];
 
-    private UserDetailResponse User { get; set; } = new();
+    [SupplyParameterFromForm(FormName = FORM_NAME_PASSWORD)]
+    private UserSetPasswordRequest? SetPasswordModel { get; set; }
 
-    protected override async Task OnLoadAsync()
+    private List<RoleDetailResponse>? Roles { get; set; }
+
+    private string? Username { get; set; }
+
+    protected override async Task OnInitializedAsync()
     {
-        var rolesResponse = await GetApiClient<RoleClient>().GetAllAsync();
-        Roles = rolesResponse?.Data?.ToList() ?? [];
-
-        var userResponse = await GetApiClient<UserClient>().GetAsync(Id);
-        User = userResponse.Data;
-        Model = new UserUpdateRequest
+        if (Roles is null)
         {
-            Id = Id,
-            Email = User.Email ?? string.Empty,
-            PhoneNumber = User.PhoneNumber,
-            FirstName = User.FirstName,
-            LastName = User.LastName,
-            Enabled = User.Enabled,
-            RoleIds = [],
-        };
+            var rolesResponse = await GetApiClient<RoleClient>().GetAllAsync();
+            Roles = rolesResponse?.Data?.ToList() ?? [];
+        }
+
+        if (UpdateModel is null)
+        {
+            var userResponse = await GetApiClient<UserClient>().GetAsync(Id);
+            var user = userResponse.Data;
+            Username = user.Username;
+            UpdateModel = Mapper.Map<UserUpdateRequest>(user);
+            UpdateModel.RoleIds = user.Roles?.Select(r => r.Id).ToList() ?? [];
+        }
+
+        SetPasswordModel ??= new UserSetPasswordRequest() { UserId = Id };
     }
 
     private async Task OnSubmit()
     {
-        Model.RoleIds ??= [];
-        await GetApiClient<UserClient>().UpdateAsync(Model);
+        UpdateModel!.RoleIds ??= [];
+        await GetApiClient<UserClient>().UpdateAsync(UpdateModel);
+        NavigateBack();
+    }
+
+    private async Task OnChangePassword()
+    {
+        await GetApiClient<UserClient>().SetPasswordAsync(SetPasswordModel);
         NavigateBack();
     }
 }

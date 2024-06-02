@@ -1,11 +1,9 @@
-using Microsoft.AspNetCore.Authorization;
-
 namespace FluentCMS.Web.Api.Controllers;
 
 public class AccountController(IMapper mapper, IUserService userService, IAuthContext authContext) : BaseGlobalController
 {
     [HttpPost]
-    [AllowAnonymous]
+    [PolicyAll]
     public async Task<IApiResult<UserDetailResponse>> Register([FromBody] UserRegisterRequest request, CancellationToken cancellationToken = default)
     {
         var user = mapper.Map<User>(request);
@@ -15,7 +13,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     }
 
     [HttpPost]
-    [AllowAnonymous]
+    [PolicyAll]
     public async Task<IApiResult<UserLoginResponse>> Authenticate([FromBody] UserLoginRequest request, CancellationToken cancellationToken = default)
     {
         var user = await userService.Authenticate(request.Username, request.Password, cancellationToken);
@@ -31,26 +29,25 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     }
 
     [HttpPost]
-    public async Task<IApiResult<bool>> ChangePassword([FromBody] UserChangePasswordRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<bool>> ChangePassword([FromBody] AccountChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
-        await userService.ChangePassword(request.UserId, request.OldPassword, request.NewPassword, cancellationToken);
+        await userService.ChangePassword(authContext.UserId, request.OldPassword, request.NewPassword, cancellationToken);
         return Ok(true);
     }
 
     [HttpPost]
-    [AllowAnonymous]
+    [PolicyAll]
     public async Task<IApiResult<bool>> SendPasswordResetToken([FromBody] UserSendPasswordResetTokenRequest request, CancellationToken cancellationToken = default)
     {
-        var token = await userService.GeneratePasswordResetToken(request.Email, cancellationToken);
-        // todo send token 
-        return Ok(true);
+        var result = await userService.SendPasswordResetToken(request.Email, cancellationToken);
+        return Ok(result);
     }
 
     [HttpPost]
-    [AllowAnonymous]
+    [PolicyAll]
     public async Task<IApiResult<bool>> ValidatePasswordResetToken([FromBody] UserValidatePasswordResetTokenRequest request, CancellationToken cancellationToken = default)
     {
-        _ = await userService.ValidatePasswordResetToken(request.Token, request.Email, request.NewPassword, cancellationToken);
+        _ = await userService.ChangePasswordByResetToken(request.Email, request.Token, request.NewPassword, cancellationToken);
         return Ok(true);
     }
 

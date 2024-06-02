@@ -1,5 +1,4 @@
 ﻿using FluentCMS.Web.Api.Setup.Models;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using System.Text.Json;
 
@@ -10,16 +9,16 @@ public class SetupManager
     private static bool? _initialized;
 
     private readonly ISiteService _siteService;
+    private readonly IRoleService _roleService;
     private readonly IGlobalSettingsService _globalSettingsService;
     private readonly IPluginDefinitionService _pluginDefinitionService;
     private readonly ILayoutService _layoutService;
     private readonly IUserService _userService;
     private readonly IPageService _pageService;
     private readonly IPluginService _pluginService;
-    private readonly IAppTemplateService _appTemplateService;
+    private readonly IContentTypeService _contentTypeService;
 
-    public const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Templates/Admin";
-    public const string APP_TEMPLATE_PHYSICAL_PATH = "Templates/App";
+    public const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Template";
 
     private SetupRequest _setupRequest = default!;
     private AdminTemplate _adminTemplate = default!;
@@ -29,30 +28,32 @@ public class SetupManager
     private readonly List<Layout> _layouts = [];
     private readonly List<Page> _pages = [];
     private User _superAdmin = default!;
+    private Guid _defaultLayoutId;
 
     public SetupManager(
-        IConfiguration configuration,
         ISiteService siteService,
+        IRoleService roleService,
         IGlobalSettingsService globalSettingsService,
         IPluginDefinitionService pluginDefinitionService,
         ILayoutService layoutService,
         IUserService userService,
         IPageService pageService,
         IPluginService pluginService,
-        IAppTemplateService appTemplateService,
+        IContentTypeService contentTypeService,
         IHostEnvironment env)
     {
         if (env == null)
             throw new AppException(ExceptionCodes.SetupSettingsHostingEnvironmentIsNull);
 
         _siteService = siteService;
+        _roleService = roleService;
         _globalSettingsService = globalSettingsService;
         _pluginDefinitionService = pluginDefinitionService;
         _layoutService = layoutService;
         _userService = userService;
         _pageService = pageService;
         _pluginService = pluginService;
-        _appTemplateService = appTemplateService;
+        _contentTypeService = contentTypeService;
 
     }
 
@@ -81,11 +82,9 @@ public class SetupManager
 
         await InitializeSuperAdmin();
 
-        await InitializeGlobalSettings();
-
-        await InitializeAppTemplates();
-
         await InitializeAdminUI();
+
+        await InitContentTypes();
 
         _initialized = true;
 
@@ -152,47 +151,14 @@ public class SetupManager
         _superAdmin = await _userService.Create(superAdmin, _setupRequest.Password);
     }
 
-    private async Task InitializeGlobalSettings()
-    {
-        // Creating default global settings
-        var settings = new GlobalSettings
-        {
-            SuperUsers = [_setupRequest.Username]
-        };
-
-        _globalSettings = await _globalSettingsService.Init(settings);
-    }
-
-    private async Task InitializeAppTemplates()
-    {
-        foreach (var folder in Directory.GetDirectories(APP_TEMPLATE_PHYSICAL_PATH))
-        {
-
-            var appTemplateFile = Path.Combine(folder, "manifest.json");
-
-            // check if app.json file exists
-            // if not, skip this folder
-            if (!File.Exists(appTemplateFile))
-                continue;
-
-            // loading json data into AppTemplate object
-            var appTemplate = await JsonSerializer.DeserializeAsync<AppTemplate>(File.OpenRead(appTemplateFile));
-
-            if (appTemplate == null)
-                continue;
-
-            await _appTemplateService.Create(appTemplate);
-        }
-    }
-
     private async Task InitializeAdminUI()
     {
-        var appTemplateFile = Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "manifest.json");
+        var adminTemplateFile = Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "manifest.json");
 
-        if (!File.Exists(appTemplateFile))
+        if (!File.Exists(adminTemplateFile))
             return;
 
-        var adminTemplate = await JsonSerializer.DeserializeAsync<AdminTemplate>(File.OpenRead(appTemplateFile));
+        var adminTemplate = await JsonSerializer.DeserializeAsync<AdminTemplate>(File.OpenRead(adminTemplateFile));
 
         if (adminTemplate == null)
             return;
@@ -202,15 +168,40 @@ public class SetupManager
         if (_adminTemplate == null)
             return;
 
-        await InitSite();
-        await InitPluginDefinitions();
+        _globalSettings = _adminTemplate.GlobalSettings;
+
+        await InitializeGlobalSettings();
         await InitLayouts();
+        await InitPluginDefinitions();
+        await InitSite();
+        await InitRoles();
         await InitPages();
+
+    }
+
+    private async Task InitializeGlobalSettings()
+    {
+        _globalSettings = await _globalSettingsService.Init(_globalSettings);
+    }
+
+    private async Task InitRoles()
+    {
+        var adminRoles = new List<Role>();
+        foreach (var role in _adminTemplate.Roles)
+        {
+            await _roleService.Create(role);
+            if (role.ReadOnly)
+                adminRoles.Add(role);
+        }
+
+        _superAdmin.RoleIds.AddRange(adminRoles.Select(x => x.Id));
+        await _userService.Update(_superAdmin);
     }
 
     private async Task InitSite()
     {
         _adminTemplate.Site.Urls = [_setupRequest.AdminDomain];
+        _adminTemplate.Site.LayoutId = _defaultLayoutId;
         _site = await _siteService.Create(_adminTemplate.Site);
     }
 
@@ -228,6 +219,15 @@ public class SetupManager
         }
     }
 
+    private async Task InitContentTypes()
+    {
+        foreach (var contentType in _adminTemplate.ContentTypes)
+        {
+            await _contentTypeService.Create(contentType);
+        }
+    }
+
+
     private async Task InitLayouts()
     {
         foreach (var layoutTemplate in _adminTemplate.Layouts)
@@ -235,12 +235,12 @@ public class SetupManager
             var layout = new Layout
             {
                 Name = layoutTemplate.Name,
-                SiteId = _site.Id,
-                IsDefault = layoutTemplate.IsDefault,
                 Body = File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, $"{layoutTemplate.Name}.body.html")),
                 Head = File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, $"{layoutTemplate.Name}.head.html"))
             };
             _layouts.Add(await _layoutService.Create(layout));
+            if (layoutTemplate.IsDefault)
+                _defaultLayoutId = layout.Id;
         }
     }
 

@@ -1,0 +1,556 @@
+﻿<header>
+    <nav class="bg-white border-gray-200 px-4 lg:px-6 py-2.5 dark:bg-gray-800">
+        <div class="flex flex-wrap justify-between items-center mx-auto max-w-screen-xl">
+            <a href="https://fluentcms.com" class="flex items-center">
+                <img src="/images/logo.svg" class="mr-3 h-6" alt="FluentCMS Logo">
+                
+            </a>
+            <div class="flex items-center lg:order-2">
+                <a href="/auth/login"
+                    class="text-gray-800 dark:text-white hover:bg-gray-50 focus:ring-4 focus:ring-gray-300 font-medium rounded-lg text-sm px-4 lg:px-5 py-2 lg:py-2.5 mr-2 dark:hover:bg-gray-700 focus:outline-none dark:focus:ring-gray-800">
+                    Login
+                </a>
+                <a href="/admin"
+                    class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 lg:px-5 py-2 lg:py-2.5 mr-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">
+                    Admin Panel
+                </a>
+                <button data-collapse-toggle="mobile-menu-2" type="button"
+                    class="inline-flex items-center p-2 ml-1 text-sm text-gray-500 rounded-lg lg:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
+                    aria-controls="mobile-menu-2" aria-expanded="false">
+                    <span class="sr-only">Open main menu</span>
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd"
+                            d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                    <svg class="hidden w-6 h-6" fill="currentColor" viewBox="0 0 20 20"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="hidden justify-between items-center w-full lg:flex lg:w-auto lg:order-1" id="mobile-menu-2">
+                <ul class="flex flex-col mt-4 font-medium lg:flex-row lg:space-x-8 lg:mt-0">
+                    <li>
+                        <a href="#about-section"
+                            class="block py-2 pr-4 pl-3 text-gray-700 border-b border-gray-100 hover:bg-gray-50 lg:hover:bg-transparent lg:border-0 lg:hover:text-blue-700 lg:p-0 dark:text-gray-400 lg:dark:hover:text-white dark:hover:bg-gray-700 dark:hover:text-white lg:dark:hover:bg-transparent dark:border-gray-700">About</a>
+                    </li>
+                    <li>
+                        <a href="#features-section"
+                            class="block py-2 pr-4 pl-3 text-gray-700 border-b border-gray-100 hover:bg-gray-50 lg:hover:bg-transparent lg:border-0 lg:hover:text-blue-700 lg:p-0 dark:text-gray-400 lg:dark:hover:text-white dark:hover:bg-gray-700 dark:hover:text-white lg:dark:hover:bg-transparent dark:border-gray-700">Features</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+</header>
+<section class="bg-white dark:bg-gray-900">
+    <div class="max-w-screen-xl px-4 py-8 mx-auto lg:py-16">
+        <div class="grid items-center gap-8 mb-8 lg:mb-16 lg:gap-12 lg:grid-cols-12">
+            <div class="col-span-12 sm:mb-6 text-center lg:mb-0">
+                <a href="https://github.com/fluentcms/FluentCMS"
+                    class="inline-flex items-center justify-between px-1 py-1 pr-4 mb-6 text-sm text-gray-700 bg-gray-50 rounded-full dark:bg-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
+                    role="alert">
+                    <span class="px-3 py-1 mr-3 text-xs text-white rounded-full bg-blue-600">New</span> <span
+                        class="text-sm font-medium">See our latest progress</span>
+                    <svg class="w-5 h-5 ml-2" fill="currentColor" viewBox="0 0 20 20"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd"
+                            d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                </a>
+                <h1
+                    class="text-center my-8 text-4xl font-extrabold leading-none tracking-tight text-gray-900 md:text-3xl xl:text-4xl dark:text-white">
+                    Welcome to FluentCMS
+                    <div class="mt-6">
+                        AI Driven ASP.NET Core Blazor Content Management System (CMS)
+                    </div>
+
+                </h1>
+                <p
+                    class="text-center mx-auto max-w-xl mx-auto mb-6 font-light text-gray-500 xl:mb-8 md:text-lg xl:text-xl dark:text-gray-400">
+                    Building and managing content has never been easier. Experience the power of AI with FluentCMS.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+<section id="about-section" class="bg-white dark:bg-gray-900">
+    <div class="py-8 px-4 mx-auto max-w-screen-xl text-center sm:py-16 lg:px-6">
+        <div class="mt-8 lg:mt-16 mb-8 space-y-8 md:grid md:grid-cols-2 md:gap-12 md:space-y-0">
+            <div>
+                <div
+                    class="inline-flex justify-center items-center mb-6 w-24 h-24 rounded-lg bg-blue-100 dark:bg-blue-900">
+                    <svg class="mx-auto w-16 h-16 text-blue-600 dark:text-blue-500" aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                        viewBox="0 0 24 24">
+                        <path
+                            d="M13.5 2c-.178 0-.356.013-.492.022l-.074.005a1 1 0 0 0-.934.998V11a1 1 0 0 0 1 1h7.975a1 1 0 0 0 .998-.934l.005-.074A7.04 7.04 0 0 0 22 10.5 8.5 8.5 0 0 0 13.5 2Z" />
+                        <path
+                            d="M11 6.025a1 1 0 0 0-1.065-.998 8.5 8.5 0 1 0 9.038 9.039A1 1 0 0 0 17.975 13H11V6.025Z" />
+                    </svg>
+                </div>
+                <h3 class="mb-4 text-2xl font-bold dark:text-white">DotNet Blazor Headless CMS</h3>
+                <p class="mb-4 text-gray-500 dark:text-gray-400">
+                    Traditional CMS systems have limitations. A headless CMS provides flexibility and scalability
+                    for creating engaging user experiences. Our CMS solution offers a modern, headless architecture
+                    that enables seamless integration with modern development tools and platforms by leveraging the
+                    power of DotNet Blazor.
+                </p>
+            </div>
+            <div>
+                <div
+                    class="inline-flex justify-center items-center mb-6 w-24 h-24 bg-blue-100 rounded-lg dark:bg-blue-900">
+                    <svg class="mx-auto w-16 h-16 text-blue-600 dark:text-blue-500" aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-width="2"
+                            d="M8.737 8.737a21.49 21.49 0 0 1 3.308-2.724m0 0c3.063-2.026 5.99-2.641 7.331-1.3 1.827 1.828.026 6.591-4.023 10.64-4.049 4.049-8.812 5.85-10.64 4.023-1.33-1.33-.736-4.218 1.249-7.253m6.083-6.11c-3.063-2.026-5.99-2.641-7.331-1.3-1.827 1.828-.026 6.591 4.023 10.64m3.308-9.34a21.497 21.497 0 0 1 3.308 2.724m2.775 3.386c1.985 3.035 2.579 5.923 1.248 7.253-1.336 1.337-4.245.732-7.295-1.275M14 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z" />
+                    </svg>
+
+                </div>
+                <h3 class="mb-4 text-2xl font-bold dark:text-white">
+                    AI-Driven Content Creation and Management
+                </h3>
+                <p class="mb-4 text-gray-500 dark:text-gray-400">
+                    Businesses can improve content efficiency with AI-driven tools. AI can identify trends, analyze
+                    audience preferences, and generate personalized content. AI-powered content management systems
+                    can automate tedious tasks such as tagging, categorization, and optimization.
+                </p>
+            </div>
+        </div>
+        <p class="text-center">
+            <a href="#"
+                class="inline-flex hidden items-center font-medium text-blue-600 hover:text-blue-700 dark:text-blue-500 dark:hover:text-blue-400">
+                Learn what makes FluentCMS different <svg class="ml-1 w-5 h-5" fill="currentColor" viewBox="0 0 20 20"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd"
+                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                        clip-rule="evenodd"></path>
+                </svg>
+            </a>
+        </p>
+    </div>
+</section>
+<section class="bg-white dark:bg-gray-900">
+    <div
+        class="items-center py-8 px-4 mx-auto max-w-screen-xl lg:grid xl:grid-cols-3 lg:gap-8 xl:gap-24 sm:py-16 lg:px-6">
+        <div class="mb-8 lg:mb-0">
+            <h2 class="mb-4 text-4xl tracking-tight font-extrabold text-gray-900 dark:text-white">
+                AI-Powered Content Management
+            </h2>
+            <p class="mb-4 text-gray-500 sm:text-xl dark:text-gray-400">
+                Effortlessly create, manage, and deliver content with our AI-driven platform
+            </p>
+            <a href="#"
+                class="inline-flex hidden items-center text-lg font-medium text-blue-600 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-700">
+                Learn more
+                <svg class="ml-1 w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd"
+                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                        clip-rule="evenodd"></path>
+                </svg>
+            </a>
+        </div>
+        <div class="col-span-2 space-y-8 md:grid md:grid-cols-2 md:gap-12 md:space-y-0">
+            <div>
+                <div
+                    class="flex justify-center items-center mb-4 w-10 h-10 rounded-lg bg-blue-100 lg:h-12 lg:w-12 dark:bg-blue-900">
+                    <svg class="w-5 h-5 text-blue-600 lg:w-6 lg:h-6 dark:text-blue-300" aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 15v4m6-6v6m6-4v4m6-6v6M3 11l6-5 6 5 5.5-5.5" />
+                    </svg>
+                </div>
+                <h3 class="mb-2 text-xl font-bold dark:text-white">AI-Powered Writing Assistance</h3>
+                <p class="text-gray-500 dark:text-gray-400">
+                    Utilize advanced AI to guide content creation, suggesting optimizations and improving
+                    readability.
+                </p>
+            </div>
+            <div>
+                <div
+                    class="flex justify-center items-center mb-4 w-10 h-10 rounded-lg bg-blue-100 lg:h-12 lg:w-12 dark:bg-blue-900">
+                    <svg class="w-5 h-5 text-blue-600 lg:w-6 lg:h-6 dark:text-blue-300" fill="currentColor"
+                        viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd"
+                            d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z"
+                            clip-rule="evenodd"></path>
+                        <path
+                            d="M2 13.692V16a2 2 0 002 2h12a2 2 0 002-2v-2.308A24.974 24.974 0 0110 15c-2.796 0-5.487-.46-8-1.308z">
+                        </path>
+                    </svg>
+                </div>
+                <h3 class="mb-2 text-xl font-bold dark:text-white">Blazing Fast</h3>
+                <p class="text-gray-500 dark:text-gray-400">
+                    Built on top of Blazor components for client-side operations.
+                </p>
+            </div>
+            <div>
+                <div
+                    class="flex justify-center items-center mb-4 w-10 h-10 rounded-lg bg-blue-100 lg:h-12 lg:w-12 dark:bg-blue-900">
+                    <svg class="w-5 h-5 text-blue-600 lg:w-6 lg:h-6 dark:text-blue-300" aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 7h.01m3.486 1.513h.01m-6.978 0h.01M6.99 12H7m9 4h2.706a1.957 1.957 0 0 0 1.883-1.325A9 9 0 1 0 3.043 12.89 9.1 9.1 0 0 0 8.2 20.1a8.62 8.62 0 0 0 3.769.9 2.013 2.013 0 0 0 2.03-2v-.857A2.036 2.036 0 0 1 16 16Z" />
+                    </svg>
+                </div>
+                <h3 class="mb-2 text-xl font-bold dark:text-white">Extensible</h3>
+                <p class="text-gray-500 dark:text-gray-400">Easily extend with custom plugins and themes.</p>
+            </div>
+            <div>
+                <div
+                    class="flex justify-center items-center mb-4 w-10 h-10 rounded-lg bg-blue-100 lg:h-12 lg:w-12 dark:bg-blue-900">
+                    <svg class="w-5 h-5 text-blue-600 lg:w-6 lg:h-6 dark:text-blue-300" aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                        viewBox="0 0 24 24">
+                        <path fill-rule="evenodd"
+                            d="M12 14a3 3 0 0 1 3-3h4a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-4a3 3 0 0 1-3-3Zm3-1a1 1 0 1 0 0 2h4v-2h-4Z"
+                            clip-rule="evenodd" />
+                        <path fill-rule="evenodd"
+                            d="M12.293 3.293a1 1 0 0 1 1.414 0L16.414 6h-2.828l-1.293-1.293a1 1 0 0 1 0-1.414ZM12.414 6 9.707 3.293a1 1 0 0 0-1.414 0L5.586 6h6.828ZM4.586 7l-.056.055A2 2 0 0 0 3 9v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2h-4a5 5 0 0 1 0-10h4a2 2 0 0 0-1.53-1.945L17.414 7H4.586Z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <h3 class="mb-2 text-xl font-bold dark:text-white">Modern UI</h3>
+                <p class="text-gray-500 dark:text-gray-400">
+                    Sleek and intuitive dashboard for content management.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+<section id="newsletter-section" class="hidden bg-white dark:bg-gray-900">
+    <div class="py-8 px-4 mx-auto max-w-screen-xl lg:py-16 lg:px-6">
+        <div
+            class="gap-16 justify-between items-center p-6 text-gray-900 dark:text-white bg-gray-100 shadow-lg rounded-lg dark:bg-gray-800 lg:flex lg:gap-24 md:p-12">
+            <div class="w-full">
+                <h2 class="mb-4 text-3xl tracking-tight font-extrabold sm:text-4xl">
+                    Get early access to FluentCMS
+                </h2>
+                <p class="font-light text-gray-500 sm:text-xl">
+                    Stay updated on our launch and be the first to know when we go live! Enter your email address
+                    below to receive exclusive updates and insider information.
+                </p>
+            </div>
+            <div class="mt-6 w-full lg:mt-0">
+                <form action="#">
+                    <div class="items-center mb-3 space-y-4 sm:flex sm:space-y-0">
+                        <div class="relative w-full">
+                            <label for="member_email"
+                                class="hidden mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">Email
+                                address</label>
+                            <div class="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
+                                <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="currentColor"
+                                    viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z">
+                                    </path>
+                                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path>
+                                </svg>
+                            </div>
+                            <input
+                                class="block p-3 pl-10 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 sm:rounded-none sm:rounded-l-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                placeholder="Enter your email" type="email" required="">
+                        </div>
+                        <div>
+                            <button type="submit"
+                                class="py-3 px-5 w-full text-sm font-medium text-center text-white rounded-lg border cursor-pointer bg-blue-600 border-blue-600 hover:border-blue-700 sm:rounded-none sm:rounded-r-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Subscribe</button>
+                        </div>
+                    </div>
+                    <div class="text-sm text-left text-gray-500 newsletter-form-footer dark:text-gray-300">
+                        We care about the protection of your data. Read our
+                        <a href="#" class="font-medium text-gray-900 dark:text-white hover:underline">
+                            Privacy Policy
+                        </a>.
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+<section class="bg-white dark:bg-gray-900">
+    <div class="gap-16 items-center py-8 px-4 mx-auto max-w-screen-xl lg:grid lg:grid-cols-2 lg:py-16 lg:px-6">
+        <div class="font-light text-gray-500 sm:text-lg dark:text-gray-400">
+            <h2 class="mb-4 text-4xl tracking-tight font-extrabold text-gray-900 dark:text-white">
+                Modern CMS Needed: AI-Powered, Headless, and Flexible
+            </h2>
+            <p class="mb-4">
+                Traditional CMS platforms limit customization, integration, and personalization. This restricts
+                developers and marketers from creating engaging user experiences.
+            </p>
+            <a href="#"
+                class="inline-flex hidden items-center font-medium text-blue-600 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-700">
+                Learn more
+                <svg class="ml-1 w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd"
+                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                        clip-rule="evenodd"></path>
+                </svg>
+            </a>
+        </div>
+        <div class="mt-4 font-light text-gray-500 sm:text-lg lg:mt-0 dark:text-gray-400">
+            <p class="mb-4">
+                Currently, no suitable dotnet blazor open source CMS options exist, leaving a gap in the market.
+                <br />
+                The ideal solution would be a modern, headless CMS that leverages AI for streamlined content
+                creation and management, with a site builder for easy page creation. This would provide developers
+                and marketers with the tools they need to create personalized, engaging experiences for their users,
+                while also being flexible and customizable.
+            </p>
+        </div>
+    </div>
+</section>
+<section id="features-section" class="bg-gray-50 dark:bg-gray-900">
+    <div class="py-8 px-4 mx-auto max-w-screen-xl sm:py-16 lg:px-6">
+        <div class="mx-auto max-w-screen-md text-center mb-8 lg:mb-16">
+            <h2 class="mb-4 text-4xl tracking-tight font-extrabold text-gray-900 dark:text-white">
+                FluentCMS
+            </h2>
+            <p class="font-light text-gray-500 dark:text-gray-400 sm:text-xl">
+                Built for the Future of Content Management
+            </p>
+        </div>
+        <div class="space-y-8 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-8 xl:gap-8 md:space-y-0">
+            <div class="p-6 bg-white rounded shadow dark:bg-gray-800">
+                <div
+                    class="flex justify-center items-center mb-4 w-10 h-10 rounded bg-blue-100 lg:h-12 lg:w-12 dark:bg-blue-900">
+                    <svg class="w-5 h-5 text-blue-600 lg:w-6 lg:h-6 dark:text-blue-300" aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                        viewBox="0 0 24 24">
+                        <path fill-rule="evenodd"
+                            d="M4 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H4Zm16 7H4v7h16v-7ZM5 8a1 1 0 0 1 1-1h.01a1 1 0 0 1 0 2H6a1 1 0 0 1-1-1Zm4-1a1 1 0 0 0 0 2h.01a1 1 0 0 0 0-2H9Zm2 1a1 1 0 0 1 1-1h.01a1 1 0 1 1 0 2H12a1 1 0 0 1-1-1Z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <h3 class="mb-2 text-xl font-bold dark:text-white">AI-Powered Content Generation</h3>
+                <p class="font-light text-gray-500 dark:text-gray-400">
+                    Utilize natural language processing and machine learning algorithms to generate high-quality
+                    content for your website, blog, or e-commerce platform.
+                </p>
+            </div>
+            <div class="p-6 bg-white rounded shadow dark:bg-gray-800">
+                <div
+                    class="flex justify-center items-center mb-4 w-10 h-10 rounded bg-blue-100 lg:h-12 lg:w-12 dark:bg-blue-900">
+                    <svg class="w-5 h-5 text-blue-600 lg:w-6 lg:h-6 dark:text-blue-300" aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                        viewBox="0 0 24 24">
+                        <path
+                            d="M8 3a3 3 0 0 0-1 5.83v6.34a3.001 3.001 0 1 0 2 0V15a2 2 0 0 1 2-2h1a5.002 5.002 0 0 0 4.927-4.146A3.001 3.001 0 0 0 16 3a3 3 0 0 0-1.105 5.79A3.001 3.001 0 0 1 12 11h-1c-.729 0-1.412.195-2 .535V8.83A3.001 3.001 0 0 0 8 3Z" />
+                    </svg>
+                </div>
+                <h3 class="mb-2 text-xl font-bold dark:text-white">Headless Architecture</h3>
+                <p class="font-light text-gray-500 dark:text-gray-400">
+                    Build scalable, flexible, and secure applications using a headless CMS that separates the front
+                    and back ends, allowing for seamless integration with modern web frameworks like Blazor.
+                </p>
+            </div>
+            <div class="p-6 bg-white rounded shadow dark:bg-gray-800">
+                <div
+                    class="flex justify-center items-center mb-4 w-10 h-10 rounded bg-blue-100 lg:h-12 lg:w-12 dark:bg-blue-900">
+                    <svg class="w-5 h-5 text-blue-600 lg:w-6 lg:h-6 dark:text-blue-300" aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                        viewBox="0 0 24 24">
+                        <path fill-rule="evenodd"
+                            d="M12 2c-.791 0-1.55.314-2.11.874l-.893.893a.985.985 0 0 1-.696.288H7.04A2.984 2.984 0 0 0 4.055 7.04v1.262a.986.986 0 0 1-.288.696l-.893.893a2.984 2.984 0 0 0 0 4.22l.893.893a.985.985 0 0 1 .288.696v1.262a2.984 2.984 0 0 0 2.984 2.984h1.262c.261 0 .512.104.696.288l.893.893a2.984 2.984 0 0 0 4.22 0l.893-.893a.985.985 0 0 1 .696-.288h1.262a2.984 2.984 0 0 0 2.984-2.984V15.7c0-.261.104-.512.288-.696l.893-.893a2.984 2.984 0 0 0 0-4.22l-.893-.893a.985.985 0 0 1-.288-.696V7.04a2.984 2.984 0 0 0-2.984-2.984h-1.262a.985.985 0 0 1-.696-.288l-.893-.893A2.984 2.984 0 0 0 12 2Zm3.683 7.73a1 1 0 1 0-1.414-1.413l-4.253 4.253-1.277-1.277a1 1 0 0 0-1.415 1.414l1.985 1.984a1 1 0 0 0 1.414 0l4.96-4.96Z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <h3 class="mb-2 text-xl font-bold dark:text-white">Sitebuilder Interface</h3>
+                <p class="font-light text-gray-500 dark:text-gray-400">
+                    Create a user-friendly interface that empowers users to easily design and customize their
+                    websites without needing extensive coding knowledge.
+                </p>
+            </div>
+            <div class="p-6 bg-white rounded shadow dark:bg-gray-800">
+                <div
+                    class="flex justify-center items-center mb-4 w-10 h-10 rounded bg-blue-100 lg:h-12 lg:w-12 dark:bg-blue-900">
+                    <svg class="w-5 h-5 text-blue-600 lg:w-6 lg:h-6 dark:text-blue-300" aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                        viewBox="0 0 24 24">
+                        <path
+                            d="M20 14h-2.722L11 20.278a5.511 5.511 0 0 1-.9.722H20a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1ZM9 3H4a1 1 0 0 0-1 1v13.5a3.5 3.5 0 1 0 7 0V4a1 1 0 0 0-1-1ZM6.5 18.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2ZM19.132 7.9 15.6 4.368a1 1 0 0 0-1.414 0L12 6.55v9.9l7.132-7.132a1 1 0 0 0 0-1.418Z" />
+                    </svg>
+                </div>
+                <h3 class="mb-2 text-xl font-bold dark:text-white">Intelligent Content Suggestions</h3>
+                <p class="font-light text-gray-500 dark:text-gray-400">
+                    Leverage AI to suggest relevant content ideas, images, and videos to enhance the user's website,
+                    based on their interests, preferences, and audience.
+                </p>
+            </div>
+            <div class="p-6 bg-white rounded shadow dark:bg-gray-800">
+                <div
+                    class="flex justify-center items-center mb-4 w-10 h-10 rounded bg-blue-100 lg:h-12 lg:w-12 dark:bg-blue-900">
+                    <svg class="w-5 h-5 text-blue-600 lg:w-6 lg:h-6 dark:text-blue-300" aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                        viewBox="0 0 24 24">
+                        <path fill-rule="evenodd"
+                            d="M20 10H4v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8ZM9 13v-1h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1Z"
+                            clip-rule="evenodd" />
+                        <path d="M2 6a2 2 0 0 1 2-2h16a2 2 0 1 1 0 4H4a2 2 0 0 1-2-2Z" />
+                    </svg>
+                </div>
+                <h3 class="mb-2 text-xl font-bold dark:text-white">Adaptive Design</h3>
+                <p class="font-light text-gray-500 dark:text-gray-400">
+                    Utilize AI to optimize website layouts, themes, and styles based on user behavior, preferences,
+                    and device types, ensuring an optimal user experience across various platforms.
+                </p>
+            </div>
+            <div class="p-6 bg-white rounded shadow dark:bg-gray-800">
+                <div
+                    class="flex justify-center items-center mb-4 w-10 h-10 rounded bg-blue-100 lg:h-12 lg:w-12 dark:bg-blue-900">
+                    <svg class="w-5 h-5 text-blue-600 lg:w-6 lg:h-6 dark:text-blue-300" aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 12a28.076 28.076 0 0 1-1.091 9M7.231 4.37a8.994 8.994 0 0 1 12.88 3.73M2.958 15S3 14.577 3 12a8.949 8.949 0 0 1 1.735-5.307m12.84 3.088A5.98 5.98 0 0 1 18 12a30 30 0 0 1-.464 6.232M6 12a6 6 0 0 1 9.352-4.974M4 21a5.964 5.964 0 0 1 1.01-3.328 5.15 5.15 0 0 0 .786-1.926m8.66 2.486a13.96 13.96 0 0 1-.962 2.683M7.5 19.336C9 17.092 9 14.845 9 12a3 3 0 1 1 6 0c0 .749 0 1.521-.031 2.311M12 12c0 3 0 6-2 9" />
+                    </svg>
+                </div>
+                <h3 class="mb-2 text-xl font-bold dark:text-white">Personalized Experience</h3>
+                <p class="font-light text-gray-500 dark:text-gray-400">
+                    Use machine learning algorithms to analyze user behavior and preferences, providing personalized
+                    content recommendations, customized navigation, and tailored search results.
+                </p>
+            </div>
+            <div class="p-6 bg-white rounded shadow dark:bg-gray-800">
+                <div
+                    class="flex justify-center items-center mb-4 w-10 h-10 rounded bg-blue-100 lg:h-12 lg:w-12 dark:bg-blue-900">
+                    <svg class="w-5 h-5 text-blue-600 lg:w-6 lg:h-6 dark:text-blue-300" aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                        viewBox="0 0 24 24">
+                        <path
+                            d="m7.4 3.736 3.43 3.429A5.046 5.046 0 0 1 12.133 7c.356.01.71.06 1.056.147l3.41-3.412a2.32 2.32 0 0 1 .451-.344A9.89 9.89 0 0 0 12.268 2a10.022 10.022 0 0 0-5.322 1.392c.165.095.318.211.454.344Zm11.451 1.54-.127-.127a.5.5 0 0 0-.706 0l-2.932 2.932c.03.023.05.054.078.077.237.194.454.41.651.645.033.038.077.067.11.107l2.926-2.927a.5.5 0 0 0 0-.707Zm-2.931 9.81c-.025.03-.058.052-.082.082a4.97 4.97 0 0 1-.633.639c-.04.036-.072.083-.115.117l2.927 2.927a.5.5 0 0 0 .707 0l.127-.127a.5.5 0 0 0 0-.707l-2.932-2.931Zm-1.443-4.763a3.037 3.037 0 0 0-1.383-1.1l-.012-.007a2.956 2.956 0 0 0-1-.213H12a2.964 2.964 0 0 0-2.122.893c-.285.29-.509.634-.657 1.013l-.009.016a2.96 2.96 0 0 0-.21 1 2.99 2.99 0 0 0 .488 1.716l.032.04a3.04 3.04 0 0 0 1.384 1.1l.012.007c.319.129.657.2 1 .213.393.015.784-.05 1.15-.192.012-.005.021-.013.033-.018a3.01 3.01 0 0 0 1.676-1.7v-.007a2.89 2.89 0 0 0 0-2.207 2.868 2.868 0 0 0-.27-.515c-.007-.012-.02-.025-.03-.039Zm6.137-3.373a2.53 2.53 0 0 1-.349.447l-3.426 3.426c.112.428.166.869.161 1.311a4.954 4.954 0 0 1-.148 1.054l3.413 3.412c.133.134.249.283.347.444A9.88 9.88 0 0 0 22 12.269a9.913 9.913 0 0 0-1.386-5.319ZM16.6 20.264l-3.42-3.421c-.386.1-.782.152-1.18.157h-.135c-.356-.01-.71-.06-1.056-.147L7.4 20.265a2.503 2.503 0 0 1-.444.347A9.884 9.884 0 0 0 11.732 22H12a9.9 9.9 0 0 0 5.044-1.388 2.515 2.515 0 0 1-.444-.348ZM3.735 16.6l3.426-3.426a4.608 4.608 0 0 1-.013-2.367L3.735 7.4a2.508 2.508 0 0 1-.349-.447 9.889 9.889 0 0 0 0 10.1 2.48 2.48 0 0 1 .35-.453Zm5.101-.758a4.959 4.959 0 0 1-.65-.645c-.034-.038-.078-.067-.11-.107L5.15 18.017a.5.5 0 0 0 0 .707l.127.127a.5.5 0 0 0 .706 0l2.932-2.933c-.029-.018-.049-.053-.078-.076Zm-.755-6.928c.03-.037.07-.063.1-.1.183-.22.383-.423.6-.609.046-.04.081-.092.128-.13L5.983 5.149a.5.5 0 0 0-.707 0l-.127.127a.5.5 0 0 0 0 .707l2.932 2.931Z" />
+                    </svg>
+                </div>
+                <h3 class="mb-2 text-xl font-bold dark:text-white">Seamless Integration</h3>
+                <p class="font-light text-gray-500 dark:text-gray-400">
+                    Easily integrate your CMS with popular tools and services, such as e-commerce platforms,
+                    marketing automation software, and social media management tools, using RESTful APIs and
+                    webhooks.
+                </p>
+            </div>
+            <div class="p-6 bg-white rounded shadow dark:bg-gray-800">
+                <div
+                    class="flex justify-center items-center mb-4 w-10 h-10 rounded bg-blue-100 lg:h-12 lg:w-12 dark:bg-blue-900">
+                    <svg class="w-5 h-5 text-blue-600 lg:w-6 lg:h-6 dark:text-blue-300" aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                        viewBox="0 0 24 24">
+                        <path fill-rule="evenodd"
+                            d="M12 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm-2.952.462c-.483.19-.868.432-1.19.71-.363.315-.638.677-.831.93l-.106.14c-.21.268-.36.418-.574.527C6.125 6.883 5.74 7 5 7a1 1 0 0 0 0 2c.364 0 .696-.022 1-.067v.41l-1.864 4.2a1.774 1.774 0 0 0 .821 2.255c.255.133.538.202.825.202h2.436a1.786 1.786 0 0 0 1.768-1.558 1.774 1.774 0 0 0-.122-.899L8 9.343V8.028c.2-.188.36-.38.495-.553.062-.079.118-.15.168-.217.185-.24.311-.406.503-.571a1.89 1.89 0 0 1 .24-.177A3.01 3.01 0 0 0 11 7.829V20H5.5a1 1 0 1 0 0 2h13a1 1 0 1 0 0-2H13V7.83a3.01 3.01 0 0 0 1.63-1.387c.206.091.373.19.514.29.31.219.532.465.811.78l.025.027.02.023v1.78l-1.864 4.2a1.774 1.774 0 0 0 .821 2.255c.255.133.538.202.825.202h2.436a1.785 1.785 0 0 0 1.768-1.558 1.773 1.773 0 0 0-.122-.899L18 9.343v-.452c.302.072.633.109 1 .109a1 1 0 1 0 0-2c-.48 0-.731-.098-.899-.2-.2-.12-.363-.293-.651-.617l-.024-.026c-.267-.3-.622-.7-1.127-1.057a5.152 5.152 0 0 0-1.355-.678 3.001 3.001 0 0 0-5.896.04Z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <h3 class="mb-2 text-xl font-bold dark:text-white">Advanced Analytics</h3>
+                <p class="font-light text-gray-500 dark:text-gray-400">
+                    Gain valuable insights into user behavior, engagement patterns, and content performance through
+                    advanced analytics and reporting tools, enabling data-driven decision-making and optimization.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<PluginsSection Name="Main" fluentcms />
+
+<footer class="p-4 bg-gray-800 md:p-8 lg:p-10 dark:bg-gray-800">
+    <div class="mx-auto max-w-screen-xl text-center">
+        <a href="#" class="flex justify-center items-center text-2xl font-semibold text-white">
+            <svg class="mr-2 h-8" viewBox="0 0 33 33" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                    d="M25.2696 13.126C25.1955 13.6364 24.8589 14.3299 24.4728 14.9328C23.9856 15.6936 23.2125 16.2264 22.3276 16.4114L18.43 17.2265C17.8035 17.3575 17.2355 17.6853 16.8089 18.1621L14.2533 21.0188C13.773 21.5556 13.4373 21.4276 13.4373 20.7075C13.4315 20.7342 12.1689 23.9903 15.5149 25.9202C16.8005 26.6618 18.6511 26.3953 19.9367 25.6538L26.7486 21.7247C29.2961 20.2553 31.0948 17.7695 31.6926 14.892C31.7163 14.7781 31.7345 14.6639 31.7542 14.5498L25.2696 13.126Z"
+                    fill="url(#paint0_linear_11430_22515)"></path>
+                <path
+                    d="M23.5028 9.20133C24.7884 9.94288 25.3137 11.0469 25.3137 12.53C25.3137 12.7313 25.2979 12.9302 25.2694 13.1261L28.0141 14.3051L31.754 14.5499C32.2329 11.7784 31.2944 8.92561 29.612 6.65804C28.3459 4.9516 26.7167 3.47073 24.7581 2.34097C23.167 1.42325 21.5136 0.818599 19.8525 0.486816L17.9861 2.90382L17.3965 5.67918L23.5028 9.20133Z"
+                    fill="url(#paint1_linear_11430_22515)"></path>
+                <path
+                    d="M1.5336 11.2352C1.5329 11.2373 1.53483 11.238 1.53556 11.2358C1.67958 10.8038 1.86018 10.3219 2.08564 9.80704C3.26334 7.11765 5.53286 5.32397 8.32492 4.40943C11.117 3.49491 14.1655 3.81547 16.7101 5.28323L17.3965 5.67913L19.8525 0.486761C12.041 -1.07341 4.05728 3.51588 1.54353 11.2051C1.54233 11.2087 1.53796 11.2216 1.5336 11.2352Z"
+                    fill="url(#paint2_linear_11430_22515)"></path>
+                <path
+                    d="M19.6699 25.6538C18.3843 26.3953 16.8003 26.3953 15.5147 25.6538C15.3402 25.5531 15.1757 25.4399 15.0201 25.3174L12.7591 26.8719L10.8103 30.0209C12.9733 31.821 15.7821 32.3997 18.589 32.0779C20.7013 31.8357 22.7995 31.1665 24.7582 30.0368C26.3492 29.1191 27.7 27.9909 28.8182 26.7195L27.6563 23.8962L25.7762 22.1316L19.6699 25.6538Z"
+                    fill="url(#paint3_linear_11430_22515)"></path>
+                <path
+                    d="M15.0201 25.3175C14.0296 24.5373 13.4371 23.3406 13.4371 22.0588V21.931V11.2558C13.4371 10.6521 13.615 10.5494 14.1384 10.8513C13.3323 10.3864 11.4703 8.79036 9.17118 10.1165C7.88557 10.858 6.8269 12.4949 6.8269 13.978V21.8362C6.8269 24.775 8.34906 27.8406 10.5445 29.7966C10.6313 29.874 10.7212 29.9469 10.8103 30.0211L15.0201 25.3175Z"
+                    fill="url(#paint4_linear_11430_22515)"></path>
+                <path
+                    d="M28.6604 5.49565C28.6589 5.49395 28.6573 5.49532 28.6589 5.49703C28.9613 5.83763 29.2888 6.23485 29.6223 6.68734C31.3648 9.05099 32.0158 12.0447 31.4126 14.9176C30.8093 17.7906 29.0071 20.2679 26.4625 21.7357L25.7761 22.1316L28.8181 26.7195C34.0764 20.741 34.09 11.5388 28.6815 5.51929C28.6789 5.51641 28.67 5.50622 28.6604 5.49565Z"
+                    fill="url(#paint5_linear_11430_22515)"></path>
+                <path
+                    d="M7.09355 13.978C7.09354 12.4949 7.88551 11.1244 9.17113 10.3829C9.34564 10.2822 9.52601 10.1965 9.71002 10.1231L9.49304 7.38962L7.96861 4.26221C5.32671 5.23364 3.1897 7.24125 2.06528 9.83067C1.2191 11.7793 0.75001 13.9294 0.75 16.1888C0.75 18.0243 1.05255 19.7571 1.59553 21.3603L4.62391 21.7666L7.09355 21.0223V13.978Z"
+                    fill="url(#paint6_linear_11430_22515)"></path>
+                <path
+                    d="M9.71016 10.1231C10.8817 9.65623 12.2153 9.74199 13.3264 10.3829L13.4372 10.4468L22.3326 15.5777C22.9566 15.9376 22.8999 16.2918 22.1946 16.4392L22.7078 16.332C23.383 16.1908 23.9999 15.8457 24.4717 15.3428C25.2828 14.4782 25.5806 13.4351 25.5806 12.5299C25.5806 11.0468 24.7886 9.67634 23.503 8.93479L16.6911 5.00568C14.1436 3.53627 11.0895 3.22294 8.29622 4.14442C8.18572 4.18087 8.07756 4.2222 7.96875 4.26221L9.71016 10.1231Z"
+                    fill="url(#paint7_linear_11430_22515)"></path>
+                <path
+                    d="M20.0721 31.8357C20.0744 31.8352 20.0739 31.8332 20.0717 31.8337C19.6252 31.925 19.1172 32.0097 18.5581 32.0721C15.638 32.3978 12.7174 31.4643 10.5286 29.5059C8.33986 27.5474 7.09347 24.7495 7.09348 21.814L7.09347 21.0222L1.59546 21.3602C4.1488 28.8989 12.1189 33.5118 20.0411 31.8421C20.0449 31.8413 20.0582 31.8387 20.0721 31.8357Z"
+                    fill="url(#paint8_linear_11430_22515)"></path>
+                <defs>
+                    <linearGradient id="paint0_linear_11430_22515" x1="20.8102" y1="23.9532" x2="23.9577" y2="12.9901"
+                        gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#1724C9"></stop>
+                        <stop offset="1" stop-color="#1C64F2"></stop>
+                    </linearGradient>
+                    <linearGradient id="paint1_linear_11430_22515" x1="28.0593" y1="10.5837" x2="19.7797" y2="2.33321"
+                        gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#1C64F2"></stop>
+                        <stop offset="1" stop-color="#0092FF"></stop>
+                    </linearGradient>
+                    <linearGradient id="paint2_linear_11430_22515" x1="16.9145" y1="5.2045" x2="4.42432" y2="5.99375"
+                        gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#0092FF"></stop>
+                        <stop offset="1" stop-color="#45B2FF"></stop>
+                    </linearGradient>
+                    <linearGradient id="paint3_linear_11430_22515" x1="16.0698" y1="28.846" x2="27.2866" y2="25.8192"
+                        gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#1C64F2"></stop>
+                        <stop offset="1" stop-color="#0092FF"></stop>
+                    </linearGradient>
+                    <linearGradient id="paint4_linear_11430_22515" x1="8.01881" y1="15.8661" x2="15.9825" y2="24.1181"
+                        gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#1724C9"></stop>
+                        <stop offset="1" stop-color="#1C64F2"></stop>
+                    </linearGradient>
+                    <linearGradient id="paint5_linear_11430_22515" x1="26.2004" y1="21.8189" x2="31.7569" y2="10.6178"
+                        gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#0092FF"></stop>
+                        <stop offset="1" stop-color="#45B2FF"></stop>
+                    </linearGradient>
+                    <linearGradient id="paint6_linear_11430_22515" x1="6.11387" y1="9.31427" x2="3.14054" y2="20.4898"
+                        gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#1C64F2"></stop>
+                        <stop offset="1" stop-color="#0092FF"></stop>
+                    </linearGradient>
+                    <linearGradient id="paint7_linear_11430_22515" x1="21.2932" y1="8.78271" x2="10.4278" y2="11.488"
+                        gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#1724C9"></stop>
+                        <stop offset="1" stop-color="#1C64F2"></stop>
+                    </linearGradient>
+                    <linearGradient id="paint8_linear_11430_22515" x1="7.15667" y1="21.5399" x2="14.0824" y2="31.9579"
+                        gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#0092FF"></stop>
+                        <stop offset="1" stop-color="#45B2FF"></stop>
+                    </linearGradient>
+                </defs>
+            </svg>
+            FluentCMS
+        </a>
+        <p class="my-6 mx-auto max-w-lg text-gray-400">
+            FluentCMS is an open-source, AI-powered, headless CMS and site builder, built using .NET and Blazor.
+        </p>
+        <ul class="flex flex-wrap justify-center items-center mb-6 text-white">
+            <li>
+                <a href="#about-section" class="mr-4 hover:underline md:mr-6 ">About</a>
+            </li>
+            <li>
+                <a href="#features-section" class="mr-4 hover:underline md:mr-6">Features</a>
+            </li>
+            <li>
+                <a href="https://github.com/fluentcms/FluentCMS" class="mr-4 hover:underline md:mr-6">Github</a>
+            </li>
+        </ul>
+        <span class="text-sm sm:text-center text-gray-400">© 2024 FluentCMS, Inc. All Rights Reserved.</span>
+    </div>
+</footer>
+
+<script src="/js/flowbite.min.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/loadingbar.js"></script>

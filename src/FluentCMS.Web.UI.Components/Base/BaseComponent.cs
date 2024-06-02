@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public abstract class BaseComponent : ComponentBase
+public abstract class BaseComponent : ComponentBase, IBaseComponent
 {
     [Parameter]
     public bool Visible { get; set; } = true;
@@ -12,7 +12,7 @@ public abstract class BaseComponent : ComponentBase
     public string? Class { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
-    public Dictionary<string, object> AdditionalAttributes { get; set; } = default!;
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; } = default!;
 
     [Parameter]
     public string? CSSName { get; set; }

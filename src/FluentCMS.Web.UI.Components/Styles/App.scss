@@ -12,6 +12,10 @@ $colors: (
     "secondary": "gray",
 );
 
+html {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+}
+
 // BODY
 
 body {
@@ -36,7 +40,7 @@ body {
 @import '../Components/Button/Button';
 @import '../Components/Card/Card';
 @import '../Components/CloseButton/CloseButton';
-@import '../Components/Confirm/Confirm';
+@import '../Components/Confirm/Confirm.razor';
 @import '../Components/DataTable/DataTable';
 @import '../Components/Divider/Divider';
 @import '../Components/Dropdown/Dropdown';
@@ -44,7 +48,6 @@ body {
 @import '../Components/Form/Autocomplete/Autocomplete';
 @import '../Components/Form/Checkbox/Checkbox';
 @import '../Components/Form/Form/Form';
-@import '../Components/Form/FormField/FormField';
 @import '../Components/Form/Input/Input';
 @import '../Components/Form/MarkdownEditor/MarkdownEditor.Core';
 @import '../Components/Form/MarkdownEditor/MarkdownEditor';
@@ -56,14 +59,21 @@ body {
 @import '../Components/Grid/Grid';
 @import '../Components/Icon/Icon';
 @import '../Components/Modal/Modal';
-@import '../Components/Page/Page';
 @import '../Components/Pagination/Pagination';
 @import '../Components/Spacer/Spacer';
 @import '../Components/Spinner/Spinner';
 @import '../Components/Stack/Stack';
 @import '../Components/Stepper/Stepper';
-@import '../Components/Table/Table';
 @import '../Components/Tabs/Tabs';
+@import '../Components/TempForm/FormCheckbox/FormCheckbox';
+@import '../Components/TempForm/FormCheckboxGroup/FormCheckboxGroup';
+@import '../Components/TempForm/FormDateInput/FormDateInput';
+@import '../Components/TempForm/FormInput/FormInput';
+@import '../Components/TempForm/FormLabel/FormLabel';
+@import '../Components/TempForm/FormNumberInput/FormNumberInput';
+@import '../Components/TempForm/FormSelect/FormSelect';
+@import '../Components/TempForm/FormSwitch/FormSwitch';
+@import '../Components/TempForm/FormTextarea/FormTextarea';
 @import '../Components/Toast/Toast';
 @import '../Components/Tooltip/Tooltip';
 @import '../Components/Typography/Typography';

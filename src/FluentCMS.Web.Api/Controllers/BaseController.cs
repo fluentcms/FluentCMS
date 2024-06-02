@@ -1,10 +1,11 @@
-﻿using FluentCMS.Web.Api.Attributes;
+﻿using FluentCMS.Web.Api.Filters;
 
 namespace FluentCMS.Web.Api.Controllers;
 
 [ApiController]
 [Produces("application/json")]
 [JwtAuthorize]
+[TypeFilter(typeof(PolicyAuthorizeFiler))]
 public abstract class BaseController
 {
     public static ApiResult<T> Ok<T>(T item)
@@ -21,5 +22,4 @@ public abstract class BaseController
 [Route("api/[controller]/[action]")]
 public abstract class BaseGlobalController : BaseController
 {
-
 }

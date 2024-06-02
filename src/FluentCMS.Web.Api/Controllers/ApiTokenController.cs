@@ -1,6 +1,4 @@
-﻿using FluentCMS.Web.Api.Attributes;
-
-namespace FluentCMS.Web.Api.Controllers;
+﻿namespace FluentCMS.Web.Api.Controllers;
 
 public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper) : BaseGlobalController
 {

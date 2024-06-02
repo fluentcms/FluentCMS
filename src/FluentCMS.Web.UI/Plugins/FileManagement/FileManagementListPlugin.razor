@@ -1,49 +1,48 @@
-<Page>
-    <PageHeader Title="File Management (Draft)">
-        <PageHeaderActions>
-            <ButtonGroup>
-                <Button Color="Color.Primary"
-                        OnClick="OpenBrowseModal"
-                        Size="ButtonSize.Small">
-                    <Icon Name="IconName.Plus" />
-                    Add New Files
-                </Button>
-            </ButtonGroup>
-        </PageHeaderActions>
-    </PageHeader>
-    <PageBody>
-        <Typography>
-            Files (@files.Count)
-        </Typography>
-        <Spacer />
-        @if(files.Count > 0)
-        {
-            <Grid Gutter="GridGutter.Large">
-                @foreach (var file in files)
-                {
-                    <GridItem @key="file.Id"
-                            Small="GridItemColumn.Twelve"
-                            Medium="GridItemColumn.Four"
-                            Large="GridItemColumn.Three">
-                        <FileManagementTile Value="file"
-                                            OnDelete="() => Delete(file)"
-                                            OnEdit="() => Edit(file)" />
-                    </GridItem>
-                }
-            </Grid>
-        } else {
-            <EmptyState Icon="IconName.File"
-                        Message="No Files Found!">
-                <Button Color="Color.Primary"
-                        OnClick="OpenBrowseModal"
-                        Size="ButtonSize.Small">
-                    <Icon Name="IconName.Plus" />
-                    Add New Files
-                </Button>
-            </EmptyState>
-        }
-    </PageBody>
-</Page>
+<div class="m-4">
+    <Grid ItemsSmall="GridItems.Center" JustifySmall="GridJustify.Between">
+        <GridItem>
+            <Typography Size="TextSize.H5">File Management (Draft)</Typography>
+        </GridItem>
+        <GridItem>
+            <Button Color="Color.Primary"
+                    @onclick="OpenBrowseModal"
+                    Size="ButtonSize.Small">
+                <Icon Name="IconName.Plus" />
+                Add New Files
+            </Button>
+        </GridItem>
+    </Grid>
+    <Typography>
+        Files (@files.Count)
+    </Typography>
+    <Spacer />
+    @if(files.Count > 0)
+    {
+        <Grid Gutter="GridGutter.Large">
+            @foreach (var file in files)
+            {
+                <GridItem @key="file.Id"
+                        Small="GridItemColumn.Twelve"
+                        Medium="GridItemColumn.Four"
+                        Large="GridItemColumn.Three">
+                    <FileManagementTile Value="file"
+                                        OnDelete="() => Delete(file)"
+                                        OnEdit="() => Edit(file)" />
+                </GridItem>
+            }
+        </Grid>
+    } else {
+        <EmptyState Icon="IconName.File"
+                    Message="No Files Found!">
+            <Button Color="Color.Primary"
+                    @onclick="OpenBrowseModal"
+                    Size="ButtonSize.Small">
+                <Icon Name="IconName.Plus" />
+                Add New Files
+            </Button>
+        </EmptyState>
+    }
+</div>
 
 <FileManagementUploadModal Open="openBrowseModal"
                            OnSelect="OnSelectBrowseModal" />
@@ -53,9 +52,6 @@
                          OnChange="OnChangeEditModal" />
 
 @code {
-    [Inject]
-    ConfirmService Confirm { get; set; } = default!;
-
     FileDTO editing = default!;
 
     List<FileDTO> files { get; set; } = new() { };
@@ -66,14 +62,14 @@
 
     async Task Delete(FileDTO file)
     {
-        var result = await Confirm.Show("Are you sure to remove this file?");
+        // var result = await Confirm.Show("Are you sure to remove this file?");
 
-        if (!result) return;
+        // if (!result) return;
 
-        // TODO: Parsa
-        // await DELETE_SERVICE(file.Id);
+        // // TODO: Parsa
+        // // await DELETE_SERVICE(file.Id);
 
-        files.Remove(file);
+        // files.Remove(file);
     }
 
     void Edit(FileDTO file)

@@ -15,7 +15,7 @@ public static class BaseComponentHelper
         return string.Join(SEPARATOR, [CSS_PREFIX, Name.FromPascalCaseToKebabCase()]);
     }
 
-    public static List<string> ClassNames(this BaseComponent baseComponent)
+    public static List<string> ClassNames(this IBaseComponent baseComponent)
     {
         var classes = new List<string>();
 
@@ -41,7 +41,7 @@ public static class BaseComponentHelper
         return classes;
     }
 
-    public static string GetClasses(this BaseComponent baseComponent)
+    public static string GetClasses(this IBaseComponent baseComponent)
     {
         var cssName = baseComponent.CSSName?.FromPascalCaseToKebabCase() ?? baseComponent.GetDefaultCSSName();
 

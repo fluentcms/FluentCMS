@@ -1,141 +1,18 @@
-<Page>
-    <PageHeader HasBack="true"
-                Title="Update Profile">
-    </PageHeader>
-    <PageBody>
-        <Grid Gutter="GridGutter.Large">
-            <GridItem Small="GridItemColumn.Twelve">
-                <Form Model="@Model"
-                      OnSubmit="OnSubmit">
-                    <Card>
-                        <CardBody>
-                            <Input @bind-Value="Model.Email"
-                                   Id="appUpdateEmailInput"
-                                   Label="Email"
-                                   Name="Email"
-                                   Placeholder="Enter Profile Email..."
-                                   Required="true" />
-                            @*Disabled="true"*@
-                            @if (!string.IsNullOrEmpty(Message))
-                            {
-                                <Spacer />
-                                <Typography>
-                                    @Message
-                                </Typography>
-                            }
-                        </CardBody>
-                        <CardActions>
-                            <Button id="appUpdateCancelButton"
-                                    OnClick="GoBack">
-                                Cancel
-                            </Button>
-                            <Button Color="Color.Primary"
-                                    id="appUpdateSubmitButton"
-                                    Type="ButtonType.Submit">
-                                Submit
-                            </Button>
-                        </CardActions>
-                    </Card>
-                </Form>
-            </GridItem>
-            <GridItem Small="GridItemColumn.Twelve">
-                <Form Model="@ChangePasswordModel"
-                      OnSubmit="OnChangePasswordSubmit">
-                    <Card>
-                        <CardBody>
-                            <Grid Gutter="GridGutter.Medium">
-                                <GridItem Small="GridItemColumn.Six">
-                                    <Input @bind-Value="ChangePasswordModel.OldPassword"
-                                           Id="changePasswordOldInput"
-                                           Label="Old Password"
-                                           Name="oldPassword"
-                                           Placeholder="Enter your old password..."
-                                           Required="true"
-                                           Type="InputType.Password" />
-                                </GridItem>
-                                <GridItem Small="GridItemColumn.Six">
+@inherits BasePlugin
 
-                                    <Input @bind-Value="ChangePasswordModel.NewPassword"
-                                           Id="changePasswordNewInput"
-                                           Label="New Password"
-                                           Name="newPassword"
-                                           Placeholder="Enter new password..."
-                                           Required="true"
-                                           Type="InputType.Password" />
-                                </GridItem>
-                            </Grid>
-                            @if (!string.IsNullOrEmpty(Message))
-                            {
-                                <Spacer />
-                                <Typography>
-                                    @Message
-                                </Typography>
-                            }
-                        </CardBody>
-                        <CardActions>
-                            <Button Color="Color.Primary"
-                                    id="changePasswordSubmitButton"
-                                    Type="ButtonType.Submit">
-                                Change password
-                            </Button>
-                        </CardActions>
-                    </Card>
-                </Form>
-            </GridItem>
-        </Grid>
-    </PageBody>
-</Page>
+<PluginForm Model="@ProfileModel" Name="@PROFILE_FORM_NAME" Title="Profile" OnSubmit="OnProfileSubmit">
+    <FormInput @bind-Value="ProfileModel!.Email" Cols="6" Label="Email" Placeholder="Enter Email" Required />
+    <FormInput @bind-Value="ProfileModel!.PhoneNumber" Cols="6" Label="Phone Number" Placeholder="Enter Phone Number" />
+    <FormInput @bind-Value="ProfileModel!.FirstName" Cols="6" Label="First Name" Placeholder="Enter First Name" />
+    <FormInput @bind-Value="ProfileModel!.LastName" Cols="6" Label="Last Name" Placeholder="Enter Last Name" />
+    <FormActions Submit />
+</PluginForm>
 
-@code {
-    [Inject]
-    IJSRuntime JsRuntime { set; get; } = default!;
+<PluginForm Model="@ChangePasswordModel" Name="@CHANGE_PASSWORD_FORM_NAME" Title="Change password" OnSubmit="OnChangePasswordSubmit">
+    <FormInput @bind-Value="ChangePasswordModel!.OldPassword" Cols="6" Label="Old Password" Placeholder="Enter Old Password" Required type="password" />
+    <FormFieldBreak />
+    <FormInput @bind-Value="ChangePasswordModel!.NewPassword" Cols="6" Label="New Password" Placeholder="Enter New Password" Required type="password" />
+    <FormInput @bind-Value="ChangePasswordModel!.NewPasswordConfirm" Cols="6" Label="Confirm New Password" Placeholder="Enter New Password" Required type="password" />
+    <FormActions Submit />
+</PluginForm>
 
-    [Inject]
-    NavigationManager NavigationManager { set; get; } = default!;
-
-    [Inject]
-    AccountClient AccountClient { get; set; } = default!;
-
-    string Message { get; set; } = string.Empty;
-
-    UserChangePasswordRequest ChangePasswordModel { get; set; } = new();
-    UserUpdateRequest Model { get; set; } = new();
-
-    UserDetailResponse View { get; set; } = new();
-
-    async Task GoBack()
-    {
-        await JsRuntime.InvokeAsync<object>("history.back");
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-
-    // View = (await AccountClient.GetUserDetailAsync()).Data;
-
-        // Model.Email = View.Email;
-        // ChangePasswordModel.UserId = View.Id;
-        @* Model.Username = View.Username; *@
-        @* Model.PhoneNumber = View.PhoneNumber; *@
-    }
-
-    async Task OnChangePasswordSubmit()
-    {
-        await AccountClient.ChangePasswordAsync(ChangePasswordModel);
-        await GoBack();
-    }
-
-    async Task OnSubmit()
-    {
-        try
-        {
-            // await AccountClient.SetUserDetailAsync(Model);
-            // Message = "Done!";
-            // await GoBack();
-        }
-        catch (Exception exception)
-        {
-            Message = exception.ToString();
-        }
-    }
-}

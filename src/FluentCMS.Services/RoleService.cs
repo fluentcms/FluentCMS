@@ -7,6 +7,7 @@ public interface IRoleService : IAutoRegisterService
     Task<Role> Update(Role role, CancellationToken cancellationToken = default);
     Task<Role> Delete(Guid roleId, CancellationToken cancellationToken = default);
     Task<IEnumerable<Role>> GetByIds(IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);
+    Task<Role?> GetById(Guid roleId, CancellationToken cancellationToken = default);
 }
 
 public class RoleService(IRoleRepository roleRepository) : IRoleService
@@ -43,5 +44,10 @@ public class RoleService(IRoleRepository roleRepository) : IRoleService
     public Task<IEnumerable<Role>> GetByIds(IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default)
     {
         return roleRepository.GetByIds(roleIds, cancellationToken);
+    }
+
+    public Task<Role?> GetById(Guid roleId, CancellationToken cancellationToken = default)
+    {
+        return roleRepository.GetById(roleId, cancellationToken);
     }
 }

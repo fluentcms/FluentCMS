@@ -1,0 +1,11 @@
+﻿@namespace FluentCMS.Web.UI.Plugins.Components
+
+@if (Page?.Sections != null && Page.Sections.ContainsKey(Name))
+{
+    <div class="f-section f-section-@Name.FromPascalCaseToKebabCase()">
+        @foreach (var Plugin in Page.Sections[Name].OrderBy(p => p.Order))
+        {
+            <PluginContainer @key="@Plugin" Plugin=@Plugin SectionName=@Name />
+        }
+    </div>
+}

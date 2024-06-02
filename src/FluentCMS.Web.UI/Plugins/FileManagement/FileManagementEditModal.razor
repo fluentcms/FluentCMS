@@ -72,11 +72,11 @@
     </ModalBody>
     <ModalFooter>
         <ButtonGroup>
-            <Button OnClick="() => OnChange.InvokeAsync()">
+            <Button @onclick="() => OnChange.InvokeAsync()">
                 Cancel
             </Button>
             <Button Color="Color.Primary"
-                    OnClick="Update">
+                    @onclick="Update">
                 Update
             </Button>
         </ButtonGroup>

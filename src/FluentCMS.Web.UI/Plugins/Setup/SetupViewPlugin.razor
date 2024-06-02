@@ -1,14 +1,15 @@
 ﻿@inherits BasePlugin
 
-<div class="w-full max-w-md space-y-4 md:space-y-6 xl:max-w-xl">
-    <PluginForm Model="@Model" Name="@FORM_NAME" Title="Setup Admin Account" OnSubmit="OnSubmit">
-        <PluginFormTextInput @bind-Value="Model.Username" Label="Username" Placeholder="Enter your username" Required />
-        <PluginFormTextInput @bind-Value="Model.Email" Label="Email" Placeholder="Enter your email" Required />
-        <PluginFormTextInput @bind-Value="Model.Password" Label="Password" Placeholder="Enter your password" Required type="password" />
-        <PluginFormActions>
-            <Button Block Color="Color.Primary" Type="ButtonType.Submit">
-                Setup
-            </Button>
-        </PluginFormActions>
-    </PluginForm>
-</div>
+@using FluentCMS.Web.UI.Plugins.Auth
+
+<AuthPluginForm Model="@Model" Name="@FORM_NAME" Title="Setup Admin Account" OnSubmit="@OnSubmit">
+    <FormInput @bind-Value="Model!.Username" Label="Username" Placeholder="Enter your username" Required />
+    <FormHiddenInput @bind-Value="Model!.AdminDomain" />
+    <FormInput @bind-Value="Model!.Email" Label="Email" Placeholder="Enter your email" Required />
+    <FormInput @bind-Value="Model!.Password" Label="Password" Placeholder="Enter your password" Required type="password" />
+    <FormActions>
+        <Button Block Color="Color.Primary" Type="ButtonType.Submit">
+            Setup
+        </Button>
+    </FormActions>
+</AuthPluginForm>        

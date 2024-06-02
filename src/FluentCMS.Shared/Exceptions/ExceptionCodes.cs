@@ -15,8 +15,6 @@ public class ExceptionCodes
 
     public const string GlobalSettingsUnableToUpdate = "GlobalSettings.UnableToUpdate";
     public const string GlobalSettingsUnableToInit = "GlobalSettings.UnableToInit";
-    public const string GlobalSettingsAtLeastOneSuperUser = "GlobalSettings.AtLeastOneSuperUser";
-    public const string GlobalSettingsUnableToRemoveYourself = "GlobalSettings.UnableToRemoveYourself";
     public const string GlobalSettingsNotFound = "GlobalSettings.NotFound";
 
     #endregion
@@ -37,13 +35,6 @@ public class ExceptionCodes
     public const string AppUnableToCreate = "App.UnableToCreate";
     public const string AppUnableToUpdate = "App.UnableToUpdate";
     public const string AppUnableToDelete = "App.UnableToDelete";
-
-    #endregion
-
-    #region AppTemplate
-
-    public const string AppTemplateNotFound = "AppTemplate.NotFound";
-    public const string AppTemplateUnableToCreate = "AppTemplate.UnableToCreate";
 
     #endregion
 

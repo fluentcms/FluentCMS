@@ -47,7 +47,7 @@
                     <Stack Justify="StackJustify.End">
                         <Button Color="Color.Primary" 
                             Outline="true" 
-                            OnClick="() => showTour = false">
+                            @onclick="() => showTour = false">
                         Skip the tour
                     </Button>
                     </Stack>
@@ -107,9 +107,6 @@
                         </Card>
                     </a>
                 }
-                <Spacer Size="SpacerSize.Small" />
-                <!-- TODO: Do not use tailwind classes -->
-                <Version Class="hidden md:block" Assembly="Assembly.GetEntryAssembly()"></Version>
             </CardBody>
         </Card>
     </GridItem>
