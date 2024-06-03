@@ -16,9 +16,9 @@ public class FieldTypes : Dictionary<string, FieldType>
         Add("string", new FieldType
         {
             Icon = IconName.Text,
-            Title = "Text",
+            Title = "String",
             Description = "Small or long text like title or description",
-            Key = "text",
+            Key = "string",
             Order = 1
         });
         Add("number", new FieldType
@@ -36,6 +36,30 @@ public class FieldTypes : Dictionary<string, FieldType>
             Description = "Yes or no, 1 or 0, true or false",
             Key = "boolean",
             Order = 3
+        });
+        Add("enumeration", new FieldType
+        {
+            Title = "Enumeration",
+            Icon = IconName.List,
+            Description = "List of values, then pick one",
+            Key = "enumeration",
+            Order = 4
+        });
+        Add("date", new FieldType
+        {
+            Title = "Date",
+            Icon = IconName.Clock,
+            Description = "A date picker with hours, minutes and seconds",
+            Key = "date",
+            Order = 5
+        });
+        Add("media", new FieldType
+        {
+            Title = "Media",
+            Icon = IconName.ClipboardList,
+            Description = "Files like images, videos, etc",
+            Key = "media",
+            Order = 9
         });
     }
 }
