@@ -8083,17 +8083,26 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("type")]
         public string? Type { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("settings")]
+        public ContentTypeFieldSettings Settings { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ContentTypeFieldSettings
+    {
+
         [System.Text.Json.Serialization.JsonPropertyName("label")]
         public string? Label { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string? Description { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("placeholder")]
-        public string? Placeholder { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("required")]
         public bool Required { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("meta")]
+        public System.Collections.Generic.IDictionary<string, object>? Meta { get; set; } = default!;
 
     }
 
