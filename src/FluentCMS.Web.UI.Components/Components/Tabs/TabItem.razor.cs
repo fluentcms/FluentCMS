@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class TabsTab
+public partial class TabItem
 {
     [CSSProperty]
     public bool Active => Name == Parent?.Value;
@@ -10,4 +10,8 @@ public partial class TabsTab
 
     [CascadingParameter]
     public Tabs? Parent { get; set; }
+
+    private async Task OnClicked() {
+        Parent?.Activate(Name);
+    }
 }

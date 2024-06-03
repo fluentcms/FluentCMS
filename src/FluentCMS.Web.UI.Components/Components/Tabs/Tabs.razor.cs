@@ -3,13 +3,22 @@ namespace FluentCMS.Web.UI.Components;
 public partial class Tabs
 {
     [Parameter]
-    public string Value { get; set; }
+    public string Active { get; set; }
 
     [Parameter]
-    public EventCallback<string> ValueChanged { get; set; }
+    public EventCallback<string> OnChange { get; set; }
 
-    public async void Activate(string name)
+    public string Value { get; set; }
+    
+    protected override async Task OnInitializedAsync()
     {
-        await ValueChanged.InvokeAsync(Value = name);
+        Value = Active;
+    }
+
+    public async Task Activate(string name)
+    {
+        Value = name;
+        StateHasChanged();
+        await OnChange.InvokeAsync(Value);
     }
 }
