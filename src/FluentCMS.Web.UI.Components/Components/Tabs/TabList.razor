@@ -5,8 +5,8 @@
 @if(Visible)
 {
     <div @attributes="AdditionalAttributes" class="@this.GetClasses()">
-        <CascadingValue Value="this">
+        <ul class="@this.ClassName("TabListInner")">
             @ChildContent
-        </CascadingValue>
+        </ul>
     </div>
 }

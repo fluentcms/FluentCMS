@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class TabsPanel
+public partial class TabPanel
 {
     [CSSProperty]
     public bool Active => Name == Parent?.Value;
