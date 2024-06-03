@@ -71,7 +71,7 @@
         }
     </ModalBody>
     <ModalFooter>
-        <ButtonGroup>
+        <Stack>
             <Button @onclick="() => OnChange.InvokeAsync()">
                 Cancel
             </Button>
@@ -79,7 +79,7 @@
                     @onclick="Update">
                 Update
             </Button>
-        </ButtonGroup>
+        </Stack>
     </ModalFooter>
 </Modal>
 

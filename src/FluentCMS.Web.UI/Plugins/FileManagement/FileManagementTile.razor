@@ -19,7 +19,7 @@
             </Grid>
         }
         <div class="hidden group-hover:flex absolute top-3 right-3">
-            <ButtonGroup>
+            <Stack>
                 @if (Editable)
                 {
                     <Button Color="Color.Default"
@@ -35,7 +35,7 @@
                         @onclick="() => OnDelete.InvokeAsync()">
                     <Icon Name="IconName.Delete" />
                 </Button>
-            </ButtonGroup>
+            </Stack>
         </div>
         <hr />
         <Spacer />

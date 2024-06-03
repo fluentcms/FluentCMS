@@ -13,14 +13,14 @@
                     <h3 class="@this.ClassName("ConfirmMessage")">
                         @ChildContent
                     </h3>
-                    <ButtonGroup>
+                    <Stack>
                         <Button Color="Color.Danger" @onclick="ConfirmClicked">
                             Yes, I'm sure
                         </Button>
                         <Button @onclick="CancelClicked">
                             No, cancel
                         </Button>
-                    </ButtonGroup>
+                    </Stack>
                 </div>
             </div>
         </div>
