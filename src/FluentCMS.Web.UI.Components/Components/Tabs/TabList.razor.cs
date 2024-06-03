@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class TabsList
+public partial class TabList
 {
 
 }

@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class TabsHeader
+public partial class TabContent
 {
 
 }
