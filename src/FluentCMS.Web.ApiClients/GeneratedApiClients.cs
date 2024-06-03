@@ -9103,14 +9103,8 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("urls")]
         public System.Collections.Generic.ICollection<string>? Urls { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("languages")]
-        public System.Collections.Generic.ICollection<string>? Languages { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("layoutId")]
         public System.Guid LayoutId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("defaultPageTitle")]
-        public string? DefaultPageTitle { get; set; } = default!;
 
     }
 
@@ -9241,14 +9235,8 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("urls")]
         public System.Collections.Generic.ICollection<string>? Urls { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("languages")]
-        public System.Collections.Generic.ICollection<string>? Languages { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("layoutId")]
         public System.Guid LayoutId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("defaultPageTitle")]
-        public string? DefaultPageTitle { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
         public System.Guid Id { get; set; } = default!;

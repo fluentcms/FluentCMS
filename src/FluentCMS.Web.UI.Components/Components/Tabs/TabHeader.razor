@@ -5,8 +5,6 @@
 @if(Visible)
 {
     <div @attributes="AdditionalAttributes" class="@this.GetClasses()">
-        <CascadingValue Value="this">
-            @ChildContent
-        </CascadingValue>
+        @ChildContent
     </div>
 }
