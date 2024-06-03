@@ -4,16 +4,14 @@
 
 @if(Visible)
 {
-    <div @attributes="AdditionalAttributes"
-         @ref="element"
-         class="@this.GetClasses()"
-         tabindex="-1">
+    <div @attributes="AdditionalAttributes" class="@this.GetClasses()" tabindex="-1">
         <div class="@this.ClassName("ModalWrapper")">
-            <CascadingValue Value="this">
-                <ModalContent>
+            <div class="@this.ClassName("ModalContent")">
+                <CascadingValue Value="this">
                     @ChildContent
-                </ModalContent>
-            </CascadingValue>
+                </CascadingValue>
+            </div>
         </div>
     </div>
+    <div class="@this.ClassName("ModalBackdrop")"></div>
 }
