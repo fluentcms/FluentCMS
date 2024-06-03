@@ -4,11 +4,10 @@ public partial class ContentTypeFieldSelector
     [Parameter]
     public EventCallback<FieldType> OnSubmit { get; set; }
 
-    [CascadingParameter]
-    public List<FieldType> FieldTypes { get; set; }
-
     [Parameter]
     public EventCallback OnCancel { get; set; }
+
+    private FieldTypes FieldTypes { get; set; } = [];
 
     private async Task OnClick(FieldType type)
     {

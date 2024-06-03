@@ -7,7 +7,7 @@
             @context.Name
         </DataTableItem>
         <DataTableItem Label="Type">
-            @FieldTypes.Find(x => x.Key == context.Type)?.Title
+            @FieldTypes?.Find(x => x.Key == context.Type)?.Title
         </DataTableItem>
         <DataTableItem Label="Required">
             @context.Required
@@ -30,6 +30,6 @@
         </DataTableItem>
     </DataTable>
     <Confirm Visible="SelectedField != null" OnConfirm="() => OnDeleteConfirm()" OnCancel="() => OnCancel()">
-        Are you sure to remove field @SelectedField.Name?
+        Are you sure to remove field @SelectedField?.Name?
     </Confirm>
 }
