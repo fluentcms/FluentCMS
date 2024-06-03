@@ -19,12 +19,17 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj" />
-		<ProjectReference Include="..\FluentCMS.Web.UI.Components\FluentCMS.Web.UI.Components.csproj" />
+		<ProjectReference Include="..\FluentCMS.Web.UI.Plugins\FluentCMS.Web.UI.Plugins.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Content Update="PluginsSection.razor">
+	    <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+	  </Content>
 	</ItemGroup>
 
 </Project>
