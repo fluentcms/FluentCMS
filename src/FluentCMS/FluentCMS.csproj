@@ -11,7 +11,7 @@
     <ItemGroup>
         <ProjectReference Include="..\Backend\FluentCMS.Web.Api\FluentCMS.Web.Api.csproj" />
         <ProjectReference Include="..\Backend\Repositories\FluentCMS.Repositories.MongoDB\FluentCMS.Repositories.MongoDB.csproj" />
-        <ProjectReference Include="..\FluentCMS.Web.UI\FluentCMS.Web.UI.csproj" />
+        <ProjectReference Include="..\Frontend\FluentCMS.Web.UI\FluentCMS.Web.UI.csproj" />
     </ItemGroup>
 
 </Project>
