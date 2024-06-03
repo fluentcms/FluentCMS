@@ -1,5 +1,13 @@
 ﻿namespace FluentCMS.Web.UI.Components;
 
+public enum StackGutter
+{
+    Default,
+    Small,
+    Medium,
+    Large,
+}
+
 public enum StackItems
 {
     Start,
