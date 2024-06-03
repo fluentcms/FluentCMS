@@ -21,7 +21,7 @@
         }
         else
         {
-            <select @attributes="AdditionalAttributes" class="" disabled="@Disabled" id="@Id" multiple="@_isMultipleSelect" name="@NameAttributeValue" @bind="@CurrentValueAsString">
+            <select @attributes="AdditionalAttributes" class="@this.GetClasses()" disabled="@Disabled" id="@Id" multiple="@_isMultipleSelect" name="@NameAttributeValue" @bind="@CurrentValueAsString">
                 @if (!string.IsNullOrEmpty(Placeholder))
                 {
                     <option disabled selected value="">@Placeholder</option>

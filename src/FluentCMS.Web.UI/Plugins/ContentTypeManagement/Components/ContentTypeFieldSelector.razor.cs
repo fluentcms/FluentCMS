@@ -1,44 +1,22 @@
 ﻿namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement;
+
 public partial class ContentTypeFieldSelector
 {
     [Parameter]
-    public EventCallback<string> OnSubmit { get; set; }
+    public EventCallback<FieldType> OnSubmit { get; set; }
 
     [Parameter]
     public EventCallback OnCancel { get; set; }
 
-    private async Task OnClick(FieldTypes fieldType)
+    private FieldTypes FieldTypes { get; set; } = [];
+
+    private async Task OnClick(FieldType type)
     {
-        var type = string.Empty;
-        switch (fieldType)
-        {
-            case FieldTypes.Text:
-                type = "text";
-                break;
-
-            case FieldTypes.TextArea:
-                type = "textarea";
-                break;
-
-            case FieldTypes.Number:
-                type = "number";
-                break;
-
-            case FieldTypes.Boolean:
-                type = "boolean";
-                break;
-
-            default:
-                break;
-        }
         await OnSubmit.InvokeAsync(type);
     }
 
-    private enum FieldTypes
+    private async Task OnCancelClicked()
     {
-        Text,
-        TextArea,
-        Number,
-        Boolean,
+        await OnCancel.InvokeAsync();
     }
 }

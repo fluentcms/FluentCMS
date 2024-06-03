@@ -7,24 +7,32 @@
             @context.Name
         </DataTableItem>
         <DataTableItem Label="Type">
-            @context.Type
+            @if(FieldTypes != null)
+            {
+                @FieldTypes[context.Type]?.Title
+            }
         </DataTableItem>
         <DataTableItem Label="Required">
-            @context.Required
+            @context.Settings.Required
         </DataTableItem>
         <DataTableItem Label="Label">
-            @context.Label
+            @context.Settings.Label
         </DataTableItem>
         <DataTableItem Label="Description">
-            @context.Description
+            @context.Settings.Description
         </DataTableItem>
         <DataTableItem>
-            <Button Color="Color.Primary" Size="ButtonSize.Small" @onclick="() => OnEditClick(context)">
-                <Icon Name="IconName.Edit" />Edit
-            </Button>
-            <Button Color="Color.Primary" Size="ButtonSize.Small" @onclick="() => OnDeleteClick(context)">
-                <Icon Name="IconName.Delete" />Delete
-            </Button>
+            <div class="flex gap-2">
+                <Button Color="Color.Primary" Size="ButtonSize.Small" @onclick="() => OnEditClick(context)">
+                    <Icon Name="IconName.Edit" />Edit
+                </Button>
+                <Button Color="Color.Danger" Outline Size="ButtonSize.Small" @onclick="() => OnDeleteClick(context)">
+                    <Icon Name="IconName.Delete" />Delete
+                </Button>
+            </div>
         </DataTableItem>
     </DataTable>
+    <Confirm Visible="SelectedField != null" OnConfirm="() => OnDeleteConfirm()" OnCancel="() => OnCancel()">
+        Are you sure to remove field @SelectedField?.Name?
+    </Confirm>
 }

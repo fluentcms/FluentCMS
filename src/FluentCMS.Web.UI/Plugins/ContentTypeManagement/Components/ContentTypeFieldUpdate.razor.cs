@@ -6,11 +6,17 @@ public partial class ContentTypeFieldUpdate
 
     [Parameter]
     public ContentTypeField? Model { get; set; }
-
+   
     [Parameter]
     public EventCallback OnSubmit { get; set; }
 
     [Parameter]
     public EventCallback OnCancel { get; set; }
 
+    private FieldTypes FieldTypes { get; set; } = [];
+
+    private async Task HandleSubmit()
+    {
+        await OnSubmit.InvokeAsync();
+    }
 }

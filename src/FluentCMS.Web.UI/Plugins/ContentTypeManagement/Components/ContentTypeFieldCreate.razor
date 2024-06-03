@@ -1,24 +1,50 @@
 ﻿@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement
 
-@if (string.IsNullOrEmpty(SelectedType))
+@if (FieldType == null)
 {
-    <PluginBody Title="Select a field type">
-        <CardBody>
-            <ContentTypeFieldSelector OnSubmit="(type) => OnTypeSelect(type)" OnCancel=OnCancel />
-        </CardBody>
-    </PluginBody>
+    <ContentTypeFieldSelector OnSubmit="(type) => OnTypeSelect(type)" OnCancel=OnCancel />
 }
 else
 {
-    <PluginForm Model="@Model" Name="@FORM_NAME" Title="Create New Field" OnSubmit=OnSubmit>
-        <FormInput @bind-Value="Model!.Name" Cols="6" Label="Name" Placeholder="Enter Field Name" Required />
-        <FormInput @bind-Value="Model!.Label" Cols="6" Label="Label" Placeholder="Enter Field Label" Required />
-        <FormInput @bind-Value="Model!.Placeholder" Cols="6" Label="Placeholder" Placeholder="Enter Field Placeholder" Required />
-        <FormInput @bind-Value="Model!.Type" Cols="6" Label="Type" Placeholder="Enter Field Type" Required Disabled />
-        <FormActions Submit>
-            <Button @onclick=OnCancel>
-                Cancel
-            </Button>
-        </FormActions>
-    </PluginForm>
+    <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="@FORM_NAME" Enhance>
+        <Modal Size="ModalSize.Large">
+            <ModalHeader Closable>
+                <ModalTitle>Create New "@FieldType.Title" Field</ModalTitle>
+            </ModalHeader>
+            <ModalBody>
+                <DataAnnotationsValidator />
+                <Tabs Active="Basic">
+                    <TabList>
+                        <TabItem Name="Basic">
+                            Basic
+                        </TabItem>
+                        <TabItem Name="Advanced">
+                            Advanced
+                        </TabItem>
+                    </TabList>
+                    <TabContent>
+                        <TabPanel Name="Basic">
+                            <Grid GutterX="GridGutter.Large">
+                                <FormInput @bind-Value="Model!.Name" Cols="6" Label="Name" Placeholder="Enter Field Name" Required />
+                            </Grid>
+                        </TabPanel>
+                        <TabPanel Name="Advanced">
+                            <Grid GutterX="GridGutter.Large">
+                                <FormInput @bind-Value="Model!.Settings!.Label" Cols="6" Label="Label" Placeholder="Enter Field Label" Required />
+                                <FormTextarea @bind-Value="Model!.Settings!.Description" Label="Description" Placeholder="Enter Field Description" Required />
+                                <FormSwitch @bind-Value="Model!.Settings!.Required" Cols="6" Label="Required" Required />
+                            </Grid>
+                        </TabPanel>
+                    </TabContent>
+                </Tabs>
+            </ModalBody>
+            <ModalFooter>
+                <FormActions Submit>
+                    <Button @onclick="OnBack">
+                        Back
+                    </Button>                    
+                </FormActions>
+            </ModalFooter>
+        </Modal>
+    </EditForm>
 }

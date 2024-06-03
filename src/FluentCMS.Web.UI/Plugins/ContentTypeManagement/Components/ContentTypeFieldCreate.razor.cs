@@ -13,12 +13,33 @@ public partial class ContentTypeFieldCreate
     [Parameter]
     public EventCallback OnCancel { get; set; }
 
-    private string? SelectedType { get; set; }
+    private FieldType? FieldType { get; set; }
 
-    private async Task OnTypeSelect(string typeName)
+    private FieldTypes FieldTypes { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
     {
-        Model!.Type = typeName;
-        SelectedType = typeName;
+        await base.OnInitializedAsync();
+        Model ??= new();
+        Model.Settings ??= new();
+    }
+
+    private async Task OnBack()
+    {
+        Model!.Type = default!;
+        FieldType = default!;
         await Task.CompletedTask;
+    }
+
+    private async Task OnTypeSelect(FieldType type)
+    {
+        Model!.Type = type.Key;
+        FieldType = type;
+        await Task.CompletedTask;
+    }
+
+    private async Task HandleSubmit()
+    {
+        await OnSubmit.InvokeAsync();
     }
 }

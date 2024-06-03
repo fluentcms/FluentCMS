@@ -18,12 +18,14 @@
                 @context.Description
             </DataTableItem>
             <DataTableItem>
-                <Button Color="Color.Primary" Href="@GetUrl("Update ContentType", new { id = @context.Id })" Size="ButtonSize.Small">
-                    <Icon Name="IconName.Edit" />Edit
-                </Button>
-                <Button Color="Color.Warning" Href="@GetUrl("View ContentType", new { id = @context.Id })" Size="ButtonSize.Small">
-                    <Icon Name="IconName.Eye" />View
-                </Button>
+                <div class="flex gap-2">
+                    <Button Color="Color.Primary" Href="@GetUrl("Update ContentType", new { id = @context.Id })" Size="ButtonSize.Small">
+                        <Icon Name="IconName.Edit" />Edit
+                    </Button>
+                    <Button Color="Color.Warning" Outline Href="@GetUrl("View ContentType", new { id = @context.Id })" Size="ButtonSize.Small">
+                        <Icon Name="IconName.Eye" />View
+                    </Button>
+                </div>
             </DataTableItem>
         </DataTable>
     </ChildContent>

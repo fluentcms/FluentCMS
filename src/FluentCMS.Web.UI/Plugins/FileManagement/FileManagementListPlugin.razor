@@ -70,6 +70,7 @@
         // // await DELETE_SERVICE(file.Id);
 
         // files.Remove(file);
+        await Task.CompletedTask;
     }
 
     void Edit(FileDTO file)
@@ -96,6 +97,7 @@
         // file = await UPDATE_SERVICE(file);
 
         files[index] = file;
+        await Task.CompletedTask;
     }
 
     async Task OnSelectBrowseModal(List<FileDTO>? next)
@@ -108,6 +110,7 @@
         // next = await UPLOAD_SERVICE(next);
 
         files = files.Concat(next).ToList();
+        await Task.CompletedTask;
     }
 
     protected override Task OnInitializedAsync()
