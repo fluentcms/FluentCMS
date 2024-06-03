@@ -9,7 +9,7 @@ public partial class Tabs
     public EventCallback<string> OnChange { get; set; }
 
     public string Value { get; set; }
-    
+
     protected override async Task OnInitializedAsync()
     {
         Value = Active;

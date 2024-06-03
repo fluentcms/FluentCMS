@@ -11,7 +11,8 @@ public partial class TabItem
     [CascadingParameter]
     public Tabs? Parent { get; set; }
 
-    private async Task OnClicked() {
+    private async Task OnClicked()
+    {
         Parent?.Activate(Name);
     }
 }

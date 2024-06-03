@@ -1,7 +1,7 @@
 ﻿@namespace FluentCMS.Web.UI.Plugins.Components
 
 <GridItem Small="GridItemColumn.Twelve">
-    <ButtonGroup>
+    <Stack>
         @ChildContent
         <Button Visible="Submit" Color="Color.Primary" Type="ButtonType.Submit">
             Submit
@@ -9,5 +9,5 @@
         <Button Visible="Cancel" Href="@GetBackUrl()">
             Cancel
         </Button>
-    </ButtonGroup>
+    </Stack>
 </GridItem>

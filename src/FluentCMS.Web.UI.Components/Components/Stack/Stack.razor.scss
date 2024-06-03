@@ -5,7 +5,19 @@ $stack-items: ( start, end, center, baseline, stretch);
 $stack-justify: ( normal, start, end, center, between, around, evenly, stretch);
 
 .#{$stack} {
-    @apply flex gap-4 items-center;
+    @apply flex items-center;
+
+    &-gutter-small, &-gutter-default {
+        @apply gap-2;
+    }
+
+    &-gutter-medium {
+        @apply gap-4;
+    }
+
+    &-gutter-large {
+        @apply gap-6;
+    }
 
     &-vertical-true {
         @apply flex-col;
