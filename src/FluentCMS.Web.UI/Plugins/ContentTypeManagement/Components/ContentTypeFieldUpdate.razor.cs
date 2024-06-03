@@ -14,4 +14,9 @@ public partial class ContentTypeFieldUpdate
     public EventCallback OnCancel { get; set; }
 
     private FieldTypes FieldTypes { get; set; } = [];
+
+    private async Task HandleSubmit()
+    {
+        await OnSubmit.InvokeAsync();
+    }
 }

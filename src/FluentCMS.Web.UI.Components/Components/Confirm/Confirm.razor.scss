@@ -30,4 +30,8 @@ $confirm: $prefix + "confirm";
     &-wrapper {
         @apply relative p-4 w-full max-w-md max-h-full;
     }
+
+    &-button-stack {
+        @apply justify-center;
+    }
 }

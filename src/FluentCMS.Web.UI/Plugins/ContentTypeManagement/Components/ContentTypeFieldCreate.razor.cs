@@ -17,6 +17,13 @@ public partial class ContentTypeFieldCreate
 
     private FieldTypes FieldTypes { get; set; } = [];
 
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Model ??= new();
+        Model.Settings ??= new();
+    }
+
     private async Task OnBack()
     {
         Model!.Type = default!;
@@ -29,5 +36,10 @@ public partial class ContentTypeFieldCreate
         Model!.Type = type.Key;
         FieldType = type;
         await Task.CompletedTask;
+    }
+
+    private async Task HandleSubmit()
+    {
+        await OnSubmit.InvokeAsync();
     }
 }

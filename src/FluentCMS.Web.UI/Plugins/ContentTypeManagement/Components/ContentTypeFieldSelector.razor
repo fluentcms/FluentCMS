@@ -1,28 +1,33 @@
 ﻿@namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement
 
-<Grid Gutter="GridGutter.Large">
-    @foreach (var type in FieldTypes.Values.OrderBy(x => x.Order))
-    {
-        <GridItem @key="type.Key" Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
-            <Button Block="true" style="height: 100%; justify-content: start" @onclick="() => OnClick(type)">
-                <Icon Name="@type.Icon" />
-                <span>
-                    &nbsp;
-                </span>
-                <div>
-                    <Typography Align="TextAlign.Start" Size="TextSize.Default" Weight="TextWeight.SemiBold">
-                        @type.Title
-                    </Typography>
-                    <Typography Align="TextAlign.Start" Size="TextSize.Small" Weight="TextWeight.Thin">
-                        @type.Description
-                    </Typography>
-                </div>
-            </Button>
-        </GridItem>
-    }
-</Grid>
+ <Modal Size="ModalSize.Large">
+    <ModalHeader Closable>
+        <ModalTitle>Select a field type</ModalTitle>
+    </ModalHeader>
+    <ModalBody>
+        <Grid Gutter="GridGutter.Large">
+            @foreach (var type in FieldTypes.Values.OrderBy(x => x.Order))
+            {
+                <GridItem @key="type.Key" Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six">
+                    <div class="flex cursor-pointer px-6 py-4 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 w-full items-center justify-start gap-6 h-full" @onclick="() => OnClick(type)">
+                        <Icon Name="@type.Icon" />
+                        <div>
+                            <Typography Align="TextAlign.Start" Size="TextSize.Default" Weight="TextWeight.SemiBold">
+                                @type.Title
+                            </Typography>
+                            <Typography Align="TextAlign.Start" Size="TextSize.Small" Weight="TextWeight.Thin">
+                                @type.Description
+                            </Typography>
+                        </div>
+                    </div>
+                </GridItem>
+            }
+        </Grid>
+    </ModalBody>
+    <ModalFooter>
+        <Button @onclick="OnCancelClicked">
+            Cancel
+        </Button>
+    </ModalFooter>
+</Modal>
 
-<Spacer />
-<Button @onclick=OnCancel>
-    Cancel
-</Button>

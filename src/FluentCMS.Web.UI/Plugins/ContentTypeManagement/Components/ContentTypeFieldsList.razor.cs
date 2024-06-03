@@ -5,14 +5,13 @@ public partial class ContentTypeFieldsList
     [Parameter]
     public ContentTypeDetailResponse? ContentType { get; set; }
 
-    [CascadingParameter]
-    public List<FieldType>? FieldTypes { get; set; }
-
     [Parameter]
     public EventCallback<ContentTypeField> OnEdit { get; set; }
 
     [Parameter]
     public EventCallback<ContentTypeField> OnDelete { get; set; }
+
+    private FieldTypes FieldTypes { get; set; } = [];
 
     private ContentTypeField? SelectedField { get; set; }
 
@@ -30,6 +29,7 @@ public partial class ContentTypeFieldsList
     private async Task OnDeleteConfirm()
     {
         await OnDelete.InvokeAsync(SelectedField);
+        SelectedField = default!;
     }
      
     private async Task OnCancel()

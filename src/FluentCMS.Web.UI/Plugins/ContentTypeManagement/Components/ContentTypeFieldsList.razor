@@ -7,16 +7,19 @@
             @context.Name
         </DataTableItem>
         <DataTableItem Label="Type">
-            @FieldTypes?.Find(x => x.Key == context.Type)?.Title
+            @if(FieldTypes != null)
+            {
+                @FieldTypes[context.Type]?.Title
+            }
         </DataTableItem>
         <DataTableItem Label="Required">
-            @context.Required
+            @context.Settings.Required
         </DataTableItem>
         <DataTableItem Label="Label">
-            @context.Label
+            @context.Settings.Label
         </DataTableItem>
         <DataTableItem Label="Description">
-            @context.Description
+            @context.Settings.Description
         </DataTableItem>
         <DataTableItem>
             <div class="flex gap-2">

@@ -460,19 +460,22 @@
             "Fields": [
                 {
                     "Name": "Title",
-                    "Label": "Title",
-                    "Description": "Blog Post Title",
-                    "Type": "text",
-                    "Placeholder": "Enter Blog Post Title",
-                    "Required": true
+                    "Type": "string",
+                    "Settings": {
+                        "Label": "Title",
+                        "Description": "Blog Post Title",
+                        "Required": true
+                    }
                 },
                 {
                     "Name": "Content",
-                    "Label": "Content",
-                    "Description": "Blog Post Content",
-                    "Type": "rich-text",
-                    "Placeholder": "Enter Blog Post Content",
-                    "Required": false
+                    "Type": "string",
+                    "Settings": {
+                        "Label": "Content",
+                        "Description": "Blog Post Content",
+                        
+                        "Required": false
+                    }
                 }
             ]
         }

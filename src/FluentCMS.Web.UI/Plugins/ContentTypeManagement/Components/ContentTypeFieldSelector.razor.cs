@@ -1,4 +1,5 @@
 ﻿namespace FluentCMS.Web.UI.Plugins.ContentTypeManagement;
+
 public partial class ContentTypeFieldSelector
 {
     [Parameter]
@@ -12,5 +13,10 @@ public partial class ContentTypeFieldSelector
     private async Task OnClick(FieldType type)
     {
         await OnSubmit.InvokeAsync(type);
+    }
+
+    private async Task OnCancelClicked()
+    {
+        await OnCancel.InvokeAsync();
     }
 }
