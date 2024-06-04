@@ -1,0 +1,21 @@
+﻿<PluginBody Title="@Title">
+    <CardBody>
+        @if (Model != null)
+        {
+            <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="@Name" Enhance>
+                <DataAnnotationsValidator />
+                <Spacer />
+                <Grid GutterX="GridGutter.Large">
+                    @ChildContent
+                </Grid>
+                <Spacer />
+                <Alert Visible="Errors.Count > 0" Type="AlertType.Danger">
+                    @foreach (var error in Errors)
+                    {
+                        <p>@error</p>
+                    }
+                </Alert>
+            </EditForm>
+        }
+    </CardBody>
+</PluginBody>
