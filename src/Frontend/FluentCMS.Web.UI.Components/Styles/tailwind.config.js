@@ -4,6 +4,8 @@ module.exports = {
     "../**/*.{razor,html,cshtml}",
     "../../../FluentCMS/**/*.{razor,html,cshtml,js}",                       // TODO: should be remove
     "../../FluentCMS.Web.UI/**/*.{razor,html,cshtml}",                // TODO: should be remove
+    "../../FluentCMS.Web.Plugins/**/*.{razor,html,cshtml}",                // TODO: should be remove
+    "../../Plugins/**/*.{razor,html,cshtml}",                // TODO: should be remove
     "../../FluentCMS.Web.UI.ComponentsDocs/**/*.{razor,html,cshtml}", // TODO: should be remove
     "./node_modules/flowbite/**/*.js"
   ],

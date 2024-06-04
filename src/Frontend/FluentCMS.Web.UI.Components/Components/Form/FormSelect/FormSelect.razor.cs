@@ -3,15 +3,45 @@ using System.Globalization;
 
 namespace FluentCMS.Web.UI.Components;
 
-public partial class FormSelect<TValue>
+public partial class FormSelect<TItem, TValue>
 {
     [Parameter]
     public int Cols { get; set; } = 12;
 
     [Parameter]
+    public ICollection<TItem> Data { get; set; } = [];
+
+    [Parameter]
+    public string? TextField { get; set; }
+
+    [Parameter]
+    public string? ValueField { get; set; }
+
+    [Parameter]
     public RenderFragment ChildContent { get; set; }
 
-    private readonly bool _isMultipleSelect = typeof(TValue).IsArray;
+    private bool IsSelected(TItem item)
+    {
+        return Value.ToString() == GetValue(item).ToString();
+    }
+
+    private string? GetText(TItem item)
+    {
+        if (string.IsNullOrEmpty(TextField))
+        {
+            return item!.ToString();
+        }
+        return (string?)item!.GetType().GetProperty(TextField)?.GetValue(item);
+    }
+
+    private TValue? GetValue(TItem item)
+    {
+        if (string.IsNullOrEmpty(ValueField))
+        {
+            return (TValue?)(object)item!;
+        }
+        return (TValue?)item!.GetType().GetProperty(ValueField)?.GetValue(item);
+    }
 
     protected override bool TryParseValueFromString(string? value, [MaybeNullWhen(false)] out TValue result, [NotNullWhen(false)] out string? validationErrorMessage)
     {
@@ -75,12 +105,5 @@ public partial class FormSelect<TValue>
         }
 
         return base.FormatValueAsString(value);
-    }
-
-    private void SetCurrentValueAsStringArray(string?[]? value)
-    {
-        CurrentValue = BindConverter.TryConvertTo<TValue>(value, CultureInfo.CurrentCulture, out var result)
-            ? result
-            : default;
     }
 }

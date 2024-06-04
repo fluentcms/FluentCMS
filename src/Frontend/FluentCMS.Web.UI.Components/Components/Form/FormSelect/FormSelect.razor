@@ -1,3 +1,5 @@
+@typeparam TItem
+
 @typeparam TValue
 
 @inherits BaseInputBlock<TValue>
@@ -7,27 +9,26 @@
 @if (Visible)
 {
     <FormField Cols="Cols" Dense="@Dense" Id="@Id" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
-        @if (_isMultipleSelect)
-        {
-            <select @attributes="AdditionalAttributes" class="@this.GetClasses()" disabled="@Disabled" id="@Id" multiple="@_isMultipleSelect" 
-                    name="@NameAttributeValue" value="@BindConverter.FormatValue(CurrentValue)?.ToString()"
-                    @onchange="EventCallback.Factory.CreateBinder<string?[]?>(this, SetCurrentValueAsStringArray, default)">
-                @if (!string.IsNullOrEmpty(Placeholder))
+        <select @attributes="AdditionalAttributes" class="@this.GetClasses()" disabled="@Disabled" id="@Id"
+                name="@NameAttributeValue" @bind="@CurrentValueAsString">
+            @if (!string.IsNullOrEmpty(Placeholder))
+            {
+                <option disabled selected value="null">@Placeholder</option>
+            }
+            @if (ChildContent == null)
+            {
+                if (Data != null && Data.Any())
                 {
-                    <option disabled selected value="">@Placeholder</option>
+                    @foreach (var item in Data)
+                    {
+                        <option selected="@IsSelected(item)" value="@GetValue(item)">@GetText(item)</option>
+                    }
                 }
+            }
+            else
+            {
                 @ChildContent
-            </select>
-        }
-        else
-        {
-            <select @attributes="AdditionalAttributes" class="@this.GetClasses()" disabled="@Disabled" id="@Id" multiple="@_isMultipleSelect" name="@NameAttributeValue" @bind="@CurrentValueAsString">
-                @if (!string.IsNullOrEmpty(Placeholder))
-                {
-                    <option disabled selected value="">@Placeholder</option>
-                }
-                @ChildContent
-            </select>
-        }
+            }
+        </select>
     </FormField>
 }

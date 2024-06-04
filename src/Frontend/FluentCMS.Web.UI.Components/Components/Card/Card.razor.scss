@@ -1,9 +1,9 @@
 $card: $prefix + 'card';
 
 .#{$card} {
-    @apply bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-700/20 dark:border-gray-700;
+    @apply bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700;
 
-    &-body {
+    &-body, &-header, &-actions {
         @apply p-3;
 
         @screen sm {
@@ -12,14 +12,10 @@ $card: $prefix + 'card';
     }
 
     &-title {
-        @apply text-2xl font-bold text-gray-900 dark:text-white;
+        @apply text-2xl font-semibold tracking-tight text-gray-900 dark:text-white;
     }
 
     &-actions {
-        @apply px-3 pb-3 flex gap-2 items-center justify-end;
-
-        @screen sm {
-            @apply px-4 pb-4;
-        }
+        @apply flex gap-2 items-center justify-end;
     }
 }
