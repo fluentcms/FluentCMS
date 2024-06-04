@@ -1,5 +1,7 @@
-﻿using FluentCMS.Web.ApiClients.Services;
+﻿using FluentCMS.Web.ApiClients;
+using FluentCMS.Web.ApiClients.Services;
 using FluentCMS.Web.UI.DynamicRendering;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Routing;
 
@@ -7,9 +9,6 @@ namespace FluentCMS.Web.UI;
 
 public partial class Default : IDisposable
 {
-    public const string ATTRIBUTE = "FluentCMS";
-    public const string SLOT_ATTRIBUTE = "FluentCMS-Slot";
-
     [Inject]
     public UserLoginResponse? UserLogin { get; set; }
 

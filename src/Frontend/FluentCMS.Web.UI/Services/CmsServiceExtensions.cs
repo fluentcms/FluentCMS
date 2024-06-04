@@ -1,6 +1,8 @@
-﻿using FluentCMS.Web.UI;
+﻿using FluentCMS.Web.ApiClients;
+using FluentCMS.Web.UI;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
@@ -73,7 +75,7 @@ public static class CmsServiceExtensions
     {
         app.UseAntiforgery();
 
-        app.MapRazorComponents<FluentCMS.Web.UI.App>()
+        app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
 
         return app;
