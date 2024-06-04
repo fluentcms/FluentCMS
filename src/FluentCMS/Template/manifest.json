@@ -103,18 +103,6 @@
             ]
         },
         {
-            "Name": "Home",
-            "Description": "Home Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Admin.Home.dll",
-            "Types": [
-                {
-                    "Name": "Home",
-                    "Type": "HomeViewPlugin",
-                    "IsDefault": true
-                }
-            ]
-        },
-        {
             "Name": "Admin Home",
             "Description": "Admin Home Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.Home.dll",
@@ -274,13 +262,7 @@
     "Pages": [
         {
             "Title": "Home",
-            "Path": "/",
-            "Plugins": [
-                {
-                    "Definition": "Home",
-                    "Section": "Main"
-                }
-            ]
+            "Path": "/"
         },
         {
             "Title": "Admin",
