@@ -1,21 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
-    <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
-        <Nullable>enable</Nullable>
-        <ImplicitUsings>enable</ImplicitUsings>
-    </PropertyGroup>
-
-
-    <ItemGroup>
-        <SupportedPlatform Include="browser" />
-    </ItemGroup>
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="AutoMapper" Version="13.0.1" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="8.0.5" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.Forms" Version="8.0.5" />
         <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.5" />
-        <PackageReference Include="Scriban" Version="5.10.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -26,5 +20,5 @@
       <ProjectReference Include="..\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj" />
       <ProjectReference Include="..\FluentCMS.Web.UI.Components\FluentCMS.Web.UI.Components.csproj" />
     </ItemGroup>
-
+    
 </Project>
