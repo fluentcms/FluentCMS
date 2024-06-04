@@ -13,24 +13,24 @@
             <DataTableItem Label="Last Name">@context.LastName</DataTableItem>
             <DataTableItem Label="Email">@context.Email</DataTableItem>
             <DataTableItem Label="Email Confirmed">
-                <Badge Color="Color.Success" Visible="@context.EmailConfirmed">YES</Badge>
-                <Badge Color="Color.Danger" Visible="@(!context.EmailConfirmed)">NO</Badge>
+                <Indicator Color="Color.Success" Visible="@context.EmailConfirmed">YES</Indicator>
+                <Indicator Color="Color.Danger" Visible="@(!context.EmailConfirmed)">NO</Indicator>
             </DataTableItem>
             <DataTableItem Label="Phone">@context.PhoneNumber</DataTableItem>
             <DataTableItem Label="Phone Confirmed">
-                <Badge Color="Color.Success" Visible="@context.PhoneConfirmed">YES</Badge>
-                <Badge Color="Color.Danger" Visible="@(!context.PhoneConfirmed)">NO</Badge>
+                <Indicator Color="Color.Success" Visible="@context.PhoneConfirmed">YES</Indicator>
+                <Indicator Color="Color.Danger" Visible="@(!context.PhoneConfirmed)">NO</Indicator>
             </DataTableItem>
             <DataTableItem Label="Enable">
-                <Badge Color="Color.Success" Visible="@context.Enabled">YES</Badge>
-                <Badge Color="Color.Danger" Visible="@(!context.Enabled)">NO</Badge>   
+                <Indicator Color="Color.Success" Visible="@context.Enabled">YES</Indicator>
+                <Indicator Color="Color.Danger" Visible="@(!context.Enabled)">NO</Indicator>   
             </DataTableItem>
             <DataTableItem Label="Create Date">@context.CreatedAt</DataTableItem>
             <DataTableItem Label="Last Login Date">@context.LoginAt</DataTableItem>
             <DataTableItem Label="Login Count">@context.LoginCount</DataTableItem>
             <DataTableItem Label="Locked">
-                <Badge Color="Color.Success" Visible="@(!context.Locked)">NO</Badge>
-                <Badge Color="Color.Danger" Visible="@context.Locked">YES</Badge>
+                <Indicator Color="Color.Success" Visible="@(!context.Locked)">NO</Indicator>
+                <Indicator Color="Color.Danger" Visible="@context.Locked">YES</Indicator>
             </DataTableItem>
             <DataTableItem Label="Roles">
                 @foreach (var role in context.Roles?.Where(_ => !string.IsNullOrEmpty(_.Name)) ?? [])
