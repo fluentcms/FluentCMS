@@ -11,10 +11,7 @@ public static class CmsServiceExtensions
 {
     public static IServiceCollection AddCmsServices(this IServiceCollection services, IConfiguration configuration)
     {
-
         services.AddSingleton<PluginLoader>();
-
-        services.AddUIComponents();
 
         // Add services to the container.
         services.AddRazorComponents()

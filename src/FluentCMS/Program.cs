@@ -7,6 +7,8 @@ builder.Configuration.AddConfig(builder.Environment);
 var services = builder.Services;
 var configuration = builder.Configuration;
 
+services.AddUIComponents();
+
 services.AddCmsServices(configuration);
 
 services.AddMongoDbRepositories("MongoDb");
