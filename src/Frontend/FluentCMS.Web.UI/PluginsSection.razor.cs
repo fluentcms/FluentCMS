@@ -1,4 +1,7 @@
-﻿namespace FluentCMS.Web.UI;
+﻿using FluentCMS.Web.ApiClients;
+using Microsoft.AspNetCore.Components;
+
+namespace FluentCMS.Web.UI;
 
 public partial class PluginsSection
 {
