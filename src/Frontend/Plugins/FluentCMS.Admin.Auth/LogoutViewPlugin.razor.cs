@@ -1,4 +1,7 @@
-﻿namespace FluentCMS.Admin.Auth;
+﻿using FluentCMS.Web.ApiClients.Services;
+using Microsoft.AspNetCore.Http;
+
+namespace FluentCMS.Admin.Auth;
 
 public partial class LogoutViewPlugin
 {

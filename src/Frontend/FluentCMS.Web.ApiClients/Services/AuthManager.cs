@@ -1,8 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
 
-namespace FluentCMS.Web.UI.Services;
+namespace FluentCMS.Web.ApiClients.Services;
 
 public class AuthManager(IHttpClientFactory httpClientFactory)
 {

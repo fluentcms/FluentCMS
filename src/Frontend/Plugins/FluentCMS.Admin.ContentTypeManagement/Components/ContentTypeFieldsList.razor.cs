@@ -25,17 +25,17 @@ public partial class ContentTypeFieldsList
         SelectedField = contentTypeField;
         await Task.CompletedTask;
     }
-    
+
     private async Task OnDeleteConfirm()
     {
         await OnDelete.InvokeAsync(SelectedField);
         SelectedField = default!;
     }
-     
+
     private async Task OnCancel()
     {
         SelectedField = default!;
         await Task.CompletedTask;
     }
-    
+
 }

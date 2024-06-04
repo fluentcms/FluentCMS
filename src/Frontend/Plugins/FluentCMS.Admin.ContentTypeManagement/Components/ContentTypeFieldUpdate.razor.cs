@@ -6,7 +6,7 @@ public partial class ContentTypeFieldUpdate
 
     [Parameter]
     public ContentTypeField? Model { get; set; }
-   
+
     [Parameter]
     public EventCallback OnSubmit { get; set; }
 

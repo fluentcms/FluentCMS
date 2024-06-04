@@ -1,35 +1,29 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
-	<PropertyGroup>
-		<TargetFramework>net8.0</TargetFramework>
-		<Nullable>enable</Nullable>
-		<ImplicitUsings>enable</ImplicitUsings>
-	</PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
 
 
-	<ItemGroup>
-		<SupportedPlatform Include="browser" />
-	</ItemGroup>
+    <ItemGroup>
+        <SupportedPlatform Include="browser" />
+    </ItemGroup>
 
-	<ItemGroup>
-		<PackageReference Include="AutoMapper" Version="13.0.1" />
-		<PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="8.0.5" />
-		<PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.5" />
-		<PackageReference Include="Scriban" Version="5.10.0" />
-	</ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="AutoMapper" Version="13.0.1" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="8.0.5" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.5" />
+        <PackageReference Include="Scriban" Version="5.10.0" />
+    </ItemGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\FluentCMS.Web.UI.Plugins\FluentCMS.Web.UI.Plugins.csproj" />
-	</ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\FluentCMS.Web.UI.Plugins\FluentCMS.Web.UI.Plugins.csproj" />
+    </ItemGroup>
 
-	<ItemGroup>
-		<FrameworkReference Include="Microsoft.AspNetCore.App" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Content Update="PluginsSection.razor">
-	    <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-	  </Content>
-	</ItemGroup>
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
 
 </Project>

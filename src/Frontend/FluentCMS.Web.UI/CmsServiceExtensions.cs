@@ -29,8 +29,6 @@ public static class CmsServiceExtensions
         }).AddCookie();
 
         services.AddApiClients(configuration);
-        services.AddScoped<SetupManager>();
-        services.AddScoped<AuthManager>();
 
         // add UserLoginResponse as scoped to be supported in SSR and InteractiveMode
         services.AddScoped(sp =>

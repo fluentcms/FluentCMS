@@ -30,7 +30,6 @@ public partial class PluginContainer
         var uri = new Uri(NavigationManager.Uri);
         var query = HttpUtility.ParseQueryString(uri.Query);
 
-        var assembly = GetType().Assembly;
         var pluginTypeName = query["typeName"];
         PluginDefinitionType? pluginDefType;
 
@@ -42,6 +41,23 @@ public partial class PluginContainer
         if (pluginDefType is null)
             throw new InvalidOperationException("Plugin definition type not found!");
 
-        return assembly.DefinedTypes.FirstOrDefault(x => x.Name == pluginDefType.Type);
+        // find type with type name in all assemblies
+        var typeName = pluginDefType.Type;
+        var x = AppDomain.CurrentDomain.GetAssemblies().Where(y => y.GetName().FullName.Contains("FluentCMS")).ToList(); ;
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            if (assembly.GetName().FullName.Contains("FluentCMS"))
+            {
+                var type = assembly.DefinedTypes.FirstOrDefault(x => x.Name == pluginDefType.Type);
+                if (type is null)
+                    continue;
+                return type;
+            }
+        }
+        return null;
+        //var t = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.DefinedTypes).Where(x => x.Name.Equals(pluginDefType.Type, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+        //return t;
+        //var x = assembly.DefinedTypes.FirstOrDefault(x => x.Name == pluginDefType.Type);
+        //return x;
     }
 }

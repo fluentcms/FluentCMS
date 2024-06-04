@@ -1,5 +1,4 @@
-﻿namespace FluentCMS.Web.UI.Services;
-
+﻿namespace FluentCMS.Web.ApiClients.Services;
 public class SetupManager
 {
     private readonly IHttpClientFactory _httpClientFactory;
@@ -46,3 +45,4 @@ public class SetupManager
         return response.Data;
     }
 }
+
