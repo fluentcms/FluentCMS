@@ -1,5 +1,3 @@
-/*TODO*/
-
 $button: $prefix + "button";
 
 .#{$button} {
@@ -11,14 +9,6 @@ $button: $prefix + "button";
 
     &-icon-true {
         @apply text-center inline-flex items-center;
-    }
-
-    &-item-true {
-        @apply text-start;
-    }
-
-    &-icon {
-        @apply w-2.5 h-2.5 ml-2.5;
     }
 
     &-size-default.#{$button}-link-false {
