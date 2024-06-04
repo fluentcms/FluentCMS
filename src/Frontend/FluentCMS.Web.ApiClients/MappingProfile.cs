@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 
-namespace FluentCMS.Web.UI;
+namespace FluentCMS.Web.ApiClients;
 
 public class MappingProfile : Profile
 {

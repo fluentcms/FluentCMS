@@ -20,8 +20,6 @@ public static class CmsServiceExtensions
         services.AddRazorComponents()
             .AddInteractiveServerComponents();
 
-        services.AddAutoMapper(typeof(CmsServiceExtensions));
-
         services.AddAuthorization();
         services.AddAuthentication(options =>
         {

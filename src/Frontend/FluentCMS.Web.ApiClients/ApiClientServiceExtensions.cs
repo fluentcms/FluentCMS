@@ -9,6 +9,9 @@ public static class ApiClientServiceExtensions
 {
     public static IServiceCollection AddApiClients(this IServiceCollection services, IConfiguration configuration)
     {
+
+        services.AddAutoMapper(typeof(MappingProfile));
+
         // TODO: these DI registration should be done automatically inside plugins
         services.AddScoped<SetupManager>();
         services.AddScoped<AuthManager>();
