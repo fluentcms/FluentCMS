@@ -27,10 +27,6 @@ public partial class Button
 
     [Parameter]
     [CSSProperty]
-    public bool Item { get; set; }
-
-    [Parameter]
-    [CSSProperty]
     public bool Link { get; set; }
 
     [Parameter]
@@ -40,9 +36,6 @@ public partial class Button
     [Parameter]
     [CSSProperty]
     public ButtonSize Size { get; set; } = ButtonSize.Medium;
-
-    [Parameter]
-    public bool StopPropagation { get; set; }
 
     [Parameter]
     public ButtonType Type { get; set; } = ButtonType.Button;
