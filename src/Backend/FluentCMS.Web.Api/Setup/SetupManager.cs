@@ -114,6 +114,7 @@ public class SetupManager
                         {
                             Name = "Setup",
                             Description = "Setup View Plugin",
+                            Assembly = "FluentCMS.Web.Plugins.Admin.Auth.dll",
                             Types =
                             [
                                 new PluginDefinitionType
@@ -213,7 +214,8 @@ public class SetupManager
             {
                 Name = pluginDefTemplate.Name,
                 Description = pluginDefTemplate.Description,
-                Types = pluginDefTemplate.Types
+                Types = pluginDefTemplate.Types,
+                Assembly = pluginDefTemplate.Assembly
             };
             _pluginDefinitions.Add(await _pluginDefinitionService.Create(pluginDef));
         }
