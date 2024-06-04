@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authentication.Cookies;
+﻿using FluentCMS.Web.UI;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
@@ -10,6 +11,9 @@ public static class CmsServiceExtensions
 {
     public static IServiceCollection AddCmsServices(this IServiceCollection services, IConfiguration configuration)
     {
+
+        services.AddSingleton<PluginLoader>();
+
         services.AddUIComponents();
 
         // Add services to the container.

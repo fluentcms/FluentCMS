@@ -16,6 +16,9 @@ public partial class PluginContainer
     [Inject]
     private NavigationManager NavigationManager { get; set; } = default!;
 
+    [Inject]
+    private PluginLoader PluginLoader { get; set; } = default!;
+
     protected override void OnInitialized()
     {
         Parameters = new Dictionary<string, object>
@@ -36,28 +39,19 @@ public partial class PluginContainer
         if (string.IsNullOrEmpty(pluginTypeName))
             pluginDefType = Plugin.Definition.Types?.Where(p => p.IsDefault).FirstOrDefault();
         else
-            pluginDefType = Plugin.Definition?.Types?.Where(p => p.Name.Equals(pluginTypeName, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+            pluginDefType = Plugin.Definition?.Types?.Where(p => p!.Name!.Equals(pluginTypeName, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
 
         if (pluginDefType is null)
             throw new InvalidOperationException("Plugin definition type not found!");
 
-        // find type with type name in all assemblies
-        var typeName = pluginDefType.Type;
-        var x = AppDomain.CurrentDomain.GetAssemblies().Where(y => y.GetName().FullName.Contains("FluentCMS")).ToList(); ;
-        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-        {
-            if (assembly.GetName().FullName.Contains("FluentCMS"))
-            {
-                var type = assembly.DefinedTypes.FirstOrDefault(x => x.Name == pluginDefType.Type);
-                if (type is null)
-                    continue;
-                return type;
-            }
-        }
-        return null;
-        //var t = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.DefinedTypes).Where(x => x.Name.Equals(pluginDefType.Type, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
-        //return t;
-        //var x = assembly.DefinedTypes.FirstOrDefault(x => x.Name == pluginDefType.Type);
-        //return x;
+        var assemblyName = Plugin?.Definition?.Assembly;
+        if (string.IsNullOrEmpty(assemblyName))
+            throw new InvalidOperationException("Plugin assembly name not found!");
+
+        var type = PluginLoader.GetType(assemblyName, pluginDefType!.Type!) ??
+            throw new InvalidOperationException("Plugin type not found!");
+
+        return type;
+
     }
 }

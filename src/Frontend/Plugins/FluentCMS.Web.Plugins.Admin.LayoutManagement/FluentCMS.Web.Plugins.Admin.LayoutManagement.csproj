@@ -8,6 +8,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\FluentCMS.Web.Plugins\FluentCMS.Web.Plugins.csproj" />
+        <ProjectReference Include="..\FluentCMS.Web.Plugins.Admin.Home\FluentCMS.Web.Plugins.Admin.Home.csproj" />
     </ItemGroup>
 
 </Project>
