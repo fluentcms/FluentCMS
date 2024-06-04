@@ -1,6 +1,6 @@
 ﻿@if (Page?.Sections != null && Page.Sections.ContainsKey(Name))
 {
-    <div class="f-section f-section-@Name.FromPascalCaseToKebabCase()">
+    <div class="f-section">
         @foreach (var Plugin in Page.Sections[Name].OrderBy(p => p.Order))
         {
             <PluginContainer @key="@Plugin" Plugin=@Plugin SectionName=@Name />
