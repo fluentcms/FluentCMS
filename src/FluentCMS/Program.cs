@@ -2,14 +2,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddConfig(builder.Environment);
 
-builder.Services.AddFluentCmsUiComponents();
-
 #region Services
 
 var services = builder.Services;
 var configuration = builder.Configuration;
 
-services.AddSiteServices(configuration);
+services.AddUIComponents();
+
+services.AddCmsServices(configuration);
 
 services.AddMongoDbRepositories("MongoDb");
 
@@ -41,7 +41,7 @@ app.UseStaticFiles();
 
 app.UseApiService();
 
-app.UseSiteServices();
+app.UseCmsServices();
 
 #endregion
 

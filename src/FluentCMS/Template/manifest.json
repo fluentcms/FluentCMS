@@ -45,6 +45,7 @@
         {
             "Name": "Login",
             "Description": "Login Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.Auth.dll",
             "Types": [
                 {
                     "Name": "Login",
@@ -56,6 +57,7 @@
         {
             "Name": "Logout",
             "Description": "Logout Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.Auth.dll",
             "Types": [
                 {
                     "Name": "Logout",
@@ -67,6 +69,7 @@
         {
             "Name": "Register",
             "Description": "Register Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.Auth.dll",
             "Types": [
                 {
                     "Name": "Regsiter",
@@ -78,6 +81,7 @@
         {
             "Name": "Forgot Password",
             "Description": "Forgot Password Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.Auth.dll",
             "Types": [
                 {
                     "Name": "Forgot Password",
@@ -89,6 +93,7 @@
         {
             "Name": "Reset Password",
             "Description": "Reset Password Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.Auth.dll",
             "Types": [
                 {
                     "Name": "Reset Password",
@@ -98,19 +103,9 @@
             ]
         },
         {
-            "Name": "Home",
-            "Description": "Home Plugin",
-            "Types": [
-                {
-                    "Name": "Home",
-                    "Type": "HomeViewPlugin",
-                    "IsDefault": true
-                }
-            ]
-        },
-        {
             "Name": "Admin Home",
             "Description": "Admin Home Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.Home.dll",
             "Types": [
                 {
                     "Name": "Admin Home",
@@ -122,6 +117,7 @@
         {
             "Name": "Api Token Management",
             "Description": "Api Token Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.ApiTokenManagement.dll",
             "Types": [
                 {
                     "Name": "Api Token List",
@@ -145,6 +141,7 @@
         {
             "Name": "User Management",
             "Description": "Users Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.UserManagement.dll",
             "Types": [
                 {
                     "Name": "Users List",
@@ -162,8 +159,29 @@
             ]
         },
         {
+            "Name": "Site Management",
+            "Description": "Site Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.SiteManagement.dll",
+            "Types": [
+                {
+                    "Name": "Sites List",
+                    "Type": "SiteListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create Site",
+                    "Type": "SiteCreatePlugin"
+                },
+                {
+                    "Name": "Update Site",
+                    "Type": "SiteUpdatePlugin"
+                }
+            ]
+        },
+        {
             "Name": "ContentType Management",
             "Description": "ContentTypes Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.ContentTypeManagement.dll",
             "Types": [
                 {
                     "Name": "ContentTypes List",
@@ -187,6 +205,7 @@
         {
             "Name": "Role Management",
             "Description": "Role Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.RoleManagement.dll",
             "Types": [
                 {
                     "Name": "Roles List",
@@ -208,30 +227,9 @@
             ]
         },
         {
-            "Name": "File Management",
-            "Description": "File Management Plugin",
-            "Types": [
-                {
-                    "Name": "File Management List",
-                    "Type": "FileManagementListPlugin",
-                    "IsDefault": true
-                }
-            ]
-        },
-        {
-            "Name": "User Info",
-            "Description": "User Info Plugin",
-            "Types": [
-                {
-                    "Name": "User Info",
-                    "Type": "UserInfoViewPlugin",
-                    "IsDefault": true
-                }
-            ]
-        },
-        {
             "Name": "Profile",
             "Description": "Profile Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.Auth.dll",
             "Types": [
                 {
                     "Name": "Update",
@@ -243,6 +241,7 @@
         {
             "Name": "Layout Management",
             "Description": "Layout Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.LayoutManagement.dll",
             "Types": [
                 {
                     "Name": "Layouts List",
@@ -263,13 +262,7 @@
     "Pages": [
         {
             "Title": "Home",
-            "Path": "/",
-            "Plugins": [
-                {
-                    "Definition": "Home",
-                    "Section": "Main"
-                }
-            ]
+            "Path": "/"
         },
         {
             "Title": "Admin",
@@ -316,23 +309,23 @@
                     ]
                 },
                 {
-                    "Title": "File Management",
-                    "Path": "/file-management",
-                    "Layout": "AdminLayout",
-                    "Plugins": [
-                        {
-                            "Definition": "File Management",
-                            "Section": "Main"
-                        }
-                    ]
-                },
-                {
                     "Title": "Roles",
                     "Path": "/roles",
                     "Layout": "AdminLayout",
                     "Plugins": [
                         {
                             "Definition": "Role Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Sites",
+                    "Path": "/sites",
+                    "Layout": "AdminLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "Site Management",
                             "Section": "Main"
                         }
                     ]
@@ -430,19 +423,22 @@
             "Fields": [
                 {
                     "Name": "Title",
-                    "Label": "Title",
-                    "Description": "Blog Post Title",
-                    "Type": "Text",
-                    "Placeholder": "Enter Blog Post Title",
-                    "Required": true
+                    "Type": "string",
+                    "Settings": {
+                        "Label": "Title",
+                        "Description": "Blog Post Title",
+                        "Required": true
+                    }
                 },
                 {
                     "Name": "Content",
-                    "Label": "Content",
-                    "Description": "Blog Post Content",
-                    "Type": "Text",
-                    "Placeholder": "Enter Blog Post Content",
-                    "Required": false
+                    "Type": "string",
+                    "Settings": {
+                        "Label": "Content",
+                        "Description": "Blog Post Content",
+
+                        "Required": false
+                    }
                 }
             ]
         }

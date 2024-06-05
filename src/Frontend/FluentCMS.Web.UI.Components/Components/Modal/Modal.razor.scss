@@ -1,0 +1,45 @@
+$modal: $prefix + "modal";
+
+.#{$modal} {
+    @apply flex fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0 justify-center items-center;
+
+    &-body {
+        @apply space-y-6 p-6;
+    }
+
+    &-content {
+        @apply relative rounded-lg bg-white shadow dark:bg-gray-800;
+    }
+
+    &-footer {
+        @apply flex items-center justify-end rounded-b border-t border-gray-200 p-6 dark:border-gray-600;
+    }
+
+    &-header {
+        @apply flex items-start justify-between rounded-t border-b p-5 dark:border-gray-600;
+    }
+
+    &-title {
+        @apply text-xl font-semibold text-gray-900 dark:text-white lg:text-2xl;
+    }
+
+    &-wrapper {
+        @apply relative max-h-full w-full;
+    }
+
+    &-size-small > .#{$modal}-wrapper {
+        @apply max-w-md;
+    }
+
+    &-size-medium > .#{$modal}-wrapper {
+        @apply max-w-lg;
+    }
+
+    &-size-large > .#{$modal}-wrapper {
+        @apply max-w-4xl;
+    }
+
+    &-backdrop {
+        @apply bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40;
+    }
+} 

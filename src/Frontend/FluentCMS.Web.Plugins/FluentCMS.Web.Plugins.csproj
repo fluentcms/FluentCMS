@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Components.Forms" Version="8.0.6" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.6" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj" />
+      <ProjectReference Include="..\FluentCMS.Web.UI.Components\FluentCMS.Web.UI.Components.csproj" />
+    </ItemGroup>
+    
+</Project>
