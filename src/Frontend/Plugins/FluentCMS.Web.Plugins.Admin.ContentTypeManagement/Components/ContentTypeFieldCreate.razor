@@ -13,26 +13,73 @@ else
             </ModalHeader>
             <ModalBody>
                 <DataAnnotationsValidator />
-                <Tabs Active="Basic">
+                <Tabs Active="General">
                     <TabList>
-                        <TabItem Name="Basic">
-                            Basic
-                        </TabItem>
-                        <TabItem Name="Advanced">
-                            Advanced
-                        </TabItem>
+                        <TabItem Name="General">General</TabItem>
+                        <TabItem Name="Field">@FieldType.Title Settings</TabItem>
                     </TabList>
                     <TabContent>
-                        <TabPanel Name="Basic">
+                        <TabPanel Name="General">
                             <Grid GutterX="GridGutter.Large">
                                 <FormInput @bind-Value="Model!.Name" Cols="6" Label="Name" Placeholder="Enter Field Name" Required />
-                            </Grid>
-                        </TabPanel>
-                        <TabPanel Name="Advanced">
-                            <Grid GutterX="GridGutter.Large">
                                 <FormInput @bind-Value="Model!.Settings!.Label" Cols="6" Label="Label" Placeholder="Enter Field Label" Required />
                                 <FormTextarea @bind-Value="Model!.Settings!.Description" Label="Description" Placeholder="Enter Field Description" Required />
-                                <FormSwitch @bind-Value="Model!.Settings!.Required" Cols="6" Label="Required" Required />
+                                <FormNumberInput @bind-Value="Model!.Settings!.Cols" Min="1" Max="12" Cols="6" Label="Cols" Placeholder="Enter Cols" />
+                                <FormNumberInput @bind-Value="Model!.Settings!.Order" Cols="6" Label="Order" Placeholder="Enter Order" />
+                                <FormSwitch @bind-Value="Model!.Settings!.Required" Cols="6" Label="Required" />
+                            </Grid>
+                        </TabPanel>
+                        <TabPanel Name="Field">
+                            <Grid GutterX="GridGutter.Large">
+                                @if(FieldType.Key == "string")
+                                {                                   
+                                    <FormSelect @bind-Value="MetaViewType" Cols="6" Label="View type" Placeholder="Choose View type" Required>
+                                        @foreach (var viewType in TextViewTypes)
+                                        {
+                                            <option value="@viewType.Key">@viewType.Text</option>
+                                        }
+                                    </FormSelect>
+                                    <FormInput @bind-Value="MetaPattern" Cols="6" Label="Pattern" Placeholder="Enter Validation Pattern" />
+                                    <FormField Cols="6">
+                                        <LabelFragment>
+                                            <Grid>
+                                                <FormCheckbox Dense @bind-Value="MetaMinimumEnabled" Text="Minimum" />
+                                            </Grid>
+                                        </LabelFragment>
+                                        <ChildContent>
+                                            @if(MetaMinimumEnabled)
+                                            {
+                                                <Grid>
+                                                    <FormNumberInput @bind-Value="Model!.Settings!.Cols" Cols="12" Label="Minimum" Placeholder="Enter Minimum" />
+                                                </Grid>
+                                            }
+                                        </ChildContent>
+                                    </FormField>
+                                    <FormField Cols="6">
+                                        <LabelFragment>
+                                            <Grid>
+                                                <FormCheckbox Dense @bind-Value="MetaMaximumEnabled" Text="Maximum" />
+                                            </Grid>
+                                        </LabelFragment>
+                                        <ChildContent>
+                                            @if(MetaMaximumEnabled)
+                                            {
+                                                <Grid>
+                                                    <FormNumberInput @bind-Value="Model!.Settings!.Cols" Cols="12" Label="Maximum" Placeholder="Enter Maximum" />
+                                                </Grid>
+                                            }
+                                        </ChildContent>
+                                    </FormField>
+                                    <FormSwitch @bind-Value="MetaUnique" Cols="6" Label="Unique" />
+                                    @if(MetaViewType == "input")
+                                    {
+                                        <FormInput @bind-Value="MetaDefaultValue" Label="Defualt Value" Placeholder="Enter Default Value" />
+                                    }
+                                    else
+                                    {
+                                        <FormTextarea @bind-Value="MetaDefaultValue" Label="Defualt Value" Placeholder="Enter Default Value" />
+                                    }
+                                }
                             </Grid>
                         </TabPanel>
                     </TabContent>
