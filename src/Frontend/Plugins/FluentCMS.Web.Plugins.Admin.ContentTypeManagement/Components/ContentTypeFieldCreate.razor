@@ -1,10 +1,8 @@
 ﻿@inherits BaseContentTypeFieldComponent
 
-@using FluentCMS.Web.Plugins.Admin.ContentTypeManagement.Components.String
-
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
-@if (Visible)
+@if (Visible && ContentTypeField != null && ContentType != null)
 {
     @if (SelectedFieldType == null)
     {
@@ -12,23 +10,6 @@
     }
     else
     {
-        <EditForm Model="@Model" OnSubmit="OnFieldCreate" FormName="@FORM_NAME" Enhance>
-            <Modal Size="ModalSize.Large">
-                <ModalHeader Closable>
-                    <ModalTitle>Create New @SelectedFieldType.Title Field</ModalTitle>
-                </ModalHeader>
-                <ModalBody>
-                    <DataAnnotationsValidator />
-                    <StringFieldSettings Field="@Model" />
-                </ModalBody>
-                <ModalFooter>
-                    <FormActions Submit>
-                        <Button @onclick="OnBackToTypeSelector">
-                            Back
-                        </Button>
-                    </FormActions>
-                </ModalFooter>
-            </Modal>
-        </EditForm>
+        <StringFieldSettings Model=@(ContentTypeField.ToFieldModel<StringFieldModel>()) OnCancel=OnBackToTypeSelector OnSubmit=OnFieldCreate />
     }
 }

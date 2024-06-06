@@ -1,7 +1,6 @@
-﻿using FluentCMS.Web.Plugins.Admin.ContentTypeManagement.Components.String;
-using System.Reflection;
+﻿using System.Reflection;
 
-namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement.Components;
+namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
 public static class DictionaryExtensions
 {
@@ -19,7 +18,7 @@ public static class DictionaryExtensions
 
         foreach (PropertyInfo prop in properties)
         {
-            if (prop.CanWrite && settingsDict.TryGetValue(prop.Name, out object? value))
+            if (prop.CanWrite && settingsDict.TryGetValue(prop.Name, out object? value) && value != null)
                 prop.SetValue(result, value);
         }
 

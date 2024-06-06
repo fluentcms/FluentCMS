@@ -2,12 +2,9 @@
 
 public partial class ContentTypeFieldDelete
 {
-    [Parameter]
-    public ContentTypeField? Model { get; set; }
-
     private async Task OnConfirm()
     {
-        await GetApiClient().DeleteFieldAsync(ContentType!.Id, Model!.Name!);
+        await GetApiClient().DeleteFieldAsync(ContentType!.Id, ContentTypeField!.Name!);
         await OnComplete.InvokeAsync();
     }
 }

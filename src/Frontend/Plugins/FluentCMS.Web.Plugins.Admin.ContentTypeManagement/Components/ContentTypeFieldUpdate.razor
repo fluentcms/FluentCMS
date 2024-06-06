@@ -1,27 +1,8 @@
 ﻿@inherits BaseContentTypeFieldComponent
 
-@using FluentCMS.Web.Plugins.Admin.ContentTypeManagement.Components.String
-
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
-@if (Visible)
-{
 
-    @* <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="@FORM_NAME" Enhance>
-    <Modal Size="ModalSize.Large">
-        <ModalHeader Closable>
-            <ModalTitle>Edit "@Model.Name" Field</ModalTitle>
-        </ModalHeader>
-        <ModalBody>
-            <DataAnnotationsValidator />
-            <StringFieldSettings Field="@Model" />
-        </ModalBody>
-        <ModalFooter>
-            <FormActions Submit>
-                <Button @onclick="OnCancel">
-                    Cancel
-                </Button>
-            </FormActions>
-        </ModalFooter>
-    </Modal>
-</EditForm> *@
+@if (Visible && ContentTypeField != null && ContentType != null)
+{
+    <StringFieldSettings Model=@(ContentTypeField.ToFieldModel<StringFieldModel>()) OnCancel=OnComplete OnSubmit=OnFieldUpdate />
 }

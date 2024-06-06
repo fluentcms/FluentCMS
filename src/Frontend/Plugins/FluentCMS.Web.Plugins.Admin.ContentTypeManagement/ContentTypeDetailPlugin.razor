@@ -1,7 +1,7 @@
 ﻿@inherits BasePlugin
 @rendermode InteractiveServer
 
-<PluginBody Title="Content Type Fields" Visible="CurrentState == State.List">
+<PluginBody Title="Content Type Fields" Visible="CurrentState == State.List || CurrentState == State.Delete">
     <ActionsFragment>
         <Button @onclick="NavigateBack">
             Back
@@ -38,6 +38,10 @@
     </ChildContent>
 </PluginBody>
 
-<ContentTypeFieldCreate Model=SelectedField ContentType=ContentType OnComplete=LoadList Visible="CurrentState == State.Create" />
-<ContentTypeFieldUpdate Model=SelectedField ContentType=ContentType OnComplete=LoadList Visible="CurrentState == State.Edit" />
-<ContentTypeFieldDelete Model=SelectedField ContentType=ContentType OnComplete=LoadList Visible="CurrentState == State.Delete" />
+<CascadingValue Value="ContentType">
+    <CascadingValue Value="SelectedField">
+        <ContentTypeFieldCreate OnComplete=LoadList Visible="CurrentState == State.Create" />
+        <ContentTypeFieldUpdate OnComplete=LoadList Visible="CurrentState == State.Edit" />
+        <ContentTypeFieldDelete OnComplete=LoadList Visible="CurrentState == State.Delete" />
+    </CascadingValue>
+</CascadingValue>

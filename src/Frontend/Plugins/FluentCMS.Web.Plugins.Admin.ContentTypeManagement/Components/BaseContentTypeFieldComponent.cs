@@ -9,8 +9,11 @@ public abstract class BaseContentTypeFieldComponent : BaseComponent
     [Inject]
     protected UserLoginResponse? UserLogin { get; set; }
 
-    [Parameter]
-    public ContentTypeDetailResponse? ContentType { get; set; }
+    [CascadingParameter]
+    public ContentTypeDetailResponse? ContentType { get; set; } = default!;
+
+    [CascadingParameter]
+    public ContentTypeField? ContentTypeField { get; set; }
 
     [Parameter]
     public EventCallback OnComplete { get; set; }
