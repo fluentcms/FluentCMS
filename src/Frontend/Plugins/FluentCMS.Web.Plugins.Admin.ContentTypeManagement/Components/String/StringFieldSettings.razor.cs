@@ -4,7 +4,11 @@ public partial class StringFieldSettings
 {
 
     [Parameter, EditorRequired]
-    public ContentTypeField? Field { get => Model.ToContentTypeField(); set => Model = value?.ToFieldModel<StringFieldModel>() ?? new StringFieldModel(); }
+    public ContentTypeField? Field
+    {
+        get => Model.ToContentTypeField();
+        set => Model = value?.ToFieldModel<StringFieldModel>() ?? new StringFieldModel();
+    }
 
     public StringFieldModel? Model { get; set; }
 

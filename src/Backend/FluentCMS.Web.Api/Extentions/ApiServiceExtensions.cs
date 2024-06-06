@@ -9,8 +9,6 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json.Serialization;
-using System.Text.Json;
 
 namespace Microsoft.Extensions.DependencyInjection;
 

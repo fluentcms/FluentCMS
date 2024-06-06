@@ -1,29 +1,34 @@
-﻿@using FluentCMS.Web.Plugins.Admin.ContentTypeManagement.Components.String
+﻿@inherits BaseContentTypeFieldComponent
+
+@using FluentCMS.Web.Plugins.Admin.ContentTypeManagement.Components.String
 
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
-@if (FieldType == null)
+@if (Visible)
 {
-    <ContentTypeFieldSelector OnSubmit="(type) => OnTypeSelect(type)" OnCancel=OnCancel />
-}
-else
-{
-    <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="@FORM_NAME" Enhance>
-        <Modal Size="ModalSize.Large">
-            <ModalHeader Closable>
-                <ModalTitle>Create New "@FieldType.Title" Field</ModalTitle>
-            </ModalHeader>
-            <ModalBody>
-                <DataAnnotationsValidator />
-                <StringFieldSettings Field="@Model" />
-            </ModalBody>
-            <ModalFooter>
-                <FormActions Submit>
-                    <Button @onclick="OnBack">
-                        Back
-                    </Button>
-                </FormActions>
-            </ModalFooter>
-        </Modal>
-    </EditForm>
+    @if (SelectedFieldType == null)
+    {
+        <ContentTypeFieldSelector OnSelect=OnTypeSelect OnCancel=OnComplete />
+    }
+    else
+    {
+        <EditForm Model="@Model" OnSubmit="OnFieldCreate" FormName="@FORM_NAME" Enhance>
+            <Modal Size="ModalSize.Large">
+                <ModalHeader Closable>
+                    <ModalTitle>Create New @SelectedFieldType.Title Field</ModalTitle>
+                </ModalHeader>
+                <ModalBody>
+                    <DataAnnotationsValidator />
+                    <StringFieldSettings Field="@Model" />
+                </ModalBody>
+                <ModalFooter>
+                    <FormActions Submit>
+                        <Button @onclick="OnBackToTypeSelector">
+                            Back
+                        </Button>
+                    </FormActions>
+                </ModalFooter>
+            </Modal>
+        </EditForm>
+    }
 }

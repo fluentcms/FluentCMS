@@ -1,8 +1,12 @@
-﻿@using FluentCMS.Web.Plugins.Admin.ContentTypeManagement.Components.String
+﻿@inherits BaseContentTypeFieldComponent
+
+@using FluentCMS.Web.Plugins.Admin.ContentTypeManagement.Components.String
 
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+@if (Visible)
+{
 
-<EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="@FORM_NAME" Enhance>
+    @* <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="@FORM_NAME" Enhance>
     <Modal Size="ModalSize.Large">
         <ModalHeader Closable>
             <ModalTitle>Edit "@Model.Name" Field</ModalTitle>
@@ -19,4 +23,5 @@
             </FormActions>
         </ModalFooter>
     </Modal>
-</EditForm>
+</EditForm> *@
+}

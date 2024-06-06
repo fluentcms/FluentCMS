@@ -39,7 +39,7 @@ public static class DictionaryExtensions
 
         foreach (PropertyInfo prop in properties)
         {
-            if (prop.Name== "Name" || prop.Name == "Type")
+            if (prop.Name == "Name" || prop.Name == "Type")
                 continue;
 
             result.Settings.Add(prop.Name, prop.GetValue(src));

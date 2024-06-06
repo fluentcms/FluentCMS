@@ -7,13 +7,7 @@ public partial class ContentTypeFieldCreate
     [Parameter]
     public ContentTypeField? Model { get; set; }
 
-    [Parameter]
-    public EventCallback OnSubmit { get; set; }
-
-    [Parameter]
-    public EventCallback OnCancel { get; set; }
-
-    private FieldType? FieldType { get; set; }
+    private FieldType? SelectedFieldType { get; set; }
 
     private FieldTypes FieldTypes { get; set; } = [];
 
@@ -24,22 +18,27 @@ public partial class ContentTypeFieldCreate
         await Task.CompletedTask;
     }
 
-    private async Task OnBack()
+    private async Task OnBackToTypeSelector()
     {
         Model!.Type = default!;
-        FieldType = default!;
+        SelectedFieldType = default!;
         await Task.CompletedTask;
     }
 
     private async Task OnTypeSelect(FieldType type)
     {
         Model!.Type = type.Key;
-        FieldType = type;
+        SelectedFieldType = type;
         await Task.CompletedTask;
     }
 
-    private async Task HandleSubmit()
+    private async Task OnFieldCreate()
     {
-        await OnSubmit.InvokeAsync();
+        Model!.Type = default!;
+        SelectedFieldType = default!;
+        if (!string.IsNullOrEmpty(Model?.Name) && ContentType != null)
+            await GetApiClient().SetFieldAsync(ContentType.Id, Model);
+
+        await OnComplete.InvokeAsync();
     }
 }

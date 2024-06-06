@@ -1,0 +1,10 @@
+﻿@inherits BaseContentTypeFieldComponent
+
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+@if (Visible && !string.IsNullOrEmpty(Model?.Name))
+{
+    <Confirm OnConfirm="OnConfirm" OnCancel="OnComplete">
+        Are you sure to remove field @Model?.Name?
+    </Confirm>
+}
