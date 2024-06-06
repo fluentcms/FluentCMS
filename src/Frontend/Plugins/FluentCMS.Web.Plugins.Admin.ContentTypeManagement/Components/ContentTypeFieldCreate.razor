@@ -1,4 +1,6 @@
-﻿@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+﻿@using FluentCMS.Web.Plugins.Admin.ContentTypeManagement.Components.String
+
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
 @if (FieldType == null)
 {
@@ -13,36 +15,13 @@ else
             </ModalHeader>
             <ModalBody>
                 <DataAnnotationsValidator />
-                <Tabs Active="Basic">
-                    <TabList>
-                        <TabItem Name="Basic">
-                            Basic
-                        </TabItem>
-                        <TabItem Name="Advanced">
-                            Advanced
-                        </TabItem>
-                    </TabList>
-                    <TabContent>
-                        <TabPanel Name="Basic">
-                            <Grid GutterX="GridGutter.Large">
-                                <FormInput @bind-Value="Model!.Name" Cols="6" Label="Name" Placeholder="Enter Field Name" Required />
-                            </Grid>
-                        </TabPanel>
-                        <TabPanel Name="Advanced">
-                            <Grid GutterX="GridGutter.Large">
-                                <FormInput @bind-Value="Model!.Settings!.Label" Cols="6" Label="Label" Placeholder="Enter Field Label" Required />
-                                <FormTextarea @bind-Value="Model!.Settings!.Description" Label="Description" Placeholder="Enter Field Description" Required />
-                                <FormSwitch @bind-Value="Model!.Settings!.Required" Cols="6" Label="Required" Required />
-                            </Grid>
-                        </TabPanel>
-                    </TabContent>
-                </Tabs>
+                <StringFieldSettings Field="@Model" />
             </ModalBody>
             <ModalFooter>
                 <FormActions Submit>
                     <Button @onclick="OnBack">
                         Back
-                    </Button>                    
+                    </Button>
                 </FormActions>
             </ModalFooter>
         </Modal>

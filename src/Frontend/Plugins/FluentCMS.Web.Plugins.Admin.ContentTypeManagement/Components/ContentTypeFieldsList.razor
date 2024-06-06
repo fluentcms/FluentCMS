@@ -12,7 +12,7 @@
                 @FieldTypes[context.Type]?.Title
             }
         </DataTableItem>
-        <DataTableItem Label="Required">
+      @*   <DataTableItem Label="Required">
             @context.Settings.Required
         </DataTableItem>
         <DataTableItem Label="Label">
@@ -20,7 +20,7 @@
         </DataTableItem>
         <DataTableItem Label="Description">
             @context.Settings.Description
-        </DataTableItem>
+        </DataTableItem> *@
         <DataTableItem>
             <div class="flex gap-2">
                 <Button Color="Color.Primary" Size="ButtonSize.Small" @onclick="() => OnEditClick(context)">

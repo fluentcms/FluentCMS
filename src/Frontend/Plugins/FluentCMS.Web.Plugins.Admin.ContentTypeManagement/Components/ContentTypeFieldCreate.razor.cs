@@ -19,9 +19,9 @@ public partial class ContentTypeFieldCreate
 
     protected override async Task OnInitializedAsync()
     {
-        await base.OnInitializedAsync();
         Model ??= new();
-        Model.Settings ??= new();
+        Model.Settings ??= new Dictionary<string, object?>();
+        await Task.CompletedTask;
     }
 
     private async Task OnBack()

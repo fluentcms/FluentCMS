@@ -9,6 +9,8 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Serialization;
+using System.Text.Json;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -23,6 +25,10 @@ public static class ApiServiceExtensions
             {
                 config.Filters.Add<ApiResultActionFilter>();
                 config.Filters.Add<ApiResultExceptionFilter>();
+            })
+            .AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
             })
             .ConfigureApiBehaviorOptions(options =>
             {

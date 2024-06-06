@@ -82,8 +82,25 @@ public class SetupManager
 
         await InitializeSuperAdmin();
 
-        await InitializeAdminUI();
+        var manifestFile = Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "manifest.json");
 
+        if (!File.Exists(manifestFile))
+            throw new AppException("manifest.json doesn't exist!");
+
+        var jsonSerializerOptions = new JsonSerializerOptions { };
+        jsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
+
+        _adminTemplate = await JsonSerializer.DeserializeAsync<AdminTemplate>(File.OpenRead(manifestFile), jsonSerializerOptions) ??
+            throw new AppException("Failed to deserialize manifest.json");
+
+        _globalSettings = _adminTemplate.GlobalSettings;
+
+        await InitializeGlobalSettings();
+        await InitLayouts();
+        await InitPluginDefinitions();
+        await InitSite();
+        await InitRoles();
+        await InitPages();
         await InitContentTypes();
 
         _initialized = true;
@@ -150,34 +167,6 @@ public class SetupManager
         };
 
         _superAdmin = await _userService.Create(superAdmin, _setupRequest.Password);
-    }
-
-    private async Task InitializeAdminUI()
-    {
-        var adminTemplateFile = Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "manifest.json");
-
-        if (!File.Exists(adminTemplateFile))
-            return;
-
-        var adminTemplate = await JsonSerializer.DeserializeAsync<AdminTemplate>(File.OpenRead(adminTemplateFile));
-
-        if (adminTemplate == null)
-            return;
-
-        _adminTemplate = adminTemplate;
-
-        if (_adminTemplate == null)
-            return;
-
-        _globalSettings = _adminTemplate.GlobalSettings;
-
-        await InitializeGlobalSettings();
-        await InitLayouts();
-        await InitPluginDefinitions();
-        await InitSite();
-        await InitRoles();
-        await InitPages();
-
     }
 
     private async Task InitializeGlobalSettings()
