@@ -3,6 +3,9 @@
 
  <PluginBody Title="Content Type Fields" Visible="ContentType?.Fields != null">
     <ActionsFragment>
+        <Button @onclick="NavigateBack">
+            Back
+        </Button>
         <Button Color="Color.Primary" @onclick=OnCreateFieldClick>
             <Icon Name="IconName.Plus" />Add Field
         </Button>
