@@ -1,22 +1,47 @@
 ﻿@inherits BasePlugin
 @rendermode InteractiveServer
 
- <PluginBody Title="Content Type Fields" Visible="ContentType?.Fields != null">
+<PluginBody Title="Content Type Fields">
     <ActionsFragment>
+        <Button @onclick="NavigateBack">
+            Back
+        </Button>
         <Button Color="Color.Primary" @onclick=OnCreateFieldClick>
             <Icon Name="IconName.Plus" />Add Field
         </Button>
     </ActionsFragment>
     <ChildContent>
-        <ContentTypeFieldsList ContentType=ContentType OnEdit="(x)=> OnEditFieldClick(x)" OnDelete="(x)=> OnDeleteFieldClick(x)" />
+        @if (ContentType?.Fields != null)
+        {
+            <DataTable Items="ContentType!.Fields!.ToList()">
+                <DataTableItem Label="Name">
+                    @context.Name
+                </DataTableItem>
+                <DataTableItem Label="Type">
+                    @if (FieldTypes != null)
+                    {
+                        @FieldTypes[context.Type]?.Title
+                    }
+                </DataTableItem>
+                <DataTableItem>
+                    <div class="flex gap-2">
+                        <Button Color="Color.Primary" Size="ButtonSize.Small" @onclick="@(x=> OnEditFieldClick(context))">
+                            <Icon Name="IconName.Edit" />Edit
+                        </Button>
+                        <Button Color="Color.Danger" Outline Size="ButtonSize.Small" @onclick="@(x=> OnDeleteFieldClick(context))">
+                            <Icon Name="IconName.Delete" />Delete
+                        </Button>
+                    </div>
+                </DataTableItem>
+            </DataTable>
+        }
     </ChildContent>
 </PluginBody>
 
-@if (CurrentState == State.Create)
-{
-    <ContentTypeFieldCreate Model=SelectedField OnSubmit=@OnFieldUpdate OnCancel=OnCancel />
-}
-@if (CurrentState == State.Edit)
-{
-    <ContentTypeFieldUpdate Model=SelectedField OnSubmit=@OnFieldUpdate OnCancel=OnCancel />
-}
+<CascadingValue Value="ContentType">
+    <CascadingValue Value="SelectedField">
+        <ContentTypeFieldCreate OnComplete=LoadList Visible="CurrentState == State.Create" />
+        <ContentTypeFieldUpdate OnComplete=LoadList Visible="CurrentState == State.Edit" />
+        <ContentTypeFieldDelete OnComplete=LoadList Visible="CurrentState == State.Delete" />
+    </CascadingValue>
+</CascadingValue>

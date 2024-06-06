@@ -1,0 +1,19 @@
+﻿@inherits BaseContentTypeFieldComponent
+
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+@if (ContentTypeField != null)
+{
+    @if (SelectedFieldType?.Key == FieldTypes.STRING)
+    {
+        <StringFieldSettings Model=@(ContentTypeField.ToFieldModel<StringFieldModel>()) OnCancel=OnCancel OnSubmit=OnSubmit />
+    }
+    @if (SelectedFieldType?.Key == FieldTypes.BOOLEAN)
+    {
+        <BooleanFieldSettings Model=@(ContentTypeField.ToFieldModel<BooleanFieldModel>()) OnCancel=OnCancel OnSubmit=OnSubmit />
+    }
+    @if (SelectedFieldType?.Key == FieldTypes.NUMBER)
+    {
+        <NumberFieldSettings Model=@(ContentTypeField.ToFieldModel<NumberFieldModel>()) OnCancel=OnCancel OnSubmit=OnSubmit />
+    }
+}

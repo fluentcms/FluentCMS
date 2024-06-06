@@ -1,50 +1,15 @@
-﻿@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+﻿@inherits BaseContentTypeFieldComponent
 
-@if (FieldType == null)
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+@if (Visible && ContentTypeField != null && ContentType != null)
 {
-    <ContentTypeFieldSelector OnSubmit="(type) => OnTypeSelect(type)" OnCancel=OnCancel />
-}
-else
-{
-    <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="@FORM_NAME" Enhance>
-        <Modal Size="ModalSize.Large">
-            <ModalHeader Closable>
-                <ModalTitle>Create New "@FieldType.Title" Field</ModalTitle>
-            </ModalHeader>
-            <ModalBody>
-                <DataAnnotationsValidator />
-                <Tabs Active="Basic">
-                    <TabList>
-                        <TabItem Name="Basic">
-                            Basic
-                        </TabItem>
-                        <TabItem Name="Advanced">
-                            Advanced
-                        </TabItem>
-                    </TabList>
-                    <TabContent>
-                        <TabPanel Name="Basic">
-                            <Grid GutterX="GridGutter.Large">
-                                <FormInput @bind-Value="Model!.Name" Cols="6" Label="Name" Placeholder="Enter Field Name" Required />
-                            </Grid>
-                        </TabPanel>
-                        <TabPanel Name="Advanced">
-                            <Grid GutterX="GridGutter.Large">
-                                <FormInput @bind-Value="Model!.Settings!.Label" Cols="6" Label="Label" Placeholder="Enter Field Label" Required />
-                                <FormTextarea @bind-Value="Model!.Settings!.Description" Label="Description" Placeholder="Enter Field Description" Required />
-                                <FormSwitch @bind-Value="Model!.Settings!.Required" Cols="6" Label="Required" Required />
-                            </Grid>
-                        </TabPanel>
-                    </TabContent>
-                </Tabs>
-            </ModalBody>
-            <ModalFooter>
-                <FormActions Submit>
-                    <Button @onclick="OnBack">
-                        Back
-                    </Button>                    
-                </FormActions>
-            </ModalFooter>
-        </Modal>
-    </EditForm>
+    @if (SelectedFieldType == null)
+    {
+        <ContentTypeFieldSelector OnSelect=OnTypeSelect OnCancel=OnComplete />
+    }
+    else
+    {
+        <ContentTypeFieldSettingSelector ContentTypeField=ContentTypeField SelectedFieldType=SelectedFieldType OnCancel=OnBackToTypeSelector OnSubmit=OnFieldCreate />
+    }
 }

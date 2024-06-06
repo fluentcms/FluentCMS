@@ -24,6 +24,10 @@ public static class ApiServiceExtensions
                 config.Filters.Add<ApiResultActionFilter>();
                 config.Filters.Add<ApiResultExceptionFilter>();
             })
+            .AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
+            })
             .ConfigureApiBehaviorOptions(options =>
             {
                 options.InvalidModelStateResponseFactory = (context) =>

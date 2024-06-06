@@ -8,6 +8,7 @@ public partial class ContentTypeDetailPlugin
     private State CurrentState { get; set; } = State.List;
     private ContentTypeDetailResponse? ContentType { get; set; }
     private ContentTypeField? SelectedField { get; set; }
+    private FieldTypes FieldTypes { get; set; } = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -33,16 +34,7 @@ public partial class ContentTypeDetailPlugin
         CurrentState = State.Edit;
         await Task.CompletedTask;
     }
-    private async Task OnDeleteFieldClick(ContentTypeField contentTypeField)
-    {
-        SelectedField = contentTypeField;
-        CurrentState = State.Delete;
 
-        if (!string.IsNullOrEmpty(SelectedField?.Name) && ContentType != null)
-            await GetApiClient<ContentTypeClient>().DeleteFieldAsync(ContentType.Id, SelectedField.Name);
-
-        await LoadList();
-    }
 
     private async Task OnCreateFieldClick()
     {
@@ -51,12 +43,11 @@ public partial class ContentTypeDetailPlugin
         await Task.CompletedTask;
     }
 
-    private async Task OnFieldUpdate()
+    private async Task OnDeleteFieldClick(ContentTypeField contentTypeField)
     {
-        if (!string.IsNullOrEmpty(SelectedField?.Name) && ContentType != null)
-            await GetApiClient<ContentTypeClient>().SetFieldAsync(ContentType.Id, SelectedField);
-
-        await LoadList();
+        SelectedField = contentTypeField;
+        CurrentState = State.Delete;
+        await Task.CompletedTask;
     }
 
     private enum State

@@ -63,7 +63,7 @@ public static class CmsServiceExtensions
             var uerLogin = sp.GetRequiredService<UserLoginResponse>();
 
             var pageClient = httpClientFactory.CreateApiClient<PageClient>(uerLogin);
-            
+
             var pageResponse = pageClient.GetByUrlAsync(navigationManager.Uri).GetAwaiter().GetResult();
 
             return pageResponse?.Data ?? null;

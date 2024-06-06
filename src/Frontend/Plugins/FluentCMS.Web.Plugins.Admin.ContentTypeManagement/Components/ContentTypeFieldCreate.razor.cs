@@ -2,44 +2,27 @@
 
 public partial class ContentTypeFieldCreate
 {
-    public const string FORM_NAME = "ContentTypeFieldCreateForm";
-
-    [Parameter]
-    public ContentTypeField? Model { get; set; }
-
-    [Parameter]
-    public EventCallback OnSubmit { get; set; }
-
-    [Parameter]
-    public EventCallback OnCancel { get; set; }
-
-    private FieldType? FieldType { get; set; }
+    private FieldType? SelectedFieldType { get; set; }
 
     private FieldTypes FieldTypes { get; set; } = [];
 
-    protected override async Task OnInitializedAsync()
+    private async Task OnBackToTypeSelector()
     {
-        await base.OnInitializedAsync();
-        Model ??= new();
-        Model.Settings ??= new();
-    }
-
-    private async Task OnBack()
-    {
-        Model!.Type = default!;
-        FieldType = default!;
+        SelectedFieldType = default!;
         await Task.CompletedTask;
     }
 
     private async Task OnTypeSelect(FieldType type)
     {
-        Model!.Type = type.Key;
-        FieldType = type;
+        ContentTypeField!.Type = type.Key;
+        SelectedFieldType = type;
         await Task.CompletedTask;
     }
 
-    private async Task HandleSubmit()
+    private async Task OnFieldCreate(ContentTypeField contentTypeField)
     {
-        await OnSubmit.InvokeAsync();
+        SelectedFieldType = default!;
+        await GetApiClient().SetFieldAsync(ContentType!.Id, contentTypeField);
+        await OnComplete.InvokeAsync();
     }
 }

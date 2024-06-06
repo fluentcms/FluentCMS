@@ -107,6 +107,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
+            foreach (var converter in converters)
+                settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -864,6 +867,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
+            foreach (var converter in converters)
+                settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -1448,6 +1454,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
+            foreach (var converter in converters)
+                settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -2006,6 +2015,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
+            foreach (var converter in converters)
+                settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -2827,6 +2839,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
+            foreach (var converter in converters)
+                settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -3174,6 +3189,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
+            foreach (var converter in converters)
+                settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -3776,6 +3794,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
+            foreach (var converter in converters)
+                settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -4457,6 +4478,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
+            foreach (var converter in converters)
+                settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -5027,6 +5051,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
+            foreach (var converter in converters)
+                settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -5383,6 +5410,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
+            foreach (var converter in converters)
+                settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -6027,6 +6057,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
+            foreach (var converter in converters)
+                settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -6383,6 +6416,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
+            foreach (var converter in converters)
+                settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -7058,6 +7094,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
+            foreach (var converter in converters)
+                settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -8084,25 +8123,7 @@ namespace FluentCMS.Web.ApiClients
         public string? Type { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("settings")]
-        public ContentTypeFieldSettings Settings { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class ContentTypeFieldSettings
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("label")]
-        public string? Label { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("description")]
-        public string? Description { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("required")]
-        public bool Required { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("meta")]
-        public System.Collections.Generic.IDictionary<string, object>? Meta { get; set; } = default!;
+        public System.Collections.Generic.IDictionary<string, object?>? Settings { get; set; } = default!;
 
     }
 

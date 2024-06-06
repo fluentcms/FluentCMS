@@ -2,21 +2,9 @@
 
 public partial class ContentTypeFieldUpdate
 {
-    public const string FORM_NAME = "ContentTypeFieldUpdateForm";
-
-    [Parameter]
-    public ContentTypeField? Model { get; set; }
-
-    [Parameter]
-    public EventCallback OnSubmit { get; set; }
-
-    [Parameter]
-    public EventCallback OnCancel { get; set; }
-
-    private FieldTypes FieldTypes { get; set; } = [];
-
-    private async Task HandleSubmit()
+    private async Task OnFieldUpdate(ContentTypeField contentTypeField)
     {
-        await OnSubmit.InvokeAsync();
+        await GetApiClient().SetFieldAsync(ContentType!.Id, contentTypeField);
+        await OnComplete.InvokeAsync();
     }
 }

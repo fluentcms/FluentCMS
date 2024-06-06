@@ -3,7 +3,7 @@
 public partial class ContentTypeFieldSelector
 {
     [Parameter]
-    public EventCallback<FieldType> OnSubmit { get; set; }
+    public EventCallback<FieldType> OnSelect { get; set; }
 
     [Parameter]
     public EventCallback OnCancel { get; set; }
@@ -12,11 +12,6 @@ public partial class ContentTypeFieldSelector
 
     private async Task OnClick(FieldType type)
     {
-        await OnSubmit.InvokeAsync(type);
-    }
-
-    private async Task OnCancelClicked()
-    {
-        await OnCancel.InvokeAsync();
+        await OnSelect.InvokeAsync(type);
     }
 }
