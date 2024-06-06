@@ -63,7 +63,9 @@
       "namespace": "FluentCMS.Web.ApiClients",
       "requiredPropertiesMustBeDefined": true,
       "dateType": "System.DateTime",
-      "jsonConverters": null,
+      "jsonConverters": [
+        "DictionaryJsonConverter"
+      ],
       "anyType": "object",
       "dateTimeType": "System.DateTime",
       "timeType": "System.TimeSpan",
@@ -83,7 +85,7 @@
       "handleReferences": false,
       "generateImmutableArrayProperties": false,
       "generateImmutableDictionaryProperties": false,
-      "jsonSerializerSettingsTransformationMethod": null,
+      "jsonSerializerSettingsTransformationMethod": "",
       "inlineNamedArrays": false,
       "inlineNamedDictionaries": false,
       "inlineNamedTuples": true,
