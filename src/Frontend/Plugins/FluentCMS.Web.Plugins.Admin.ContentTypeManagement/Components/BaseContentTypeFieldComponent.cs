@@ -2,7 +2,6 @@
 
 public abstract class BaseContentTypeFieldComponent : BaseComponent
 {
-
     [Inject]
     protected IHttpClientFactory HttpClientFactory { get; set; } = default!;
 

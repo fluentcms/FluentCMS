@@ -10,6 +10,6 @@
     }
     else
     {
-        <StringFieldSettings Model=@(ContentTypeField.ToFieldModel<StringFieldModel>()) OnCancel=OnBackToTypeSelector OnSubmit=OnFieldCreate />
+        <ContentTypeFieldSettingSelector ContentTypeField=ContentTypeField SelectedFieldType=SelectedFieldType OnCancel=OnBackToTypeSelector OnSubmit=OnFieldCreate />
     }
 }

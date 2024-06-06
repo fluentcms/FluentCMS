@@ -21,6 +21,7 @@ public partial class ContentTypeFieldCreate
 
     private async Task OnFieldCreate(ContentTypeField contentTypeField)
     {
+        SelectedFieldType = default!;
         await GetApiClient().SetFieldAsync(ContentType!.Id, contentTypeField);
         await OnComplete.InvokeAsync();
     }
