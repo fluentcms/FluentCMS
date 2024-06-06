@@ -34,8 +34,6 @@ public partial class ContentTypeFieldCreate
 
     private async Task OnFieldCreate()
     {
-        Model!.Type = default!;
-        SelectedFieldType = default!;
         if (!string.IsNullOrEmpty(Model?.Name) && ContentType != null)
             await GetApiClient().SetFieldAsync(ContentType.Id, Model);
 
