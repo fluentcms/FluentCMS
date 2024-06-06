@@ -1,4 +1,6 @@
-﻿@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+﻿@inherits BaseFieldSettingViewComponent<BooleanFieldModel>
+
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
 <EditForm Model="@Model" OnSubmit="OnFormSubmit">
     <Modal Size="ModalSize.Large">

@@ -1,6 +1,8 @@
-﻿@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+﻿@inherits BaseFieldSettingViewComponent<StringFieldModel>
 
-<EditForm Model="@Model" OnSubmit="OnFieldCreate">
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+<EditForm Model="@Model" OnSubmit="OnFormSubmit">
     <Modal Size="ModalSize.Large">
         <ModalHeader Closable>
             <ModalTitle>Create New Field</ModalTitle>
