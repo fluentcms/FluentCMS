@@ -1,5 +1,7 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.WebUtilities;
+using System.Web;
 
 namespace FluentCMS.Web.Plugins;
 
@@ -53,7 +55,13 @@ public abstract class BasePlugin : ComponentBase
 
     protected virtual string GetUrl(string pluginDefName, string viewTypeName, object? parameters = null)
     {
-        var queryParams = new Dictionary<string, string?>()
+        var uri = new Uri(NavigationManager.Uri);
+        var oldQueryParams = HttpUtility.ParseQueryString(uri.Query);
+
+        // this gets the page path from root without QueryString
+        var pagePathWithoutQueryString = uri.GetLeftPart(UriPartial.Path);
+
+        var newQueryParams = new Dictionary<string, string?>()
         {
             { "pluginDef", pluginDefName },
             { "typeName", viewTypeName }
@@ -62,9 +70,18 @@ public abstract class BasePlugin : ComponentBase
         if (parameters != null)
         {
             foreach (var propInfo in parameters.GetType().GetProperties())
-                queryParams[propInfo.Name] = propInfo.GetValue(parameters)?.ToString();
+                newQueryParams[propInfo.Name] = propInfo.GetValue(parameters)?.ToString();
         }
-        return QueryHelpers.AddQueryString(NavigationManager.Uri, queryParams);
+
+        foreach (var key in oldQueryParams.AllKeys)
+        {
+            if (string.IsNullOrEmpty(key) || newQueryParams.ContainsKey(key))
+                continue;
+
+            newQueryParams[key] = oldQueryParams[key];
+        }
+
+        return QueryHelpers.AddQueryString(pagePathWithoutQueryString, newQueryParams);
     }
 
     protected TClient GetApiClient<TClient>() where TClient : class, IApiClient

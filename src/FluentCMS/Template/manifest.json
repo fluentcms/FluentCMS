@@ -199,6 +199,18 @@
                 {
                     "Name": "View ContentType",
                     "Type": "ContentTypeDetailPlugin"
+                },
+                {
+                    "Name": "Contents List",
+                    "Type": "ContentListPlugin"
+                },
+                {
+                    "Name": "Create Content",
+                    "Type": "ContentCreatePlugin"
+                },
+                {
+                    "Name": "Update Content",
+                    "Type": "ContentUpdatePlugin"
                 }
             ]
         },
