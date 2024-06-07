@@ -1,0 +1,31 @@
+﻿@typeparam TModel where TModel : IFieldModel
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+@if (Visible)
+{
+    <EditForm Model="@Model" OnSubmit="OnFormSubmit">
+        <Modal Size="ModalSize.Large">
+            <ModalHeader Closable>
+                <ModalTitle Visible="@(CurrentState == FieldManagementState.Create)">
+                    New @FieldType?.Title Field
+                </ModalTitle>
+                <ModalTitle Visible="@(CurrentState == FieldManagementState.Edit)">
+                    Update Field @Model.Name (@FieldType?.Title)
+                </ModalTitle>
+            </ModalHeader>
+            <ModalBody>
+                <DataAnnotationsValidator />
+                @ChildContent
+            </ModalBody>
+            <ModalFooter>
+                <FormActions Submit>
+                    <Button @onclick="OnCancel">
+                        Back
+                    </Button>
+                </FormActions>
+            </ModalFooter>
+        </Modal>
+    </EditForm>
+}
