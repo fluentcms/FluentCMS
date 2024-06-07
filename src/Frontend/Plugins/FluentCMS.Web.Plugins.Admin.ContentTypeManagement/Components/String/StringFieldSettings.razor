@@ -5,7 +5,12 @@
 <EditForm Model="@Model" OnSubmit="OnFormSubmit">
     <Modal Size="ModalSize.Large">
         <ModalHeader Closable>
-            <ModalTitle>Create New Field</ModalTitle>
+            <ModalTitle Visible="@(CurrentState == FieldManagementState.Create)">
+                New @FieldType?.Title Field
+            </ModalTitle>
+            <ModalTitle Visible="@(CurrentState == FieldManagementState.Edit)">
+                Update Field @Model.Name (@FieldType?.Title)
+            </ModalTitle>
         </ModalHeader>
         <ModalBody>
             <DataAnnotationsValidator />
@@ -22,7 +27,7 @@
                     <TabPanel Name="Basic">
                         <Grid GutterX="GridGutter.Large">
                             <FormHiddenInput @bind-Value="Model.Type" />
-                            <FormInput @bind-Value="Model.Name" Cols="6" Label="Name" Placeholder="Enter Field Name" Required />
+                            <FormInput @bind-Value="Model.Name" Cols="6" Label="Name" Placeholder="Enter Field Name" Required Disabled="@(CurrentState != FieldManagementState.Create)" />
                             <FormInput @bind-Value="Model.Label" Cols="6" Label="Label" Placeholder="Enter Field Label" Required />
                             <FormSwitch @bind-Value="Model.Required" Cols="6" Label="Required" Required />
                             <FormTextarea @bind-Value="Model.Description" Label="Description" Placeholder="Enter Field Description" Required />

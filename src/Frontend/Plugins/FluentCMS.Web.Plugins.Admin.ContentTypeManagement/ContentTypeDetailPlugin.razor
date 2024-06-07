@@ -47,9 +47,11 @@
 </PluginBody>
 
 <CascadingValue Value="ContentType">
-    <CascadingValue Value="SelectedField">
-        <ContentTypeFieldCreate OnComplete=LoadList Visible="CurrentState == State.Create" />
-        <ContentTypeFieldUpdate OnComplete=LoadList Visible="CurrentState == State.Edit" />
-        <ContentTypeFieldDelete OnComplete=LoadList Visible="CurrentState == State.Delete" />
+    <CascadingValue Value="ContentTypeField">
+        <CascadingValue Value="CurrentState">
+            <ContentTypeFieldCreate OnComplete=LoadList Visible="CurrentState == FieldManagementState.Create" />
+            <ContentTypeFieldUpdate OnComplete=LoadList Visible="CurrentState == FieldManagementState.Edit" />
+            <ContentTypeFieldDelete OnComplete=LoadList Visible="CurrentState == FieldManagementState.Delete" />
+        </CascadingValue>
     </CascadingValue>
 </CascadingValue>

@@ -2,26 +2,26 @@
 
 public partial class ContentTypeFieldCreate
 {
-    private FieldType? SelectedFieldType { get; set; }
+    private FieldType? FieldType { get; set; }
 
     private FieldTypes FieldTypes { get; set; } = [];
 
     private async Task OnBackToTypeSelector()
     {
-        SelectedFieldType = default!;
+        FieldType = default!;
         await Task.CompletedTask;
     }
 
     private async Task OnTypeSelect(FieldType type)
     {
         ContentTypeField!.Type = type.Key;
-        SelectedFieldType = type;
+        FieldType = type;
         await Task.CompletedTask;
     }
 
     private async Task OnFieldCreate(ContentTypeField contentTypeField)
     {
-        SelectedFieldType = default!;
+        FieldType = default!;
         await GetApiClient().SetFieldAsync(ContentType!.Id, contentTypeField);
         await OnComplete.InvokeAsync();
     }

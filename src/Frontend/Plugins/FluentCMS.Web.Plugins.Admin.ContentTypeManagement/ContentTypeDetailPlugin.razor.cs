@@ -1,15 +1,13 @@
-﻿using System.Diagnostics.Eventing.Reader;
-
-namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
+﻿namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
 public partial class ContentTypeDetailPlugin
 {
     [SupplyParameterFromQuery(Name = "id")]
     private Guid Id { get; set; }
 
-    private State CurrentState { get; set; } = State.List;
+    private FieldManagementState CurrentState { get; set; } = FieldManagementState.List;
     private ContentTypeDetailResponse? ContentType { get; set; }
-    private ContentTypeField? SelectedField { get; set; }
+    private ContentTypeField? ContentTypeField { get; set; }
     private FieldTypes FieldTypes { get; set; } = [];
 
     protected override async Task OnInitializedAsync()
@@ -19,8 +17,8 @@ public partial class ContentTypeDetailPlugin
 
     private async Task LoadList()
     {
-        CurrentState = State.List;
-        SelectedField = default;
+        CurrentState = FieldManagementState.List;
+        ContentTypeField = default;
         var contentTypesResponse = await GetApiClient<ContentTypeClient>().GetByIdAsync(Id);
         ContentType = contentTypesResponse?.Data;
     }
@@ -32,32 +30,24 @@ public partial class ContentTypeDetailPlugin
 
     private async Task OnEditFieldClick(ContentTypeField contentTypeField)
     {
-        SelectedField = contentTypeField;
-        CurrentState = State.Edit;
+        ContentTypeField = contentTypeField;
+        CurrentState = FieldManagementState.Edit;
         await Task.CompletedTask;
     }
 
 
     private async Task OnCreateFieldClick()
     {
-        SelectedField = new ContentTypeField();
-        CurrentState = State.Create;
+        ContentTypeField = new ContentTypeField();
+        CurrentState = FieldManagementState.Create;
         await Task.CompletedTask;
     }
 
     private async Task OnDeleteFieldClick(ContentTypeField contentTypeField)
     {
-        SelectedField = contentTypeField;
-        CurrentState = State.Delete;
+        ContentTypeField = contentTypeField;
+        CurrentState = FieldManagementState.Delete;
         await Task.CompletedTask;
-    }
-
-    private enum State
-    {
-        List,
-        Create,
-        Edit,
-        Delete
     }
 
     #region View Fucntions
@@ -91,4 +81,12 @@ public partial class ContentTypeDetailPlugin
         GetString(field, "Description");
 
     #endregion
+}
+
+public enum FieldManagementState
+{
+    List,
+    Create,
+    Edit,
+    Delete
 }
