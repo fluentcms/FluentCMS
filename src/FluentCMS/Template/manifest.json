@@ -419,14 +419,14 @@
         {
             "Slug": "blog",
             "Title": "Blog Post",
-            "Description": "Blog Post Content Type",
+            "Description": "Blog post content type",
             "Fields": [
                 {
                     "Name": "Title",
                     "Type": "string",
                     "Settings": {
                         "Label": "Title",
-                        "Description": "Blog Post Title",
+                        "Description": "Blog post title",
                         "Required": true
                     }
                 },
@@ -435,9 +435,25 @@
                     "Type": "string",
                     "Settings": {
                         "Label": "Content",
-                        "Description": "Blog Post Content",
-
+                        "Description": "Blog post content",
                         "Required": false
+                    }
+                },
+                {
+                    "Name": "Archived",
+                    "Type": "bool",
+                    "Settings": {
+                        "Label": "Archived",
+                        "Description": "Blog post archived or not"
+                    }
+                },
+                {
+                    "Name": "Order",
+                    "Type": "number",
+                    "Settings": {
+                        "Label": "View Order",
+                        "Description": "Blog post view order",
+                        "Required": true
                     }
                 }
             ]

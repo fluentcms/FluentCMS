@@ -70,12 +70,16 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
             throw new AppException(ExceptionCodes.ContentTypeNotFound);
 
         // check the field exists
-        var original = contentType.Fields.FirstOrDefault(f => f.Name == field.Name);
+        var originalField = contentType.Fields.FirstOrDefault(f => f.Name == field.Name);
 
-        if (original != null)
-            contentType.Fields.Remove(original);
-
-        contentType.Fields.Add(field);
+        if (originalField == null)
+            contentType.Fields.Add(field);
+        else
+        {
+            originalField.Type = field.Type;
+            originalField.Settings = field.Settings;
+            originalField.Name = field.Name;
+        }
 
         return await contentTypeRepository.Update(contentType, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);

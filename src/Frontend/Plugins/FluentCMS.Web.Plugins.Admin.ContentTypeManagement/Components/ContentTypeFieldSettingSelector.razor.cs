@@ -3,7 +3,10 @@
 public partial class ContentTypeFieldSettingSelector
 {
     [Parameter, EditorRequired]
-    public FieldType? SelectedFieldType { get; set; }
+    public FieldType? FieldType { get; set; }
+
+    [CascadingParameter]
+    public ContentTypeField? ContentTypeField { get; set; }
 
     [Parameter, EditorRequired]
     public EventCallback OnCancel { get; set; }

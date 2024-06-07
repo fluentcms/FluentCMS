@@ -4,12 +4,12 @@
 
 @if (Visible && ContentTypeField != null && ContentType != null)
 {
-    @if (SelectedFieldType == null)
+    @if (FieldType == null)
     {
         <ContentTypeFieldSelector OnSelect=OnTypeSelect OnCancel=OnComplete />
     }
     else
     {
-        <ContentTypeFieldSettingSelector ContentTypeField=ContentTypeField SelectedFieldType=SelectedFieldType OnCancel=OnBackToTypeSelector OnSubmit=OnFieldCreate />
+        <ContentTypeFieldSettingSelector FieldType="FieldType" OnCancel=OnBackToTypeSelector OnSubmit=OnFieldCreate />
     }
 }

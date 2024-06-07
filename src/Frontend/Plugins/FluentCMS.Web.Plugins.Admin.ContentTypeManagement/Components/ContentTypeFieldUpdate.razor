@@ -2,7 +2,7 @@
 
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
-@if (Visible && ContentTypeField != null && ContentType != null)
+@if (Visible && ContentTypeField != null && ContentType != null && FieldType != null)
 {
-    <StringFieldSettings Model=@(ContentTypeField.ToFieldModel<StringFieldModel>()) OnCancel=OnComplete OnSubmit=OnFieldUpdate />
+    <ContentTypeFieldSettingSelector FieldType="FieldType" OnCancel=OnComplete OnSubmit=OnFieldUpdate />
 }

@@ -14,6 +14,9 @@ public abstract class BaseContentTypeFieldComponent : BaseComponent
     [CascadingParameter]
     public ContentTypeField? ContentTypeField { get; set; }
 
+    [CascadingParameter]
+    protected FieldManagementState CurrentState { get; set; }
+
     [Parameter]
     public EventCallback OnComplete { get; set; }
 

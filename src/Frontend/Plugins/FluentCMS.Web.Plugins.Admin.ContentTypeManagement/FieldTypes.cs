@@ -15,7 +15,7 @@ public class FieldTypes : Dictionary<string, FieldType>
 {
     public const string STRING = "string";
     public const string NUMBER = "number";
-    public const string BOOLEAN = "boolean";
+    public const string BOOLEAN = "bool";
     public const string ENUMERATION = "enumeration";
     public const string DATE = "date";
     public const string MEDIA = "media";
