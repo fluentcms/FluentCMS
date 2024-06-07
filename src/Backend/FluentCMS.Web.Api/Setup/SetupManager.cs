@@ -17,6 +17,7 @@ public class SetupManager
     private readonly IPageService _pageService;
     private readonly IPluginService _pluginService;
     private readonly IContentTypeService _contentTypeService;
+    private readonly IContentService _contentService;
 
     public const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Template";
 
@@ -40,6 +41,7 @@ public class SetupManager
         IPageService pageService,
         IPluginService pluginService,
         IContentTypeService contentTypeService,
+        IContentService contentService,
         IHostEnvironment env)
     {
         if (env == null)
@@ -54,6 +56,7 @@ public class SetupManager
         _pageService = pageService;
         _pluginService = pluginService;
         _contentTypeService = contentTypeService;
+        _contentService = contentService;
 
     }
 
@@ -212,9 +215,26 @@ public class SetupManager
 
     private async Task InitContentTypes()
     {
-        foreach (var contentType in _adminTemplate.ContentTypes)
+        foreach (var contentTypeTemplate in _adminTemplate.ContentTypes)
         {
+            var contentType = new ContentType
+            {
+                Slug = contentTypeTemplate.Slug,
+                Title = contentTypeTemplate.Title,
+                Description = contentTypeTemplate.Description,
+                Fields = contentTypeTemplate.Fields
+            };
+
             await _contentTypeService.Create(contentType);
+            foreach (var contentDictionary in contentTypeTemplate.Contents)
+            {
+                var content = new Content
+                {
+                    TypeId = contentType.Id,
+                    Value = contentDictionary
+                };
+                await _contentService.Create(content);
+            }
         }
     }
 

@@ -7,5 +7,5 @@ internal class AdminTemplate
     public List<PluginDefinitionTemplate> PluginDefinitions { get; set; } = [];
     public List<PageTemplate> Pages { get; set; } = [];
     public List<Role> Roles { get; set; } = [];
-    public List<ContentType> ContentTypes { get; set; } = [];
+    public List<ContentTypeTemplate> ContentTypes { get; set; } = [];
 }

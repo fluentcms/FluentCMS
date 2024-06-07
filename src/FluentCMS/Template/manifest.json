@@ -456,6 +456,26 @@
                         "Required": true
                     }
                 }
+            ],
+            "Contents": [
+                {
+                    "Title": "Hello World",
+                    "Content": "Hello World!",
+                    "Archived": false,
+                    "Order": 1
+                },
+                {
+                    "Title": "Hello World 2",
+                    "Content": "Hello World 2!",
+                    "Archived": false,
+                    "Order": 2
+                },
+                {
+                    "Title": "Hello World 3",
+                    "Content": "Hello World 3!",
+                    "Archived": false,
+                    "Order": 3
+                }
             ]
         }
     ]
