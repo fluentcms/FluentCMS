@@ -439,7 +439,9 @@
                     "Settings": {
                         "Label": "Title",
                         "Description": "Blog post title",
-                        "Required": true
+                        "Required": true,
+                        "DataTableColumnOrder": 1,
+                        "DataTableVisible": true
                     }
                 },
                 {
@@ -448,7 +450,8 @@
                     "Settings": {
                         "Label": "Content",
                         "Description": "Blog post content",
-                        "Required": false
+                        "Required": false,
+                        "DataTableVisible": false
                     }
                 },
                 {
@@ -456,7 +459,9 @@
                     "Type": "bool",
                     "Settings": {
                         "Label": "Archived",
-                        "Description": "Blog post archived or not"
+                        "Description": "Blog post archived or not",
+                        "DataTableColumnOrder": 0,
+                        "DataTableVisible": true
                     }
                 },
                 {
@@ -465,7 +470,9 @@
                     "Settings": {
                         "Label": "View Order",
                         "Description": "Blog post view order",
-                        "Required": true
+                        "Required": true,
+                        "DataTableColumnOrder": 2,
+                        "DataTableVisible": true
                     }
                 }
             ],

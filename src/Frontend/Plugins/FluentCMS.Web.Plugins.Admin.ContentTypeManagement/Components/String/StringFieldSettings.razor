@@ -18,7 +18,9 @@
                     <FormHiddenInput @bind-Value="Model.Type" />
                     <FormInput @bind-Value="Model.Name" Cols="6" Label="Name" Placeholder="Enter Field Name" Required Disabled="@(CurrentState != FieldManagementState.Create)" />
                     <FormInput @bind-Value="Model.Label" Cols="6" Label="Label" Placeholder="Enter Field Label" Required />
-                    <FormSwitch @bind-Value="Model.Required" Cols="6" Label="Required" Required />
+                    <FormSwitch @bind-Value="Model.Required" Cols="3" Label="Required" Required />
+                    <FormSwitch @bind-Value="Model.DataTableVisible" Cols="3" Label="Show in content list" Required />
+                    <FormNumberInput @bind-Value="Model.DataTableColumnOrder" Cols="6" Label="Column order in content list" Placeholder="Enter Field Label" Required Disabled="@(!Model.DataTableVisible)" />
                     <FormTextarea @bind-Value="Model.Description" Label="Description" Placeholder="Enter Field Description" Required />
                 </Grid>
             </TabPanel>

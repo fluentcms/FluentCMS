@@ -3,7 +3,7 @@
 
 @if (!string.IsNullOrEmpty(ContentTypeSlug) && ContentType != null && ContentType.Fields != null && Contents != null)
 {
-    <PluginBody Title="Content Types">
+    <PluginBody Title="@ContentType.Title">
         <ActionsFragment>
             <Button Href="@GetUrl("Create Content", new { slug = ContentTypeSlug })" Color="Color.Primary">
                 <Icon Name="IconName.Plus" />New Content
@@ -12,10 +12,7 @@
         <ChildContent>
             <CascadingValue Value="ContentType">
                 <DataTable Items="Contents">
-                    <DataTableItem Label="Slug">
-                        @context.TypeId
-                    </DataTableItem>
-                    @foreach (var field in ContentType.Fields)
+                    @foreach (var field in GetVisibleFields())
                     {
                         <DataTableItem Label="@field.Name">
                             @context.Value[field.Name!]

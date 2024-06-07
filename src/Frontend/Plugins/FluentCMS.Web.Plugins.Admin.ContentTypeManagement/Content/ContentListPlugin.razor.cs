@@ -21,6 +21,21 @@ public partial class ContentListPlugin
         }
     }
 
+    private List<ContentTypeField> GetVisibleFields()
+    {
+        if (ContentType?.Fields == null)
+            return [];
+
+        var result = new List<ContentTypeField>();
+
+        var visibleKey = nameof(IFieldModel.DataTableVisible);
+
+        foreach (var field in ContentType.Fields.Where(x => x.GetBoolean(visibleKey) == true))
+            result.Add(field);
+
+        return [.. result.OrderBy(x => x.GetDecimal(nameof(IFieldModel.DataTableColumnOrder)))];
+    }
+
     #region Delete Content
 
     private Guid? SelectedContentId { get; set; }

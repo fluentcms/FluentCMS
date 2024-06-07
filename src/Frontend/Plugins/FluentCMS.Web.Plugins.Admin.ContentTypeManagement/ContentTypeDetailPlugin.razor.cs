@@ -49,38 +49,6 @@ public partial class ContentTypeDetailPlugin
         CurrentState = FieldManagementState.Delete;
         await Task.CompletedTask;
     }
-
-    #region View Fucntions
-
-    private static bool? IsRequired(ContentTypeField field)
-    {
-        if (field?.Settings == null || !field.Settings.TryGetValue("Required", out object? value))
-            return default;
-
-        if (value is bool required)
-            return required;
-
-        return default;
-    }
-
-    private static string GetString(ContentTypeField field, string key)
-    {
-        if (field?.Settings == null || !field.Settings.TryGetValue(key, out object? value))
-            return string.Empty;
-
-        if (value is string str)
-            return str;
-
-        return string.Empty;
-    }
-
-    private static string GetLabel(ContentTypeField field) =>
-        GetString(field, "Label");
-
-    private static string GetDescription(ContentTypeField field) =>
-        GetString(field, "Description");
-
-    #endregion
 }
 
 public enum FieldManagementState
