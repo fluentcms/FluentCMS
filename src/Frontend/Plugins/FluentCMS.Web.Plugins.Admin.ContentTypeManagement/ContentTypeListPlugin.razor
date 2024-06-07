@@ -1,4 +1,5 @@
 ﻿@inherits BasePlugin
+@rendermode InteractiveServer
 
 <PluginBody Title="Content Types">
     <ActionsFragment>
@@ -31,8 +32,15 @@
                     <Button Color="Color.Secondary" Href="@GetUrl("Contents List", new { slug = @context.Slug })" Size="ButtonSize.Small">
                         <Icon Name="IconName.Eye" />Contents
                     </Button>
+                    <Button Color="Color.Danger" Outline @onclick="() => OnConfirm(context.Id)" Size="ButtonSize.Small">
+                        <Icon Name="IconName.Delete" />Delete
+                    </Button>
                 </Stack>
             </DataTableItem>
         </DataTable>
     </ChildContent>
 </PluginBody>
+
+<Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedContentTypeId != null">
+    Are you sure to delete content?
+</Confirm>
