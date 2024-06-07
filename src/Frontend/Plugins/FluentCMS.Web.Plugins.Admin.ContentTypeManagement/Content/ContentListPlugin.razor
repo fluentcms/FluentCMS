@@ -1,4 +1,6 @@
 ﻿@inherits BaseContentPlugin
+@rendermode InteractiveServer
+
 @if (!string.IsNullOrEmpty(ContentTypeSlug) && ContentType != null && ContentType.Fields != null && Contents != null)
 {
     <PluginBody Title="Content Types">
@@ -24,17 +26,17 @@
                             <Button Color="Color.Primary" Href="@GetUrl("Update Content", new { slug = ContentTypeSlug })" Size="ButtonSize.Small">
                                 <Icon Name="IconName.Edit" />Edit
                             </Button>
-                            @* <Button Color="Color.Danger" Outline @onclick="() => OnConfirm(context)" Size="ButtonSize.Small">
-                        <Icon Name="IconName.Delete" />Delete
-                        </Button> *@
+                            <Button Color="Color.Danger" Outline @onclick="() => OnConfirm(context.Id)" Size="ButtonSize.Small">
+                                <Icon Name="IconName.Delete" />Delete
+                            </Button>
                         </Stack>
                     </DataTableItem>
                 </DataTable>
             </CascadingValue>
         </ChildContent>
     </PluginBody>
-}
 
-@* <Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedRole != null">
-    Are you sure to delete role @SelectedRole!.Name?
-</Confirm> *@
+    <Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedContentId != null">
+        Are you sure to delete content?
+    </Confirm>
+}
