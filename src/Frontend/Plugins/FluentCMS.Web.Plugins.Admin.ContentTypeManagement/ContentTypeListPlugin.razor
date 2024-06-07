@@ -28,6 +28,9 @@
                     <Button Color="Color.Danger" Href="@GetUrl("View ContentType", new { id = @context.Id })" Size="ButtonSize.Small">
                         <Icon Name="IconName.Eye" />Fields
                     </Button>
+                    <Button Color="Color.Secondary" Href="@GetUrl("Contents List", new { slug = @context.Slug })" Size="ButtonSize.Small">
+                        <Icon Name="IconName.Eye" />Contents
+                    </Button>
                 </Stack>
             </DataTableItem>
         </DataTable>
