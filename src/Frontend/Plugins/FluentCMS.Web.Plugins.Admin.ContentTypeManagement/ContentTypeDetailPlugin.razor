@@ -1,40 +1,48 @@
 ﻿@inherits BasePlugin
 @rendermode InteractiveServer
 
-<PluginBody Title="Content Type Fields">
+<PluginBody Title="Content Type Fields" Visible="@(ContentType?.Fields != null)">
     <ActionsFragment>
         <Button @onclick="NavigateBack">
             Back
         </Button>
         <Button Color="Color.Primary" @onclick=OnCreateFieldClick>
-            <Icon Name="IconName.Plus" />Add Field
+            <Icon Name="IconName.Plus" />New Field
         </Button>
     </ActionsFragment>
     <ChildContent>
-        @if (ContentType?.Fields != null)
-        {
-            <DataTable Items="ContentType!.Fields!.ToList()">
-                <DataTableItem Label="Name">
-                    @context.Name
-                </DataTableItem>
-                <DataTableItem Label="Type">
-                    @if (FieldTypes != null)
-                    {
-                        @FieldTypes[context.Type]?.Title
-                    }
-                </DataTableItem>
-                <DataTableItem>
-                    <div class="flex gap-2">
-                        <Button Color="Color.Primary" Size="ButtonSize.Small" @onclick="@(x=> OnEditFieldClick(context))">
-                            <Icon Name="IconName.Edit" />Edit
-                        </Button>
-                        <Button Color="Color.Danger" Outline Size="ButtonSize.Small" @onclick="@(x=> OnDeleteFieldClick(context))">
-                            <Icon Name="IconName.Delete" />Delete
-                        </Button>
-                    </div>
-                </DataTableItem>
-            </DataTable>
-        }
+        <DataTable Items="ContentType!.Fields!.ToList()">
+            <DataTableItem Label="Name">
+                @context.Name
+            </DataTableItem>
+            <DataTableItem Label="Label">
+                @GetLabel(context)
+            </DataTableItem>
+            <DataTableItem Label="Type">
+                <Icon Name="@FieldTypes[context.Type!]!.Icon"></Icon>
+                <Badge Color="Color.Primary">
+                    @FieldTypes[context.Type!]?.Title
+                </Badge>
+            </DataTableItem>
+            <DataTableItem Label="Required">
+                <Indicator Color="Color.Success" Visible="@(IsRequired(context) == true)">Yes</Indicator>
+                <Indicator Color="Color.Danger" Visible="@(IsRequired(context) == false)">No</Indicator>
+                <Indicator Color="Color.Default" Visible="@(IsRequired(context) == null)">N/A</Indicator>
+            </DataTableItem>
+            <DataTableItem Label="Description">
+                @GetDescription(context)
+            </DataTableItem>
+            <DataTableItem>
+                <Stack>
+                    <Button Color="Color.Primary" Size="ButtonSize.Small" @onclick="@(x=> OnEditFieldClick(context))">
+                        <Icon Name="IconName.Edit" />Edit
+                    </Button>
+                    <Button Color="Color.Danger" Outline Size="ButtonSize.Small" @onclick="@(x=> OnDeleteFieldClick(context))">
+                        <Icon Name="IconName.Delete" />Delete
+                    </Button>
+                </Stack>
+            </DataTableItem>
+        </DataTable>
     </ChildContent>
 </PluginBody>
 
