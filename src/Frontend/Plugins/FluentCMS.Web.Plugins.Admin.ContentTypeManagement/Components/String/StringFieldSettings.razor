@@ -17,8 +17,11 @@
                 <Grid GutterX="GridGutter.Large">
                     <FormHiddenInput @bind-Value="Model.Type" />
                     <FormInput @bind-Value="Model.Name" Cols="6" Label="Name" Placeholder="Enter Field Name" Required Disabled="@(CurrentState != FieldManagementState.Create)" />
-                    <FormInput @bind-Value="Model.Label" Cols="6" Label="Label" Placeholder="Enter Field Label" Required />
-                    <FormSwitch @bind-Value="Model.Required" Cols="6" Label="Required" Required />
+                    <FormInput @bind-Value="Model.Label" Cols="3" Label="Label" Placeholder="Enter Field Label" Required />
+                    <FormSwitch @bind-Value="Model.Required" Cols="3" Label="Required" Required />
+                    <FormSwitch @bind-Value="Model.DataTableVisible" Cols="3" Label="Show in content list" Required />
+                    <FormNumberInput @bind-Value="Model.DataTableColumnOrder" Cols="3" Label="Column order in content list" Placeholder="Enter column order number" Required Disabled="@(!Model.DataTableVisible)" />
+                    <FormInput @bind-Value="Model.DataTableViewComponent" Cols="6" Label="View type in content list" Placeholder="Enter view type name" Required Disabled="@(!Model.DataTableVisible)" />
                     <FormTextarea @bind-Value="Model.Description" Label="Description" Placeholder="Enter Field Description" Required />
                 </Grid>
             </TabPanel>

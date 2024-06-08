@@ -16,7 +16,7 @@
                 @context.Name
             </DataTableItem>
             <DataTableItem Label="Label">
-                @GetLabel(context)
+                @context.GetString("Label")
             </DataTableItem>
             <DataTableItem Label="Type">
                 <Icon Name="@FieldTypes[context.Type!]!.Icon"></Icon>
@@ -25,12 +25,12 @@
                 </Badge>
             </DataTableItem>
             <DataTableItem Label="Required">
-                <Indicator Color="Color.Success" Visible="@(IsRequired(context) == true)">Yes</Indicator>
-                <Indicator Color="Color.Danger" Visible="@(IsRequired(context) == false)">No</Indicator>
-                <Indicator Color="Color.Default" Visible="@(IsRequired(context) == null)">N/A</Indicator>
+                <Indicator Color="Color.Success" Visible="@(context.GetBoolean("IsRequired") == true)">Yes</Indicator>
+                <Indicator Color="Color.Danger" Visible="@(context.GetBoolean("IsRequired") == false)">No</Indicator>
+                <Indicator Color="Color.Default" Visible="@(context.GetBoolean("IsRequired") == null)">N/A</Indicator>
             </DataTableItem>
             <DataTableItem Label="Description">
-                @GetDescription(context)
+                @context.GetString("Description")
             </DataTableItem>
             <DataTableItem>
                 <Stack>

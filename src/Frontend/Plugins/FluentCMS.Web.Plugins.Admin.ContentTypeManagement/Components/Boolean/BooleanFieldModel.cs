@@ -7,4 +7,8 @@ public class BooleanFieldModel : IFieldModel
     public string Label { get; set; } = string.Empty;
     public string? Description { get; set; }
     public bool DefaultValue { get; set; }
+    public decimal DataTableColumnOrder { get; set; }
+    public bool DataTableVisible { get; set; }
+    public string DataTableViewComponent { get; set; } = nameof(BooleanFieldDataTableView);
+
 }

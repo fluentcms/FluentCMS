@@ -7,4 +7,7 @@ public class StringFieldModel : IFieldModel
     public bool Required { get; set; }
     public string Label { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public decimal DataTableColumnOrder { get; set; }
+    public bool DataTableVisible { get; set; }
+    public string DataTableViewComponent { get; set; } = nameof(StringFieldDataTableView);
 }
