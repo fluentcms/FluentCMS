@@ -10,8 +10,8 @@ public static class MongoDbServiceExtensions
 {
     public static IServiceCollection AddMongoDbRepositories(this IServiceCollection services, string connectionString)
     {
-        // Configure BsonSerializers for accurate data representation in MongoDB
-        ConfigureBsonSerializers();
+        // register default GUID serializer for MongoDB
+        BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.CSharpLegacy));
 
         // Register MongoDB context and options
         services.AddSingleton(provider => CreateMongoDBOptions(provider, connectionString));
@@ -21,21 +21,6 @@ public static class MongoDbServiceExtensions
         RegisterRepositories(services);
 
         return services;
-    }
-
-    private static void ConfigureBsonSerializers()
-    {
-        if (BsonSerializer.LookupSerializer<decimal>() == null)
-            BsonSerializer.RegisterSerializer(typeof(decimal), new DecimalSerializer(BsonType.Decimal128));
-
-        if (BsonSerializer.LookupSerializer<decimal?>() == null)
-            BsonSerializer.RegisterSerializer(typeof(decimal?), new NullableSerializer<decimal>(new DecimalSerializer(BsonType.Decimal128)));
-
-        if (BsonSerializer.LookupSerializer<Guid>() == null)
-            BsonSerializer.RegisterSerializer(typeof(Guid), new GuidSerializer(GuidRepresentation.Standard));
-
-        // Standard GUID representation is set for consistency across the application
-        BsonDefaults.GuidRepresentation = GuidRepresentation.Standard;
     }
 
     private static MongoDBOptions<MongoDBContext> CreateMongoDBOptions(IServiceProvider provider, string connectionString)
