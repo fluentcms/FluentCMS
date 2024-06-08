@@ -22,6 +22,9 @@
                     <FormNumberInput @bind-Value="Model.DataTableColumnOrder" Cols="3" Label="Column order in content list" Placeholder="Enter column order number" Required Disabled="@(!Model.DataTableVisible)" />
                     <FormInput @bind-Value="Model.DataTableViewComponent" Cols="6" Label="View type in content list" Placeholder="Enter view type name" Required Disabled="@(!Model.DataTableVisible)" />
                     <FormInput @bind-Value="Model.Label" Cols="6" Label="Label" Placeholder="Enter Field Label" Required />
+                    <FormNumberInput @bind-Value="Model.FormColWidth" Cols="3" Label="Column width (1-12)" Placeholder="Enter column width" Required />
+                    <FormNumberInput @bind-Value="Model.FormViewOrder" Cols="3" Label="View order in edit" Placeholder="Enter view order in edit mode" Required />
+                    <FormInput @bind-Value="Model.FormViewComponent" Cols="6" Label="Type in edit mode" Placeholder="Enter type name" Required />
                     <FormTextarea @bind-Value="Model.Description" Label="Description" Placeholder="Enter Field Description" Required />
                 </Grid>
             </TabPanel>

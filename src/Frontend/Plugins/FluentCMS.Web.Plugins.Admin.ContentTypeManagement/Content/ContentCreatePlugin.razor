@@ -1,3 +1,13 @@
 ﻿@inherits BaseContentPlugin
 
-Content Create
+<CascadingValue Value="ContentType">
+    <PluginForm Model="@Model" Name="@FORM_NAME" Title="Create New Content" OnSubmit="OnSubmit">
+        @foreach (var field in GetFields())
+        {
+            <CascadingValue Value="field">
+                <DynamicComponent Type=@GetFormFieldViewType(field) Parameters="GetParameters(field)" />
+            </CascadingValue>
+        }
+        <FormActions Cancel Submit />
+    </PluginForm>
+</CascadingValue>
