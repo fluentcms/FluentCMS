@@ -442,7 +442,10 @@
                         "Required": true,
                         "DataTableColumnOrder": 1,
                         "DataTableVisible": true,
-                        "DataTableViewComponent": "StringFieldDataTableView"
+                        "DataTableViewComponent": "StringFieldDataTableView",
+                        "FormViewOrder": 1,
+                        "FormColWidth": 12,
+                        "FormViewComponent": "StringFieldFormText"
                     }
                 },
                 {
@@ -453,7 +456,10 @@
                         "Description": "Blog post content",
                         "Required": false,
                         "DataTableVisible": false,
-                        "DataTableViewComponent": "StringFieldDataTableView"
+                        "DataTableViewComponent": "StringFieldDataTableView",
+                        "FormViewOrder": 4,
+                        "FormColWidth": 12,
+                        "FormViewComponent": "StringFieldFormTextArea"
                     }
                 },
                 {
@@ -464,7 +470,10 @@
                         "Description": "Blog post archived or not",
                         "DataTableColumnOrder": 0,
                         "DataTableVisible": true,
-                        "DataTableViewComponent": "BooleanFieldDataTableView"
+                        "DataTableViewComponent": "BooleanFieldDataTableView",
+                        "FormViewOrder": 3,
+                        "FormColWidth": 3,
+                        "FormViewComponent": "BooleanFieldFormCheckbox"
                     }
                 },
                 {
@@ -476,7 +485,10 @@
                         "Required": true,
                         "DataTableColumnOrder": 2,
                         "DataTableVisible": true,
-                        "DataTableViewComponent": "NumberFieldDataTableView"
+                        "DataTableViewComponent": "NumberFieldDataTableView",
+                        "FormViewOrder": 2,
+                        "FormColWidth": 9,
+                        "FormViewComponent": "NumberFieldFormInput"
                     }
                 }
             ],

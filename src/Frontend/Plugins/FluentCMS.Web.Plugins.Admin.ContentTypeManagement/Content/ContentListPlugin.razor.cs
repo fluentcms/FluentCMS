@@ -4,6 +4,8 @@ namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement.Content;
 
 public partial class ContentListPlugin
 {
+    private List<ContentDetailResponse>? Contents { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         if (!string.IsNullOrEmpty(ContentTypeSlug))
