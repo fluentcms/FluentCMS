@@ -14,26 +14,26 @@
             <DataTableItem Label="Url">
                 @if (context.Urls != null)
                 {
-                    <div class="flex gap-1">
+                    <Stack>
                         @foreach (var url in context.Urls)
                         {
                             <Badge Color="Color.Primary">@url</Badge>
                         }
-                    </div>
+                    </Stack>
                 }
             </DataTableItem>
             <DataTableItem Label="Layout">
                 @Layouts.Find(x => x.Id == context.LayoutId)?.Name
             </DataTableItem>
             <DataTableItem>
-                <div class="flex gap-2">
+                <Stack>
                     <Button Size="@ButtonSize.Small" Color="Color.Primary" Href="@GetUrl("Update Site", new { id = @context.Id })">
                         <Icon Name="IconName.Edit" />Edit
                     </Button>
                     <Button Size="@ButtonSize.Small" Color="Color.Danger" Outline @onclick="() => OnConfirm(context)">
                         <Icon Name="IconName.Delete" />Delete
                     </Button>
-                </div>
+                </Stack>
             </DataTableItem>
         </DataTable>
     </ChildContent>
