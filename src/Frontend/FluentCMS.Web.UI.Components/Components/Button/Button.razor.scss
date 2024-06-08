@@ -7,27 +7,15 @@ $button: $prefix + "button";
         @apply w-full;
     }
 
-    &-icon-true {
-        @apply text-center inline-flex items-center;
-    }
-
     &-size-default.#{$button}-link-false {
         @apply px-5 py-2.5 text-sm;
-
-        &.#{$button}-icon-true {
-            @apply p-0;
-        }
     }
 
     &-size-small.#{$button}-link-false {
-        @apply px-3 py-2 text-xs;
+        @apply h-9 px-3 py-2 text-sm;
 
         .#{$prefix}icon {
             @apply w-5 h-5;
-        }
-
-        &.#{$button}-icon-true {
-            @apply p-2 text-base;
         }
     }
 
@@ -37,10 +25,6 @@ $button: $prefix + "button";
         .#{$prefix}icon {
             @apply w-6 h-6;
         }
-
-        &.#{$button}-icon-true {
-            @apply p-2.5 text-xl;
-        }
     }
 
     &-size-large.#{$button}-link-false {
@@ -48,10 +32,6 @@ $button: $prefix + "button";
 
         .#{$prefix}icon {
             @apply w-7 h-7;
-        }
-
-        &.#{$button}-icon-true {
-            @apply p-3 text-2xl;
         }
     }
 }

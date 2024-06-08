@@ -23,10 +23,6 @@ public partial class Button
 
     [Parameter]
     [CSSProperty]
-    public bool Icon { get; set; }
-
-    [Parameter]
-    [CSSProperty]
     public bool Link { get; set; }
 
     [Parameter]
