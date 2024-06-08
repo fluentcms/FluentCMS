@@ -9,5 +9,6 @@ public class BooleanFieldModel : IFieldModel
     public bool DefaultValue { get; set; }
     public decimal DataTableColumnOrder { get; set; }
     public bool DataTableVisible { get; set; }
+    public string DataTableViewComponent { get; set; } = nameof(BooleanFieldDataTableView);
 
 }

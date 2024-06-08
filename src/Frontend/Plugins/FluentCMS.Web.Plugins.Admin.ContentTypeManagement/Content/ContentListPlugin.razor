@@ -15,7 +15,7 @@
                     @foreach (var field in GetVisibleFields())
                     {
                         <DataTableItem Label="@field.Name">
-                            @context.Value[field.Name!]
+                            <DynamicComponent Type=@GetDataTableFieldViewType(field) Parameters=@GetParameters(context, field.Name) />
                         </DataTableItem>
                     }
                     <DataTableItem>

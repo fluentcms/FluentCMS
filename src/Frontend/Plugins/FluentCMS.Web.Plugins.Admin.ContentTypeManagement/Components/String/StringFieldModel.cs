@@ -9,4 +9,5 @@ public class StringFieldModel : IFieldModel
     public string? Description { get; set; }
     public decimal DataTableColumnOrder { get; set; }
     public bool DataTableVisible { get; set; }
+    public string DataTableViewComponent { get; set; } = nameof(StringFieldDataTableView);
 }

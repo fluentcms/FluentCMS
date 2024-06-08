@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement.Content;
 
 public partial class ContentListPlugin
@@ -34,6 +36,27 @@ public partial class ContentListPlugin
             result.Add(field);
 
         return [.. result.OrderBy(x => x.GetDecimal(nameof(IFieldModel.DataTableColumnOrder)))];
+    }
+
+    private Type GetDataTableFieldViewType(ContentTypeField contentTypeField)
+    {
+        var typeName = contentTypeField.GetString(nameof(IFieldModel.DataTableViewComponent));
+
+        // find view type by name in this assembly
+        var viewType = Assembly.GetExecutingAssembly().GetTypes().FirstOrDefault(x => x.Name == typeName);
+
+        return viewType ?? typeof(StringFieldDataTableView);
+    }
+
+    private static IDictionary<string, object> GetParameters(ContentDetailResponse content, string? fieldName)
+    {
+        if (content == null || string.IsNullOrEmpty(fieldName))
+            return new Dictionary<string, object>();
+
+        return new Dictionary<string, object>
+        {
+            { "Value", content.Value[fieldName] }
+        };
     }
 
     #region Delete Content
