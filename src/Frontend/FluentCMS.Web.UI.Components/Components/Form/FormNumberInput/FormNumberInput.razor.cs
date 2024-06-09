@@ -8,6 +8,9 @@ public partial class FormNumberInput<TValue>
     [Parameter]
     public int Cols { get; set; } = 12;
 
+    [Parameter]
+    public NumberInputType Type { get; set; } = NumberInputType.Number;
+
     private static readonly string _stepAttributeValue = GetStepAttributeValue();
 
     private static string GetStepAttributeValue()

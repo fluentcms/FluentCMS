@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
-public partial class BooleanFieldDataTableView
+public partial class BooleanFieldDataTableIndicator
 {
     [CascadingParameter]
     public ContentTypeField? ContentTypeField { get; set; }

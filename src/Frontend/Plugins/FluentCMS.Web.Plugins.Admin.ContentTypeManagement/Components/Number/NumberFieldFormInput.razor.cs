@@ -16,6 +16,9 @@ public partial class NumberFieldFormInput
         if (ContentTypeField is not null)
             FieldModel = ContentTypeField.ToFieldModel<NumberFieldModel>();
 
+        if (FieldModel.DefaultValue != null)
+            Value = FieldModel.DefaultValue;
+
         return base.OnInitializedAsync();
     }
 }

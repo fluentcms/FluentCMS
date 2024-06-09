@@ -2,5 +2,5 @@
 
 @if (FieldModel != null)
 {
-    <FormNumberInput @bind-Value="Value" Label="@FieldModel.Label" Required="@FieldModel.Required" />
+    <FormNumberInput @bind-Value="Value" Min="@FieldModel.MinimumValue" Max="@FieldModel.MaximumValue" Label="@FieldModel.Label" Required="@FieldModel.Required" />
 }

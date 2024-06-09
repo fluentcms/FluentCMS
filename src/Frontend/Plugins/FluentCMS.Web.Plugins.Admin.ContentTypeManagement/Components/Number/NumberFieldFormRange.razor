@@ -1,0 +1,6 @@
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+@if (FieldModel != null)
+{
+    <FormNumberInput Type="NumberInputType.Range" @bind-Value="Value" Min="@FieldModel.MinimumValue" Max="@FieldModel.MaximumValue" Label="@FieldModel.Label" Required="@FieldModel.Required" />
+}

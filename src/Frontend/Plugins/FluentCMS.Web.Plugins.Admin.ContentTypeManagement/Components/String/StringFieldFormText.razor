@@ -2,5 +2,5 @@
 
 @if (FieldModel != null)
 {
-    <FormInput @bind-Value="Value" Label="@FieldModel.Label" Required="@FieldModel.Required" />
+    <FormInput @bind-Value="Value" Label="@FieldModel.Label" Pattern="@FieldModel.Pattern" Required="@FieldModel.Required" Placeholder="@FieldModel.Placeholder" />
 }

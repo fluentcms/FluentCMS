@@ -1,6 +1,6 @@
-﻿namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
+namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
-public partial class StringFieldFormText
+public partial class StringFieldFormRichText
 {
     [CascadingParameter]
     private ContentTypeField? ContentTypeField { get; set; }

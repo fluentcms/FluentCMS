@@ -15,6 +15,9 @@ public partial class StringFieldFormTextArea
         if (ContentTypeField is not null)
             FieldModel = ContentTypeField.ToFieldModel<StringFieldModel>();
 
+        if (!string.IsNullOrEmpty(FieldModel.DefaultValue))
+            Value = FieldModel.DefaultValue;
+
         return base.OnInitializedAsync();
     }
 }

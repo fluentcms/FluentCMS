@@ -439,13 +439,15 @@
                     "Settings": {
                         "Label": "Title",
                         "Description": "Blog post title",
+                        "Placeholder": "Enter post title",
                         "Required": true,
                         "DataTableColumnOrder": 1,
                         "DataTableVisible": true,
                         "DataTableViewComponent": "StringFieldDataTableView",
                         "FormViewOrder": 1,
-                        "FormColWidth": 12,
-                        "FormViewComponent": "StringFieldFormText"
+                        "FormColWidth": 6,
+                        "FormViewComponent": "StringFieldFormText",
+                        "DefaultValue": "Untitled"
                     }
                 },
                 {
@@ -454,12 +456,13 @@
                     "Settings": {
                         "Label": "Content",
                         "Description": "Blog post content",
+                        "Placeholder": "Enter post content",
                         "Required": false,
                         "DataTableVisible": false,
                         "DataTableViewComponent": "StringFieldDataTableView",
                         "FormViewOrder": 4,
-                        "FormColWidth": 12,
-                        "FormViewComponent": "StringFieldFormTextArea"
+                        "FormColWidth": 6,
+                        "FormViewComponent": "StringFieldFormRichText"
                     }
                 },
                 {
@@ -470,10 +473,26 @@
                         "Description": "Blog post archived or not",
                         "DataTableColumnOrder": 0,
                         "DataTableVisible": true,
-                        "DataTableViewComponent": "BooleanFieldDataTableView",
+                        "DataTableViewComponent": "BooleanFieldDataTableIndicator",
                         "FormViewOrder": 3,
                         "FormColWidth": 3,
-                        "FormViewComponent": "BooleanFieldFormCheckbox"
+                        "FormViewComponent": "BooleanFieldFormSwitch"
+                    }
+                },
+                {
+                    "Name": "Slug",
+                    "Type": "string",
+                    "Settings": {
+                        "Label": "Slug",
+                        "Description": "Url slug of the post",
+                        "DataTableColumnOrder": 2,
+                        "DataTableVisible": true,
+                        "DataTableViewComponent": "StringFieldDataTableView",
+                        "FormViewOrder": 3,
+                        "FormColWidth": 12,
+                        "FormViewComponent": "StringFieldFormText",
+                        "Unique": true,
+                        "Pattern": "[a-zA-Z0-9-]"
                     }
                 },
                 {
@@ -496,18 +515,21 @@
                 {
                     "Title": "Hello World",
                     "Content": "Hello World!",
+                    "Slug": "hello-world",
                     "Archived": false,
                     "Order": 1
                 },
                 {
                     "Title": "Hello World 2",
                     "Content": "Hello World 2!",
-                    "Archived": false,
+                    "Slug": "hello-world-2",
+                    "Archived": true,
                     "Order": 2
                 },
                 {
                     "Title": "Hello World 3",
                     "Content": "Hello World 3!",
+                    "Slug": "hello-world-3",
                     "Archived": false,
                     "Order": 3
                 }
