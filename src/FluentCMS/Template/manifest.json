@@ -485,6 +485,7 @@
                     "Settings": {
                         "Label": "Slug",
                         "Description": "Url slug of the post",
+                        "Placeholder": "Enter url slug of the post",
                         "DataTableColumnOrder": 2,
                         "DataTableVisible": true,
                         "DataTableViewComponent": "StringFieldDataTableView",
@@ -501,6 +502,7 @@
                     "Settings": {
                         "Label": "View Order",
                         "Description": "Blog post view order",
+                        "Placeholder": "Enter view order of the post",
                         "Required": true,
                         "DataTableColumnOrder": 2,
                         "DataTableVisible": true,
@@ -508,6 +510,21 @@
                         "FormViewOrder": 2,
                         "FormColWidth": 9,
                         "FormViewComponent": "NumberFieldFormInput"
+                    }
+                },
+                {
+                    "Name": "PublishedAt",
+                    "Type": "date",
+                    "Settings": {
+                        "Label": "Published At",
+                        "Description": "Publish date of this post",
+                        "Placeholder": "Choose post publish date",
+                        "DataTableColumnOrder": 4,
+                        "DataTableVisible": true,
+                        "DataTableViewComponent": "DateFieldDataTableView",
+                        "FormViewOrder": 3,
+                        "FormColWidth": 12,
+                        "FormViewComponent": "DateFieldFormInput"
                     }
                 }
             ],
@@ -517,6 +534,7 @@
                     "Content": "Hello World!",
                     "Slug": "hello-world",
                     "Archived": false,
+                    "PublishedAt": "2024-06-06T15:04:05.641Z",
                     "Order": 1
                 },
                 {
@@ -524,6 +542,7 @@
                     "Content": "Hello World 2!",
                     "Slug": "hello-world-2",
                     "Archived": true,
+                    "PublishedAt": "2024-06-07T15:04:05.641Z",
                     "Order": 2
                 },
                 {
@@ -531,6 +550,7 @@
                     "Content": "Hello World 3!",
                     "Slug": "hello-world-3",
                     "Archived": false,
+                    "PublishedAt": "2024-06-09T15:04:05.641Z",
                     "Order": 3
                 }
             ]
