@@ -1,13 +1,13 @@
 ﻿@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
-@if (Value != null)
+@if (_value != null)
 {
     @if (string.IsNullOrEmpty(FieldModel?.Format))
     {
-        @Value?.ToString()
+        @_value?.ToString()
     }
     else
     {
-        @Value?.ToString(FieldModel.Format)
+        @_value?.ToString(FieldModel.Format)
     }
 }
