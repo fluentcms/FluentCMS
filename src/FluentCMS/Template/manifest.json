@@ -473,10 +473,10 @@
                         "Description": "Blog post archived or not",
                         "DataTableColumnOrder": 0,
                         "DataTableVisible": true,
-                        "DataTableViewComponent": "BooleanFieldDataTableView",
+                        "DataTableViewComponent": "BooleanFieldDataTableIndicator",
                         "FormViewOrder": 3,
                         "FormColWidth": 3,
-                        "FormViewComponent": "BooleanFieldFormCheckbox"
+                        "FormViewComponent": "BooleanFieldFormSwitch"
                     }
                 },
                 {
