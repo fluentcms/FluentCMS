@@ -9,5 +9,5 @@ public interface IFieldModel
     public string DataTableViewComponent { get; set; }
     public decimal FormViewOrder { get; set; }
     public decimal FormColWidth { get; set; }
-    public  string FormViewComponent { get; set; }
+    public string FormViewComponent { get; set; }
 }
