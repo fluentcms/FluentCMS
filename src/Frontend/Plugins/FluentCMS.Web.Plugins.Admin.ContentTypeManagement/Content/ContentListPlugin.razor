@@ -15,7 +15,9 @@
                     @foreach (var field in GetVisibleFields())
                     {
                         <DataTableItem Label="@field.Name">
-                            <DynamicComponent Type=@GetDataTableFieldViewType(field) Parameters=@GetParameters(context, field.Name) />
+                            <CascadingValue Value="field">
+                                <DynamicComponent Type=@GetDataTableFieldViewType(field) Parameters=@GetParameters(context, field.Name) />
+                            </CascadingValue>
                         </DataTableItem>
                     }
                     <DataTableItem>
