@@ -10,7 +10,7 @@ public partial class LayoutUpdatePlugin
     [SupplyParameterFromQuery(Name = "id")]
     private Guid Id { get; set; }
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnInitializedAsync()
     {
         if (Model is null)
         {

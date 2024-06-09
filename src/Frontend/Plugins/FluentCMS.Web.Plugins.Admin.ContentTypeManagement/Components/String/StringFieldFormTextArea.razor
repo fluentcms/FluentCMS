@@ -2,5 +2,5 @@
 
 @if (FieldModel != null)
 {
-    <FormTextarea @bind-Value="Value" Label="@FieldModel.Label" Required="@FieldModel.Required" />
+    <FormTextarea @bind-Value="Value" Label="@FieldModel.Label" Pattern="@FieldModel.Pattern" Placeholder="@FieldModel.Placeholder" Required="@FieldModel.Required" />
 }

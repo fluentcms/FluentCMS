@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
-public partial class BooleanFieldFormCheckbox
+public partial class BooleanFieldFormSwitch
 {
     [CascadingParameter]
     private ContentTypeField? ContentTypeField { get; set; }

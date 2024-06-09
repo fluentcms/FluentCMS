@@ -7,7 +7,7 @@ public partial class LayoutCreatePlugin
     [SupplyParameterFromForm(FormName = FORM_NAME)]
     private LayoutCreateRequest? Model { get; set; }
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnInitializedAsync()
     {
         Model ??= new();
         await Task.CompletedTask;

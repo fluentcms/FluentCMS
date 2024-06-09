@@ -1,19 +1,20 @@
-﻿namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
+namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
-public partial class BooleanFieldFormCheckbox
+public partial class NumberFieldFormRange
 {
     [CascadingParameter]
     private ContentTypeField? ContentTypeField { get; set; }
 
-    [Parameter]
-    public bool Value { get; set; } = default!;
 
-    private BooleanFieldModel? FieldModel { get; set; }
+    [Parameter]
+    public decimal? Value { get; set; }
+
+    private NumberFieldModel? FieldModel { get; set; }
 
     protected override Task OnInitializedAsync()
     {
         if (ContentTypeField is not null)
-            FieldModel = ContentTypeField.ToFieldModel<BooleanFieldModel>();
+            FieldModel = ContentTypeField.ToFieldModel<NumberFieldModel>();
 
         if (FieldModel.DefaultValue != null)
             Value = FieldModel.DefaultValue;
