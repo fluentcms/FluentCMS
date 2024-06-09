@@ -1,0 +1,6 @@
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+@if (FieldModel != null)
+{
+    <FormTextarea @bind-Value="Value" Label="@($"{FieldModel.Label} (This should be RichText editor)")" Pattern="@FieldModel.Pattern" Placeholder="@FieldModel.Placeholder" Required="@FieldModel.Required" />
+}

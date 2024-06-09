@@ -8,6 +8,9 @@
             <TabItem Name="Basic">
                 Basic
             </TabItem>
+            <TabItem Name="View">
+                View
+            </TabItem>
             <TabItem Name="Advanced">
                 Advanced
             </TabItem>
@@ -17,20 +20,28 @@
                 <Grid GutterX="GridGutter.Large">
                     <FormHiddenInput @bind-Value="Model.Type" />
                     <FormInput @bind-Value="Model.Name" Cols="6" Label="Name" Placeholder="Enter Field Name" Required Disabled="@(CurrentState != FieldManagementState.Create)" />
-                    <FormInput @bind-Value="Model.Label" Cols="3" Label="Label" Placeholder="Enter Field Label" Required />
-                    <FormSwitch @bind-Value="Model.Required" Cols="3" Label="Required" Required />
-                    <FormSwitch @bind-Value="Model.DataTableVisible" Cols="3" Label="Show in content list" Required />
-                    <FormNumberInput @bind-Value="Model.DataTableColumnOrder" Cols="3" Label="Column order in content list" Placeholder="Enter column order number" Required Disabled="@(!Model.DataTableVisible)" />
-                    <FormInput @bind-Value="Model.DataTableViewComponent" Cols="6" Label="View type in content list" Placeholder="Enter view type name" Required Disabled="@(!Model.DataTableVisible)" />
-                    <FormNumberInput @bind-Value="Model.FormColWidth" Cols="3" Label="Column width (1-12)" Placeholder="Enter column width" Required />
-                    <FormNumberInput @bind-Value="Model.FormViewOrder" Cols="3" Label="View order in edit" Placeholder="Enter view order in edit mode" Required />
-                    <FormInput @bind-Value="Model.FormViewComponent" Cols="6" Label="Type in edit mode" Placeholder="Enter type name" Required />
+                    <FormInput @bind-Value="Model.Label" Cols="4" Label="Label" Placeholder="Enter Field Label" Required />
+                    <FormSwitch @bind-Value="Model.Required" Cols="2" Label="Required" Required />
+                    <FormNumberInput @bind-Value="Model.MinimumLength" Min="0" Cols="6" Label="Minimum Length" Placeholder="Enter Minimum Length" />
+                    <FormNumberInput @bind-Value="Model.MaximumLength" Min="0" Cols="6" Label="Maximum Length" Placeholder="Enter Maximum Length" />
                     <FormTextarea @bind-Value="Model.Description" Label="Description" Placeholder="Enter Field Description" Required />
+                </Grid>
+            </TabPanel>
+            <TabPanel Name="View">
+                <Grid GutterX="GridGutter.Large">
+                    <FormSwitch @bind-Value="Model.DataTableVisible" Cols="3" Label="Show in content list" />
+                    <FormNumberInput @bind-Value="Model.DataTableColumnOrder" Cols="3" Label="Column order in content list" Placeholder="Enter column order number" Required Disabled="@(!Model.DataTableVisible)" />
+                    <FormSelect @bind-Value="Model.DataTableViewComponent" Data="TableViewTypes" ValueField="Key" TextField="Text" Cols="6" Label="List view type" Placeholder="choose list view type" Required />
+                    <FormNumberInput @bind-Value="Model.FormColWidth" Min="1" Max="12" Cols="3" Label="Column width (1-12)" Placeholder="Enter column width" Required />
+                    <FormNumberInput @bind-Value="Model.FormViewOrder" Min="1" Max="12" Cols="3" Label="View order in edit" Placeholder="Enter view order in edit mode" Required />
+                    <FormSelect @bind-Value="Model.FormViewComponent" Data="FormViewTypes" ValueField="Key" TextField="Text" Cols="6" Label="Form view type" Placeholder="choose form view type" Required />
                 </Grid>
             </TabPanel>
             <TabPanel Name="Advanced">
                 <Grid GutterX="GridGutter.Large">
-                    test
+                    <FormSwitch @bind-Value="Model.Unique" Cols="12" Label="Unique" />
+                    <FormInput @bind-Value="Model.Pattern" Cols="12" Label="Regex pattern" Placeholder="Enter regex pattern"/>
+                    <FormTextarea @bind-Value="Model.DefaultValue" Label="Default Value" Placeholder="Enter default value"/>
                 </Grid>
             </TabPanel>
         </TabContent>
