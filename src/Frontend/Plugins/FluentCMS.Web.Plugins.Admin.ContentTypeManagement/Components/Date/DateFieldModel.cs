@@ -7,6 +7,7 @@ public class DateFieldModel : IFieldModel
     public string Label { get; set; } = string.Empty;
     public bool Required { get; set; }
     public string? Description { get; set; }
+    public string? Placeholder { get; set; }
     public decimal DataTableColumnOrder { get; set; }
     public bool DataTableVisible { get; set; }
     public string DataTableViewComponent { get; set; } = nameof(DateFieldDataTableView);

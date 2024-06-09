@@ -22,6 +22,7 @@
                     <FormInput @bind-Value="Model.Name" Cols="6" Label="Name" Placeholder="Enter Field Name" Required Disabled="@(CurrentState != FieldManagementState.Create)" />
                     <FormInput @bind-Value="Model.Label" Cols="4" Label="Label" Placeholder="Enter Field Label" Required />
                     <FormSwitch @bind-Value="Model.Required" Cols="2" Label="Required" Required />
+                    <FormInput @bind-Value="Model.Placeholder" Label="Placeholder" Placeholder="Enter Field Placeholder" Required />
                     <FormTextarea @bind-Value="Model.Description" Label="Description" Placeholder="Enter Field Description" Required />
                 </Grid>
             </TabPanel>
