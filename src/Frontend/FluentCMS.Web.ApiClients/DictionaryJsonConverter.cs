@@ -61,7 +61,11 @@ public class DictionaryJsonConverter : JsonConverter<IDictionary<string, object?
             case JsonTokenType.Number:
                 return reader.GetDecimal();
             case JsonTokenType.String:
+                // check if the string is a date
+                if (DateTime.TryParse(reader.GetString(), out var date))
+                    return date;
                 return reader.GetString();
+
             case JsonTokenType.StartObject:
                 return Read(ref reader, typeof(IDictionary<string, object?>), options);
             case JsonTokenType.StartArray:

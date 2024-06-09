@@ -1,0 +1,6 @@
+﻿@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+@if (FieldModel != null)
+{
+    <FormDateInput @bind-Value="Value" Label="@FieldModel.Label" Placeholder="@FieldModel.Placeholder" Required="@FieldModel.Required" />
+}

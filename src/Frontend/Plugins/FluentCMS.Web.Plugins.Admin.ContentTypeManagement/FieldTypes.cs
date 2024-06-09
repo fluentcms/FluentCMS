@@ -60,14 +60,16 @@ public class FieldTypes : Dictionary<string, FieldType>
         //    Key = ENUMERATION,
         //    Order = 4
         //});
-        //Add(DATE, new FieldType
-        //{
-        //    Title = "Date",
-        //    Icon = IconName.Clock,
-        //    Description = "A date picker with hours, minutes and seconds",
-        //    Key = DATE,
-        //    Order = 5
-        //});
+        Add(DATE, new FieldType
+        {
+            Title = "Date",
+            Icon = IconName.Clock,
+            Description = "A date picker with hours, minutes and seconds",
+            Key = DATE,
+            Order = 5,
+            SettingViewType = typeof(DateFieldSettings),
+            SettingViewModel = typeof(DateFieldModel)
+        });
         //Add(MEDIA, new FieldType
         //{
         //    Title = "Media",
