@@ -15,6 +15,5 @@ public class DateFieldModel : IFieldModel
     public decimal FormColWidth { get; set; }
     public string FormViewComponent { get; set; } = nameof(DateFieldFormInput);
     public DateTime? DefaultValue { get; set; }
-    public string? Placeholder { get; set; }
     public string? Format { get; set; }
 }
