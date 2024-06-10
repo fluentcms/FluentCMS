@@ -2,42 +2,18 @@ namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
 public partial class StringFieldSettings
 {
-    class SelectItem
+    private List<ComponentTypeOption> FormViewTypes
     {
-        public string Key { get; set; }
-        public string Text { get; set; }
-    };
+        get => [
+            new(nameof(StringFieldFormText), "Input"),
+            new(nameof(StringFieldFormTextArea), "Textarea"),
+            new(nameof(StringFieldFormMarkdownText), "Markdown"),
+            new(nameof(StringFieldFormRichText), "Rich Text"),
+        ];
+    }
 
-    private List<SelectItem> FormViewTypes { get; set; } = new List<SelectItem>
+    private List<ComponentTypeOption> TableViewTypes
     {
-        new()
-        {
-            Key = "StringFieldFormText",
-            Text = "Input",
-        },
-        new()
-        {
-            Key = "StringFieldFormTextArea",
-            Text = "Textarea",
-        },
-        new()
-        {
-            Key = "StringFieldFormRichText",
-            Text = "Rich Text",
-        },
-        new()
-        {
-            Key = "StringFieldFormMarkdownText",
-            Text = "Markdown",
-        },
-    };
-
-    private List<SelectItem> TableViewTypes { get; set; } = new List<SelectItem>
-    {
-        new()
-        {
-            Key = "StringFieldDataTableView",
-            Text = "Simple Text",
-        },
-    };
+        get => [new(nameof(StringFieldDataTableView), "Simple Text")];
+    }
 }
