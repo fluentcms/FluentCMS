@@ -2,32 +2,16 @@ namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
 public partial class NumberFieldSettings
 {
-    class SelectItem
+    private List<ComponentTypeOption> FormViewTypes
     {
-        public string Key { get; set; }
-        public string Text { get; set; }
-    };
+        get => [
+            new(nameof(NumberFieldFormInput), "Number Input"),
+            new(nameof(NumberFieldFormRange), "Range Input"),
+        ];
+    }
 
-    private List<SelectItem> FormViewTypes { get; set; } = new List<SelectItem>
+    private List<ComponentTypeOption> TableViewTypes
     {
-        new()
-        {
-            Key = "NumberFieldFormInput",
-            Text = "Number Input",
-        },
-        new()
-        {
-            Key = "NumberFieldFormRange",
-            Text = "Range Input",
-        },
-    };
-
-    private List<SelectItem> TableViewTypes { get; set; } = new List<SelectItem>
-    {
-        new()
-        {
-            Key = "NumberFieldDataTableView",
-            Text = "Number",
-        },
-    };
+        get => [new(nameof(NumberFieldDataTableView), "Number")];
+    }
 }

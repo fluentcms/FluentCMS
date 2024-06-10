@@ -2,47 +2,21 @@ namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
 public partial class BooleanFieldSettings
 {
-    class SelectItem
+    private List<ComponentTypeOption> FormViewTypes
     {
-        public string Key { get; set; }
-        public string Text { get; set; }
-    };
+        get => [
+            new(nameof(BooleanFieldFormCheckbox), "Checkbox"),
+            new(nameof(BooleanFieldFormSwitch), "Switch"),
+        ];
+    }
 
-    private List<SelectItem> FormViewTypes { get; set; } = new List<SelectItem>
+    private List<ComponentTypeOption> TableViewTypes
     {
-        new()
-        {
-            Key = "BooleanFieldFormCheckbox",
-            Text = "Checkbox",
-        },
-        new()
-        {
-            Key = "BooleanFieldFormSwitch",
-            Text = "Switch",
-        },
-    };
-
-    private List<SelectItem> TableViewTypes { get; set; } = new List<SelectItem>
-    {
-        new()
-        {
-            Key = "BooleanFieldDataTableIndicator",
-            Text = "Indicator",
-        },
-        new()
-        {
-            Key = "BooleanFieldDataTableTrueFalse",
-            Text = "True / False",
-        },
-        new()
-        {
-            Key = "BooleanFieldDataTableYesNo",
-            Text = "Yes / No",
-        },
-        new()
-        {
-            Key = "BooleanFieldDataTableSwitch",
-            Text = "Switch",
-        },
-    };
+        get => [
+            new(nameof(BooleanFieldDataTableIndicator), "Indicator"),
+            new(nameof(BooleanFieldDataTableTrueFalse), "True / False"),
+            new(nameof(BooleanFieldDataTableYesNo), "Yes / No"),
+            new(nameof(BooleanFieldDataTableSwitch), "Switch"),
+        ];
+    }
 }
