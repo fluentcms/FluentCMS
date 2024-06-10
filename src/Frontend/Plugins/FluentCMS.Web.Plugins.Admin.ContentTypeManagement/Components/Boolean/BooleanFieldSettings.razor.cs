@@ -19,4 +19,4 @@ public partial class BooleanFieldSettings
             new(nameof(BooleanFieldDataTableSwitch), "Switch"),
         ];
     }
-}    
+}
