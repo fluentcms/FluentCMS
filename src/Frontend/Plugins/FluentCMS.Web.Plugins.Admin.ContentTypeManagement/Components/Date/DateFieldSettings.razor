@@ -39,7 +39,7 @@
             <TabPanel Name="Advanced">
                 <Grid GutterX="GridGutter.Large">
                     <FormDateInput @bind-Value="Model.DefaultValue" Cols="6" Placeholder="@Model.Placeholder" Label="Default Value" />
-                    <FormInput @bind-Value="Model.Format" Cols="6" Placeholder="Date format for view mode" Label="Format" />
+                    <FormSelect @bind-Value="Model.Format" Data="DateFormats" ValueField="Key" TextField="Text" Cols="6" Placeholder="Choose Date format for view mode" Label="Format" />
                 </Grid>
             </TabPanel>
         </TabContent>
