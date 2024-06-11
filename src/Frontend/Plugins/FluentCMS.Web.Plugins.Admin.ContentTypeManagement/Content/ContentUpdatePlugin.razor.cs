@@ -24,11 +24,11 @@ public partial class ContentUpdatePlugin
             var contentResponse = await GetApiClient<ContentClient>().GetAllAsync(ContentTypeSlug!);
             View = contentResponse?.Data.FirstOrDefault(x => x.Id == Id);
 
-            if(View != null)
+            if (View != null)
             {
                 foreach (var key in View.Value.Keys)
                 {
-                    FieldValues.Add((IFieldValue)new FieldValue<object>() { Name = key, Value = View.Value[key]});
+                    FieldValues.Add((IFieldValue)new FieldValue<object>() { Name = key, Value = View.Value[key] });
                 }
             }
         }
