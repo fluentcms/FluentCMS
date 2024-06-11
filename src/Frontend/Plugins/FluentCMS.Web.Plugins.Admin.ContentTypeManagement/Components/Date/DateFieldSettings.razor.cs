@@ -37,6 +37,7 @@ public partial class DateFieldSettings
     {
         DateFormats.Select(x => {
             Console.WriteLine($"{x.Key}: {x.Text}");
+            return x;
         });
     }
 }
