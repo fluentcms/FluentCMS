@@ -17,6 +17,10 @@
         {
             <NumberFieldSettings Model=@(ContentTypeField.ToFieldModel<NumberFieldModel>()) OnCancel=OnCancel OnSubmit=OnSubmit />
         }
+        @if (FieldType?.Key == FieldTypes.MULTI_SELECT)
+        {
+            <MultiSelectFieldSettings Model=@(ContentTypeField.ToFieldModel<MultiSelectFieldModel>()) OnCancel=OnCancel OnSubmit=OnSubmit />
+        }
         @if (FieldType?.Key == FieldTypes.DATE)
         {
             <DateFieldSettings Model=@(ContentTypeField.ToFieldModel<DateFieldModel>()) OnCancel=OnCancel OnSubmit=OnSubmit />

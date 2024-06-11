@@ -7,7 +7,7 @@ public partial class DateFieldFormInput
 
 
     [Parameter]
-    public decimal? Value { get; set; }
+    public DateTime? Value { get; set; }
 
     private DateFieldModel? FieldModel { get; set; }
 

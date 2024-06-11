@@ -1,0 +1,9 @@
+﻿@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+@if (Value != null)
+{
+    @foreach (var item in Value)
+    {
+        <Badge Color="Color.Info">@item</Badge>
+    }
+}

@@ -17,6 +17,7 @@ public class FieldTypes : Dictionary<string, FieldType>
     public const string NUMBER = "number";
     public const string BOOLEAN = "bool";
     public const string ENUMERATION = "enumeration";
+    public const string MULTI_SELECT = "multi-select";
     public const string DATE = "date";
     public const string MEDIA = "media";
 
@@ -60,6 +61,14 @@ public class FieldTypes : Dictionary<string, FieldType>
         //    Key = ENUMERATION,
         //    Order = 4
         //});
+        Add(MULTI_SELECT, new FieldType
+        {
+           Title = "Multi Select",
+           Icon = IconName.List,
+           Description = "List of values, then pick one or more",
+           Key = MULTI_SELECT,
+           Order = 4
+        });
         Add(DATE, new FieldType
         {
             Title = "Date",
