@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
-public static class DictionaryExtensions
+public static class ModelHelpers
 {
     public static IFieldValue GetFieldValue(this IFieldModel fieldModel, IDictionary<string, object> valuesDict)
     {
