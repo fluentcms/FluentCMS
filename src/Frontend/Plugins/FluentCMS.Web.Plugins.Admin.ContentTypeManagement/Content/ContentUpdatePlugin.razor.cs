@@ -7,28 +7,28 @@ public partial class ContentUpdatePlugin
     [SupplyParameterFromQuery(Name = "id")]
     public Guid Id { get; set; }
 
-    private ContentDetailResponse View { get; set; }
-
+    private ContentDetailResponse? Model { get; set; }
     private List<IFieldModel> Fields { get; set; } = [];
     private List<IFieldValue> FieldValues { get; set; } = [];
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
+
         if (ContentType != null)
         {
             var contentTypeResponse = await GetApiClient<ContentTypeClient>().GetBySlugAsync(ContentTypeSlug!);
             ContentType = contentTypeResponse.Data;
             Fields = ContentType?.Fields?.Select(x => x.ToFieldModel()).OrderBy(x => x.FormViewOrder).ToList() ?? [];
 
-            var contentResponse = await GetApiClient<ContentClient>().GetAllAsync(ContentTypeSlug!);
-            View = contentResponse?.Data.FirstOrDefault(x => x.Id == Id);
+            var contentResponse = await GetApiClient<ContentClient>().GetByIdAsync(ContentTypeSlug!, Id);
+            Model = contentResponse?.Data;
 
-            if (View != null)
+            if (Fields != null)
             {
-                foreach (var key in View.Value.Keys)
+                foreach (var field in Fields)
                 {
-                    FieldValues.Add((IFieldValue)new FieldValue<object>() { Name = key, Value = View.Value[key] });
+                    FieldValues.Add(field.GetFieldValue(Model?.Value ?? new Dictionary<string, object>()));
                 }
             }
         }
@@ -40,14 +40,14 @@ public partial class ContentUpdatePlugin
             throw new NotSupportedException($"Field type '{fieldModel.Type}' is not supported.");
     }
 
-    private Dictionary<string, object> GetFormFieldParameters(IFieldModel fieldModel)
+    private Dictionary<string, object?> GetFormFieldParameters(IFieldModel fieldModel)
     {
-        var fieldValue = (IFieldValue)FieldValues.FirstOrDefault(x => x.Name == fieldModel.Name);
+        var fieldValue = FieldValues.First(x => x.Name == fieldModel.Name);
 
-        var parameters = new Dictionary<string, object>
+        var parameters = new Dictionary<string, object?>
         {
             { "Field", fieldModel },
-            { "FieldValue", (IFieldValue)fieldValue }
+            { "FieldValue", fieldValue }
         };
 
         return parameters;
@@ -55,12 +55,13 @@ public partial class ContentUpdatePlugin
 
     private async Task OnSubmit()
     {
-        var request = new ContentCreateRequest
+        var request = new ContentUpdateRequest
         {
+            Id = Id,
             Value = FieldValues.ToDictionary(x => x.Name, x => x.GetValue())
         };
 
-        await GetApiClient<ContentClient>().CreateAsync(ContentTypeSlug!, request);
+        await GetApiClient<ContentClient>().UpdateAsync(ContentTypeSlug!, request);
 
         NavigateBack();
     }

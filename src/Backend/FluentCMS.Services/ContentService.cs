@@ -5,6 +5,7 @@ public interface IContentService : IAutoRegisterService
     Task<IEnumerable<Content>> GetAll(Guid contentTypeId, CancellationToken cancellationToken = default);
     Task<Content> Create(Content content, CancellationToken cancellationToken = default);
     Task<Content> Delete(Guid contentTypeId, Guid id, CancellationToken cancellationToken = default);
+    Task<Content> GetById(Guid contentTypeId, Guid id, CancellationToken cancellationToken = default);
     Task<Content> Update(Content content, CancellationToken cancellationToken = default);
 }
 
@@ -35,5 +36,11 @@ public class ContentService(IContentRepository contentRepository) : IContentServ
             throw new AppException(ExceptionCodes.ContentUnableToUpdate);
 
         return updatedContent;
+    }
+
+    public async Task<Content> GetById(Guid contentTypeId, Guid id, CancellationToken cancellationToken = default)
+    {
+        return await contentRepository.GetById(id, cancellationToken) ??
+            throw new AppException(ExceptionCodes.ContentNotFound);
     }
 }
