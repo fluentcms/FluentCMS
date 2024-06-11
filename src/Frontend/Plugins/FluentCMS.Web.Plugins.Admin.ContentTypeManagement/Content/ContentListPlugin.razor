@@ -20,7 +20,7 @@
                     }
                     <DataTableItem>
                         <Stack>
-                            <Button Color="Color.Primary" Href="@GetUrl("Update Content", new { slug = ContentTypeSlug })" Size="ButtonSize.Small">
+                            <Button Color="Color.Primary" Href="@GetUrl("Update Content", new { slug = ContentTypeSlug, id = context.Id })" Size="ButtonSize.Small">
                                 <Icon Name="IconName.Edit" />Edit
                             </Button>
                             <Button Color="Color.Danger" Outline @onclick="() => OnConfirm(context.Id)" Size="ButtonSize.Small">

@@ -22,6 +22,16 @@ public class ContentController(
         return OkPaged(contentResponses);
     }
 
+    [HttpGet("{id}")]
+    [Policy(AREA, READ)]
+    public async Task<IApiResult<ContentDetailResponse>> GetById([FromRoute] string contentTypeSlug, Guid id, CancellationToken cancellationToken = default)
+    {
+        var contentType = await contentTypeService.GetBySlug(contentTypeSlug, cancellationToken);
+        var content = await contentService.GetById(contentType.Id, id, cancellationToken);
+        var contentResponse = mapper.Map<ContentDetailResponse>(content);
+        return Ok(contentResponse);
+    }
+
     [HttpPost]
     [Policy(AREA, CREATE)]
     public async Task<IApiResult<ContentDetailResponse>> Create([FromRoute] string contentTypeSlug, [FromBody] ContentCreateRequest request, CancellationToken cancellationToken = default)

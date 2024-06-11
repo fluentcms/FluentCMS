@@ -3,9 +3,11 @@
 
 @if (Fields != null)
 {
-    @foreach (var field in Fields)
-    {
-        <DynamicComponent Type="GetFormFieldType(field)" Parameters="GetFormFieldParameters(field)" />
-    }
-    <Button @onclick="OnSubmit">Submit</Button>
+    <PluginForm Model="@Model" Name="@FORM_NAME" Title="Create New Content" OnSubmit="OnSubmit">
+        @foreach (var field in Fields)
+        {
+            <DynamicComponent Type="GetFormFieldType(field)" Parameters="GetFormFieldParameters(field)" />
+        }
+        <FormActions Cancel Submit />
+    </PluginForm>
 }
