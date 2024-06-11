@@ -1,17 +1,11 @@
 ﻿@inherits BaseContentPlugin
 @rendermode InteractiveServer
 
-@* @if (ContentType != null)
+@if (Fields != null)
 {
-    @for (int i = 0; i < Fields.Count; i++)
+    @foreach (var field in Fields)
     {
-        var field = Fields[i];
-        @if (field.Type == FieldTypes.STRING)
-        {
-            var stringField = (StringFieldModel)field;
-            <StringFieldFormText Model="stringField" />
-        }
+        <DynamicComponent Type="GetFormFieldType(field)" Parameters="GetFormFieldParameters(field)" />
     }
     <Button @onclick="OnSubmit">Submit</Button>
-
-} *@
+}

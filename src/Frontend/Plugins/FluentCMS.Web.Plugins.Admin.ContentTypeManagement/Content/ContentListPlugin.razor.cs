@@ -24,89 +24,46 @@ public partial class ContentListPlugin
         if (ContentType?.Fields == null)
             return [];
 
-        var fields = new List<IFieldModel>();
-
-        //foreach (var contentTypeField in ContentType.Fields)
-        //{
-        //    IFieldModel field;
-
-        //    // check the content type field type and return the parameters
-        //    switch (contentTypeField.Type)
-        //    {
-        //        case FieldTypes.BOOLEAN:
-        //            field = contentTypeField.ToFieldModel<BooleanFieldModel>();
-        //            break;
-        //        case FieldTypes.NUMBER:
-        //            field = contentTypeField.ToFieldModel<NumberFieldModel>();
-        //            break;
-        //        case FieldTypes.DATE:
-        //            field = contentTypeField.ToFieldModel<DateFieldModel>();
-        //            break;
-        //        default:
-        //            field = contentTypeField.ToFieldModel<StringFieldModel>();
-        //            break;
-        //    }
-
-        //    fields.Add(field);
-        //}
+        var fields = ContentType.Fields.Select(x => x.ToFieldModel()).Where(x => x.DataTableVisible);
 
         return [.. fields.OrderBy(x => x.DataTableColumnOrder)];
     }
 
-    //private static Type GetDataTableFieldViewType(IFieldModel field)
-    //{
-    //    // find view type by name in this assembly
-    //    var viewType = Assembly.GetExecutingAssembly().GetTypes().FirstOrDefault(x => x.Name == field.DataTableViewComponent);
+    private static Type GetDataTableComponent(string fieldTypeName, string viewName)
+    {
+        return FieldTypes.All[fieldTypeName].DataTableComponents.Where(x => x.Name == viewName).FirstOrDefault()?.Type ??
+            throw new NotSupportedException($"Field type '{fieldTypeName}' is not supported.");
+    }
 
-    //    return viewType ?? typeof(StringFieldDataTableView);
-    //}
+    private static Dictionary<string, object> GetParameters(ContentDetailResponse content, IFieldModel fieldModel)
+    {
+        // check type of fieldModel and return parameters
+        var parameters = new Dictionary<string, object>
+        {
+            { "Field", fieldModel }
+        };
 
-    //private static Dictionary<string, object> GetParameters(ContentDetailResponse content, IFieldModel field)
-    //{
-    //    // get the value of the field from the content
-    //    var value = content.Value[field.Name];
-    //    if (value != null)
-    //    {
-    //        switch (field.Type)
-    //        {
-    //            case FieldTypes.BOOLEAN:
-    //                // the field type is BooleanFieldModel and we should set the Value and DefaultValue property
-    //                //((BooleanFieldModel)field).Value = (bool)value;
-    //                if (content.Value.ContainsKey("DefaultValue"))
-    //                    ((BooleanFieldModel)field).DefaultValue = (bool)(content.Value["DefaultValue"]);
-    //                break;
+        switch (fieldModel.Type)
+        {
+            case FieldTypes.STRING:
+                parameters.Add("FieldValue", new FieldValue<string?> { Name = fieldModel.Name, Value = (string?)content.Value[fieldModel.Name] });
+                break;
+            case FieldTypes.NUMBER:
+                parameters.Add("FieldValue", new FieldValue<decimal?> { Name = fieldModel.Name, Value = (decimal?)content.Value[fieldModel.Name] });
+                break;
+            case FieldTypes.BOOLEAN:
+                parameters.Add("FieldValue", new FieldValue<bool> { Name = fieldModel.Name, Value = (bool)content.Value[fieldModel.Name] });
+                break;
+            case FieldTypes.DATE_TIME:
+                parameters.Add("FieldValue", new FieldValue<DateTime?> { Name = fieldModel.Name, Value = (DateTime?)content.Value[fieldModel.Name] });
+                break;
+            default:
+                throw new NotSupportedException($"Field type '{fieldModel.Type}' is not supported.");
+        }
 
-    //            case FieldTypes.NUMBER:
-    //                // the field type is NumberFieldModel and we should set the Value and DefaultValue property
-    //                //((NumberFieldModel)field).Value = (decimal)value;
-    //                if (content.Value.ContainsKey("DefaultValue"))
-    //                    ((NumberFieldModel)field).DefaultValue = (decimal)(content.Value["DefaultValue"]);
-    //                break;
+        return parameters;
+    }
 
-    //            case FieldTypes.DATE:
-    //                // the field type is DateFieldModel and we should set the Value and DefaultValue property
-    //                //((DateFieldModel)field).Value = (DateTime)value;
-    //                if (content.Value.ContainsKey("DefaultValue"))
-    //                    ((DateFieldModel)field).DefaultValue = (DateTime)(content.Value["DefaultValue"]);
-    //                break;
-
-    //            case FieldTypes.STRING:
-    //                // the field type is StringFieldModel and we should set the Value and DefaultValue property
-    //                //((StringFieldModel)field).Value = (string)value;
-    //                if (content.Value.ContainsKey("DefaultValue"))
-    //                    ((StringFieldModel)field).DefaultValue = (string)(content.Value["DefaultValue"]);
-    //                break;
-
-    //            default:
-    //                throw new Exception($"Field type {field.Type} in field {field.Name} not supported");
-    //        }
-    //    }
-
-    //    return new Dictionary<string, object>
-    //    {
-    //        { "Model", field }
-    //    };
-    //}
 
     #region Delete Content
 

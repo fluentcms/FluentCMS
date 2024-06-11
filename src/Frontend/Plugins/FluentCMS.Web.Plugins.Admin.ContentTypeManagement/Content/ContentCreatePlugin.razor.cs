@@ -2,70 +2,65 @@ namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement.Content;
 
 public partial class ContentCreatePlugin
 {
-    //private List<IFieldModel> Fields { get; set; } = [];
+    private List<IFieldModel> Fields { get; set; } = [];
+    private List<IFieldValue> FieldValues { get; set; } = [];
 
-    //protected override async Task OnInitializedAsync()
-    //{
-    //    if (ContentType is null && !string.IsNullOrEmpty(ContentTypeSlug))
-    //    {
-    //        var contentTypeResponse = await GetApiClient<ContentTypeClient>().GetBySlugAsync(ContentTypeSlug!);
-    //        ContentType = contentTypeResponse.Data;
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        if (ContentType != null)
+        {
+            var contentTypeResponse = await GetApiClient<ContentTypeClient>().GetBySlugAsync(ContentTypeSlug!);
+            ContentType = contentTypeResponse.Data;
+            Fields = ContentType?.Fields?.Select(x => x.ToFieldModel()).OrderBy(x => x.FormViewOrder).ToList() ?? [];
+        }
+    }
+    private static Type GetFormFieldType(IFieldModel fieldModel)
+    {
+        return FieldTypes.All[fieldModel.Type].FormComponents.Where(x => x.Name == fieldModel.FormViewComponent).FirstOrDefault()?.Type ??
+            throw new NotSupportedException($"Field type '{fieldModel.Type}' is not supported.");
+    }
 
-    //        if (ContentType is null)
-    //            return;
+    private Dictionary<string, object> GetFormFieldParameters(IFieldModel fieldModel)
+    {
+        // check type of fieldModel and return parameters
+        var parameters = new Dictionary<string, object>
+        {
+            { "Field", fieldModel }
+        };
 
-    //        foreach (var contentTypeField in ContentType.Fields ?? [])
-    //        {
-    //            if (contentTypeField.Type == FieldTypes.STRING)
-    //            {
-    //                var newField = contentTypeField.ToFieldModel<StringFieldModel>();
-    //                //newField.Value = newField.DefaultValue;
-    //                Fields.Add(newField);
-    //            }
-    //        }
-    //    }
-    //}
+        switch (fieldModel.Type)
+        {
+            case FieldTypes.STRING:
+                parameters.Add("FieldValue", new FieldValue<string?> { Name = fieldModel.Name });
+                break;
+            case FieldTypes.NUMBER:
+                parameters.Add("FieldValue", new FieldValue<decimal?> { Name = fieldModel.Name });
+                break;
+            case FieldTypes.BOOLEAN:
+                parameters.Add("FieldValue", new FieldValue<bool> { Name = fieldModel.Name });
+                break;
+            case FieldTypes.DATE_TIME:
+                parameters.Add("FieldValue", new FieldValue<DateTime?> { Name = fieldModel.Name });
+                break;
+            default:
+                throw new NotSupportedException($"Field type '{fieldModel.Type}' is not supported.");
+        }
 
-    //private async Task OnSubmit()
-    //{
-    //    //var request = new ContentCreateRequest
-    //    //{
-    //    //    Value = Fields.ToDictionary(x => x.Name, x => x.DataTableViewComponent)
-    //    //};
+        FieldValues.Add((IFieldValue)parameters["FieldValue"]);
 
-    //    //await GetApiClient<ContentClient>().CreateAsync(ContentTypeSlug!, request);
+        return parameters;
+    }
 
-    //    NavigateBack();
-    //}
+    private async Task OnSubmit()
+    {
+        var request = new ContentCreateRequest
+        {
+            Value = FieldValues.ToDictionary(x => x.Name, x => x.GetValue())
+        };
 
-    //private List<ContentTypeField> GetFields()
-    //{
-    //    if (ContentType?.Fields == null)
-    //        return [];
+        await GetApiClient<ContentClient>().CreateAsync(ContentTypeSlug!, request);
 
-    //    return [.. ContentType.Fields.OrderBy(x => x.GetDecimal(nameof(IFieldModel.FormViewOrder)))];
-    //}
-
-    //private Type GetFormFieldViewType(ContentTypeField contentTypeField)
-    //{
-    //    var typeName = contentTypeField.GetString(nameof(IFieldModel.FormViewComponent));
-
-    //    // find view type by name in this assembly
-    //    var viewType = Assembly.GetExecutingAssembly().GetTypes().FirstOrDefault(x => x.Name == typeName);
-
-    //    return viewType ?? typeof(StringFieldFormText);
-    //}
-
-    //private static IDictionary<string, object> GetParameters(ContentTypeField field)
-    //{
-    //    return new Dictionary<string, object>();
-    //    if (field == null)
-    //        return new Dictionary<string, object>();
-
-    //    return new Dictionary<string, object>
-    //    {
-    //        { "ContentTypeField", field }
-    //    };
-    //}
-
+        NavigateBack();
+    }
 }

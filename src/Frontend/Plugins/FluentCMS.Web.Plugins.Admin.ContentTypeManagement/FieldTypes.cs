@@ -104,8 +104,8 @@ public class FieldTypes
                 [
                     new FieldType.Component("True/False", typeof(BooleanFieldDataTableTrueFalse)),
                     new FieldType.Component("Yes/No", typeof(BooleanFieldDataTableYesNo)),
-                    new FieldType.Component("Switch", typeof(BooleanFieldFormSwitch)),
-                    new FieldType.Component("Checkbox", typeof(BooleanFieldFormCheckbox)),
+                    new FieldType.Component("Switch", typeof(BooleanFieldDataTableSwitch)),
+                    new FieldType.Component("Indicator", typeof(BooleanFieldDataTableIndicator)),
                 ]
             }
         },

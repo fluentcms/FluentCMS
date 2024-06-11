@@ -2,7 +2,7 @@
 
 public abstract class BaseFieldComponent<T, TField> : ComponentBase where TField : IFieldModel<T>
 {
-    [CascadingParameter]
+    [Parameter]
     public TField Field { get; set; } = default!;
 
 }
@@ -10,5 +10,5 @@ public abstract class BaseFieldComponent<T, TField> : ComponentBase where TField
 public abstract class BaseFieldValueComponent<T, TField> : BaseFieldComponent<T, TField> where TField : IFieldModel<T>
 {
     [Parameter]
-    public T Value { get; set; } = default!;
+    public FieldValue<T> FieldValue { get; set; } = default!;
 }

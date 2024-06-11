@@ -4,9 +4,9 @@
 
 @if (string.IsNullOrEmpty(Field.Format))
 {
-    @Value?.ToString()
+    @FieldValue.Value?.ToString()
 }
 else
 {
-    @Value?.ToString(Field.Format)
+    @FieldValue.Value?.ToString(Field.Format)
 }

@@ -1,7 +1,7 @@
 ﻿@inherits BaseContentPlugin
 @rendermode InteractiveServer
 
-@if (!string.IsNullOrEmpty(ContentTypeSlug) && ContentType != null && ContentType.Fields != null && Contents != null)
+@if (ContentType != null)
 {
     <PluginBody Title="@ContentType.Title">
         <ActionsFragment>
@@ -15,8 +15,7 @@
                     @foreach (var field in GetVisibleFields())
                     {
                         <DataTableItem Label="@field.Name">
-                            test
-                            @* <DynamicComponent Type=@GetDataTableFieldViewType(field) Parameters=@GetParameters(context, field) /> *@
+                            <DynamicComponent Type=@GetDataTableComponent(field.Type,field.DataTableViewComponent) Parameters=@GetParameters(context, field) />
                         </DataTableItem>
                     }
                     <DataTableItem>
