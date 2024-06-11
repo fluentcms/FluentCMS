@@ -15,10 +15,10 @@ public partial class FieldSettingForm
     public EventCallback OnCancel { get; set; }
 
     [Parameter, EditorRequired]
-    public EventCallback<ContentTypeField> OnSubmit { get; set; }
+    public EventCallback OnSubmit { get; set; }
 
     protected async Task OnFormSubmit()
     {
-        // await OnSubmit.InvokeAsync(Model?.ToContentTypeField<T, TField>());
+        await OnSubmit.InvokeAsync();
     }
 }
