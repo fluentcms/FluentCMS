@@ -2,7 +2,8 @@
 
 public abstract class BaseFieldSettingViewComponent<T, TField> : ComponentBase where TField : IFieldModel<T>
 {
-    protected TField Model { get; set; } = default!;
+    [Parameter]
+    public TField Model { get; set; } = default!;
 
     [Parameter]
     public ContentTypeField? ContentTypeField { get; set; }
@@ -20,4 +21,9 @@ public abstract class BaseFieldSettingViewComponent<T, TField> : ComponentBase w
     {
         await OnSubmit.InvokeAsync(Model?.ToContentTypeField<T, TField>());
     }
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
 }

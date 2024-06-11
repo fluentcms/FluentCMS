@@ -37,7 +37,10 @@ public partial class ContentTypeDetailPlugin
 
     private async Task OnCreateFieldClick()
     {
-        ContentTypeField = new ContentTypeField();
+        ContentTypeField = new ContentTypeField()
+        {
+            Settings = new Dictionary<string, object?>()
+        };
         CurrentState = FieldManagementState.Create;
         await Task.CompletedTask;
     }

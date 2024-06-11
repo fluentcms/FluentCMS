@@ -2,7 +2,7 @@
 
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
-@if (Visible && ContentTypeField != null && ContentType != null)
+@if (Visible)
 {
-    <ContentTypeFieldSettingSelector FieldType="FieldType" OnCancel=OnComplete OnSubmit=OnFieldUpdate />
+    <DynamicComponent Type="FieldTypes.GetSettingType(ContentTypeField!.Type!)" Parameters="GetParameters()" />
 }

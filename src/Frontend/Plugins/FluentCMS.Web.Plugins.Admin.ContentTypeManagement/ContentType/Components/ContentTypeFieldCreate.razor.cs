@@ -4,11 +4,6 @@ public partial class ContentTypeFieldCreate
 {
     private IFieldModel Field { get; set; } = default!;
 
-    private async Task OnBackToTypeSelector()
-    {
-        await Task.CompletedTask;
-    }
-
     private async Task OnTypeSelect(string type)
     {
         ContentTypeField!.Type = type;
@@ -26,7 +21,7 @@ public partial class ContentTypeFieldCreate
         var parameters = new Dictionary<string, object>
         {
             { nameof(ContentTypeField), ContentTypeField! },
-            { "OnSubmit", OnFieldCreate },
+            { "Model", ContentTypeField.ToFieldModel() },
             { "OnCancel", OnComplete }
         };
 

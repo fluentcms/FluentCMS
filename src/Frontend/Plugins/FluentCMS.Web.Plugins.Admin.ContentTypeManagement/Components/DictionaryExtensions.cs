@@ -34,16 +34,16 @@ public static class DictionaryExtensions
 
         switch (typeName)
         {
-            case "string":
+            case FieldTypes.STRING:
                 return src.ToFieldModel<string?, StringFieldModel>();
 
-            case "decimal":
+            case FieldTypes.NUMBER:
                 return src.ToFieldModel<decimal?, NumberFieldModel>();
 
-            case "boolean":
+            case FieldTypes.BOOLEAN:
                 return src.ToFieldModel<bool, BooleanFieldModel>();
 
-            case "datetime":
+            case FieldTypes.DATE_TIME:
                 return src.ToFieldModel<DateTime?, DateFieldModel>();
 
             default:
