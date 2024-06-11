@@ -17,7 +17,7 @@ public interface IFieldModel
     public Type GetFieldSettingComponentType();
 }
 
-public interface IFieldModel<T>: IFieldModel
+public interface IFieldModel<T> : IFieldModel
 {
     public T DefaultValue { get; set; }
 }
