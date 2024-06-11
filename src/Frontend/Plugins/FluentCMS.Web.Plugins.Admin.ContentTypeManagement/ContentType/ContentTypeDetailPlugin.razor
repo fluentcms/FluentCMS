@@ -21,10 +21,12 @@
                 @context.GetString("Label")
             </DataTableItem>
             <DataTableItem Label="Type">
-                <Icon Name="@FieldTypes.All[context.Type!]!.Icon"></Icon>
-                <Badge Color="Color.Primary">
-                    @FieldTypes.All[context.Type!]?.Title
-                </Badge>
+                <Stack>
+                    <Icon Name="@FieldTypes.All[context.Type!]!.Icon"></Icon>
+                    <Badge Color="Color.Primary">
+                        @FieldTypes.All[context.Type!]?.Title
+                    </Badge>
+                </Stack>
             </DataTableItem>
             <DataTableItem Label="Required">
                 <Indicator Color="Color.Success" Visible="@(context.GetBoolean("IsRequired") == true)">Yes</Indicator>

@@ -22,7 +22,9 @@ public partial class ContentTypeFieldCreate
         {
             { nameof(ContentTypeField), ContentTypeField! },
             { "Model", ContentTypeField.ToFieldModel() },
-            { "OnCancel", OnComplete }
+            { "OnCancel", OnComplete },
+            { "OnSubmit", EventCallback.Factory.Create<ContentTypeField>(this, OnFieldCreate) },
+
         };
 
         return parameters;

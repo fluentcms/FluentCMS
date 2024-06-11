@@ -22,7 +22,7 @@ public partial class FormSelect<TItem, TValue>
 
     private bool IsSelected(TItem item)
     {
-        return Value.ToString() == GetValue(item).ToString();
+        return (Value?.ToString() ?? String.Empty) == GetValue(item).ToString(); 
     }
 
     private string? GetText(TItem item)
