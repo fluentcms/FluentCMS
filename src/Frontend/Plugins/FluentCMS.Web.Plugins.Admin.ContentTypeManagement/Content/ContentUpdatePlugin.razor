@@ -1,3 +1,13 @@
 ﻿@inherits BaseContentPlugin
+@rendermode InteractiveServer
 
-Content Update
+<PluginForm Model="@View" Name="@FORM_NAME" Title="Create New Content" OnSubmit="OnSubmit">    
+    @if (Fields != null)
+    {
+        @foreach (var field in Fields)
+        {
+            <DynamicComponent Type="GetFormFieldType(field)" Parameters="GetFormFieldParameters(field)" />
+        }
+    }
+    <FormActions Cancel Submit />
+</PluginForm>

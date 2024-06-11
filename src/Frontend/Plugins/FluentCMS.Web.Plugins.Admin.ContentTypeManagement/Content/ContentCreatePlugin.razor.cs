@@ -2,6 +2,11 @@ namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement.Content;
 
 public partial class ContentCreatePlugin
 {
+    public const string FORM_NAME = "ContentCreateForm";
+
+    [SupplyParameterFromForm(FormName = FORM_NAME)]
+    private ContentCreateRequest Model { get; set; } = new();
+
     private List<IFieldModel> Fields { get; set; } = [];
     private List<IFieldValue> FieldValues { get; set; } = [];
 
@@ -13,6 +18,8 @@ public partial class ContentCreatePlugin
             var contentTypeResponse = await GetApiClient<ContentTypeClient>().GetBySlugAsync(ContentTypeSlug!);
             ContentType = contentTypeResponse.Data;
             Fields = ContentType?.Fields?.Select(x => x.ToFieldModel()).OrderBy(x => x.FormViewOrder).ToList() ?? [];
+
+            // TODO: Initialize FieldValues based on `Model` value
         }
     }
     private static Type GetFormFieldType(IFieldModel fieldModel)
