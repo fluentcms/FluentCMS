@@ -1,8 +1,0 @@
-﻿@inherits BaseContentTypeFieldComponent
-
-@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
-
-@if (Visible && ContentTypeField != null && ContentType != null && FieldType != null)
-{
-    <ContentTypeFieldSettingSelector FieldType="FieldType" OnCancel=OnComplete OnSubmit=OnFieldUpdate />
-}

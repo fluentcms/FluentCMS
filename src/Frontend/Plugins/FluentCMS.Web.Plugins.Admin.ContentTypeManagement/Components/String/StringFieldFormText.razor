@@ -1,6 +1,5 @@
-﻿@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+﻿@inherits BaseFieldValueComponent<string?, StringFieldModel>
 
-@if (FieldModel != null)
-{
-    <FormInput @bind-Value="Value" Label="@FieldModel.Label" Pattern="@FieldModel.Pattern" Required="@FieldModel.Required" Placeholder="@FieldModel.Placeholder" />
-}
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+<FormInput @bind-Value="FieldValue.Value" Label="@Field.Label" Pattern="@Field.Pattern" Required="@Field.Required" Placeholder="@Field.Placeholder" />
