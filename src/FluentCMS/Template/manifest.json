@@ -513,6 +513,24 @@
                     }
                 },
                 {
+                    "Name": "Status",
+                    "Type": "select",
+                    "Settings": {
+                        "Label": "Status",
+                        "Description": "status of the blog post",
+                        "Placeholder": "Choose status of post",
+                        "Required": true,
+                        "DataTableColumnOrder": 4,
+                        "DataTableVisible": true,
+                        "DataTableViewComponent": "SelectFieldDataTableBadge",
+                        "FormViewOrder": 4,
+                        "FormColWidth": 12,
+                        "FormViewComponent": "SelectFieldFormSelect",
+                        "DefaultValue": "Draft",
+                        "Options": "Draft\nIn Review\nPublished\nRejected"
+                    }
+                },
+                {
                     "Name": "PublishedAt",
                     "Type": "date",
                     "Settings": {
@@ -534,6 +552,7 @@
                     "Content": "Hello World!",
                     "Slug": "hello-world",
                     "Archived": false,
+                    "Status": "Draft",
                     "PublishedAt": "2024-06-06T15:04:05.641Z",
                     "Order": 1
                 },
@@ -542,6 +561,7 @@
                     "Content": "Hello World 2!",
                     "Slug": "hello-world-2",
                     "Archived": true,
+                    "Status": "In Review",
                     "PublishedAt": "2024-06-07T15:04:05.641Z",
                     "Order": 2
                 },
@@ -550,6 +570,7 @@
                     "Content": "Hello World 3!",
                     "Slug": "hello-world-3",
                     "Archived": false,
+                    "Status": "Published",
                     "PublishedAt": "2024-06-09T15:04:05.641Z",
                     "Order": 3
                 }

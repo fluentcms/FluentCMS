@@ -1,0 +1,6 @@
+﻿@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+@if (FieldModel != null)
+{
+    <FormSelect Data="SelectItems" @bind-Value="Value" Label="@FieldModel.Label" Placeholder="@FieldModel.Placeholder" Required="@FieldModel.Required" />
+}

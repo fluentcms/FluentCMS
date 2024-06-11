@@ -16,7 +16,7 @@ public class FieldTypes : Dictionary<string, FieldType>
     public const string STRING = "string";
     public const string NUMBER = "number";
     public const string BOOLEAN = "bool";
-    public const string ENUMERATION = "enumeration";
+    public const string SELECT = "select";
     public const string DATE = "date";
     public const string MEDIA = "media";
 
@@ -52,14 +52,14 @@ public class FieldTypes : Dictionary<string, FieldType>
             SettingViewType = typeof(BooleanFieldSettings),
             SettingViewModel = typeof(BooleanFieldModel)
         });
-        //Add(ENUMERATION, new FieldType
-        //{
-        //    Title = "Enumeration",
-        //    Icon = IconName.List,
-        //    Description = "List of values, then pick one",
-        //    Key = ENUMERATION,
-        //    Order = 4
-        //});
+        Add(SELECT, new FieldType
+        {
+           Title = "Select",
+           Icon = IconName.List,
+           Description = "List of values, then pick one",
+           Key = SELECT,
+           Order = 4
+        });
         Add(DATE, new FieldType
         {
             Title = "Date",
