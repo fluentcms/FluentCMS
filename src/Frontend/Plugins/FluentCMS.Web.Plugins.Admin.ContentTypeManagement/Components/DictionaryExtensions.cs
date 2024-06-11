@@ -32,23 +32,14 @@ public static class DictionaryExtensions
         var typeName = src.Type ??
             throw new ArgumentNullException(nameof(src.Type));
 
-        switch (typeName)
+        return typeName switch
         {
-            case FieldTypes.STRING:
-                return src.ToFieldModel<string?, StringFieldModel>();
-
-            case FieldTypes.NUMBER:
-                return src.ToFieldModel<decimal?, NumberFieldModel>();
-
-            case FieldTypes.BOOLEAN:
-                return src.ToFieldModel<bool, BooleanFieldModel>();
-
-            case FieldTypes.DATE_TIME:
-                return src.ToFieldModel<DateTime?, DateFieldModel>();
-
-            default:
-                throw new NotSupportedException($"Field type '{typeName}' is not supported.");
-        }
+            FieldTypes.STRING => src.ToFieldModel<string?, StringFieldModel>(),
+            FieldTypes.NUMBER => src.ToFieldModel<decimal?, NumberFieldModel>(),
+            FieldTypes.BOOLEAN => src.ToFieldModel<bool, BooleanFieldModel>(),
+            FieldTypes.DATE_TIME => src.ToFieldModel<DateTime?, DateFieldModel>(),
+            _ => throw new NotSupportedException($"Field type '{typeName}' is not supported."),
+        };
     }
 
     public static ContentTypeField ToContentTypeField<T, TField>(this TField src) where TField : IFieldModel<T>

@@ -10,11 +10,6 @@ public interface IFieldModel
     public decimal FormViewOrder { get; set; }
     public decimal FormColWidth { get; set; }
     public string FormViewComponent { get; set; }
-    public List<ComponentTypeOption> GetFormComponents();
-    public List<ComponentTypeOption> GetDataTableComponents();
-    public Type GetFormComponentType();
-    public Type GetDataTableComponentType();
-    public Type GetFieldSettingComponentType();
 }
 
 public interface IFieldModel<T> : IFieldModel
@@ -33,23 +28,4 @@ public abstract class FieldModel<T> : IFieldModel<T>
     public decimal FormColWidth { get; set; } = 12;
     public string FormViewComponent { get; set; } = default!;
     public T DefaultValue { get; set; } = default!;
-    public abstract Type GetFieldSettingComponentType();
-    public abstract List<ComponentTypeOption> GetFormComponents();
-    public abstract List<ComponentTypeOption> GetDataTableComponents();
-
-    public Type GetFormComponentType()
-    {
-        return GetFormComponents().Where(x => x.Name == FormViewComponent).First().Type;
-    }
-
-    public Type GetDataTableComponentType()
-    {
-        return GetDataTableComponents().Where(x => x.Name == DataTableViewComponent).First().Type;
-    }
-
-    public FieldModel()
-    {
-        DataTableViewComponent = GetDataTableComponents().First().Name;
-        FormViewComponent = GetFormComponents().First().Name;
-    }
 }
