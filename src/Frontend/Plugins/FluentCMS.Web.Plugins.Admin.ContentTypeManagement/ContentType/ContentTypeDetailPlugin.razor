@@ -1,6 +1,8 @@
 ﻿@inherits BasePlugin
 @rendermode InteractiveServer
 
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
 <PluginBody Title="Content Type Fields" Visible="@(ContentType?.Fields != null)">
     <ActionsFragment>
         <Button @onclick="NavigateBack">
@@ -19,9 +21,9 @@
                 @context.GetString("Label")
             </DataTableItem>
             <DataTableItem Label="Type">
-                <Icon Name="@FieldTypes[context.Type!]!.Icon"></Icon>
+                <Icon Name="@FieldTypes.All[context.Type!]!.Icon"></Icon>
                 <Badge Color="Color.Primary">
-                    @FieldTypes[context.Type!]?.Title
+                    @FieldTypes.All[context.Type!]?.Title
                 </Badge>
             </DataTableItem>
             <DataTableItem Label="Required">
@@ -47,11 +49,9 @@
 </PluginBody>
 
 <CascadingValue Value="ContentType">
-    <CascadingValue Value="ContentTypeField">
-        <CascadingValue Value="CurrentState">
-            <ContentTypeFieldCreate OnComplete=LoadList Visible="CurrentState == FieldManagementState.Create" />
-            <ContentTypeFieldUpdate OnComplete=LoadList Visible="CurrentState == FieldManagementState.Edit" />
-            <ContentTypeFieldDelete OnComplete=LoadList Visible="CurrentState == FieldManagementState.Delete" />
-        </CascadingValue>
+    <CascadingValue Value="CurrentState">
+        <ContentTypeFieldCreate OnComplete=LoadList Visible="CurrentState == FieldManagementState.Create" ContentTypeField="ContentTypeField" />
+        <ContentTypeFieldUpdate OnComplete=LoadList Visible="CurrentState == FieldManagementState.Edit" ContentTypeField="ContentTypeField" />
+        <ContentTypeFieldDelete OnComplete=LoadList Visible="CurrentState == FieldManagementState.Delete" ContentTypeField="ContentTypeField" />
     </CascadingValue>
 </CascadingValue>

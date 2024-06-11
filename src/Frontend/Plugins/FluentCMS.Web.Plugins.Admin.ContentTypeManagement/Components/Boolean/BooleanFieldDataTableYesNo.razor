@@ -1,9 +1,8 @@
-﻿@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
-@if (Value == null)
-{
-    <text>N/A</text>
-}
-else if (Value == true)
+﻿@inherits BaseFieldValueComponent<bool, BooleanFieldModel>
+
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+@if (Value)
 {
     <text>Yes</text>
 }

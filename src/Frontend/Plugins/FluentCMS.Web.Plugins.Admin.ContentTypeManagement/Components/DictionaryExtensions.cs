@@ -4,20 +4,22 @@ namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
 public static class DictionaryExtensions
 {
-    public static T ToFieldModel<T>(this ContentTypeField src) where T : IFieldModel, new()
+    private static TField ToFieldModel<T, TField>(this ContentTypeField src) where TField : IFieldModel<T>, new()
     {
-        T result = new()
+        TField result = new()
         {
-            Name = src.Name ?? string.Empty,
-            Type = src.Type ?? string.Empty
+            Name = src.Name ?? string.Empty
         };
 
-        PropertyInfo[] properties = typeof(T).GetProperties();
+        PropertyInfo[] properties = typeof(TField).GetProperties();
 
         var settingsDict = src.Settings ?? new Dictionary<string, object?>();
 
         foreach (PropertyInfo prop in properties)
         {
+            if (prop.Name == "Name" || prop.Name == "Type")
+                continue;
+
             if (prop.CanWrite && settingsDict.TryGetValue(prop.Name, out object? value) && value != null)
                 prop.SetValue(result, value);
         }
@@ -25,7 +27,31 @@ public static class DictionaryExtensions
         return result;
     }
 
-    public static ContentTypeField ToContentTypeField<T>(this T src) where T : IFieldModel
+    public static IFieldModel ToFieldModel(this ContentTypeField src)
+    {
+        var typeName = src.Type ??
+            throw new ArgumentNullException(nameof(src.Type));
+
+        switch (typeName)
+        {
+            case "string":
+                return src.ToFieldModel<string?, StringFieldModel>();
+
+            case "decimal":
+                return src.ToFieldModel<decimal?, NumberFieldModel>();
+
+            case "boolean":
+                return src.ToFieldModel<bool, BooleanFieldModel>();
+
+            case "datetime":
+                return src.ToFieldModel<DateTime?, DateFieldModel>();
+
+            default:
+                throw new NotSupportedException($"Field type '{typeName}' is not supported.");
+        }
+    }
+
+    public static ContentTypeField ToContentTypeField<T, TField>(this TField src) where TField : IFieldModel<T>
     {
         var result = new ContentTypeField
         {
@@ -34,7 +60,7 @@ public static class DictionaryExtensions
             Settings = new Dictionary<string, object?>()
         };
 
-        PropertyInfo[] properties = typeof(T).GetProperties();
+        PropertyInfo[] properties = typeof(TField).GetProperties();
 
         foreach (PropertyInfo prop in properties)
         {

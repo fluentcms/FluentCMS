@@ -1,27 +1,17 @@
 ﻿@inherits BaseContentPlugin
 @rendermode InteractiveServer
 
-@if (Model != null && ContentType != null)
+@* @if (ContentType != null)
 {
-    @* <CascadingValue Value="ContentType">
-        <PluginForm Model="@Model" Name="@FORM_NAME" Title="Create New Content" OnSubmit="OnSubmit">
-            <FormActions Cancel Submit />
-        </PluginForm>
-    </CascadingValue> *@
-    @foreach (var field in GetFields().Where(x => x.Type == FieldTypes.STRING))
+    @for (int i = 0; i < Fields.Count; i++)
     {
-        <h1>@field.Name</h1>
-        @* <input type="text" @onchange="@((ChangeEventArgs e) => changeOption(e,field.Name!))" value="@StringValueDict[field.Name!]" /> *@
-        <InputText @bind-Value="@StringValueDict[field.Name!]" Label="@field.Name" />
-        @* <FormInput @bind-Value="@StringValueDict[field.Name!]" Label="@field.Name" /> *@
+        var field = Fields[i];
+        @if (field.Type == FieldTypes.STRING)
+        {
+            var stringField = (StringFieldModel)field;
+            <StringFieldFormText Model="stringField" />
+        }
     }
     <Button @onclick="OnSubmit">Submit</Button>
 
-}
-@code{
-
-    public void changeOption(ChangeEventArgs e, string key)
-    {
-        
-    }
-}
+} *@

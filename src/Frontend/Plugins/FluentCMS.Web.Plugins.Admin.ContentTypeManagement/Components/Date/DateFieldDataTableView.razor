@@ -1,13 +1,12 @@
-﻿@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+﻿@inherits BaseFieldValueComponent<DateTime?, DateFieldModel>
 
-@if (Value != null)
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+@if (string.IsNullOrEmpty(Field.Format))
 {
-    @if (string.IsNullOrEmpty(FieldModel?.Format))
-    {
-        @Value?.ToString()
-    }
-    else
-    {
-        @Value?.ToString(FieldModel.Format)
-    }
+    @Value?.ToString()
+}
+else
+{
+    @Value?.ToString(Field.Format)
 }

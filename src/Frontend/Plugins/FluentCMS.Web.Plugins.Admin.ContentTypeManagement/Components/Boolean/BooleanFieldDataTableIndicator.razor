@@ -1,4 +1,6 @@
-﻿@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
-<Indicator Color="Color.Default" Visible="@(Value == null)">NA</Indicator>
-<Indicator Color="Color.Success" Visible="@(Value == true)">Yes</Indicator>
-<Indicator Color="Color.Danger" Visible="@(Value == false)">No</Indicator>
+﻿@inherits BaseFieldValueComponent<bool, BooleanFieldModel>
+
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+<Indicator Color="Color.Success" Visible="@Value">Yes</Indicator>
+<Indicator Color="Color.Danger" Visible="@(!Value)">No</Indicator>

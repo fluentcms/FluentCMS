@@ -1,5 +1,7 @@
 ﻿@inherits BasePlugin
 
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
 <PluginForm Model="@Model" Name="@FORM_NAME" Title="Update Content Type" OnSubmit="OnSubmit">
     <FormHiddenInput @bind-Value="Model!.Id" />
     <FormInput @bind-Value="Model!.Title" Label="Title" Placeholder="Enter Title" />

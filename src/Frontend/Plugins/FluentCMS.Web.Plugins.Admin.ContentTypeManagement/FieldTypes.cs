@@ -8,75 +8,90 @@ public class FieldType
     public string Key { get; set; } = default!;
     public int Order { get; set; }
     public Type SettingViewType { get; set; } = default!;
-    public Type SettingViewModel { get; set; } = default!;
+    //public Type SettingViewModel { get; set; } = default!;
 }
 
-public class FieldTypes : Dictionary<string, FieldType>
+public class FieldTypes
 {
     public const string STRING = "string";
-    public const string NUMBER = "number";
+    public const string NUMBER = "decimal";
     public const string BOOLEAN = "bool";
     public const string ENUMERATION = "enumeration";
-    public const string DATE = "date";
+    public const string DATE_TIME = "datetime";
     public const string MEDIA = "media";
 
-    public FieldTypes()
+    public static Type GetSettingType(string fieldTypeKey) =>
+        All[fieldTypeKey].SettingViewType;
+
+    public static Dictionary<string, FieldType> All = new()
     {
-        Add(STRING, new FieldType
         {
-            Icon = IconName.Text,
-            Title = "String",
-            Description = "Small or long text like title or description",
-            Key = STRING,
-            Order = 1,
-            SettingViewType = typeof(StringFieldSettings),
-            SettingViewModel = typeof(StringFieldModel)
-        });
-        Add(NUMBER, new FieldType
+            STRING,
+            new FieldType
+            {
+                Icon = IconName.Text,
+                Title = "String",
+                Description = "Small or long text like title or description",
+                Key = STRING,
+                Order = 1,
+                SettingViewType = typeof(StringFieldSettings),
+                //SettingViewModel = typeof(StringFieldModel)
+            }
+        },
         {
-            Title = "Number",
-            Icon = IconName.Number,
-            Description = "Numbers (integer, float, decimal)",
-            Key = NUMBER,
-            Order = 2,
-            SettingViewType = typeof(NumberFieldSettings),
-            SettingViewModel = typeof(NumberFieldModel)
-        });
-        Add(BOOLEAN, new FieldType
+            NUMBER,
+            new FieldType
+            {
+                Title = "Number",
+                Icon = IconName.Number,
+                Description = "Numbers (integer, float, decimal)",
+                Key = NUMBER,
+                Order = 2,
+                SettingViewType = typeof(NumberFieldSettings),
+                //SettingViewModel = typeof(NumberFieldModel)
+            }
+        },
         {
-            Title = "Boolean",
-            Icon = IconName.Boolean,
-            Description = "Yes or no, 1 or 0, true or false",
-            Key = BOOLEAN,
-            Order = 3,
-            SettingViewType = typeof(BooleanFieldSettings),
-            SettingViewModel = typeof(BooleanFieldModel)
-        });
-        //Add(ENUMERATION, new FieldType
+            BOOLEAN,
+            new FieldType
+            {
+                Title = "Boolean",
+                Icon = IconName.Boolean,
+                Description = "Yes or no, 1 or 0, true or false",
+                Key = BOOLEAN,
+                Order = 3,
+                SettingViewType = typeof(BooleanFieldSettings),
+                //SettingViewModel = typeof(BooleanFieldModel)
+            }
+        },
+        //{ENUMERATION, new FieldType
         //{
         //    Title = "Enumeration",
         //    Icon = IconName.List,
         //    Description = "List of values, then pick one",
         //    Key = ENUMERATION,
         //    Order = 4
-        //});
-        Add(DATE, new FieldType
+        //}},
         {
-            Title = "Date",
-            Icon = IconName.Clock,
-            Description = "A date picker with hours, minutes and seconds",
-            Key = DATE,
-            Order = 5,
-            SettingViewType = typeof(DateFieldSettings),
-            SettingViewModel = typeof(DateFieldModel)
-        });
-        //Add(MEDIA, new FieldType
+            DATE_TIME,
+            new FieldType
+            {
+                Title = "Date Time",
+                Icon = IconName.Clock,
+                Description = "A date picker with hours, minutes and seconds",
+                Key = DATE_TIME,
+                Order = 5,
+                SettingViewType = typeof(DateFieldSettings),
+                //SettingViewModel = typeof(DateFieldModel)
+            }
+        }
+        //{MEDIA, new FieldType
         //{
         //    Title = "Media",
         //    Icon = IconName.ClipboardList,
         //    Description = "Files like images, videos, etc",
         //    Key = MEDIA,
         //    Order = 6
-        //});
-    }
+        //}}
+    };
 }

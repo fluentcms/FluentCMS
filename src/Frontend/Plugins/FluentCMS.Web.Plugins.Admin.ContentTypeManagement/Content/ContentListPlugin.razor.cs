@@ -8,12 +8,8 @@ public partial class ContentListPlugin
 
     protected override async Task OnInitializedAsync()
     {
-        if (!string.IsNullOrEmpty(ContentTypeSlug))
-        {
-            var contentTypeResponse = await GetApiClient<ContentTypeClient>().GetBySlugAsync(ContentTypeSlug);
-            ContentType = contentTypeResponse?.Data;
-            await Load();
-        }
+        await base.OnInitializedAsync();
+        await Load();
     }
 
     private async Task Load()
@@ -25,41 +21,94 @@ public partial class ContentListPlugin
         }
     }
 
-    private List<ContentTypeField> GetVisibleFields()
+    private List<IFieldModel> GetVisibleFields()
     {
         if (ContentType?.Fields == null)
             return [];
 
-        var result = new List<ContentTypeField>();
+        var fields = new List<IFieldModel>();
 
-        var visibleKey = nameof(IFieldModel.DataTableVisible);
+        //foreach (var contentTypeField in ContentType.Fields)
+        //{
+        //    IFieldModel field;
 
-        foreach (var field in ContentType.Fields.Where(x => x.GetBoolean(visibleKey) == true))
-            result.Add(field);
+        //    // check the content type field type and return the parameters
+        //    switch (contentTypeField.Type)
+        //    {
+        //        case FieldTypes.BOOLEAN:
+        //            field = contentTypeField.ToFieldModel<BooleanFieldModel>();
+        //            break;
+        //        case FieldTypes.NUMBER:
+        //            field = contentTypeField.ToFieldModel<NumberFieldModel>();
+        //            break;
+        //        case FieldTypes.DATE:
+        //            field = contentTypeField.ToFieldModel<DateFieldModel>();
+        //            break;
+        //        default:
+        //            field = contentTypeField.ToFieldModel<StringFieldModel>();
+        //            break;
+        //    }
 
-        return [.. result.OrderBy(x => x.GetDecimal(nameof(IFieldModel.DataTableColumnOrder)))];
+        //    fields.Add(field);
+        //}
+
+        return [.. fields.OrderBy(x => x.DataTableColumnOrder)];
     }
 
-    private Type GetDataTableFieldViewType(ContentTypeField contentTypeField)
-    {
-        var typeName = contentTypeField.GetString(nameof(IFieldModel.DataTableViewComponent));
+    //private static Type GetDataTableFieldViewType(IFieldModel field)
+    //{
+    //    // find view type by name in this assembly
+    //    var viewType = Assembly.GetExecutingAssembly().GetTypes().FirstOrDefault(x => x.Name == field.DataTableViewComponent);
 
-        // find view type by name in this assembly
-        var viewType = Assembly.GetExecutingAssembly().GetTypes().FirstOrDefault(x => x.Name == typeName);
+    //    return viewType ?? typeof(StringFieldDataTableView);
+    //}
 
-        return viewType ?? typeof(StringFieldDataTableView);
-    }
+    //private static Dictionary<string, object> GetParameters(ContentDetailResponse content, IFieldModel field)
+    //{
+    //    // get the value of the field from the content
+    //    var value = content.Value[field.Name];
+    //    if (value != null)
+    //    {
+    //        switch (field.Type)
+    //        {
+    //            case FieldTypes.BOOLEAN:
+    //                // the field type is BooleanFieldModel and we should set the Value and DefaultValue property
+    //                //((BooleanFieldModel)field).Value = (bool)value;
+    //                if (content.Value.ContainsKey("DefaultValue"))
+    //                    ((BooleanFieldModel)field).DefaultValue = (bool)(content.Value["DefaultValue"]);
+    //                break;
 
-    private static IDictionary<string, object> GetParameters(ContentDetailResponse content, string? fieldName)
-    {
-        if (content == null || string.IsNullOrEmpty(fieldName))
-            return new Dictionary<string, object>();
+    //            case FieldTypes.NUMBER:
+    //                // the field type is NumberFieldModel and we should set the Value and DefaultValue property
+    //                //((NumberFieldModel)field).Value = (decimal)value;
+    //                if (content.Value.ContainsKey("DefaultValue"))
+    //                    ((NumberFieldModel)field).DefaultValue = (decimal)(content.Value["DefaultValue"]);
+    //                break;
 
-        return new Dictionary<string, object>
-        {
-            { "Value", content.Value[fieldName] }
-        };
-    }
+    //            case FieldTypes.DATE:
+    //                // the field type is DateFieldModel and we should set the Value and DefaultValue property
+    //                //((DateFieldModel)field).Value = (DateTime)value;
+    //                if (content.Value.ContainsKey("DefaultValue"))
+    //                    ((DateFieldModel)field).DefaultValue = (DateTime)(content.Value["DefaultValue"]);
+    //                break;
+
+    //            case FieldTypes.STRING:
+    //                // the field type is StringFieldModel and we should set the Value and DefaultValue property
+    //                //((StringFieldModel)field).Value = (string)value;
+    //                if (content.Value.ContainsKey("DefaultValue"))
+    //                    ((StringFieldModel)field).DefaultValue = (string)(content.Value["DefaultValue"]);
+    //                break;
+
+    //            default:
+    //                throw new Exception($"Field type {field.Type} in field {field.Name} not supported");
+    //        }
+    //    }
+
+    //    return new Dictionary<string, object>
+    //    {
+    //        { "Model", field }
+    //    };
+    //}
 
     #region Delete Content
 

@@ -1,10 +1,10 @@
 ﻿@inherits BaseComponent
 
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
-
+@* 
 @if (ContentTypeField != null)
 {
-    <CascadingValue Value="FieldType">
+    <DynamicComponent Type="" Parameters="" />
         @if (FieldType?.Key == FieldTypes.STRING)
         {
             <StringFieldSettings Model=@(ContentTypeField.ToFieldModel<StringFieldModel>()) OnCancel=OnCancel OnSubmit=OnSubmit />
@@ -21,5 +21,5 @@
         {
             <DateFieldSettings Model=@(ContentTypeField.ToFieldModel<DateFieldModel>()) OnCancel=OnCancel OnSubmit=OnSubmit />
         }
-    </CascadingValue>
 }
+ *@

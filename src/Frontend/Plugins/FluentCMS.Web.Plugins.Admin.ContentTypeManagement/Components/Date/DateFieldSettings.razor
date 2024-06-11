@@ -1,8 +1,8 @@
-﻿@inherits BaseFieldSettingViewComponent<DateFieldModel>
+﻿@inherits BaseFieldSettingViewComponent<DateTime?,DateFieldModel>
 
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
-<FieldSettingForm Model="Model" OnCancel="OnCancel" OnSubmit="OnSubmit">
+<FieldSettingForm Model="Model" OnCancel="OnCancel" OnSubmit="OnSubmit" TField="DateFieldModel" T="DateTime?">
     <Tabs Active="Basic">
         <TabList>
             <TabItem Name="Basic">
@@ -30,10 +30,10 @@
                 <Grid GutterX="GridGutter.Large">
                     <FormSwitch @bind-Value="Model.DataTableVisible" Cols="3" Label="Show in content list" />
                     <FormNumberInput @bind-Value="Model.DataTableColumnOrder" Cols="3" Label="Column order in list" Placeholder="Enter column order number" Required Disabled="@(!Model.DataTableVisible)" />
-                    <FormSelect @bind-Value="Model.DataTableViewComponent" Data="TableViewTypes" ValueField="Type" TextField="Text" Cols="6" Label="List view type" Placeholder="choose list view type" Required />
+                    <FormSelect @bind-Value="Model.DataTableViewComponent" Data="Model.GetDataTableComponents()" ValueField="Name" TextField="Text" Cols="6" Label="List view type" Placeholder="choose list view type" Required />
                     <FormNumberInput @bind-Value="Model.FormColWidth" Min="1" Max="12" Cols="3" Label="Column width (1-12)" Placeholder="Enter column width" Required />
                     <FormNumberInput @bind-Value="Model.FormViewOrder" Min="1" Max="12" Cols="3" Label="View order in edit" Placeholder="Enter view order in edit mode" Required />
-                    <FormSelect @bind-Value="Model.FormViewComponent" Data="FormViewTypes" ValueField="Type" TextField="Text" Cols="6" Label="Form view type" Placeholder="choose form view type" Required />
+                    <FormSelect @bind-Value="Model.FormViewComponent" Data="Model.GetFormComponents()" ValueField="Name" TextField="Text" Cols="6" Label="Form view type" Placeholder="choose form view type" Required />
                 </Grid>
             </TabPanel>
             <TabPanel Name="Advanced">

@@ -1,6 +1,5 @@
+@inherits BaseFieldValueComponent<string?, StringFieldModel>
+
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
-@if (FieldModel != null)
-{
-    <FormTextarea @bind-Value="Value" Label="@($"{FieldModel.Label} (This should be Markdown editor)")" Pattern="@FieldModel.Pattern" Placeholder="@FieldModel.Placeholder" Required="@FieldModel.Required" />
-}
+<FormTextarea @bind-Value="Value" Label="@($"{Field.Label} (This should be Markdown editor)")" Pattern="@Field.Pattern" Placeholder="@Field.Placeholder" Required="@Field.Required" />
