@@ -7,7 +7,7 @@ public partial class DateFieldFormInput
 
 
     [Parameter]
-    public decimal? Value { get; set; }
+    public DateTime? Value { get; set; }
 
     private DateFieldModel? FieldModel { get; set; }
 
@@ -15,6 +15,9 @@ public partial class DateFieldFormInput
     {
         if (ContentTypeField is not null)
             FieldModel = ContentTypeField.ToFieldModel<DateFieldModel>();
+
+        if (FieldModel.DefaultValue != null)
+            Value = FieldModel.DefaultValue;
 
         return base.OnInitializedAsync();
     }
