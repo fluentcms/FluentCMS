@@ -4,6 +4,47 @@ namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
 public static class DictionaryExtensions
 {
+    public static IFieldValue GetFieldValue(this IFieldModel fieldModel, IDictionary<string, object> valuesDict)
+    {
+        switch (fieldModel.Type)
+        {
+            case FieldTypes.STRING:
+                return new FieldValue<string?> { Name = fieldModel.Name, Value = (string?)valuesDict[fieldModel.Name] };
+
+            case FieldTypes.NUMBER:
+                return new FieldValue<decimal?> { Name = fieldModel.Name, Value = (decimal?)valuesDict[fieldModel.Name] };
+
+            case FieldTypes.BOOLEAN:
+                return new FieldValue<bool> { Name = fieldModel.Name, Value = (bool)(valuesDict[fieldModel.Name] ?? false) };
+
+            case FieldTypes.DATE_TIME:
+                return new FieldValue<DateTime?> { Name = fieldModel.Name, Value = (DateTime?)valuesDict[fieldModel.Name] };
+
+            default:
+                throw new NotSupportedException($"Field type '{fieldModel.Type}' is not supported.");
+        }
+    }
+    public static IFieldValue GetFieldValue(this IFieldModel fieldModel)
+    {
+        switch (fieldModel.Type)
+        {
+            case FieldTypes.STRING:
+                return new FieldValue<string?> { Name = fieldModel.Name };
+
+            case FieldTypes.NUMBER:
+                return new FieldValue<decimal?> { Name = fieldModel.Name };
+
+            case FieldTypes.BOOLEAN:
+                return new FieldValue<bool> { Name = fieldModel.Name };
+
+            case FieldTypes.DATE_TIME:
+                return new FieldValue<DateTime?> { Name = fieldModel.Name };
+
+            default:
+                throw new NotSupportedException($"Field type '{fieldModel.Type}' is not supported.");
+        }
+    }
+
     private static TField ToFieldModel<T, TField>(this ContentTypeField src) where TField : IFieldModel<T>, new()
     {
         TField result = new()

@@ -37,31 +37,11 @@ public partial class ContentListPlugin
 
     private static Dictionary<string, object> GetParameters(ContentDetailResponse content, IFieldModel fieldModel)
     {
-        // check type of fieldModel and return parameters
-        var parameters = new Dictionary<string, object>
+        return new Dictionary<string, object>
         {
-            { "Field", fieldModel }
+            { "Field", fieldModel },
+            { "FieldValue", fieldModel.GetFieldValue(content?.Value)}
         };
-
-        switch (fieldModel.Type)
-        {
-            case FieldTypes.STRING:
-                parameters.Add("FieldValue", new FieldValue<string?> { Name = fieldModel.Name, Value = (string?)content.Value[fieldModel.Name] });
-                break;
-            case FieldTypes.NUMBER:
-                parameters.Add("FieldValue", new FieldValue<decimal?> { Name = fieldModel.Name, Value = (decimal?)content.Value[fieldModel.Name] });
-                break;
-            case FieldTypes.BOOLEAN:
-                parameters.Add("FieldValue", new FieldValue<bool> { Name = fieldModel.Name, Value = (bool)content.Value[fieldModel.Name] });
-                break;
-            case FieldTypes.DATE_TIME:
-                parameters.Add("FieldValue", new FieldValue<DateTime?> { Name = fieldModel.Name, Value = (DateTime?)content.Value[fieldModel.Name] });
-                break;
-            default:
-                throw new NotSupportedException($"Field type '{fieldModel.Type}' is not supported.");
-        }
-
-        return parameters;
     }
 
 

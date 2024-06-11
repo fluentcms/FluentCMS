@@ -26,26 +26,9 @@ public partial class ContentCreatePlugin
         // check type of fieldModel and return parameters
         var parameters = new Dictionary<string, object>
         {
-            { "Field", fieldModel }
+            { "Field", fieldModel },
+            { "FieldValue", fieldModel.GetFieldValue() }
         };
-
-        switch (fieldModel.Type)
-        {
-            case FieldTypes.STRING:
-                parameters.Add("FieldValue", new FieldValue<string?> { Name = fieldModel.Name });
-                break;
-            case FieldTypes.NUMBER:
-                parameters.Add("FieldValue", new FieldValue<decimal?> { Name = fieldModel.Name });
-                break;
-            case FieldTypes.BOOLEAN:
-                parameters.Add("FieldValue", new FieldValue<bool> { Name = fieldModel.Name });
-                break;
-            case FieldTypes.DATE_TIME:
-                parameters.Add("FieldValue", new FieldValue<DateTime?> { Name = fieldModel.Name });
-                break;
-            default:
-                throw new NotSupportedException($"Field type '{fieldModel.Type}' is not supported.");
-        }
 
         FieldValues.Add((IFieldValue)parameters["FieldValue"]);
 
