@@ -8,7 +8,6 @@ public partial class ContentTypeDetailPlugin
     private FieldManagementState CurrentState { get; set; } = FieldManagementState.List;
     private ContentTypeDetailResponse? ContentType { get; set; }
     private ContentTypeField? ContentTypeField { get; set; }
-    private FieldTypes FieldTypes { get; set; } = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -38,7 +37,10 @@ public partial class ContentTypeDetailPlugin
 
     private async Task OnCreateFieldClick()
     {
-        ContentTypeField = new ContentTypeField();
+        ContentTypeField = new ContentTypeField()
+        {
+            Settings = new Dictionary<string, object?>()
+        };
         CurrentState = FieldManagementState.Create;
         await Task.CompletedTask;
     }

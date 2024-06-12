@@ -69,19 +69,19 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
   - [ ] Haedleass CMS Features
     - [ ] Media Management
     - [ ] Content Type Definition
-      - [ ] Text Field
-      - [ ] TextArea Field
-      - [ ] Rich Text Field
-      - [ ] Markdown Field
-      - [ ] Number Field
-      - [ ] Date Field
+      - [x] Text Field
+      - [x] TextArea Field
+      - [x] Rich Text Field
+      - [x] Markdown Field
+      - [x] Number Field
+      - [x] Date Field
       - [ ] Time Field
-      - [ ] DateTime Field
-      - [ ] Boolean Field
+      - [x] DateTime Field
+      - [x] Boolean Field
       - [ ] Select Field
       - [ ] MultiSelect Field
       - [ ] Radio Field
-      - [ ] Checkbox Field
+      - [x] Checkbox Field
       - [ ] File Field
     - [ ] Content Management
     - [x] API Tokens Management

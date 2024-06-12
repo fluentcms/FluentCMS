@@ -498,7 +498,7 @@
                 },
                 {
                     "Name": "Order",
-                    "Type": "number",
+                    "Type": "decimal",
                     "Settings": {
                         "Label": "View Order",
                         "Description": "Blog post view order",
@@ -530,7 +530,7 @@
                 },
                 {
                     "Name": "PublishedAt",
-                    "Type": "date",
+                    "Type": "datetime",
                     "Settings": {
                         "Label": "Published At",
                         "Description": "Publish date of this post",

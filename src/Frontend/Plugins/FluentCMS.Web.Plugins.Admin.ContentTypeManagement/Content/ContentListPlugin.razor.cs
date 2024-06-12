@@ -1,5 +1,3 @@
-using System.Reflection;
-
 namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement.Content;
 
 public partial class ContentListPlugin
@@ -8,12 +6,8 @@ public partial class ContentListPlugin
 
     protected override async Task OnInitializedAsync()
     {
-        if (!string.IsNullOrEmpty(ContentTypeSlug))
-        {
-            var contentTypeResponse = await GetApiClient<ContentTypeClient>().GetBySlugAsync(ContentTypeSlug);
-            ContentType = contentTypeResponse?.Data;
-            await Load();
-        }
+        await base.OnInitializedAsync();
+        await Load();
     }
 
     private async Task Load()
@@ -25,41 +19,31 @@ public partial class ContentListPlugin
         }
     }
 
-    private List<ContentTypeField> GetVisibleFields()
+    private List<IFieldModel> GetVisibleFields()
     {
         if (ContentType?.Fields == null)
             return [];
 
-        var result = new List<ContentTypeField>();
+        var fields = ContentType.Fields.Select(x => x.ToFieldModel()).Where(x => x.DataTableVisible);
 
-        var visibleKey = nameof(IFieldModel.DataTableVisible);
-
-        foreach (var field in ContentType.Fields.Where(x => x.GetBoolean(visibleKey) == true))
-            result.Add(field);
-
-        return [.. result.OrderBy(x => x.GetDecimal(nameof(IFieldModel.DataTableColumnOrder)))];
+        return [.. fields.OrderBy(x => x.DataTableColumnOrder)];
     }
 
-    private Type GetDataTableFieldViewType(ContentTypeField contentTypeField)
+    private static Type GetDataTableComponent(string fieldTypeName, string viewName)
     {
-        var typeName = contentTypeField.GetString(nameof(IFieldModel.DataTableViewComponent));
-
-        // find view type by name in this assembly
-        var viewType = Assembly.GetExecutingAssembly().GetTypes().FirstOrDefault(x => x.Name == typeName);
-
-        return viewType ?? typeof(StringFieldDataTableView);
+        return FieldTypes.All[fieldTypeName].DataTableComponents.Where(x => x.Name == viewName).FirstOrDefault()?.Type ??
+            throw new NotSupportedException($"Field type '{fieldTypeName}' is not supported.");
     }
 
-    private static IDictionary<string, object> GetParameters(ContentDetailResponse content, string? fieldName)
+    private static Dictionary<string, object> GetParameters(ContentDetailResponse content, IFieldModel fieldModel)
     {
-        if (content == null || string.IsNullOrEmpty(fieldName))
-            return new Dictionary<string, object>();
-
         return new Dictionary<string, object>
         {
-            { "Value", content.Value[fieldName] }
+            { "Field", fieldModel },
+            { "FieldValue", fieldModel.GetFieldValue(content?.Value)}
         };
     }
+
 
     #region Delete Content
 

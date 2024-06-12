@@ -1,6 +1,5 @@
-﻿@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+﻿@inherits BaseFieldValueComponent<DateTime?, DateFieldModel>
 
-@if (FieldModel != null)
-{
-    <FormDateInput @bind-Value="Value" Label="@FieldModel.Label" Placeholder="@FieldModel.Placeholder" Required="@FieldModel.Required" />
-}
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+<FormDateInput @bind-Value="FieldValue.Value" Label="@Field.Label" Placeholder="@Field.Placeholder" Required="@Field.Required" />
