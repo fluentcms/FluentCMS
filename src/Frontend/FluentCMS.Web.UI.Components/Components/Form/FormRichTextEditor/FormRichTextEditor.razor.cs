@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace FluentCMS.Web.UI.Components;
 
-public partial class FormMarkdownEditor : IAsyncDisposable
+public partial class FormRichTextEditor
 {
     [Inject]
     public IJSRuntime? JS { get; set; }
@@ -28,7 +28,9 @@ public partial class FormMarkdownEditor : IAsyncDisposable
         if (Value == _value) return;
 
         _value = Value;
-        module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), element, new { Value });
+
+        if (module != null)
+            await module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), element, new { Value });
     }
 
     public async ValueTask DisposeAsync()
@@ -41,11 +43,11 @@ public partial class FormMarkdownEditor : IAsyncDisposable
     {
         if (!firstRender) return;
 
-        module = await JS.InvokeAsync<IJSObjectReference>("import", "/_value/FluentCMS.Web.UI.Components/Components/Form/FormMarkdownEditor/FormMarkdownEditor.razor.js");
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Form/FormRichTextEditor/FormRichTextEditor.razor.js");
 
-        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { });
+        // TODO: type should be property
+        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { Value = Value, Readonly = Readonly, Placeholder = Placeholder, Type = "advanced" });
     }
-
     protected override bool TryParseValueFromString(string? value, out string? result, [NotNullWhen(false)] out string? validationErrorMessage)
     {
         result = value;

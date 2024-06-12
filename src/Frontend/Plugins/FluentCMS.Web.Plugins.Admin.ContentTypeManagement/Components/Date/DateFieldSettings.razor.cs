@@ -3,7 +3,8 @@ namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 public partial class DateFieldSettings
 {
     DateTime ExampleDate = DateTime.Parse("2024-06-12T19:23:40");
-    private List<DateFormatOptions> DateFormats {
+    private List<DateFormatOptions> DateFormats
+    {
         get => [
             new("MM/dd/yyyy", ExampleDate.ToString("MM/dd/yyyy")),
             new("dddd, dd MMMM yyyy", ExampleDate.ToString("dddd, dd MMMM yyyy")),
