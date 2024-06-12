@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Collections;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace FluentCMS.Web.ApiClients;
@@ -124,15 +125,16 @@ public class DictionaryJsonConverter : JsonConverter<IDictionary<string, object?
             case Dictionary<string, object?> dictionaryValue:
                 Write(writer, dictionaryValue, options);
                 break;
-            case object?[] arrayValue:
-                WriteArray(writer, arrayValue, options);
+            case IEnumerable enumerableValue:
+                WriteArray(writer, enumerableValue, options);
                 break;
+
             default:
                 throw new JsonException();
         }
     }
 
-    private void WriteArray(Utf8JsonWriter writer, object?[] arrayValue, JsonSerializerOptions options)
+    private void WriteArray(Utf8JsonWriter writer, IEnumerable arrayValue, JsonSerializerOptions options)
     {
         writer.WriteStartArray();
 
