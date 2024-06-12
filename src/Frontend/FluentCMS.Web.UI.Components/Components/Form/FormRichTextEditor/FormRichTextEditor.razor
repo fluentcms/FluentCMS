@@ -1,0 +1,12 @@
+@inherits BaseInputBlock<string?>
+
+@namespace FluentCMS.Web.UI.Components
+
+@if (Visible)
+{
+    <FormField Cols="Cols" Dense="@Dense" Id="@Id" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
+        <div class="@this.ClassName("FormRichTextEditorWrapper")">
+            <div class="@this.GetClasses()" @attributes="AdditionalAttributes" @ref="element" />
+        </div>
+    </FormField>
+}
