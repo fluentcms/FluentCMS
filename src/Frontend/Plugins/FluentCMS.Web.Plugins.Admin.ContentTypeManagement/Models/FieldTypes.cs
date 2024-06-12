@@ -104,7 +104,7 @@ public class FieldTypes
             }
         },
         {
-            SELECT, 
+            SELECT,
             new FieldType
             {
                 Title = "Select",
