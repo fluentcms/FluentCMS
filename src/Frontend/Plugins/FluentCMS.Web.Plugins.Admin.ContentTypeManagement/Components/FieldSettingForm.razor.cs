@@ -1,9 +1,9 @@
 ﻿namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
-public partial class FieldSettingForm<TModel>
+public partial class FieldSettingForm
 {
     [Parameter, EditorRequired]
-    public TModel Model { get; set; } = default!;
+    public object? Model { get; set; } = default!;
 
     [CascadingParameter]
     public ContentTypeField? ContentTypeField { get; set; }
@@ -11,17 +11,14 @@ public partial class FieldSettingForm<TModel>
     [CascadingParameter]
     protected FieldManagementState CurrentState { get; set; }
 
-    [CascadingParameter]
-    protected FieldType? FieldType { get; set; }
-
     [Parameter, EditorRequired]
     public EventCallback OnCancel { get; set; }
 
     [Parameter, EditorRequired]
-    public EventCallback<ContentTypeField> OnSubmit { get; set; }
+    public EventCallback OnSubmit { get; set; }
 
     protected async Task OnFormSubmit()
     {
-        await OnSubmit.InvokeAsync(Model?.ToContentTypeField());
+        await OnSubmit.InvokeAsync();
     }
 }

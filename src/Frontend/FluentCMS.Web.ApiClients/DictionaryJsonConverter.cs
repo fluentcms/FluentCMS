@@ -115,6 +115,9 @@ public class DictionaryJsonConverter : JsonConverter<IDictionary<string, object?
             case decimal decimalValue:
                 writer.WriteNumberValue(decimalValue);
                 break;
+            case DateTime dateTimeValue:
+                writer.WriteStringValue(dateTimeValue);
+                break;
             case string stringValue:
                 writer.WriteStringValue(stringValue);
                 break;
