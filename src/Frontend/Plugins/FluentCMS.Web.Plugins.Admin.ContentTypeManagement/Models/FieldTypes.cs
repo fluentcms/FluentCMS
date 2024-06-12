@@ -6,6 +6,7 @@ public class FieldTypes
     public const string NUMBER = "decimal";
     public const string BOOLEAN = "bool";
     public const string ENUMERATION = "enumeration";
+    public const string MULTI_SELECT = "multi-select";
     public const string DATE_TIME = "datetime";
     public const string MEDIA = "media";
 
@@ -82,14 +83,26 @@ public class FieldTypes
                 ]
             }
         },
-        //{ENUMERATION, new FieldType
-        //{
-        //    Title = "Enumeration",
-        //    Icon = IconName.List,
-        //    Description = "List of values, then pick one",
-        //    Key = ENUMERATION,
-        //    Order = 4
-        //}},
+        {
+            MULTI_SELECT,
+            new FieldType
+            {
+                Title = "Multi Select",
+                Icon = IconName.List,
+                Description = "List of values, then pick one or more",
+                Key = MULTI_SELECT,
+                Order = 4,
+                SettingViewType = typeof(MultiSelectFieldSettings),
+                FormComponents =
+                [
+                    new FieldType.Component("Checkboxes", typeof(MultiSelectFieldFormCheckboxes))
+                ],
+                DataTableComponents =
+                [
+                    new FieldType.Component("Badges", typeof(MultiSelectFieldDataTableBadges)),
+                ]
+            }
+        },
         {
             DATE_TIME,
             new FieldType
