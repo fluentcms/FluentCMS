@@ -525,7 +525,7 @@
                         "DataTableViewComponent": "SelectFieldDataTableBadge",
                         "FormViewOrder": 4,
                         "FormColWidth": 12,
-                        "FormViewComponent": "SelectFieldFormSelect",
+                        "FormViewComponent": "SelectFieldFormRadioGroup",
                         "DefaultValue": "Draft",
                         "Options": "Draft\nIn Review\nPublished\nRejected"
                     }

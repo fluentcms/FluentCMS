@@ -91,7 +91,7 @@ public class FieldTypes
                 Icon = IconName.List,
                 Description = "List of values, then pick one or more",
                 Key = MULTI_SELECT,
-                Order = 4,
+                Order = 5,
                 SettingViewType = typeof(MultiSelectFieldSettings),
                 FormComponents =
                 [
@@ -115,7 +115,8 @@ public class FieldTypes
                 SettingViewType = typeof(SelectFieldSettings),
                 FormComponents =
                 [
-                    new FieldType.Component("Select Input", typeof(SelectFieldFormSelect))
+                    new FieldType.Component("Select Input", typeof(SelectFieldFormSelect)),
+                    new FieldType.Component("Radio Group", typeof(SelectFieldFormRadioGroup))
                 ],
                 DataTableComponents =
                 [
@@ -131,7 +132,7 @@ public class FieldTypes
                 Icon = IconName.Clock,
                 Description = "A date picker with hours, minutes and seconds",
                 Key = DATE_TIME,
-                Order = 5,
+                Order = 6,
                 SettingViewType = typeof(DateFieldSettings),
                 FormComponents =
                 [
