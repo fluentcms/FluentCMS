@@ -1,6 +1,4 @@
-﻿using FluentCMS.Entities;
-using FluentCMS.Repositories.Abstractions;
-using Humanizer;
+﻿using Humanizer;
 using LiteDB;
 using LiteDB.Async;
 

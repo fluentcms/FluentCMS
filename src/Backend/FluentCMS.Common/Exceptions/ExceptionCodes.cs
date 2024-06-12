@@ -91,6 +91,16 @@ public class ExceptionCodes
 
     #endregion
 
+
+    #region Folder
+
+    public const string FolderUnableToCreate = "Folder.UnableToCreate";
+    public const string FolderUnableToUpdate = "Folder.UnableToUpdate";
+    public const string FolderUnableToDelete = "Folder.UnableToDelete";
+    public const string FolderNotFound = "Folder.NotFound";
+
+    #endregion
+
     #region Layout
 
     public const string LayoutUnableToCreate = "Layout.UnableToCreate";

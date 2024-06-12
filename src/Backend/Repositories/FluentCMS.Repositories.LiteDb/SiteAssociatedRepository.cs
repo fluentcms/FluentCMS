@@ -1,7 +1,4 @@
-﻿using FluentCMS.Entities;
-using FluentCMS.Repositories.Abstractions;
-
-namespace FluentCMS.Repositories.LiteDb;
+﻿namespace FluentCMS.Repositories.LiteDb;
 
 public abstract class SiteAssociatedRepository<TEntity> : AuditableEntityRepository<TEntity>, ISiteAssociatedRepository<TEntity>
     where TEntity : ISiteAssociatedEntity
