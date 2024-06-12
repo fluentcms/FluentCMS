@@ -49,6 +49,8 @@ body {
 @import '../Components/Form/FormDateInput/FormDateInput.razor';
 @import '../Components/Form/FormInput/FormInput.razor';
 @import '../Components/Form/FormLabel/FormLabel.razor';
+@import '../Components/Form/FormMarkdownEditor/FormMarkdownEditor.core';
+@import '../Components/Form/FormMarkdownEditor/FormMarkdownEditor.razor';
 @import '../Components/Form/FormNumberInput/FormNumberInput.razor';
 @import '../Components/Form/FormRichTextEditor/FormRichTextEditor.razor.core';
 @import '../Components/Form/FormRichTextEditor/FormRichTextEditor.razor';
