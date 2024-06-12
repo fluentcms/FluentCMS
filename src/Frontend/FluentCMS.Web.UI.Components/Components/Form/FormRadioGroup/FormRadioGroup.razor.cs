@@ -22,14 +22,14 @@ public partial class FormRadioGroup<TItem, TValue>
     public bool Vertical { get; set; }
 
     [Parameter]
-    public RenderFragment ChildContent { get; set; }
+    public RenderFragment? ChildContent { get; set; }
 
     [Parameter]
     public EventCallback<TValue> OnChange { get; set; }
 
     private bool IsChecked(TItem item)
     {
-        return (Value?.ToString() ?? String.Empty) == GetValue(item).ToString();
+        return (Value?.ToString() ?? string.Empty) == GetValue(item).ToString();
     }
 
     private string? GetText(TItem item)
@@ -41,13 +41,19 @@ public partial class FormRadioGroup<TItem, TValue>
         return (string?)item!.GetType().GetProperty(TextField)?.GetValue(item);
     }
 
-    private TValue? GetValue(TItem item)
+    private TValue GetValue(TItem item)
     {
+        TValue? result;
+
         if (string.IsNullOrEmpty(ValueField))
-        {
-            return (TValue?)(object)item!;
-        }
-        return (TValue?)item!.GetType().GetProperty(ValueField)?.GetValue(item);
+            result = (TValue)(object)item!;
+        else
+            result = (TValue?)item?.GetType().GetProperty(ValueField)?.GetValue(item);
+
+        if (result == null)
+            throw new InvalidOperationException($"The {ValueField} field is not valid.");
+
+        return result;
     }
 
     protected override bool TryParseValueFromString(string? value, [MaybeNullWhen(false)] out TValue result, [NotNullWhen(false)] out string? validationErrorMessage)
