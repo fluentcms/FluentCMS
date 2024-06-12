@@ -9,10 +9,10 @@ public abstract class BaseContentTypeFieldComponent : BaseComponent
     protected UserLoginResponse? UserLogin { get; set; }
 
     [CascadingParameter]
-    public ContentTypeDetailResponse? ContentType { get; set; } = default!;
+    public ContentTypeDetailResponse ContentType { get; set; } = default!;
 
-    [CascadingParameter]
-    public ContentTypeField? ContentTypeField { get; set; }
+    [Parameter, EditorRequired]
+    public ContentTypeField ContentTypeField { get; set; } = default!;
 
     [CascadingParameter]
     protected FieldManagementState CurrentState { get; set; }

@@ -41,4 +41,5 @@ public partial class ContentTypeListPlugin
     }
 
     #endregion
+
 }

@@ -1,6 +1,5 @@
-﻿@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+﻿@inherits BaseFieldValueComponent<bool, BooleanFieldModel>
 
-@if (FieldModel != null)
-{
-    <FormCheckbox @bind-Value="Value" Label="@FieldModel.Label" />
-}
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+<FormCheckbox @bind-Value="FieldValue.Value" Label="@Field.Label" />

@@ -1,18 +1,16 @@
-﻿@typeparam TModel where TModel : IFieldModel
-@inherits BaseComponent
+﻿@inherits BaseComponent
 
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
-
-@if (Visible)
+@if (Model != null)
 {
     <EditForm Model="@Model" OnSubmit="OnFormSubmit">
         <Modal Size="ModalSize.Large">
             <ModalHeader Closable>
                 <ModalTitle Visible="@(CurrentState == FieldManagementState.Create)">
-                    New @FieldType?.Title Field
+                    Create New Field@* New @FieldType?.Title Field *@
                 </ModalTitle>
                 <ModalTitle Visible="@(CurrentState == FieldManagementState.Edit)">
-                    Update Field @Model.Name (@FieldType?.Title)
+                    Update Field@* Update Field @Model.Name (@FieldType?.Title) *@
                 </ModalTitle>
             </ModalHeader>
             <ModalBody>
