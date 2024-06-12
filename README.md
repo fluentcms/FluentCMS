@@ -78,9 +78,9 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
       - [ ] Time Field
       - [x] DateTime Field
       - [x] Boolean Field
-      - [ ] Select Field
-      - [ ] MultiSelect Field
-      - [ ] Radio Field
+      - [x] Select Field
+      - [x] MultiSelect Field
+      - [x] Radio Field
       - [x] Checkbox Field
       - [ ] File Field
     - [ ] Content Management
@@ -100,4 +100,3 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
-
