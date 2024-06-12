@@ -462,7 +462,7 @@
                         "DataTableViewComponent": "StringFieldDataTableView",
                         "FormViewOrder": 4,
                         "FormColWidth": 6,
-                        "FormViewComponent": "StringFieldFormRichText"
+                        "FormViewComponent": "StringFieldFormMarkdownText"
                     }
                 },
                 {
