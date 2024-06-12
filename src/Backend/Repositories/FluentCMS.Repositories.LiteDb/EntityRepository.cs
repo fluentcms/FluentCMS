@@ -1,6 +1,5 @@
 ﻿using Humanizer;
 using LiteDB;
-using LiteDB.Async;
 
 namespace FluentCMS.Repositories.LiteDb;
 

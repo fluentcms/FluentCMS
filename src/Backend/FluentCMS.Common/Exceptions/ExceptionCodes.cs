@@ -92,12 +92,17 @@ public class ExceptionCodes
     #endregion
 
 
-    #region Folder
+    #region Asset (File/Folder)
 
     public const string FolderUnableToCreate = "Folder.UnableToCreate";
+    public const string FolderParentFolderNotFound = "Folder.ParentFolderNotFound";
+    public const string FolderNotFound = "Folder.NotFound";
     public const string FolderUnableToUpdate = "Folder.UnableToUpdate";
     public const string FolderUnableToDelete = "Folder.UnableToDelete";
-    public const string FolderNotFound = "Folder.NotFound";
+
+    public const string FileNotFound = "File.NotFound";
+    public const string FileUnableToDelete = "File.UnableToDelete";
+    public const string FileUnableToCreate = "File.UnableToCreate";
 
     #endregion
 

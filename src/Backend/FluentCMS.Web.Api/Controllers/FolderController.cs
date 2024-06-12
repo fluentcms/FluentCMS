@@ -2,7 +2,7 @@
 
 public class FolderController(IFolderService folderService, IMapper mapper) : BaseGlobalController
 {
-    public const string AREA = "Folder Management";
+    public const string AREA = "Asset Management";
     public const string READ = "Read";
     public const string UPDATE = $"Update/{READ}";
     public const string CREATE = "Create";
@@ -10,11 +10,11 @@ public class FolderController(IFolderService folderService, IMapper mapper) : Ba
 
     [HttpGet]
     [Policy(AREA, READ)]
-    public async Task<IApiPagingResult<FolderDetailResponse>> GetAll(CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<AssetDetailResponse>> GetAll([FromQuery] Guid? id, CancellationToken cancellationToken = default)
     {
-        var folders = await folderService.GetAll(cancellationToken);
-        var foldersResponse = mapper.Map<List<FolderDetailResponse>>(folders.ToList());
-        return OkPaged(foldersResponse);
+        var childAssets = await folderService.GetByParentId(id, cancellationToken);
+        var assetResponse = mapper.Map<List<AssetDetailResponse>>(childAssets);
+        return OkPaged(assetResponse);
     }
 
     [HttpGet("{id}")]
@@ -23,6 +23,8 @@ public class FolderController(IFolderService folderService, IMapper mapper) : Ba
     {
         var folder = await folderService.GetById(id, cancellationToken);
         var folderResponse = mapper.Map<FolderDetailResponse>(folder);
+        var children = await folderService.GetByParentId(id, cancellationToken);
+        folderResponse.Children = mapper.Map<List<AssetDetailResponse>>(children);
         return Ok(folderResponse);
     }
 
@@ -30,20 +32,18 @@ public class FolderController(IFolderService folderService, IMapper mapper) : Ba
     [Policy(AREA, CREATE)]
     public async Task<IApiResult<FolderDetailResponse>> Create([FromBody] FolderCreateRequest request, CancellationToken cancellationToken = default)
     {
-        var folder = mapper.Map<Folder>(request);
-        await folderService.Create(folder, cancellationToken);
-        var folderResponse = mapper.Map<FolderDetailResponse>(folder);
-        return Ok(folderResponse);
+        var asset = await folderService.Create(request.Name, request.ParentId, cancellationToken);
+        var assetResponse = mapper.Map<FolderDetailResponse>(asset);
+        return Ok(assetResponse);
     }
 
     [HttpPut]
     [Policy(AREA, UPDATE)]
     public async Task<IApiResult<FolderDetailResponse>> Update([FromBody] FolderUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        var folder = mapper.Map<Folder>(request);
-        await folderService.Update(folder, cancellationToken);
-        var folderResponse = mapper.Map<FolderDetailResponse>(folder);
-        return Ok(folderResponse);
+        var asset = await folderService.Update(request.Id, request.Name, request.ParentId, cancellationToken);
+        var assetResponse = mapper.Map<FolderDetailResponse>(asset);
+        return Ok(assetResponse);
     }
 
     [HttpDelete("{id}")]

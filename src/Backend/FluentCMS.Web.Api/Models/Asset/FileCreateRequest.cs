@@ -1,7 +1,9 @@
-﻿namespace FluentCMS.Entities;
+﻿namespace FluentCMS.Web.Api.Models;
 
-public class Folder : AuditableEntity
+public class FileCreateRequest
 {
+    [Required]
     public string Name { get; set; } = default!;
+
     public Guid? ParentId { get; set; }
 }
