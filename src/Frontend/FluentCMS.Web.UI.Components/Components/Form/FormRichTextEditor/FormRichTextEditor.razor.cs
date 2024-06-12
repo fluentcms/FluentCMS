@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace FluentCMS.Web.UI.Components;
 
 public partial class FormRichTextEditor
-{   
+{
     [Inject]
     public IJSRuntime? JS { get; set; }
 
@@ -29,13 +29,13 @@ public partial class FormRichTextEditor
 
         _value = Value;
 
-        if(module != null)
+        if (module != null)
             await module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), element, new { Value });
     }
 
     public async ValueTask DisposeAsync()
     {
-        if(module != null)
+        if (module != null)
             await module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
     }
 

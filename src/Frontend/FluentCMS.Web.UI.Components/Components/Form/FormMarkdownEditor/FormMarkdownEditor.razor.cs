@@ -33,7 +33,7 @@ public partial class FormMarkdownEditor : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if(module != null)
+        if (module != null)
             await module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
     }
 
