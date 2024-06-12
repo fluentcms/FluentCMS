@@ -2,4 +2,4 @@
 
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
-<FormTextarea @bind-Value="FieldValue.Value" Label="@($"{Field.Label} (This should be Markdown editor)")" Pattern="@Field.Pattern" Placeholder="@Field.Placeholder" Required="@Field.Required" />
+<FormMarkdownEditor @bind-Value="FieldValue.Value" Label="@Field.Label" Pattern="@Field.Pattern" Placeholder="@Field.Placeholder" Required="@Field.Required" />
