@@ -1,6 +1,5 @@
-﻿@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+﻿@inherits BaseFieldValueComponent<string?, SelectFieldModel>
 
-@if (FieldModel != null)
-{
-    <FormSelect Data="SelectItems" @bind-Value="Value" Label="@FieldModel.Label" Placeholder="@FieldModel.Placeholder" Required="@FieldModel.Required" />
-}
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+<FormSelect Data="SelectItems" TValue="string" TItem="string" @bind-Value="FieldValue.Value" Label="@Field.Label" Placeholder="@Field.Placeholder" Required="@Field.Required" />

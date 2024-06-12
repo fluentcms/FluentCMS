@@ -5,7 +5,7 @@ public class FieldTypes
     public const string STRING = "string";
     public const string NUMBER = "decimal";
     public const string BOOLEAN = "bool";
-    public const string ENUMERATION = "enumeration";
+    public const string SELECT = "select";
     public const string DATE_TIME = "datetime";
     public const string MEDIA = "media";
 
@@ -90,6 +90,26 @@ public class FieldTypes
         //    Key = ENUMERATION,
         //    Order = 4
         //}},
+        {
+            SELECT, 
+            new FieldType
+            {
+                Title = "Select",
+                Icon = IconName.List,
+                Description = "List of values, then pick one",
+                Key = SELECT,
+                Order = 4,
+                SettingViewType = typeof(SelectFieldSettings),
+                FormComponents =
+                [
+                    new FieldType.Component("Select Input", typeof(SelectFieldFormSelect))
+                ],
+                DataTableComponents =
+                [
+                    new FieldType.Component("Badge", typeof(SelectFieldDataTableBadge)),
+                ]
+            }
+        },
         {
             DATE_TIME,
             new FieldType

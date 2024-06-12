@@ -1,3 +1,5 @@
-﻿@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+﻿@inherits BaseFieldValueComponent<string?, SelectFieldModel>
 
-<Badge Color="Color.Info">@Value</Badge>
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+<Badge Color="Color.Info">@FieldValue.Value</Badge>
