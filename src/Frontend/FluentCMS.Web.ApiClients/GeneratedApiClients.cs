@@ -2910,12 +2910,12 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<FileDetailResponseIApiResult> CreateAsync(FileCreateRequest? body);
+        System.Threading.Tasks.Task<FileDetailResponseIApiResult> UploadAsync(System.Guid folderId, System.Collections.Generic.IEnumerable<FileParameter> files);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<FileDetailResponseIApiResult> CreateAsync(FileCreateRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<FileDetailResponseIApiResult> UploadAsync(System.Guid folderId, System.Collections.Generic.IEnumerable<FileParameter> files, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -3043,33 +3043,51 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<FileDetailResponseIApiResult> CreateAsync(FileCreateRequest? body)
+        public virtual System.Threading.Tasks.Task<FileDetailResponseIApiResult> UploadAsync(System.Guid folderId, System.Collections.Generic.IEnumerable<FileParameter> files)
         {
-            return CreateAsync(body, System.Threading.CancellationToken.None);
+            return UploadAsync(folderId, files, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<FileDetailResponseIApiResult> CreateAsync(FileCreateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<FileDetailResponseIApiResult> UploadAsync(System.Guid folderId, System.Collections.Generic.IEnumerable<FileParameter> files, System.Threading.CancellationToken cancellationToken)
         {
+            if (folderId == null)
+                throw new System.ArgumentNullException("folderId");
+
             var client_ = _httpClient;
             var disposeClient_ = false;
             try
             {
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
-                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, _settings.Value);
-                    var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    var boundary_ = System.Guid.NewGuid().ToString();
+                    var content_ = new System.Net.Http.MultipartFormDataContent(boundary_);
+                    content_.Headers.Remove("Content-Type");
+                    content_.Headers.TryAddWithoutValidation("Content-Type", "multipart/form-data; boundary=" + boundary_);
+
+                    if (files == null)
+                        throw new System.ArgumentNullException("files");
+                    else
+                    {
+                        foreach (var item_ in files)
+                        {
+                            var content_files_ = new System.Net.Http.StreamContent(item_.Data);
+                            if (!string.IsNullOrEmpty(item_.ContentType))
+                                content_files_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(item_.ContentType);
+                            content_.Add(content_files_, "files", item_.FileName ?? "files");
+                        }
+                    }
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/File/Create"
-                    urlBuilder_.Append("api/File/Create");
+                    // Operation Path: "api/File/Upload/{folderId}"
+                    urlBuilder_.Append("api/File/Upload/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(folderId, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -9380,19 +9398,6 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class FileCreateRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("name")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public string Name { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("parentId")]
-        public System.Guid? ParentId { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class FileDetailResponse
     {
 
@@ -11027,6 +11032,33 @@ namespace FluentCMS.Web.ApiClients
         [System.ComponentModel.DataAnnotations.Required]
         public string NewPasswordConfirm { get; set; } = default!;
 
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.0.7.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class FileParameter
+    {
+        public FileParameter(System.IO.Stream data)
+            : this(data, null, null)
+        {
+        }
+
+        public FileParameter(System.IO.Stream data, string? fileName)
+            : this(data, fileName, null)
+        {
+        }
+
+        public FileParameter(System.IO.Stream data, string? fileName, string? contentType)
+        {
+            Data = data;
+            FileName = fileName;
+            ContentType = contentType;
+        }
+
+        public System.IO.Stream Data { get; private set; }
+
+        public string? FileName { get; private set; }
+
+        public string? ContentType { get; private set; }
     }
 
 
