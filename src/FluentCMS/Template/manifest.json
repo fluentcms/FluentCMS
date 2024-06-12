@@ -513,6 +513,22 @@
                     }
                 },
                 {
+                    "Name": "Tags",
+                    "Type": "multi-select",
+                    "Settings": {
+                        "Label": "Tags",
+                        "Description": "Tags of the blog post",
+                        "Placeholder": "Choose tags of the post",
+                        "DataTableColumnOrder": 4,
+                        "DataTableVisible": true,
+                        "DataTableViewComponent": "MultiSelectFieldDataTableBadges",
+                        "FormViewOrder": 4,
+                        "FormColWidth": 12,
+                        "FormViewComponent": "MultiSelectFieldFormCheckboxes",
+                        "Options": "C#\nHtml\nCss\nJavascript\nBlazor\nAsp.net\nOther"
+                    }
+                },
+                {
                     "Name": "PublishedAt",
                     "Type": "datetime",
                     "Settings": {
@@ -533,6 +549,7 @@
                     "Title": "Hello World",
                     "Content": "Hello World!",
                     "Slug": "hello-world",
+                    "Tags": ["Html", "Css", "Javascript"],
                     "Archived": false,
                     "PublishedAt": "2024-06-06T15:04:05.641Z",
                     "Order": 1
@@ -541,6 +558,7 @@
                     "Title": "Hello World 2",
                     "Content": "Hello World 2!",
                     "Slug": "hello-world-2",
+                    "Tags": ["C#", "Blazor", "Javascript"],
                     "Archived": true,
                     "PublishedAt": "2024-06-07T15:04:05.641Z",
                     "Order": 2
@@ -549,6 +567,7 @@
                     "Title": "Hello World 3",
                     "Content": "Hello World 3!",
                     "Slug": "hello-world-3",
+                    "Tags": ["C#", "Other"],
                     "Archived": false,
                     "PublishedAt": "2024-06-09T15:04:05.641Z",
                     "Order": 3
