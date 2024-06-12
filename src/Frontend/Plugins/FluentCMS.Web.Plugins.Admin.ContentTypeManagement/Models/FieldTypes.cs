@@ -5,7 +5,7 @@ public class FieldTypes
     public const string STRING = "string";
     public const string NUMBER = "decimal";
     public const string BOOLEAN = "bool";
-    public const string ENUMERATION = "enumeration";
+    public const string SELECT = "select";
     public const string MULTI_SELECT = "multi-select";
     public const string DATE_TIME = "datetime";
     public const string MEDIA = "media";
@@ -91,7 +91,7 @@ public class FieldTypes
                 Icon = IconName.List,
                 Description = "List of values, then pick one or more",
                 Key = MULTI_SELECT,
-                Order = 4,
+                Order = 5,
                 SettingViewType = typeof(MultiSelectFieldSettings),
                 FormComponents =
                 [
@@ -104,6 +104,27 @@ public class FieldTypes
             }
         },
         {
+            SELECT,
+            new FieldType
+            {
+                Title = "Select",
+                Icon = IconName.List,
+                Description = "List of values, then pick one",
+                Key = SELECT,
+                Order = 4,
+                SettingViewType = typeof(SelectFieldSettings),
+                FormComponents =
+                [
+                    new FieldType.Component("Select Input", typeof(SelectFieldFormSelect)),
+                    new FieldType.Component("Radio Group", typeof(SelectFieldFormRadioGroup))
+                ],
+                DataTableComponents =
+                [
+                    new FieldType.Component("Badge", typeof(SelectFieldDataTableBadge)),
+                ]
+            }
+        },
+        {
             DATE_TIME,
             new FieldType
             {
@@ -111,7 +132,7 @@ public class FieldTypes
                 Icon = IconName.Clock,
                 Description = "A date picker with hours, minutes and seconds",
                 Key = DATE_TIME,
-                Order = 5,
+                Order = 6,
                 SettingViewType = typeof(DateFieldSettings),
                 FormComponents =
                 [

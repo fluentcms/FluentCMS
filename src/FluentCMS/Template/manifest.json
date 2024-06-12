@@ -513,6 +513,24 @@
                     }
                 },
                 {
+                    "Name": "Status",
+                    "Type": "select",
+                    "Settings": {
+                        "Label": "Status",
+                        "Description": "status of the blog post",
+                        "Placeholder": "Choose status of post",
+                        "Required": true,
+                        "DataTableColumnOrder": 4,
+                        "DataTableVisible": true,
+                        "DataTableViewComponent": "SelectFieldDataTableBadge",
+                        "FormViewOrder": 4,
+                        "FormColWidth": 12,
+                        "FormViewComponent": "SelectFieldFormRadioGroup",
+                        "DefaultValue": "Draft",
+                        "Options": "Draft\nIn Review\nPublished\nRejected"
+                    }
+                },
+                {
                     "Name": "Tags",
                     "Type": "multi-select",
                     "Settings": {
@@ -551,6 +569,7 @@
                     "Slug": "hello-world",
                     "Tags": ["Html", "Css", "Javascript"],
                     "Archived": false,
+                    "Status": "Draft",
                     "PublishedAt": "2024-06-06T15:04:05.641Z",
                     "Order": 1
                 },
@@ -560,6 +579,7 @@
                     "Slug": "hello-world-2",
                     "Tags": ["C#", "Blazor", "Javascript"],
                     "Archived": true,
+                    "Status": "In Review",
                     "PublishedAt": "2024-06-07T15:04:05.641Z",
                     "Order": 2
                 },
@@ -569,6 +589,7 @@
                     "Slug": "hello-world-3",
                     "Tags": ["C#", "Other"],
                     "Archived": false,
+                    "Status": "Published",
                     "PublishedAt": "2024-06-09T15:04:05.641Z",
                     "Order": 3
                 }

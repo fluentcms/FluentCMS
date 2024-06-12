@@ -9,6 +9,7 @@ public static class ModelHelpers
         switch (fieldModel.Type)
         {
             case FieldTypes.STRING:
+            case FieldTypes.SELECT:
                 return new FieldValue<string?> { Name = fieldModel.Name, Value = (string?)valuesDict[fieldModel.Name] };
 
             case FieldTypes.NUMBER:
@@ -32,6 +33,7 @@ public static class ModelHelpers
         switch (fieldModel.Type)
         {
             case FieldTypes.STRING:
+            case FieldTypes.SELECT:
                 return new FieldValue<string?> { Name = fieldModel.Name };
 
             case FieldTypes.NUMBER:
@@ -85,6 +87,7 @@ public static class ModelHelpers
             FieldTypes.NUMBER => src.ToFieldModel<decimal?, NumberFieldModel>(),
             FieldTypes.BOOLEAN => src.ToFieldModel<bool, BooleanFieldModel>(),
             FieldTypes.DATE_TIME => src.ToFieldModel<DateTime?, DateFieldModel>(),
+            FieldTypes.SELECT => src.ToFieldModel<string?, SelectFieldModel>(),
             FieldTypes.MULTI_SELECT => src.ToFieldModel<ICollection<string>?, MultiSelectFieldModel>(),
             _ => throw new NotSupportedException($"Field type '{typeName}' is not supported."),
         };
