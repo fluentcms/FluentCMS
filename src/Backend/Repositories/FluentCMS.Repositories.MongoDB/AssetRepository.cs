@@ -11,7 +11,7 @@ public class AssetRepository : AuditableEntityRepository<Asset>, IAssetRepositor
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var filter = Builders<Asset>.Filter.Eq(x => x.ParentId, parentId);
+        var filter = Builders<Asset>.Filter.Eq(x => x.FolderId, parentId);
         var findResult = await Collection.FindAsync(filter, null, cancellationToken);
         return await findResult.ToListAsync(cancellationToken);
     }

@@ -3,7 +3,7 @@
 public class Asset : AuditableEntity
 {
     public string Name { get; set; } = default!;
-    public Guid? ParentId { get; set; }
+    public Guid? FolderId { get; set; }
     public AssetType Type { get; set; }
     public long Size { get; set; }
     public AssetMetaData? MetaData { get; set; }

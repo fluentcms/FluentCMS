@@ -10,6 +10,7 @@ public static class ServiceExtensions
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         services.AddScoped<IEmailProvider, SmtpEmailProvider>();
+        services.AddScoped<IFileStorageProvider, LocalFileStorageProvider>();
         services.AddScoped(sp =>
         {
             var globalSettingsService = sp.GetRequiredService<IGlobalSettingsService>();

@@ -7,6 +7,11 @@
             "Password": "3bc847fa1f6d59",
             "EnableSsl": true,
             "From": "admin@fluentcms.com"
+        },
+        "FileUpload": {
+            "MaxSize": 15360,
+            "AllowedExtensions": "jpg,jpeg,png,gif,doc,docx,pdf,txt",
+            "MaxCount": 5
         }
     },
     "Site": {

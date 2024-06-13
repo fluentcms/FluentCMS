@@ -19,37 +19,29 @@ public class FileController(IFileService fileService, IMapper mapper) : BaseGlob
         return Ok(fileResponse);
     }
 
-    //[HttpPost]
-    //[Policy(AREA, CREATE)]
-    //public async Task<IApiResult<FileDetailResponse>> Create([FromBody] FileCreateRequest request, CancellationToken cancellationToken = default)
-    //{
-    //    var asset = mapper.Map<Asset>(request);
-    //    await fileService.Create(asset, cancellationToken);
-    //    var assetResponse = mapper.Map<FileDetailResponse>(asset);
-    //    return Ok(assetResponse);
-    //}
-
-    [HttpPost("{folderId}")]
+    [HttpPost]
     [Policy(AREA, CREATE)]
-    public async Task<IApiResult<FileDetailResponse>> Upload([FromRoute] Guid folderId, List<IFormFile> files, CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<FileDetailResponse>> Upload([FromRoute] Guid? folderId, [FromForm] IEnumerable<IFormFile> files, CancellationToken cancellationToken = default)
     {
-        long size = files.Sum(f => f.Length);
+        var filesResponse = new List<FileDetailResponse>();
 
-        foreach (var formFile in files)
+        foreach (var formFile in files.Where(x => x.Length > 0))
         {
-            if (formFile.Length > 0)
-            {
-                var filePath = Path.GetTempFileName();
-
-                using (var stream = System.IO.File.Create(filePath))
-                {
-                    await formFile.CopyToAsync(stream);
-                }
-            }
+            var asset = await fileService.Create(folderId, formFile, cancellationToken);
+            filesResponse.Add(mapper.Map<FileDetailResponse>(asset));
         }
-        return new ApiResult<FileDetailResponse>(new FileDetailResponse());
+
+        return OkPaged(filesResponse);
     }
 
+    [HttpGet("{id}")]
+    [Policy(AREA, READ)]
+    public async Task<IResult> Download([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    {
+        var file = await fileService.GetById(id, cancellationToken);
+        var fileStream = await fileService.GetStream(id, cancellationToken);
+        return Results.File(fileStream, contentType: file.MetaData!.MimeType, fileDownloadName: file.Name, lastModified: file.ModifiedAt ?? file.CreatedAt);
+    }
 
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]

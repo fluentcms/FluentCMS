@@ -17,7 +17,7 @@ public class FolderService(IAssetRepository assetRepository) : IFolderService
         var asset = new Asset
         {
             Name = folderName,
-            ParentId = parentFolderId,
+            FolderId = parentFolderId,
             Type = AssetType.Folder,
             Size = 0,
         };
@@ -53,7 +53,7 @@ public class FolderService(IAssetRepository assetRepository) : IFolderService
         }
 
         existing.Name = folderName;
-        existing.ParentId = parentFolderId;
+        existing.FolderId = parentFolderId;
 
         return await assetRepository.Update(existing, cancellationToken) ??
             throw new AppException(ExceptionCodes.FolderUnableToUpdate);

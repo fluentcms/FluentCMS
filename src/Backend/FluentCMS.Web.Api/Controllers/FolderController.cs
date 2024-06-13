@@ -32,7 +32,7 @@ public class FolderController(IFolderService folderService, IMapper mapper) : Ba
     [Policy(AREA, CREATE)]
     public async Task<IApiResult<FolderDetailResponse>> Create([FromBody] FolderCreateRequest request, CancellationToken cancellationToken = default)
     {
-        var asset = await folderService.Create(request.Name, request.ParentId, cancellationToken);
+        var asset = await folderService.Create(request.Name, request.FolderId, cancellationToken);
         var assetResponse = mapper.Map<FolderDetailResponse>(asset);
         return Ok(assetResponse);
     }
@@ -41,7 +41,7 @@ public class FolderController(IFolderService folderService, IMapper mapper) : Ba
     [Policy(AREA, UPDATE)]
     public async Task<IApiResult<FolderDetailResponse>> Update([FromBody] FolderUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        var asset = await folderService.Update(request.Id, request.Name, request.ParentId, cancellationToken);
+        var asset = await folderService.Update(request.Id, request.Name, request.FolderId, cancellationToken);
         var assetResponse = mapper.Map<FolderDetailResponse>(asset);
         return Ok(assetResponse);
     }
