@@ -5,6 +5,9 @@
 {
     <PluginBody Title="@ContentType.Title">
         <ActionsFragment>
+            <Button @onclick="NavigateBack">
+                Back
+            </Button>
             <Button Href="@GetUrl("Create Content", new { slug = ContentTypeSlug })" Color="Color.Primary">
                 <Icon Name="IconName.Plus" />New Content
             </Button>

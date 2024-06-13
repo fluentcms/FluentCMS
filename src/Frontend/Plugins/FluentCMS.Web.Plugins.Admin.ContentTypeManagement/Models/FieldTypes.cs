@@ -5,7 +5,7 @@ public class FieldTypes
     public const string STRING = "string";
     public const string NUMBER = "decimal";
     public const string BOOLEAN = "bool";
-    public const string SELECT = "select";
+    public const string SINGLE_SELECT = "single-select";
     public const string MULTI_SELECT = "multi-select";
     public const string DATE_TIME = "datetime";
     public const string MEDIA = "media";
@@ -91,7 +91,7 @@ public class FieldTypes
                 Icon = IconName.List,
                 Description = "List of values, then pick one or more",
                 Key = MULTI_SELECT,
-                Order = 5,
+                Order = 6,
                 SettingViewType = typeof(MultiSelectFieldSettings),
                 FormComponents =
                 [
@@ -104,18 +104,18 @@ public class FieldTypes
             }
         },
         {
-            SELECT,
+            SINGLE_SELECT,
             new FieldType
             {
-                Title = "Select",
+                Title = "Single Select",
                 Icon = IconName.List,
                 Description = "List of values, then pick one",
-                Key = SELECT,
-                Order = 4,
+                Key = SINGLE_SELECT,
+                Order = 5,
                 SettingViewType = typeof(SelectFieldSettings),
                 FormComponents =
                 [
-                    new FieldType.Component("Select Input", typeof(SelectFieldFormSelect)),
+                    new FieldType.Component("Dropdown", typeof(SelectFieldFormSelect)),
                     new FieldType.Component("Radio Group", typeof(SelectFieldFormRadioGroup))
                 ],
                 DataTableComponents =
@@ -132,11 +132,13 @@ public class FieldTypes
                 Icon = IconName.Clock,
                 Description = "A date picker with hours, minutes and seconds",
                 Key = DATE_TIME,
-                Order = 6,
+                Order = 4,
                 SettingViewType = typeof(DateFieldSettings),
                 FormComponents =
                 [
-                    new FieldType.Component("Input", typeof(DateFieldFormInput))
+                    new FieldType.Component("Date Picker", typeof(DateFieldFormDate)),
+                    new FieldType.Component("Time Picker", typeof(DateFieldFormTime)),
+                    new FieldType.Component("DateTime Picker", typeof(DateFieldFormDateTime)),
                 ],
                 DataTableComponents =
                 [

@@ -466,7 +466,7 @@
                         "DataTableVisible": false,
                         "DataTableViewComponent": "StringFieldDataTableView",
                         "FormViewOrder": 4,
-                        "FormColWidth": 6,
+                        "FormColWidth": 12,
                         "FormViewComponent": "StringFieldFormRichText"
                     }
                 },
@@ -480,7 +480,7 @@
                         "DataTableVisible": true,
                         "DataTableViewComponent": "BooleanFieldDataTableIndicator",
                         "FormViewOrder": 3,
-                        "FormColWidth": 3,
+                        "FormColWidth": 2,
                         "FormViewComponent": "BooleanFieldFormSwitch"
                     }
                 },
@@ -494,8 +494,8 @@
                         "DataTableColumnOrder": 2,
                         "DataTableVisible": true,
                         "DataTableViewComponent": "StringFieldDataTableView",
-                        "FormViewOrder": 3,
-                        "FormColWidth": 12,
+                        "FormViewOrder": 2,
+                        "FormColWidth": 4,
                         "FormViewComponent": "StringFieldFormText",
                         "Unique": true,
                         "Pattern": "[a-zA-Z0-9-]"
@@ -512,14 +512,14 @@
                         "DataTableColumnOrder": 2,
                         "DataTableVisible": true,
                         "DataTableViewComponent": "NumberFieldDataTableView",
-                        "FormViewOrder": 2,
-                        "FormColWidth": 9,
+                        "FormViewOrder": 8,
+                        "FormColWidth": 6,
                         "FormViewComponent": "NumberFieldFormInput"
                     }
                 },
                 {
                     "Name": "Status",
-                    "Type": "select",
+                    "Type": "single-select",
                     "Settings": {
                         "Label": "Status",
                         "Description": "status of the blog post",
@@ -528,7 +528,7 @@
                         "DataTableColumnOrder": 4,
                         "DataTableVisible": true,
                         "DataTableViewComponent": "SelectFieldDataTableBadge",
-                        "FormViewOrder": 4,
+                        "FormViewOrder": 5,
                         "FormColWidth": 12,
                         "FormViewComponent": "SelectFieldFormRadioGroup",
                         "DefaultValue": "Draft",
@@ -545,7 +545,7 @@
                         "DataTableColumnOrder": 4,
                         "DataTableVisible": true,
                         "DataTableViewComponent": "MultiSelectFieldDataTableBadges",
-                        "FormViewOrder": 4,
+                        "FormViewOrder": 6,
                         "FormColWidth": 12,
                         "FormViewComponent": "MultiSelectFieldFormCheckboxes",
                         "Options": "C#\nHtml\nCss\nJavascript\nBlazor\nAsp.net\nOther"
@@ -561,9 +561,9 @@
                         "DataTableColumnOrder": 4,
                         "DataTableVisible": true,
                         "DataTableViewComponent": "DateFieldDataTableView",
-                        "FormViewOrder": 3,
-                        "FormColWidth": 12,
-                        "FormViewComponent": "DateFieldFormInput"
+                        "FormViewOrder": 7,
+                        "FormColWidth": 6,
+                        "FormViewComponent": "DateFieldFormDate"
                     }
                 }
             ],

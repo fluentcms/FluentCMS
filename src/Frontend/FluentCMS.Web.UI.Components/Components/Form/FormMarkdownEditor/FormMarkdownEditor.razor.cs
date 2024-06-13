@@ -41,7 +41,7 @@ public partial class FormMarkdownEditor : IAsyncDisposable
     {
         if (!firstRender) return;
 
-        module = await JS.InvokeAsync<IJSObjectReference>("import", "/_value/FluentCMS.Web.UI.Components/Components/Form/FormMarkdownEditor/FormMarkdownEditor.razor.js");
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Form/FormMarkdownEditor/FormMarkdownEditor.razor.js");
 
         await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { });
     }
