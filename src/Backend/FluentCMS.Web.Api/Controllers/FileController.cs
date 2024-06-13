@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class FileController(IFileService fileService, IMapper mapper) : BaseGlobalController
+public class FileController(IFileService fileService, IFolderService folderService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "Asset Management";
     public const string READ = "Read";
@@ -23,11 +23,29 @@ public class FileController(IFileService fileService, IMapper mapper) : BaseGlob
     [Policy(AREA, CREATE)]
     public async Task<IApiPagingResult<FileDetailResponse>> Upload([FromRoute] Guid? folderId, [FromForm] IEnumerable<IFormFile> files, CancellationToken cancellationToken = default)
     {
+        // check if parent folder exists
+        if (folderId != null)
+        {
+            await folderService.GetById(folderId.Value, cancellationToken);
+        }
+
         var filesResponse = new List<FileDetailResponse>();
 
         foreach (var formFile in files.Where(x => x.Length > 0))
         {
-            var asset = await fileService.Create(folderId, formFile, cancellationToken);
+            var asset = new Asset
+            {
+                FolderId = folderId,
+                Name = formFile.FileName,
+                Size = formFile.Length,
+                Type = AssetType.File,
+                MetaData = new AssetMetaData
+                {
+                    Extension = Path.GetExtension(formFile.FileName),
+                    MimeType = formFile.ContentType
+                }
+            };
+            await fileService.Create(asset, formFile.OpenReadStream(), cancellationToken);
             filesResponse.Add(mapper.Map<FileDetailResponse>(asset));
         }
 
