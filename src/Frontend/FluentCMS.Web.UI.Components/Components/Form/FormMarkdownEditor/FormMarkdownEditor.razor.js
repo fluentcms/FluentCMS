@@ -1,30 +1,7 @@
-import '../../../js/easymde.min.js'
+import '/_content/FluentCMS.Web.UI.Components/js/easymde.min.js'
+import { debounce } from '/_content/FluentCMS.Web.UI.Components/js/helpers.js'
 
 const markdownEditors = new Map();
-
-function debounce(cb, timeout = 300) {
-    let timer;
-
-    return (...args) => {
-        if(timer) clearTimeout(timer)
-
-        timer = setTimeout(() => {
-            cb(args)
-        }, timeout)
-    }
-}
-
-export function close(dotnet, element) {
-    const markdownEditor = markdownEditors.get(element);
-
-    markdownEditor.hide();
-}
-
-export function open(dotnet, element) {
-    const markdownEditor = markdownEditors.get(element);
-
-    markdownEditor.show();
-}
 
 export function update(dotnet, element, config) {
     const instance = markdownEditors.get(element)
