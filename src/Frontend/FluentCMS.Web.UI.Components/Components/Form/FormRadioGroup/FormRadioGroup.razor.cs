@@ -6,7 +6,7 @@ namespace FluentCMS.Web.UI.Components;
 public partial class FormRadioGroup<TItem, TValue>
 {
     [Parameter]
-    public int Cols { get; set; } = 12;
+    public decimal Cols { get; set; } = 12;
 
     [Parameter]
     public ICollection<TItem> Data { get; set; } = [];

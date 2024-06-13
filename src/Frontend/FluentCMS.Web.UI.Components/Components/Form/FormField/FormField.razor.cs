@@ -3,7 +3,7 @@ namespace FluentCMS.Web.UI.Components;
 public partial class FormField
 {
     [Parameter]
-    public int Cols { get; set; } = 12;
+    public decimal Cols { get; set; } = 12;
 
     [Parameter]
     public bool Dense { get; set; }

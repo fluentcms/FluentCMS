@@ -5,7 +5,7 @@ namespace FluentCMS.Web.UI.Components;
 public partial class FormTextarea
 {
     [Parameter]
-    public int Cols { get; set; } = 12;
+    public decimal Cols { get; set; } = 12;
 
     [Parameter]
     public int Rows { get; set; } = 5;

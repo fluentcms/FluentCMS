@@ -12,7 +12,7 @@ public partial class FormRichTextEditor
     private IJSObjectReference module = default!;
 
     [Parameter]
-    public int Cols { get; set; } = 12;
+    public decimal Cols { get; set; } = 12;
 
     private string? _value;
 

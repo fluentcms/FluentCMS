@@ -7,7 +7,7 @@ namespace FluentCMS.Web.UI.Components;
 public partial class FormDateInput<TValue>
 {
     [Parameter]
-    public int Cols { get; set; } = 12;
+    public decimal Cols { get; set; } = 12;
 
     private const string DateFormat = "yyyy-MM-dd";
     private const string DateTimeLocalFormat = "yyyy-MM-ddTHH:mm:ss";
