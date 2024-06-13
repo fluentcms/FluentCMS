@@ -1,3 +1,5 @@
+import '/_content/FluentCMS.Web.UI.Components/js/quill.min.js'
+import { debounce } from '/_content/FluentCMS.Web.UI.Components/js/helpers.js'
 
 const toolbarTypes = {
     basic: undefined,
@@ -32,8 +34,6 @@ const toolbarTypes = {
     ],
 };
 
-import '../../../js/quill.min.js'
-
 const textEditors = new Map();
 
 // https://github.com/slab/quill/issues/662#issuecomment-1623172474
@@ -53,18 +53,6 @@ function destroyQuill(instance, el) {
     });
 
     el.innerHTML = instance.root.innerHTML
-}
-
-function debounce(cb, timeout = 300) {
-    let timer;
-
-    return (...args) => {
-        if (timer) clearTimeout(timer)
-
-        timer = setTimeout(() => {
-            cb(args)
-        }, timeout)
-    }
 }
 
 export function update(dotnet, element, config) {
