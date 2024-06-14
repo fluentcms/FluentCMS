@@ -21,7 +21,7 @@ public class FileController(IFileService fileService, IFolderService folderServi
 
     [HttpPost]
     [Policy(AREA, CREATE)]
-    public async Task<IApiPagingResult<FileDetailResponse>> Upload([FromRoute] Guid? folderId, [FromForm] IEnumerable<IFormFile> files, CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<FileDetailResponse>> Upload([FromQuery] Guid? folderId, [FromForm] IEnumerable<IFormFile> files, CancellationToken cancellationToken = default)
     {
         // check if parent folder exists
         if (folderId != null)

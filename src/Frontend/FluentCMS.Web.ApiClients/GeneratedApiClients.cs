@@ -2910,12 +2910,12 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<FileDetailResponseIApiPagingResult> UploadAsync(System.Guid folderId, System.Collections.Generic.IEnumerable<FileParameter> files);
+        System.Threading.Tasks.Task<FileDetailResponseIApiPagingResult> UploadAsync(System.Guid? folderId, System.Collections.Generic.IEnumerable<FileParameter> files);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<FileDetailResponseIApiPagingResult> UploadAsync(System.Guid folderId, System.Collections.Generic.IEnumerable<FileParameter> files, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<FileDetailResponseIApiPagingResult> UploadAsync(System.Guid? folderId, System.Collections.Generic.IEnumerable<FileParameter> files, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -3052,7 +3052,7 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<FileDetailResponseIApiPagingResult> UploadAsync(System.Guid folderId, System.Collections.Generic.IEnumerable<FileParameter> files)
+        public virtual System.Threading.Tasks.Task<FileDetailResponseIApiPagingResult> UploadAsync(System.Guid? folderId, System.Collections.Generic.IEnumerable<FileParameter> files)
         {
             return UploadAsync(folderId, files, System.Threading.CancellationToken.None);
         }
@@ -3060,11 +3060,8 @@ namespace FluentCMS.Web.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<FileDetailResponseIApiPagingResult> UploadAsync(System.Guid folderId, System.Collections.Generic.IEnumerable<FileParameter> files, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<FileDetailResponseIApiPagingResult> UploadAsync(System.Guid? folderId, System.Collections.Generic.IEnumerable<FileParameter> files, System.Threading.CancellationToken cancellationToken)
         {
-            if (folderId == null)
-                throw new System.ArgumentNullException("folderId");
-
             var client_ = _httpClient;
             var disposeClient_ = false;
             try
@@ -3096,6 +3093,12 @@ namespace FluentCMS.Web.ApiClients
 
                     // Operation Path: "api/File/Upload"
                     urlBuilder_.Append("api/File/Upload");
+                    urlBuilder_.Append('?');
+                    if (folderId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("folderId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(folderId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
