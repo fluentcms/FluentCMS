@@ -184,6 +184,34 @@
             ]
         },
         {
+            "Name": "File Management",
+            "Description": "File Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.FileManagement.dll",
+            "Types": [
+                {
+                    "Name": "Files List",
+                    "Type": "FileListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Upload File",
+                    "Type": "FileCreatePlugin"
+                },
+                {
+                    "Name": "Create Folder",
+                    "Type": "FolderCreatePlugin"
+                },
+                {
+                    "Name": "Update Folder",
+                    "Type": "FolderUpdatePlugin"
+                },
+                {
+                    "Name": "Update File",
+                    "Type": "FileUpdatePlugin"
+                }
+            ]
+        },
+        {
             "Name": "ContentType Management",
             "Description": "ContentTypes Management Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.ContentTypeManagement.dll",
@@ -310,6 +338,17 @@
                     "Plugins": [
                         {
                             "Definition": "User Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "Assets",
+                    "Path": "/assets",
+                    "Layout": "AdminLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "File Management",
                             "Section": "Main"
                         }
                     ]
