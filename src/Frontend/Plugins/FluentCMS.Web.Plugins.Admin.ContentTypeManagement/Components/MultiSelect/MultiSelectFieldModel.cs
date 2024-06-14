@@ -6,5 +6,5 @@ public class MultiSelectFieldModel : FieldModel<ICollection<string>>
     public bool Required { get; set; }
     public string Label { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public string Options { get; set; }
+    public string Options { get; set; } = string.Empty;
 }
