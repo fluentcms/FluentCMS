@@ -7,7 +7,7 @@ public interface IFieldModel
     public bool DataTableVisible { get; set; }
     public string DataTableViewComponent { get; set; }
     public decimal FormViewOrder { get; set; }
-    public decimal FormColWidth { get; set; }
+    public int FormColWidth { get; set; }
     public string FormViewComponent { get; set; }
 }
 
@@ -24,7 +24,7 @@ public abstract class FieldModel<T> : IFieldModel<T>
     public bool DataTableVisible { get; set; } = true;
     public string DataTableViewComponent { get; set; } = default!;
     public decimal FormViewOrder { get; set; } = 0;
-    public decimal FormColWidth { get; set; } = 12;
+    public int FormColWidth { get; set; } = 12;
     public string FormViewComponent { get; set; } = default!;
     public T DefaultValue { get; set; } = default!;
 }
