@@ -17,6 +17,7 @@ $form-rich-text-editor: $prefix + 'form-rich-text-editor';
     }
 
     .ql-container.ql-snow {
+        max-height: calc(100% - 50px);
         @apply border border-t-0 rounded-b-lg border-gray-200 dark:border-gray-600 dark:bg-gray-700;
         @apply text-sm text-gray-800 bg-white dark:bg-gray-800 focus:ring-0 dark:text-white;
     }
