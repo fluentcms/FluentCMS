@@ -7,8 +7,7 @@ public partial class DateFieldSettings
     {
         get => [
             new("MM/dd/yyyy", ExampleDate.ToString("MM/dd/yyyy")),
-            new("dddd, dd MMMM yyyy", ExampleDate.ToString("dddd, dd MMMM yyyy")),
-            new("dddd, dd MMMM yyyy", ExampleDate.ToString("dddd, dd MMMM yyyy")),
+            new("yyyy-MM-dd", ExampleDate.ToString("yyyy-MM-dd")),
             new("dddd, dd MMMM yyyy", ExampleDate.ToString("dddd, dd MMMM yyyy")),
             new("MM/dd/yyyy HH:mm", ExampleDate.ToString("MM/dd/yyyy HH:mm")),
             new("MM/dd/yyyy hh:mm tt", ExampleDate.ToString("MM/dd/yyyy hh:mm tt")),
