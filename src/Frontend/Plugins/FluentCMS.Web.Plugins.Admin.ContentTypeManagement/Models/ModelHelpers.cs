@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using System.Reflection;
+﻿using System.Reflection;
 
 namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 

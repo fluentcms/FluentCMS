@@ -75,7 +75,7 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
       - [x] Markdown Field
       - [x] Number Field
       - [x] Date Field
-      - [ ] Time Field
+      - [x] Time Field
       - [x] DateTime Field
       - [x] Boolean Field
       - [x] Select Field
@@ -83,7 +83,7 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
       - [x] Radio Field
       - [x] Checkbox Field
       - [ ] File Field
-    - [ ] Content Management
+    - [x] Content Management
     - [x] API Tokens Management
   - CMS Features
     - [x] Site Management
