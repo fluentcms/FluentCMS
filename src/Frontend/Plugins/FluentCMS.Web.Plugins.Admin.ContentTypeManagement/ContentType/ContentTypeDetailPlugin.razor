@@ -29,9 +29,9 @@
                 </Stack>
             </DataTableItem>
             <DataTableItem Label="Required">
-                <Indicator Color="Color.Success" Visible="@(context.GetBoolean("IsRequired") == true)">Yes</Indicator>
-                <Indicator Color="Color.Danger" Visible="@(context.GetBoolean("IsRequired") == false)">No</Indicator>
-                <Indicator Color="Color.Default" Visible="@(context.GetBoolean("IsRequired") == null)">N/A</Indicator>
+                <Indicator Color="Color.Success" Visible="@(context.GetBoolean("Required") == true)">Yes</Indicator>
+                <Indicator Color="Color.Danger" Visible="@(context.GetBoolean("Required") == false)">No</Indicator>
+                <Indicator Color="Color.Default" Visible="@(context.GetBoolean("Required") == null)">N/A</Indicator>
             </DataTableItem>
             <DataTableItem Label="Description">
                 @context.GetString("Description")
