@@ -2,73 +2,49 @@
 
 public interface IFolderService : IAutoRegisterService
 {
-    Task<Asset> Create(string folderName, Guid? parentFolderId, CancellationToken cancellationToken = default);
-    Task<IEnumerable<Asset>> GetByParentId(Guid? parentFolderId, CancellationToken cancellationToken = default);
-    Task<Asset> GetById(Guid id, CancellationToken cancellationToken = default);
-    Task<Asset> Update(Guid id, string folderName, Guid? parentFolderId, CancellationToken cancellationToken = default);
-    Task<Asset> Delete(Guid id, CancellationToken cancellationToken = default);
+    Task<Folder> Create(Folder folder, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Folder>> GetAll(CancellationToken cancellationToken = default);
+    Task<Folder> Update(Folder folder, CancellationToken cancellationToken = default);
+    Task<Folder> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
 
-public class FolderService(IAssetRepository assetRepository) : IFolderService
+public class FolderService(IFolderRepository folderRepository) : IFolderService
 {
-    public async Task<Asset> Create(string folderName, Guid? parentFolderId, CancellationToken cancellationToken = default)
+    public async Task<Folder> Create(Folder folder, CancellationToken cancellationToken = default)
     {
-        var asset = new Asset
-        {
-            Name = folderName,
-            FolderId = parentFolderId,
-            Type = AssetType.Folder,
-            Size = 0,
-        };
-
         // check if parent folder exists
-        if (parentFolderId != null)
+        if (folder.FolderId != null)
         {
-            var parentFolder = await assetRepository.GetById(parentFolderId.Value, cancellationToken);
-            if (parentFolder == null || parentFolder.Type != AssetType.Folder)
+            _ = await folderRepository.GetById(folder.FolderId.Value, cancellationToken) ??
                 throw new AppException(ExceptionCodes.FolderParentFolderNotFound);
         }
-        return await assetRepository.Create(asset, cancellationToken) ??
+
+        return await folderRepository.Create(folder, cancellationToken) ??
             throw new AppException(ExceptionCodes.FolderUnableToCreate);
     }
 
-    public async Task<IEnumerable<Asset>> GetByParentId(Guid? parentFolderId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Folder>> GetAll(CancellationToken cancellationToken = default)
     {
-        return await assetRepository.GetByParentId(parentFolderId, cancellationToken);
+        return await folderRepository.GetAll(cancellationToken);
     }
 
-    public async Task<Asset> Update(Guid id, string folderName, Guid? parentFolderId, CancellationToken cancellationToken = default)
+    public async Task<Folder> Update(Folder folder, CancellationToken cancellationToken = default)
     {
-        var existing = await assetRepository.GetById(id, cancellationToken);
-        if (existing == null || existing.Type != AssetType.Folder)
-            throw new AppException(ExceptionCodes.FolderNotFound);
-
         // check if parent folder exists
-        if (parentFolderId != null)
+        if (folder.FolderId != null)
         {
-            var parentFolder = await assetRepository.GetById(parentFolderId.Value, cancellationToken);
-            if (parentFolder == null || parentFolder.Type != AssetType.Folder)
+            _ = await folderRepository.GetById(folder.FolderId.Value, cancellationToken) ??
                 throw new AppException(ExceptionCodes.FolderParentFolderNotFound);
         }
 
-        existing.Name = folderName;
-        existing.FolderId = parentFolderId;
-
-        return await assetRepository.Update(existing, cancellationToken) ??
+        return await folderRepository.Update(folder, cancellationToken) ??
             throw new AppException(ExceptionCodes.FolderUnableToUpdate);
     }
 
-    public async Task<Asset> Delete(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Folder> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        // todo: think about children
-        return await assetRepository.Delete(id, cancellationToken) ??
+        return await folderRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.FolderUnableToDelete);
-    }
-
-    public async Task<Asset> GetById(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await assetRepository.GetById(id, cancellationToken) ??
-            throw new AppException(ExceptionCodes.FolderNotFound);
     }
 }
