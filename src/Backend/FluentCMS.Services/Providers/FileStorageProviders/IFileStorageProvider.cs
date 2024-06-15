@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Providers;
+﻿using System.IO;
+
+namespace FluentCMS.Providers;
 
 public interface IFileStorageProvider
 {

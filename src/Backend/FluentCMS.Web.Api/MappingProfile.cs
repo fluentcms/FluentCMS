@@ -87,11 +87,11 @@ public class MappingProfile : Profile
 
         #region File Folder Asset
 
-        CreateMap<Asset, FolderDetailResponse>().IncludeMembers(x => x.MetaData);
-        CreateMap<Asset, AssetDetailResponse>();
-        CreateMap<Asset, FileDetailResponse>().IncludeMembers(x => x.MetaData);
-        CreateMap<AssetMetaData, FileDetailResponse>();
-        CreateMap<AssetMetaData, FolderDetailResponse>();
+        CreateMap<File, FileDetailResponse>();
+        CreateMap<FileUpdateRequest, File>();
+        CreateMap<Folder, FolderDetailResponse>();
+        CreateMap<FolderCreateRequest, Folder>();
+        CreateMap<FolderUpdateRequest, Folder>();
 
         #endregion
 

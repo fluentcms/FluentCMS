@@ -103,6 +103,7 @@ public class ExceptionCodes
     public const string FileNotFound = "File.NotFound";
     public const string FileUnableToDelete = "File.UnableToDelete";
     public const string FileUnableToCreate = "File.UnableToCreate";
+    public const string FileUnableToUpdate = "File.UnableToUpdate";
 
     #endregion
 

@@ -5,5 +5,5 @@ public class FolderCreateRequest
     [Required]
     public string Name { get; set; } = default!;
 
-    public Guid? FolderId { get; set; }
+    public Guid FolderId { get; set; }
 }
