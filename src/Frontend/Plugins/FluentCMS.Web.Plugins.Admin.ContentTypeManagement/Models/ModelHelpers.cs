@@ -69,6 +69,14 @@ public static class ModelHelpers
             if (prop.Name == "Name" || prop.Name == "Type")
                 continue;
 
+            if (prop.Name == "FormColWidth" && settingsDict.ContainsKey(prop.Name))
+            {
+                // try cast to int
+                var intValue = int.TryParse(settingsDict["FormColWidth"]?.ToString(), out var _value) ? _value : 12;
+                prop.SetValue(result, intValue);
+                continue;
+            }
+
             if (prop.CanWrite && settingsDict.TryGetValue(prop.Name, out object? value) && value != null)
                 prop.SetValue(result, value);
         }
@@ -88,7 +96,7 @@ public static class ModelHelpers
             FieldTypes.BOOLEAN => src.ToFieldModel<bool, BooleanFieldModel>(),
             FieldTypes.DATE_TIME => src.ToFieldModel<DateTime?, DateFieldModel>(),
             FieldTypes.SINGLE_SELECT => src.ToFieldModel<string?, SelectFieldModel>(),
-            FieldTypes.MULTI_SELECT => src.ToFieldModel<ICollection<string>?, MultiSelectFieldModel>(),
+            FieldTypes.MULTI_SELECT => src.ToFieldModel<ICollection<string>, MultiSelectFieldModel>(),
             _ => throw new NotSupportedException($"Field type '{typeName}' is not supported."),
         };
     }
