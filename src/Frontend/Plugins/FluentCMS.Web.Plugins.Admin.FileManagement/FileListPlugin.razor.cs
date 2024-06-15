@@ -7,14 +7,21 @@ public partial class FileListPlugin
     [SupplyParameterFromQuery(Name = "folderId")]
     private Guid? FolderId { get; set; }
 
+    private Guid? ParentId { get; set; }
+
     private async Task Load()
     {
-        Console.WriteLine($"ID: {FolderId}");
+        if (FolderId != null)
+        {
+            var folderDetailResponse = await GetApiClient<FolderClient>().GetByIdAsync(FolderId.Value);
+            ParentId = folderDetailResponse?.Data?.FolderId;
+        }
+
         var response = await GetApiClient<FolderClient>().GetAllAsync(FolderId);
         Assets = response?.Data?.ToList() ?? [];
     }
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
         await Load();
     }
@@ -27,7 +34,14 @@ public partial class FileListPlugin
         if (SelectedAsset == null)
             return;
 
-        await GetApiClient<FileClient>().DeleteAsync(SelectedAsset.Id);
+        if (SelectedAsset.Type == AssetType.Folder)
+        {
+            await GetApiClient<FolderClient>().DeleteAsync(SelectedAsset.Id);
+        }
+        else
+        {
+            await GetApiClient<FileClient>().DeleteAsync(SelectedAsset.Id);
+        }
         await Load();
         SelectedAsset = default;
     }

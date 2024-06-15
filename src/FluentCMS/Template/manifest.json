@@ -9,7 +9,7 @@
             "From": "admin@fluentcms.com"
         },
         "FileUpload": {
-            "MaxSize": 15360,
+            "MaxSize": 5242880,
             "AllowedExtensions": "jpg,jpeg,png,gif,doc,docx,pdf,txt",
             "MaxCount": 5
         }
@@ -196,6 +196,10 @@
                 {
                     "Name": "Upload File",
                     "Type": "FileCreatePlugin"
+                },
+                {
+                    "Name": "File Detail",
+                    "Type": "FileDetailPlugin"
                 },
                 {
                     "Name": "Create Folder",

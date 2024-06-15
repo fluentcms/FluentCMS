@@ -21,6 +21,10 @@ public partial class FolderCreatePlugin
     private async Task OnSubmit()
     {
         await GetApiClient<FolderClient>().CreateAsync(Model);
-        NavigateBack();
+        NavigateTo(GetUrl("Files List", new { folderId = FolderId }));
     }
 }
+// http://localhost:5000/admin/assets?
+// pluginDef=File%20Management
+// typeName=Files%20List
+// folderId=6678c4fc-59b2-43b3-8179-78439f05fbeb

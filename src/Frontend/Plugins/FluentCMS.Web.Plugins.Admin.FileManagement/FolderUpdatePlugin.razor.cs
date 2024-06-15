@@ -15,7 +15,7 @@ public partial class FolderUpdatePlugin
     protected override async Task OnInitializedAsync()
     {
         var assetsResponse = await GetApiClient<FolderClient>().GetAllAsync(null);
-        Folders = assetsResponse?.Data.Where(x => x.Id != Id && x.Type == AssetType._0).ToList() ?? [];
+        Folders = assetsResponse?.Data.Where(x => x.Id != Id && x.Type == AssetType.Folder).ToList() ?? [];
 
         if (Model is null)
         {

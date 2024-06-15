@@ -10,6 +10,7 @@ public class FolderController(IFolderService folderService, IMapper mapper) : Ba
 
     [HttpGet]
     [Policy(AREA, READ)]
+    [PolicyAll]
     public async Task<IApiPagingResult<AssetDetailResponse>> GetAll([FromQuery] Guid? id, CancellationToken cancellationToken = default)
     {
         var childAssets = await folderService.GetByParentId(id, cancellationToken);

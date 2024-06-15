@@ -1,10 +1,11 @@
 @inherits BasePlugin
-<!-- 
-<PluginForm Model="@Model" Name="@FORM_NAME" Title="k New File" OnSubmit="OnSubmit">
-    <FormHiddenInput @bind-Value="Model.FolderId" />
+@rendermode InteractiveServer
+
+<PluginForm Model="@Model" Name="@FORM_NAME" Title="Upload New File" OnSubmit="OnSubmit">
+    <FormHiddenInput @bind-Value="FolderId" />
     <FormField Label="File">
-        <InputFile class="f-form-input" @bind-Value="Model.Name" Label="Name" Placeholder="Choose File" Required />
+        <!-- TODO: Create FormFileInput component -->
+        <InputFile class="f-form-input" OnChange="OnFilesChanged" accept="AllowedExtensions" multiple Required />
     </FormField>
-    <FormInput @bind-Value="Model.Name" Label="Name" Placeholder="Enter File Name" Required />
     <FormActions Cancel Submit />
-</PluginForm> -->
+</PluginForm>

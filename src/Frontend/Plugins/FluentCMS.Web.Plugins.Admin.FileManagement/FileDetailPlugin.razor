@@ -1,0 +1,25 @@
+@inherits BasePlugin
+
+<PluginBody Title="File Details">
+    <CardBody>
+        @if (Model != null)
+        {
+            <Stack Vertical Items="StackItems.Start">
+                @if (Model.MimeType.StartsWith("image/"))
+                {
+                    <img src="/Api/File/Download/@Model.Id" />
+                }
+                <div><b>Name:</b>@Model.Name</div>
+                <div><b>Mime Type:</b>@Model.MimeType</div>
+                <div><b>Extension:</b>@Model.Extension</div>
+                <div><b>Size:</b>@Model.Size</div>
+            </Stack>
+        }
+        <Spacer />
+        <FormActions>
+            <Button Href="@GetUrl("Files List", new { folderId = FolderId })" Outline>
+                Back
+            </Button>
+        </FormActions>
+    </CardBody>
+</PluginBody>

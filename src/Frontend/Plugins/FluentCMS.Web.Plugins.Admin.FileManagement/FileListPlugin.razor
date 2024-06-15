@@ -5,11 +5,11 @@
     <ActionsFragment>
         @if (FolderId != null)
         {
-            <Button Href="/admin/assets" Outline>
+            <Button Href="@GetUrl("Files List", new { folderId = ParentId })" Outline>
                 Back
             </Button>
         }
-        <Button Href="@GetUrl("Create Folder")" Color="Color.Secondary">
+        <Button Href="@GetUrl("Create Folder", new { folderId = FolderId })" Color="Color.Secondary">
             <Icon Name="IconName.Plus" />Add Folder
         </Button>
         <Button Href="@GetUrl("Upload File", new { folderId = FolderId })" Color="Color.Primary">
@@ -19,19 +19,38 @@
     <ChildContent>
         <DataTable Items="Assets">
             <DataTableItem Label="Name">@context.Name</DataTableItem>
-            <!-- <DataTableItem Label="Created By">@(context.CreatedBy ?? string.Empty)</DataTableItem>
-            <DataTableItem Label="Created At">@context.CreatedAt</DataTableItem>
-            <DataTableItem Label="Modified By">@(context.ModifiedBy ?? string.Empty)</DataTableItem>
-            <DataTableItem Label="Modified At">@context.ModifiedAt</DataTableItem> -->
+            <DataTableItem Label="Type">
+                <Stack Visible="context.Type == AssetType.Folder">
+                    <Icon Size="IconSize.Large" Name="IconName.Folder"/>
+                    <Badge Color="Color.Info">
+                        @context.Type.ToString()
+                    </Badge>
+                </Stack>
+                <Stack Visible="context.Type == AssetType.File">
+                    <Icon Size="IconSize.Large" Name="IconName.File"/>
+                    <Badge Color="Color.Success">
+                        @context.Type.ToString()
+                    </Badge>
+                </Stack>
+            </DataTableItem>
             <DataTableItem>
                 <Stack>
-                    @if (context.Type == AssetType._0)
+                    @if (context.Type == AssetType.Folder)
                     {
                         <Button Color="Color.Primary" Href="@GetUrl("Files List", new { folderId = @context.Id })"  Size="ButtonSize.Small">
                             <Icon Name="IconName.Eye" />Open
                         </Button>
                         <Button Color="Color.Secondary" Outline Href="@GetUrl("Update Folder", new { id = @context.Id })"  Size="ButtonSize.Small">
                             <Icon Name="IconName.Edit" />Edit
+                        </Button>
+                        <Button Color="Color.Danger" Outline @onclick="() => OnConfirm(context)" Size="ButtonSize.Small">
+                            <Icon Name="IconName.Delete" />Delete
+                        </Button>
+                    }
+                    else
+                    {
+                        <Button Color="Color.Primary" Href="@GetUrl("File Detail", new { Id = @context.Id })"  Size="ButtonSize.Small">
+                            <Icon Name="IconName.Eye" />Open
                         </Button>
                         <Button Color="Color.Danger" Outline @onclick="() => OnConfirm(context)" Size="ButtonSize.Small">
                             <Icon Name="IconName.Delete" />Delete
