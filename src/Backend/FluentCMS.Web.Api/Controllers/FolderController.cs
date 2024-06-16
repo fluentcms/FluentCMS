@@ -11,14 +11,14 @@ public class FolderController(IFolderService folderService, IFileService fileSer
     private static Folder _rootFolder = new() { Id = Guid.Empty, Name = "(root)", FolderId = Guid.Empty };
 
     [HttpGet]
-    [Policy(AREA, READ)]
+    [PolicyAll]
     public async Task<IApiResult<FolderDetailResponse>> GetAll(CancellationToken cancellationToken = default)
     {
         var folders = await folderService.GetAll(cancellationToken);
         var files = await fileService.GetAll(cancellationToken);
 
         var foldersResponseDict = folders.ToDictionary(x => x.Id, x => mapper.Map<FolderDetailResponse>(x));
-        var filesResponseDict = folders.ToDictionary(x => x.Id, x => mapper.Map<FileDetailResponse>(x));
+        var filesResponseDict = files.ToDictionary(x => x.Id, x => mapper.Map<FileDetailResponse>(x));
         var rootFolderDetailResponse = mapper.Map<FolderDetailResponse>(_rootFolder);
 
         foldersResponseDict.Add(rootFolderDetailResponse.Id, rootFolderDetailResponse);
@@ -28,7 +28,9 @@ public class FolderController(IFolderService folderService, IFileService fileSer
             folderResponse.Folders ??= [];
             folderResponse.Files ??= [];
             var parentFolderResponse = foldersResponseDict[folderResponse.FolderId];
-            parentFolderResponse.Folders.Add(folderResponse);
+
+            if (folderResponse.Id != Guid.Empty)
+                parentFolderResponse.Folders.Add(folderResponse);
         }
 
         foreach (var fileResponse in filesResponseDict.Values)
@@ -40,12 +42,14 @@ public class FolderController(IFolderService folderService, IFileService fileSer
         return Ok(rootFolderDetailResponse);
     }
 
-    //[HttpGet("{id}")]
-    //[Policy(AREA, READ)]
-    //public async Task<IApiResult<FolderDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
-    //{
-       
-    //}
+    [HttpGet("{id}")]
+    [Policy(AREA, READ)]
+    public async Task<IApiResult<FolderDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    {
+        var folder = await folderService.GetById(id, cancellationToken);
+        var folderResponse = mapper.Map<FolderDetailResponse>(folder);
+        return Ok(folderResponse);
+    }
 
     [HttpPost]
     [Policy(AREA, CREATE)]

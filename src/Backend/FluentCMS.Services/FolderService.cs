@@ -4,6 +4,7 @@ public interface IFolderService : IAutoRegisterService
 {
     Task<Folder> Create(Folder folder, CancellationToken cancellationToken = default);
     Task<IEnumerable<Folder>> GetAll(CancellationToken cancellationToken = default);
+    Task<Folder> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<Folder> Update(Folder folder, CancellationToken cancellationToken = default);
     Task<Folder> Delete(Guid id, CancellationToken cancellationToken = default);
 }
@@ -27,6 +28,14 @@ public class FolderService(IFolderRepository folderRepository) : IFolderService
     public async Task<IEnumerable<Folder>> GetAll(CancellationToken cancellationToken = default)
     {
         return await folderRepository.GetAll(cancellationToken);
+    }
+
+    public async Task<Folder> GetById(Guid id, CancellationToken cancellationToken = default)
+    {
+        var folder = await folderRepository.GetById(id, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FolderNotFound);
+
+        return folder;
     }
 
     public async Task<Folder> Update(Folder folder, CancellationToken cancellationToken = default)

@@ -9,7 +9,7 @@
             "From": "admin@fluentcms.com"
         },
         "FileUpload": {
-            "MaxSize": 15360,
+            "MaxSize": 5242880,
             "AllowedExtensions": "jpg,jpeg,png,gif,doc,docx,pdf,txt",
             "MaxCount": 5
         }
@@ -184,6 +184,42 @@
             ]
         },
         {
+            "Name": "File Management",
+            "Description": "File Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.FileManagement.dll",
+            "Types": [
+                {
+                    "Name": "Files List",
+                    "Type": "FileListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Upload File",
+                    "Type": "FileCreatePlugin"
+                },
+                {
+                    "Name": "Update File",
+                    "Type": "FileUpdatePlugin"
+                },
+                {
+                    "Name": "File Detail",
+                    "Type": "FileDetailPlugin"
+                },
+                {
+                    "Name": "Create Folder",
+                    "Type": "FolderCreatePlugin"
+                },
+                {
+                    "Name": "Update Folder",
+                    "Type": "FolderUpdatePlugin"
+                },
+                {
+                    "Name": "Update File",
+                    "Type": "FileUpdatePlugin"
+                }
+            ]
+        },
+        {
             "Name": "ContentType Management",
             "Description": "ContentTypes Management Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.ContentTypeManagement.dll",
@@ -310,6 +346,17 @@
                     "Plugins": [
                         {
                             "Definition": "User Management",
+                            "Section": "Main"
+                        }
+                    ]
+                },
+                {
+                    "Title": "File Management",
+                    "Path": "/files",
+                    "Layout": "AdminLayout",
+                    "Plugins": [
+                        {
+                            "Definition": "File Management",
                             "Section": "Main"
                         }
                     ]

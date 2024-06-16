@@ -20,6 +20,7 @@ public enum IconName
     Edit,
     ExclamationCircle,
     File,
+    Folder,
     GitHub,
     List,
     Lock,

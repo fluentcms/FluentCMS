@@ -42,5 +42,12 @@ public class MappingProfile : Profile
         CreateMap<SiteDetailResponse, SiteUpdateRequest>();
 
         #endregion
+
+        #region Assets
+
+        CreateMap<FolderDetailResponse, FolderUpdateRequest>();
+        CreateMap<FileDetailResponse, FileUpdateRequest>();
+
+        #endregion
     }
 }
