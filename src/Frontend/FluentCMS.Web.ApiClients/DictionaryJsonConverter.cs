@@ -65,6 +65,10 @@ public class DictionaryJsonConverter : JsonConverter<IDictionary<string, object?
                 // check if the string is a date
                 if (DateTime.TryParse(reader.GetString(), out var date))
                     return date;
+
+                if (Guid.TryParse(reader.GetString(), out var guid))
+                    return guid;
+
                 return reader.GetString();
 
             case JsonTokenType.StartObject:
@@ -118,6 +122,9 @@ public class DictionaryJsonConverter : JsonConverter<IDictionary<string, object?
                 break;
             case DateTime dateTimeValue:
                 writer.WriteStringValue(dateTimeValue);
+                break;
+            case Guid guidValue:
+                writer.WriteStringValue(guidValue);
                 break;
             case string stringValue:
                 writer.WriteStringValue(stringValue);
