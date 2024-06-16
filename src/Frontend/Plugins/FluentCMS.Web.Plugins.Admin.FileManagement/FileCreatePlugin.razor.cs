@@ -19,7 +19,7 @@ public partial class FileCreatePlugin
     protected override async Task OnInitializedAsync()
     {
         var settingsResponse = await GetApiClient<GlobalSettingsClient>().GetAsync();
-        if(settingsResponse?.Data != null)
+        if (settingsResponse?.Data != null)
         {
             MaxAllowedFiles = settingsResponse?.Data.FileUpload.MaxCount ?? 5;
             MaxFileSize = settingsResponse?.Data.FileUpload.MaxSize ?? (1024 * 1024);
@@ -33,7 +33,7 @@ public partial class FileCreatePlugin
         foreach (var file in e.GetMultipleFiles(MaxAllowedFiles))
         {
             var Data = file.OpenReadStream(MaxFileSize);
-            Files.Add( new FileParameter(Data, file.Name, file.ContentType));
+            Files.Add(new FileParameter(Data, file.Name, file.ContentType));
         }
 
         // TODO: Should Disable these lines and enable onSubmit
