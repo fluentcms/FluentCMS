@@ -5,12 +5,12 @@
         @if (Model != null)
         {
             <Stack Vertical Items="StackItems.Start">
-                @if (Model.MimeType.StartsWith("image/"))
+                @if (Model.ContentType.StartsWith("image/"))
                 {
                     <img src="/Api/File/Download/@Model.Id" />
                 }
                 <div><b>Name:</b>@Model.Name</div>
-                <div><b>Mime Type:</b>@Model.MimeType</div>
+                <div><b>Mime Type:</b>@Model.ContentType</div>
                 <div><b>Extension:</b>@Model.Extension</div>
                 <div><b>Size:</b>@Model.Size</div>
             </Stack>

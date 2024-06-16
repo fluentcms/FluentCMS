@@ -1,11 +1,13 @@
 namespace FluentCMS.Web.Plugins.Admin.FileManagement;
 
-public partial class FolderUpdatePlugin
+public partial class FileUpdatePlugin
 {
-    public const string FORM_NAME = "FolderUpdateForm";
+    public const string FORM_NAME = "FileUpdateForm";
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
-    private FolderUpdateRequest Model { get; set; }
+    private FileUpdateRequest Model { get; set; }
+
+    private string Extension { get; set; }
 
     [SupplyParameterFromQuery(Name = "id")]
     private Guid Id { get; set; }
@@ -43,15 +45,19 @@ public partial class FolderUpdatePlugin
 
         if (Model is null)
         {
-            var folderResponse = await GetApiClient<FolderClient>().GetByIdAsync(Id);
-            var folder = folderResponse.Data;
-            Model = Mapper.Map<FolderUpdateRequest>(folder);
+            var fileResponse = await GetApiClient<FileClient>().GetByIdAsync(Id);
+            var file = fileResponse.Data;
+            Model = Mapper.Map<FileUpdateRequest>(file);
+
+            Extension = System.IO.Path.GetExtension(Model.Name);
+            Model.Name = Model.Name.Replace(Extension, "");
         }
     }
 
     private async Task OnSubmit()
     {
-        await GetApiClient<FolderClient>().UpdateAsync(Model);
+        Model.Name = Model.Name + Extension;
+        await GetApiClient<FileClient>().UpdateAsync(Model);
         NavigateBack();
     }
 }

@@ -12,10 +12,7 @@ public partial class FolderCreatePlugin
 
     protected override async Task OnInitializedAsync()
     {
-        if (Model.FolderId is null && FolderId != null)
-        {
-            Model.FolderId = FolderId;
-        }
+        Model.FolderId = FolderId.HasValue ? FolderId.Value : Guid.Empty;
     }
 
     private async Task OnSubmit()

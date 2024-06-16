@@ -2,23 +2,51 @@
 
 public partial class FileListPlugin
 {
-    private List<AssetDetailResponse> Assets { get; set; } = [];
+    private List<FileDetailResponse> Files { get; set; } = [];
+    private List<FolderDetailResponse> Folders { get; set; } = [];
 
     [SupplyParameterFromQuery(Name = "folderId")]
     private Guid? FolderId { get; set; }
 
     private Guid? ParentId { get; set; }
 
+    FolderDetailResponse? FindFolderById(ICollection<FolderDetailResponse> folders, Guid folderId)
+    {
+        foreach (var folder in folders)
+        {
+            if (folder.Id == folderId)
+                return folder;
+
+            if (folder.Folders != null && folder.Folders.Any())
+            {
+                var foundFolder = FindFolderById(folder.Folders, folderId);
+                if (foundFolder != null)
+                    return foundFolder;
+            }
+        }
+        return null;
+    }
+
     private async Task Load()
     {
-        if (FolderId != null)
+        FolderDetailResponse? folderDetail = default!;
+
+        var folderDetailResponse = await GetApiClient<FolderClient>().GetAllAsync();
+
+        if (FolderId is null)
         {
-            var folderDetailResponse = await GetApiClient<FolderClient>().GetByIdAsync(FolderId.Value);
-            ParentId = folderDetailResponse?.Data?.FolderId;
+            folderDetail = folderDetailResponse?.Data;
+        }
+        else
+        {
+            folderDetail = FindFolderById(folderDetailResponse?.Data?.Folders, FolderId.Value);
         }
 
-        var response = await GetApiClient<FolderClient>().GetAllAsync(FolderId);
-        Assets = response?.Data?.ToList() ?? [];
+        if (folderDetail != null)
+        {
+            Files = folderDetail.Files.ToList() ?? [];
+            Folders = folderDetail.Folders.ToList() ?? [];
+        }
     }
 
     protected override async Task OnParametersSetAsync()
@@ -28,32 +56,51 @@ public partial class FileListPlugin
 
     #region Delete File
 
-    private AssetDetailResponse? SelectedAsset { get; set; }
-    public async Task OnDelete()
+    private FileDetailResponse? SelectedFile { get; set; }
+    public async Task OnDeleteFile()
     {
-        if (SelectedAsset == null)
+        if (SelectedFile == null)
             return;
 
-        if (SelectedAsset.Type == AssetType.Folder)
-        {
-            await GetApiClient<FolderClient>().DeleteAsync(SelectedAsset.Id);
-        }
-        else
-        {
-            await GetApiClient<FileClient>().DeleteAsync(SelectedAsset.Id);
-        }
+        await GetApiClient<FileClient>().DeleteAsync(SelectedFile.Id);
         await Load();
-        SelectedAsset = default;
+        SelectedFile = default;
     }
 
-    public async Task OnConfirm(AssetDetailResponse asset)
+    public async Task OnConfirmFile(FileDetailResponse file)
     {
-        SelectedAsset = asset;
+        SelectedFile = file;
         await Task.CompletedTask;
     }
-    public async Task OnConfirmClose()
+    public async Task OnConfirmFileClose()
     {
-        SelectedAsset = default;
+        SelectedFile = default;
+        await Task.CompletedTask;
+    }
+    #endregion
+
+
+    #region Delete Folder
+
+    private FolderDetailResponse? SelectedFolder { get; set; }
+    public async Task OnDeleteFolder()
+    {
+        if (SelectedFolder == null)
+            return;
+
+        await GetApiClient<FolderClient>().DeleteAsync(SelectedFolder.Id);
+        await Load();
+        SelectedFolder = default;
+    }
+
+    public async Task OnConfirmFolder(FolderDetailResponse asset)
+    {
+        SelectedFolder = asset;
+        await Task.CompletedTask;
+    }
+    public async Task OnConfirmFolderClose()
+    {
+        SelectedFolder = default;
         await Task.CompletedTask;
     }
     #endregion

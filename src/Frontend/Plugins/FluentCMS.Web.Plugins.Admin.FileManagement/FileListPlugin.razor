@@ -1,7 +1,7 @@
 ﻿@inherits BasePlugin
 @rendermode InteractiveServer
 
-<PluginBody Title="Assets List">
+<PluginBody Title="Folders">
     <ActionsFragment>
         @if (FolderId != null)
         {
@@ -17,51 +17,62 @@
         </Button>
     </ActionsFragment>
     <ChildContent>
-        <DataTable Items="Assets">
+        <DataTable Items="Folders">
             <DataTableItem Label="Name">@context.Name</DataTableItem>
-            <DataTableItem Label="Type">
-                <Stack Visible="context.Type == AssetType.Folder">
-                    <Icon Size="IconSize.Large" Name="IconName.Folder"/>
-                    <Badge Color="Color.Info">
-                        @context.Type.ToString()
-                    </Badge>
-                </Stack>
-                <Stack Visible="context.Type == AssetType.File">
-                    <Icon Size="IconSize.Large" Name="IconName.File"/>
-                    <Badge Color="Color.Success">
-                        @context.Type.ToString()
-                    </Badge>
-                </Stack>
-            </DataTableItem>
             <DataTableItem>
                 <Stack>
-                    @if (context.Type == AssetType.Folder)
-                    {
-                        <Button Color="Color.Primary" Href="@GetUrl("Files List", new { folderId = @context.Id })"  Size="ButtonSize.Small">
-                            <Icon Name="IconName.Eye" />Open
-                        </Button>
-                        <Button Color="Color.Secondary" Outline Href="@GetUrl("Update Folder", new { id = @context.Id })"  Size="ButtonSize.Small">
-                            <Icon Name="IconName.Edit" />Edit
-                        </Button>
-                        <Button Color="Color.Danger" Outline @onclick="() => OnConfirm(context)" Size="ButtonSize.Small">
-                            <Icon Name="IconName.Delete" />Delete
-                        </Button>
-                    }
-                    else
-                    {
-                        <Button Color="Color.Primary" Href="@GetUrl("File Detail", new { Id = @context.Id })"  Size="ButtonSize.Small">
-                            <Icon Name="IconName.Eye" />Open
-                        </Button>
-                        <Button Color="Color.Danger" Outline @onclick="() => OnConfirm(context)" Size="ButtonSize.Small">
-                            <Icon Name="IconName.Delete" />Delete
-                        </Button>
-                    }
+                    <Button Color="Color.Primary" Href="@GetUrl("Files List", new { folderId = @context.Id })"  Size="ButtonSize.Small">
+                        <Icon Name="IconName.Eye" />Open
+                    </Button>
+                    <Button Color="Color.Secondary" Outline Href="@GetUrl("Update Folder", new { id = @context.Id })"  Size="ButtonSize.Small">
+                        <Icon Name="IconName.Edit" />Edit
+                    </Button>
+                    <Button Color="Color.Danger" Outline @onclick="() => OnConfirmFolder(context)" Size="ButtonSize.Small">
+                        <Icon Name="IconName.Delete" />Delete
+                    </Button>
                 </Stack>
             </DataTableItem>
         </DataTable>
     </ChildContent>
 </PluginBody>
 
-<Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedAsset != null">
-    Are you sure to delete file/folder @SelectedAsset!.Name?
+<PluginBody Title="Files">
+    <ChildContent>
+        <DataTable Items="Files">
+            <DataTableItem Label="Name">@context.Name</DataTableItem>
+            <DataTableItem Label="Type">
+                <Badge Color="Color.Success">
+                    @context.ContentType
+                </Badge>
+            </DataTableItem>
+            <DataTableItem Label="Extension">
+                <Badge Color="Color.Info">
+                    @context.Extension
+                </Badge>
+            </DataTableItem>
+            <DataTableItem Label="Size">
+                @context.Size
+            </DataTableItem>
+            <DataTableItem>
+                <Stack>
+                    <Button Color="Color.Primary" Href="@GetUrl("File Detail", new { Id = @context.Id })"  Size="ButtonSize.Small">
+                        <Icon Name="IconName.Eye" />Open
+                    </Button>
+                    <Button Color="Color.Secondary" Outline Href="@GetUrl("Update File", new { id = @context.Id })"  Size="ButtonSize.Small">
+                        <Icon Name="IconName.Edit" />Edit
+                    </Button>
+                    <Button Color="Color.Danger" Outline @onclick="() => OnConfirmFile(context)" Size="ButtonSize.Small">
+                        <Icon Name="IconName.Delete" />Delete
+                    </Button>
+                </Stack>
+            </DataTableItem>
+        </DataTable>
+    </ChildContent>
+</PluginBody>
+<Confirm OnConfirm="OnDeleteFolder" OnCancel="OnConfirmFolderClose" Visible="SelectedFolder != null">
+    Are you sure to delete folder @SelectedFolder!.Name?
+</Confirm>
+
+<Confirm OnConfirm="OnDeleteFile" OnCancel="OnConfirmFileClose" Visible="SelectedFile != null">
+    Are you sure to delete file @SelectedFile!.Name?
 </Confirm>

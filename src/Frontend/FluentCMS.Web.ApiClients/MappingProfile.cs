@@ -46,6 +46,7 @@ public class MappingProfile : Profile
         #region Assets
 
         CreateMap<FolderDetailResponse, FolderUpdateRequest>();
+        CreateMap<FileDetailResponse, FileUpdateRequest>();
 
         #endregion
     }

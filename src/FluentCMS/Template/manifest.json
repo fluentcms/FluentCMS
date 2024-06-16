@@ -198,6 +198,10 @@
                     "Type": "FileCreatePlugin"
                 },
                 {
+                    "Name": "Update File",
+                    "Type": "FileUpdatePlugin"
+                },
+                {
                     "Name": "File Detail",
                     "Type": "FileDetailPlugin"
                 },
@@ -347,8 +351,8 @@
                     ]
                 },
                 {
-                    "Title": "Assets",
-                    "Path": "/assets",
+                    "Title": "File Management",
+                    "Path": "/files",
                     "Layout": "AdminLayout",
                     "Plugins": [
                         {
