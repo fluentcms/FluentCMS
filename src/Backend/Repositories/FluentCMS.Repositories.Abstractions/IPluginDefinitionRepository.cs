@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Repositories.Abstractions;
 
-public interface IPluginDefinitionRepository : IEntityRepository<PluginDefinition>
+public interface IPluginDefinitionRepository : IAuditableEntityRepository<PluginDefinition>
 {
 
 }
