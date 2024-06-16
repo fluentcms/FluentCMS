@@ -13,6 +13,10 @@ $data-table: $prefix + "data-table";
 
     &-head {
         @apply text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400;
+
+        .#{$data-table}-cell:last-child {
+            @apply w-0;
+        }
     }
 
     &-wrapper {
@@ -28,8 +32,10 @@ $data-table: $prefix + "data-table";
     }
 
     &-hoverable-true {
-        .#{$data-table}-row {
-            @apply hover:bg-gray-50 dark:hover:bg-gray-600;
+        .#{$data-table}-body {
+            .#{$data-table}-row {
+                @apply hover:bg-gray-50 dark:hover:bg-gray-600;
+            }
         }
     }
 }
