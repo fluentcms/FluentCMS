@@ -1,7 +1,0 @@
-@inherits BasePlugin
-
-<PluginForm Model="@Model" Name="@FORM_NAME" Title="Create New Folder" OnSubmit="OnSubmit">
-    <FormHiddenInput @bind-Value="Model.FolderId" />
-    <FormInput @bind-Value="Model.Name" Label="Name" Placeholder="Enter Folder Name" Required />
-    <FormActions Cancel Submit />
-</PluginForm>
