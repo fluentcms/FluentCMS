@@ -1,7 +1,7 @@
 ﻿@inherits BasePlugin
 @rendermode InteractiveServer
 
-<PluginBody Title="Folders">
+<PluginBody Title="File/Folders List">
     <ActionsFragment>
         @if (FolderId != null)
         {
@@ -9,45 +9,35 @@
                 Back
             </Button>
         }
-        <Button Href="@GetUrl("Create Folder", new { folderId = FolderId })" Color="Color.Secondary">
+        <Button @onclick="() => FolderCreateModalOpen = true" Color="Color.Secondary">
             <Icon Name="IconName.Plus" />Add Folder
         </Button>
-        <Button Href="@GetUrl("Upload File", new { folderId = FolderId })" Color="Color.Primary">
+        <Button @onclick="() => FileUploadModalOpen = true" Color="Color.Primary">
             <Icon Name="IconName.Plus" />Upload File
         </Button>
     </ActionsFragment>
     <ChildContent>
-        <DataTable Items="Folders">
-            <DataTableItem Label="Name">@context.Name</DataTableItem>
-            <DataTableItem>
-                <Stack>
-                    <Button Color="Color.Primary" Href="@GetUrl("Files List", new { folderId = @context.Id })"  Size="ButtonSize.Small">
-                        <Icon Name="IconName.Eye" />Open
+        <DataTable Items="Items">
+            <DataTableItem Label="Name">
+                @if (@context.IsFolder)
+                {
+                    <Button Link Href="@GetUrl("Files List", new { folderId = @context.Id })">
+                        @context.Name
                     </Button>
-                    <Button Color="Color.Secondary" Outline Href="@GetUrl("Update Folder", new { id = @context.Id })"  Size="ButtonSize.Small">
-                        <Icon Name="IconName.Edit" />Edit
+                }
+                else
+                {
+                    <Button Link download="@context.Name" Href="@GetUrl("Files List", new { folderId = @context.Id })">
+                        @context.Name
                     </Button>
-                    <Button Color="Color.Danger" Outline @onclick="() => OnConfirmFolder(context)" Size="ButtonSize.Small">
-                        <Icon Name="IconName.Delete" />Delete
-                    </Button>
-                </Stack>
+                }
             </DataTableItem>
-        </DataTable>
-    </ChildContent>
-</PluginBody>
-
-<PluginBody Title="Files">
-    <ChildContent>
-        <DataTable Items="Files">
-            <DataTableItem Label="Name">@context.Name</DataTableItem>
             <DataTableItem Label="Type">
-                <Badge Color="Color.Success">
-                    @context.ContentType
+                <Badge Color="Color.Info" Visible="@context.IsFolder">
+                    Folder
                 </Badge>
-            </DataTableItem>
-            <DataTableItem Label="Extension">
-                <Badge Color="Color.Info">
-                    @context.Extension
+                <Badge Color="Color.Success" Visible="!context.IsFolder">
+                    @context.ContentType
                 </Badge>
             </DataTableItem>
             <DataTableItem Label="Size">
@@ -55,24 +45,41 @@
             </DataTableItem>
             <DataTableItem>
                 <Stack>
-                    <Button Color="Color.Primary" Href="@GetUrl("File Detail", new { Id = @context.Id })"  Size="ButtonSize.Small">
+                    <Button Visible="!context.IsFolder" download="@context.Name" Href="@GetUrl("Files List", new { folderId = context.Id })" Color="Color.Primary" Size="ButtonSize.Small">
+                        Download
+                    </Button>
+                    <Button Visible="context.IsFolder" Color="Color.Primary" Href="@GetUrl("Files List", new { folderId = context.Id })"  Size="ButtonSize.Small">
                         <Icon Name="IconName.Eye" />Open
                     </Button>
-                    <Button Color="Color.Secondary" Outline Href="@GetUrl("Update File", new { id = @context.Id })"  Size="ButtonSize.Small">
-                        <Icon Name="IconName.Edit" />Edit
-                    </Button>
-                    <Button Color="Color.Danger" Outline @onclick="() => OnConfirmFile(context)" Size="ButtonSize.Small">
-                        <Icon Name="IconName.Delete" />Delete
-                    </Button>
+                    @if (!context.IsParentFolder)
+                    {
+                        <Button Color="Color.Secondary" Outline @onclick="() => OpenUpdateModal(context)"  Size="ButtonSize.Small">
+                            <Icon Name="IconName.Edit" />Edit
+                        </Button>
+                        <Button Color="Color.Danger" Outline @onclick="() => OnConfirm(context)" Size="ButtonSize.Small">
+                            <Icon Name="IconName.Delete" />Delete
+                        </Button>
+                    }
                 </Stack>
             </DataTableItem>
         </DataTable>
     </ChildContent>
 </PluginBody>
-<Confirm OnConfirm="OnDeleteFolder" OnCancel="OnConfirmFolderClose" Visible="SelectedFolder != null">
-    Are you sure to delete folder @SelectedFolder!.Name?
+
+<Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedItem != null">
+    Are you sure to delete @(SelectedItem!.IsFolder ? "folder" : "file") @SelectedItem!.Name?
 </Confirm>
 
-<Confirm OnConfirm="OnDeleteFile" OnCancel="OnConfirmFileClose" Visible="SelectedFile != null">
-    Are you sure to delete file @SelectedFile!.Name?
-</Confirm>
+<FolderCreateModal FolderId="@FolderId" Visible="FolderCreateModalOpen" OnSubmit="OnCreateFolder" OnCancel="OnCreateFolderCancel"/>
+
+<FileUploadModal Config="FileUploadConfig" Visible="FileUploadModalOpen" OnSubmit="OnUpload" OnCancel="OnUploadCancel"/>
+
+@if (FolderUpdateModalOpen && FolderUpdateModel != null && RootFolder != null)
+{
+    <FolderUpdateModal RootFolder="RootFolder" Model="FolderUpdateModel" OnSubmit="OnUpdateFolder" OnCancel="OnUpdateFolderCancel"/>
+}
+
+@if (FileUpdateModalOpen && FileUpdateModel != null && RootFolder != null)
+{
+    <FileUpdateModal RootFolder="RootFolder" Model="FileUpdateModel" OnSubmit="OnUpdateFile" OnCancel="OnUpdateFileCancel"/>
+}

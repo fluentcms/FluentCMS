@@ -1,0 +1,32 @@
+
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.Plugins.Admin.FileManagement
+
+@if (Visible)
+{
+    <EditForm Model="@Model" OnSubmit="HandleSubmit">
+        <Modal Size="ModalSize.Large">
+            <ModalHeader Closable>
+                <ModalTitle>
+                    Upload File
+                </ModalTitle>
+            </ModalHeader>
+            <ModalBody>
+                <Grid>
+                    <FormField Label="File">
+                        @* TODO: Create FormFileInput component *@
+                        <InputFile class="f-form-input" OnChange="OnFilesChanged" accept="@Config.AllowedExtensions" Required />
+                    </FormField>
+                </Grid>
+            </ModalBody>
+            <ModalFooter>
+                <FormActions Submit>
+                    <Button @onclick="HandleCancel">
+                        Cancel
+                    </Button>
+                </FormActions>
+            </ModalFooter>
+        </Modal>
+    </EditForm>
+}
