@@ -46,7 +46,7 @@
             <DataTableItem>
                 <Stack>
                     <Button Visible="!context.IsFolder" download="@context.Name" Href="@GetUrl("Files List", new { folderId = context.Id })" Color="Color.Primary" Size="ButtonSize.Small">
-                        @context.Name
+                        Download
                     </Button>
                     <Button Visible="context.IsFolder" Color="Color.Primary" Href="@GetUrl("Files List", new { folderId = context.Id })"  Size="ButtonSize.Small">
                         <Icon Name="IconName.Eye" />Open
