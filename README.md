@@ -66,9 +66,9 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
   - [x] User Management
   - [x] Role Management
   - [ ] Application Settings
-  - [ ] Haedleass CMS Features
-    - [ ] Media Management
-    - [ ] Content Type Definition
+  - [x] Haedleass CMS Features
+    - [x] Media Management
+    - [x] Content Type Definition
       - [x] Text Field
       - [x] TextArea Field
       - [x] Rich Text Field
@@ -82,7 +82,7 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
       - [x] MultiSelect Field
       - [x] Radio Field
       - [x] Checkbox Field
-      - [ ] File Field
+      - [x] File Field
     - [x] Content Management
     - [x] API Tokens Management
   - CMS Features
