@@ -272,10 +272,6 @@
                 {
                     "Name": "Update Role",
                     "Type": "RoleUpdatePlugin"
-                },
-                {
-                    "Name": "Role Detail",
-                    "Type": "RoleDetailPlugin"
                 }
             ]
         },
