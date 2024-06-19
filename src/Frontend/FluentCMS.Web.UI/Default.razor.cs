@@ -13,7 +13,7 @@ public partial class Default : IDisposable
     public UserLoginResponse? UserLogin { get; set; }
 
     [CascadingParameter]
-    public PageFullDetailResponse? Page { get; set; }
+    public ViewContext ViewContext { get; set; } = default!;
 
     [Parameter]
     public string? Route { get; set; }

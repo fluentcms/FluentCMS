@@ -20,6 +20,11 @@ public partial class PluginContainer
     [Inject]
     private PluginLoader PluginLoader { get; set; } = default!;
 
+    [CascadingParameter]
+    private ViewContext ViewContext { get; set; } = default!;
+
+    private IDictionary<string, object> Parameters { get; set; } = new Dictionary<string, object>();
+
     protected override void OnInitialized()
     {
         Parameters = new Dictionary<string, object>
@@ -31,16 +36,12 @@ public partial class PluginContainer
 
     private Type? GetPluginType()
     {
-        var uri = new Uri(NavigationManager.Uri);
-        var query = HttpUtility.ParseQueryString(uri.Query);
-
-        var pluginTypeName = query["typeName"];
         PluginDefinitionType? pluginDefType;
 
-        if (string.IsNullOrEmpty(pluginTypeName))
+        if (ViewContext.Type == ViewType.Default)
             pluginDefType = Plugin.Definition.Types?.Where(p => p.IsDefault).FirstOrDefault();
         else
-            pluginDefType = Plugin.Definition?.Types?.Where(p => p!.Name!.Equals(pluginTypeName, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+            pluginDefType = Plugin.Definition?.Types?.Where(p => p!.Name!.Equals(ViewContext.PluginViewName, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
 
         if (pluginDefType is null)
             throw new InvalidOperationException("Plugin definition type not found!");

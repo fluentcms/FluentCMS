@@ -14,10 +14,7 @@
             </ModalHeader>
             <ModalBody>
                 <Grid>
-                    <FormField Label="File">
-                        @* TODO: Create FormFileInput component *@
-                        <InputFile class="f-form-input" OnChange="OnFilesChanged" accept="@Config.AllowedExtensions" Required />
-                    </FormField>
+                    <FormFileUpload Dense OnChange="OnFilesChanged" Accept="@Config.AllowedExtensions" Required />
                 </Grid>
             </ModalBody>
             <ModalFooter>
