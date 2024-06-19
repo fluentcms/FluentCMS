@@ -5,9 +5,7 @@
 
 <PluginBody Title="Content Types">
     <ActionsFragment>
-        <Button Href="@GetUrl("Create ContentType")" Color="Color.Primary">
-            <Icon Name="IconName.Plus" />New Type
-        </Button>
+        <ActionButtonCreate Href="@GetUrl("Create ContentType")" Label="New Content Type" />
     </ActionsFragment>
     <ChildContent>
         <DataTable Items="ContentTypes">
@@ -23,22 +21,12 @@
             <DataTableItem Label="Fields">
                 @(context.Fields?.Count ?? 0)
             </DataTableItem>
-            <DataTableItem>
-                <Stack>
-                    <Button Color="Color.Primary" Href="@GetUrl("Update ContentType", new { id = @context.Id })" Size="ButtonSize.Small">
-                        <Icon Name="IconName.Edit" />Edit
-                    </Button>
-                    <Button Color="Color.Danger" Href="@GetUrl("View ContentType", new { id = @context.Id })" Size="ButtonSize.Small">
-                        <Icon Name="IconName.Eye" />Fields
-                    </Button>
-                    <Button Color="Color.Secondary" Href="@GetUrl("Contents List", new { slug = @context.Slug })" Size="ButtonSize.Small">
-                        <Icon Name="IconName.Eye" />Contents
-                    </Button>
-                    <Button Color="Color.Danger" Outline @onclick="() => OnConfirm(context.Id)" Size="ButtonSize.Small">
-                        <Icon Name="IconName.Delete" />Delete
-                    </Button>
-                </Stack>
-            </DataTableItem>
+            <ActionButtons>
+                <ActionButtonEdit Href="@GetUrl("Update ContentType", new { id = @context.Id })" />
+                <ActionButton IconName="IconName.Eye" Color="Color.Success" Label="Fields" Href="@GetUrl("View ContentType", new { id = @context.Id })" />
+                <ActionButton IconName="IconName.PenNib" Color="Color.Secondary" Label="Contents" Href="@GetUrl("Contents List", new { slug = @context.Slug })" />
+                <ActionButtonDelete @onclick="() => OnConfirm(context.Id)" />
+            </ActionButtons>
         </DataTable>
     </ChildContent>
 </PluginBody>

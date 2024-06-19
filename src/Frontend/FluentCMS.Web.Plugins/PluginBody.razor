@@ -8,7 +8,9 @@
             </GridItem>
             <GridItem>
                 <Stack>
-                    @ActionsFragment
+                    <CascadingValue Value="true" Name="ActionButtonHeader">
+                        @ActionsFragment
+                    </CascadingValue>
                 </Stack>
             </GridItem>
         </Grid>
