@@ -3,9 +3,7 @@
 
 <PluginBody Title="Sites List">
     <ActionsFragment>
-        <Button Href="@GetUrl("Create Site")" Color="Color.Primary">
-            <Icon Name="IconName.Plus" />Add Site
-        </Button>
+        <ActionButtonCreate Href="@GetUrl("Create Site")" Label="Add Site"/>
     </ActionsFragment>
     <ChildContent>
         <DataTable Items="Sites">
@@ -25,16 +23,10 @@
             <DataTableItem Label="Layout">
                 @Layouts.Find(x => x.Id == context.LayoutId)?.Name
             </DataTableItem>
-            <DataTableItem>
-                <Stack>
-                    <Button Size="@ButtonSize.Small" Color="Color.Primary" Href="@GetUrl("Update Site", new { id = @context.Id })">
-                        <Icon Name="IconName.Edit" />Edit
-                    </Button>
-                    <Button Size="@ButtonSize.Small" Color="Color.Danger" Outline @onclick="() => OnConfirm(context)">
-                        <Icon Name="IconName.Delete" />Delete
-                    </Button>
-                </Stack>
-            </DataTableItem>
+            <ActionButtons>
+                <ActionButtonEdit Href="@GetUrl("Update Site", new { id = @context.Id })"/>
+                <ActionButtonDelete @onclick="() => OnConfirm(context)"/>
+            </ActionButtons>
         </DataTable>
     </ChildContent>
 </PluginBody>

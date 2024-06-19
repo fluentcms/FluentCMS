@@ -1,0 +1,33 @@
+@inherits BaseComponent;
+
+@if (Visible)
+{
+    @if (TableAction)
+    {
+        <Button @attributes="AdditionalAttributes" Ghost Color="@Color" Href="@Href" Size="ButtonSize.Small">
+            @if (IconName != IconName.Default)
+            {
+                <Icon Name="@IconName"/>
+            }
+            @if (!string.IsNullOrEmpty(Label))
+            {
+                <Tooltip Placement="TooltipPlacement.Top">
+                    @Label
+                </Tooltip>
+            }
+        </Button>
+    }
+    else 
+    {
+        <Button @attributes="AdditionalAttributes" Color="@Color" Href="@Href">
+            @if (IconName != IconName.Default)
+            {
+                <Icon Name="@IconName"/>
+            }
+            @if (!string.IsNullOrEmpty(Label))
+            {
+                @Label
+            }
+        </Button>
+    }
+}

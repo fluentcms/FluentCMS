@@ -5,12 +5,8 @@
 {
     <PluginBody Title="@ContentType.Title">
         <ActionsFragment>
-            <Button @onclick="NavigateBack">
-                Back
-            </Button>
-            <Button Href="@GetUrl("Create Content", new { slug = ContentTypeSlug })" Color="Color.Primary">
-                <Icon Name="IconName.Plus" />New Content
-            </Button>
+            <ActionButtonBack @onclick="NavigateBack" />
+            <ActionButtonCreate Href="@GetUrl("Create Content", new { slug = ContentTypeSlug })" Label="New Content" />
         </ActionsFragment>
         <ChildContent>
             <CascadingValue Value="ContentType">
@@ -21,16 +17,10 @@
                             <DynamicComponent Type=@GetDataTableComponent(field.Type,field.DataTableViewComponent) Parameters=@GetParameters(context, field) />
                         </DataTableItem>
                     }
-                    <DataTableItem>
-                        <Stack>
-                            <Button Color="Color.Primary" Href="@GetUrl("Update Content", new { slug = ContentTypeSlug, id = context.Id })" Size="ButtonSize.Small">
-                                <Icon Name="IconName.Edit" />Edit
-                            </Button>
-                            <Button Color="Color.Danger" Outline @onclick="() => OnConfirm(context.Id)" Size="ButtonSize.Small">
-                                <Icon Name="IconName.Delete" />Delete
-                            </Button>
-                        </Stack>
-                    </DataTableItem>
+                    <ActionButtons>
+                        <ActionButtonEdit Href="@GetUrl("Update Content", new { slug = ContentTypeSlug, id = context.Id })" />
+                        <ActionButtonDelete @onclick="() => OnConfirm(context.Id)" />
+                    </ActionButtons>
                 </DataTable>
             </CascadingValue>
         </ChildContent>

@@ -5,12 +5,8 @@
 
 <PluginBody Title="Content Type Fields" Visible="@(ContentType?.Fields != null)">
     <ActionsFragment>
-        <Button @onclick="NavigateBack">
-            Back
-        </Button>
-        <Button Color="Color.Primary" @onclick=OnCreateFieldClick>
-            <Icon Name="IconName.Plus" />New Field
-        </Button>
+        <ActionButtonBack @onclick="NavigateBack" />
+        <ActionButtonCreate @onclick=OnCreateFieldClick Label="New Field" />
     </ActionsFragment>
     <ChildContent>
         <DataTable Items="ContentType!.Fields!.ToList()">
@@ -36,16 +32,10 @@
             <DataTableItem Label="Description">
                 @context.GetString("Description")
             </DataTableItem>
-            <DataTableItem>
-                <Stack>
-                    <Button Color="Color.Primary" Size="ButtonSize.Small" @onclick="@(x=> OnEditFieldClick(context))">
-                        <Icon Name="IconName.Edit" />Edit
-                    </Button>
-                    <Button Color="Color.Danger" Outline Size="ButtonSize.Small" @onclick="@(x=> OnDeleteFieldClick(context))">
-                        <Icon Name="IconName.Delete" />Delete
-                    </Button>
-                </Stack>
-            </DataTableItem>
+            <ActionButtons>
+                <ActionButtonEdit @onclick="@(x=> OnEditFieldClick(context))" />
+                <ActionButtonDelete @onclick="@(x=> OnDeleteFieldClick(context))" />
+            </ActionButtons>
         </DataTable>
     </ChildContent>
 </PluginBody>
