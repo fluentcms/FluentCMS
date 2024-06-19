@@ -13,9 +13,6 @@ public abstract class BasePlugin : ComponentBase
     protected NavigationManager NavigationManager { get; set; } = default!;
 
     [Parameter]
-    public Guid? PluginId { get; set; }
-
-    [Parameter]
     public string? SectionName { get; set; }
 
     [Parameter]
@@ -47,12 +44,7 @@ public abstract class BasePlugin : ComponentBase
             NavigationManager.NavigateTo(path);
     }
 
-    protected virtual string GetUrl(string viewTypeName, object? parameters = null)
-    {
-        return GetUrl(Plugin?.Definition.Name ?? "/", viewTypeName, parameters);
-    }
-
-    protected virtual string GetUrl(string pluginDefName, string viewTypeName, object? parameters = null)
+    protected virtual string GetUrl(string viewName, object? parameters = null)
     {
         var uri = new Uri(NavigationManager.Uri);
         var oldQueryParams = HttpUtility.ParseQueryString(uri.Query);
@@ -62,8 +54,8 @@ public abstract class BasePlugin : ComponentBase
 
         var newQueryParams = new Dictionary<string, string?>()
         {
-            { "pluginDef", pluginDefName },
-            { "typeName", viewTypeName }
+            { "pluginId", Plugin!.Id.ToString() },
+            { "viewName", viewName }
         };
 
         if (parameters != null)

@@ -1,7 +1,7 @@
 ﻿@page "/{**Route:nonfile}"
 
-<PageTitle>@Page?.Title</PageTitle>
+<PageTitle>@ViewContext.Page?.Title</PageTitle>
 <HeadContent>
-    @RenderDynamicContent(Page?.Layout?.Head ?? string.Empty)
+    @RenderDynamicContent(ViewContext.Page?.Layout?.Head ?? string.Empty)
 </HeadContent>
-@RenderDynamicContent(Page?.Layout?.Body ?? string.Empty)
+@RenderDynamicContent(ViewContext.Page?.Layout?.Body ?? string.Empty)
