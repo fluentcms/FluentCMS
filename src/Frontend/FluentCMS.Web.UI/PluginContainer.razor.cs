@@ -12,8 +12,6 @@ public partial class PluginContainer
     [Parameter]
     public string SectionName { get; set; } = default!;
 
-    private IDictionary<string, object> Parameters { get; set; } = new Dictionary<string, object>();
-
     [Inject]
     private NavigationManager NavigationManager { get; set; } = default!;
 
