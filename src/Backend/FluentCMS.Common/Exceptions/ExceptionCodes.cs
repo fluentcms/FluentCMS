@@ -149,4 +149,13 @@ public class ExceptionCodes
     public const string ApiTokenUnableToDelete = "ApiToken.UnableToDelete";
 
     #endregion
+
+    #region PluginContent
+
+    public const string PluginContentUnableToCreate = "PluginContent.UnableToCreate";
+    public const string PluginContentUnableToUpdate = "PluginContent.UnableToUpdate";
+    public const string PluginContentUnableToDelete = "PluginContent.UnableToDelete";
+    public const string PluginContentNotFound = "PluginContent.NotFound";
+
+    #endregion
 }

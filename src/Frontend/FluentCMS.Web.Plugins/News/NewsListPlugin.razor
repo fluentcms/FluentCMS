@@ -1,0 +1,26 @@
+﻿@inherits BasePlugin
+
+<PluginBody Title="New List">
+    <ActionsFragment>
+        <Button Href="@GetUrl("Create News")" Color="Color.Primary">
+            <Icon Name="IconName.Plus" />Add News
+        </Button>
+    </ActionsFragment>
+    <ChildContent>
+        <DataTable Items="Contents">
+            <DataTableItem>
+                <h3>@context.Title</h3>
+                <p>@context.Content</p>
+                <Stack>
+                    <Button Color="Color.Primary" Href="@GetUrl("News Detail", new { id = @context.Id })" Size="ButtonSize.Small">
+                        <Icon Name="IconName.Eye" />View Detail
+                    </Button>
+                    <Button Color="Color.Primary" Href="@GetUrl("Update News", new { id = @context.Id })" Size="ButtonSize.Small">
+                        <Icon Name="IconName.Edit" />Edit
+                    </Button>
+                </Stack>
+            </DataTableItem>
+        </DataTable>
+    </ChildContent>
+</PluginBody>
+

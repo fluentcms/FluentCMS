@@ -30,6 +30,10 @@
         {
             "Name": "AuthLayout",
             "IsDefault": false
+        },
+        {
+            "Name": "NewsLayout",
+            "IsDefault": false
         }
     ],
     "Roles": [
@@ -306,12 +310,47 @@
                     "Type": "LayoutUpdatePlugin"
                 }
             ]
+        },
+        {
+            "Name": "News Plugin",
+            "Description": "",
+            "Assembly": "FluentCMS.Web.Plugins.dll",
+            "Types": [
+                {
+                    "Name": "News List",
+                    "Type": "NewsListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create News",
+                    "Type": "NewsCreatePlugin"
+                },
+                {
+                    "Name": "Update News",
+                    "Type": "NewsUpdatePlugin"
+                },
+                {
+                    "Name": "News Detail",
+                    "Type": "NewsDetailPlugin"
+                }
+            ]
         }
     ],
     "Pages": [
         {
             "Title": "Home",
             "Path": "/"
+        },
+        {
+            "Title": "News",
+            "Path": "/news",
+            "Layout": "NewsLayout",
+            "Plugins": [
+                {
+                    "Definition": "News Plugin",
+                    "Section": "Main"
+                }
+            ]
         },
         {
             "Title": "Admin",

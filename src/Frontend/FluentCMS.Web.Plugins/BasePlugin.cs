@@ -30,6 +30,11 @@ public abstract class BasePlugin : ComponentBase
     [Inject]
     protected IHttpContextAccessor? HttpContextAccessor { get; set; }
 
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
     protected virtual void NavigateBack()
     {
         var url = new Uri(NavigationManager.Uri).LocalPath;
