@@ -12,9 +12,6 @@ public partial class PluginContainer
     public string SectionName { get; set; } = default!;
 
     [Inject]
-    private NavigationManager NavigationManager { get; set; } = default!;
-
-    [Inject]
     private PluginLoader PluginLoader { get; set; } = default!;
 
     [CascadingParameter]
