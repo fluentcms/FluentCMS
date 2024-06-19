@@ -3,18 +3,9 @@
 
 <PluginBody Title="File/Folders List">
     <ActionsFragment>
-        @if (FolderId != null)
-        {
-            <Button Href="@GetUrl("Files List", new { folderId = ParentId })" Outline>
-                Back
-            </Button>
-        }
-        <Button @onclick="() => FolderCreateModalOpen = true" Color="Color.Secondary">
-            <Icon Name="IconName.Plus" />Add Folder
-        </Button>
-        <Button @onclick="() => FileUploadModalOpen = true" Color="Color.Primary">
-            <Icon Name="IconName.Plus" />Upload File
-        </Button>
+        <ActionButtonBack Visible="FolderId != null && FolderId != Guid.Empty" Href="@GetUrl("Files List", new { folderId = ParentId })" />
+        <ActionButton IconName="IconName.Plus" @onclick="() => FolderCreateModalOpen = true" Label="Add Folder" />
+        <ActionButtonCreate @onclick="() => FileUploadModalOpen = true" Label="Upload File" />
     </ActionsFragment>
     <ChildContent>
         <DataTable Items="Items">
@@ -43,25 +34,16 @@
             <DataTableItem Label="Size">
                 @context.Size
             </DataTableItem>
-            <DataTableItem>
-                <Stack>
-                    <Button Visible="!context.IsFolder" download="@context.Name" Href="@GetUrl("Files List", new { folderId = context.Id })" Color="Color.Primary" Size="ButtonSize.Small">
-                        Download
-                    </Button>
-                    <Button Visible="context.IsFolder" Color="Color.Primary" Href="@GetUrl("Files List", new { folderId = context.Id })"  Size="ButtonSize.Small">
-                        <Icon Name="IconName.Eye" />Open
-                    </Button>
-                    @if (!context.IsParentFolder)
-                    {
-                        <Button Color="Color.Secondary" Outline @onclick="() => OpenUpdateModal(context)"  Size="ButtonSize.Small">
-                            <Icon Name="IconName.Edit" />Edit
-                        </Button>
-                        <Button Color="Color.Danger" Outline @onclick="() => OnConfirm(context)" Size="ButtonSize.Small">
-                            <Icon Name="IconName.Delete" />Delete
-                        </Button>
-                    }
-                </Stack>
-            </DataTableItem>
+            <ActionButtons>
+                <ActionButton Visible="!context.IsFolder" IconName="IconName.Download" Label="Download" download="@context.Name" Href="@GetUrl("Files List", new { folderId = context.Id })" Color="Color.Primary" />
+                <ActionButtonOpen Visible="context.IsFolder" Href="@GetUrl("Files List", new { folderId = context.Id })" />
+
+                @if (!context.IsParentFolder)
+                {
+                    <ActionButtonEdit @onclick="() => OpenUpdateModal(context)" />
+                    <ActionButtonDelete @onclick="() => OnConfirm(context)" />
+                }
+            </ActionButtons>
         </DataTable>
     </ChildContent>
 </PluginBody>

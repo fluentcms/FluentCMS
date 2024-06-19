@@ -67,7 +67,7 @@ public partial class FileListPlugin
 
         var folderDetailResponse = await GetApiClient<FolderClient>().GetAllAsync();
 
-        if (FolderId is null)
+        if (FolderId is null || FolderId == Guid.Empty)
         {
             folderDetail = folderDetailResponse?.Data;
         }
