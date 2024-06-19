@@ -9,7 +9,7 @@ public partial class NewsListPlugin
         if (Plugin is not null)
         {
             var response = await GetApiClient<PluginContentClient>().GetAllAsync(nameof(NewsContent), Plugin.Id);
-            Contents = response?.Data?.Select(x=> x.ToObject<NewsContent>()).ToList();
+            Contents = response?.Data?.Select(x => x.ToObject<NewsContent>()).ToList();
         }
     }
 }

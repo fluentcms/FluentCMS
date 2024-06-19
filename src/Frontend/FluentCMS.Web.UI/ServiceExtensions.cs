@@ -88,7 +88,7 @@ public static class ServiceExtensions
                     viewContext.Type = ViewType.Edit;
                     viewContext.PluginId = pluginId;
                     viewContext.PluginViewName = queryParams["viewName"];
-                    viewContext.Plugin = page.Sections!.Values.SelectMany(x=> x).Single(p => p.Id == pluginId);
+                    viewContext.Plugin = page.Sections!.Values.SelectMany(x => x).Single(p => p.Id == pluginId);
                 }
             }
 

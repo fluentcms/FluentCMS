@@ -8,7 +8,7 @@ public class PluginContentController(IPluginContentService pluginContentService)
     public async Task<IApiPagingResult<PluginContentValue>> GetAll([FromRoute] string pluginContentTypeName, [FromQuery, Required] Guid pluginId, CancellationToken cancellationToken = default)
     {
         var contents = await pluginContentService.GetByPluginId(pluginId, cancellationToken);
-        return OkPaged(contents.Select(x=> x.Value).ToList());
+        return OkPaged(contents.Select(x => x.Value).ToList());
     }
 
     [HttpGet("{id}")]
