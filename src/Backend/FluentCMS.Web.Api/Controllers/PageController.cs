@@ -19,8 +19,6 @@ public class PageController(
     public const string CREATE = "Create";
     public const string DELETE = $"Delete";
 
-    public const string PLUGIN_DEFINIOTION_NAME = "PluginDef";
-
     [HttpGet("{siteUrl}")]
     [DecodeQueryParam]
     [PolicyAll]
