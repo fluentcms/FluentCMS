@@ -1,0 +1,29 @@
+
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.Plugins.Admin.FileManagement
+
+@if (Visible)
+{
+    <EditForm Model="@Model" OnSubmit="HandleSubmit">
+        <Modal Size="ModalSize.Large">
+            <ModalHeader Closable>
+                <ModalTitle>
+                    Upload File
+                </ModalTitle>
+            </ModalHeader>
+            <ModalBody>
+                <Grid>
+                    <FormFileUpload Dense OnChange="OnFilesChanged" Accept="@Config.AllowedExtensions" Required />
+                </Grid>
+            </ModalBody>
+            <ModalFooter>
+                <FormActions Submit>
+                    <Button @onclick="HandleCancel">
+                        Cancel
+                    </Button>
+                </FormActions>
+            </ModalFooter>
+        </Modal>
+    </EditForm>
+}

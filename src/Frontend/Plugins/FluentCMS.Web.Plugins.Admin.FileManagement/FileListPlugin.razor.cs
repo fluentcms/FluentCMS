@@ -1,14 +1,27 @@
-﻿namespace FluentCMS.Web.Plugins.Admin.FileManagement;
+@namespace FluentCMS.Web.Plugins.Admin.FileManagement;
 
 public partial class FileListPlugin
 {
-    private List<FileDetailResponse> Files { get; set; } = [];
-    private List<FolderDetailResponse> Folders { get; set; } = [];
+    private List<AssetDetail> Items { get; set; } = [];
 
     [SupplyParameterFromQuery(Name = "folderId")]
     private Guid? FolderId { get; set; }
 
     private Guid? ParentId { get; set; }
+
+    private bool FolderCreateModalOpen { get; set; } = false;
+    private bool FolderUpdateModalOpen { get; set; } = false;
+    private bool FileUploadModalOpen { get; set; } = false;
+    private bool FileUpdateModalOpen { get; set; } = false;
+
+    private FolderUpdateRequest FolderUpdateModel { get; set; }
+    private FileUpdateRequest FileUpdateModel { get; set; }
+    private FolderDetailResponse RootFolder { get; set; }
+    private FileUploadConfiguration FileUploadConfig { get; set; }
+
+    private string SelectedFileExtension { get; set; } = string.Empty;
+
+    #region Helper Methods
 
     FolderDetailResponse? FindFolderById(ICollection<FolderDetailResponse> folders, Guid folderId)
     {
@@ -27,13 +40,34 @@ public partial class FileListPlugin
         return null;
     }
 
+    #endregion
+
+    #region Initialize & Lifecycle
+
+    protected override async Task OnInitializedAsync()
+    {
+        var settingsResponse = await GetApiClient<GlobalSettingsClient>().GetAsync();
+        if (settingsResponse?.Data != null)
+        {
+            FileUploadConfig = settingsResponse?.Data.FileUpload;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await Load();
+    }
+
     private async Task Load()
     {
+        var rootFolderResponse = await GetApiClient<FolderClient>().GetAllAsync();
+        RootFolder = rootFolderResponse?.Data;
+
         FolderDetailResponse? folderDetail = default!;
 
         var folderDetailResponse = await GetApiClient<FolderClient>().GetAllAsync();
 
-        if (FolderId is null)
+        if (FolderId is null || FolderId == Guid.Empty)
         {
             folderDetail = folderDetailResponse?.Data;
         }
@@ -44,63 +78,168 @@ public partial class FileListPlugin
 
         if (folderDetail != null)
         {
-            Files = folderDetail.Files.ToList() ?? [];
-            Folders = folderDetail.Folders.ToList() ?? [];
+            ParentId = folderDetail.FolderId;
+
+            Items = [];
+
+            if (FolderId != null && FolderId != Guid.Empty)
+            {
+                Items.Add(new AssetDetail
+                {
+                    Name = "(parent)",
+                    IsFolder = true,
+                    Id = folderDetail.FolderId == Guid.Empty ? null : folderDetail.FolderId,
+                    IsParentFolder = true
+                });
+            }
+
+            foreach (var item in folderDetail.Folders)
+            {
+                Items.Add(new AssetDetail
+                {
+                    Name = item.Name,
+                    IsFolder = true,
+                    Id = item.Id,
+                    FolderId = item.FolderId,
+                    Size = item.Size,
+                });
+            }
+
+            foreach (var item in folderDetail.Files)
+            {
+                Items.Add(new AssetDetail
+                {
+                    Name = item.Name,
+                    IsFolder = false,
+                    FolderId = item.FolderId,
+                    Id = item.Id,
+                    Size = item.Size,
+                    ContentType = item.ContentType
+                });
+            }
         }
     }
 
-    protected override async Task OnParametersSetAsync()
+    #endregion
+
+    #region Upload File
+
+    private async Task OnUpload(List<FileParameter> files)
     {
+        await GetApiClient<FileClient>().UploadAsync(FolderId, files);
+        FileUploadModalOpen = false;
         await Load();
     }
 
-    #region Delete File
-
-    private FileDetailResponse? SelectedFile { get; set; }
-    public async Task OnDeleteFile()
+    private async Task OnUploadCancel()
     {
-        if (SelectedFile == null)
-            return;
+        FileUploadModalOpen = false;
+    }
 
-        await GetApiClient<FileClient>().DeleteAsync(SelectedFile.Id);
+    #endregion
+
+    #region Create folder
+
+    private async Task OnCreateFolder(FolderCreateRequest request)
+    {
+        await GetApiClient<FolderClient>().CreateAsync(request);
+        FolderCreateModalOpen = false;
         await Load();
-        SelectedFile = default;
     }
 
-    public async Task OnConfirmFile(FileDetailResponse file)
+    private async Task OnCreateFolderCancel()
     {
-        SelectedFile = file;
-        await Task.CompletedTask;
-    }
-    public async Task OnConfirmFileClose()
-    {
-        SelectedFile = default;
-        await Task.CompletedTask;
+        FolderCreateModalOpen = false;
     }
     #endregion
 
+    #region Update File & Folder
 
-    #region Delete Folder
-
-    private FolderDetailResponse? SelectedFolder { get; set; }
-    public async Task OnDeleteFolder()
+    private async Task OpenUpdateModal(AssetDetail detail)
     {
-        if (SelectedFolder == null)
+        if (detail.IsFolder)
+        {
+            FolderUpdateModel = new FolderUpdateRequest
+            {
+                Id = detail.Id.Value,
+                Name = detail.Name,
+                FolderId = detail.FolderId ?? Guid.Empty
+            };
+
+            FolderUpdateModalOpen = true;
+        }
+        else
+        {
+            SelectedFileExtension = System.IO.Path.GetExtension(detail.Name);
+
+            FileUpdateModel = new FileUpdateRequest
+            {
+                Id = detail.Id.Value,
+                Name = detail.Name.Replace(SelectedFileExtension, ""),
+                FolderId = detail.FolderId ?? Guid.Empty
+            };
+
+            FileUpdateModalOpen = true;
+        }
+    }
+
+    private async Task OnUpdateFile(FileUpdateRequest request)
+    {
+        request.Name = request.Name + SelectedFileExtension;
+        FileUpdateModalOpen = false;
+        await GetApiClient<FileClient>().UpdateAsync(request);
+        await Load();
+    }
+
+    private async Task OnUpdateFileCancel()
+    {
+        FileUpdateModalOpen = false;
+        FileUpdateModel = default!;
+    }
+
+    private async Task OnUpdateFolder(FolderUpdateRequest request)
+    {
+        await GetApiClient<FolderClient>().UpdateAsync(request);
+        FolderUpdateModalOpen = false;
+        await Load();
+    }
+
+    private async Task OnUpdateFolderCancel()
+    {
+        FolderUpdateModalOpen = false;
+        FolderUpdateModel = default!;
+    }
+
+    #endregion
+
+    #region Delete File & Folder
+
+    private AssetDetail? SelectedItem { get; set; }
+    public async Task OnDelete()
+    {
+        if (SelectedItem == null)
             return;
 
-        await GetApiClient<FolderClient>().DeleteAsync(SelectedFolder.Id);
+        if (SelectedItem.IsFolder)
+        {
+            await GetApiClient<FolderClient>().DeleteAsync(SelectedItem.Id.Value);
+        }
+        else
+        {
+            await GetApiClient<FileClient>().DeleteAsync(SelectedItem.Id.Value);
+        }
         await Load();
-        SelectedFolder = default;
+        SelectedItem = default;
     }
 
-    public async Task OnConfirmFolder(FolderDetailResponse asset)
+    public async Task OnConfirm(AssetDetail item)
     {
-        SelectedFolder = asset;
+        SelectedItem = item;
         await Task.CompletedTask;
     }
-    public async Task OnConfirmFolderClose()
+    public async Task OnConfirmClose()
     {
-        SelectedFolder = default;
+        SelectedItem = default;
         await Task.CompletedTask;
     }
     #endregion

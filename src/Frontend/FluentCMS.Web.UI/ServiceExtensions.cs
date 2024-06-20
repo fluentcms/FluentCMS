@@ -6,10 +6,11 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
+using System.Web;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
-public static class CmsServiceExtensions
+public static class ServiceExtensions
 {
     public static IServiceCollection AddCmsServices(this IServiceCollection services, IConfiguration configuration)
     {
@@ -63,10 +64,35 @@ public static class CmsServiceExtensions
             var uerLogin = sp.GetRequiredService<UserLoginResponse>();
 
             var pageClient = httpClientFactory.CreateApiClient<PageClient>(uerLogin);
-
             var pageResponse = pageClient.GetByUrlAsync(navigationManager.Uri).GetAwaiter().GetResult();
+            var page = pageResponse?.Data;
 
-            return pageResponse?.Data ?? null;
+            var viewContext = new ViewContext
+            {
+                Layout = page!.Layout,
+                Page = page,
+                Site = page.Site,
+                UserLogin = uerLogin,
+                Type = ViewType.Default
+            };
+
+            // check if the page is in edit mode
+            // it should have pluginId and pluginViewName query strings
+            var uriBuilder = new UriBuilder(navigationManager.Uri);
+            var queryParams = HttpUtility.ParseQueryString(uriBuilder.Query);
+            if (queryParams["pluginId"] != null && queryParams["viewName"] != null)
+            {
+                // check if the pluginId is valid
+                if (Guid.TryParse(queryParams["pluginId"], out var pluginId))
+                {
+                    viewContext.Type = ViewType.Edit;
+                    viewContext.PluginId = pluginId;
+                    viewContext.PluginViewName = queryParams["viewName"];
+                    viewContext.Plugin = page.Sections!.Values.SelectMany(x=> x).Single(p => p.Id == pluginId);
+                }
+            }
+
+            return viewContext;
         });
 
         return services;

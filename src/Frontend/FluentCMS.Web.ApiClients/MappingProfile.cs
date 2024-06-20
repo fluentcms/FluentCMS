@@ -43,7 +43,7 @@ public class MappingProfile : Profile
 
         #endregion
 
-        #region Assets
+        #region File Folder
 
         CreateMap<FolderDetailResponse, FolderUpdateRequest>();
         CreateMap<FileDetailResponse, FileUpdateRequest>();

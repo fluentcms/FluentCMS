@@ -11,7 +11,7 @@ public class FolderController(IFolderService folderService, IFileService fileSer
     private static Folder _rootFolder = new() { Id = Guid.Empty, Name = "(root)", FolderId = Guid.Empty };
 
     [HttpGet]
-    [PolicyAll]
+    [Policy(AREA, READ)]
     public async Task<IApiResult<FolderDetailResponse>> GetAll(CancellationToken cancellationToken = default)
     {
         var folders = await folderService.GetAll(cancellationToken);

@@ -1,0 +1,30 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.Plugins.Admin.FileManagement
+
+@if (Visible && Model != null)
+{
+    <EditForm Model="@Model" OnSubmit="HandleSubmit">
+        <Modal Size="ModalSize.Large">
+            <ModalHeader Closable>
+                <ModalTitle>
+                    Create New Folder
+                </ModalTitle>
+            </ModalHeader>
+            <ModalBody>
+                <DataAnnotationsValidator />
+                <Grid>
+                    <FormHiddenInput @bind-Value="Model.FolderId" />
+                    <FormInput @bind-Value="Model.Name" Label="Name" Placeholder="Enter Folder Name" Required />
+                </Grid>
+            </ModalBody>
+            <ModalFooter>
+                <FormActions Submit>
+                    <Button @onclick="HandleCancel">
+                        Cancel
+                    </Button>
+                </FormActions>
+            </ModalFooter>
+        </Modal>
+    </EditForm>
+}
