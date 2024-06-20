@@ -1,4 +1,4 @@
-@namespace FluentCMS.Web.Plugins.Admin.FileManagement;
+namespace FluentCMS.Web.Plugins.Admin.FileManagement;
 
 public partial class FileListPlugin
 {
@@ -243,5 +243,4 @@ public partial class FileListPlugin
         await Task.CompletedTask;
     }
     #endregion
-
 }
