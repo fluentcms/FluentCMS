@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://raw.githack.com/SortableJS/Sortable/master/Sortable.js"></script>
+
+    <style>
+        .edit-mode .only-edit {
+            display: inherit;
+        }
+
+        .edit-mode .only-view {
+            display: none;
+        }
+
+        .view-mode .only-view {
+            display: inherit;
+        }
+
+        .view-mode .only-edit {
+            display: none;
+        }
+
+        .mode-toggler {
+            position: fixed;
+            top: 1rem;
+            right: 0;
+            z-index: 10;
+            display: flex;
+            border-start-start-radius: 20px;
+            border-end-start-radius: 20px;
+            gap: 0.25rem;
+            padding: 0.25rem;
+            background-color: #f3f3ee;
+            border: 1px solid #d8d8d8;
+        }
+
+        .toggler-button {
+            cursor: pointer;
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: black;
+            background-color: #d6d6d6;
+            border: none;
+            border-radius: 20px;
+        }
+
+        .toggler-button:hover {
+            background-color: rgb(184, 184, 184);
+        }
+
+        .toggler-button-primary {
+            color: white;
+            background-color: #3979da;
+            border: none;
+        }
+
+        .toggler-button-primary:hover {
+            background-color: #2669cc;
+        }
+
+        .edit-mode .f-plugin-container {
+            border: 1px dashed #dddddd;
+        }
+
+        .edit-mode .f-plugin-container:hover {
+            border: 1px solid #3979da;
+        }
+
+        .edit-mode .f-section {
+            border: 1px dashed #a5a5a5;
+            margin: -1px;
+            margin-bottom: 0px;
+        }
+
+        .sortable-ghost {
+            opacity: 0.5;
+        }
+
+        .f-plugin-container-buttons {
+            display: none;
+        }
+
+        .edit-mode .f-plugin-container {
+            position: relative;
+            min-height: 100px;
+        }
+
+        .edit-mode .f-plugin-container:hover .f-plugin-container-buttons {
+            display: flex;
+            position: absolute;
+            top: 0;
+            right: 0;
+            background-color: rgb(67, 133, 255);
+            color: black;
+        }
+
+        .edit-mode .f-plugin-container-buttons button {
+            padding: 2px;
+            background-color: transparent;
+            color: white;
+            border: none;
+        }
+
+        .edit-mode .f-plugin-container-buttons button:hover {
+            padding: 2px;
+            background-color: #ffffff31;
+            color: white;
+            border: none;
+        }
+
+        .edit-mode .f-plugin-container-buttons button .icon {
+            width: 12px;
+            height: 12px;
+        }
+
+        .f-section {
+            position: relative;
+        }
+
+        .f-section-buttons {
+            display: none;
+            width: 100%;
+        }
+
+        .edit-mode .f-section:hover .f-section-buttons {
+            display: flex;
+            justify-content: end;
+            position: absolute;
+            bottom: 100%;
+            right: 0;
+            color: white;
+        }
+
+        .edit-mode .f-section-buttons button {
+            padding: 4px;
+            background-color: rgb(66, 93, 212);
+            color: white;
+            border: none;
+        }
+
+        .edit-mode .f-section-buttons button:hover {
+            background-color: #1433e0;
+        }
+
+        .edit-mode .f-section-buttons button .icon {
+            width: 16px;
+            height: 16px;
+        }
+
+        .sidebar {
+            width: 240px;
+            padding-top: 4rem;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            right: 0;
+        }
+
+        .f-plugin-definition-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .f-plugin-definition {
+            padding: 1rem;
+            border: 1px solid #e0e0e0;
+        }
+
+        .edit-mode .f-plugin-page {
+            margin-right: 240px;
+        }
+    </style>
+    <title>Document</title>
+</head>
+
+<body>
+    <div class="mode-toggler">
+        <button onclick="openEditMode()" class="only-view toggler-button">
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                viewBox="0 0 24 24">
+                <path fill-rule="evenodd"
+                    d="M11.32 6.176H5c-1.105 0-2 .949-2 2.118v10.588C3 20.052 3.895 21 5 21h11c1.105 0 2-.948 2-2.118v-7.75l-3.914 4.144A2.46 2.46 0 0 1 12.81 16l-2.681.568c-1.75.37-3.292-1.263-2.942-3.115l.536-2.839c.097-.512.335-.983.684-1.352l2.914-3.086Z"
+                    clip-rule="evenodd" />
+                <path fill-rule="evenodd"
+                    d="M19.846 4.318a2.148 2.148 0 0 0-.437-.692 2.014 2.014 0 0 0-.654-.463 1.92 1.92 0 0 0-1.544 0 2.014 2.014 0 0 0-.654.463l-.546.578 2.852 3.02.546-.579a2.14 2.14 0 0 0 .437-.692 2.244 2.244 0 0 0 0-1.635ZM17.45 8.721 14.597 5.7 9.82 10.76a.54.54 0 0 0-.137.27l-.536 2.84c-.07.37.239.696.588.622l2.682-.567a.492.492 0 0 0 .255-.145l4.778-5.06Z"
+                    clip-rule="evenodd" />
+            </svg>
+        </button>
+        <button onclick="cancelEdit()" class="only-edit toggler-button">
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                viewBox="0 0 24 24">
+                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M6 18 17.94 6M18 18 6.06 6" />
+            </svg>
+        </button>
+        <button onclick="saveEdit()" class="only-edit toggler-button toggler-button-primary">
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                viewBox="0 0 24 24">
+                <path fill-rule="evenodd"
+                    d="M5 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7.414A2 2 0 0 0 20.414 6L18 3.586A2 2 0 0 0 16.586 3H5Zm3 11a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6H8v-6Zm1-7V5h6v2a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1Z"
+                    clip-rule="evenodd" />
+                <path fill-rule="evenodd" d="M14 17h-4v-2h4v2Z" clip-rule="evenodd" />
+            </svg>
+        </button>
+    </div>
+    <div class="sidebar only-edit">
+        <div class="f-plugin-definition-list">
+            <div class="f-plugin-definition" data-id="definition-1">Plugin definition 1</div>
+            <div class="f-plugin-definition" data-id="definition-2">Plugin definition 2</div>
+            <div class="f-plugin-definition" data-id="definition-3">Plugin definition 3</div>
+            <div class="f-plugin-definition" data-id="definition-4">Plugin definition 4</div>
+        </div>
+    </div>
+
+    <div class="f-plugin-page">
+        <div style="padding: 1rem; background-color: antiquewhite;">
+            <div class="f-section" data-name="First">
+                <!-- <div class="f-section-buttons">
+                    <button onclick="onPluginAdd()">
+                        <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7 7V5"/>
+                        </svg>
+                    </button>
+                </div> -->
+                <div class="f-plugin-container" data-id="container-1">
+                    <div class="f-plugin-container-buttons">
+                        <button data-action="delete">
+                            <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24"
+                                height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd"
+                                    d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        <button data-action="settings">
+                            <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24"
+                                height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd"
+                                    d="M9.586 2.586A2 2 0 0 1 11 2h2a2 2 0 0 1 2 2v.089l.473.196.063-.063a2.002 2.002 0 0 1 2.828 0l1.414 1.414a2 2 0 0 1 0 2.827l-.063.064.196.473H20a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-.089l-.196.473.063.063a2.002 2.002 0 0 1 0 2.828l-1.414 1.414a2 2 0 0 1-2.828 0l-.063-.063-.473.196V20a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-.089l-.473-.196-.063.063a2.002 2.002 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.827l.063-.064L4.089 15H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h.09l.195-.473-.063-.063a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.827 0l.064.063L9 4.089V4a2 2 0 0 1 .586-1.414ZM8 12a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="f-plugin-container-content">
+                        Content 1
+                    </div>
+                </div>
+                <div class="f-plugin-container" data-id="container-2">
+                    <div class="f-plugin-container-buttons">
+                        <button data-action="delete">
+                            <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24"
+                                height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd"
+                                    d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        <button data-action="settings">
+                            <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24"
+                                height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd"
+                                    d="M9.586 2.586A2 2 0 0 1 11 2h2a2 2 0 0 1 2 2v.089l.473.196.063-.063a2.002 2.002 0 0 1 2.828 0l1.414 1.414a2 2 0 0 1 0 2.827l-.063.064.196.473H20a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-.089l-.196.473.063.063a2.002 2.002 0 0 1 0 2.828l-1.414 1.414a2 2 0 0 1-2.828 0l-.063-.063-.473.196V20a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-.089l-.473-.196-.063.063a2.002 2.002 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.827l.063-.064L4.089 15H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h.09l.195-.473-.063-.063a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.827 0l.064.063L9 4.089V4a2 2 0 0 1 .586-1.414ZM8 12a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="f-plugin-container-content">
+                        Content 2
+                    </div>
+                </div>
+                <div class="f-plugin-container" data-id="container-3">
+                    <div class="f-plugin-container-buttons">
+                        <button data-action="delete">
+                            <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24"
+                                height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd"
+                                    d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        <button data-action="settings">
+                            <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24"
+                                height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd"
+                                    d="M9.586 2.586A2 2 0 0 1 11 2h2a2 2 0 0 1 2 2v.089l.473.196.063-.063a2.002 2.002 0 0 1 2.828 0l1.414 1.414a2 2 0 0 1 0 2.827l-.063.064.196.473H20a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-.089l-.196.473.063.063a2.002 2.002 0 0 1 0 2.828l-1.414 1.414a2 2 0 0 1-2.828 0l-.063-.063-.473.196V20a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-.089l-.473-.196-.063.063a2.002 2.002 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.827l.063-.064L4.089 15H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h.09l.195-.473-.063-.063a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.827 0l.064.063L9 4.089V4a2 2 0 0 1 .586-1.414ZM8 12a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="f-plugin-container-content">
+                        Content 3
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="padding: 1rem; background-color: azure;">
+            <div class="f-section" data-name="Second">
+                <!-- <div class="f-section-buttons">
+                    <button onclick="onPluginAdd()">
+                        <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7 7V5"/>
+                        </svg>
+                    </button>
+                </div> -->
+                <div class="f-plugin-container" data-id="container-4">
+                    <div class="f-plugin-container-buttons">
+                        <button data-action="delete">
+                            <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24"
+                                height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd"
+                                    d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        <button data-action="settings">
+                            <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24"
+                                height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd"
+                                    d="M9.586 2.586A2 2 0 0 1 11 2h2a2 2 0 0 1 2 2v.089l.473.196.063-.063a2.002 2.002 0 0 1 2.828 0l1.414 1.414a2 2 0 0 1 0 2.827l-.063.064.196.473H20a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-.089l-.196.473.063.063a2.002 2.002 0 0 1 0 2.828l-1.414 1.414a2 2 0 0 1-2.828 0l-.063-.063-.473.196V20a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-.089l-.473-.196-.063.063a2.002 2.002 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.827l.063-.064L4.089 15H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h.09l.195-.473-.063-.063a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.827 0l.064.063L9 4.089V4a2 2 0 0 1 .586-1.414ZM8 12a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="f-plugin-container-content">
+                        Content 4
+                    </div>
+                </div>
+                <div class="f-plugin-container" data-id="container-5">
+                    <div class="f-plugin-container-buttons">
+                        <button data-action="delete">
+                            <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24"
+                                height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd"
+                                    d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        <button data-action="settings">
+                            <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24"
+                                height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd"
+                                    d="M9.586 2.586A2 2 0 0 1 11 2h2a2 2 0 0 1 2 2v.089l.473.196.063-.063a2.002 2.002 0 0 1 2.828 0l1.414 1.414a2 2 0 0 1 0 2.827l-.063.064.196.473H20a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-.089l-.196.473.063.063a2.002 2.002 0 0 1 0 2.828l-1.414 1.414a2 2 0 0 1-2.828 0l-.063-.063-.473.196V20a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-.089l-.473-.196-.063.063a2.002 2.002 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.827l.063-.064L4.089 15H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h.09l.195-.473-.063-.063a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.827 0l.064.063L9 4.089V4a2 2 0 0 1 .586-1.414ZM8 12a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="f-plugin-container-content">
+                        Content 5
+                    </div>
+                </div>
+                <div class="f-plugin-container" data-id="container-6">
+                    <div class="f-plugin-container-buttons">
+                        <button data-action="delete">
+                            <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24"
+                                height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd"
+                                    d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        <button data-action="settings">
+                            <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24"
+                                height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd"
+                                    d="M9.586 2.586A2 2 0 0 1 11 2h2a2 2 0 0 1 2 2v.089l.473.196.063-.063a2.002 2.002 0 0 1 2.828 0l1.414 1.414a2 2 0 0 1 0 2.827l-.063.064.196.473H20a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-.089l-.196.473.063.063a2.002 2.002 0 0 1 0 2.828l-1.414 1.414a2 2 0 0 1-2.828 0l-.063-.063-.473.196V20a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-.089l-.473-.196-.063.063a2.002 2.002 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.827l.063-.064L4.089 15H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h.09l.195-.473-.063-.063a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.827 0l.064.063L9 4.089V4a2 2 0 0 1 .586-1.414ZM8 12a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="f-plugin-container-content">
+                        Content 6
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getState() {
+            const sections = {}
+            document.querySelectorAll('.f-section').forEach(section => {
+                sections[section.dataset.name] = []
+
+                section.querySelectorAll('.f-plugin-container').forEach(plugin => {
+                    sections[section.dataset.name].push(plugin.dataset.id)
+                })
+            })
+            return sections
+        }
+
+        async function initSortable() {
+            const sectionElements = document.querySelectorAll('.f-section');
+
+            sectionElements.forEach(section => {
+                new Sortable(section, {
+                    animation: 150,
+                    group: 'shared',
+                    draggable: '.f-plugin-container',
+                    ghostClass: 'sortable-ghost',
+                });
+
+                new Sortable(document.querySelector('.f-plugin-definition-list'), {
+                    animation: 150,
+                    group: {
+                        name: 'shared',
+                        pull: 'clone',
+                        put: false
+                    },
+                    draggable: '.f-plugin-definition',
+                    onEnd(event) {
+                        const definitionId = event.clone.dataset.id
+                        const sectionName = event.item.parentElement.dataset.name
+                        const id = Math.random()
+
+                        event.item.classList.add('f-plugin-container')
+                        event.item.classList.remove('f-plugin-definition')
+                        event.item.dataset.id = id
+
+                        event.item.innerHTML = `<div class="f-plugin-container-buttons">
+                            <button data-action="delete">
+                                <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                    <path fill-rule="evenodd" d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z" clip-rule="evenodd"/>
+                                </svg>
+                            </button>
+                            <button data-action="settings">
+                                <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                    <path fill-rule="evenodd" d="M9.586 2.586A2 2 0 0 1 11 2h2a2 2 0 0 1 2 2v.089l.473.196.063-.063a2.002 2.002 0 0 1 2.828 0l1.414 1.414a2 2 0 0 1 0 2.827l-.063.064.196.473H20a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-.089l-.196.473.063.063a2.002 2.002 0 0 1 0 2.828l-1.414 1.414a2 2 0 0 1-2.828 0l-.063-.063-.473.196V20a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-.089l-.473-.196-.063.063a2.002 2.002 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.827l.063-.064L4.089 15H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h.09l.195-.473-.063-.063a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.827 0l.064.063L9 4.089V4a2 2 0 0 1 .586-1.414ZM8 12a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z" clip-rule="evenodd"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="f-plugin-container-content">Content of ${definitionId}</div>`
+
+                        alert('Should call Create API: ' + JSON.stringify({
+                            sectionName,
+                            definitionId,
+                            index: event.newIndex
+                        }))
+
+                        reloadSortable()
+
+                        setTimeout(() => {
+                            event.item.querySelectorAll('[data-action="delete"]').forEach(el => {
+
+                                el.addEventListener('click', () => {
+                                    el.parentElement.parentElement.remove()
+                                    alert('Should Call Delete API: ' + JSON.stringify({
+                                        id: el.parentElement.parentElement.dataset.id
+                                    }, null, 2))
+                                })
+                            })
+                        }, 1000)
+                    }
+                });
+            });
+        }
+
+        async function reloadSortable() {
+            document.querySelectorAll('.f-section').forEach(el => {
+                Sortable.get(el).destroy()
+            })
+            Sortable.get(document.querySelector('.f-plugin-definition-list')).destroy()
+
+            await initSortable()
+        }
+
+        async function init() {
+            initialState = getState()
+            await initSortable()
+
+            document.querySelectorAll('[data-action="delete"]').forEach(el => {
+                el.addEventListener('click', () => {
+                    el.parentElement.parentElement.remove()
+                    alert('Should Call API: ' + JSON.stringify({
+                        id: el.parentElement.parentElement.dataset.id
+                    }, null, 2))
+                })
+            })
+        }
+
+        document.body.classList.add('view-mode')
+
+        function saveEdit() {
+            alert("Should call Update API:" + JSON.stringify(getState(), null, 2))
+
+            document.body.classList.toggle('edit-mode')
+            document.body.classList.toggle('view-mode')
+        }
+
+        function openEditMode() {
+            document.body.classList.toggle('edit-mode')
+            document.body.classList.toggle('view-mode')
+
+            init()
+        }
+
+        function cancelEdit() {
+            document.body.classList.toggle('edit-mode')
+            document.body.classList.toggle('view-mode')
+        }
+    </script>
+</body>
+</html>
