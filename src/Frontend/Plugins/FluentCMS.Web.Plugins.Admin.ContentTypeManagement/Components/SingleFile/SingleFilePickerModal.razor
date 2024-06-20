@@ -1,0 +1,73 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+@if (Visible && Model != null)
+{
+    <EditForm Model="@Model" OnSubmit="HandleSubmit">
+        <Modal Size="ModalSize.Large">
+            <ModalHeader Closable="false">
+                <ModalTitle>
+                    Choose File
+                </ModalTitle>
+                <div class="ms-auto">
+                    @* <Button @onclick="OnUploadClicked" Color="Color.Primary">Upload</Button> *@
+                </div>
+            </ModalHeader>
+            <ModalBody>
+                <DataAnnotationsValidator />
+                <Grid>
+                    <DataTable Items="Items">
+                        <DataTableItem Label="Name">
+                            @if (@context.IsFolder)
+                            {
+                                <Button Link Href="@GetUrl("Files List", new { folderId = @context.Id })">
+                                    @context.Name
+                                </Button>
+                            }
+                            else
+                            {
+                                <Button Link download="@context.Name" Href="@GetUrl("Files List", new { folderId = @context.Id })">
+                                    @context.Name
+                                </Button>
+                            }
+                        </DataTableItem>
+                        <DataTableItem Label="Type">
+                            <Badge Color="Color.Info" Visible="@context.IsFolder">
+                                Folder
+                            </Badge>
+                            <Badge Color="Color.Success" Visible="!context.IsFolder">
+                                @context.ContentType
+                            </Badge>
+                        </DataTableItem>
+                        <DataTableItem Label="Size">
+                            @context.Size
+                        </DataTableItem>
+                        <ActionButtons>
+                            <ActionButton Visible="!context.IsFolder" IconName="IconName.Download" Label="Download" download="@context.Name" Href="@GetUrl("Files List", new { folderId = context.Id })" Color="Color.Primary" />
+                            <ActionButtonOpen Visible="context.IsFolder" Href="@GetUrl("Files List", new { folderId = context.Id })" />
+
+                            @if (!context.IsParentFolder)
+                            {
+                                <ActionButtonEdit @onclick="() => OpenUpdateModal(context)" />
+                                <ActionButtonDelete @onclick="() => OnConfirm(context)" />
+                            }
+                        </ActionButtons>
+                    </DataTable>
+                    @*<FormInput @bind-Value="Model.Name" Label="Name" Placeholder="Enter File Name" Required />
+                    <FormSelect @bind-Value="Model.FolderId" Data="FolderOptions" ValueField="Id" TextField="Name" Label="Parent Folder" Placeholder="Choose Parent Folder" Required/> *@
+                </Grid>
+            </ModalBody>
+            <ModalFooter>
+                <FormActions Submit>
+                    <Button @onclick="HandleCancel">
+                        Cancel
+                    </Button>
+                </FormActions>
+            </ModalFooter>
+        </Modal>
+    </EditForm>
+}
+
+
+<!-- <FileUploadModal Visible="FileUploadModalOpen" OnSubmit="OnUpload" OnCancel="OnUploadCancel"/> -->

@@ -2,5 +2,11 @@
 
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
-File PICKER
+<FormField Label="@Field.Label" Cols="@Field.FormColWidth">
+    <Button Color="Color.Primary" @onclick="OnChooseClicked">
+        Choose
+    </Button>
+</FormField>
+
+<SingleFilePickerModal Visible="FilesModalOpen" OnCancel="() => FilesModalOpen = false" OnSubmit="OnFileChoose" />
 <!-- <FormNumberInput @bind-Value="FieldValue.Value" Cols="@Field.FormColWidth" Min="@Field.MinimumValue" Max="@Field.MaximumValue" Label="@Field.Label" Placeholder="@Field.Placeholder" Required="@Field.Required" /> -->
