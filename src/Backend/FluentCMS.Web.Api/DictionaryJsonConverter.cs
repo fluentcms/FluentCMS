@@ -3,6 +3,34 @@ using System.Text.Json.Serialization;
 
 namespace FluentCMS.Web.Api;
 
+public class PluginContentValueJsonConverter : JsonConverter<PluginContentValue>
+{
+    private static DictionaryJsonConverter _dictionaryConvertor = new();
+
+    public override PluginContentValue? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        // since PluginContentValue derived from Dictionary<string, object?>
+        // we should use DictionaryJsonConverter
+        var dictionary = _dictionaryConvertor.Read(ref reader, typeToConvert, options);
+        if (dictionary is null)
+            return null;
+
+        var result = new PluginContentValue();
+        foreach (var kvp in dictionary)
+        {
+            result.Add(kvp.Key, kvp.Value);
+        }
+        return result;
+    }
+
+    public override void Write(Utf8JsonWriter writer, PluginContentValue value, JsonSerializerOptions options)
+    {
+        // since PluginContentValue derived from Dictionary<string, object?>
+        // we should use DictionaryJsonConverter
+        _dictionaryConvertor.Write(writer, value, options);
+    }
+}
+
 public class DictionaryJsonConverter : JsonConverter<Dictionary<string, object?>>
 {
     public override Dictionary<string, object?>? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

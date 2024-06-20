@@ -14,7 +14,7 @@ public class PluginContent : SiteAssociatedEntity, IPluginContent
     public PluginContentValue Value { get; set; } = [];
 }
 
-public class PluginContentValue : Dictionary<string, object>
+public class PluginContentValue : Dictionary<string, object?>
 {
 
 }

@@ -29,7 +29,12 @@ public class PluginContentController(IPluginContentService pluginContentService)
             Type = pluginContentTypeName,
             Value = request
         };
+
+        // check if dictionary has id key, remove it
+        pluginContent.Value.Remove("id");
+
         await pluginContentService.Create(pluginContent, cancellationToken);
+
         return Ok(pluginContent.Value);
     }
 
@@ -42,7 +47,21 @@ public class PluginContentController(IPluginContentService pluginContentService)
             Type = pluginContentTypeName,
             Value = request
         };
+
+        // check if dictionary has id key, set the id property and remove it
+        // also check if the id is valid guid
+        if (pluginContent.Value.TryGetValue("id", out object? value) && Guid.TryParse(value?.ToString() ?? string.Empty, out var id))
+        {
+            pluginContent.Id = id;
+            pluginContent.Value.Remove("id");
+        }
+        else
+        {
+            throw new AppException(ExceptionCodes.PluginContentUnableToUpdate);
+        }
+
         await pluginContentService.Update(pluginContent, cancellationToken);
+
         return Ok(pluginContent.Value);
     }
 
