@@ -2,7 +2,7 @@
 {
     @if (ViewContext.Page.Sections != null && ViewContext.Page.Sections.ContainsKey(Name))
     {
-        <div class="f-section">
+        <div class="f-section" data-name="@Name">
             @foreach (var Plugin in ViewContext.Page.Sections[Name].OrderBy(p => p.Order))
             {
                 <PluginContainer @key="@Plugin" Plugin=@Plugin SectionName=@Name />
