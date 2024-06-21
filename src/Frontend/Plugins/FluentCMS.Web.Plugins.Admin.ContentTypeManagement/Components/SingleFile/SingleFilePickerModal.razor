@@ -1,4 +1,4 @@
-@inherits BaseComponent
+@inherits BasePlugin
 
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
@@ -14,52 +14,49 @@
                     @* <Button @onclick="OnUploadClicked" Color="Color.Primary">Upload</Button> *@
                 </div>
             </ModalHeader>
-            <ModalBody>
-                <DataAnnotationsValidator />
-                <Grid>
-                    <DataTable Items="Items">
-                        <DataTableItem Label="Name">
-                            @if (@context.IsFolder)
-                            {
-                                <Button Link Href="@GetUrl("Files List", new { folderId = @context.Id })">
-                                    @context.Name
-                                </Button>
-                            }
-                            else
-                            {
-                                <Button Link download="@context.Name" Href="@GetUrl("Files List", new { folderId = @context.Id })">
-                                    @context.Name
-                                </Button>
-                            }
-                        </DataTableItem>
-                        <DataTableItem Label="Type">
-                            <Badge Color="Color.Info" Visible="@context.IsFolder">
-                                Folder
-                            </Badge>
-                            <Badge Color="Color.Success" Visible="!context.IsFolder">
-                                @context.ContentType
-                            </Badge>
-                        </DataTableItem>
-                        <DataTableItem Label="Size">
-                            @context.Size
-                        </DataTableItem>
-                        <ActionButtons>
-                            <ActionButton Visible="!context.IsFolder" IconName="IconName.Download" Label="Download" download="@context.Name" Href="@GetUrl("Files List", new { folderId = context.Id })" Color="Color.Primary" />
-                            <ActionButtonOpen Visible="context.IsFolder" Href="@GetUrl("Files List", new { folderId = context.Id })" />
-
-                            @if (!context.IsParentFolder)
-                            {
-                                <ActionButtonEdit @onclick="() => OpenUpdateModal(context)" />
-                                <ActionButtonDelete @onclick="() => OnConfirm(context)" />
-                            }
-                        </ActionButtons>
-                    </DataTable>
-                    @*<FormInput @bind-Value="Model.Name" Label="Name" Placeholder="Enter File Name" Required />
-                    <FormSelect @bind-Value="Model.FolderId" Data="FolderOptions" ValueField="Id" TextField="Name" Label="Parent Folder" Placeholder="Choose Parent Folder" Required/> *@
-                </Grid>
-            </ModalBody>
+            <DataTable Items="Items">
+                <DataTableItem Context="tableContext">
+                @if (!tableContext.IsFolder)
+                {
+                    <div class="w-6 h-6 rounded-full border border-gray-500 @(SelectedFile == tableContext.Id ? "bg-blue-500" : "")" @onclick="() => SelectedFile = tableContext.Id.Value">
+                    </div>
+                }
+                </DataTableItem>
+                <DataTableItem Context="tableContext" Label="Name">
+                    @if (@tableContext.IsFolder)
+                    {
+                        <Button Link @onclick="() => CurrentFolderId = tableContext.Id">
+                            @tableContext.Name
+                        </Button>
+                    }
+                    else
+                    {
+                        <Button Link download="@tableContext.Name" Href="@($"/API/File/Download/{@tableContext.Id}")">
+                            @tableContext.Name
+                        </Button>
+                    }
+                </DataTableItem>
+                <DataTableItem Context="tableContext" Label="Type">
+                    <Badge Color="Color.Info" Visible="@tableContext.IsFolder">
+                        Folder
+                    </Badge>
+                    <Badge Color="Color.Success" Visible="!tableContext.IsFolder">
+                        @tableContext.ContentType
+                    </Badge>
+                </DataTableItem>
+                <DataTableItem Context="tableContext" Label="Size">
+                    @tableContext.Size
+                </DataTableItem>
+                <ActionButtons Context="tableContext">
+                    <ActionButton Visible="!tableContext.IsFolder" IconName="IconName.Download" Label="Download" download="@tableContext.Name" Href="@($"/API/File/Download/{@tableContext.Id}")" Color="Color.Primary" />
+                    <ActionButtonOpen Visible="tableContext.IsFolder" @onclick="() => CurrentFolderId = tableContext.Id" />
+                </ActionButtons>
+            </DataTable>
             <ModalFooter>
-                <FormActions Submit>
+                <FormActions>
+                    <Button @onclick="HandleSubmit">
+                        Submit
+                    </Button>
                     <Button @onclick="HandleCancel">
                         Cancel
                     </Button>

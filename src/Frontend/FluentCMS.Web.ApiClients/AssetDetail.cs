@@ -1,4 +1,4 @@
-namespace FluentCMS.Web.Plugins.Admin.FileManagement;
+namespace FluentCMS.Web.ApiClients;
 
 public class AssetDetail
 {

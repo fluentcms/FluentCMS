@@ -3,10 +3,51 @@
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
 <FormField Label="@Field.Label" Cols="@Field.FormColWidth">
-    <Button Color="Color.Primary" @onclick="OnChooseClicked">
-        Choose
-    </Button>
+    <Card class="max-w-lg">
+        <CardBody>
+            @if (FieldValue.Value == null)
+            {
+                <Spacer Size="SpacerSize.Large"/>
+                <Spacer Size="SpacerSize.Large"/>
+                <Stack Justify="StackJustify.Center">
+                    <Button Color="Color.Primary" @onclick="OnChooseClicked">
+                        <Icon Name="IconName.ClipboardList" />Choose
+                    </Button>
+
+                    <Button @onclick="OnUploadClicked">
+                        <Icon Name="IconName.CloudArrowUp"/>Upload
+                    </Button>
+                </Stack>
+                <Spacer Size="SpacerSize.Large"/>
+                <Spacer Size="SpacerSize.Large"/>
+            }
+            else
+            {
+                <Spacer />
+                <Grid JustifySmall="GridJustify.Between" ItemsSmall="GridItems.Center">
+                    <GridItem>
+                        <Typography>@FileName</Typography>
+                    </GridItem>
+                    <GridItem>
+                        <Stack Justify="StackJustify.End">
+                            <Button Size="ButtonSize.Small" Ghost Color="Color.Primary" Href="@($"/API/File/Download/{FieldValue.Value}")">
+                                <Icon Name="IconName.Download" />
+                            </Button>
+                            <Button Size="ButtonSize.Small" Ghost Color="Color.Danger" @onclick="() => FieldValue.Value = default!">
+                                <Icon Name="IconName.Delete" />
+                            </Button>
+                        </Stack>
+                    </GridItem>
+                </Grid>
+                <Spacer />
+            }
+        </CardBody>
+    </Card>
+
 </FormField>
 
 <SingleFilePickerModal Visible="FilesModalOpen" OnCancel="() => FilesModalOpen = false" OnSubmit="OnFileChoose" />
+
+<FileUploadModal Config="FileUploadConfig" Visible="UploadModalOpen" OnCancel="() => UploadModalOpen = false" OnSubmit="OnFileUpload" />
+
 <!-- <FormNumberInput @bind-Value="FieldValue.Value" Cols="@Field.FormColWidth" Min="@Field.MinimumValue" Max="@Field.MaximumValue" Label="@Field.Label" Placeholder="@Field.Placeholder" Required="@Field.Required" /> -->

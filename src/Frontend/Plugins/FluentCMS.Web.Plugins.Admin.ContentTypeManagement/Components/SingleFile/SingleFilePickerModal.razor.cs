@@ -2,25 +2,26 @@ namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
 public partial class SingleFilePickerModal
 {
+    // #region Base Plugin
 
-public abstract class BaseContentTypeFieldComponent : BaseComponent
-{
-    #region Base Plugin
-    [Inject]
-    protected IHttpClientFactory HttpClientFactory { get; set; } = default!;
+    // [Inject]
+    // protected IHttpClientFactory HttpClientFactory { get; set; } = default!;
 
-    [Inject]
-    protected UserLoginResponse? UserLogin { get; set; }
+    // [Inject]
+    // protected UserLoginResponse? UserLogin { get; set; }
 
-    protected T GetApiClient<T>()
-    {
-        return HttpClientFactory.CreateApiClient<T>(UserLogin);
-    }
+    // protected T GetApiClient<T>()
+    // {
+    //     return HttpClientFactory.CreateApiClient<T>(UserLogin);
+    // }
 
-    #endregion
+    // #endregion
 
     [Parameter]
     public Guid Model { get; set; }
+
+    [Parameter]
+    public bool Visible { get; set; } = true;
 
     [Parameter]
     public EventCallback<Guid> OnSubmit { get; set; }
@@ -28,10 +29,14 @@ public abstract class BaseContentTypeFieldComponent : BaseComponent
     [Parameter]
     public EventCallback OnCancel { get; set; }
 
-    private Guid CurrentFolderId { get; set; } = Guid.Empty;
+    private Guid? CurrentFolderId { get; set; }
+    private Guid? ParentId { get; set; }
 
     private bool FileUploadModalOpen { get; set; }
     private FolderDetailResponse RootFolder { get; set; }
+    private List<AssetDetail> Items { get; set; } = [];
+
+    private Guid SelectedFile { get; set; }
 
     public async Task OnUploadClicked()
     {
@@ -39,6 +44,23 @@ public abstract class BaseContentTypeFieldComponent : BaseComponent
         Console.WriteLine("Open local File Picker");
     }
 
+
+    FolderDetailResponse? FindFolderById(ICollection<FolderDetailResponse> folders, Guid folderId)
+    {
+        foreach (var folder in folders)
+        {
+            if (folder.Id == folderId)
+                return folder;
+
+            if (folder.Folders != null && folder.Folders.Any())
+            {
+                var foundFolder = FindFolderById(folder.Folders, folderId);
+                if (foundFolder != null)
+                    return foundFolder;
+            }
+        }
+        return null;
+    }
 
     private async Task Load()
     {
@@ -108,13 +130,18 @@ public abstract class BaseContentTypeFieldComponent : BaseComponent
 
     }
 
+    protected override async Task OnParametersSetAsync()
+    {
+        await Load();
+    }
+
     private async Task OnUpload(List<FileParameter> files)
     {
         await GetApiClient<FileClient>().UploadAsync(CurrentFolderId, files);
         FileUploadModalOpen = false;
         await Load();
     }
-
+    
     public async Task OnUpload()
     {
         FileUploadModalOpen = true;
@@ -128,11 +155,12 @@ public abstract class BaseContentTypeFieldComponent : BaseComponent
 
     private async Task HandleSubmit()
     {
-        OnSubmit.InvokeAsync(Model);
+        await OnSubmit.InvokeAsync(SelectedFile);
+        SelectedFile = default!;
     }
 
     private async Task HandleCancel()
     {
-        OnCancel.InvokeAsync();
+        await OnCancel.InvokeAsync();
     }
 }
