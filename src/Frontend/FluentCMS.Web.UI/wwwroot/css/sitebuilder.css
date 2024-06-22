@@ -75,8 +75,8 @@
     border-end-start-radius: 20px;
     gap: 0.25rem;
     padding: 0.125rem;
-    background-color: #f3f3ee;
-    border: 1px solid #d8d8d8;
+    background-color: white;
+    border: 1px solid #dfdfdf;
     border-right: none;
     z-index: 100;
 }
@@ -90,7 +90,7 @@
     align-items: center;
     justify-content: center;
     color: black;
-    background-color: #d6d6d6;
+    background-color: #f0f0f0;
     border: none;
     border-radius: 20px;
 }
@@ -101,7 +101,7 @@
 }
 
 .f-page-editor-toggler .f-page-editor-toggler-button:hover {
-    background-color: rgb(184, 184, 184);
+    background-color: #dbdbdb;
 }
 
 .f-page-editor-toggler .f-page-editor-toggler-button-primary {
