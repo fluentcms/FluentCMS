@@ -85,6 +85,7 @@
     cursor: pointer;
     width: 2rem;
     height: 2rem;
+    padding: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -105,12 +106,12 @@
 
 .f-page-editor-toggler .f-page-editor-toggler-button-primary {
     color: white;
-    background-color: #3979da;
+    background-color: #2558a5;
     border: none;
 }
 
 .f-page-editor-toggler .f-page-editor-toggler-button-primary:hover {
-    background-color: #2669cc;
+    background-color: #2c6bc9;
 }
 
 .f-edit-mode .f-plugin-container {
@@ -205,4 +206,43 @@
 
 .f-view-mode .f-only-edit {
     display: none;
+}
+
+/* Dark mode */
+
+.dark .f-page-editor-sidebar {
+    background-color: #404040;
+    border-color: #505050;
+}
+.dark .f-page-editor-toggler {
+    background-color: #404040;
+    border-color: #505050;
+}
+
+.dark .f-plugin-definition-item {
+    background-color: #505050;
+    border-color: #606060;
+    color: white;
+}
+.dark .f-plugin-definition-item:hover {
+    background-color: #606060;
+    border-color: #707070;
+}
+
+.dark .f-page-editor-toggler-button {
+    background-color: #505050;
+    border-color: #404040;
+    color: white;
+    fill: white;
+}
+.dark .f-page-editor-toggler-button:hover {
+    background-color: #606060;
+    border-color: #404040;
+}
+.dark .f-page-editor-toggler-button-primary {
+    background-color: #2e3bb3;
+}
+.dark .f-page-editor-toggler-button-primary:hover {
+    
+    background-color: #3b48bd;
 }
