@@ -9,11 +9,13 @@ const actions = {
         document.body.classList.remove('f-view-mode')
         document.body.classList.add('f-edit-mode')
         actions["show-sidebar"]()
+        saveState()
     },
     'cancel-edit-mode'() {
         document.body.classList.remove('f-edit-mode')
         document.body.classList.add('f-view-mode')
         actions["hide-sidebar"]()
+        saveState()
     },
     'save-edit-mode'() {
         document.body.classList.remove('f-edit-mode')
@@ -53,10 +55,12 @@ const actions = {
     'show-sidebar'() {
         document.body.classList.remove('f-page-editor-sidebar-close')
         document.body.classList.add('f-page-editor-sidebar-open')
+        saveState()
     },
     'hide-sidebar'() {
         document.body.classList.add('f-page-editor-sidebar-close')
         document.body.classList.remove('f-page-editor-sidebar-open')
+        saveState()
     }
 }
 
