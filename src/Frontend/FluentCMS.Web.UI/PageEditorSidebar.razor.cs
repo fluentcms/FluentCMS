@@ -19,7 +19,14 @@ public partial class PageEditorSidebar
 
     protected override async Task OnInitializedAsync()
     {
-        var response = await GetApiClient<PluginDefinitionClient>().GetAllAsync();
-        PluginDefinitions= response.Data;
+        try
+        {
+            var response = await GetApiClient<PluginDefinitionClient>().GetAllAsync();
+            PluginDefinitions = response.Data;
+        }
+        catch(Exception e)
+        {
+            PluginDefinitions = [];
+        }
     }
 }

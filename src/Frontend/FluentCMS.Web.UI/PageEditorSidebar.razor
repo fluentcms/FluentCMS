@@ -1,12 +1,14 @@
 <div class="f-page-editor-sidebar">
     @if (PluginDefinitions != null)
     {
-        @foreach (var PluginDef in PluginDefinitions)
-        {
-            <div data-id="@PluginDef.Id" class="f-page-editor-sidebar-plugin-def">
-                @PluginDef.Name <br />
-                @PluginDef.Description
-            </div>
-        }
+        <div class="f-plugin-definition-list">
+            @foreach (var pluginDef in PluginDefinitions)
+            {
+                <div data-id="@pluginDef.Id" class="f-plugin-definition-item">
+                    <span class="f-name">@pluginDef.Name</span>
+                    <span class="f-description">@pluginDef.Description</span>
+                </div>
+            }
+        </div>
     }
 </div>

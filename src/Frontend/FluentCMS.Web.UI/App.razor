@@ -2,10 +2,19 @@
 <html lang="en">
 <head>
     <base href="/" />
+    <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.css">
+
     <HeadOutlet />
 </head>
 <body>
     <Routes />
+
+    <PageEditorSidebar />
+    <PageEditorForms />
+    <PageEditorToggler />
+
+    <script src="/_content/FluentCMS.Web.UI/js/sortable.js"></script>
+    <script src="/_content/FluentCMS.Web.UI/js/sitebuilder.js"></script>
     <script src="_framework/blazor.web.js"></script>
     <script>
         const { fetch: originalFetch } = window;

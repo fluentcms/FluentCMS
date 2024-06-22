@@ -1,14 +1,14 @@
 ﻿@if (ViewContext.Type == ViewType.Default)
 {
-    @if (ViewContext.Page.Sections != null && ViewContext.Page.Sections.ContainsKey(Name))
-    {
-        <div class="f-section" data-name="@Name">
+    <div class="f-section" data-name="@Name">
+        @if (ViewContext.Page.Sections != null && ViewContext.Page.Sections.ContainsKey(Name))
+        {
             @foreach (var Plugin in ViewContext.Page.Sections[Name].OrderBy(p => p.Order))
             {
                 <PluginContainer @key="@Plugin" Plugin=@Plugin SectionName=@Name />
             }
-        </div>
-    }
+        }
+    </div>
 }
 
 @if (ViewContext.Type == ViewType.Edit && Name.ToLower() == "main")

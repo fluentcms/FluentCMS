@@ -1,0 +1,21 @@
+@namespace FluentCMS.Web.UI
+
+<div class="f-page-editor-forms">
+    <EditForm id="f-page-editor-form-create" Model="@CreateModel" FormName="CreatePluginForm" OnValidSubmit="OnCreateSubmit">
+        <input type="hidden" name="CreateModel.DefinitionId" />
+        <input type="hidden" name="CreateModel.PageId" Value="@ViewContext.Page.Id" />
+        <input type="hidden" name="CreateModel.Order" />
+        <input type="hidden" name="CreateModel.Section" />
+        <input type="submit" value="Submit"/>
+    </EditForm>
+
+    <EditForm id="f-page-editor-form-update" Model="UpdateModel" FormName="UpdatePluginForm" OnValidSubmit="OnUpdateSubmit">
+        <input id="f-update-form-inputs" type="hidden" />
+        <input type="submit" value="Submit"/>
+    </EditForm>
+
+    <EditForm id="f-page-editor-form-delete" Model="@DeleteModel" FormName="DeletePluginForm" OnValidSubmit="OnDeleteSubmit">
+        <input type="hidden" name="DeleteModel" />
+        <input type="submit" value="Submit" />
+    </EditForm>
+</div>
