@@ -105,7 +105,7 @@ function initializeSortable() {
 
                 submitForm(createForm, {
                     'CreateModel.DefinitionId': definitionId,
-                    'CreateModel.Order': event.newIndex,
+                    'CreateModel.Order': event.newIndex - 1,
                     'CreateModel.Section': sectionName
                 })
             }
