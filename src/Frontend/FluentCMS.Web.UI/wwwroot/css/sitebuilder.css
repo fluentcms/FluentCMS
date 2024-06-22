@@ -149,8 +149,6 @@
 
 .f-plugin-container-moving {
     opacity: 0.5;
-    background-color: blue;
-    height: 64px;
 }
 
 .f-edit-mode .f-plugin-container {
