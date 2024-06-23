@@ -27,7 +27,7 @@ public static class ApiServiceExtensions
             })
             .AddJsonOptions(options =>
             {
-                //options.JsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
+                options.JsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
                 options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
             })
             .ConfigureApiBehaviorOptions(options =>

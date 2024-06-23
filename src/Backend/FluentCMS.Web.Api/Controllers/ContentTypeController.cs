@@ -1,8 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿namespace FluentCMS.Web.Api.Controllers;
 
-namespace FluentCMS.Web.Api.Controllers;
-
-[JsonConverter(typeof(DictionaryJsonConverter))]
 public class ContentTypeController(IMapper mapper, IContentTypeService contentTypeService) : BaseGlobalController
 {
     public const string AREA = "Content Type Management";

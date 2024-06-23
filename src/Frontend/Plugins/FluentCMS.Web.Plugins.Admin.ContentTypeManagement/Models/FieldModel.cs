@@ -5,14 +5,14 @@ public interface IFieldModel
     public string Type { get; set; }
     public bool Required { get; set; }
     public bool Unique { get; set; }
-    public string Description { get; set; } 
+    public string Description { get; set; }
     public int DataTableColumnOrder { get; set; }
     public bool DataTableVisible { get; set; }
     public string DataTableViewComponent { get; set; }
     public int FormViewOrder { get; set; }
     public int FormColWidth { get; set; }
     public string FormViewComponent { get; set; }
-    public string Label { get; set; } 
+    public string Label { get; set; }
 }
 
 public interface IFieldModel<T> : IFieldModel

@@ -1,8 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿namespace FluentCMS.Web.Api.Controllers;
 
-namespace FluentCMS.Web.Api.Controllers;
-
-[JsonConverter(typeof(DictionaryJsonConverter))]
 [Route("api/[controller]/{contentTypeSlug}/[action]")]
 public class ContentController(
     IMapper mapper,
