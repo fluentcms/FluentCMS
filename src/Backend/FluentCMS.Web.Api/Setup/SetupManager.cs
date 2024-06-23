@@ -232,7 +232,7 @@ public class SetupManager
                 var content = new Content
                 {
                     TypeId = contentType.Id,
-                    Value = contentDictionary
+                    Data = contentDictionary
                 };
                 await _contentService.Create(content);
             }

@@ -2,4 +2,4 @@
 
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
-<FormRadioGroup Data="Items" Cols="@Field.FormColWidth" TValue="string" TItem="string" @bind-Value="FieldValue.Value" Label="@Field.Label" Required="@Field.Required" />
+<FormRadioGroup Data="Items" Cols="@Field.FormColWidth" TValue="string" TItem="string" @bind-Value="FieldValue.Value" Label="@Field.Label" Required="@ContentTypeField!.Required" />

@@ -6,6 +6,6 @@ public class ContentDetailResponse : BaseAuditableResponse
     public Guid TypeId { get; set; }
 
     [Required]
-    public Dictionary<string, object> Value { get; set; } = [];
+    public Dictionary<string, object?> Data { get; set; } = [];
 
 }

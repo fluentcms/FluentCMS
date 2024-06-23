@@ -1,5 +1,5 @@
-@inherits BaseFieldValueComponent<decimal?, NumberFieldModel>
+@inherits BaseFieldValueComponent<double?, NumberFieldModel>
 
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
-<FormNumberInput Type="NumberInputType.Range" @bind-Value="FieldValue.Value" Min="@Field.MinimumValue" Max="@Field.MaximumValue" Label="@Field.Label" Required="@Field.Required" />
+<FormNumberInput Type="NumberInputType.Range" @bind-Value="FieldValue.Value" Min="@Field.MinimumValue" Max="@Field.MaximumValue" Label="@Field.Label" Required="@ContentTypeField!.Required" />

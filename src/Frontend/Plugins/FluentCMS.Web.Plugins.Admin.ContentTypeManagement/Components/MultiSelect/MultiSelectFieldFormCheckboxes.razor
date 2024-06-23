@@ -1,4 +1,4 @@
 ﻿@inherits BaseFieldValueComponent<ICollection<string>?, MultiSelectFieldModel>
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
-<FormCheckboxGroup Data="Options" @bind-Value="@FieldValue.Value" Label="@Field.Label" Required="@Field.Required" />
+<FormCheckboxGroup Data="Options" @bind-Value="@FieldValue.Value" Label="@Field.Label" Required="@ContentTypeField!.Required" />

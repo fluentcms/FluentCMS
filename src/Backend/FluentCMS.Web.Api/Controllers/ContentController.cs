@@ -1,5 +1,8 @@
-﻿namespace FluentCMS.Web.Api.Controllers;
+﻿using System.Text.Json.Serialization;
 
+namespace FluentCMS.Web.Api.Controllers;
+
+[JsonConverter(typeof(DictionaryJsonConverter))]
 [Route("api/[controller]/{contentTypeSlug}/[action]")]
 public class ContentController(
     IMapper mapper,
@@ -27,32 +30,30 @@ public class ContentController(
     public async Task<IApiResult<ContentDetailResponse>> GetById([FromRoute] string contentTypeSlug, Guid id, CancellationToken cancellationToken = default)
     {
         var contentType = await contentTypeService.GetBySlug(contentTypeSlug, cancellationToken);
-        var content = await contentService.GetById(contentType.Id, id, cancellationToken);
+        var content = await contentService.GetById(id, cancellationToken);
         var contentResponse = mapper.Map<ContentDetailResponse>(content);
         return Ok(contentResponse);
     }
 
     [HttpPost]
     [Policy(AREA, CREATE)]
-    public async Task<IApiResult<ContentDetailResponse>> Create([FromRoute] string contentTypeSlug, [FromBody] ContentCreateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<ContentDetailResponse>> Create([FromRoute] string contentTypeSlug, [FromBody] Dictionary<string, object?> data, CancellationToken cancellationToken = default)
     {
-        var content = mapper.Map<Content>(request);
         var contentType = await contentTypeService.GetBySlug(contentTypeSlug, cancellationToken);
-        content.TypeId = contentType.Id;
-        var newContent = await contentService.Create(content, cancellationToken);
-        var response = mapper.Map<ContentDetailResponse>(newContent);
+        var content = new Content { TypeId = contentType.Id, Data = data };
+        await contentService.Create(content, cancellationToken);
+        var response = mapper.Map<ContentDetailResponse>(content);
         return Ok(response);
     }
 
-    [HttpPut]
+    [HttpPut("{id}")]
     [Policy(AREA, UPDATE)]
-    public async Task<IApiResult<ContentDetailResponse>> Update([FromRoute] string contentTypeSlug, [FromBody] ContentUpdateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<ContentDetailResponse>> Update([FromRoute] string contentTypeSlug, [FromRoute] Guid id, [FromBody] Dictionary<string, object?> data, CancellationToken cancellationToken = default)
     {
-        var content = mapper.Map<Content>(request);
         var contentType = await contentTypeService.GetBySlug(contentTypeSlug, cancellationToken);
-        content.TypeId = contentType.Id;
-        var updated = await contentService.Update(content, cancellationToken);
-        var response = mapper.Map<ContentDetailResponse>(updated);
+        var content = new Content { Id = id, TypeId = contentType.Id, Data = data };
+        await contentService.Update(content, cancellationToken);
+        var response = mapper.Map<ContentDetailResponse>(content);
         return Ok(response);
     }
 
@@ -60,10 +61,8 @@ public class ContentController(
     [Policy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] string contentTypeSlug, [FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        var contentType = await contentTypeService.GetBySlug(contentTypeSlug, cancellationToken);
-        await contentService.Delete(contentType.Id, id, cancellationToken);
+        await contentService.Delete(id, cancellationToken);
         return Ok(true);
     }
-
-
 }
+

@@ -13,7 +13,6 @@ public partial class ContentTypeFieldUpdate
         var parameters = new Dictionary<string, object>
         {
             { nameof(ContentTypeField), ContentTypeField! },
-            { "Model", ContentTypeField.ToFieldModel() },
             { "OnCancel", OnComplete },
             { "OnSubmit", EventCallback.Factory.Create<ContentTypeField>(this, OnFieldUpdate) }
         };
