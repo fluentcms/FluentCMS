@@ -64,7 +64,12 @@ public static class ModelHelpers
     {
         TField result = new()
         {
-            Name = src.Name ?? string.Empty
+            Name = src.Name!,
+            Type = src.Type!,
+            Description = src.Description!,
+            Required = src.Required,
+            Unique = src.Unique,
+            Label = src.Label!,
         };
 
         PropertyInfo[] properties = typeof(TField).GetProperties();
@@ -118,6 +123,7 @@ public static class ModelHelpers
             Description = src.Description,
             Required = src.Required,
             Unique = src.Unique,
+            Label = src.Label,
             Settings = []
         };
 
