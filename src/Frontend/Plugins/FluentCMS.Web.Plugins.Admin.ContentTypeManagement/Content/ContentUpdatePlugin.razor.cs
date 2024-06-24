@@ -28,7 +28,7 @@ public partial class ContentUpdatePlugin
             {
                 foreach (var field in Fields)
                 {
-                    FieldValues.Add(field.GetFieldValue(Model?.Value ?? new Dictionary<string, object>()));
+                    FieldValues.Add(field.GetFieldValue(Model?.Data ?? []));
                 }
             }
         }
@@ -47,7 +47,8 @@ public partial class ContentUpdatePlugin
         var parameters = new Dictionary<string, object?>
         {
             { "Field", fieldModel },
-            { "FieldValue", fieldValue }
+            { "FieldValue", fieldValue },
+            { nameof(ContentTypeField), ContentType.Fields.Where(x=> x.Name==fieldModel.Name).SingleOrDefault() }
         };
 
         return parameters;
@@ -55,13 +56,13 @@ public partial class ContentUpdatePlugin
 
     private async Task OnSubmit()
     {
-        var request = new ContentUpdateRequest
-        {
-            Id = Id,
-            Value = FieldValues.ToDictionary(x => x.Name, x => x.GetValue())
-        };
+        //var request = new ContentUpdateRequest
+        //{
+        //    Id = Id,
+        //    Value = FieldValues.ToDictionary(x => x.Name, x => x.GetValue())
+        //};
 
-        await GetApiClient<ContentClient>().UpdateAsync(ContentTypeSlug!, request);
+        //await GetApiClient<ContentClient>().UpdateAsync(ContentTypeSlug!, request);
 
         NavigateBack();
     }

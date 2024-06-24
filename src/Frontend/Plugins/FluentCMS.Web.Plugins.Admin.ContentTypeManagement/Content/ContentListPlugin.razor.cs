@@ -35,12 +35,13 @@ public partial class ContentListPlugin
             throw new NotSupportedException($"Field type '{fieldTypeName}' is not supported.");
     }
 
-    private static Dictionary<string, object> GetParameters(ContentDetailResponse content, IFieldModel fieldModel)
+    private Dictionary<string, object> GetParameters(ContentDetailResponse content, IFieldModel fieldModel)
     {
         return new Dictionary<string, object>
         {
             { "Field", fieldModel },
-            { "FieldValue", fieldModel.GetFieldValue(content?.Value)}
+            { "FieldValue", fieldModel.GetFieldValue(content?.Data)},
+            { nameof(ContentTypeField), ContentType.Fields.Where(x=> x.Name==fieldModel.Name).SingleOrDefault() }
         };
     }
 
