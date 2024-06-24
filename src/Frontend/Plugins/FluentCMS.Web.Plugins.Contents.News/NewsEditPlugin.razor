@@ -1,0 +1,8 @@
+﻿@using FluentCMS.Web.UI.Components
+@inherits BasePlugin
+
+<PluginForm Model="@Model" Name="@CONTENT_TYPE_NAME" Title="Create New Layout" OnSubmit="@OnSubmit">
+    <FormInput @bind-Value="Model!.Title" Label="Name" Placeholder="Title" Required />
+    <FormTextarea @bind-Value="Model!.Content" Rows="15" Label="Content" Required />
+    <FormActions Cancel Submit />
+</PluginForm>

@@ -21,6 +21,7 @@
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin.RoleManagement\FluentCMS.Web.Plugins.Admin.RoleManagement.csproj" />
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin.SiteManagement\FluentCMS.Web.Plugins.Admin.SiteManagement.csproj" />
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin.UserManagement\FluentCMS.Web.Plugins.Admin.UserManagement.csproj" />
+        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.News\FluentCMS.Web.Plugins.Contents.News.csproj" />
     </ItemGroup>
 	<ItemGroup>
 		<None Include="wwwroot\**">
