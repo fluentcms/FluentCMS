@@ -1,7 +1,18 @@
 ﻿@page "/{**Route:nonfile}"
 
-<PageTitle>@ViewContext.Page?.Title</PageTitle>
-<HeadContent>
-    @RenderDynamicContent(ViewContext.Page?.Layout?.Head ?? string.Empty)
-</HeadContent>
-@RenderDynamicContent(ViewContext.Page?.Layout?.Body ?? string.Empty)
+@if (ViewContext.Type == ViewType.PageEdit)
+{
+    <div>
+        <iframe src="@NavigationManager.Uri.Replace("pageEdit","aaa")">
+        </iframe>
+    </div>
+}
+else
+{
+    <PageTitle>@ViewContext.Page?.Title</PageTitle>
+    <HeadContent>
+        @RenderDynamicContent(ViewContext.Page?.Layout?.Head ?? string.Empty)
+    </HeadContent>
+    @RenderDynamicContent(ViewContext.Page?.Layout?.Body ?? string.Empty)
+}
+

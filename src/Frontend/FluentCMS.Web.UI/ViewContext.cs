@@ -1,6 +1,4 @@
-﻿using FluentCMS.Web.ApiClients;
-
-namespace FluentCMS.Web.UI;
+﻿namespace FluentCMS.Web.UI;
 
 public class ViewContext
 {
@@ -17,5 +15,6 @@ public class ViewContext
 public enum ViewType
 {
     Default,
-    Edit
+    PluginEdit,
+    PageEdit
 }

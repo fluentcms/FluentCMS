@@ -11,7 +11,7 @@
     </div>
 }
 
-@if (ViewContext.Type == ViewType.Edit && Name.ToLower() == "main")
+@if (ViewContext.Type == ViewType.PluginEdit && Name.ToLower() == "main")
 {
     <div class="f-section">
         <PluginContainer Plugin=@ViewContext.Plugin SectionName=@Name />
