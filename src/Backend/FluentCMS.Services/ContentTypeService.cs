@@ -81,6 +81,7 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
             originalField.Name = field.Name;
             originalField.Required = field.Required;
             originalField.Unique = field.Unique;
+            originalField.Label = field.Label;
         }
 
         return await contentTypeRepository.Update(contentType, cancellationToken) ??
