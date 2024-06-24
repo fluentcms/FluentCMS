@@ -14,7 +14,7 @@
                 @context.Name
             </DataTableItem>
             <DataTableItem Label="Label">
-                @context.GetString("Label")
+                @context.Label
             </DataTableItem>
             <DataTableItem Label="Type">
                 <Stack>
@@ -25,12 +25,15 @@
                 </Stack>
             </DataTableItem>
             <DataTableItem Label="Required">
-                <Indicator Color="Color.Success" Visible="@(context.GetBoolean("Required") == true)">Yes</Indicator>
-                <Indicator Color="Color.Danger" Visible="@(context.GetBoolean("Required") == false)">No</Indicator>
-                <Indicator Color="Color.Default" Visible="@(context.GetBoolean("Required") == null)">N/A</Indicator>
+                <Indicator Color="Color.Success" Visible="@(context.Required)">Yes</Indicator>
+                <Indicator Color="Color.Danger" Visible="@(!context.Required)">No</Indicator>
+            </DataTableItem>
+            <DataTableItem Label="Unique">
+                <Indicator Color="Color.Success" Visible="@(context.Unique)">Yes</Indicator>
+                <Indicator Color="Color.Danger" Visible="@(!context.Unique)">No</Indicator>
             </DataTableItem>
             <DataTableItem Label="Description">
-                @context.GetString("Description")
+                @context.Description
             </DataTableItem>
             <ActionButtons>
                 <ActionButtonEdit @onclick="@(x=> OnEditFieldClick(context))" />

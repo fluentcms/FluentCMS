@@ -4,8 +4,8 @@ public interface IContentService : IAutoRegisterService
 {
     Task<IEnumerable<Content>> GetAll(Guid contentTypeId, CancellationToken cancellationToken = default);
     Task<Content> Create(Content content, CancellationToken cancellationToken = default);
-    Task<Content> Delete(Guid contentTypeId, Guid id, CancellationToken cancellationToken = default);
-    Task<Content> GetById(Guid contentTypeId, Guid id, CancellationToken cancellationToken = default);
+    Task<Content> Delete(Guid id, CancellationToken cancellationToken = default);
+    Task<Content> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<Content> Update(Content content, CancellationToken cancellationToken = default);
 }
 
@@ -24,7 +24,7 @@ public class ContentService(IContentRepository contentRepository) : IContentServ
         return newContent;
     }
 
-    public async Task<Content> Delete(Guid contentTypeId, Guid id, CancellationToken cancellationToken = default)
+    public async Task<Content> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         return await contentRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentUnableToDelete);
@@ -38,7 +38,7 @@ public class ContentService(IContentRepository contentRepository) : IContentServ
         return updatedContent;
     }
 
-    public async Task<Content> GetById(Guid contentTypeId, Guid id, CancellationToken cancellationToken = default)
+    public async Task<Content> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         return await contentRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentNotFound);

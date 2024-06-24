@@ -21,7 +21,7 @@
                     <FormHiddenInput @bind-Value="Model.Type" />
                     <FormInput @bind-Value="Model.Name" Cols="6" Label="Name" Placeholder="Enter Field Name" Required Disabled="@(CurrentState != FieldManagementState.Create)" />
                     <FormInput @bind-Value="Model.Label" Cols="4" Label="Label" Placeholder="Enter Field Label" Required />
-                    <FormSwitch @bind-Value="Model.Required" Cols="2" Label="Required" Required />
+                    <FormSwitch @bind-Value="ContentTypeField!.Required" Cols="2" Label="Required" Required />
                     <FormNumberInput @bind-Value="Model.MinimumLength" Min="0" Cols="6" Label="Minimum Length" Placeholder="Enter Minimum Length" />
                     <FormNumberInput @bind-Value="Model.MaximumLength" Min="0" Cols="6" Label="Maximum Length" Placeholder="Enter Maximum Length" />
                     <FormInput @bind-Value="Model.Placeholder" Label="Placeholder" Placeholder="Enter Field Placeholder" Required />
@@ -40,7 +40,7 @@
             </TabPanel>
             <TabPanel Name="Advanced">
                 <Grid GutterX="GridGutter.Large">
-                    <FormSwitch @bind-Value="Model.Unique" Cols="12" Label="Unique" />
+                    <FormSwitch @bind-Value="ContentTypeField!.Unique" Cols="12" Label="Unique" />
                     <FormInput @bind-Value="Model.Pattern" Cols="12" Label="Regex pattern" Placeholder="Enter regex pattern"/>
                     <FormTextarea @bind-Value="Model.DefaultValue" Label="Default Value" Placeholder="Enter default value"/>
                 </Grid>

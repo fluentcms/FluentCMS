@@ -53,7 +53,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin.UserManagement", "Frontend\Plugins\FluentCMS.Web.Plugins.Admin.UserManagement\FluentCMS.Web.Plugins.Admin.UserManagement.csproj", "{B114E4B8-19ED-4C85-8870-842A9BD668F3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Web.Plugins.Admin.FileManagement", "Frontend\Plugins\FluentCMS.Web.Plugins.Admin.FileManagement\FluentCMS.Web.Plugins.Admin.FileManagement.csproj", "{63AB21B8-5560-40EC-BB2F-3428BB600B21}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin.FileManagement", "Frontend\Plugins\FluentCMS.Web.Plugins.Admin.FileManagement\FluentCMS.Web.Plugins.Admin.FileManagement.csproj", "{63AB21B8-5560-40EC-BB2F-3428BB600B21}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "Shared\Shared.csproj", "{E78B903B-4307-4220-B451-3000ED3E9971}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -149,6 +151,10 @@ Global
 		{63AB21B8-5560-40EC-BB2F-3428BB600B21}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{63AB21B8-5560-40EC-BB2F-3428BB600B21}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{63AB21B8-5560-40EC-BB2F-3428BB600B21}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E78B903B-4307-4220-B451-3000ED3E9971}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E78B903B-4307-4220-B451-3000ED3E9971}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E78B903B-4307-4220-B451-3000ED3E9971}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E78B903B-4307-4220-B451-3000ED3E9971}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

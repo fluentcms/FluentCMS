@@ -79,8 +79,6 @@ public class MappingProfile : Profile
 
         #region Content
 
-        CreateMap<ContentCreateRequest, Content>();
-        CreateMap<ContentUpdateRequest, Content>();
         CreateMap<Content, ContentDetailResponse>();
 
         #endregion
