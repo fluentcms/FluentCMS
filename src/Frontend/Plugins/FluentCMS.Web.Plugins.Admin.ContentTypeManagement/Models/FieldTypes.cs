@@ -3,7 +3,7 @@
 public class FieldTypes
 {
     public const string STRING = "string";
-    public const string NUMBER = "decimal";
+    public const string NUMBER = "number";
     public const string BOOLEAN = "bool";
     public const string SINGLE_SELECT = "single-select";
     public const string MULTI_SELECT = "multi-select";

@@ -1420,21 +1420,21 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string contentTypeSlug, ContentCreateRequest? body);
+        System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string contentTypeSlug, System.Collections.Generic.Dictionary<string, object>? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string contentTypeSlug, ContentCreateRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string contentTypeSlug, System.Collections.Generic.Dictionary<string, object>? body, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string contentTypeSlug, ContentUpdateRequest? body);
+        System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string contentTypeSlug, System.Guid id, System.Collections.Generic.Dictionary<string, object>? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string contentTypeSlug, ContentUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string contentTypeSlug, System.Guid id, System.Collections.Generic.Dictionary<string, object>? body, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -1650,7 +1650,7 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string contentTypeSlug, ContentCreateRequest? body)
+        public virtual System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string contentTypeSlug, System.Collections.Generic.Dictionary<string, object>? body)
         {
             return CreateAsync(contentTypeSlug, body, System.Threading.CancellationToken.None);
         }
@@ -1658,7 +1658,7 @@ namespace FluentCMS.Web.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string contentTypeSlug, ContentCreateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentDetailResponseIApiResult> CreateAsync(string contentTypeSlug, System.Collections.Generic.Dictionary<string, object>? body, System.Threading.CancellationToken cancellationToken)
         {
             if (contentTypeSlug == null)
                 throw new System.ArgumentNullException("contentTypeSlug");
@@ -1737,18 +1737,21 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string contentTypeSlug, ContentUpdateRequest? body)
+        public virtual System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string contentTypeSlug, System.Guid id, System.Collections.Generic.Dictionary<string, object>? body)
         {
-            return UpdateAsync(contentTypeSlug, body, System.Threading.CancellationToken.None);
+            return UpdateAsync(contentTypeSlug, id, body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string contentTypeSlug, ContentUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<ContentDetailResponseIApiResult> UpdateAsync(string contentTypeSlug, System.Guid id, System.Collections.Generic.Dictionary<string, object>? body, System.Threading.CancellationToken cancellationToken)
         {
             if (contentTypeSlug == null)
                 throw new System.ArgumentNullException("contentTypeSlug");
+
+            if (id == null)
+                throw new System.ArgumentNullException("id");
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -1765,10 +1768,11 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/Content/{contentTypeSlug}/Update"
+                    // Operation Path: "api/Content/{contentTypeSlug}/Update/{id}"
                     urlBuilder_.Append("api/Content/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(contentTypeSlug, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/Update");
+                    urlBuilder_.Append("/Update/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -3524,12 +3528,12 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<FolderDetailResponseIApiResult> GetByIdAsync(Guid id);
+        System.Threading.Tasks.Task<FolderDetailResponseIApiResult> GetByIdAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<FolderDetailResponseIApiResult> GetByIdAsync(Guid id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<FolderDetailResponseIApiResult> GetByIdAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -3668,7 +3672,6 @@ namespace FluentCMS.Web.ApiClients
                     client_.Dispose();
             }
         }
-
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -9175,16 +9178,6 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class ContentCreateRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("value")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public System.Collections.Generic.IDictionary<string, object?> Value { get; set; } = new System.Collections.Generic.Dictionary<string, object?>();
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentDetailResponse
     {
 
@@ -9207,9 +9200,9 @@ namespace FluentCMS.Web.ApiClients
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid TypeId { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
         [System.ComponentModel.DataAnnotations.Required]
-        public System.Collections.Generic.IDictionary<string, object> Value { get; set; } = new System.Collections.Generic.Dictionary<string, object>();
+        public System.Collections.Generic.Dictionary<string, object?> Data { get; set; } = new System.Collections.Generic.Dictionary<string, object?>();
 
     }
 
@@ -9426,11 +9419,23 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("name")]
         public string? Name { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+        public string? Description { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("type")]
         public string? Type { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("required")]
+        public bool Required { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("unique")]
+        public bool Unique { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("label")]
+        public string? Label { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("settings")]
-        public System.Collections.Generic.IDictionary<string, object?>? Settings { get; set; } = default!;
+        public System.Collections.Generic.Dictionary<string, object?>? Settings { get; set; } = default!;
 
     }
 
@@ -9448,19 +9453,6 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string? Description { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class ContentUpdateRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("value")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public System.Collections.Generic.IDictionary<string, object?> Value { get; set; } = new System.Collections.Generic.Dictionary<string, object?>();
-
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid Id { get; set; } = default!;
 
     }
 
@@ -10096,7 +10088,7 @@ namespace FluentCMS.Web.ApiClients
         public SiteDetailResponse Site { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("sections")]
-        public System.Collections.Generic.IDictionary<string, System.Collections.Generic.ICollection<PluginDetailResponse>>? Sections { get; set; } = default!;
+        public System.Collections.Generic.Dictionary<string, System.Collections.Generic.ICollection<PluginDetailResponse>>? Sections { get; set; } = default!;
 
     }
 

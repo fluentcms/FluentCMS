@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace FluentCMS.Web.Api;
+namespace FluentCMS;
 
 public class DictionaryJsonConverter : JsonConverter<Dictionary<string, object?>>
 {
@@ -59,8 +59,15 @@ public class DictionaryJsonConverter : JsonConverter<Dictionary<string, object?>
             case JsonTokenType.False:
                 return false;
             case JsonTokenType.Number:
-                return reader.GetDecimal();
+                return reader.GetDouble();
             case JsonTokenType.String:
+                // check if the string is a date
+                if (DateTime.TryParse(reader.GetString(), out var date))
+                    return date;
+
+                if (Guid.TryParse(reader.GetString(), out var guid))
+                    return guid;
+
                 return reader.GetString();
             case JsonTokenType.StartObject:
                 return Read(ref reader, typeof(Dictionary<string, object?>), options);
@@ -108,8 +115,17 @@ public class DictionaryJsonConverter : JsonConverter<Dictionary<string, object?>
             case bool boolValue:
                 writer.WriteBooleanValue(boolValue);
                 break;
-            case decimal decimalValue:
-                writer.WriteNumberValue(decimalValue);
+            case double doubleValue:
+                writer.WriteNumberValue(doubleValue);
+                break;
+            case int intValue:
+                writer.WriteNumberValue(intValue);
+                break;
+            case DateTime dateTimeValue:
+                writer.WriteStringValue(dateTimeValue.ToString());
+                break;
+            case Guid guidValue:
+                writer.WriteStringValue(guidValue);
                 break;
             case string stringValue:
                 writer.WriteStringValue(stringValue);
