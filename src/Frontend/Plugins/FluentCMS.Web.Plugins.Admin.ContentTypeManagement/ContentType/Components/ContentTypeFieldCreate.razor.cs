@@ -21,6 +21,7 @@ public partial class ContentTypeFieldCreate
         var parameters = new Dictionary<string, object>
         {
             { nameof(ContentTypeField), ContentTypeField! },
+            { "Model", ContentTypeField.ToFieldModel() },
             { "OnCancel", OnComplete },
             { "OnSubmit", EventCallback.Factory.Create<ContentTypeField>(this, OnFieldCreate) },
 
