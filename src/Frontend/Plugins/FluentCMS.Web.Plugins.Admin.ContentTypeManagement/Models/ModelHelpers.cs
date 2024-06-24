@@ -19,7 +19,7 @@ public static class ModelHelpers
                 return new FieldValue<double?> { Name = fieldModel.Name, Value = (double?)valuesDict[fieldModel.Name] };
 
             case FieldTypes.SINGLE_FILE:
-                return new FieldValue<Guid?> { Name = fieldModel.Name, Value = (Guid?)valuesDict[fieldModel.Name] };
+                return new FieldValue<Guid?> { Name = fieldModel.Name, Value = valuesDict.TryGetValue(fieldModel.Name, out object? value) ? (Guid?)value : default! };
 
             case FieldTypes.BOOLEAN:
                 return new FieldValue<bool> { Name = fieldModel.Name, Value = (bool)(valuesDict[fieldModel.Name] ?? false) };

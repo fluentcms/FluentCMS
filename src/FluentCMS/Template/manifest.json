@@ -515,12 +515,12 @@
                 {
                     "Name": "Featured Image",
                     "Type": "single-file",
+                    "Label": "Featured Image",
+                    "Description": "Blog post main image",
+                    "Required": false,
                     "Settings": {
-                        "Label": "Featured Image",
-                        "Description": "Blog post main image",
                         "Placeholder": "Choose post main image",
-                        "Required": false,
-                        "DataTableVisible": false,
+                        "DataTableVisible": true,
                         "DataTableViewComponent": "SingleFileFieldDataTableFile",
                         "FormViewOrder": 4,
                         "FormColWidth": 12,
