@@ -1,4 +1,4 @@
-namespace FluentCMS.Web.Plugins;
+namespace FluentCMS.Web.Plugins.Admin.FileManagement;
 
 public partial class FileUploadModal
 {

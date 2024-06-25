@@ -61,14 +61,14 @@ public class DictionaryJsonConverter : JsonConverter<Dictionary<string, object?>
             case JsonTokenType.Number:
                 return reader.GetDouble();
             case JsonTokenType.String:
-                // check if the string is a date
-                if (DateTime.TryParse(reader.GetString(), out var date))
+                var stringValue = reader.GetString();
+                if (DateTime.TryParse(stringValue, out var date))
                     return date;
 
-                if (Guid.TryParse(reader.GetString(), out var guid))
+                if (Guid.TryParse(stringValue, out var guid))
                     return guid;
 
-                return reader.GetString();
+                return stringValue;
             case JsonTokenType.StartObject:
                 return Read(ref reader, typeof(Dictionary<string, object?>), options);
             case JsonTokenType.StartArray:
@@ -125,7 +125,7 @@ public class DictionaryJsonConverter : JsonConverter<Dictionary<string, object?>
                 writer.WriteStringValue(dateTimeValue.ToString());
                 break;
             case Guid guidValue:
-                writer.WriteStringValue(guidValue);
+                writer.WriteStringValue(guidValue.ToString());
                 break;
             case string stringValue:
                 writer.WriteStringValue(stringValue);

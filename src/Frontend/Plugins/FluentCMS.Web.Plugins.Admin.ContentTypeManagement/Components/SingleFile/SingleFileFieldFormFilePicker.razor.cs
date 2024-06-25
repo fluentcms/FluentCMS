@@ -14,9 +14,26 @@ public partial class SingleFileFieldFormFilePicker
         return HttpClientFactory.CreateApiClient<TClient>(UserLogin);
     }
     #endregion
-    
-    private bool FilesModalOpen { get; set; }
-    private bool UploadModalOpen { get; set; }
+
+    private List<FileParameter> Files { get; set; }
+
+    private async Task OnFilesChanged(InputFileChangeEventArgs e)
+    {
+        Files = [];
+        foreach (var file in e.GetMultipleFiles(FileUploadConfig.MaxCount))
+        {
+            var Data = file.OpenReadStream(FileUploadConfig.MaxSize);
+            Files.Add(new FileParameter(Data, file.Name, file.ContentType));
+        }
+
+        var result = await GetApiClient<FileClient>().UploadAsync(default, Files);
+        if (result?.Data.Count > 0)
+        {
+            FieldValue.Value = result?.Data.Select(x => x.Id).ToList()[0];
+            await Load();
+        }
+    }
+
     private string FileName { get; set; } = string.Empty;
     private bool TableAction { get; set; } = true;
 
@@ -32,7 +49,6 @@ public partial class SingleFileFieldFormFilePicker
         await Load();
     }
 
-
     private async Task Load()
     {
         if (FieldValue.Value != null)
@@ -41,52 +57,4 @@ public partial class SingleFileFieldFormFilePicker
             FileName = fileResponse?.Data.Name;
         }
     }
-
-    public async Task OnChooseClicked()
-    {
-        FilesModalOpen = true;
-    }
-    public async Task OnFileChoose(Guid id)
-    {
-        FilesModalOpen = false;
-
-        FieldValue.Value = id;
-        await Load();
-
-        Console.WriteLine("File Chosen: " + id.ToString());
-    }
-
-    public async Task OnUploadClicked()
-    {
-        UploadModalOpen = true;
-
-        Console.WriteLine("Clicked Upload button");
-    }
-
-    #region Upload File
-
-    private async Task OnFileUpload(List<FileParameter> files)
-    {
-        Console.WriteLine($"OnFileUpload {files}");
-        var file = await GetApiClient<FileClient>().UploadAsync(null, files);
-        Console.WriteLine(file);
-        if (file?.Data.Count > 0)
-        {
-            FieldValue.Value = file?.Data.Select(x => x.Id).ToList()[0];
-            await Load();
-        }
-
-        UploadModalOpen = false;
-
-        // await Load();
-    }
-
-    private async Task OnUploadCancel()
-    {
-        UploadModalOpen = false;
-    }
-
-    #endregion
-
-
 }
