@@ -1,4 +1,4 @@
-﻿namespace FluentCMS;
+﻿namespace FluentCMS.Web.ApiClients;
 
 public interface IContent
 {

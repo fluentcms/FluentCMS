@@ -37,7 +37,7 @@ public static class ObjectExtensions
 
     private const BindingFlags _bindingAttr = BindingFlags.Instance | BindingFlags.Public | BindingFlags.GetProperty;
 
-    public static Dictionary<string, object> AsDictionary(this IContent source, bool ignoreId)
+    public static Dictionary<string, object> ToDictionary(this IContent source)
     {
         var result = new Dictionary<string, object>();
         foreach (var prop in source.GetType().GetProperties(_bindingAttr))
@@ -49,11 +49,8 @@ public static class ObjectExtensions
             }
         }
 
-        if (ignoreId)
-        {
-            result.Remove("Id");
-            result.Remove("id");
-        }
+        result.Remove("Id");
+        result.Remove("id");
 
         return result;
     }

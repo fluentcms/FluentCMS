@@ -42,9 +42,9 @@ public partial class NewsEditPlugin
             return;
                 
         if (IsEditMode())
-            await GetApiClient<PluginContentClient>().UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.Id, Model.AsDictionary(false));
+            await GetApiClient<PluginContentClient>().UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.Id, Model.ToDictionary());
         else
-            await GetApiClient<PluginContentClient>().CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.AsDictionary(true));
+            await GetApiClient<PluginContentClient>().CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.ToDictionary());
 
         NavigateBack();
     }

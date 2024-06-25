@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Web.Plugins.Contents.News;
+﻿using FluentCMS.Web.ApiClients;
+
+namespace FluentCMS.Web.Plugins.Contents.News;
 
 public class NewsContent : IContent
 {
