@@ -52,18 +52,6 @@ public class PluginContentController(IPluginContentService pluginContentService,
             Data = request
         };
 
-        //// check if dictionary has id key, set the id property and remove it
-        //// also check if the id is valid guid
-        //if (pluginContent.Value.TryGetValue("id", out object? value) && Guid.TryParse(value?.ToString() ?? string.Empty, out var id))
-        //{
-        //    pluginContent.Id = id;
-        //    pluginContent.Value.Remove("id");
-        //}
-        //else
-        //{
-        //    throw new AppException(ExceptionCodes.PluginContentUnableToUpdate);
-        //}
-
         await pluginContentService.Update(pluginContent, cancellationToken);
 
         var response = mapper.Map<PluginContentDetailResponse>(pluginContent);
