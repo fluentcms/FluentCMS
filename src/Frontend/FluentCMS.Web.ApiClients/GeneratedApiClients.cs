@@ -6327,48 +6327,48 @@ namespace FluentCMS.Web.ApiClients
     {
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PluginContentValueIApiPagingResult> GetAllAsync(string pluginContentTypeName, System.Guid pluginId);
+        System.Threading.Tasks.Task<PluginContentDetailResponseIApiPagingResult> GetAllAsync(string pluginContentTypeName, System.Guid pluginId);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PluginContentValueIApiPagingResult> GetAllAsync(string pluginContentTypeName, System.Guid pluginId, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PluginContentDetailResponseIApiPagingResult> GetAllAsync(string pluginContentTypeName, System.Guid pluginId, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PluginContentValueIApiResult> GetByIdAsync(string pluginContentTypeName, System.Guid id);
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PluginContentValueIApiResult> GetByIdAsync(string pluginContentTypeName, System.Guid id, System.Threading.CancellationToken cancellationToken);
-
-        /// <returns>OK</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PluginContentValueIApiResult> CreateAsync(string pluginContentTypeName, System.Guid pluginId, System.Collections.Generic.Dictionary<string, object>? body);
+        System.Threading.Tasks.Task<PluginContentDetailResponseIApiResult> GetByIdAsync(string pluginContentTypeName, System.Guid pluginId, System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PluginContentValueIApiResult> CreateAsync(string pluginContentTypeName, System.Guid pluginId, System.Collections.Generic.Dictionary<string, object>? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PluginContentDetailResponseIApiResult> GetByIdAsync(string pluginContentTypeName, System.Guid pluginId, System.Guid id, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PluginContentValueIApiResult> UpdateAsync(string pluginContentTypeName, System.Guid pluginId, System.Collections.Generic.Dictionary<string, object>? body);
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PluginContentValueIApiResult> UpdateAsync(string pluginContentTypeName, System.Guid pluginId, System.Collections.Generic.Dictionary<string, object>? body, System.Threading.CancellationToken cancellationToken);
-
-        /// <returns>OK</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string pluginContentTypeName, System.Guid id);
+        System.Threading.Tasks.Task<PluginContentDetailResponseIApiResult> CreateAsync(string pluginContentTypeName, System.Guid pluginId, System.Collections.Generic.Dictionary<string, object>? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string pluginContentTypeName, System.Guid id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PluginContentDetailResponseIApiResult> CreateAsync(string pluginContentTypeName, System.Guid pluginId, System.Collections.Generic.Dictionary<string, object>? body, System.Threading.CancellationToken cancellationToken);
+
+        /// <returns>OK</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<PluginContentDetailResponseIApiResult> UpdateAsync(string pluginContentTypeName, System.Guid pluginId, System.Guid id, System.Collections.Generic.Dictionary<string, object>? body);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<PluginContentDetailResponseIApiResult> UpdateAsync(string pluginContentTypeName, System.Guid pluginId, System.Guid id, System.Collections.Generic.Dictionary<string, object>? body, System.Threading.CancellationToken cancellationToken);
+
+        /// <returns>OK</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string pluginContentTypeName, System.Guid pluginId, System.Guid id);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string pluginContentTypeName, System.Guid pluginId, System.Guid id, System.Threading.CancellationToken cancellationToken);
 
     }
 
@@ -6405,7 +6405,7 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<PluginContentValueIApiPagingResult> GetAllAsync(string pluginContentTypeName, System.Guid pluginId)
+        public virtual System.Threading.Tasks.Task<PluginContentDetailResponseIApiPagingResult> GetAllAsync(string pluginContentTypeName, System.Guid pluginId)
         {
             return GetAllAsync(pluginContentTypeName, pluginId, System.Threading.CancellationToken.None);
         }
@@ -6413,7 +6413,7 @@ namespace FluentCMS.Web.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PluginContentValueIApiPagingResult> GetAllAsync(string pluginContentTypeName, System.Guid pluginId, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PluginContentDetailResponseIApiPagingResult> GetAllAsync(string pluginContentTypeName, System.Guid pluginId, System.Threading.CancellationToken cancellationToken)
         {
             if (pluginContentTypeName == null)
                 throw new System.ArgumentNullException("pluginContentTypeName");
@@ -6432,13 +6432,11 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/PluginContent/{pluginContentTypeName}/GetAll"
+                    // Operation Path: "api/PluginContent/{pluginContentTypeName}/GetAll/{pluginId}"
                     urlBuilder_.Append("api/PluginContent/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginContentTypeName, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/GetAll");
-                    urlBuilder_.Append('?');
-                    urlBuilder_.Append(System.Uri.EscapeDataString("pluginId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pluginId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
-                    urlBuilder_.Length--;
+                    urlBuilder_.Append("/GetAll/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginId, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -6465,7 +6463,7 @@ namespace FluentCMS.Web.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<PluginContentValueIApiPagingResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PluginContentDetailResponseIApiPagingResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -6494,18 +6492,21 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<PluginContentValueIApiResult> GetByIdAsync(string pluginContentTypeName, System.Guid id)
+        public virtual System.Threading.Tasks.Task<PluginContentDetailResponseIApiResult> GetByIdAsync(string pluginContentTypeName, System.Guid pluginId, System.Guid id)
         {
-            return GetByIdAsync(pluginContentTypeName, id, System.Threading.CancellationToken.None);
+            return GetByIdAsync(pluginContentTypeName, pluginId, id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PluginContentValueIApiResult> GetByIdAsync(string pluginContentTypeName, System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PluginContentDetailResponseIApiResult> GetByIdAsync(string pluginContentTypeName, System.Guid pluginId, System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (pluginContentTypeName == null)
                 throw new System.ArgumentNullException("pluginContentTypeName");
+
+            if (pluginId == null)
+                throw new System.ArgumentNullException("pluginId");
 
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -6521,10 +6522,12 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/PluginContent/{pluginContentTypeName}/GetById/{id}"
+                    // Operation Path: "api/PluginContent/{pluginContentTypeName}/GetById/{pluginId}/{id}"
                     urlBuilder_.Append("api/PluginContent/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginContentTypeName, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/GetById/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('/');
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -6552,7 +6555,7 @@ namespace FluentCMS.Web.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<PluginContentValueIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PluginContentDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -6581,7 +6584,7 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<PluginContentValueIApiResult> CreateAsync(string pluginContentTypeName, System.Guid pluginId, System.Collections.Generic.Dictionary<string, object>? body)
+        public virtual System.Threading.Tasks.Task<PluginContentDetailResponseIApiResult> CreateAsync(string pluginContentTypeName, System.Guid pluginId, System.Collections.Generic.Dictionary<string, object>? body)
         {
             return CreateAsync(pluginContentTypeName, pluginId, body, System.Threading.CancellationToken.None);
         }
@@ -6589,7 +6592,7 @@ namespace FluentCMS.Web.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PluginContentValueIApiResult> CreateAsync(string pluginContentTypeName, System.Guid pluginId, System.Collections.Generic.Dictionary<string, object>? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PluginContentDetailResponseIApiResult> CreateAsync(string pluginContentTypeName, System.Guid pluginId, System.Collections.Generic.Dictionary<string, object>? body, System.Threading.CancellationToken cancellationToken)
         {
             if (pluginContentTypeName == null)
                 throw new System.ArgumentNullException("pluginContentTypeName");
@@ -6612,13 +6615,11 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/PluginContent/{pluginContentTypeName}/Create"
+                    // Operation Path: "api/PluginContent/{pluginContentTypeName}/Create/{pluginId}"
                     urlBuilder_.Append("api/PluginContent/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginContentTypeName, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/Create");
-                    urlBuilder_.Append('?');
-                    urlBuilder_.Append(System.Uri.EscapeDataString("pluginId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pluginId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
-                    urlBuilder_.Length--;
+                    urlBuilder_.Append("/Create/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginId, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -6645,7 +6646,7 @@ namespace FluentCMS.Web.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<PluginContentValueIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PluginContentDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -6674,21 +6675,24 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<PluginContentValueIApiResult> UpdateAsync(string pluginContentTypeName, System.Guid pluginId, System.Collections.Generic.Dictionary<string, object>? body)
+        public virtual System.Threading.Tasks.Task<PluginContentDetailResponseIApiResult> UpdateAsync(string pluginContentTypeName, System.Guid pluginId, System.Guid id, System.Collections.Generic.Dictionary<string, object>? body)
         {
-            return UpdateAsync(pluginContentTypeName, pluginId, body, System.Threading.CancellationToken.None);
+            return UpdateAsync(pluginContentTypeName, pluginId, id, body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PluginContentValueIApiResult> UpdateAsync(string pluginContentTypeName, System.Guid pluginId, System.Collections.Generic.Dictionary<string, object>? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PluginContentDetailResponseIApiResult> UpdateAsync(string pluginContentTypeName, System.Guid pluginId, System.Guid id, System.Collections.Generic.Dictionary<string, object>? body, System.Threading.CancellationToken cancellationToken)
         {
             if (pluginContentTypeName == null)
                 throw new System.ArgumentNullException("pluginContentTypeName");
 
             if (pluginId == null)
                 throw new System.ArgumentNullException("pluginId");
+
+            if (id == null)
+                throw new System.ArgumentNullException("id");
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -6705,13 +6709,13 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/PluginContent/{pluginContentTypeName}/Update"
+                    // Operation Path: "api/PluginContent/{pluginContentTypeName}/Update/{pluginId}/{id}"
                     urlBuilder_.Append("api/PluginContent/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginContentTypeName, System.Globalization.CultureInfo.InvariantCulture)));
-                    urlBuilder_.Append("/Update");
-                    urlBuilder_.Append('?');
-                    urlBuilder_.Append(System.Uri.EscapeDataString("pluginId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pluginId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
-                    urlBuilder_.Length--;
+                    urlBuilder_.Append("/Update/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('/');
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -6738,7 +6742,7 @@ namespace FluentCMS.Web.ApiClients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<PluginContentValueIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<PluginContentDetailResponseIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -6767,18 +6771,21 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string pluginContentTypeName, System.Guid id)
+        public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string pluginContentTypeName, System.Guid pluginId, System.Guid id)
         {
-            return DeleteAsync(pluginContentTypeName, id, System.Threading.CancellationToken.None);
+            return DeleteAsync(pluginContentTypeName, pluginId, id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string pluginContentTypeName, System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(string pluginContentTypeName, System.Guid pluginId, System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (pluginContentTypeName == null)
                 throw new System.ArgumentNullException("pluginContentTypeName");
+
+            if (pluginId == null)
+                throw new System.ArgumentNullException("pluginId");
 
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -6794,10 +6801,12 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/PluginContent/{pluginContentTypeName}/Delete/{id}"
+                    // Operation Path: "api/PluginContent/{pluginContentTypeName}/Delete/{pluginId}/{id}"
                     urlBuilder_.Append("api/PluginContent/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginContentTypeName, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/Delete/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('/');
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -10786,7 +10795,40 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class PluginContentValueIApiPagingResult
+    public partial class PluginContentDetailResponse
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("createdBy")]
+        public string? CreatedBy { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
+        public System.DateTime CreatedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("modifiedBy")]
+        public string? ModifiedBy { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
+        public System.DateTime? ModifiedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("siteId")]
+        public System.Guid SiteId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pluginId")]
+        public System.Guid PluginId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
+        public string? Type { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public System.Collections.Generic.Dictionary<string, object?>? Data { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PluginContentDetailResponseIApiPagingResult
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
@@ -10811,7 +10853,7 @@ namespace FluentCMS.Web.ApiClients
         public bool IsSuccess { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public System.Collections.Generic.ICollection<System.Collections.Generic.Dictionary<string, object>>? Data { get; set; } = default!;
+        public System.Collections.Generic.ICollection<PluginContentDetailResponse>? Data { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
         public int PageSize { get; set; } = default!;
@@ -10834,7 +10876,7 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class PluginContentValueIApiResult
+    public partial class PluginContentDetailResponseIApiResult
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
@@ -10859,7 +10901,7 @@ namespace FluentCMS.Web.ApiClients
         public bool IsSuccess { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public System.Collections.Generic.Dictionary<string, object>? Data { get; set; } = default!;
+        public PluginContentDetailResponse Data { get; set; } = default!;
 
     }
 

@@ -1,26 +1,23 @@
-﻿@using FluentCMS.Web.UI.Components
-@inherits BasePlugin
+﻿@inherits BasePlugin
 
-<PluginBody Title="New List">
-    <ActionsFragment>
-        <Button Href="@GetUrl("Edit News")" Color="Color.Primary">
-            <Icon Name="IconName.Plus" />Add News
-        </Button>
-    </ActionsFragment>
-    <ChildContent>
-        <DataTable Items="Contents">
-            <DataTableItem>
-                <h3>@context.Title</h3>
-                <p>@context.Content</p>
-                <Stack>
-                    <Button Color="Color.Primary" Href="@GetUrl("News Detail", new { id = @context.Id })" Size="ButtonSize.Small">
-                        <Icon Name="IconName.Eye" />View Detail
-                    </Button>
-                    <Button Color="Color.Primary" Href="@GetUrl("Update News", new { id = @context.Id })" Size="ButtonSize.Small">
-                        <Icon Name="IconName.Edit" />Edit
-                    </Button>
-                </Stack>
-            </DataTableItem>
-        </DataTable>
-    </ChildContent>
-</PluginBody>
+@if (Plugin != null)
+{
+    <table style="border: 1px solid black;border-collapse: collapse;" width="100%">
+        <tr>
+            <th width="100%" colspan="2">News List</th>
+            <th style="white-space:nowrap">
+                <a href="@NavigationManager.Uri?viewName=Edit News&pluginId=@Plugin.Id">Add News</a>
+            </th>
+        </tr>
+        @foreach (var item in Contents ?? [])
+        {
+            <tr>
+                <td><b>@item.Title</b></td>
+                <td>@item.Content</td>
+                <td>
+                    <a href="@NavigationManager.Uri?viewName=Edit News&pluginId=@Plugin.Id&id=@item.Id">Edit</a>
+                </td>
+            </tr>
+        }
+    </table>
+}

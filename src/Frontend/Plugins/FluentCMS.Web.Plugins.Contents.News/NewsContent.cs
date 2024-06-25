@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Web.Plugins.Contents.News;
 
-public class NewsContent
+public class NewsContent : IContent
 {
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;

@@ -1,75 +1,79 @@
 ﻿namespace FluentCMS.Web.Api.Controllers;
 
 [Route("api/[controller]/{pluginContentTypeName}/[action]")]
-public class PluginContentController(IPluginContentService pluginContentService) : BaseGlobalController
+public class PluginContentController(IPluginContentService pluginContentService, IMapper mapper) : BaseGlobalController
 {
 
-    [HttpGet]
+    [HttpGet("{pluginId}")]
     [PolicyAll]
-    public async Task<IApiPagingResult<PluginContentValue>> GetAll([FromRoute] string pluginContentTypeName, [FromQuery, Required] Guid pluginId, CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<PluginContentDetailResponse>> GetAll([FromRoute] string pluginContentTypeName, [FromRoute, Required] Guid pluginId, CancellationToken cancellationToken = default)
     {
         var contents = await pluginContentService.GetByPluginId(pluginId, cancellationToken);
-        return OkPaged(contents.Select(x => x.Value).ToList());
+        var response = mapper.Map<List<PluginContentDetailResponse>>(contents.ToList());
+        return OkPaged(response);
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{pluginId}/{id}")]
     [PolicyAll]
-    public async Task<IApiResult<PluginContentValue>> GetById([FromRoute] string pluginContentTypeName, [FromRoute, Required] Guid id, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<PluginContentDetailResponse>> GetById([FromRoute] string pluginContentTypeName, [FromRoute, Required] Guid pluginId, [FromRoute, Required] Guid id, CancellationToken cancellationToken = default)
     {
         var pluginContent = await pluginContentService.GetById(pluginContentTypeName, id, cancellationToken);
-        return Ok(pluginContent.Value);
+        var response = mapper.Map<PluginContentDetailResponse>(pluginContent);
+        return Ok(response);
     }
 
-    [HttpPost]
+    [HttpPost("{pluginId}")]
     [PolicyAll]
-    public async Task<IApiResult<PluginContentValue>> Create([FromRoute] string pluginContentTypeName, [FromQuery, Required] Guid pluginId, [FromBody] PluginContentValue request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<PluginContentDetailResponse>> Create([FromRoute] string pluginContentTypeName, [FromRoute, Required] Guid pluginId, [FromBody] Dictionary<string, object?> request, CancellationToken cancellationToken = default)
     {
         var pluginContent = new PluginContent
         {
             PluginId = pluginId,
             Type = pluginContentTypeName,
-            Value = request
+            Data = request
         };
-
-        // check if dictionary has id key, remove it
-        pluginContent.Value.Remove("id");
 
         await pluginContentService.Create(pluginContent, cancellationToken);
 
-        return Ok(pluginContent.Value);
+        var response = mapper.Map<PluginContentDetailResponse>(pluginContent);
+
+        return Ok(response);
     }
 
-    [HttpPut]
+    [HttpPut("{pluginId}/{id}")]
     [PolicyAll]
-    public async Task<IApiResult<PluginContentValue>> Update([FromRoute] string pluginContentTypeName, [FromQuery, Required] Guid pluginId, [FromBody] PluginContentValue request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<PluginContentDetailResponse>> Update([FromRoute] string pluginContentTypeName, [FromRoute, Required] Guid pluginId, [FromRoute, Required] Guid id, [FromBody] Dictionary<string, object?> request, CancellationToken cancellationToken = default)
     {
         var pluginContent = new PluginContent
         {
+            Id = id,
             PluginId = pluginId,
             Type = pluginContentTypeName,
-            Value = request
+            Data = request
         };
 
-        // check if dictionary has id key, set the id property and remove it
-        // also check if the id is valid guid
-        if (pluginContent.Value.TryGetValue("id", out object? value) && Guid.TryParse(value?.ToString() ?? string.Empty, out var id))
-        {
-            pluginContent.Id = id;
-            pluginContent.Value.Remove("id");
-        }
-        else
-        {
-            throw new AppException(ExceptionCodes.PluginContentUnableToUpdate);
-        }
+        //// check if dictionary has id key, set the id property and remove it
+        //// also check if the id is valid guid
+        //if (pluginContent.Value.TryGetValue("id", out object? value) && Guid.TryParse(value?.ToString() ?? string.Empty, out var id))
+        //{
+        //    pluginContent.Id = id;
+        //    pluginContent.Value.Remove("id");
+        //}
+        //else
+        //{
+        //    throw new AppException(ExceptionCodes.PluginContentUnableToUpdate);
+        //}
 
         await pluginContentService.Update(pluginContent, cancellationToken);
 
-        return Ok(pluginContent.Value);
+        var response = mapper.Map<PluginContentDetailResponse>(pluginContent);
+
+        return Ok(response);
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{pluginId}/{id}")]
     [PolicyAll]
-    public async Task<IApiResult<bool>> Delete([FromRoute] string pluginContentTypeName, [FromRoute] Guid id, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<bool>> Delete([FromRoute] string pluginContentTypeName, [FromRoute, Required] Guid pluginId, [FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         await pluginContentService.Delete(pluginContentTypeName, id, cancellationToken);
         return Ok(true);
