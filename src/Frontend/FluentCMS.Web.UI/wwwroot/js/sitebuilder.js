@@ -12,45 +12,54 @@ function getFrameDocument() {
     })
 }
 
-
 let createForm;
 let updateForm;
 let deleteForm;
+
+function updatePlugins() {
+    const sections = {}
+
+    frameDocument.querySelectorAll('.f-section').forEach(section => {
+        sections[section.dataset.name] = []
+
+        section.querySelectorAll('.f-plugin-container').forEach(plugin => {
+            sections[section.dataset.name].push(plugin.dataset.id)
+        })
+    })
+
+    var updateInputs = ''
+    for(let section in sections) {
+        for(let index in sections[section]) {
+            const plugin = sections[section][index]
+            updateInputs += `
+                <input type="hidden" name="UpdateModel[${index}].Section" value="${section}" />
+                <input type="hidden" name="UpdateModel[${index}].Id" value="${plugin}" />
+                <input type="hidden" name="UpdateModel[${index}].Order" value="${index}" />
+            `
+        }
+    }
+    updateForm.querySelector('#f-update-form-inputs').outerHTML = updateInputs
+
+    console.log(updateForm.innerHTML)
+    setTimeout(() => {
+        submitForm(updateForm, {})
+    })
+} 
 
 const actions = {
     'cancel-edit-mode'() {
         actions["hide-sidebar"]()
         saveState(true)
-    },
-    async 'save-edit-mode'() {
-        actions["hide-sidebar"]()
-        const sections = {}
-
-        await frameDocument.querySelectorAll('.f-section').forEach(section => {
-            sections[section.dataset.name] = []
-
-            section.querySelectorAll('.f-plugin-container').forEach(plugin => {
-                sections[section.dataset.name].push(plugin.dataset.id)
-            })
-        })
-
-        var updateInputs = ''
-        for(let section in sections) {
-            for(let index in sections[section]) {
-                const plugin = sections[section][index]
-                updateInputs += `
-                    <input type="hidden" name="UpdateModel[${index}].Section" value="${section}" />
-                    <input type="hidden" name="UpdateModel[${index}].Id" value="${plugin}" />
-                    <input type="hidden" name="UpdateModel[${index}].Order" value="${index}" />
-                `
-            }
-        }
-        updateForm.querySelector('#f-update-form-inputs').outerHTML = updateInputs
-
-        console.log(updateForm.innerHTML)
         setTimeout(() => {
-            saveState(true)
-            submitForm(updateForm, {})
+            window.location.href = window.location.href.replace('?pageEdit=true', '')
+        })
+    },
+    'save-edit-mode'() {
+        actions["hide-sidebar"]()
+        saveState(true)
+        updatePlugins()
+        setTimeout(() => {
+            window.location.href = window.location.href.replace('?pageEdit=true', '')
         })
     },
     'plugin-container-action-delete'(el) {
@@ -96,7 +105,11 @@ function initializeSortable(frameDocument) {
             draggable: '.f-plugin-container',
             ghostClass: 'f-plugin-container-moving',
             chosenClass: 'f-plugin-container-chosen',
-            handle: '.f-plugin-container-action-drag'
+            handle: '.f-plugin-container-action-drag',
+            onEnd() {
+                saveState()
+                updatePlugins()
+            }
         });
 
         new Sortable(document.querySelector('.f-plugin-definition-list'), {
@@ -130,19 +143,19 @@ async function onInit() {
 
     const state = loadState()
 
-    alert('init called')
-    if(state.sidebarOpen) {
-        document.body.classList.add('f-page-editor-sidebar-open')
-    } else {
-        document.body.classList.add('f-page-editor-sidebar-close')
-    }
+    // state.sidebarOpen
+    // if(true) {
+    //     document.body.classList.add('f-page-editor-sidebar-open')
+    // } else {
+    //     document.body.classList.add('f-page-editor-sidebar-close')
+    // }
 
     createForm = document.querySelector("#f-page-editor-form-create")
     updateForm = document.querySelector("#f-page-editor-form-update")
     deleteForm = document.querySelector("#f-page-editor-form-delete")
 
     if(state.scroll) {
-        scrollTo({
+        frameDocument.scrollingElement.scrollTo({
             top: state.scroll
         })
     }
@@ -155,7 +168,7 @@ async function onInit() {
 function saveState(done = false) {
     localStorage.setItem(localStorageKey, JSON.stringify({
         sidebarOpen: document.body.classList.contains('f-page-editor-sidebar-open') ? true : false,
-        scroll: window.scrollY,
+        scroll: frameDocument.scrollingElement.scrollTop,
         done
     }))
 
@@ -176,4 +189,6 @@ document.addEventListener('fluentcms:afterenhanced', () => {
     onInit()
 })
 
-onInit()
+document.addEventListener('fluentcms:init', () => {
+    onInit()
+})

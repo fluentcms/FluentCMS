@@ -117,7 +117,10 @@ body {
     border: none;
     box-sizing: border-box;
 }
+.dark .f-page-editor-iframe {
+    background-color: #404040;
 
+}
 .f-page-editor-sidebar-open .f-page-editor-iframe {
     width: calc(100% - 200px);
 }
@@ -183,6 +186,10 @@ body {
 }
 
 .f-page-editor-forms {
+    display: none;
+}
+
+.f-only-sidebar-opened {
     display: none;
 }
 

@@ -33,7 +33,7 @@ public partial class PageEditorForms {
     protected virtual void NavigateBack()
     {
         var url = new Uri(NavigationManager.Uri).LocalPath;
-        NavigateTo(url);
+        NavigateTo(url + "?pageEdit=true");
     }
 
     #endregion
