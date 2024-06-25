@@ -1,28 +1,32 @@
 ﻿const localStorageKey = "SITE_BUILDER"
 
-const createForm = document.querySelector("#f-page-editor-form-create")
-const updateForm = document.querySelector("#f-page-editor-form-update")
-const deleteForm = document.querySelector("#f-page-editor-form-delete")
+let iframeElement = document.querySelector('.f-page-editor-iframe')
+
+let frameDocument;
+function getFrameDocument() {
+    return new Promise(resolve => {
+        iframeElement.onload = () => {
+            frameDocument = iframeElement.contentDocument;
+            resolve(frameDocument)
+        }
+    })
+}
+
+
+let createForm;
+let updateForm;
+let deleteForm;
 
 const actions = {
-    'open-edit-mode'() {
-        document.body.classList.remove('f-view-mode')
-        document.body.classList.add('f-edit-mode')
-        actions["show-sidebar"]()
-        saveState()
-    },
     'cancel-edit-mode'() {
-        document.body.classList.remove('f-edit-mode')
-        document.body.classList.add('f-view-mode')
         actions["hide-sidebar"]()
-        saveState()
+        saveState(true)
     },
-    'save-edit-mode'() {
-        document.body.classList.remove('f-edit-mode')
-        document.body.classList.add('f-view-mode')
+    async 'save-edit-mode'() {
         actions["hide-sidebar"]()
         const sections = {}
-        document.querySelectorAll('.f-section').forEach(section => {
+
+        await frameDocument.querySelectorAll('.f-section').forEach(section => {
             sections[section.dataset.name] = []
 
             section.querySelectorAll('.f-plugin-container').forEach(plugin => {
@@ -43,13 +47,16 @@ const actions = {
         }
         updateForm.querySelector('#f-update-form-inputs').outerHTML = updateInputs
 
+        console.log(updateForm.innerHTML)
         setTimeout(() => {
+            saveState(true)
             submitForm(updateForm, {})
         })
     },
     'plugin-container-action-delete'(el) {
         el.parentElement.parentElement.remove()
         const id = el.parentElement.parentElement.dataset.id
+        saveState()
         submitForm(deleteForm, {DeleteModel: id})
     },
     'show-sidebar'() {
@@ -76,12 +83,11 @@ function submitForm(form, data) {
     for(let key in data) {
         form.querySelector(`[name="${key}"]`).value = data[key]
     }
-    saveState()
     form.submit()
 }
 
-function initializeSortable() {
-    const sectionElements = document.querySelectorAll('.f-section');
+function initializeSortable(frameDocument) {
+    const sectionElements = frameDocument.querySelectorAll('.f-section');
 
     sectionElements.forEach(section => {
         new Sortable(section, {
@@ -107,6 +113,8 @@ function initializeSortable() {
                 const definitionId = event.clone.dataset.id
                 const sectionName = event.item.parentElement.dataset.name
 
+                saveState()
+
                 submitForm(createForm, {
                     'CreateModel.DefinitionId': definitionId,
                     'CreateModel.Order': event.newIndex - 1,
@@ -117,27 +125,21 @@ function initializeSortable() {
     });
 }
 
-function reloadSortable() {
-    document.querySelectorAll('.f-section').forEach(el => {
-        Sortable.get(el).destroy()
-    })
-    Sortable.get(document.querySelector('.f-plugin-definition-list')).destroy()
+async function onInit() {
+    const frameDocument = await getFrameDocument()
 
-    initializeSortable()
-}
-
-function onInit() {
     const state = loadState()
-    if(state.mode === 'edit') {
-        document.body.classList.add('f-edit-mode')
-    } else {
-        document.body.classList.add('f-view-mode')
-    }
+
+    alert('init called')
     if(state.sidebarOpen) {
         document.body.classList.add('f-page-editor-sidebar-open')
     } else {
         document.body.classList.add('f-page-editor-sidebar-close')
     }
+
+    createForm = document.querySelector("#f-page-editor-form-create")
+    updateForm = document.querySelector("#f-page-editor-form-update")
+    deleteForm = document.querySelector("#f-page-editor-form-delete")
 
     if(state.scroll) {
         scrollTo({
@@ -145,16 +147,25 @@ function onInit() {
         })
     }
 
+    initializeActions(frameDocument)
     initializeActions(document)
-    initializeSortable()
+    initializeSortable(frameDocument)
 }
 
-function saveState() {
+function saveState(done = false) {
     localStorage.setItem(localStorageKey, JSON.stringify({
-        mode: document.body.classList.contains('f-view-mode') ? 'view' : 'edit',
         sidebarOpen: document.body.classList.contains('f-page-editor-sidebar-open') ? true : false,
-        scroll: window.scrollY
+        scroll: window.scrollY,
+        done
     }))
+
+    // if(done) {
+    //     saveState()
+    //     setTimeout(() => {
+    //         window.location.href = window.location.href.replace('pageEdit', 'aaa')
+    //     })
+    // }
+
 }
 
 function loadState() {

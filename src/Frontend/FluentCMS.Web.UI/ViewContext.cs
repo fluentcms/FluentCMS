@@ -16,5 +16,6 @@ public enum ViewType
 {
     Default,
     PluginEdit,
-    PageEdit
+    PageEdit,
+    PagePreview
 }

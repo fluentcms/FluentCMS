@@ -95,6 +95,11 @@ public static class ServiceExtensions
                 viewContext.Type = ViewType.PageEdit;
             }
 
+            if (queryParams["pagePreview"] != null)
+            {
+                viewContext.Type = ViewType.PagePreview;
+            }
+
             return viewContext;
         });
 

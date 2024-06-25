@@ -1,5 +1,18 @@
 ﻿@if (ViewContext.Type == ViewType.Default)
 {
+    <div class="f-section">
+        @if (ViewContext.Page.Sections != null && ViewContext.Page.Sections.ContainsKey(Name))
+        {
+            @foreach (var Plugin in ViewContext.Page.Sections[Name].OrderBy(p => p.Order))
+            {
+                <PluginContainer @key="@Plugin" Plugin=@Plugin SectionName=@Name />
+            }
+        }
+    </div>
+}
+
+@if (ViewContext.Type == ViewType.PagePreview)
+{
     <div class="f-section" data-name="@Name">
         @if (ViewContext.Page.Sections != null && ViewContext.Page.Sections.ContainsKey(Name))
         {
