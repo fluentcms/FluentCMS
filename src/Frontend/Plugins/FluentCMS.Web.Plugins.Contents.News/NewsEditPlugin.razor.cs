@@ -17,17 +17,14 @@ public partial class NewsEditPlugin
 
     protected override async Task OnInitializedAsync()
     {
-        if (Model == null)
+        if (Model is null)
         {
             if (IsEditMode())
             {
                 var response = await GetApiClient<PluginContentClient>().GetByIdAsync(CONTENT_TYPE_NAME, Plugin!.Id, Id);
                 var pluginContentResponse = response.Data;
                 if (pluginContentResponse != null)
-                {
                     Model = pluginContentResponse.Data!.ToContent<NewsContent>();
-                    Model.Id = pluginContentResponse.Id;
-                }                    
             }
             else
             {
@@ -36,13 +33,13 @@ public partial class NewsEditPlugin
         }
     }
 
-    private async Task OnSubmit()
+    private async Task Submit()
     {
         if (Model is null || Plugin is null)
             return;
-                
+
         if (IsEditMode())
-            await GetApiClient<PluginContentClient>().UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.Id, Model.ToDictionary());
+            await GetApiClient<PluginContentClient>().UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Id, Model.ToDictionary());
         else
             await GetApiClient<PluginContentClient>().CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.ToDictionary());
 

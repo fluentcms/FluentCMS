@@ -1,9 +1,35 @@
 ﻿@using FluentCMS.Web.UI.Components
+@using Microsoft.AspNetCore.Components.Forms
 @inherits BasePlugin
 
-<PluginForm Model="@Model" Name="@CONTENT_TYPE_NAME" Title="Create New Layout" OnSubmit="@OnSubmit">
-    <FormHiddenInput @bind-Value="Model!.Id" />
-    <FormInput @bind-Value="Model!.Title" Label="Name" Placeholder="Title" Required />
-    <FormTextarea @bind-Value="Model!.Content" Rows="15" Label="Content" Required />
-    <FormActions Cancel Submit />
-</PluginForm>
+@if (Model != null)
+{
+    <EditForm Model="Model" OnSubmit="Submit" FormName="@CONTENT_TYPE_NAME">
+        <div>
+            <label>
+                Title:
+                <InputText @bind-Value="Model!.Title" />
+            </label>
+        </div>
+        <div>
+            <label>
+                Content:
+                <InputTextArea @bind-Value="Model!.Content" />
+            </label>
+        </div>
+        <div>
+            <button type="submit" class="button">Submit</button>
+            <a href="@(new Uri(NavigationManager.Uri).LocalPath)" class="button">Cancel</a>
+        </div>
+    </EditForm>
+}
+<style>
+    a.button, .button {
+        padding: 1px 6px;
+        border: 1px outset buttonborder;
+        border-radius: 3px;
+        color: buttontext;
+        background-color: buttonface;
+        text-decoration: none;
+    }
+</style>
