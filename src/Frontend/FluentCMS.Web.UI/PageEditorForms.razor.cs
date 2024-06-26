@@ -33,7 +33,7 @@ public partial class PageEditorForms {
     protected virtual void NavigateBack()
     {
         var url = new Uri(NavigationManager.Uri).LocalPath;
-        NavigateTo(url + "?pageEdit=true");
+        NavigateTo(url);
     }
 
     #endregion
@@ -41,33 +41,41 @@ public partial class PageEditorForms {
     [CascadingParameter]
     private ViewContext ViewContext { get; set; }
 
-    [SupplyParameterFromForm(FormName="CreatePluginForm")]
-    private PluginCreateRequest CreateModel { get; set; } = new();
-
     [SupplyParameterFromForm(FormName="UpdatePluginForm")]
-    private List<PluginUpdateRequest> UpdateModel { get; set; } = new List<PluginUpdateRequest>();
-
-    [SupplyParameterFromForm(FormName="DeletePluginForm")]
-    private Guid DeleteModel { get; set; } = Guid.Empty;
-
-    private async Task OnCreateSubmit()
-    {
-        await GetPluginClient().CreateAsync(CreateModel);
-        NavigateBack();
-    }
+    private PageEditorSaveRequest Model { get; set; } = new();
 
     private async Task OnUpdateSubmit()
     {
-        foreach (var updateRequest in UpdateModel)
+        foreach (var deletedId in Model.DeleteIds ?? [])
         {
-            await GetPluginClient().UpdateAsync(updateRequest);
+            await GetPluginClient().DeleteAsync(deletedId);
         }
+
+        foreach (var plugin in Model.CreatePlugins ?? [])
+        {
+            plugin.PageId = ViewContext.Page.Id;
+
+            await GetPluginClient().CreateAsync(plugin);
+        }
+
+        foreach (var plugin in Model.UpdatePlugins ?? [])
+        {
+            await GetPluginClient().UpdateAsync(plugin);
+        }
+
         NavigateBack();
     }
 
-    private async Task OnDeleteSubmit()
-    {
-        await GetPluginClient().DeleteAsync(DeleteModel);
-        NavigateBack();
+    class PageEditorNewPlugin {
+        public Guid DefinitionId { get; set; }
+        public string Section { get; set; }
+        public int Order { get; set; }
+    }
+
+    class PageEditorSaveRequest {
+        public bool Submitted { get; set; } = true;
+        public List<Guid> DeleteIds { get; set; } = [];
+        public List<PluginCreateRequest> CreatePlugins { get; set; } = [];
+        public List<PluginUpdateRequest> UpdatePlugins { get; set; } = [];
     }
 }

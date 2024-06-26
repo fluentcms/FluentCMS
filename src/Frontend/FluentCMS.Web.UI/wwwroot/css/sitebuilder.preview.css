@@ -58,3 +58,27 @@ a[disabled] {
     pointer-events: none;
     cursor: default;
 }
+
+.f-plugin-container-content-new {
+    width: 100%;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 0.25rem;
+}
+.f-plugin-container-content-new .f-name {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.f-plugin-container-content-new .f-description {
+    opacity: 0.7;
+    font-size: 12px;
+}
+
+
+.f-hidden {
+    display: none;
+}

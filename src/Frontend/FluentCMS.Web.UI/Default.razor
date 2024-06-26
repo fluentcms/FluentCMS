@@ -4,12 +4,15 @@
 {
     <HeadContent>
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.css">
-        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI.Components/css/app.css">
     </HeadContent>
     <div class="f-page-editor f-page-editor-sidebar-open f-page-editor-loading dark">
         <PageEditorHeader />
-        <iframe class="f-page-editor-iframe" src="@NavigationManager.Uri.Replace("pageEdit", "pagePreview")">
-        </iframe>
+        <div class="f-page-editor-iframe-wrapper">
+            <div class="f-page-editor-iframe-resizer">
+            </div>
+            <iframe class="f-page-editor-iframe" src="@NavigationManager.Uri.Replace("pageEdit", "pagePreview")">
+            </iframe>
+        </div>
         <PageEditorSidebar />
     </div>
     <PageEditorForms />
@@ -62,14 +65,6 @@ else
     <script>
         editButton.addEventListener('click', () => {
             window.location.href = window.location.href + '?pageEdit=true'
-        })
-
-        window.addEventListener('fluentcms:init', () => {
-            const state = JSON.parse(localStorage.getItem("SITE_BUILDER") ?? '{}')
-
-            if(!state.done) {
-                window.location.href = window.location.href + '?pageEdit=true'
-            }
         })
     </script>
 }
