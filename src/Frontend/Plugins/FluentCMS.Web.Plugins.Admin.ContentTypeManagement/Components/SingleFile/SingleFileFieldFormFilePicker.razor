@@ -4,8 +4,6 @@
 
 <FormField Label="@ContentTypeField!.Label" Cols="@Field.FormColWidth" Required="@ContentTypeField!.Required" OnChange="OnFilesChanged">
 
-
-@FieldValue.Value
 @if (FieldValue.Value == null)
 {
     <Grid>
@@ -22,7 +20,7 @@ else
                 </GridItem>
                 <GridItem>
                     <Stack Justify="StackJustify.End">
-                        <Button Size="ButtonSize.Small" Ghost Color="Color.Primary" Href="@($"/API/File/Download/{FieldValue.Value}")">
+                        <Button Size="ButtonSize.Small" Ghost Color="Color.Primary" Href="@($"/API/File/Download/{FieldValue.Value}")" target="_blank">
                             <Icon Name="IconName.Download" />
                         </Button>
                         <Button Size="ButtonSize.Small" Ghost Color="Color.Danger" @onclick="() => FieldValue.Value = default!">

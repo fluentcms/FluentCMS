@@ -56,13 +56,8 @@ public partial class ContentUpdatePlugin
 
     private async Task OnSubmit()
     {
-        //var request = new ContentUpdateRequest
-        //{
-        //    Id = Id,
-        //    Value = FieldValues.ToDictionary(x => x.Name, x => x.GetValue())
-        //};
-
-        //await GetApiClient<ContentClient>().UpdateAsync(ContentTypeSlug!, request);
+        var data = FieldValues.ToDictionary(x => x.Name, x => x.GetValue());
+        await GetApiClient<ContentClient>().UpdateAsync(ContentTypeSlug!, Id, data);
 
         NavigateBack();
     }

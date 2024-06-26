@@ -48,7 +48,7 @@
                     @tableContext.Size
                 </DataTableItem>
                 <ActionButtons Context="tableContext">
-                    <ActionButton Visible="!tableContext.IsFolder" IconName="IconName.Download" Label="Download" download="@tableContext.Name" Href="@($"/API/File/Download/{@tableContext.Id}")" Color="Color.Primary" />
+                    <ActionButton Visible="!tableContext.IsFolder" IconName="IconName.Download" Label="Download" download="@tableContext.Name" Href="@($"/API/File/Download/{@tableContext.Id}")" Color="Color.Primary" target="_blank" />
                     <ActionButtonOpen Visible="tableContext.IsFolder" @onclick="() => CurrentFolderId = tableContext.Id" />
                 </ActionButtons>
             </DataTable>

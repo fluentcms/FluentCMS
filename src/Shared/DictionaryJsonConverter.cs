@@ -133,7 +133,7 @@ public class DictionaryJsonConverter : JsonConverter<Dictionary<string, object?>
             case Dictionary<string, object?> dictionaryValue:
                 Write(writer, dictionaryValue, options);
                 break;
-            case object?[] arrayValue:
+            case IEnumerable<object> arrayValue:
                 WriteArray(writer, arrayValue, options);
                 break;
             default:
@@ -141,7 +141,7 @@ public class DictionaryJsonConverter : JsonConverter<Dictionary<string, object?>
         }
     }
 
-    private void WriteArray(Utf8JsonWriter writer, object?[] arrayValue, JsonSerializerOptions options)
+    private void WriteArray(Utf8JsonWriter writer, IEnumerable<object?> arrayValue, JsonSerializerOptions options)
     {
         writer.WriteStartArray();
 
