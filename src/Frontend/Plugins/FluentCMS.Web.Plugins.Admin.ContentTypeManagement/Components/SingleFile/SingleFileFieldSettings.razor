@@ -11,9 +11,6 @@
             <TabItem Name="View">
                 View
             </TabItem>
-            <TabItem Name="Advanced">
-                Advanced
-            </TabItem>
         </TabList>
         <TabContent>
             <TabPanel Name="Basic">
@@ -33,14 +30,6 @@
                     <FormNumberInput @bind-Value="Model.FormColWidth" Min="1" Max="12" Cols="3" Label="Column width (1-12)" Placeholder="Enter column width" Required />
                     <FormNumberInput @bind-Value="Model.FormViewOrder" Cols="3" Label="View order in edit" Placeholder="Enter view order in edit mode" Required />
                     <FormSelect @bind-Value="Model.FormViewComponent" Data="FieldTypes.All[FieldTypes.SINGLE_FILE].FormComponents" ValueField="Name" TextField="Title" Cols="6" Label="Form view type" Placeholder="choose form view type" Required />
-                </Grid>
-            </TabPanel>
-            <TabPanel Name="Advanced">
-                <Grid GutterX="GridGutter.Large">
-                    <FormSelect @bind-Value="Model.FileType" Data="FileTypes" ValueField="Key" TextField="Text" Cols="12" Label="File Type" Placeholder="choose file type" Required />
-                    <!-- <FormSwitch @bind-Value="Model.Unique" Cols="12" Label="Unique" />
-                    <FormInput @bind-Value="Model.Pattern" Cols="12" Label="Regex pattern" Placeholder="Enter regex pattern"/>
-                    <FormTextarea @bind-Value="Model.DefaultValue" Label="Default Value" Placeholder="Enter default value"/> -->
                 </Grid>
             </TabPanel>
         </TabContent>
