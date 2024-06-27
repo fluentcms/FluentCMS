@@ -1,7 +1,4 @@
-﻿using FluentCMS.Web.ApiClients;
-using Microsoft.AspNetCore.Components;
-
-namespace FluentCMS.Web.UI;
+﻿namespace FluentCMS.Web.UI;
 public partial class PageEditorSidebar
 {
     [Inject]
@@ -24,7 +21,7 @@ public partial class PageEditorSidebar
             var response = await GetApiClient<PluginDefinitionClient>().GetAllAsync();
             PluginDefinitions = response.Data;
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             PluginDefinitions = [];
         }

@@ -1,6 +1,7 @@
 namespace FluentCMS.Web.UI;
 
-public partial class PageEditorForms {
+public partial class PageEditorForms
+{
     #region Base Plugin
     [Inject]
     private UserLoginResponse? UserLogin { get; set; }
@@ -41,7 +42,7 @@ public partial class PageEditorForms {
     [CascadingParameter]
     private ViewContext ViewContext { get; set; }
 
-    [SupplyParameterFromForm(FormName="UpdatePluginForm")]
+    [SupplyParameterFromForm(FormName = "UpdatePluginForm")]
     private PageEditorSaveRequest Model { get; set; } = new();
 
     private async Task OnUpdateSubmit()
@@ -66,13 +67,15 @@ public partial class PageEditorForms {
         NavigateBack();
     }
 
-    class PageEditorNewPlugin {
+    class PageEditorNewPlugin
+    {
         public Guid DefinitionId { get; set; }
         public string Section { get; set; }
         public int Order { get; set; }
     }
 
-    class PageEditorSaveRequest {
+    class PageEditorSaveRequest
+    {
         public bool Submitted { get; set; } = true;
         public List<Guid> DeleteIds { get; set; } = [];
         public List<PluginCreateRequest> CreatePlugins { get; set; } = [];
