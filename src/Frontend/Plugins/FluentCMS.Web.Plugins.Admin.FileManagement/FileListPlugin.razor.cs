@@ -3,6 +3,7 @@
 public partial class FileListPlugin
 {
     private List<AssetDetail> Items { get; set; } = [];
+    private List<BreadcrumbItemType> BreadcrumbItems { get; set; } = [];
 
     [SupplyParameterFromQuery(Name = "folderId")]
     private Guid? FolderId { get; set; }
@@ -28,13 +29,24 @@ public partial class FileListPlugin
         foreach (var folder in folders)
         {
             if (folder.Id == folderId)
+            {
+                BreadcrumbItems.Add( new BreadcrumbItemType {
+                    Title = folder.Name,
+                });
                 return folder;
+            }
 
             if (folder.Folders != null && folder.Folders.Any())
             {
                 var foundFolder = FindFolderById(folder.Folders, folderId);
                 if (foundFolder != null)
+                {
+                    BreadcrumbItems.Add( new BreadcrumbItemType {
+                        Title = folder.Name,
+                        Href = GetUrl("Files List", new { folderId = folder.Id }) 
+                    });
                     return foundFolder;
+                }
             }
         }
         return null;
@@ -67,13 +79,27 @@ public partial class FileListPlugin
 
         var folderDetailResponse = await GetApiClient<FolderClient>().GetAllAsync();
 
+        BreadcrumbItems = [];
+        
         if (FolderId is null || FolderId == Guid.Empty)
         {
+            BreadcrumbItems.Add( new BreadcrumbItemType {
+                Icon = IconName.Folder,
+                Title = "Root"
+            });
+
             folderDetail = folderDetailResponse?.Data;
         }
         else
         {
-            folderDetail = FindFolderById(folderDetailResponse?.Data?.Folders, FolderId.Value);
+            folderDetail = FindFolderById(RootFolder.Folders, FolderId.Value);
+
+            BreadcrumbItems.Add( new BreadcrumbItemType {
+                Icon = IconName.Folder,
+                Title = "Root",
+                Href = GetUrl("Files List", new { folderId = Guid.Empty }) 
+            });
+            BreadcrumbItems.Reverse();
         }
 
         if (folderDetail != null)
@@ -243,5 +269,11 @@ public partial class FileListPlugin
         await Task.CompletedTask;
     }
     #endregion
+
+    public class BreadcrumbItemType {
+        public string? Href { get; set; }
+        public string? Title { get; set; }
+        public IconName Icon { get; set; } = IconName.Default;
+    };
 
 }
