@@ -1,23 +1,34 @@
-﻿@inherits BaseComponent
+﻿@typeparam TItem
+
+@typeparam TValue
+
+@inherits BaseInputBlock<TValue>
 
 @namespace FluentCMS.Web.UI.Components
 
-@if(Visible)
+@if (Visible)
 {
-    <div @attributes="AdditionalAttributes"
-         class="@this.GetClasses()">
-        <select @ref="element"
-                autocomplete="off"
-                disabled="@Disabled"
-                multiple="@Multiple">
-            @foreach (var Option in Options)
+    <FormField Cols="Cols" Dense="@Dense" Id="@Id" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
+        <select @ref="Element" @attributes="AdditionalAttributes" autocomplete="off" class="@this.GetClasses()" disabled="@Disabled" id="@Id"
+                name="@NameAttributeValue" @bind="@CurrentValueAsString">
+            @if (!string.IsNullOrEmpty(Placeholder))
             {
-                <option @key="Option.Id"
-                        selected="@Value.Contains(Option.Id)"
-                        value="@Option.Id">
-                    @Option.Title
-                </option>
+                <option disabled selected value="null">@Placeholder</option>
+            }
+            @if (ChildContent == null)
+            {
+                if (Data != null && Data.Any())
+                {
+                    @foreach (var item in Data)
+                    {
+                        <option @key="@GetValue(item)" selected="@IsSelected(item)" value="@GetValue(item)">@GetText(item)</option>
+                    }
+                }
+            }
+            else
+            {
+                @ChildContent
             }
         </select>
-    </div>
+    </FormField>
 }

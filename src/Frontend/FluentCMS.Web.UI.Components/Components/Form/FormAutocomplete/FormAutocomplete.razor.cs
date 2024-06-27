@@ -23,93 +23,10 @@ public partial class FormAutocomplete<TItem, TValue> : IAsyncDisposable
     [Parameter]
     public RenderFragment ChildContent { get; set; }
 
+    public ElementReference Element;
 
-    [Parameter]
-    public bool Disabled
-    {
-        get => disabled;
-        set
-        {
-            this.disabled = value;
+    private IJSObjectReference Module = default!;
 
-            module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), element, new { Disabled });
-        }
-    }
-
-    [Parameter]
-    public bool Multiple { get; set; }
-
-    private List<AutocompleteOptions> options = [];
-
-    public ElementReference element;
-
-    private IJSObjectReference module = default!;
-
-    private bool disabled;
-
-    [Parameter]
-    public List<AutocompleteOptions> Options
-    {
-        get => options;
-        set
-        {
-            if (this.options.SequenceEqual(value)) return;
-
-            this.options = value;
-
-            module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), element, new { Options });
-        }
-    }
-
-    private List<string> value = [];
-
-    [Parameter]
-    public List<string> Value
-    {
-        get => this.value;
-        set
-        {
-            if (this.value.SequenceEqual(value)) return;
-
-            this.value = value;
-
-            module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), element, new { Value });
-
-            ValueChanged.InvokeAsync(value);
-        }
-    }
-
-    [Parameter]
-    public EventCallback<List<string>> ValueChanged { get; set; }
-
-    [JSInvokable]
-    public void UpdateValue(List<string> Value)
-    {
-        this.Value = Value;
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        await module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender) return;
-
-        module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Form/Autocomplete/Autocomplete.razor.js");
-
-        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element);
-    }
-}
-
-
-
-namespace FluentCMS.Web.UI.Components;
-
-public partial class FormSelect
-{
-    
     private bool IsSelected(TItem item)
     {
         return (Value?.ToString() ?? String.Empty) == GetValue(item).ToString();
@@ -133,40 +50,46 @@ public partial class FormSelect
         return (TValue?)item!.GetType().GetProperty(ValueField)?.GetValue(item);
     }
 
+    [JSInvokable]
+    public async Task UpdateValue(string value)
+    {
+        if (BindConverter.TryConvertTo<TValue>(value, CultureInfo.CurrentCulture, out var parsedValue))
+        {
+            Value = parsedValue;
+        }
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Module != null)
+            Module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), Element, new { Value });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Module is null) return;
+
+        await Module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), Element);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Form/FormAutocomplete/FormAutocomplete.razor.js");
+
+        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), Element, new { 
+            ValueField = ValueField, 
+            TextField = TextField
+        });
+    }
+
     protected override bool TryParseValueFromString(string? value, [MaybeNullWhen(false)] out TValue result, [NotNullWhen(false)] out string? validationErrorMessage)
     {
         try
         {
-            if (typeof(TValue) == typeof(bool))
-            {
-                if (bool.TryParse(value, out var @bool))
-                {
-                    result = (TValue)(object)@bool;
-                    validationErrorMessage = null;
-                    return true;
-                }
-                result = default!;
-            }
-            else if (typeof(TValue) == typeof(bool?))
-            {
-                if (string.IsNullOrEmpty(value))
-                {
-                    result = default!;
-                    validationErrorMessage = null;
-                    return true;
-                }
-                else
-                {
-                    if (bool.TryParse(value, out var @bool))
-                    {
-                        result = (TValue)(object)@bool;
-                        validationErrorMessage = null;
-                        return true;
-                    }
-                    result = default!;
-                }
-            }
-            else if (BindConverter.TryConvertTo<TValue>(value, CultureInfo.CurrentCulture, out var parsedValue))
+            if (BindConverter.TryConvertTo<TValue>(value, CultureInfo.CurrentCulture, out var parsedValue))
             {
                 result = parsedValue;
                 validationErrorMessage = null;
@@ -182,18 +105,5 @@ public partial class FormSelect
             throw new InvalidOperationException($"{GetType()} does not support the type '{typeof(TValue)}'.", ex);
         }
     }
+}
 
-    protected override string? FormatValueAsString(TValue? value)
-    {
-        if (typeof(TValue) == typeof(bool))
-        {
-            return (bool)(object)value! ? "true" : "false";
-        }
-        else if (typeof(TValue) == typeof(bool?))
-        {
-            return value is not null && (bool)(object)value ? "true" : "false";
-        }
-
-        return base.FormatValueAsString(value);
-    }
-// }

@@ -30,16 +30,16 @@ export function update(dotnet, element, config) {
     }
 }
 
-export function initialize(dotnet, element) {
+export function initialize(dotnet, element, config) {
     dispose(dotnet, element);
 
     const autocomplete = new TomSelect(element, {
-        valueField: 'id',
-        labelField: 'title',
-        searchField: ['title'],
+        // valueField: config.valueField,
+        // labelField: config.textField,
+        // searchField: [config.textField],
         allowEmptyOption: true,
         onChange: () => {
-            dotnet.invokeMethodAsync("UpdateValue", autocomplete.items);
+            dotnet.invokeMethodAsync("UpdateValue", autocomplete.items[0]);
         },
     });
 
