@@ -1,0 +1,14 @@
+.f-edit-button {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    width: 32px;
+    height: 32px;
+    background-color: #2c5dd9;
+    box-shadow: 0 0 16px -4px black;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
