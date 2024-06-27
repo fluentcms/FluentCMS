@@ -79,10 +79,7 @@ public partial class FormAutocomplete<TItem, TValue> : IAsyncDisposable
 
         Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Form/FormAutocomplete/FormAutocomplete.razor.js");
 
-        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), Element, new { 
-            ValueField = ValueField, 
-            TextField = TextField
-        });
+        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), Element);
     }
 
     protected override bool TryParseValueFromString(string? value, [MaybeNullWhen(false)] out TValue result, [NotNullWhen(false)] out string? validationErrorMessage)

@@ -34,9 +34,6 @@ export function initialize(dotnet, element, config) {
     dispose(dotnet, element);
 
     const autocomplete = new TomSelect(element, {
-        // valueField: config.valueField,
-        // labelField: config.textField,
-        // searchField: [config.textField],
         allowEmptyOption: true,
         onChange: () => {
             dotnet.invokeMethodAsync("UpdateValue", autocomplete.items[0]);
