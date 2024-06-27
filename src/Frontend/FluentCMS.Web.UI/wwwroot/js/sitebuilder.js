@@ -1,6 +1,4 @@
-﻿const localStorageKey = "SITE_BUILDER"
-
-let iframeElement = document.querySelector('.f-page-editor-iframe')
+﻿let iframeElement = document.querySelector('.f-page-editor-iframe')
 let pageEditorElement = document.querySelector('.f-page-editor')
 
 let responsiveMode = null
@@ -148,7 +146,6 @@ const actions = {
         setTimeout(() => {
             updateResizerPosition()
         }, 300)
-        saveState()
     },
     'hide-sidebar'() {
         pageEditorElement.classList.add('f-page-editor-sidebar-close')
@@ -156,7 +153,6 @@ const actions = {
         setTimeout(() => {
             updateResizerPosition()
         }, 300)
-        saveState()
     }
 }
 
@@ -295,45 +291,11 @@ function createPlugin({definitionId, item}) {
 async function onInit() {
     const frameDocument = await getFrameDocument()
 
-    const state = loadState()
-
     initializeResponsive()
-    // state.sidebarOpen
-    // if(true) {
-    //     document.body.classList.add('f-page-editor-sidebar-open')
-    // } else {
-    //     document.body.classList.add('f-page-editor-sidebar-close')
-    // }
-
-    if(state.scroll) {
-        frameDocument.scrollingElement.scrollTo({
-            top: state.scroll
-        })
-    }
 
     initializeActions(frameDocument)
     initializeActions(document)
     initializeSortable(frameDocument)
-}
-
-function saveState(done = false) {
-    localStorage.setItem(localStorageKey, JSON.stringify({
-        sidebarOpen: document.body.classList.contains('f-page-editor-sidebar-open') ? true : false,
-        scroll: frameDocument.scrollingElement.scrollTop,
-        done
-    }))
-
-    // if(done) {
-    //     saveState()
-    //     setTimeout(() => {
-    //         window.location.href = window.location.href.replace('pageEdit', 'aaa')
-    //     })
-    // }
-
-}
-
-function loadState() {
-    return JSON.parse(localStorage.getItem(localStorageKey) ?? '{}') ?? {}
 }
 
 document.addEventListener('fluentcms:afterenhanced', () => {

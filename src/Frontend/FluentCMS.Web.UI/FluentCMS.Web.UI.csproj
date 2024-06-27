@@ -24,12 +24,7 @@
     <ItemGroup>
       <ProjectReference Include="..\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj" />
     </ItemGroup>
-
-    <ItemGroup>
-      <Content Update="PluginContainerActions.razor">
-        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-      </Content>
-    </ItemGroup>
+    
     <ItemGroup>
         <None Include="wwwroot\**">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
