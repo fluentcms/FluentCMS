@@ -1,7 +1,5 @@
-﻿using FluentCMS.Web.ApiClients;
-using FluentCMS.Web.ApiClients.Services;
+﻿using FluentCMS.Web.ApiClients.Services;
 using FluentCMS.Web.UI.DynamicRendering;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Routing;
 

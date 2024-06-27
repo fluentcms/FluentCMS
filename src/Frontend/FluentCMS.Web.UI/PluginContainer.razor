@@ -1,4 +1,8 @@
-<div class="f-plugin-container">
+<div class="f-plugin-container" data-id="@Plugin.Id">
+    @if (ViewContext.Type == ViewType.PagePreview)
+    {
+        <PluginContainerActions />
+    }
     <ErrorBoundary>
         <ChildContent>
             <div class="f-plugin-container-content">

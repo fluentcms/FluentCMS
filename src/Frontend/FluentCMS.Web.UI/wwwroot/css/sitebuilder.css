@@ -1,0 +1,321 @@
+﻿* {
+    box-sizing: border-box;
+}
+
+.f-only-edit .f-section {
+    min-width: 100px;
+    min-height: 100px;
+}
+
+.f-page-editor-sidebar .f-plugin-definition-list {
+    overflow: scroll;
+    height: 100%;
+    display: flex;
+    padding: 0.25rem;
+    box-sizing: border-box;
+    flex-direction: column;
+    gap: 0.25rem;
+    overflow: scroll;
+    width: 100%;
+}
+
+.f-page-editor-sidebar .f-plugin-definition-item {
+    padding: 0.5rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    border: 1px solid #f0f0f0;
+    background-color: white;
+    border-radius: 4px;
+}
+
+.f-page-editor-sidebar .f-plugin-definition-item:hover {
+    /* box-shadow: 0 0px 8px -4px black; */
+    background-color: #f0f0f0;
+    border-color: #d0d0d0;
+    cursor: grab;
+}
+
+.f-page-editor-sidebar .f-plugin-definition-item .f-name {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.f-page-editor-sidebar .f-plugin-definition-item .f-description {
+    opacity: 0.7;
+    font-size: 12px;
+}
+
+.f-page-editor-sidebar {
+    width: 200px;
+    background-color: #ffffff;
+    border-left: 1px solid #dfdfdf;
+    box-shadow: 1px 0 8px -4px black;
+    transition: all 0.3s ease;
+    position: fixed;
+    top: 40px;
+    bottom: 0;
+    right: -200px;
+    z-index: 100;
+    opacity: 0;
+}
+
+.f-page-editor-sidebar-open .f-page-editor-sidebar {
+    right: 0;
+}
+
+.f-page-editor-sidebar {
+    opacity: 1;
+}
+
+.f-page-editor-toggler {
+    position: fixed;
+    transition: all 0.3s ease;
+    top: 0;
+    padding: 4px;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    border-start-start-radius: 20px;
+    border-end-start-radius: 20px;
+    gap: 0.25rem;
+    /* padding: 0.125rem; */
+    /* background-color: white; */
+    /* border: 1px solid #dfdfdf; */
+    /* border-right: none; */
+    z-index: 100;
+}
+
+.f-page-editor-toggler .f-page-editor-toggler-button {
+    cursor: pointer;
+    width: 2rem;
+    height: 2rem;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: black;
+    background-color: #f0f0f0;
+    border: none;
+    border-radius: 20px;
+}
+
+body {
+    padding: 0;
+    margin: 0;
+}
+
+.f-page-editor {
+    width: 100%;
+    overflow: hidden;
+    height: 100vh;
+}
+
+.f-page-editor-iframe-wrapper {
+    background-color: #242424;
+    position: relative;
+    height: calc(100% - 40px);
+    transition: all 0.3s ease;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.f-page-editor-iframe {
+    position: absolute;
+    /* transition: all 0.1s ease; */
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.f-page-editor-iframe-resizer {
+    border-radius: 2px;
+    box-shadow: 0 0 8px -4px black;
+    display: none;
+    background-color: #303030;
+    height: 64px;
+    width: 12px;
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    bottom: 50%;
+    cursor: grab;
+}
+.f-page-editor-iframe-resizer:hover {
+    background-color: #404040;
+    height: 64px;
+    width: 12px;
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    bottom: 50%;
+    cursor: grab;
+}
+
+.f-page-editor-iframe-resizer::before, .f-page-editor-iframe-resizer::after {
+    content: '';
+    background-color: #404040;
+    position: absolute;
+    height: 48px;
+    width: 2px;
+    top: 8px;
+    bottom: 8px;
+}
+
+.f-page-editor-iframe-resizer:hover::after, .f-page-editor-iframe-resizer:hover::before {
+    background-color: #606060;
+}
+
+.f-page-editor-iframe-resizer::before {
+    left: 3px;
+}
+
+.f-page-editor-iframe-resizer::after {
+    right: 3px;
+}
+
+[data-responsive-mode] .f-page-editor-iframe {
+    left: auto;
+    right: auto;
+    max-width: calc(100% - 2rem);
+}
+
+[data-responsive-mode] .f-page-editor-iframe-resizer {
+    display: flex;
+}
+
+.f-page-editor-sidebar-open .f-page-editor-iframe-wrapper {
+    width: calc(100% - 200px);
+}
+
+.f-page-editor-header {
+    width: 100%;
+    height: 40px;
+    background-color: rgb(24, 24, 24);
+    display: flex;
+    justify-content: end;
+    padding: 4px;
+    gap: 4px;
+    box-sizing: border-box;
+}
+
+.f-page-editor-header-separator {
+    width: 2rem;
+}
+
+.f-page-editor-header-button {
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    background-color: #404040;
+    color: white;
+    border: 1px solid #505050;
+}
+.f-page-editor-header-button svg {
+    width: 16px;
+    height: 16px;
+}
+
+.f-page-editor-header-button-primary {
+    background-color: #2558a5;
+    border: 1px solid #3b48bd;
+}
+
+.f-page-editor-header-button-primary:hover {
+    background-color: #2c6bc9;
+
+}
+
+
+.f-page-editor-sidebar-open .f-page-editor-toggler {
+    right: 200px;
+    margin-right: -1px;
+}
+
+.f-page-editor-toggler .f-page-editor-toggler-button:hover {
+    background-color: #dbdbdb;
+}
+
+.f-page-editor-toggler .f-page-editor-toggler-button-primary {
+    color: white;
+    background-color: #2558a5;
+    border: none;
+}
+
+.f-page-editor-toggler .f-page-editor-toggler-button-primary:hover {
+    background-color: #2c6bc9;
+}
+
+.f-plugin-container {
+    position: relative;
+}
+
+.f-page-editor-forms {
+    display: none;
+}
+
+.f-only-sidebar-opened {
+    display: none;
+}
+
+.f-page-editor-sidebar-open .f-only-sidebar-opened {
+    display: inherit;
+}
+
+.f-page-editor-sidebar-open .f-only-sidebar-closed {
+    display: none;
+}
+
+.f-page-editor-sidebar-close .f-only-sidebar-opened {
+    display: none;
+}
+
+.f-page-editor-sidebar-close .f-only-sidebar-closed {
+    display: inherit;
+}
+
+/* Dark mode */
+
+.dark .f-page-editor-sidebar {
+    background-color: #242424;
+    border-color: #303030;
+    color-scheme: dark;
+}
+
+
+.dark .f-plugin-definition-item {
+    background-color: #383838;
+    border-color: #404040;
+    color: white;
+}
+.dark .f-plugin-definition-item:hover {
+    background-color: #444444;
+    border-color: #707070;
+}
+
+.dark .f-page-editor-toggler-button {
+    background-color: #505050;
+    border-color: #404040;
+    color: white;
+    fill: white;
+}
+.dark .f-page-editor-toggler-button:hover {
+    background-color: #606060;
+    border-color: #404040;
+}
+.dark .f-page-editor-toggler-button-primary {
+    background-color: #2e3bb3;
+}
+.dark .f-page-editor-toggler-button-primary:hover {
+    
+    background-color: #3b48bd;
+}

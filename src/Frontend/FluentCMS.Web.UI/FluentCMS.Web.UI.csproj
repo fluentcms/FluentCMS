@@ -24,5 +24,11 @@
     <ItemGroup>
       <ProjectReference Include="..\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj" />
     </ItemGroup>
+    
+    <ItemGroup>
+        <None Include="wwwroot\**">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
 
 </Project>
