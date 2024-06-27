@@ -1,0 +1,67 @@
+﻿@inherits BasePlugin
+@rendermode InteractiveServer
+
+<PluginBody Title="File/Folders List">
+    <ActionsFragment>
+        <ActionButtonBack Visible="FolderId != null && FolderId != Guid.Empty" Href="@GetUrl("Files List", new { folderId = ParentId })" />
+        <ActionButton IconName="IconName.Plus" @onclick="() => FolderCreateModalOpen = true" Label="Add Folder" />
+        <ActionButtonCreate @onclick="() => FileUploadModalOpen = true" Label="Upload File" />
+    </ActionsFragment>
+    <ChildContent>
+        <DataTable Items="Items">
+            <DataTableItem Label="Name">
+                @if (@context.IsFolder)
+                {
+                    <Button Link Href="@GetUrl("Files List", new { folderId = @context.Id })">
+                        @context.Name
+                    </Button>
+                }
+                else
+                {
+                    <Button Link download="@context.Name" Href="@GetUrl("Files List", new { folderId = @context.Id })">
+                        @context.Name
+                    </Button>
+                }
+            </DataTableItem>
+            <DataTableItem Label="Type">
+                <Badge Color="Color.Info" Visible="@context.IsFolder">
+                    Folder
+                </Badge>
+                <Badge Color="Color.Success" Visible="!context.IsFolder">
+                    @context.ContentType
+                </Badge>
+            </DataTableItem>
+            <DataTableItem Label="Size">
+                @context.Size
+            </DataTableItem>
+            <ActionButtons>
+                <ActionButton Visible="!context.IsFolder" IconName="IconName.Download" Label="Download" download="@context.Name" Href="@GetUrl("Files List", new { folderId = context.Id })" Color="Color.Primary" />
+                <ActionButtonOpen Visible="context.IsFolder" Href="@GetUrl("Files List", new { folderId = context.Id })" />
+
+                @if (!context.IsParentFolder)
+                {
+                    <ActionButtonEdit @onclick="() => OpenUpdateModal(context)" />
+                    <ActionButtonDelete @onclick="() => OnConfirm(context)" />
+                }
+            </ActionButtons>
+        </DataTable>
+    </ChildContent>
+</PluginBody>
+
+<Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedItem != null">
+    Are you sure to delete @(SelectedItem!.IsFolder ? "folder" : "file") @SelectedItem!.Name?
+</Confirm>
+
+<FolderCreateModal FolderId="@FolderId" Visible="FolderCreateModalOpen" OnSubmit="OnCreateFolder" OnCancel="OnCreateFolderCancel"/>
+
+<FileUploadModal Config="FileUploadConfig" Visible="FileUploadModalOpen" OnSubmit="OnUpload" OnCancel="OnUploadCancel"/>
+
+@if (FolderUpdateModalOpen && FolderUpdateModel != null && RootFolder != null)
+{
+    <FolderUpdateModal RootFolder="RootFolder" Model="FolderUpdateModel" OnSubmit="OnUpdateFolder" OnCancel="OnUpdateFolderCancel"/>
+}
+
+@if (FileUpdateModalOpen && FileUpdateModel != null && RootFolder != null)
+{
+    <FileUpdateModal RootFolder="RootFolder" Model="FileUpdateModel" OnSubmit="OnUpdateFile" OnCancel="OnUpdateFileCancel"/>
+}

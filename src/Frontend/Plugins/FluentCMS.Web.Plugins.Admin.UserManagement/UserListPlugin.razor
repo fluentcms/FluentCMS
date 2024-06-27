@@ -2,9 +2,7 @@
 
 <PluginBody Title="Users List">
     <ActionsFragment>
-        <Button Href="@GetUrl("Create User")" Color="Color.Primary">
-            <Icon Name="IconName.Plus" />Add User
-        </Button>
+        <ActionButtonCreate Href="@GetUrl("Create User")" Label="Add User" />
     </ActionsFragment>
     <ChildContent>
         <DataTable Items="Users">
@@ -38,11 +36,9 @@
                     <Badge Color="Color.Info">@role.Name</Badge>
                 }
             </DataTableItem>
-            <DataTableItem>
-                <Button Color="Color.Primary" Href="@GetUrl("Update User", new { id = @context.Id })" Size="ButtonSize.Small">
-                    <Icon Name="IconName.Edit" />Edit User
-                </Button>
-            </DataTableItem>
+            <ActionButtons>
+                <ActinoButtonEdit Href="@GetUrl("Update User", new { id = @context.Id })" />
+            </ActionButtons>
         </DataTable>
     </ChildContent>
 </PluginBody>

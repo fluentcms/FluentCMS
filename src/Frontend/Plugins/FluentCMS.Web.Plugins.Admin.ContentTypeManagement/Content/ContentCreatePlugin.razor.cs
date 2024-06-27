@@ -5,7 +5,7 @@ public partial class ContentCreatePlugin
     public const string FORM_NAME = "ContentCreateForm";
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
-    private ContentCreateRequest Model { get; set; } = new();
+    private Dictionary<string, object?> Model { get; set; } = [];
 
     private List<IFieldModel> Fields { get; set; } = [];
     private List<IFieldValue> FieldValues { get; set; } = [];
@@ -15,11 +15,7 @@ public partial class ContentCreatePlugin
         await base.OnInitializedAsync();
         if (ContentType != null)
         {
-            var contentTypeResponse = await GetApiClient<ContentTypeClient>().GetBySlugAsync(ContentTypeSlug!);
-            ContentType = contentTypeResponse.Data;
             Fields = ContentType?.Fields?.Select(x => x.ToFieldModel()).OrderBy(x => x.FormViewOrder).ToList() ?? [];
-
-            // TODO: Initialize FieldValues based on `Model` value
         }
     }
     private static Type GetFormFieldType(IFieldModel fieldModel)
@@ -34,7 +30,8 @@ public partial class ContentCreatePlugin
         var parameters = new Dictionary<string, object>
         {
             { "Field", fieldModel },
-            { "FieldValue", fieldModel.GetFieldValue() }
+            { "FieldValue", fieldModel.GetFieldValue() },
+            { nameof(ContentTypeField), ContentType!.Fields!.Where(x=> x.Name==fieldModel.Name).Single() }
         };
 
         FieldValues.Add((IFieldValue)parameters["FieldValue"]);
@@ -44,12 +41,7 @@ public partial class ContentCreatePlugin
 
     private async Task OnSubmit()
     {
-        var request = new ContentCreateRequest
-        {
-            Value = FieldValues.ToDictionary(x => x.Name, x => x.GetValue())
-        };
-
-        await GetApiClient<ContentClient>().CreateAsync(ContentTypeSlug!, request);
+        await GetApiClient<ContentClient>().CreateAsync(ContentTypeSlug!, FieldValues.ToDictionary(x => x.Name, x => x.GetValue()));
 
         NavigateBack();
     }

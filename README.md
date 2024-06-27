@@ -66,24 +66,24 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
   - [x] User Management
   - [x] Role Management
   - [ ] Application Settings
-  - [ ] Haedleass CMS Features
-    - [ ] Media Management
-    - [ ] Content Type Definition
+  - [x] Haedleass CMS Features
+    - [x] Media Management
+    - [x] Content Type Definition
       - [x] Text Field
       - [x] TextArea Field
       - [x] Rich Text Field
       - [x] Markdown Field
       - [x] Number Field
       - [x] Date Field
-      - [ ] Time Field
+      - [x] Time Field
       - [x] DateTime Field
       - [x] Boolean Field
-      - [ ] Select Field
-      - [ ] MultiSelect Field
-      - [ ] Radio Field
+      - [x] Select Field
+      - [x] MultiSelect Field
+      - [x] Radio Field
       - [x] Checkbox Field
-      - [ ] File Field
-    - [ ] Content Management
+      - [x] File Field
+    - [x] Content Management
     - [x] API Tokens Management
   - CMS Features
     - [x] Site Management
@@ -100,4 +100,3 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
-

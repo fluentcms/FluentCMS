@@ -5,6 +5,9 @@ public abstract class BaseFieldComponent<T, TField> : ComponentBase where TField
     [Parameter]
     public TField Field { get; set; } = default!;
 
+    [Parameter]
+    public ContentTypeField? ContentTypeField { get; set; }
+
 }
 
 public abstract class BaseFieldValueComponent<T, TField> : BaseFieldComponent<T, TField> where TField : IFieldModel<T>

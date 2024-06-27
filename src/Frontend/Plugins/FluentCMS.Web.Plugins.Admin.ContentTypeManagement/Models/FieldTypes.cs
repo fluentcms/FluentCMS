@@ -3,9 +3,10 @@
 public class FieldTypes
 {
     public const string STRING = "string";
-    public const string NUMBER = "decimal";
+    public const string NUMBER = "number";
     public const string BOOLEAN = "bool";
-    public const string ENUMERATION = "enumeration";
+    public const string SINGLE_SELECT = "single-select";
+    public const string MULTI_SELECT = "multi-select";
     public const string DATE_TIME = "datetime";
     public const string MEDIA = "media";
 
@@ -82,14 +83,47 @@ public class FieldTypes
                 ]
             }
         },
-        //{ENUMERATION, new FieldType
-        //{
-        //    Title = "Enumeration",
-        //    Icon = IconName.List,
-        //    Description = "List of values, then pick one",
-        //    Key = ENUMERATION,
-        //    Order = 4
-        //}},
+        {
+            MULTI_SELECT,
+            new FieldType
+            {
+                Title = "Multi Select",
+                Icon = IconName.List,
+                Description = "List of values, then pick one or more",
+                Key = MULTI_SELECT,
+                Order = 6,
+                SettingViewType = typeof(MultiSelectFieldSettings),
+                FormComponents =
+                [
+                    new FieldType.Component("Checkboxes", typeof(MultiSelectFieldFormCheckboxes))
+                ],
+                DataTableComponents =
+                [
+                    new FieldType.Component("Badges", typeof(MultiSelectFieldDataTableBadges)),
+                ]
+            }
+        },
+        {
+            SINGLE_SELECT,
+            new FieldType
+            {
+                Title = "Single Select",
+                Icon = IconName.List,
+                Description = "List of values, then pick one",
+                Key = SINGLE_SELECT,
+                Order = 5,
+                SettingViewType = typeof(SelectFieldSettings),
+                FormComponents =
+                [
+                    new FieldType.Component("Dropdown", typeof(SelectFieldFormSelect)),
+                    new FieldType.Component("Radio Group", typeof(SelectFieldFormRadioGroup))
+                ],
+                DataTableComponents =
+                [
+                    new FieldType.Component("Badge", typeof(SelectFieldDataTableBadge)),
+                ]
+            }
+        },
         {
             DATE_TIME,
             new FieldType
@@ -98,11 +132,13 @@ public class FieldTypes
                 Icon = IconName.Clock,
                 Description = "A date picker with hours, minutes and seconds",
                 Key = DATE_TIME,
-                Order = 5,
+                Order = 4,
                 SettingViewType = typeof(DateFieldSettings),
                 FormComponents =
                 [
-                    new FieldType.Component("Input", typeof(DateFieldFormInput))
+                    new FieldType.Component("Date Picker", typeof(DateFieldFormDate)),
+                    new FieldType.Component("Time Picker", typeof(DateFieldFormTime)),
+                    new FieldType.Component("DateTime Picker", typeof(DateFieldFormDateTime)),
                 ],
                 DataTableComponents =
                 [

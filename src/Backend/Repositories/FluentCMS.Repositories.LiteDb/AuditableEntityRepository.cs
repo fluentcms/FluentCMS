@@ -1,7 +1,4 @@
-﻿using FluentCMS.Entities;
-using FluentCMS.Repositories.Abstractions;
-
-namespace FluentCMS.Repositories.LiteDb;
+﻿namespace FluentCMS.Repositories.LiteDb;
 
 public class AuditableEntityRepository<TEntity> : EntityRepository<TEntity>, IAuditableEntityRepository<TEntity>
     where TEntity : IAuditableEntity

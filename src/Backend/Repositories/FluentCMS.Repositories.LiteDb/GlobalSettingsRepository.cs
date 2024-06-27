@@ -1,8 +1,4 @@
-﻿using FluentCMS.Entities;
-using FluentCMS.Repositories.Abstractions;
-using LiteDB.Async;
-
-namespace FluentCMS.Repositories.LiteDb;
+﻿namespace FluentCMS.Repositories.LiteDb;
 
 public class GlobalSettingsRepository(ILiteDBContext liteDbContext, IAuthContext authContext)
     : IGlobalSettingsRepository

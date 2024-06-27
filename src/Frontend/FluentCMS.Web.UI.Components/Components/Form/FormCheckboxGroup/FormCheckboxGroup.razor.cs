@@ -56,6 +56,9 @@ public partial class FormCheckboxGroup<TItem, TValue>
 
     public Task HandleChange(ChangeEventArgs args, TValue value)
     {
+        if (Value is null)
+            Value = [];
+
         if (Value.Contains(value))
             Value.Remove(value);
         else

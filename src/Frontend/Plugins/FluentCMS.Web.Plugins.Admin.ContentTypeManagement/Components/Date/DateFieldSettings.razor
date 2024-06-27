@@ -21,9 +21,9 @@
                     <FormHiddenInput @bind-Value="Model.Type" />
                     <FormInput @bind-Value="Model.Name" Cols="6" Label="Name" Placeholder="Enter Field Name" Required Disabled="@(CurrentState != FieldManagementState.Create)" />
                     <FormInput @bind-Value="Model.Label" Cols="4" Label="Label" Placeholder="Enter Field Label" Required />
-                    <FormSwitch @bind-Value="Model.Required" Cols="2" Label="Required" Required />
+                    <FormSwitch @bind-Value="ContentTypeField!.Required" Cols="2" Label="Required" Required />
                     <FormInput @bind-Value="Model.Placeholder" Label="Placeholder" Placeholder="Enter Field Placeholder" Required />
-                    <FormTextarea @bind-Value="Model.Description" Label="Description" Placeholder="Enter Field Description" Required />
+                    <FormTextarea @bind-Value="Model.Description" Label="Description" Placeholder="Enter Field Description" />
                 </Grid>
             </TabPanel>
             <TabPanel Name="View">
@@ -33,13 +33,13 @@
                     <FormSelect @bind-Value="Model.DataTableViewComponent" Data="FieldTypes.All[FieldTypes.DATE_TIME].DataTableComponents" ValueField="Name" TextField="Title" Cols="6" Label="List view type" Placeholder="choose list view type" Required />
                     <FormNumberInput @bind-Value="Model.FormColWidth" Min="1" Max="12" Cols="3" Label="Column width (1-12)" Placeholder="Enter column width" Required />
                     <FormNumberInput @bind-Value="Model.FormViewOrder" Cols="3" Label="View order in edit" Placeholder="Enter view order in edit mode" Required />
-                    <FormSelect @bind-Value="Model.FormViewComponent" Data="FieldTypes.All[FieldTypes.DATE_TIME].DataTableComponents" ValueField="Name" TextField="Title" Cols="6" Label="Form view type" Placeholder="choose form view type" Required />
+                    <FormSelect @bind-Value="Model.FormViewComponent" Data="FieldTypes.All[FieldTypes.DATE_TIME].FormComponents" ValueField="Name" TextField="Title" Cols="6" Label="Form view type" Placeholder="choose form view type" Required />
                 </Grid>
             </TabPanel>
             <TabPanel Name="Advanced">
                 <Grid GutterX="GridGutter.Large">
                     <FormDateInput @bind-Value="Model.DefaultValue" Cols="6" Placeholder="@Model.Placeholder" Label="Default Value" />
-                    <FormInput @bind-Value="Model.Format" Cols="6" Placeholder="Date format for view mode" Label="Format" />
+                    <FormSelect @bind-Value="Model.Format" Data="DateFormats" ValueField="Key" TextField="Text" Cols="6" Placeholder="Choose Date format for view mode" Label="Format" />
                 </Grid>
             </TabPanel>
         </TabContent>

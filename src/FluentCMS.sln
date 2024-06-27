@@ -53,6 +53,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin.UserManagement", "Frontend\Plugins\FluentCMS.Web.Plugins.Admin.UserManagement\FluentCMS.Web.Plugins.Admin.UserManagement.csproj", "{B114E4B8-19ED-4C85-8870-842A9BD668F3}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin.FileManagement", "Frontend\Plugins\FluentCMS.Web.Plugins.Admin.FileManagement\FluentCMS.Web.Plugins.Admin.FileManagement.csproj", "{63AB21B8-5560-40EC-BB2F-3428BB600B21}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "Shared\Shared.csproj", "{E78B903B-4307-4220-B451-3000ED3E9971}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -143,6 +147,14 @@ Global
 		{B114E4B8-19ED-4C85-8870-842A9BD668F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B114E4B8-19ED-4C85-8870-842A9BD668F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B114E4B8-19ED-4C85-8870-842A9BD668F3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{63AB21B8-5560-40EC-BB2F-3428BB600B21}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{63AB21B8-5560-40EC-BB2F-3428BB600B21}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{63AB21B8-5560-40EC-BB2F-3428BB600B21}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{63AB21B8-5560-40EC-BB2F-3428BB600B21}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E78B903B-4307-4220-B451-3000ED3E9971}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E78B903B-4307-4220-B451-3000ED3E9971}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E78B903B-4307-4220-B451-3000ED3E9971}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E78B903B-4307-4220-B451-3000ED3E9971}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -170,6 +182,7 @@ Global
 		{1F236295-69B3-41CC-9E5A-E3C8D9C9376F} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
 		{FEB5B78D-C81F-4871-9E58-B9E8015DABED} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
 		{B114E4B8-19ED-4C85-8870-842A9BD668F3} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
+		{63AB21B8-5560-40EC-BB2F-3428BB600B21} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2E9F4217-7A58-48A4-9850-84CD0CDA31DA}

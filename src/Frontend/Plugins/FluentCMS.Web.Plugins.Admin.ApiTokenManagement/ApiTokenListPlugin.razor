@@ -2,19 +2,15 @@
 
 <PluginBody Title="API Tokens List">
     <ActionsFragment>
-        <Button Href="@GetUrl("Create Api Token")" Color="Color.Primary">
-            <Icon Name="IconName.Plus" />Add New API Token
-        </Button>
+        <ActionButtonCreate Href="@GetUrl("Create Api Token")" Label="Add API Token"/>
     </ActionsFragment>
     <ChildContent>
         <DataTable Items="ApiTokens">
             <DataTableItem Label="Name">@context.Name</DataTableItem>
             <DataTableItem Label="Description">@context.Description</DataTableItem>
-            <DataTableItem>
-                <Button Color="Color.Primary" Href="@GetUrl("Update Api Token", new { id = @context.Id })" Outline>
-                    <Icon Name="IconName.Edit" />Edit
-                </Button>
-            </DataTableItem>
+            <ActionButtons>
+                <ActionButtonEdit Href="@GetUrl("Update Api Token", new { id = @context.Id })" />
+            </ActionButtons>
         </DataTable>
     </ChildContent>
 </PluginBody>

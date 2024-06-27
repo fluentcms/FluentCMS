@@ -1,5 +1,6 @@
 ﻿using FluentCMS.Web.Api.Setup.Models;
 using Microsoft.Extensions.Hosting;
+using System.IO;
 using System.Text.Json;
 
 namespace FluentCMS.Web.Api.Setup;
@@ -87,13 +88,13 @@ public class SetupManager
 
         var manifestFile = Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "manifest.json");
 
-        if (!File.Exists(manifestFile))
+        if (!System.IO.File.Exists(manifestFile))
             throw new AppException("manifest.json doesn't exist!");
 
         var jsonSerializerOptions = new JsonSerializerOptions { };
         jsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
 
-        _adminTemplate = await JsonSerializer.DeserializeAsync<AdminTemplate>(File.OpenRead(manifestFile), jsonSerializerOptions) ??
+        _adminTemplate = await JsonSerializer.DeserializeAsync<AdminTemplate>(System.IO.File.OpenRead(manifestFile), jsonSerializerOptions) ??
             throw new AppException("Failed to deserialize manifest.json");
 
         _globalSettings = _adminTemplate.GlobalSettings;
@@ -121,8 +122,8 @@ public class SetupManager
             Title = "Setup",
             Layout = new LayoutDetailResponse
             {
-                Body = File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.body.html")),
-                Head = File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.head.html"))
+                Body = System.IO.File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.body.html")),
+                Head = System.IO.File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.head.html"))
             },
             Site = new(),
             Sections = new Dictionary<string, List<PluginDetailResponse>>
@@ -231,7 +232,7 @@ public class SetupManager
                 var content = new Content
                 {
                     TypeId = contentType.Id,
-                    Value = contentDictionary
+                    Data = contentDictionary
                 };
                 await _contentService.Create(content);
             }
@@ -246,8 +247,8 @@ public class SetupManager
             var layout = new Layout
             {
                 Name = layoutTemplate.Name,
-                Body = File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, $"{layoutTemplate.Name}.body.html")),
-                Head = File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, $"{layoutTemplate.Name}.head.html"))
+                Body = System.IO.File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, $"{layoutTemplate.Name}.body.html")),
+                Head = System.IO.File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, $"{layoutTemplate.Name}.head.html"))
             };
             _layouts.Add(await _layoutService.Create(layout));
             if (layoutTemplate.IsDefault)

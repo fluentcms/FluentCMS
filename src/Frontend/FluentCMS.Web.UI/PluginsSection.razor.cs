@@ -1,5 +1,4 @@
-﻿using FluentCMS.Web.ApiClients;
-using Microsoft.AspNetCore.Components;
+﻿using Microsoft.AspNetCore.Components;
 
 namespace FluentCMS.Web.UI;
 
@@ -10,5 +9,5 @@ public partial class PluginsSection
     public string Name { get; set; } = default!;
 
     [CascadingParameter]
-    private PageFullDetailResponse? Page { get; set; }
+    private ViewContext ViewContext { get; set; } = default!;
 }

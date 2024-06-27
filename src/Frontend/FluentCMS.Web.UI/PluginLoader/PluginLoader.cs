@@ -19,6 +19,9 @@ public class PluginLoader
 
         string assemblyPath = Path.Combine(binFolder!, relativePath);
 
+        if (!Path.GetFullPath(assemblyPath).StartsWith(binFolder!))
+            throw new Exception("Attempted to load assembly from illegal location");
+
         var customLoadContext = new PluginLoadContext();
 
         var assembly = customLoadContext.LoadFromAssemblyPath(assemblyPath);

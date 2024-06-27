@@ -18,9 +18,12 @@
                 @ChildContent
             </ModalBody>
             <ModalFooter>
-                <FormActions Submit>
+                <FormActions>
+                    <Button Color="Color.Primary" Type="ButtonType.Submit">
+                        Submit
+                    </Button>
                     <Button @onclick="OnCancel">
-                        Back
+                        Cancel
                     </Button>
                 </FormActions>
             </ModalFooter>

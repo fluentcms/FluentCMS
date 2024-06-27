@@ -79,10 +79,19 @@ public class MappingProfile : Profile
 
         #region Content
 
-        CreateMap<ContentCreateRequest, Content>();
-        CreateMap<ContentUpdateRequest, Content>();
         CreateMap<Content, ContentDetailResponse>();
 
         #endregion
+
+        #region File Folder Asset
+
+        CreateMap<File, FileDetailResponse>();
+        CreateMap<FileUpdateRequest, File>();
+        CreateMap<Folder, FolderDetailResponse>();
+        CreateMap<FolderCreateRequest, Folder>();
+        CreateMap<FolderUpdateRequest, Folder>();
+
+        #endregion
+
     }
 }
