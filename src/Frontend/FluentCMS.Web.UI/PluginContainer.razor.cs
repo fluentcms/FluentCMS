@@ -1,7 +1,4 @@
-﻿using FluentCMS.Web.ApiClients;
-using Microsoft.AspNetCore.Components;
-
-namespace FluentCMS.Web.UI;
+﻿namespace FluentCMS.Web.UI;
 
 public partial class PluginContainer
 {
@@ -35,7 +32,7 @@ public partial class PluginContainer
     {
         PluginDefinitionType? pluginDefType;
 
-        if (ViewContext.Type == ViewType.Default)
+        if (ViewContext.Type == ViewType.Default || ViewContext.Type == ViewType.PagePreview)
             pluginDefType = Plugin.Definition.Types?.Where(p => p.IsDefault).FirstOrDefault();
         else
             pluginDefType = Plugin.Definition?.Types?.Where(p => p!.Name!.Equals(ViewContext.PluginViewName, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();

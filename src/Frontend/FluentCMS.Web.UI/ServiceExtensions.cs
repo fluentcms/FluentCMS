@@ -1,8 +1,6 @@
-﻿using FluentCMS.Web.ApiClients;
-using FluentCMS.Web.UI;
+﻿using FluentCMS.Web.UI;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
@@ -85,11 +83,21 @@ public static class ServiceExtensions
                 // check if the pluginId is valid
                 if (Guid.TryParse(queryParams["pluginId"], out var pluginId))
                 {
-                    viewContext.Type = ViewType.Edit;
+                    viewContext.Type = ViewType.PluginEdit;
                     viewContext.PluginId = pluginId;
                     viewContext.PluginViewName = queryParams["viewName"];
                     viewContext.Plugin = page.Sections!.Values.SelectMany(x => x).Single(p => p.Id == pluginId);
                 }
+            }
+
+            if (queryParams["pageEdit"] != null)
+            {
+                viewContext.Type = ViewType.PageEdit;
+            }
+
+            if (queryParams["pagePreview"] != null)
+            {
+                viewContext.Type = ViewType.PagePreview;
             }
 
             return viewContext;
