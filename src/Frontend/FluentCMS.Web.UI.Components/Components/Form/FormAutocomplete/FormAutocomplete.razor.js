@@ -36,7 +36,10 @@ export function initialize(dotnet, element, config) {
     const autocomplete = new TomSelect(element, {
         allowEmptyOption: true,
         onChange: () => {
-            dotnet.invokeMethodAsync("UpdateValue", autocomplete.items[0]);
+            if(config.multiple)
+                dotnet.invokeMethodAsync("UpdateValue", autocomplete.items);
+            else
+                dotnet.invokeMethodAsync("UpdateValue", autocomplete.items[0]);
         },
     });
 

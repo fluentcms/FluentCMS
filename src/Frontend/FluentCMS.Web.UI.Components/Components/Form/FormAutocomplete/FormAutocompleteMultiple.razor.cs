@@ -3,7 +3,7 @@ using System.Globalization;
 
 namespace FluentCMS.Web.UI.Components;
 
-public partial class FormAutocomplete<TItem, TValue> : IAsyncDisposable
+public partial class FormAutocompleteMultiple<TItem, TValue> : IAsyncDisposable
 {
     [Inject]
     public IJSRuntime? JS { get; set; }
@@ -21,6 +21,9 @@ public partial class FormAutocomplete<TItem, TValue> : IAsyncDisposable
     public string? ValueField { get; set; }
 
     [Parameter]
+    public EventCallback<ICollection<TValue>> OnChange { get; set; }
+
+    [Parameter]
     public RenderFragment ChildContent { get; set; }
 
     public ElementReference Element;
@@ -29,7 +32,7 @@ public partial class FormAutocomplete<TItem, TValue> : IAsyncDisposable
 
     private bool IsSelected(TItem item)
     {
-        return (Value?.ToString() ?? String.Empty) == GetValue(item).ToString();
+        return Value?.Contains(GetValue(item)) ?? false;
     }
 
     private string? GetText(TItem item)
@@ -51,13 +54,19 @@ public partial class FormAutocomplete<TItem, TValue> : IAsyncDisposable
     }
 
     [JSInvokable]
-    public async Task UpdateValue(string value)
+    public async Task UpdateValue(ICollection<TValue> value)
     {
-        if (BindConverter.TryConvertTo<TValue>(value, CultureInfo.CurrentCulture, out var parsedValue))
-        {
-            Value = parsedValue;
-        }
+        if (Value is null)
+            Value = [];
+
+        Value = value;
+        // if (Value.Contains(value))
+        //     Value.Remove(value);
+        // else
+        //     Value.Add(value);
+
         await ValueChanged.InvokeAsync(Value);
+        await OnChange.InvokeAsync(Value);
     }
 
     protected override async Task OnParametersSetAsync()
@@ -79,28 +88,12 @@ public partial class FormAutocomplete<TItem, TValue> : IAsyncDisposable
 
         Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Form/FormAutocomplete/FormAutocomplete.razor.js");
 
-        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), Element, new { Multiple = false });
+        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), Element, new { Multiple = true });
     }
 
-    protected override bool TryParseValueFromString(string? value, [MaybeNullWhen(false)] out TValue result, [NotNullWhen(false)] out string? validationErrorMessage)
+    protected override bool TryParseValueFromString(string? value, out ICollection<TValue> result, [NotNullWhen(false)] out string? validationErrorMessage)
     {
-        try
-        {
-            if (BindConverter.TryConvertTo<TValue>(value, CultureInfo.CurrentCulture, out var parsedValue))
-            {
-                result = parsedValue;
-                validationErrorMessage = null;
-                return true;
-            }
-
-            result = default;
-            validationErrorMessage = $"The {DisplayName ?? FieldIdentifier.FieldName} field is not valid.";
-            return false;
-        }
-        catch (InvalidOperationException ex)
-        {
-            throw new InvalidOperationException($"{GetType()} does not support the type '{typeof(TValue)}'.", ex);
-        }
+        throw new NotSupportedException();
     }
 }
 

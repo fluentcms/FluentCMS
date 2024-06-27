@@ -95,7 +95,9 @@ public class FieldTypes
                 SettingViewType = typeof(MultiSelectFieldSettings),
                 FormComponents =
                 [
-                    new FieldType.Component("Checkboxes", typeof(MultiSelectFieldFormCheckboxes))
+                    new FieldType.Component("Checkboxes", typeof(MultiSelectFieldFormCheckboxes)),
+                    new FieldType.Component("Autocomplete", typeof(MultiSelectFieldFormAutocomplete))
+
                 ],
                 DataTableComponents =
                 [
