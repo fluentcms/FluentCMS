@@ -11,17 +11,18 @@
     overflow: scroll;
     height: 100%;
     display: flex;
-    padding: 0.25rem;
+    padding: 0.5rem;
     box-sizing: border-box;
     flex-direction: column;
-    gap: 0.25rem;
-    overflow: scroll;
+    gap: 6px;
+    overflow: auto;
     width: 100%;
 }
 
 .f-page-editor-sidebar .f-plugin-definition-item {
-    padding: 0.5rem 0.5rem;
+    padding: 0.5rem 0.75rem;
     display: flex;
+    font-family: sans-serif;
     flex-direction: column;
     gap: 0.25rem;
     border: 1px solid #f0f0f0;
@@ -38,16 +39,16 @@
 
 .f-page-editor-sidebar .f-plugin-definition-item .f-name {
     font-weight: bold;
-    font-size: 14px;
+    font-size: 16px;
 }
 
 .f-page-editor-sidebar .f-plugin-definition-item .f-description {
     opacity: 0.7;
-    font-size: 12px;
+    font-size: 14px;
 }
 
 .f-page-editor-sidebar {
-    width: 200px;
+    width: 240px;
     background-color: #ffffff;
     border-left: 1px solid #dfdfdf;
     box-shadow: 1px 0 8px -4px black;
@@ -55,7 +56,7 @@
     position: fixed;
     top: 40px;
     bottom: 0;
-    right: -200px;
+    right: -240px;
     z-index: 100;
     opacity: 0;
 }
@@ -192,7 +193,7 @@ body {
 }
 
 .f-page-editor-sidebar-open .f-page-editor-iframe-wrapper {
-    width: calc(100% - 200px);
+    width: calc(100% - 240px);
 }
 
 .f-page-editor-header {
@@ -200,14 +201,25 @@ body {
     height: 40px;
     background-color: rgb(24, 24, 24);
     display: flex;
-    justify-content: end;
+    justify-content: space-between;
     padding: 4px;
     gap: 4px;
     box-sizing: border-box;
 }
 
 .f-page-editor-header-separator {
-    width: 2rem;
+    transition: all 0.3s ease;
+    width: 0;
+}
+
+.f-page-editor-sidebar-close .f-page-editor-header-separator {
+    width: 240px;
+}
+
+.f-page-editor-header-button-list {
+    display: flex;
+    gap: 4px;
+    /* justify-content: space-between; */
 }
 
 .f-page-editor-header-button {
@@ -237,7 +249,7 @@ body {
 
 
 .f-page-editor-sidebar-open .f-page-editor-toggler {
-    right: 200px;
+    right: 240px;
     margin-right: -1px;
 }
 
