@@ -3,7 +3,7 @@ using Microsoft.Extensions.Hosting;
 using System.IO;
 using System.Text.Json;
 
-namespace FluentCMS.Web.Api.Setup;
+namespace FluentCMS.Web.Api;
 
 public class SetupManager
 {
@@ -138,7 +138,7 @@ public class SetupManager
                             Assembly = "FluentCMS.Web.Plugins.Admin.Auth.dll",
                             Types =
                             [
-                                new PluginDefinitionType
+                                new Models.PluginDefinitionType
                                 {
                                     IsDefault = true,
                                     Name="Setup",

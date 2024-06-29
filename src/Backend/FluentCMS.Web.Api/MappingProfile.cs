@@ -16,6 +16,8 @@ public class MappingProfile : Profile
 
         CreateMap<PluginDefinitionCreateRequest, PluginDefinition>();
         CreateMap<PluginDefinition, PluginDefinitionDetailResponse>();
+        CreateMap<Entities.PluginDefinitionType, Models.PluginDefinitionType>();
+        CreateMap<Models.PluginDefinitionType, Entities.PluginDefinitionType>();
 
         #endregion
 
@@ -66,6 +68,8 @@ public class MappingProfile : Profile
 
         CreateMap<ApiTokenCreateRequest, ApiToken>();
         CreateMap<ApiToken, ApiTokenDetailResponse>();
+        CreateMap<Entities.Policy, Models.Policy>();
+        CreateMap<Models.Policy, Entities.Policy>();
 
         #endregion
 
@@ -74,6 +78,7 @@ public class MappingProfile : Profile
         CreateMap<ContentTypeCreateRequest, ContentType>();
         CreateMap<ContentTypeUpdateRequest, ContentType>();
         CreateMap<ContentType, ContentTypeDetailResponse>();
+        CreateMap<Entities.ContentTypeField, Models.ContentTypeField>();
 
         #endregion
 
@@ -90,6 +95,16 @@ public class MappingProfile : Profile
         CreateMap<Folder, FolderDetailResponse>();
         CreateMap<FolderCreateRequest, Folder>();
         CreateMap<FolderUpdateRequest, Folder>();
+
+        #endregion
+
+        #region Global Setting
+
+        CreateMap<GlobalSettingsUpdateRequest, GlobalSettings>();
+        CreateMap<Entities.FileUploadConfiguration, Models.FileUploadConfiguration>();
+        CreateMap<Models.FileUploadConfiguration, Entities.FileUploadConfiguration>();
+        CreateMap<Entities.SmtpServerConfiguration, Models.SmtpServerConfiguration>();
+        CreateMap<Models.SmtpServerConfiguration, Entities.SmtpServerConfiguration>();
 
         #endregion
 

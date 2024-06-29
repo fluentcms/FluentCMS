@@ -60,9 +60,9 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
 
     [HttpGet]
     [Policy(AREA, READ)]
-    public async Task<IApiPagingResult<Policy>> GetPolicies(CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<Models.Policy>> GetPolicies(CancellationToken cancellationToken = default)
     {
-        var policiesDict = new Dictionary<string, Policy>();
+        var policiesDict = new Dictionary<string, Models.Policy>();
 
         var endpoints = endpointSources.SelectMany(es => es.Endpoints).OfType<RouteEndpoint>();
         foreach (var endpoint in endpoints)
@@ -76,7 +76,7 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
             foreach (var policyAttribute in policyAttributes.Where(x => x.Area != PolicyAllAttribute.AREA))
             {
                 if (!policiesDict.ContainsKey(policyAttribute.Area))
-                    policiesDict.Add(policyAttribute.Area, new Policy { Area = policyAttribute.Area, Actions = [] });
+                    policiesDict.Add(policyAttribute.Area, new Models.Policy { Area = policyAttribute.Area, Actions = [] });
 
                 if (!policiesDict[policyAttribute.Area].Actions.Where(x => x == policyAttribute.Action).Any())
                     policiesDict[policyAttribute.Area].Actions.Add(policyAttribute.Action);

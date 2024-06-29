@@ -12,6 +12,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\..\Shared\Shared.csproj" />
         <ProjectReference Include="..\FluentCMS.Services\FluentCMS.Services.csproj" />
     </ItemGroup>
 

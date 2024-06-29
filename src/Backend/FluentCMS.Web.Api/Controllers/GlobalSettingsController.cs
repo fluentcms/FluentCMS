@@ -18,12 +18,14 @@ public class GlobalSettingsController(IGlobalSettingsService service, IMapper ma
 
     [HttpPost]
     [Policy(AREA, UPDATE)]
-    public async Task<IApiResult<GlobalSettings>> Update(GlobalSettingsUpdateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<Models.GlobalSettingsDetailResponse>> Update(GlobalSettingsUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var settings = mapper.Map<GlobalSettings>(request);
 
         var updated = await service.Update(settings, cancellationToken);
 
-        return Ok(updated);
+        var response = mapper.Map<GlobalSettingsDetailResponse>(updated);
+
+        return Ok(response);
     }
 }

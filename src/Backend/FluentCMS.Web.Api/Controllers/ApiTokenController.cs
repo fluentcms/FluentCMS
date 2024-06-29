@@ -40,7 +40,8 @@ public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper
     [Policy(AREA, UPDATE)]
     public async Task<IApiResult<ApiTokenDetailResponse>> Update([FromBody] ApiTokenUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        var apiToken = await apiTokenService.Update(request.Id, request.Name, request.Description, request.Enabled, request.Policies, cancellationToken);
+        var policies = mapper.Map<List<Entities.Policy>>(request.Policies);
+        var apiToken = await apiTokenService.Update(request.Id, request.Name, request.Description, request.Enabled, policies, cancellationToken);
         var apiTokenResponse = mapper.Map<ApiTokenDetailResponse>(apiToken);
         return Ok(apiTokenResponse);
     }

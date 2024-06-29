@@ -3,7 +3,6 @@
 public class ContentTypeCreateRequest
 {
     [Required]
-    [Slug]
     public string Slug { get; set; } = default!;
 
     [Required]

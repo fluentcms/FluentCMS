@@ -8,7 +8,7 @@ public class FolderController(IFolderService folderService, IFileService fileSer
     public const string CREATE = "Create";
     public const string DELETE = $"Delete/{READ}";
 
-    private static Folder _rootFolder = new() { Id = Guid.Empty, Name = "(root)", FolderId = Guid.Empty };
+    private static Entities.Folder _rootFolder = new() { Id = Guid.Empty, Name = "(root)", FolderId = Guid.Empty };
 
     [HttpGet]
     [Policy(AREA, READ)]
