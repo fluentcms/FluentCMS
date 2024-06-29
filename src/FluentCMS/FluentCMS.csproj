@@ -22,6 +22,7 @@
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin.SiteManagement\FluentCMS.Web.Plugins.Admin.SiteManagement.csproj" />
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin.UserManagement\FluentCMS.Web.Plugins.Admin.UserManagement.csproj" />
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.News\FluentCMS.Web.Plugins.Contents.News.csproj" />
+        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.TextHTML\FluentCMS.Web.Plugins.Contents.TextHTML.csproj" />
     </ItemGroup>
 	<ItemGroup>
 		<None Include="wwwroot\**">
