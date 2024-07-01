@@ -12,15 +12,8 @@
         <ProjectReference Include="..\Backend\FluentCMS.Web.Api\FluentCMS.Web.Api.csproj" />
         <ProjectReference Include="..\Backend\Repositories\FluentCMS.Repositories.MongoDB\FluentCMS.Repositories.MongoDB.csproj" />
         <ProjectReference Include="..\Frontend\FluentCMS.Web.UI\FluentCMS.Web.UI.csproj" />
-        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin.ApiTokenManagement\FluentCMS.Web.Plugins.Admin.ApiTokenManagement.csproj" />
-        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin.Auth\FluentCMS.Web.Plugins.Admin.Auth.csproj" />
-        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin.ContentTypeManagement\FluentCMS.Web.Plugins.Admin.ContentTypeManagement.csproj" />
-        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin.FileManagement\FluentCMS.Web.Plugins.Admin.FileManagement.csproj" />
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin.Home\FluentCMS.Web.Plugins.Admin.Home.csproj" />
-        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin.LayoutManagement\FluentCMS.Web.Plugins.Admin.LayoutManagement.csproj" />
-        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin.RoleManagement\FluentCMS.Web.Plugins.Admin.RoleManagement.csproj" />
-        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin.SiteManagement\FluentCMS.Web.Plugins.Admin.SiteManagement.csproj" />
-        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin.UserManagement\FluentCMS.Web.Plugins.Admin.UserManagement.csproj" />
+        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin\FluentCMS.Web.Plugins.Admin.csproj" />
     </ItemGroup>
 	<ItemGroup>
 		<None Include="wwwroot\**">

@@ -135,7 +135,7 @@ public class SetupManager
                         {
                             Name = "Setup",
                             Description = "Setup View Plugin",
-                            Assembly = "FluentCMS.Web.Plugins.Admin.Auth.dll",
+                            Assembly = "FluentCMS.Web.Plugins.Admin.dll",
                             Types =
                             [
                                 new PluginDefinitionType
