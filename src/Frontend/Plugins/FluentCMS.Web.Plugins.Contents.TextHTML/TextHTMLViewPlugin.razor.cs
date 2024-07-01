@@ -1,6 +1,7 @@
 using FluentCMS.Web.ApiClients;
 
 namespace FluentCMS.Web.Plugins.Contents.TextHTML;
+
 public partial class TextHTMLViewPlugin
 {
     private TextHTMLContent? Content { get; set; }
@@ -11,7 +12,9 @@ public partial class TextHTMLViewPlugin
         {
             var response = await GetApiClient<PluginContentClient>().GetAllAsync(nameof(TextHTMLContent), Plugin.Id);
 
-            Content = response?.Data?.ToContentList<TextHTMLContent>()[0];
+            if (response?.Data != null && response.Data.ToContentList<TextHTMLContent>().Any())
+                Content = response.Data.ToContentList<TextHTMLContent>()[0];
+
         }
     }
 }
