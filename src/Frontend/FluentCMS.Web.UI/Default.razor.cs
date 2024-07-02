@@ -8,7 +8,7 @@ namespace FluentCMS.Web.UI;
 public partial class Default : IDisposable
 {
     [Inject]
-    public LayoutProcessor LayoutProcessor { get; set; } = default!;
+    private ILayoutProcessor LayoutProcessor { get; set; } = default!;
 
     [CascadingParameter]
     public ViewContext ViewContext { get; set; } = default!;

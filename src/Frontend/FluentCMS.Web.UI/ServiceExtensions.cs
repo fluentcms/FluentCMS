@@ -15,7 +15,7 @@ public static class ServiceExtensions
     {
         services.AddSingleton<PluginLoader>();
 
-        services.AddScoped<LayoutProcessor>();
+        services.AddScoped<ILayoutProcessor, LayoutProcessor>();
 
         // Add services to the container.
         services.AddRazorComponents()
