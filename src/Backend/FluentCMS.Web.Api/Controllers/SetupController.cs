@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class SetupController(SetupManager setupManager) : BaseGlobalController
+public class SetupController(ISetupManager setupManager) : BaseGlobalController
 {
     [HttpGet]
     [PolicyAll]

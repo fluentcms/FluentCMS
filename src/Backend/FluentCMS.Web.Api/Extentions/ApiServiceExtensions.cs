@@ -89,7 +89,7 @@ public static class ApiServiceExtensions
 
         services.AddScoped<IAuthContext, AuthContext>();
 
-        services.AddScoped<SetupManager>();
+        services.AddScoped<ISetupManager, SetupManager>();
 
         services.AddAutoMapper(typeof(ApiServiceExtensions));
 

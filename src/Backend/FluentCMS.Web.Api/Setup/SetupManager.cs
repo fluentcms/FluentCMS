@@ -5,7 +5,15 @@ using System.Text.Json;
 
 namespace FluentCMS.Web.Api.Setup;
 
-public class SetupManager
+public interface ISetupManager
+{
+    Task<PageFullDetailResponse> GetSetupPage();
+    Task<bool> IsInitialized();
+    Task Reset();
+    Task<bool> Start(SetupRequest request);
+}
+
+public class SetupManager : ISetupManager
 {
     private static bool? _initialized;
 
