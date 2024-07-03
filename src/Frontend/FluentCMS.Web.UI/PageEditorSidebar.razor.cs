@@ -13,7 +13,7 @@ public partial class PageEditorSidebar
             var response = await ApiClient.PluginDefinition.GetAllAsync();
             PluginDefinitions = response.Data;
         }
-        catch (Exception e)
+        catch (Exception)
         {
             PluginDefinitions = [];
         }
