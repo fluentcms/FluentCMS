@@ -15,7 +15,7 @@ public partial class LayoutCreatePlugin
 
     private async Task OnSubmit()
     {
-        await GetApiClient<LayoutClient>().CreateAsync(Model);
+        await ApiClient.Layout.CreateAsync(Model);
         NavigateBack();
     }
 }

@@ -7,13 +7,13 @@ public partial class SiteListPlugin
 
     public async Task Load()
     {
-        var sitesResponse = await GetApiClient<SiteClient>().GetAllAsync();
+        var sitesResponse = await ApiClient.Site.GetAllAsync();
         Sites = sitesResponse?.Data?.ToList() ?? [];
     }
 
     protected override async Task OnInitializedAsync()
     {
-        var layoutsResponse = await GetApiClient<LayoutClient>().GetAllAsync();
+        var layoutsResponse = await ApiClient.Layout.GetAllAsync();
         Layouts = layoutsResponse?.Data?.ToList() ?? [];
         await Load();
     }
@@ -26,7 +26,7 @@ public partial class SiteListPlugin
         if (SelectedSite == null)
             return;
 
-        await GetApiClient<SiteClient>().DeleteAsync(SelectedSite.Id);
+        await ApiClient.Site.DeleteAsync(SelectedSite.Id);
         await Load();
         SelectedSite = default;
     }

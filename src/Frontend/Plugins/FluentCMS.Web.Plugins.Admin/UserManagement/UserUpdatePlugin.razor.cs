@@ -23,13 +23,13 @@ public partial class UserUpdatePlugin
     {
         if (Roles is null)
         {
-            var rolesResponse = await GetApiClient<RoleClient>().GetAllAsync();
+            var rolesResponse = await ApiClient.Role.GetAllAsync();
             Roles = rolesResponse?.Data?.ToList() ?? [];
         }
 
         if (UpdateModel is null)
         {
-            var userResponse = await GetApiClient<UserClient>().GetAsync(Id);
+            var userResponse = await ApiClient.User.GetAsync(Id);
             var user = userResponse.Data;
             Username = user.Username;
             UpdateModel = Mapper.Map<UserUpdateRequest>(user);
@@ -42,13 +42,13 @@ public partial class UserUpdatePlugin
     private async Task OnSubmit()
     {
         UpdateModel!.RoleIds ??= [];
-        await GetApiClient<UserClient>().UpdateAsync(UpdateModel);
+        await ApiClient.User.UpdateAsync(UpdateModel);
         NavigateBack();
     }
 
     private async Task OnChangePassword()
     {
-        await GetApiClient<UserClient>().SetPasswordAsync(SetPasswordModel);
+        await ApiClient.User.SetPasswordAsync(SetPasswordModel);
         NavigateBack();
     }
 }

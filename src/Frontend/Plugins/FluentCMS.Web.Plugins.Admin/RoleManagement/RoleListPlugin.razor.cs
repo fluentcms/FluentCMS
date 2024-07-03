@@ -6,7 +6,7 @@ public partial class RoleListPlugin
 
     public async Task Load()
     {
-        var rolesResponse = await GetApiClient<RoleClient>().GetAllAsync();
+        var rolesResponse = await ApiClient.Role.GetAllAsync();
         Roles = rolesResponse?.Data?.ToList() ?? [];
     }
 
@@ -23,7 +23,7 @@ public partial class RoleListPlugin
         if (SelectedRole == null)
             return;
 
-        await GetApiClient<RoleClient>().DeleteAsync(SelectedRole.Id);
+        await ApiClient.Role.DeleteAsync(SelectedRole.Id);
         await Load();
         SelectedRole = default;
     }

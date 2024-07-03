@@ -17,13 +17,13 @@ public partial class ApiTokenUpdatePlugin
     {
         if (Policies is null)
         {
-            var policiesResponse = await GetApiClient<RoleClient>().GetPoliciesAsync();
+            var policiesResponse = await ApiClient.Role.GetPoliciesAsync();
             Policies = policiesResponse?.Data?.ToList() ?? [];
         }
 
         if (ApiToken is null)
         {
-            var apiTokenResponse = await GetApiClient<ApiTokenClient>().GetByIdAsync(Id);
+            var apiTokenResponse = await ApiClient.ApiToken.GetByIdAsync(Id);
             ApiToken = apiTokenResponse.Data;
             Model = Mapper.Map<ApiTokenUpdateRequest>(ApiToken);
 
@@ -37,7 +37,7 @@ public partial class ApiTokenUpdatePlugin
 
     private async Task OnSubmit()
     {
-        await GetApiClient<ApiTokenClient>().UpdateAsync(Model);
+        await ApiClient.ApiToken.UpdateAsync(Model);
         NavigateBack();
     }
 }

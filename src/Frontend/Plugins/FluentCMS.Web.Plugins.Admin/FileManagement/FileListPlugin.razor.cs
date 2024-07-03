@@ -46,7 +46,7 @@ public partial class FileListPlugin
 
     protected override async Task OnInitializedAsync()
     {
-        var settingsResponse = await GetApiClient<GlobalSettingsClient>().GetAsync();
+        var settingsResponse = await ApiClient.GlobalSettings.GetAsync();
         if (settingsResponse?.Data != null)
         {
             FileUploadConfig = settingsResponse?.Data.FileUpload;
@@ -60,12 +60,12 @@ public partial class FileListPlugin
 
     private async Task Load()
     {
-        var rootFolderResponse = await GetApiClient<FolderClient>().GetAllAsync();
+        var rootFolderResponse = await ApiClient.Folder.GetAllAsync();
         RootFolder = rootFolderResponse?.Data;
 
         FolderDetailResponse? folderDetail = default!;
 
-        var folderDetailResponse = await GetApiClient<FolderClient>().GetAllAsync();
+        var folderDetailResponse = await ApiClient.Folder.GetAllAsync();
 
         if (FolderId is null || FolderId == Guid.Empty)
         {
@@ -126,7 +126,7 @@ public partial class FileListPlugin
 
     private async Task OnUpload(List<FileParameter> files)
     {
-        await GetApiClient<FileClient>().UploadAsync(FolderId, files);
+        await ApiClient.File.UploadAsync(FolderId, files);
         FileUploadModalOpen = false;
         await Load();
     }
@@ -142,7 +142,7 @@ public partial class FileListPlugin
 
     private async Task OnCreateFolder(FolderCreateRequest request)
     {
-        await GetApiClient<FolderClient>().CreateAsync(request);
+        await ApiClient.Folder.CreateAsync(request);
         FolderCreateModalOpen = false;
         await Load();
     }
@@ -187,7 +187,7 @@ public partial class FileListPlugin
     {
         request.Name = request.Name + SelectedFileExtension;
         FileUpdateModalOpen = false;
-        await GetApiClient<FileClient>().UpdateAsync(request);
+        await ApiClient.File.UpdateAsync(request);
         await Load();
     }
 
@@ -199,7 +199,7 @@ public partial class FileListPlugin
 
     private async Task OnUpdateFolder(FolderUpdateRequest request)
     {
-        await GetApiClient<FolderClient>().UpdateAsync(request);
+        await ApiClient.Folder.UpdateAsync(request);
         FolderUpdateModalOpen = false;
         await Load();
     }
@@ -222,11 +222,11 @@ public partial class FileListPlugin
 
         if (SelectedItem.IsFolder)
         {
-            await GetApiClient<FolderClient>().DeleteAsync(SelectedItem.Id.Value);
+            await ApiClient.Folder.DeleteAsync(SelectedItem.Id.Value);
         }
         else
         {
-            await GetApiClient<FileClient>().DeleteAsync(SelectedItem.Id.Value);
+            await ApiClient.File.DeleteAsync(SelectedItem.Id.Value);
         }
         await Load();
         SelectedItem = default;

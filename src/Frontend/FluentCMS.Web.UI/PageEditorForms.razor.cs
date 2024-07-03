@@ -3,19 +3,12 @@ namespace FluentCMS.Web.UI;
 public partial class PageEditorForms
 {
     #region Base Plugin
-    [Inject]
-    private UserLoginResponse? UserLogin { get; set; }
 
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = default!;
 
     [Inject]
-    private IHttpClientFactory HttpClientFactory { get; set; } = default!;
-
-    private PluginClient GetPluginClient()
-    {
-        return HttpClientFactory.CreateApiClient<PluginClient>(UserLogin);
-    }
+    private ApiClientFactory ApiClient { get; set; } = default!;
 
     [Inject]
     protected IHttpContextAccessor? HttpContextAccessor { get; set; }
@@ -49,19 +42,19 @@ public partial class PageEditorForms
     {
         foreach (var deletedId in Model.DeleteIds ?? [])
         {
-            await GetPluginClient().DeleteAsync(deletedId);
+            await ApiClient.Plugin.DeleteAsync(deletedId);
         }
 
         foreach (var plugin in Model.CreatePlugins ?? [])
         {
             plugin.PageId = ViewContext.Page.Id;
 
-            await GetPluginClient().CreateAsync(plugin);
+            await ApiClient.Plugin.CreateAsync(plugin);
         }
 
         foreach (var plugin in Model.UpdatePlugins ?? [])
         {
-            await GetPluginClient().UpdateAsync(plugin);
+            await ApiClient.Plugin.UpdateAsync(plugin);
         }
 
         NavigateBack();

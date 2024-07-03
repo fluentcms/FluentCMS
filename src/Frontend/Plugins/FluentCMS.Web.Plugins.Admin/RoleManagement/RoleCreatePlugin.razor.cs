@@ -13,7 +13,7 @@ public partial class RoleCreatePlugin
     {
         if (Policies is null)
         {
-            var policiesResponse = await GetApiClient<RoleClient>().GetPoliciesAsync();
+            var policiesResponse = await ApiClient.Role.GetPoliciesAsync();
             Policies = policiesResponse?.Data?.ToList() ?? [];
         }
 
@@ -32,7 +32,7 @@ public partial class RoleCreatePlugin
 
     private async Task OnSubmit()
     {
-        await GetApiClient<RoleClient>().CreateAsync(Model);
+        await ApiClient.Role.CreateAsync(Model);
         NavigateBack();
     }
 }

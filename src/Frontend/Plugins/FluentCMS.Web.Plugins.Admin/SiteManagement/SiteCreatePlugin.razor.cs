@@ -14,7 +14,7 @@ public partial class SiteCreatePlugin
     {
         if (Layouts is null)
         {
-            var layoutsResponse = await GetApiClient<LayoutClient>().GetAllAsync();
+            var layoutsResponse = await ApiClient.Layout.GetAllAsync();
             Layouts = layoutsResponse?.Data?.ToList() ?? [];
         }
 
@@ -24,7 +24,7 @@ public partial class SiteCreatePlugin
     private async Task OnSubmit()
     {
         Model!.Urls = Urls.Split(",");
-        await GetApiClient<SiteClient>().CreateAsync(Model);
+        await ApiClient.Site.CreateAsync(Model);
         NavigateBack();
     }
 }

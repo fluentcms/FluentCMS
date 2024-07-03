@@ -24,7 +24,7 @@ public partial class ResetPasswordViewPlugin
 
     private async Task OnSubmit()
     {
-        await GetApiClient<AccountClient>().ValidatePasswordResetTokenAsync(Model);
+        await ApiClient.Account.ValidatePasswordResetTokenAsync(Model);
         NavigateTo("/auth/login");
     }
 }

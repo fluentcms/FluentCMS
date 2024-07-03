@@ -12,7 +12,7 @@ public partial class ContentTypeFieldCreate
 
     private async Task OnFieldCreate(ContentTypeField contentTypeField)
     {
-        await GetApiClient().SetFieldAsync(ContentType!.Id, contentTypeField);
+        await ApiClient.ContentType.SetFieldAsync(ContentType!.Id, contentTypeField);
         await OnComplete.InvokeAsync();
     }
 

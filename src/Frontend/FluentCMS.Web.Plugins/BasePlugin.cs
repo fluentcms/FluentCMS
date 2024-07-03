@@ -19,10 +19,7 @@ public abstract class BasePlugin : ComponentBase
     public PluginDetailResponse? Plugin { get; set; } = default!;
 
     [Inject]
-    protected UserLoginResponse? UserLogin { get; set; }
-
-    [Inject]
-    protected IHttpClientFactory HttpClientFactory { get; set; } = default!;
+    protected ApiClientFactory ApiClient { get; set; } = default!;
 
     [Inject]
     protected IHttpContextAccessor? HttpContextAccessor { get; set; }
@@ -73,10 +70,5 @@ public abstract class BasePlugin : ComponentBase
         }
 
         return QueryHelpers.AddQueryString(pagePathWithoutQueryString, newQueryParams);
-    }
-
-    protected TClient GetApiClient<TClient>() where TClient : class, IApiClient
-    {
-        return HttpClientFactory.CreateApiClient<TClient>(UserLogin);
     }
 }

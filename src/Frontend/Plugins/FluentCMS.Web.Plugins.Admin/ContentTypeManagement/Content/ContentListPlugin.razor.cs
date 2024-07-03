@@ -14,7 +14,7 @@ public partial class ContentListPlugin
     {
         if (!string.IsNullOrEmpty(ContentTypeSlug) && ContentType != null)
         {
-            var contentsResponse = await GetApiClient<ContentClient>().GetAllAsync(ContentTypeSlug);
+            var contentsResponse = await ApiClient.Content.GetAllAsync(ContentTypeSlug);
             Contents = contentsResponse?.Data?.ToList() ?? [];
         }
     }
@@ -55,7 +55,7 @@ public partial class ContentListPlugin
         if (SelectedContentId == null)
             return;
 
-        await GetApiClient<ContentClient>().DeleteAsync(ContentTypeSlug!, SelectedContentId.Value);
+        await ApiClient.Content.DeleteAsync(ContentTypeSlug!, SelectedContentId.Value);
         await Load();
         SelectedContentId = default;
     }

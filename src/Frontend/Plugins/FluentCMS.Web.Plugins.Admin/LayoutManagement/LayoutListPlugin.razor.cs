@@ -6,7 +6,7 @@ public partial class LayoutListPlugin
 
     private async Task Load()
     {
-        var response = await GetApiClient<LayoutClient>().GetAllAsync();
+        var response = await ApiClient.Layout.GetAllAsync();
         Layouts = response?.Data?.ToList() ?? [];
     }
 
@@ -23,7 +23,7 @@ public partial class LayoutListPlugin
         if (SelectedLayout == null)
             return;
 
-        await GetApiClient<LayoutClient>().DeleteAsync(SelectedLayout.Id);
+        await ApiClient.Layout.DeleteAsync(SelectedLayout.Id);
         await Load();
         SelectedLayout = default;
     }

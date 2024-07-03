@@ -17,13 +17,13 @@ public partial class RoleUpdatePlugin
     {
         if (Policies is null)
         {
-            var policiesResponse = await GetApiClient<RoleClient>().GetPoliciesAsync();
+            var policiesResponse = await ApiClient.Role.GetPoliciesAsync();
             Policies = policiesResponse?.Data?.ToList() ?? [];
         }
 
         if (Role is null)
         {
-            var roleResponse = await GetApiClient<RoleClient>().GetByIdAsync(Id);
+            var roleResponse = await ApiClient.Role.GetByIdAsync(Id);
             Role = roleResponse.Data;
             Model = Mapper.Map<RoleUpdateRequest>(Role);
 
@@ -37,7 +37,7 @@ public partial class RoleUpdatePlugin
 
     private async Task OnSubmit()
     {
-        await GetApiClient<RoleClient>().UpdateAsync(Model);
+        await ApiClient.Role.UpdateAsync(Model);
         NavigateBack();
     }
 }

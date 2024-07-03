@@ -13,7 +13,7 @@ public partial class UserCreatePlugin
     {
         if (Roles is null)
         {
-            var rolesResponse = await GetApiClient<RoleClient>().GetAllAsync();
+            var rolesResponse = await ApiClient.Role.GetAllAsync();
             Roles = rolesResponse?.Data?.ToList() ?? [];
         }
         Model ??= new();
@@ -22,7 +22,7 @@ public partial class UserCreatePlugin
     private async Task OnSubmit()
     {
         Model!.RoleIds ??= [];
-        await GetApiClient<UserClient>().CreateAsync(Model);
+        await ApiClient.User.CreateAsync(Model);
         NavigateBack();
     }
 }

@@ -14,14 +14,14 @@ public partial class ContentTypeUpdatePlugin
     {
         if (Model is null)
         {
-            var contentTypeResponse = await GetApiClient<ContentTypeClient>().GetByIdAsync(Id);
+            var contentTypeResponse = await ApiClient.ContentType.GetByIdAsync(Id);
             Model = Mapper.Map<ContentTypeUpdateRequest>(contentTypeResponse.Data);
         }
     }
 
     private async Task OnSubmit()
     {
-        await GetApiClient<ContentTypeClient>().UpdateAsync(Model);
+        await ApiClient.ContentType.UpdateAsync(Model);
         NavigateBack();
     }
 }

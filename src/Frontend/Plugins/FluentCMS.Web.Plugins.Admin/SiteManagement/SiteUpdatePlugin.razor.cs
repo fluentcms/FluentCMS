@@ -19,13 +19,13 @@ public partial class SiteUpdatePlugin
     {
         if (Layouts is null)
         {
-            var layoutsResponse = await GetApiClient<LayoutClient>().GetAllAsync();
+            var layoutsResponse = await ApiClient.Layout.GetAllAsync();
             Layouts = layoutsResponse?.Data?.ToList() ?? [];
         }
 
         if (Model is null)
         {
-            var siteResponse = await GetApiClient<SiteClient>().GetByIdAsync(Id);
+            var siteResponse = await ApiClient.Site.GetByIdAsync(Id);
             Site = siteResponse.Data;
             Model = Mapper.Map<SiteUpdateRequest>(Site);
             Urls = string.Join(",", Model.Urls ?? []);
@@ -36,7 +36,7 @@ public partial class SiteUpdatePlugin
     private async Task OnSubmit()
     {
         Model!.Urls = Urls.Split(",");
-        await GetApiClient<SiteClient>().UpdateAsync(Model);
+        await ApiClient.Site.UpdateAsync(Model);
         NavigateBack();
     }
 }
