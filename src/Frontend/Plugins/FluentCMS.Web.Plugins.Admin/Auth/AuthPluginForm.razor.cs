@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Components.Forms;
-
-namespace FluentCMS.Web.Plugins.Admin.Auth;
+﻿namespace FluentCMS.Web.Plugins.Admin.Auth;
 
 public partial class AuthPluginForm
 {

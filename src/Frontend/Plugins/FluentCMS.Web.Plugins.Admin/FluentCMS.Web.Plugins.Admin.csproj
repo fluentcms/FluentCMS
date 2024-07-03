@@ -7,11 +7,17 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\FluentCMS.Web.Plugins\FluentCMS.Web.Plugins.csproj" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.Forms" Version="8.0.6" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.6" />
     </ItemGroup>
 
     <ItemGroup>
       <Folder Include="Auth\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj" />
+      <ProjectReference Include="..\..\FluentCMS.Web.UI.Components\FluentCMS.Web.UI.Components.csproj" />
     </ItemGroup>
 
 </Project>

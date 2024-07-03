@@ -1,8 +1,4 @@
-﻿using AutoMapper;
-using Microsoft.AspNetCore.WebUtilities;
-using System.Web;
-
-namespace FluentCMS.Web.Plugins;
+﻿namespace FluentCMS.Web.Plugins;
 
 public abstract class BasePlugin : ComponentBase
 {

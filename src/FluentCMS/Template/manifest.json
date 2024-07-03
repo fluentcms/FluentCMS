@@ -108,18 +108,6 @@
             ]
         },
         {
-            "Name": "Admin Home",
-            "Description": "Admin Home Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Admin.Home.dll",
-            "Types": [
-                {
-                    "Name": "Admin Home",
-                    "Type": "AdminHomeViewPlugin",
-                    "IsDefault": true
-                }
-            ]
-        },
-        {
             "Name": "Api Token Management",
             "Description": "Api Token Management Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
@@ -317,12 +305,7 @@
             "Title": "Admin",
             "Path": "/admin",
             "Layout": "AdminLayout",
-            "Plugins": [
-                {
-                    "Definition": "Admin Home",
-                    "Section": "Main"
-                }
-            ],
+            "Plugins": [],
             "Children": [
                 {
                     "Title": "Content Type Builder",
