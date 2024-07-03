@@ -28,7 +28,7 @@ public partial class UserStore : IUserAuthenticationTokenStore<User>
 
     public Task RemoveTokenAsync(User user, string loginProvider, string name, CancellationToken cancellationToken)
     {
-        var userTokens = user.Tokens ?? new List<IdentityUserToken<Guid>>();
+        var userTokens = user.Tokens ?? [];
         userTokens.RemoveAll(x => x.LoginProvider == loginProvider && x.Name == name);
 
         return Task.CompletedTask;

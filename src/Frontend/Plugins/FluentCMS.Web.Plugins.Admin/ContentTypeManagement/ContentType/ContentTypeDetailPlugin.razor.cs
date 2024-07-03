@@ -39,7 +39,7 @@ public partial class ContentTypeDetailPlugin
     {
         ContentTypeField = new ContentTypeField()
         {
-            Settings = new Dictionary<string, object?>()
+            Settings = []
         };
         CurrentState = FieldManagementState.Create;
         await Task.CompletedTask;
