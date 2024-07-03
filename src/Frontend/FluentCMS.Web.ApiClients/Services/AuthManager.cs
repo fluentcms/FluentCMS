@@ -5,7 +5,7 @@ using System.Security.Claims;
 
 namespace FluentCMS.Web.ApiClients.Services;
 
-public class AuthManager(IHttpClientFactory httpClientFactory)
+public class AuthManager(ApiClientFactory apiClient)
 {
     public async Task Logout(HttpContext httpContext)
     {
@@ -18,9 +18,7 @@ public class AuthManager(IHttpClientFactory httpClientFactory)
     {
         ArgumentNullException.ThrowIfNull(httpContext);
 
-        var httpClient = httpClientFactory.CreateClient("FluentCMS.Web.Api");
-        var accountClient = new AccountClient(httpClient);
-        var accountResponse = await accountClient.AuthenticateAsync(new UserLoginRequest
+        var accountResponse = await apiClient.Account.AuthenticateAsync(new UserLoginRequest
         {
             Username = username,
             Password = password,
