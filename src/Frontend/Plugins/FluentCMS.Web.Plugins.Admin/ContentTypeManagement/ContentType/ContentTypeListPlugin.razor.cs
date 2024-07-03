@@ -11,7 +11,7 @@ public partial class ContentTypeListPlugin
 
     private async Task Load()
     {
-        var contentTypesResponse = await GetApiClient<ContentTypeClient>().GetAllAsync();
+        var contentTypesResponse = await ApiClient.ContentType.GetAllAsync();
         ContentTypes = contentTypesResponse?.Data?.ToList() ?? [];
     }
 
@@ -24,7 +24,7 @@ public partial class ContentTypeListPlugin
         if (SelectedContentTypeId == null)
             return;
 
-        await GetApiClient<ContentTypeClient>().DeleteAsync(SelectedContentTypeId.Value);
+        await ApiClient.ContentType.DeleteAsync(SelectedContentTypeId.Value);
         await Load();
         SelectedContentTypeId = default;
     }

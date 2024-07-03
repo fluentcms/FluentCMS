@@ -18,7 +18,7 @@ public partial class ContentTypeDetailPlugin
     {
         CurrentState = FieldManagementState.List;
         ContentTypeField = default;
-        var contentTypesResponse = await GetApiClient<ContentTypeClient>().GetByIdAsync(Id);
+        var contentTypesResponse = await ApiClient.ContentType.GetByIdAsync(Id);
         ContentType = contentTypesResponse?.Data;
     }
 

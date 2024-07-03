@@ -17,11 +17,11 @@ public partial class ContentUpdatePlugin
 
         if (ContentType != null)
         {
-            var contentTypeResponse = await GetApiClient<ContentTypeClient>().GetBySlugAsync(ContentTypeSlug!);
+            var contentTypeResponse = await ApiClient.ContentType.GetBySlugAsync(ContentTypeSlug!);
             ContentType = contentTypeResponse.Data;
             Fields = ContentType?.Fields?.Select(x => x.ToFieldModel()).OrderBy(x => x.FormViewOrder).ToList() ?? [];
 
-            var contentResponse = await GetApiClient<ContentClient>().GetByIdAsync(ContentTypeSlug!, Id);
+            var contentResponse = await ApiClient.Content.GetByIdAsync(ContentTypeSlug!, Id);
             Model = contentResponse?.Data;
 
             if (Fields != null)

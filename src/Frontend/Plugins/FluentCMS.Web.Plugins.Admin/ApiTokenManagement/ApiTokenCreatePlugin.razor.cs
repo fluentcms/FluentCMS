@@ -13,7 +13,7 @@ public partial class ApiTokenCreatePlugin
     {
         if (Policies is null)
         {
-            var policiesResponse = await GetApiClient<RoleClient>().GetPoliciesAsync();
+            var policiesResponse = await ApiClient.Role.GetPoliciesAsync();
             Policies = policiesResponse?.Data?.ToList() ?? [];
         }
 
@@ -32,7 +32,7 @@ public partial class ApiTokenCreatePlugin
 
     private async Task OnSubmit()
     {
-        await GetApiClient<ApiTokenClient>().CreateAsync(Model);
+        await ApiClient.ApiToken.CreateAsync(Model);
         NavigateBack();
     }
 }

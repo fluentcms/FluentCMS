@@ -9,7 +9,7 @@ public partial class ContentTypeCreatePlugin
 
     private async Task OnSubmit()
     {
-        await GetApiClient<ContentTypeClient>().CreateAsync(Model);
+        await ApiClient.ContentType.CreateAsync(Model);
         NavigateBack();
     }
 }

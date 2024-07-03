@@ -18,7 +18,7 @@ public partial class ForgotPasswordViewPlugin
 
     private async Task OnSubmit()
     {
-        await GetApiClient<AccountClient>().SendPasswordResetTokenAsync(Model);
+        await ApiClient.Account.SendPasswordResetTokenAsync(Model);
         IsPosted = true;
     }
 }

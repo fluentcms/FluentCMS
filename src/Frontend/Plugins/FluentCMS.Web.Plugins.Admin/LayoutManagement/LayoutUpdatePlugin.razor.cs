@@ -14,7 +14,7 @@ public partial class LayoutUpdatePlugin
     {
         if (Model is null)
         {
-            var layoutResponse = await GetApiClient<LayoutClient>().GetAsync(Id);
+            var layoutResponse = await ApiClient.Layout.GetAsync(Id);
             var layout = layoutResponse.Data;
             Model = Mapper.Map<LayoutUpdateRequest>(layout);
         }
@@ -22,7 +22,7 @@ public partial class LayoutUpdatePlugin
 
     private async Task OnSubmit()
     {
-        await GetApiClient<LayoutClient>().UpdateAsync(Model);
+        await ApiClient.Layout.UpdateAsync(Model);
         NavigateBack();
     }
 }

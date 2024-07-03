@@ -4,7 +4,7 @@ public partial class ContentTypeFieldUpdate
 {
     private async Task OnFieldUpdate(ContentTypeField contentTypeField)
     {
-        await GetApiClient().SetFieldAsync(ContentType!.Id, contentTypeField);
+        await ApiClient.ContentType.SetFieldAsync(ContentType!.Id, contentTypeField);
         await OnComplete.InvokeAsync();
     }
 

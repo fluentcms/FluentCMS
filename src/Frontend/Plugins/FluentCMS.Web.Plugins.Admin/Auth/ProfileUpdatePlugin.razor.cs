@@ -16,7 +16,7 @@ public partial class ProfileUpdatePlugin
     {
         if (ProfileModel == null)
         {
-            var user = await GetApiClient<AccountClient>().GetCurrentAsync();
+            var user = await ApiClient.Account.GetCurrentAsync();
             ProfileModel = Mapper.Map<AccountUpdateRequest>(user.Data);
         }
         ChangePasswordModel ??= new AccountChangePasswordRequest();
@@ -24,13 +24,13 @@ public partial class ProfileUpdatePlugin
 
     private async Task OnProfileSubmit()
     {
-        await GetApiClient<AccountClient>().UpdateCurrentAsync(ProfileModel);
+        await ApiClient.Account.UpdateCurrentAsync(ProfileModel);
         NavigateTo("/admin");
     }
 
     private async Task OnChangePasswordSubmit()
     {
-        await GetApiClient<AccountClient>().ChangePasswordAsync(ChangePasswordModel);
+        await ApiClient.Account.ChangePasswordAsync(ChangePasswordModel);
         NavigateTo("/admin");
     }
 }

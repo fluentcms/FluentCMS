@@ -4,7 +4,7 @@ public partial class ContentTypeFieldDelete
 {
     private async Task OnConfirm()
     {
-        await GetApiClient().DeleteFieldAsync(ContentType!.Id, ContentTypeField!.Name!);
+        await ApiClient.ContentType.DeleteFieldAsync(ContentType!.Id, ContentTypeField!.Name!);
         await OnComplete.InvokeAsync();
     }
 }
