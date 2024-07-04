@@ -1,6 +1,6 @@
 ﻿@if (ViewContext.Type == ViewType.Default || ViewContext.Type == ViewType.PagePreview)
 {
-    <div class="f-section" data-name="@Name">
+    <div class="f-section f-section-row" data-name="@Name">
         @if (ViewContext.Page.Sections != null && ViewContext.Page.Sections.ContainsKey(Name))
         {
             @foreach (var Plugin in ViewContext.Page.Sections[Name].OrderBy(p => p.Order))

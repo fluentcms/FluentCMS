@@ -185,6 +185,9 @@ body {
 [data-responsive-mode] .f-page-editor-iframe {
     left: auto;
     right: auto;
+    top: 1rem;
+    bottom: 1rem;
+
     max-width: calc(100% - 2rem);
 }
 

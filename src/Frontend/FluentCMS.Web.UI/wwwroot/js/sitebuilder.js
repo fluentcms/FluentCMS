@@ -82,9 +82,6 @@ function save() {
 }
 
 function updateResponsive(mode, silent) {
-    console.log('updateResponsive', mode)
-    console.log({silent, mode})
-
     if(responsiveMode == mode) {
         if(silent) return;
         responsiveMode = null;
@@ -101,7 +98,6 @@ function updateResponsive(mode, silent) {
     if(responsiveMode) {
         pageEditorElement.dataset.responsiveMode = responsiveMode
         if(!silent) {
-
             if(responsiveMode == 'tablet') {
                 iframeElement.style.width = '800px';
             }
@@ -217,6 +213,10 @@ function initializeSortable(frameDocument) {
 
 function updateResizerPosition() {
     resizerElement.style.left = (iframeElement.getBoundingClientRect().right + 2) + 'px'
+
+    for(let key of Object.keys(iframeElement.contentWindow.sections)) {
+        iframeElement.contentWindow.sections[key].updateSize()
+    }
 }
 function initializeResponsive() {
     let dragging = false;
@@ -242,7 +242,7 @@ function initializeResponsive() {
 
             updateResizerPosition()
 
-            if(document.querySelector('f-page-editor-sidebar').getBoundingClientRect().x < e.x) {
+            if(document.querySelector('.f-page-editor-sidebar').getBoundingClientRect().x < e.x) {
                 dragging = false;
             }
         }

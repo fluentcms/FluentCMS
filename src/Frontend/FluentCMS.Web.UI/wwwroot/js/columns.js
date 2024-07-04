@@ -33,7 +33,6 @@ function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 76
                 } else if(windowWidth > breakpointMd) {
                     field = 'colsMd'
                 }
-                console.log(el.dataset[field], breakpointLg, breakpointMd, windowWidth, field)
 
                 if(event.x - x < -oneColWidth / 2) {
 
@@ -79,9 +78,15 @@ function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 76
 
     let columns = []
 
-    function onWindowResize(event) {
+    function updateSize() {
         windowWidth = window.innerWidth;
         oneColWidth = element.clientWidth / 12
+
+        if(gridLines) {
+            element.querySelectorAll('.line').forEach((el, index) => {
+                el.style.left = (oneColWidth * index + 1) + 'px'
+            })
+        }
     }
 
     function init() {
@@ -97,11 +102,10 @@ function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 76
         element.dataset.columns = ''
         element.classList.add('active')
 
-        console.log(element)
         element.querySelectorAll('.' + colClass).forEach(el => {
             columns.push(initColumn(el))
         })  
-        window.addEventListener('resize', onWindowResize)
+        window.addEventListener('resize', updateSize)
     }
 
     function destroy() {
@@ -111,8 +115,7 @@ function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 76
         }
         columns.map(column => column.destroy())
         columns = []
-        window.removeEventListener('resize', onWindowResize)
-
+        window.removeEventListener('resize', updateSize)
     }
 
     function append(el) {
@@ -123,7 +126,10 @@ function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 76
     }
 
     return {
-        init, destroy, append
+        init, 
+        destroy, 
+        append,
+        updateSize
     }
 }
 

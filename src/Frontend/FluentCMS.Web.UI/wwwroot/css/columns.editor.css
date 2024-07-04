@@ -1,0 +1,81 @@
+.f-section {
+    position: relative;
+    overflow: hidden;
+}
+
+.f-section.dragging * {
+    user-select: none;
+}
+
+.f-section.active {
+    min-height: 100px;
+    border: 1px solid rgb(133, 133, 133);
+}
+
+.f-section.active .line {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 1px;
+    background-color: #c9c9c921;
+    opacity: 0;
+}
+
+.f-section.dragging .line {
+    opacity: 1;
+}
+.f-section.active [data-cols] {
+    transition: all 0.3s ease;
+    position: relative;
+    box-shadow: 0 0 0 1px rgba(161, 161, 161, 0.459);
+}  
+
+.f-section.active .resizer-handle {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    height: 100%;
+    right: -8px;
+    width: 16px;
+    cursor:col-resize;
+}
+
+.f-section.active .resizer-handle::before {
+    content: '';
+    position:absolute;
+    transition: all 0.3s ease;
+    opacity: 0;
+    display: block;
+    right: 5px;
+    height: 100%;
+    width: 6px;
+    background-color: #ddd;
+    cursor: col-resize;
+}
+
+.f-section.active .resizer-handle::after {
+    content: '';
+    position:absolute;
+    transition: all 0.3s ease;
+    opacity: 0;
+    display: block;
+    right: 6px;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    bottom: 50%;
+    height: 40px;
+    width: 2px;
+    background-color: #7a7a7a;
+    cursor: col-resize;
+}
+
+.f-section.active .dragging {
+    cursor: col-resize;
+}
+
+.f-section.active .resizer-handle.dragging::before, 
+.f-section.active .resizer-handle.dragging::after,
+.f-section.active .resizer-handle:hover::before, 
+.f-section.active .resizer-handle:hover::after {
+    opacity: 1;
+}
