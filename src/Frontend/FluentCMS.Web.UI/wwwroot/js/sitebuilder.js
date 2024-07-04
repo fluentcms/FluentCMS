@@ -36,6 +36,9 @@ function save() {
     for(let section in sections) {
         for(let index in sections[section]) {
             const plugin = sections[section][index].id
+            const cols = sections[section][index].cols
+            const colsMd = sections[section][index].colsMd
+            const colsLg = sections[section][index].colsLg
             const definitionId = sections[section][index].definitionId
             const deleted = sections[section][index].deleted
 
@@ -51,6 +54,9 @@ function save() {
                     <input type="hidden" name="Model.CreatePlugins[${newPluginsIndex}].PageId" value="00000000-0000-0000-0000-000000000000" />
                     <input type="hidden" name="Model.CreatePlugins[${newPluginsIndex}].DefinitionId" value="${definitionId}" />
                     <input type="hidden" name="Model.CreatePlugins[${newPluginsIndex}].Order" value="${pluginOrder}" />
+                    <input type="hidden" name="Model.CreatePlugins[${newPluginsIndex}].Cols" value="${cols}" />
+                    <input type="hidden" name="Model.CreatePlugins[${newPluginsIndex}].ColsMd" value="${colsMd}" />
+                    <input type="hidden" name="Model.CreatePlugins[${newPluginsIndex}].ColsLg" value="${colsLg}" />
                     <input type="hidden" name="Model.CreatePlugins[${newPluginsIndex}].Section" value="${section}" />
                 `
                 pluginOrder++;
@@ -61,6 +67,9 @@ function save() {
                     <input type="hidden" name="Model.UpdatePlugins[${updatedPluginsIndex}].Section" value="${section}" />
                     <input type="hidden" name="Model.UpdatePlugins[${updatedPluginsIndex}].Id" value="${plugin}" />
                     <input type="hidden" name="Model.UpdatePlugins[${updatedPluginsIndex}].Order" value="${pluginOrder}" />
+                    <input type="hidden" name="Model.UpdatePlugins[${updatedPluginsIndex}].Cols" value="${cols}" />
+                    <input type="hidden" name="Model.UpdatePlugins[${updatedPluginsIndex}].ColsMd" value="${colsMd}" />
+                    <input type="hidden" name="Model.UpdatePlugins[${updatedPluginsIndex}].ColsLg" value="${colsLg}" />
                 `
                 pluginOrder++;
                 updatedPluginsIndex++;
@@ -184,23 +193,25 @@ function initializeSortable(frameDocument) {
             handle: '.f-plugin-container-action-drag',
         });
 
-        new Sortable(document.querySelector('.f-plugin-definition-list'), {
-            animation: 150,
-            group: {
-                name: 'shared',
-                pull: 'clone',
-                put: false
-            },
-            sort: false,
-            draggable: '.f-plugin-definition-item',
-            onEnd(event) {
-                if(event.from === event.to) return;
-                const definitionId = event.clone.dataset.id
-                const item = event.item
+    });
 
-                createPlugin({ definitionId, item })
-            }
-        });
+    new Sortable(document.querySelector('.f-plugin-definition-list'), {
+        animation: 150,
+        group: {
+            name: 'shared',
+            pull: 'clone',
+            put: false
+        },
+        sort: false,
+        draggable: '.f-plugin-definition-item',
+        onEnd(event) {
+            if(event.from === event.to) return;
+            const definitionId = event.clone.dataset.id
+            const item = event.item
+            const sectionName = event.to.dataset.name
+
+            createPlugin({ definitionId, item, sectionName })
+        }
     });
 }
 
@@ -248,7 +259,7 @@ function initializeResponsive() {
     iframeElement.contentWindow.addEventListener('mouseup', onMouseUp)
 }
 
-function createPlugin({definitionId, item}) {
+function createPlugin({definitionId, sectionName, item}) {
     item.classList.remove('f-plugin-definition-item')
     item.classList.add('f-plugin-container')
 
@@ -285,6 +296,7 @@ function createPlugin({definitionId, item}) {
 
     setTimeout(() => {
         initializeActions(item)
+        iframeElement.contentWindow.sections[sectionName].append(item)
     })
 }
 
