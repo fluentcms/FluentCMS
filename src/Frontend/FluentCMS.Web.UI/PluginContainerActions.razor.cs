@@ -14,7 +14,7 @@ public partial class PluginContainerActions
     protected override async Task OnInitializedAsync()
     {
         IsDesignMode = ViewState.Type == ViewStateType.PagePreview;
-        HasEditMode = Plugin?.Definition?.Types.Where(x => x.Name.StartsWith("Edit")).FirstOrDefault() != null;
+        HasEditMode = ViewState.Type != ViewStateType.PluginEdit && Plugin?.Definition?.Types.Where(x => x.Name.StartsWith("Edit")).FirstOrDefault() != null;
     }
 
     private string GetEditUrl()
