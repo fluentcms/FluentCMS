@@ -49,6 +49,7 @@
     "PluginDefinitions": [
         {
             "Name": "Login",
+            "Category": "Auth",
             "Description": "Login Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
@@ -61,6 +62,7 @@
         },
         {
             "Name": "Logout",
+            "Category": "Auth",
             "Description": "Logout Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
@@ -73,6 +75,7 @@
         },
         {
             "Name": "Register",
+            "Category": "Auth",
             "Description": "Register Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
@@ -85,6 +88,7 @@
         },
         {
             "Name": "Forgot Password",
+            "Category": "Auth",
             "Description": "Forgot Password Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
@@ -97,6 +101,7 @@
         },
         {
             "Name": "Reset Password",
+            "Category": "Auth",
             "Description": "Reset Password Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
@@ -109,6 +114,7 @@
         },
         {
             "Name": "Api Token Management",
+            "Category": "Admin",
             "Description": "Api Token Management Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Locked": true,
@@ -134,6 +140,7 @@
         },
         {
             "Name": "User Management",
+            "Category": "Admin",
             "Description": "Users Management Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Locked": true,
@@ -155,6 +162,7 @@
         },
         {
             "Name": "Site Management",
+            "Category": "Admin",
             "Description": "Site Management Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Locked": true,
@@ -176,6 +184,7 @@
         },
         {
             "Name": "File Management",
+            "Category": "Admin",
             "Description": "File Management Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Locked": true,
@@ -213,6 +222,7 @@
         },
         {
             "Name": "ContentType Management",
+            "Category": "Admin",
             "Description": "ContentTypes Management Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Locked": true,
@@ -250,6 +260,7 @@
         },
         {
             "Name": "Role Management",
+            "Category": "Admin",
             "Description": "Role Management Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Locked": true,
@@ -271,6 +282,7 @@
         },
         {
             "Name": "Profile",
+            "Category": "Auth",
             "Description": "Profile Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Locked": true,
@@ -284,6 +296,7 @@
         },
         {
             "Name": "Layout Management",
+            "Category": "Admin",
             "Description": "Layout Management Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Locked": true,

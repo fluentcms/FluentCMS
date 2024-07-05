@@ -221,7 +221,8 @@ public class SetupManager : ISetupManager
                 Description = pluginDefTemplate.Description,
                 Types = pluginDefTemplate.Types,
                 Assembly = pluginDefTemplate.Assembly,
-                Locked = pluginDefTemplate.Locked
+                Locked = pluginDefTemplate.Locked,
+                Category = pluginDefTemplate.Category
             };
             _pluginDefinitions.Add(await _pluginDefinitionService.Create(pluginDef));
         }
