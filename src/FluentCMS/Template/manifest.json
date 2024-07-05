@@ -24,10 +24,6 @@
             "IsDefault": true
         },
         {
-            "Name": "OneColumnLayout",
-            "IsDefault": false
-        },
-        {
             "Name": "AdminLayout",
             "IsDefault": false
         },
