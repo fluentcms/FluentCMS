@@ -295,6 +295,9 @@ public class SetupManager : ISetupManager
                 Order = order,
                 Section = pluginTemplate.Section,
                 DefinitionId = pluginDefinition.Id,
+                Cols = 12,
+                ColsMd = 12,
+                ColsLg = 12,
                 PageId = pageId,
                 SiteId = _site.Id
             };
