@@ -10,8 +10,7 @@ public partial class ApiClientException : Exception
 
     public ApiExceptionResult? ApiResult { get; private set; }
 
-    public ApiClientException(string message, int statusCode, string? response, IReadOnlyDictionary<string, IEnumerable<string>> headers, Exception? innerException)
-        : base(message, innerException)
+    public ApiClientException(string message, int statusCode, string? response, IReadOnlyDictionary<string, IEnumerable<string>> headers, Exception? innerException) : base(message, innerException)
     {
         StatusCode = statusCode;
         Response = response;
@@ -20,7 +19,7 @@ public partial class ApiClientException : Exception
         if (!string.IsNullOrEmpty(response))
             try
             {
-                var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, };
+                var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
                 ApiResult = JsonSerializer.Deserialize<ApiExceptionResult>(response, options);
             }
             catch (Exception)

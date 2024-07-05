@@ -10,7 +10,7 @@ public class PageController(
     IPluginDefinitionService pluginDefinitionService,
     IPluginService pluginService,
     ILayoutService layoutService,
-    SetupManager setupManager,
+    ISetupManager setupManager,
     IMapper mapper) : BaseGlobalController
 {
 

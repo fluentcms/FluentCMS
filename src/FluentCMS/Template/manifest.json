@@ -54,7 +54,7 @@
         {
             "Name": "Login",
             "Description": "Login Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Admin.Auth.dll",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
                 {
                     "Name": "Login",
@@ -66,7 +66,7 @@
         {
             "Name": "Logout",
             "Description": "Logout Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Admin.Auth.dll",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
                 {
                     "Name": "Logout",
@@ -78,7 +78,7 @@
         {
             "Name": "Register",
             "Description": "Register Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Admin.Auth.dll",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
                 {
                     "Name": "Regsiter",
@@ -90,7 +90,7 @@
         {
             "Name": "Forgot Password",
             "Description": "Forgot Password Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Admin.Auth.dll",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
                 {
                     "Name": "Forgot Password",
@@ -102,7 +102,7 @@
         {
             "Name": "Reset Password",
             "Description": "Reset Password Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Admin.Auth.dll",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
                 {
                     "Name": "Reset Password",
@@ -112,21 +112,9 @@
             ]
         },
         {
-            "Name": "Admin Home",
-            "Description": "Admin Home Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Admin.Home.dll",
-            "Types": [
-                {
-                    "Name": "Admin Home",
-                    "Type": "AdminHomeViewPlugin",
-                    "IsDefault": true
-                }
-            ]
-        },
-        {
             "Name": "Api Token Management",
             "Description": "Api Token Management Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Admin.ApiTokenManagement.dll",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
                 {
                     "Name": "Api Token List",
@@ -150,7 +138,7 @@
         {
             "Name": "User Management",
             "Description": "Users Management Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Admin.UserManagement.dll",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
                 {
                     "Name": "Users List",
@@ -170,7 +158,7 @@
         {
             "Name": "Site Management",
             "Description": "Site Management Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Admin.SiteManagement.dll",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
                 {
                     "Name": "Sites List",
@@ -190,7 +178,7 @@
         {
             "Name": "File Management",
             "Description": "File Management Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Admin.FileManagement.dll",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
                 {
                     "Name": "Files List",
@@ -226,7 +214,7 @@
         {
             "Name": "ContentType Management",
             "Description": "ContentTypes Management Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Admin.ContentTypeManagement.dll",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
                 {
                     "Name": "ContentTypes List",
@@ -262,7 +250,7 @@
         {
             "Name": "Role Management",
             "Description": "Role Management Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Admin.RoleManagement.dll",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
                 {
                     "Name": "Roles List",
@@ -282,7 +270,7 @@
         {
             "Name": "Profile",
             "Description": "Profile Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Admin.Auth.dll",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
                 {
                     "Name": "Update",
@@ -294,7 +282,7 @@
         {
             "Name": "Layout Management",
             "Description": "Layout Management Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Admin.LayoutManagement.dll",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
                 {
                     "Name": "Layouts List",
@@ -460,12 +448,7 @@
             "Title": "Admin",
             "Path": "/admin",
             "Layout": "AdminLayout",
-            "Plugins": [
-                {
-                    "Definition": "Admin Home",
-                    "Section": "Main"
-                }
-            ],
+            "Plugins": [],
             "Children": [
                 {
                     "Title": "Content Type Builder",

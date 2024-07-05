@@ -90,7 +90,7 @@ public partial class UserStore : IUserLoginStore<User>
 
     public Task<IList<Claim>> GetClaimsAsync(User user, CancellationToken cancellationToken)
     {
-        IList<Claim> claims = user.Claims?.Select(x => new Claim(x.ClaimType ?? string.Empty, x.ClaimValue ?? string.Empty))?.ToList() ?? new List<Claim>();
+        IList<Claim> claims = user.Claims?.Select(x => new Claim(x.ClaimType ?? string.Empty, x.ClaimValue ?? string.Empty))?.ToList() ?? [];
         return Task.FromResult(claims);
     }
 
@@ -108,7 +108,7 @@ public partial class UserStore : IUserLoginStore<User>
 
     public Task<IList<UserLoginInfo>> GetLoginsAsync(User user, CancellationToken cancellationToken)
     {
-        IList<UserLoginInfo> result = user.Logins?.Select(x => new UserLoginInfo(x.LoginProvider, x.ProviderKey, x.ProviderDisplayName))?.ToList() ?? new List<UserLoginInfo>();
+        IList<UserLoginInfo> result = user.Logins?.Select(x => new UserLoginInfo(x.LoginProvider, x.ProviderKey, x.ProviderDisplayName))?.ToList() ?? [];
         return Task.FromResult(result);
     }
 

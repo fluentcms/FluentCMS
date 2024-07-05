@@ -8,7 +8,7 @@ namespace FluentCMS.Web.UI;
 public partial class Default : IDisposable
 {
     [Inject]
-    public UserLoginResponse? UserLogin { get; set; }
+    private ILayoutProcessor LayoutProcessor { get; set; } = default!;
 
     [CascadingParameter]
     public ViewContext ViewContext { get; set; } = default!;
@@ -57,9 +57,7 @@ public partial class Default : IDisposable
         if (string.IsNullOrEmpty(content))
             return;
 
-        var processor = new LayoutProcessor(UserLogin ?? new UserLoginResponse());
-
-        var segments = processor.ProcessSegments(content);
+        var segments = LayoutProcessor.ProcessSegments(content);
         var index = 0;
         foreach (var segment in segments)
         {

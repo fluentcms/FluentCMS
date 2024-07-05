@@ -33,31 +33,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.UI", "Fronten
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Plugins", "Plugins", "{BB5FD6A0-0840-4381-AB68-AD61499368ED}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins", "Frontend\FluentCMS.Web.Plugins\FluentCMS.Web.Plugins.csproj", "{AD470ED7-3368-4B43-BDED-6F19E2490079}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin.ApiTokenManagement", "Frontend\Plugins\FluentCMS.Web.Plugins.Admin.ApiTokenManagement\FluentCMS.Web.Plugins.Admin.ApiTokenManagement.csproj", "{FCC8F9EF-D83D-4F49-AF22-CE10E49071A5}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin.Auth", "Frontend\Plugins\FluentCMS.Web.Plugins.Admin.Auth\FluentCMS.Web.Plugins.Admin.Auth.csproj", "{D98FC9FB-E861-44E2-9CBB-7297088BE56A}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin.ContentTypeManagement", "Frontend\Plugins\FluentCMS.Web.Plugins.Admin.ContentTypeManagement\FluentCMS.Web.Plugins.Admin.ContentTypeManagement.csproj", "{88B34211-D3DB-4437-8F18-084BA759BCF0}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin.Home", "Frontend\Plugins\FluentCMS.Web.Plugins.Admin.Home\FluentCMS.Web.Plugins.Admin.Home.csproj", "{ABC2D634-BB3A-472B-9C22-3C099FC89A8A}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin.LayoutManagement", "Frontend\Plugins\FluentCMS.Web.Plugins.Admin.LayoutManagement\FluentCMS.Web.Plugins.Admin.LayoutManagement.csproj", "{BD52BC0B-5DD2-4771-93D3-08672061B743}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin.RoleManagement", "Frontend\Plugins\FluentCMS.Web.Plugins.Admin.RoleManagement\FluentCMS.Web.Plugins.Admin.RoleManagement.csproj", "{1F236295-69B3-41CC-9E5A-E3C8D9C9376F}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin.SiteManagement", "Frontend\Plugins\FluentCMS.Web.Plugins.Admin.SiteManagement\FluentCMS.Web.Plugins.Admin.SiteManagement.csproj", "{FEB5B78D-C81F-4871-9E58-B9E8015DABED}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin.UserManagement", "Frontend\Plugins\FluentCMS.Web.Plugins.Admin.UserManagement\FluentCMS.Web.Plugins.Admin.UserManagement.csproj", "{B114E4B8-19ED-4C85-8870-842A9BD668F3}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin.FileManagement", "Frontend\Plugins\FluentCMS.Web.Plugins.Admin.FileManagement\FluentCMS.Web.Plugins.Admin.FileManagement.csproj", "{63AB21B8-5560-40EC-BB2F-3428BB600B21}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Shared", "Shared\Shared.csproj", "{E78B903B-4307-4220-B451-3000ED3E9971}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Web.Plugins.Contents.News", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.News\FluentCMS.Web.Plugins.Contents.News.csproj", "{F66DCA2B-0CD2-4697-A697-5375790C266E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Web.Plugins.Contents.TextHTML", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.TextHTML\FluentCMS.Web.Plugins.Contents.TextHTML.csproj", "{C42ACA97-E03E-4647-93F2-3C9959CC3C30}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin", "Frontend\Plugins\FluentCMS.Web.Plugins.Admin\FluentCMS.Web.Plugins.Admin.csproj", "{70B5742E-C249-4B51-985C-2B4B7BDAB489}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -109,46 +91,6 @@ Global
 		{D438CECE-FB91-4E2A-9182-D386222D8C92}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D438CECE-FB91-4E2A-9182-D386222D8C92}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D438CECE-FB91-4E2A-9182-D386222D8C92}.Release|Any CPU.Build.0 = Release|Any CPU
-		{AD470ED7-3368-4B43-BDED-6F19E2490079}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AD470ED7-3368-4B43-BDED-6F19E2490079}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AD470ED7-3368-4B43-BDED-6F19E2490079}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AD470ED7-3368-4B43-BDED-6F19E2490079}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FCC8F9EF-D83D-4F49-AF22-CE10E49071A5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FCC8F9EF-D83D-4F49-AF22-CE10E49071A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FCC8F9EF-D83D-4F49-AF22-CE10E49071A5}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FCC8F9EF-D83D-4F49-AF22-CE10E49071A5}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D98FC9FB-E861-44E2-9CBB-7297088BE56A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D98FC9FB-E861-44E2-9CBB-7297088BE56A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D98FC9FB-E861-44E2-9CBB-7297088BE56A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D98FC9FB-E861-44E2-9CBB-7297088BE56A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{88B34211-D3DB-4437-8F18-084BA759BCF0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{88B34211-D3DB-4437-8F18-084BA759BCF0}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{88B34211-D3DB-4437-8F18-084BA759BCF0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{88B34211-D3DB-4437-8F18-084BA759BCF0}.Release|Any CPU.Build.0 = Release|Any CPU
-		{ABC2D634-BB3A-472B-9C22-3C099FC89A8A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{ABC2D634-BB3A-472B-9C22-3C099FC89A8A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{ABC2D634-BB3A-472B-9C22-3C099FC89A8A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{ABC2D634-BB3A-472B-9C22-3C099FC89A8A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BD52BC0B-5DD2-4771-93D3-08672061B743}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BD52BC0B-5DD2-4771-93D3-08672061B743}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BD52BC0B-5DD2-4771-93D3-08672061B743}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BD52BC0B-5DD2-4771-93D3-08672061B743}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1F236295-69B3-41CC-9E5A-E3C8D9C9376F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1F236295-69B3-41CC-9E5A-E3C8D9C9376F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1F236295-69B3-41CC-9E5A-E3C8D9C9376F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1F236295-69B3-41CC-9E5A-E3C8D9C9376F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FEB5B78D-C81F-4871-9E58-B9E8015DABED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FEB5B78D-C81F-4871-9E58-B9E8015DABED}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FEB5B78D-C81F-4871-9E58-B9E8015DABED}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FEB5B78D-C81F-4871-9E58-B9E8015DABED}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B114E4B8-19ED-4C85-8870-842A9BD668F3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B114E4B8-19ED-4C85-8870-842A9BD668F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B114E4B8-19ED-4C85-8870-842A9BD668F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B114E4B8-19ED-4C85-8870-842A9BD668F3}.Release|Any CPU.Build.0 = Release|Any CPU
-		{63AB21B8-5560-40EC-BB2F-3428BB600B21}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{63AB21B8-5560-40EC-BB2F-3428BB600B21}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{63AB21B8-5560-40EC-BB2F-3428BB600B21}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{63AB21B8-5560-40EC-BB2F-3428BB600B21}.Release|Any CPU.Build.0 = Release|Any CPU
 		{E78B903B-4307-4220-B451-3000ED3E9971}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{E78B903B-4307-4220-B451-3000ED3E9971}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E78B903B-4307-4220-B451-3000ED3E9971}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -161,6 +103,10 @@ Global
 		{C42ACA97-E03E-4647-93F2-3C9959CC3C30}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C42ACA97-E03E-4647-93F2-3C9959CC3C30}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C42ACA97-E03E-4647-93F2-3C9959CC3C30}.Release|Any CPU.Build.0 = Release|Any CPU
+		{70B5742E-C249-4B51-985C-2B4B7BDAB489}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{70B5742E-C249-4B51-985C-2B4B7BDAB489}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{70B5742E-C249-4B51-985C-2B4B7BDAB489}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{70B5742E-C249-4B51-985C-2B4B7BDAB489}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -190,6 +136,7 @@ Global
 		{63AB21B8-5560-40EC-BB2F-3428BB600B21} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
 		{F66DCA2B-0CD2-4697-A697-5375790C266E} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
 		{C42ACA97-E03E-4647-93F2-3C9959CC3C30} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
+		{70B5742E-C249-4B51-985C-2B4B7BDAB489} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2E9F4217-7A58-48A4-9850-84CD0CDA31DA}

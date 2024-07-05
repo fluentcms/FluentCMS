@@ -4,7 +4,12 @@ using System.Text.RegularExpressions;
 
 namespace FluentCMS.Web.UI.DynamicRendering;
 
-public class LayoutProcessor(UserLoginResponse userLogin)
+public interface ILayoutProcessor
+{
+    List<Segment> ProcessSegments(string htmlContent);
+}
+
+public class LayoutProcessor(UserLoginResponse userLogin) : ILayoutProcessor
 {
     private string PreProcess(string? content)
     {

@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Web.UI;
+using FluentCMS.Web.UI.DynamicRendering;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -13,6 +14,8 @@ public static class ServiceExtensions
     public static IServiceCollection AddCmsServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<PluginLoader>();
+
+        services.AddScoped<ILayoutProcessor, LayoutProcessor>();
 
         // Add services to the container.
         services.AddRazorComponents()
@@ -57,12 +60,11 @@ public static class ServiceExtensions
         // https://github.com/dotnet/aspnetcore/issues/53482
         services.AddCascadingValue(sp =>
         {
-            var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
             var navigationManager = sp.GetRequiredService<NavigationManager>();
             var uerLogin = sp.GetRequiredService<UserLoginResponse>();
 
-            var pageClient = httpClientFactory.CreateApiClient<PageClient>(uerLogin);
-            var pageResponse = pageClient.GetByUrlAsync(navigationManager.Uri).GetAwaiter().GetResult();
+            var apiClient = sp.GetRequiredService<ApiClientFactory>();
+            var pageResponse = apiClient.Page.GetByUrlAsync(navigationManager.Uri).GetAwaiter().GetResult();
             var page = pageResponse?.Data;
 
             var viewContext = new ViewContext
@@ -116,3 +118,4 @@ public static class ServiceExtensions
         return app;
     }
 }
+
