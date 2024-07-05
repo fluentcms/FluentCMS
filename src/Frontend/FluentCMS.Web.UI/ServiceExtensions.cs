@@ -1,4 +1,6 @@
-﻿using FluentCMS.Web.UI;
+﻿using AutoMapper;
+using FluentCMS;
+using FluentCMS.Web.UI;
 using FluentCMS.Web.UI.DynamicRendering;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
@@ -13,6 +15,8 @@ public static class ServiceExtensions
 {
     public static IServiceCollection AddCmsServices(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddAutoMapper(typeof(FluentCMS.Web.UI.MappingProfile));
+
         services.AddSingleton<PluginLoader>();
 
         services.AddScoped<ILayoutProcessor, LayoutProcessor>();
@@ -60,21 +64,21 @@ public static class ServiceExtensions
         // https://github.com/dotnet/aspnetcore/issues/53482
         services.AddCascadingValue(sp =>
         {
+            var viewState = new ViewState();
             var navigationManager = sp.GetRequiredService<NavigationManager>();
-            var uerLogin = sp.GetRequiredService<UserLoginResponse>();
-
             var apiClient = sp.GetRequiredService<ApiClientFactory>();
-            var pageResponse = apiClient.Page.GetByUrlAsync(navigationManager.Uri).GetAwaiter().GetResult();
-            var page = pageResponse?.Data;
+            var mapper = sp.GetRequiredService<IMapper>();
 
-            var viewContext = new ViewContext
-            {
-                Layout = page!.Layout,
-                Page = page,
-                Site = page.Site,
-                UserLogin = uerLogin,
-                Type = ViewType.Default
-            };
+            var pageResponse = apiClient.Page.GetByUrlAsync(navigationManager.Uri).GetAwaiter().GetResult();
+
+            if (pageResponse?.Data == null)
+                throw new Exception("Error while loading ViewState");
+
+            viewState.Page = mapper.Map<PageViewState>(pageResponse.Data);
+            viewState.Layout = mapper.Map<LayoutViewState>(pageResponse.Data.Layout);
+            viewState.Site = mapper.Map<SiteViewState>(pageResponse.Data.Site);
+            viewState.Plugins = pageResponse.Data.Sections!.Values.SelectMany(x => x).Select(p => mapper.Map<PluginViewState>(p)).ToList();
+            viewState.User = mapper.Map<UserViewState>(sp.GetRequiredService<UserLoginResponse>());
 
             // check if the page is in edit mode
             // it should have pluginId and pluginViewName query strings
@@ -85,24 +89,19 @@ public static class ServiceExtensions
                 // check if the pluginId is valid
                 if (Guid.TryParse(queryParams["pluginId"], out var pluginId))
                 {
-                    viewContext.Type = ViewType.PluginEdit;
-                    viewContext.PluginId = pluginId;
-                    viewContext.PluginViewName = queryParams["viewName"];
-                    viewContext.Plugin = page.Sections!.Values.SelectMany(x => x).Single(p => p.Id == pluginId);
+                    viewState.Type = ViewStateType.PluginEdit;
+                    viewState.Plugin = viewState.Plugins.Single(x => x.Id == pluginId);
+                    viewState.PluginViewName = queryParams["viewName"];
                 }
             }
 
             if (queryParams["pageEdit"] != null)
-            {
-                viewContext.Type = ViewType.PageEdit;
-            }
+                viewState.Type = ViewStateType.PageEdit;
 
             if (queryParams["pagePreview"] != null)
-            {
-                viewContext.Type = ViewType.PagePreview;
-            }
+                viewState.Type = ViewStateType.PagePreview;
 
-            return viewContext;
+            return viewState;
         });
 
         return services;

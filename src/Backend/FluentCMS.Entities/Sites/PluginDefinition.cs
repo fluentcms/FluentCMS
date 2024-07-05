@@ -6,4 +6,5 @@ public class PluginDefinition : AuditableEntity
     public string Assembly { get; set; } = default!;
     public string? Description { get; set; }
     public IEnumerable<PluginDefinitionType> Types { get; set; } = [];
+    public bool Locked { get; set; } = false;
 }

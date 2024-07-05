@@ -6,4 +6,5 @@ public class PluginDefinitionDetailResponse : BaseAuditableResponse
     public string Assembly { get; set; } = default!;
     public string? Description { get; set; }
     public List<PluginDefinitionType> Types { get; set; } = [];
+    public bool Locked { get; set; } = false;
 }

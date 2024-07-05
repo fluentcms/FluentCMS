@@ -1,6 +1,5 @@
 ﻿using FluentCMS.Web.ApiClients.Services;
 using FluentCMS.Web.UI.DynamicRendering;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Routing;
 
 namespace FluentCMS.Web.UI;
@@ -11,7 +10,7 @@ public partial class Default : IDisposable
     private ILayoutProcessor LayoutProcessor { get; set; } = default!;
 
     [CascadingParameter]
-    public ViewContext ViewContext { get; set; } = default!;
+    public ViewState ViewState { get; set; } = default!;
 
     [Parameter]
     public string? Route { get; set; }
@@ -21,9 +20,6 @@ public partial class Default : IDisposable
 
     [Inject]
     public SetupManager SetupManager { set; get; } = default!;
-
-    [CascadingParameter]
-    public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {

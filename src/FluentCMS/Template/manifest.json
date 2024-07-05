@@ -111,6 +111,7 @@
             "Name": "Api Token Management",
             "Description": "Api Token Management Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
             "Types": [
                 {
                     "Name": "Api Token List",
@@ -135,6 +136,7 @@
             "Name": "User Management",
             "Description": "Users Management Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
             "Types": [
                 {
                     "Name": "Users List",
@@ -155,6 +157,7 @@
             "Name": "Site Management",
             "Description": "Site Management Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
             "Types": [
                 {
                     "Name": "Sites List",
@@ -175,6 +178,7 @@
             "Name": "File Management",
             "Description": "File Management Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
             "Types": [
                 {
                     "Name": "Files List",
@@ -211,6 +215,7 @@
             "Name": "ContentType Management",
             "Description": "ContentTypes Management Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
             "Types": [
                 {
                     "Name": "ContentTypes List",
@@ -247,6 +252,7 @@
             "Name": "Role Management",
             "Description": "Role Management Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
             "Types": [
                 {
                     "Name": "Roles List",
@@ -267,6 +273,7 @@
             "Name": "Profile",
             "Description": "Profile Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
             "Types": [
                 {
                     "Name": "Update",
@@ -279,6 +286,7 @@
             "Name": "Layout Management",
             "Description": "Layout Management Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
             "Types": [
                 {
                     "Name": "Layouts List",
@@ -305,16 +313,19 @@
             "Title": "Admin",
             "Path": "/admin",
             "Layout": "AdminLayout",
+            "Locked": false,
             "Plugins": [],
             "Children": [
                 {
                     "Title": "Content Type Builder",
                     "Path": "/content-types",
                     "Layout": "AdminLayout",
+                    "Locked": true,
                     "Plugins": [
                         {
                             "Definition": "ContentType Management",
-                            "Section": "Main"
+                            "Section": "Main",
+                            "Locked": true
                         }
                     ]
                 },
@@ -322,10 +333,12 @@
                     "Title": "Users",
                     "Path": "/users",
                     "Layout": "AdminLayout",
+                    "Locked": true,
                     "Plugins": [
                         {
                             "Definition": "User Management",
-                            "Section": "Main"
+                            "Section": "Main",
+                            "Locked": true
                         }
                     ]
                 },
@@ -333,10 +346,12 @@
                     "Title": "File Management",
                     "Path": "/files",
                     "Layout": "AdminLayout",
+                    "Locked": true,
                     "Plugins": [
                         {
                             "Definition": "File Management",
-                            "Section": "Main"
+                            "Section": "Main",
+                            "Locked": true
                         }
                     ]
                 },
@@ -344,10 +359,12 @@
                     "Title": "Api Tokens",
                     "Path": "/api-tokens",
                     "Layout": "AdminLayout",
+                    "Locked": true,
                     "Plugins": [
                         {
                             "Definition": "Api Token Management",
-                            "Section": "Main"
+                            "Section": "Main",
+                            "Locked": true
                         }
                     ]
                 },
@@ -355,10 +372,12 @@
                     "Title": "Roles",
                     "Path": "/roles",
                     "Layout": "AdminLayout",
+                    "Locked": true,
                     "Plugins": [
                         {
                             "Definition": "Role Management",
-                            "Section": "Main"
+                            "Section": "Main",
+                            "Locked": true
                         }
                     ]
                 },
@@ -366,10 +385,12 @@
                     "Title": "Sites",
                     "Path": "/sites",
                     "Layout": "AdminLayout",
+                    "Locked": true,
                     "Plugins": [
                         {
                             "Definition": "Site Management",
-                            "Section": "Main"
+                            "Section": "Main",
+                            "Locked": true
                         }
                     ]
                 },
@@ -377,10 +398,12 @@
                     "Title": "Layouts",
                     "Path": "/layouts",
                     "Layout": "AdminLayout",
+                    "Locked": true,
                     "Plugins": [
                         {
                             "Definition": "Layout Management",
-                            "Section": "Main"
+                            "Section": "Main",
+                            "Locked": true
                         }
                     ]
                 }

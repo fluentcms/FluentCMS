@@ -9964,6 +9964,9 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("layout")]
         public LayoutDetailResponse Layout { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("locked")]
+        public bool Locked { get; set; } = default!;
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -10089,6 +10092,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("sections")]
         public System.Collections.Generic.Dictionary<string, System.Collections.Generic.ICollection<PluginDetailResponse>>? Sections { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("locked")]
+        public bool Locked { get; set; } = default!;
 
     }
 
@@ -10218,6 +10224,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("types")]
         public System.Collections.Generic.ICollection<PluginDefinitionType>? Types { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("locked")]
+        public bool Locked { get; set; } = default!;
 
     }
 
@@ -10359,6 +10368,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("definition")]
         public PluginDefinitionDetailResponse Definition { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("locked")]
+        public bool Locked { get; set; } = default!;
 
     }
 
