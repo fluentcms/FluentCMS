@@ -53,7 +53,15 @@ public partial class Default : IDisposable
         if (string.IsNullOrEmpty(content))
             return;
 
-        var segments = LayoutProcessor.ProcessSegments(content);
+        var parameters = new Dictionary<string, object>
+        {
+            { "user", ViewState.User },
+            { "site", ViewState.Site },
+            { "page", ViewState.Page },
+            { "plugins", ViewState.Plugins }
+        };
+
+        var segments = LayoutProcessor.ProcessSegments(content, parameters);
         var index = 0;
         foreach (var segment in segments)
         {
