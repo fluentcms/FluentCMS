@@ -158,6 +158,10 @@ const actions = {
         setTimeout(() => {
             updateResizerPosition()
         }, 300)
+    },
+    'plugin-edit'(el) {
+        const url = el.dataset.url
+        window.location.href = window.location.pathname + url
     }
 }
 

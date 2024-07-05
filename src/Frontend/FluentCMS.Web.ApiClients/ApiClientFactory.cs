@@ -16,6 +16,7 @@ public class ApiClientFactory(IServiceProvider serviceProvider)
     public IRoleClient Role => Get<IRoleClient>();
     public IUserClient User => Get<IUserClient>();
     public IPluginClient Plugin => Get<IPluginClient>();
+    public IPluginContentClient PluginContent => Get<IPluginContentClient>();
     public IPluginDefinitionClient PluginDefinition => Get<IPluginDefinitionClient>();
     public ILayoutClient Layout => Get<ILayoutClient>();
     public IAccountClient Account => Get<IAccountClient>();

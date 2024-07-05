@@ -1,6 +1,3 @@
-using FluentCMS.Web.ApiClients;
-using Microsoft.AspNetCore.Components;
-
 namespace FluentCMS.Web.Plugins.Contents.TextHTML;
 
 public partial class TextHTMLEditPlugin
@@ -10,10 +7,14 @@ public partial class TextHTMLEditPlugin
     [SupplyParameterFromForm(FormName = CONTENT_TYPE_NAME)]
     private TextHTMLContent? Model { get; set; }
 
-    [Inject]
-    protected ApiClientFactory ApiClient { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = CONTENT_TYPE_NAME)]
+    private Guid? Id { get; set; } = default!;
 
-    private Guid? Id { get; set; } = Guid.Empty;
+    protected virtual void NavigateBack()
+    {
+        var url = new Uri(NavigationManager.Uri).LocalPath;
+        NavigateTo(url);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -28,14 +29,14 @@ public partial class TextHTMLEditPlugin
                 
                 Model = new TextHTMLContent {
                     Id = Plugin!.Id,
-                    Content = content.Content;
+                    Content = content.Content
                 };
             }
             else
             {
                 Model = new TextHTMLContent {
                     Id = Plugin!.Id,
-                    Content = String.Empty;
+                    Content = String.Empty
                 };
             }
         }
@@ -46,10 +47,10 @@ public partial class TextHTMLEditPlugin
         if (Model is null || Plugin is null)
             return;
 
-        if (IsEditMode())
-            await GetApiClient<PluginContentClient>().UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Id, Model.ToDictionary());
+        if (Id is null)
+            await ApiClient.PluginContent.CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.ToDictionary());
         else
-            await GetApiClient<PluginContentClient>().CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.ToDictionary());
+            await ApiClient.PluginContent.UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Id.Value, Model.ToDictionary());
 
         NavigateBack();
     }

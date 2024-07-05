@@ -6,9 +6,6 @@ public partial class TextHTMLViewPlugin
 {
     private TextHTMLContent? Content { get; set; }
 
-    [Inject]
-    protected ApiClientFactory ApiClient { get; set; } = default!;
-
     protected override async Task OnInitializedAsync()
     {
         if (Plugin is not null)

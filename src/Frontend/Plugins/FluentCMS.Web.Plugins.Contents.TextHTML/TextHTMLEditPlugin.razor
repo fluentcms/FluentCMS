@@ -1,8 +1,8 @@
-@using FluentCMS.Web.UI.Components
-
 @inherits BasePlugin
 
-<PluginForm Model="@Model" Name="@CONTENT_TYPE_NAME" Title="TextHTML Form" OnSubmit="OnSubmit">
-    <FormRichTextEditor Placeholder="Enter HTML Content" @bind-Value="@Model!.Content" Label="Content" />
-    <PluginFormActions Submit Cancel />
+<PluginForm Model="@Model" Name="@CONTENT_TYPE_NAME" Title="Edit TextHTML" OnSubmit="OnSubmit">
+    <!-- <FormRichTextEditor Placeholder="Enter HTML Content" @bind-Value="@Model!.Content" Label="Content" /> -->
+    <FormHiddenInput @bind-Value="@Id" />
+    <FormTextarea Placeholder="Enter HTML Content" Rows="20" @bind-Value="@Model!.Content" Label="Content" />
+    <FormActions Submit Cancel />
 </PluginForm>
