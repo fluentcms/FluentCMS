@@ -2,7 +2,7 @@
     @if (PluginDefinitions != null)
     {
         <div class="f-plugin-definition-list">
-            @foreach (var pluginDef in PluginDefinitions)
+            @foreach (var pluginDef in PluginDefinitions.Where(x => !x.Locked))
             {
                 <div data-id="@pluginDef.Id" class="f-plugin-definition-item">
                     <span class="f-name">@pluginDef.Name</span>

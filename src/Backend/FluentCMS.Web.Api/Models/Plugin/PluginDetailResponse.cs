@@ -10,4 +10,5 @@ public class PluginDetailResponse : BaseSiteAssociatedResponse
     public int ColsLg { get; set; } = 0;
     public string Section { get; set; } = default!;
     public PluginDefinitionDetailResponse Definition { get; set; } = default!;
+    public bool Locked { get; set; } = false;
 }

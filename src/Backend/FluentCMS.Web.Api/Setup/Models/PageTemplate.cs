@@ -6,4 +6,5 @@ internal class PageTemplate
     public string? Layout { get; set; } = default!;
     public List<PageTemplate> Children { get; set; } = [];
     public List<PluginTemplate> Plugins { get; set; } = [];
+    public bool Locked { get; set; } = false;
 }
