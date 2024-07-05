@@ -7,4 +7,5 @@ public class Page : SiteAssociatedEntity
     public int Order { get; set; }
     public string Path { get; set; } = string.Empty;
     public Guid? LayoutId { get; set; }
+    public bool Locked { get; set; } = false;
 }

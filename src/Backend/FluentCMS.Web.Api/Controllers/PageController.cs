@@ -1,6 +1,5 @@
 ﻿using FluentCMS.Web.Api.Filters;
 using FluentCMS.Web.Api.Setup;
-using Microsoft.AspNetCore.WebUtilities;
 
 namespace FluentCMS.Web.Api.Controllers;
 
@@ -47,7 +46,6 @@ public class PageController(
         var uri = new Uri(url);
         var domain = uri.Authority;
         var path = uri.AbsolutePath;
-        var query = QueryHelpers.ParseQuery(uri.Query);
 
         var initialized = await setupManager.IsInitialized();
         if (!initialized)

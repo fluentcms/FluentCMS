@@ -6,24 +6,19 @@ namespace FluentCMS.Web.UI.DynamicRendering;
 
 public interface ILayoutProcessor
 {
-    List<Segment> ProcessSegments(string htmlContent);
+    List<Segment> ProcessSegments(string htmlContent, Dictionary<string, object> keyValues);
 }
 
-public class LayoutProcessor(UserLoginResponse userLogin) : ILayoutProcessor
+public class LayoutProcessor : ILayoutProcessor
 {
-    private string PreProcess(string? content)
+    private static string PreProcess(string? content, Dictionary<string, object> keyValues)
     {
         if (string.IsNullOrEmpty(content))
             return string.Empty;
 
-        var scriptObject = new ScriptObject
-        {
-            ["user"] = new
-            {
-                username = userLogin?.UserName ?? string.Empty,
-                email = userLogin?.Email ?? string.Empty
-            }
-        };
+        var scriptObject = new ScriptObject();
+        foreach (var keyValue in keyValues)
+            scriptObject.Add(keyValue.Key, keyValue.Value);
 
         var context = new TemplateContext();
         context.PushGlobal(scriptObject);
@@ -40,9 +35,9 @@ public class LayoutProcessor(UserLoginResponse userLogin) : ILayoutProcessor
             throw new Exception($"Component type {typeName} not found");
     }
 
-    public List<Segment> ProcessSegments(string htmlContent)
+    public List<Segment> ProcessSegments(string htmlContent, Dictionary<string, object> keyValues)
     {
-        var content = PreProcess(htmlContent);
+        var content = PreProcess(htmlContent, keyValues);
 
         var segments = new List<Segment>();
 

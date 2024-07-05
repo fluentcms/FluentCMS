@@ -10,4 +10,5 @@ public class PageFullDetailResponse : BaseSiteAssociatedResponse
     public LayoutDetailResponse Layout { get; set; } = default!;
     public SiteDetailResponse Site { get; set; } = default!;
     public Dictionary<string, List<PluginDetailResponse>> Sections { get; set; } = [];
+    public bool Locked { get; set; } = false;
 }

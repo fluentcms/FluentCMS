@@ -33,7 +33,7 @@ public partial class PageEditorForms
     #endregion
 
     [CascadingParameter]
-    private ViewContext ViewContext { get; set; }
+    private ViewState ViewState { get; set; } = default!;
 
     [SupplyParameterFromForm(FormName = "UpdatePluginForm")]
     private PageEditorSaveRequest Model { get; set; } = new();
@@ -47,7 +47,7 @@ public partial class PageEditorForms
 
         foreach (var plugin in Model.CreatePlugins ?? [])
         {
-            plugin.PageId = ViewContext.Page.Id;
+            plugin.PageId = ViewState.Page.Id;
 
             await ApiClient.Plugin.CreateAsync(plugin);
         }
