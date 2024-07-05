@@ -131,6 +131,7 @@ public class SetupManager : ISetupManager
         var page = new PageFullDetailResponse
         {
             Title = "Setup",
+            Locked = true,
             Layout = new LayoutDetailResponse
             {
                 Body = System.IO.File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.body.html")),
@@ -142,11 +143,14 @@ public class SetupManager : ISetupManager
                 ["Main"] =
                 [
                     new() {
+                        Locked = true,
+                        Section = "Main",
                         Definition = new PluginDefinitionDetailResponse
                         {
                             Name = "Setup",
                             Description = "Setup View Plugin",
                             Assembly = "FluentCMS.Web.Plugins.Admin.dll",
+                            Locked = true,
                             Types =
                             [
                                 new PluginDefinitionType
@@ -219,7 +223,9 @@ public class SetupManager : ISetupManager
                 Name = pluginDefTemplate.Name,
                 Description = pluginDefTemplate.Description,
                 Types = pluginDefTemplate.Types,
-                Assembly = pluginDefTemplate.Assembly
+                Assembly = pluginDefTemplate.Assembly,
+                Locked = pluginDefTemplate.Locked,
+                Category = pluginDefTemplate.Category
             };
             _pluginDefinitions.Add(await _pluginDefinitionService.Create(pluginDef));
         }
@@ -299,7 +305,8 @@ public class SetupManager : ISetupManager
                 Section = pluginTemplate.Section,
                 DefinitionId = pluginDefinition.Id,
                 PageId = pageId,
-                SiteId = _site.Id
+                SiteId = _site.Id,
+                Locked = pluginTemplate.Locked
             };
             order++;
             var pluginResponse = await _pluginService.Create(plugin);
@@ -332,7 +339,8 @@ public class SetupManager : ISetupManager
             LayoutId = layoutId,
             SiteId = _site.Id,
             ParentId = parentId,
-            Order = order
+            Order = order,
+            Locked = pageTemplate.Locked
         };
 
         return page;

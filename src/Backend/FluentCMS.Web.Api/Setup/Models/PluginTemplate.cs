@@ -6,4 +6,5 @@ internal class PluginTemplate
     public string Section { get; set; } = default!;
     public string Type { get; set; } = default!;
     public List<Dictionary<string, object>> Content { get; set; } = default!;
+    public bool Locked { get; set; } = false;
 }

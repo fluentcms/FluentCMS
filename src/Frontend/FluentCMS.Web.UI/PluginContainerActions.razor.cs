@@ -3,17 +3,17 @@ namespace FluentCMS.Web.UI;
 public partial class PluginContainerActions
 {
     [Parameter]
-    public PluginDetailResponse Plugin { get; set; } = default!;
+    public PluginViewState Plugin { get; set; } = default!;
 
     [CascadingParameter]
-    public ViewContext ViewContext { get; set; } = default!;
+    public ViewState ViewState { get; set; } = default!;
 
     private bool IsDesignMode = false;
     private bool HasEditMode = false;
 
     protected override async Task OnInitializedAsync()
     {
-        IsDesignMode = ViewContext.Type == ViewType.PagePreview;
+        IsDesignMode = ViewState.Type == ViewStateType.PagePreview;
         HasEditMode = Plugin?.Definition?.Types.Where(x => x.Name.StartsWith("Edit")).FirstOrDefault() != null;
     }
 

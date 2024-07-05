@@ -12,7 +12,7 @@ public abstract class BasePlugin : ComponentBase
     public string? SectionName { get; set; }
 
     [Parameter]
-    public PluginDetailResponse? Plugin { get; set; } = default!;
+    public PluginViewState? Plugin { get; set; } = default!;
 
     [Inject]
     protected ApiClientFactory ApiClient { get; set; } = default!;
