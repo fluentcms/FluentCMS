@@ -12,3 +12,70 @@
     justify-content: center;
     border-radius: 50%;
 }
+
+
+.f-plugin-container {
+    position: relative;
+    min-height: 100px;
+}
+
+.f-plugin-container-actions {
+    display: none;
+}
+
+.f-plugin-container:hover .f-plugin-container-actions {
+    display: flex;
+    justify-content: space-between;
+    position: absolute;
+    z-index: 2;
+    left: 0;
+    right: 0;
+    top: 0;
+}
+
+.f-page-editor-forms {
+    display: none;
+}
+
+.f-plugin-container-actions-inner {
+    display: flex;
+} 
+
+.f-plugin-container-actions-inner button {
+    background-color: rgba(62, 62, 209, 0.9);
+    padding: 4px;
+    width: 24px;
+    height: 24px;
+}
+
+.f-plugin-container-actions-inner button .icon {
+    fill: white;
+    color: white;
+    width: 16px;
+    height: 16px;
+}
+
+.f-plugin-container-action-drag {
+    cursor: grab;
+}
+
+.f-plugin-container-moving {
+    opacity: 0.5;
+}
+
+.f-plugin-container {
+    border: 1px dashed #dddddd;
+}
+
+.f-plugin-container:hover {
+    border: 1px solid #3979da;
+}
+
+a[disabled] {
+    pointer-events: none;
+    cursor: default;
+}
+
+.f-hidden {
+    display: none;
+}

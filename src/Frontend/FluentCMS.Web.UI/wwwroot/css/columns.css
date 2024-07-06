@@ -4,6 +4,10 @@
     flex-wrap: wrap;
 }
 
+.f-section > .f-plugin-container {
+    width: 100%;
+}
+
 .f-section-row > [data-cols="1"] {
     width: calc(100% / 12);
 }
