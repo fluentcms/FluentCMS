@@ -40,7 +40,13 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
     [Policy(AREA, UPDATE)]
     public async Task<IApiResult<PluginDetailResponse>> Update([FromBody] PluginUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        var plugin = mapper.Map<Plugin>(request);
+        var plugin = await pluginService.GetById(request.Id, cancellationToken);
+        plugin.Order = request.Order;
+        plugin.Cols = request.Cols;
+        plugin.ColsMd = request.ColsMd;
+        plugin.ColsLg = request.ColsLg;
+        plugin.Section = request.Section;
+
         var updated = await pluginService.Update(plugin, cancellationToken);
         var response = mapper.Map<PluginDetailResponse>(updated);
         return Ok(response);

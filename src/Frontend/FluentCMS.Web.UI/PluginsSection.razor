@@ -1,19 +1,16 @@
-﻿@if (ViewContext.Type == ViewType.Default)
+﻿@if (ViewState.Type == ViewStateType.Default || ViewState.Type == ViewStateType.PagePreview)
 {
-    @if (ViewContext.Page.Sections != null && ViewContext.Page.Sections.ContainsKey(Name))
-    {
-        <div class="f-section">
-            @foreach (var Plugin in ViewContext.Page.Sections[Name].OrderBy(p => p.Order))
-            {
-                <PluginContainer @key="@Plugin" Plugin=@Plugin SectionName=@Name />
-            }
-        </div>
-    }
+    <div class="f-section f-section-row" data-name="@Name">
+        @foreach (var Plugin in ViewState.Plugins.Where(x => x.Section.ToLower() == Name.ToLower()).OrderBy(p => p.Order))
+        {
+            <PluginContainer @key="@Plugin" Plugin=@Plugin SectionName=@Name />
+        }
+    </div>
 }
 
-@if (ViewContext.Type == ViewType.Edit && Name.ToLower() == "main")
+@if (ViewState.Type == ViewStateType.PluginEdit && Name.ToLower() == "main")
 {
-    <div class="f-section">
-        <PluginContainer Plugin=@ViewContext.Plugin SectionName=@Name />
+    <div class="f-section" data-name="@Name">
+        <PluginContainer Plugin=@ViewState.Plugin SectionName=@Name />
     </div>
 }
