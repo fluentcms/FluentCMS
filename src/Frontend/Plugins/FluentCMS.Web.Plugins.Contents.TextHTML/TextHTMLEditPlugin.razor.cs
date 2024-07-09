@@ -57,14 +57,14 @@ public partial class TextHTMLEditPlugin
                 
                 Model = new TextHTMLContent {
                     Id = Plugin!.Id,
-                    Content = content.Content
+                    Content = content.Content,
+                    IsRichText = content.IsRichText,
                 };
             }
             else
             {
                 Model = new TextHTMLContent {
-                    Id = Plugin!.Id,
-                    Content = String.Empty
+                    Id = Plugin!.Id
                 };
             }
         }
