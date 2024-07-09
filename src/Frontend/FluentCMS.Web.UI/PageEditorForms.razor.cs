@@ -60,13 +60,6 @@ public partial class PageEditorForms
         NavigateBack();
     }
 
-    class PageEditorNewPlugin
-    {
-        public Guid DefinitionId { get; set; }
-        public string Section { get; set; }
-        public int Order { get; set; }
-    }
-
     class PageEditorSaveRequest
     {
         public bool Submitted { get; set; } = true;

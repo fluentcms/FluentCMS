@@ -17,18 +17,53 @@
         <PageEditorSidebar />
     </div>
     <PageEditorForms />
+
+    <script src="/_content/FluentCMS.Web.UI/js/plugin-actions.js"></script>
     <script src="/_content/FluentCMS.Web.UI/js/sortable.js"></script>
     <script src="/_content/FluentCMS.Web.UI/js/sitebuilder.js"></script>
+    <script src="/js/tailwind.cdn.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50:        '#f4f8fd',
+                            100:       '#e8f1fb',
+                            200:       '#c6ddf4',
+                            300:       '#a3c8ed',
+                            400:       '#5e9fe0',
+                            500:       '#1976d2',
+                            600:       '#176abd',
+                            700:       '#13599e',
+                            800:       '#0f477e',
+                            900:       '#0c3a67',
+                            on:        '#f4f8fd',
+                            dark: {
+                                DEFAULT: '#a3c8ed',
+                                on:      '#0f477e', 
+                            }
+                        },
+                    },
+                },
+            }
+        }
+    </script>
+
 }
 else if (ViewState.Type == ViewStateType.PagePreview)
 {
     <HeadContent>
+        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/plugin-actions.css">
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.preview.css">
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.editor.css">
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.css">
         @RenderDynamicContent(ViewState.Layout?.Head ?? string.Empty)
     </HeadContent>
     @RenderDynamicContent(ViewState.Layout?.Body ?? string.Empty)
+
+    <PluginActionsForms />
 
     <script src="/_content/FluentCMS.Web.UI/js/columns.js"></script>
     <script src="/_content/FluentCMS.Web.UI/js/sitebuilder.preview.js"></script>
@@ -40,6 +75,7 @@ else
         @RenderDynamicContent(ViewState.Layout?.Head ?? string.Empty)
         @if (ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked)
         {
+            <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/plugin-actions.css">
             <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.default.css">
         }            
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.css">
@@ -47,6 +83,8 @@ else
     @RenderDynamicContent(ViewState.Layout?.Body ?? string.Empty)
     @if (ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked)
     {
+        <PluginActionsForms />
+
         <button id="editButton" class="f-edit-button">
             <svg class="w-6 h-6 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                 <path fill-rule="evenodd" d="M11.32 6.176H5c-1.105 0-2 .949-2 2.118v10.588C3 20.052 3.895 21 5 21h11c1.105 0 2-.948 2-2.118v-7.75l-3.914 4.144A2.46 2.46 0 0 1 12.81 16l-2.681.568c-1.75.37-3.292-1.263-2.942-3.115l.536-2.839c.097-.512.335-.983.684-1.352l2.914-3.086Z" clip-rule="evenodd" />
@@ -54,5 +92,6 @@ else
             </svg>
         </button>
     }
+    <script src="/_content/FluentCMS.Web.UI/js/plugin-actions.js"></script>
     <script src="/_content/FluentCMS.Web.UI/js/sitebuilder.default.js"></script>
 }

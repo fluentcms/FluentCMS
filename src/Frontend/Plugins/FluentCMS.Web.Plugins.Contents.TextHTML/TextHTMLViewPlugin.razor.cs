@@ -33,7 +33,7 @@ public partial class TextHTMLViewPlugin
             NavigationManager.NavigateTo(path);
     }
 
-    private TextHTMLContent? Content { get; set; }
+    private List<TextHTMLContent> Content { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -42,7 +42,7 @@ public partial class TextHTMLViewPlugin
             var response = await ApiClient.PluginContent.GetAllAsync(nameof(TextHTMLContent), Plugin.Id);
 
             if (response?.Data != null && response.Data.ToContentList<TextHTMLContent>().Any())
-                Content = response.Data.ToContentList<TextHTMLContent>()[0];
+                Content = response.Data.ToContentList<TextHTMLContent>();
 
         }
     }
