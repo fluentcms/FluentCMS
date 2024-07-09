@@ -31,7 +31,7 @@ const toolbarTypes = {
         [{ direction: "rtl" }],
         [{ color: [] }, { background: [] }],
         [{ font: [] }],
-        ["pageLink", /* "fileLink" */, "externalLink"],
+        ["pageLink", "fileLink", "externalLink"],
         ["clean"],
     ],
 };
@@ -133,7 +133,7 @@ export function initialize(dotnet, element, config) {
     Quill.register('formats/fileLink', FileLinkModule)
     Quill.register('formats/externalLink', ExternalLinkModule)
 
-    let instance = new Quill(element, {
+    const options = {
         modules: {
             toolbar: toolbarTypes[config.type],
             resize: {
@@ -143,7 +143,9 @@ export function initialize(dotnet, element, config) {
         theme: "snow",
         placeholder: config.placeholder,
         readOnly: config.readonly,
-    });
+    }
+
+    let instance = new Quill(element, options);
     
     const toolbar = instance.getModule('toolbar');
 
