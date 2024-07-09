@@ -36,7 +36,7 @@ public partial class TextHTMLEditPlugin
     [SupplyParameterFromForm(FormName = CONTENT_TYPE_NAME)]
     private TextHTMLContent? Model { get; set; }
 
-    [SupplyParameterFromForm(FormName = CONTENT_TYPE_NAME)]
+    [SupplyParameterFromQuery(Name = nameof(Id))]
     private Guid? Id { get; set; } = default!;
 
     protected virtual string GetBackUrl()
@@ -48,12 +48,11 @@ public partial class TextHTMLEditPlugin
     {
         if (Model is null)
         {
-            var response = await ApiClient.PluginContent.GetAllAsync(CONTENT_TYPE_NAME, Plugin!.Id);
-
-            if (response?.Data != null && response.Data.ToContentList<TextHTMLContent>().Any()) 
+            if (Id != null) 
             {
-                var content = response.Data.ToContentList<TextHTMLContent>()[0];
-                Id = content.Id;
+                var response = await ApiClient.PluginContent.GetByIdAsync(CONTENT_TYPE_NAME, Plugin!.Id, Id.Value);
+
+                var content = response.Data.Data.ToContent<TextHTMLContent>();
                 
                 Model = new TextHTMLContent {
                     Id = Plugin!.Id,
