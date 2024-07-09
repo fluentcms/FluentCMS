@@ -6,13 +6,7 @@ function init() {
     if(window.editButton) {
         editButton.addEventListener('click', onEditButtonClicked)    
     }
-    document.querySelectorAll('[data-action]').forEach(el => {
-        el.addEventListener('click', () => {
-            if(el.dataset.action == 'plugin-edit') {
-                window.location.href = window.location.pathname + el.dataset.url
-            }
-        })
-    })
+    window.initPluginActions(document)
 }
 
 function destroy () {
