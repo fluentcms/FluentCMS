@@ -1,3 +1,5 @@
+@rendermode InteractiveServer
+
 <div class="m-4">
     <Typography Size="TextSize.H5">Edit TextHTML Content</Typography>            
     <Spacer />
@@ -10,7 +12,15 @@
                     <Spacer />
                     <Grid GutterX="GridGutter.Large">
                         <FormHiddenInput @bind-Value="@Id" />
-                        <FormTextarea Placeholder="Enter HTML Content" Rows="20" @bind-Value="@Model!.Content" Label="Content" />
+                        <FormSwitch @bind-Value="Model.IsRichText" Label="Rich Text" />
+                        @if (Model.IsRichText)
+                        {
+                            <FormRichTextEditor Placeholder="Enter HTML Content" @bind-Value="@Model!.Content" Label="Content" />
+                        }
+                        else
+                        {
+                            <FormTextarea Placeholder="Enter HTML Content" Rows="20" @bind-Value="@Model!.Content" Label="Content" />
+                        }
                         <FormActions Submit Cancel />
                         <GridItem Small="GridItemColumn.Twelve">
                             <Stack>

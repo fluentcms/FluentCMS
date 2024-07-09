@@ -9,4 +9,67 @@
             <div class="@this.GetClasses()" @attributes="AdditionalAttributes" @ref="element" />
         </div>
     </FormField>
+
+    @if (LinkModalOpen)
+    {
+        <Modal Size="ModalSize.Large" OnClose="OnLinkModalClose">
+            <ModalHeader>
+                <ModalTitle>
+                    Add link
+                </ModalTitle>
+            </ModalHeader>
+            <ModalBody>
+                <Tabs Active="@Mode">
+                    <TabList>
+                        <TabItem Name="Page">Page</TabItem>
+                        @* <TabItem Name="File">File</TabItem> *@
+                        <TabItem Name="External">External</TabItem>
+                    </TabList>
+                    <TabContent>
+                        <TabPanel Name="Page">
+                            <DataTable Items="Pages">
+                                <DataTableItem Label="Title">@context.Title</DataTableItem>
+                                <DataTableItem Label="Path">@context.Path</DataTableItem>
+                                <DataTableItem>
+                                    <Stack>
+                                        <Button Color="Color.Primary" @onclick="() => OnChoosePage(context)">
+                                            Choose
+                                        </Button>
+                                    </Stack>
+                                </DataTableItem>
+                            </DataTable>
+                        </TabPanel>
+                        @* <TabPanel Name="File">
+                            <DataTable Items="Files">
+                                <DataTableItem Label="Title">@context.Title</DataTableItem>
+                                <DataTableItem Label="Path">@context.Path</DataTableItem>
+                                <DataTableItem>
+                                    <Stack>
+                                        <Button Color="Color.Primary" @onclick="() => OnChoosePage(context)">
+                                            Choose
+                                        </Button>
+                                    </Stack>
+                                </DataTableItem>
+                            </DataTable>
+                            <FormInput Label="Url" Placeholder="Enter url" @bind-Value="Href" />
+                            <FormInput Label="Text" Placeholder="Enter text" @bind-Value="Text" />
+                        </TabPanel> *@
+                        <TabPanel Name="External">
+                            <Grid>
+                                <FormInput Label="Url" Placeholder="Enter url" @bind-Value="Href" />
+                                <FormInput Label="Text" Placeholder="Enter text" @bind-Value="Text" />
+                                <GridItem Small="GridItemColumn.Twelve">
+                                    <Stack>
+                                        <Button @onclick="OnLinkModalClose">Cancel</Button>
+                                        <Button Color="Color.Primary" @onclick="OnChooseExternal">Done</Button>
+                                    </Stack>
+                                </GridItem>
+                            </Grid>
+                        </TabPanel>
+                    </TabContent>
+                </Tabs>
+                
+            </ModalBody>
+        </Modal>
+    }
 }
