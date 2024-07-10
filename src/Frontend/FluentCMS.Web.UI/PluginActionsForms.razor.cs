@@ -13,7 +13,7 @@ public partial class PluginActionsForms
     [Inject]
     protected IHttpContextAccessor? HttpContextAccessor { get; set; }
 
-   protected virtual void NavigateTo(string path)
+    protected virtual void NavigateTo(string path)
     {
         if (HttpContextAccessor?.HttpContext != null && !HttpContextAccessor.HttpContext.Response.HasStarted)
             HttpContextAccessor.HttpContext.Response.Redirect(path);

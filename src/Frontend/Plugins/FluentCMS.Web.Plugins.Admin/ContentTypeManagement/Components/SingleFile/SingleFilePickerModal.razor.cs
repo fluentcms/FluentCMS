@@ -4,7 +4,7 @@ public partial class SingleFilePickerModal
 {
     [Inject]
     protected ApiClientFactory ApiClient { get; set; } = default!;
- 
+
     [Parameter]
     public Guid Model { get; set; }
 
@@ -122,7 +122,7 @@ public partial class SingleFilePickerModal
         FileUploadModalOpen = false;
         await Load();
     }
-    
+
     public async Task OnUpload()
     {
         FileUploadModalOpen = true;

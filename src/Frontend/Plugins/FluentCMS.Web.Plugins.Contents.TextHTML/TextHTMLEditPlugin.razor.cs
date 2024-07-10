@@ -48,13 +48,14 @@ public partial class TextHTMLEditPlugin
     {
         if (Model is null)
         {
-            if (Id != null) 
+            if (Id != null)
             {
                 var response = await ApiClient.PluginContent.GetByIdAsync(CONTENT_TYPE_NAME, Plugin!.Id, Id.Value);
 
                 var content = response.Data.Data.ToContent<TextHTMLContent>();
-                
-                Model = new TextHTMLContent {
+
+                Model = new TextHTMLContent
+                {
                     Id = Plugin!.Id,
                     Content = content.Content,
                     IsRichText = content.IsRichText,
@@ -62,7 +63,8 @@ public partial class TextHTMLEditPlugin
             }
             else
             {
-                Model = new TextHTMLContent {
+                Model = new TextHTMLContent
+                {
                     Id = Plugin!.Id
                 };
             }

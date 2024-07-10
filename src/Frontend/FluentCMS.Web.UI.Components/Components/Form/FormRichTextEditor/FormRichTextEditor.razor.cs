@@ -46,7 +46,7 @@ public partial class FormRichTextEditor
         LinkModalOpen = false;
     }
 
-    private async Task OnChooseExternal() 
+    private async Task OnChooseExternal()
     {
 
         LinkModalOpen = false;
@@ -56,7 +56,7 @@ public partial class FormRichTextEditor
 
     }
 
-    private async Task OnChooseFile(FileDetailResponse file) 
+    private async Task OnChooseFile(FileDetailResponse file)
     {
         Text = file.Name;
         Href = $"/API/File/Download/{file.Id}";
@@ -79,7 +79,7 @@ public partial class FormRichTextEditor
         return page.Path;
     }
 
-    private async Task OnChoosePage(PageDetailResponse page) 
+    private async Task OnChoosePage(PageDetailResponse page)
     {
         Text = page.Title;
         Href = GetPageUrl(page.Id);
@@ -90,12 +90,12 @@ public partial class FormRichTextEditor
             await module.InvokeVoidAsync("setLink", DotNetObjectReference.Create(this), element, new { Href = Href, Text = Text, Mode = "Page" });
 
     }
-    
+
     protected override async Task OnInitializedAsync()
     {
         // TODO: Site url
         var pagesResponse = await ApiClient.Page.GetAllAsync("localhost:5000");
-        if(pagesResponse?.Data != null)
+        if (pagesResponse?.Data != null)
         {
             Pages = pagesResponse.Data.ToList();
         }

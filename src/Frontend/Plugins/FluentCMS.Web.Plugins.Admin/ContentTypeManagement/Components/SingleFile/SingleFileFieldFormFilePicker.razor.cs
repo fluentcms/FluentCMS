@@ -4,7 +4,7 @@ public partial class SingleFileFieldFormFilePicker
 {
     [Inject]
     protected ApiClientFactory ApiClient { get; set; } = default!;
- 
+
     private List<FileParameter> Files { get; set; }
 
     private async Task OnFilesChanged(InputFileChangeEventArgs e)
