@@ -4,6 +4,9 @@ public partial class ContentUpdatePlugin
 {
     public const string FORM_NAME = "ContentUpdateForm";
 
+    [Inject]
+    protected ApiClientFactory ApiClient { get; set; } = default!;
+
     [SupplyParameterFromQuery(Name = "id")]
     public Guid Id { get; set; }
 
@@ -57,7 +60,7 @@ public partial class ContentUpdatePlugin
     private async Task OnSubmit()
     {
         var data = FieldValues.ToDictionary(x => x.Name, x => x.GetValue());
-        await GetApiClient<ContentClient>().UpdateAsync(ContentTypeSlug!, Id, data);
+        await ApiClient.Content.UpdateAsync(ContentTypeSlug!, Id, data);
 
         NavigateBack();
     }

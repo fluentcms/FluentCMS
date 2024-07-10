@@ -2,6 +2,9 @@ namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
 public partial class SingleFilePickerModal
 {
+    [Inject]
+    protected ApiClientFactory ApiClient { get; set; } = default!;
+ 
     [Parameter]
     public Guid Model { get; set; }
 
@@ -48,12 +51,12 @@ public partial class SingleFilePickerModal
 
     private async Task Load()
     {
-        var rootFolderResponse = await GetApiClient<FolderClient>().GetAllAsync();
+        var rootFolderResponse = await ApiClient.Folder.GetAllAsync();
         RootFolder = rootFolderResponse?.Data;
 
         FolderDetailResponse? folderDetail = default!;
 
-        var folderDetailResponse = await GetApiClient<FolderClient>().GetAllAsync();
+        var folderDetailResponse = await ApiClient.Folder.GetAllAsync();
 
         if (CurrentFolderId is null || CurrentFolderId == Guid.Empty)
         {
@@ -115,7 +118,7 @@ public partial class SingleFilePickerModal
 
     private async Task OnUpload(List<FileParameter> files)
     {
-        await GetApiClient<FileClient>().UploadAsync(CurrentFolderId, files);
+        await ApiClient.File.UploadAsync(CurrentFolderId, files);
         FileUploadModalOpen = false;
         await Load();
     }

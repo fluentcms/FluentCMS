@@ -2,19 +2,9 @@ namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
 public partial class SingleFileFieldFormFilePicker
 {
-    #region BasePlugin
     [Inject]
-    protected UserLoginResponse? UserLogin { get; set; }
-
-    [Inject]
-    protected IHttpClientFactory HttpClientFactory { get; set; } = default!;
-
-    protected TClient GetApiClient<TClient>() where TClient : class, IApiClient
-    {
-        return HttpClientFactory.CreateApiClient<TClient>(UserLogin);
-    }
-    #endregion
-
+    protected ApiClientFactory ApiClient { get; set; } = default!;
+ 
     private List<FileParameter> Files { get; set; }
 
     private async Task OnFilesChanged(InputFileChangeEventArgs e)
@@ -26,7 +16,7 @@ public partial class SingleFileFieldFormFilePicker
             Files.Add(new FileParameter(Data, file.Name, file.ContentType));
         }
 
-        var result = await GetApiClient<FileClient>().UploadAsync(default, Files);
+        var result = await ApiClient.File.UploadAsync(default, Files);
         if (result?.Data.Count > 0)
         {
             FieldValue.Value = result?.Data.Select(x => x.Id).ToList()[0];
@@ -41,7 +31,7 @@ public partial class SingleFileFieldFormFilePicker
 
     protected override async Task OnInitializedAsync()
     {
-        var settingsResponse = await GetApiClient<GlobalSettingsClient>().GetAsync();
+        var settingsResponse = await ApiClient.GlobalSettings.GetAsync();
         if (settingsResponse?.Data != null)
         {
             FileUploadConfig = settingsResponse?.Data.FileUpload;
@@ -53,7 +43,7 @@ public partial class SingleFileFieldFormFilePicker
     {
         if (FieldValue.Value != null)
         {
-            var fileResponse = await GetApiClient<FileClient>().GetByIdAsync(FieldValue.Value.Value);
+            var fileResponse = await ApiClient.File.GetByIdAsync(FieldValue.Value.Value);
             FileName = fileResponse?.Data.Name;
         }
     }
