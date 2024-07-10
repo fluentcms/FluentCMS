@@ -48,7 +48,7 @@ public partial class ContentUpdatePlugin
         {
             { "Field", fieldModel },
             { "FieldValue", fieldValue },
-            { nameof(ContentTypeField), ContentType.Fields.Where(x=> x.Name==fieldModel.Name).SingleOrDefault() }
+            { nameof(ContentTypeField), ContentType.Fields.Where(x => x.Name == fieldModel.Name).SingleOrDefault() }
         };
 
         return parameters;
@@ -64,6 +64,7 @@ public partial class ContentUpdatePlugin
 
         //await GetApiClient<ContentClient>().UpdateAsync(ContentTypeSlug!, request);
 
+        await Task.CompletedTask;
         NavigateBack();
     }
 }

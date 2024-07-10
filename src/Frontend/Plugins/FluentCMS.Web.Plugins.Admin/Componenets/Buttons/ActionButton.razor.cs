@@ -11,10 +11,10 @@ public partial class ActionButton
     public Color Color { get; set; } = Color.Default;
 
     [Parameter]
-    public string Href { get; set; }
+    public string Href { get; set; } = string.Empty;
 
     [Parameter]
-    public string Label { get; set; }
+    public string Label { get; set; } = string.Empty;
 
     [CascadingParameter]
     public bool TableAction { get; set; }

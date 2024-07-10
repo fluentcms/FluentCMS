@@ -2,11 +2,11 @@
 
 public partial class SelectFieldFormSelect
 {
-    private List<string> SelectItems { get; set; }
+    private List<string> Options { get; set; } = [];
 
     protected override Task OnInitializedAsync()
     {
-        SelectItems = Field.Options.Split("\n").Select(x => x.Trim()).ToList();
+        Options = Field.Options.Split("\n").Select(x => x.Trim()).ToList();
 
         return base.OnInitializedAsync();
     }

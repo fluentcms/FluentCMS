@@ -41,7 +41,7 @@ public partial class ContentListPlugin
         {
             { "Field", fieldModel },
             { "FieldValue", fieldModel.GetFieldValue(content?.Data)},
-            { nameof(ContentTypeField), ContentType.Fields.Where(x=> x.Name==fieldModel.Name).SingleOrDefault() }
+            { nameof(ContentTypeField), ContentType.Fields.Where(x => x.Name == fieldModel.Name).SingleOrDefault() }
         };
     }
 

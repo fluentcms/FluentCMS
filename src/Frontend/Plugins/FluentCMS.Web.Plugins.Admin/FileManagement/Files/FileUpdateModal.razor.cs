@@ -8,18 +8,19 @@ public partial class FileUpdateModal
     [Parameter]
     public EventCallback OnCancel { get; set; }
 
-    [Parameter]
+    [Parameter, EditorRequired]
     public FileUpdateRequest Model { get; set; }
 
-    private string Test { get; set; }
-
-    [Parameter]
+    [Parameter, EditorRequired]
     public FolderDetailResponse RootFolder { get; set; }
 
     private List<FolderSelectOption> FolderOptions { get; set; } = [];
 
-    private void AddFolders(ICollection<FolderDetailResponse> folders, string prefix)
+    private async Task AddFolders(ICollection<FolderDetailResponse>? folders, string? prefix)
     {
+        if (folders is null || string.IsNullOrEmpty(prefix))
+            return;
+
         foreach (var folder in folders)
         {
             if (folder.Id == Model.Id)
@@ -32,29 +33,32 @@ public partial class FileUpdateModal
             });
 
             if (folder.Folders != null && folder.Folders.Any())
-                AddFolders(folder.Folders, $"{folder.Name}");
+                await AddFolders(folder.Folders, $"{folder.Name}");
         }
     }
 
     protected override async Task OnInitializedAsync()
     {
-        FolderOptions = [
-            new FolderSelectOption
-            {
-                Id = RootFolder.Id,
-                Name = RootFolder.Name,
-            }
-        ];
-        AddFolders(RootFolder.Folders, RootFolder.Name);
+        if (RootFolder != null)
+        {
+            FolderOptions = [
+                new FolderSelectOption
+                {
+                    Id = RootFolder.Id,
+                    Name = RootFolder.Name,
+                }
+            ];
+            await AddFolders(RootFolder.Folders, RootFolder.Name);
+        }
     }
 
     private async Task HandleSubmit()
     {
-        OnSubmit.InvokeAsync(Model);
+        await OnSubmit.InvokeAsync(Model);
     }
 
     private async Task HandleCancel()
     {
-        OnCancel.InvokeAsync();
+        await OnCancel.InvokeAsync();
     }
 }
