@@ -93,6 +93,14 @@ export function setLink(dotnet, element, value) {
     textEditor.setSelection(range.index + text.length)
 }
 
+export function openFileUpload(dotnet, element, value) {
+    const id = value.id
+    element = document.getElementById(id)
+
+    if(element)
+        element.click()
+}
+
 export function setImage(dotnet, element, value) {
     var textEditor = textEditors.get(element)
 

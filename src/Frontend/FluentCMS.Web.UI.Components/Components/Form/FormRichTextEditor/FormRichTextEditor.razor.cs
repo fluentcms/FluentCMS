@@ -21,10 +21,13 @@ public partial class FormRichTextEditor
     private string ImageMode = "Library";
     private string? ImageUrl { get; set; }
     private Guid? ImageId { get; set; }
+    private Guid? FolderId { get; set; }
     private string? ImageAlt { get; set; }
     private string? Href { get; set; }
     private string? Text { get; set; }
     private string Mode { get; set; } = "Page";
+
+    private FileUploadConfiguration Config { get; set; }
 
     [Parameter]
     public int Cols { get; set; } = 12;
@@ -137,6 +140,12 @@ public partial class FormRichTextEditor
     
     protected override async Task OnInitializedAsync()
     {
+        var settingsResponse = await ApiClient.GlobalSettings.GetAsync();
+        if (settingsResponse?.Data != null)
+        {
+            Config = settingsResponse?.Data.FileUpload;
+        }
+
         // TODO: Site url
         var pagesResponse = await ApiClient.Page.GetAllAsync("localhost:5000");
         if(pagesResponse?.Data != null)
@@ -183,6 +192,7 @@ public partial class FormRichTextEditor
 
     private async Task OnNavigateFolder(Guid? folderId)
     {
+        FolderId = folderId;
         FolderDetailResponse? folderDetail = default!;
 
         var folderDetailResponse = await ApiClient.Folder.GetAllAsync();
@@ -236,6 +246,7 @@ public partial class FormRichTextEditor
                 });
             }
         }
+        StateHasChanged();
     }
 
     public async Task OnChooseImage(AssetDetail image)
@@ -248,6 +259,25 @@ public partial class FormRichTextEditor
         if (module != null)
             await module.InvokeVoidAsync("setImage", DotNetObjectReference.Create(this), element, new { Alt = ImageAlt, Url = ImageUrl });
 
+    }
+
+    public async Task OnUpload()
+    {
+        if (module != null)
+            await module.InvokeVoidAsync("openFileUpload", DotNetObjectReference.Create(this), element, new { Id = "upload-" + Id });
+    }
+
+
+    private async Task OnFilesChanged(InputFileChangeEventArgs e)
+    {
+        List<FileParameter> files = [];
+        foreach (var file in e.GetMultipleFiles(Config.MaxCount))
+        {
+            var Data = file.OpenReadStream(Config.MaxSize);
+            files.Add(new FileParameter(Data, file.Name, file.ContentType));
+        }
+        await ApiClient.File.UploadAsync(FolderId, files);
+        OnNavigateFolder(FolderId);
     }
 
     public async Task OnImageModalClose()

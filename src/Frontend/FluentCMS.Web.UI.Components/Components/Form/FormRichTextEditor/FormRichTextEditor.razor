@@ -88,6 +88,7 @@
                             <Spacer />
                             <Stack>
                                 <Button @onclick="OnLinkModalClose">Cancel</Button>
+                                <Button Color="Color.Primary" @onclick="OnUpload">Upload file here</Button>
                                 <Button Color="Color.Danger" @onclick="OnLinkClear">Clear</Button>
                             </Stack>
                         </TabPanel>
@@ -168,6 +169,7 @@
                             <Spacer />
                             <Stack>
                                 <Button @onclick="OnImageModalClose">Cancel</Button>
+                                <Button Color="Color.Primary" @onclick="OnUpload">Upload file here</Button>
                             </Stack>
                         </TabPanel>
                         <TabPanel Name="External">
@@ -184,8 +186,9 @@
                         </TabPanel>
                     </TabContent>
                 </Tabs>
-                
             </ModalBody>
         </Modal>
     }
+
+    <InputFile style="display: none" Id="@($"upload-{Id}")" OnChange="OnFilesChanged"/>
 }
