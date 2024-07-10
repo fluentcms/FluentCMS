@@ -4,9 +4,6 @@ public partial class ContentUpdatePlugin
 {
     public const string FORM_NAME = "ContentUpdateForm";
 
-    [Inject]
-    protected ApiClientFactory ApiClient { get; set; } = default!;
-
     [SupplyParameterFromQuery(Name = "id")]
     public Guid Id { get; set; }
 
@@ -51,7 +48,7 @@ public partial class ContentUpdatePlugin
         {
             { "Field", fieldModel },
             { "FieldValue", fieldValue },
-            { nameof(ContentTypeField), ContentType.Fields.Where(x=> x.Name==fieldModel.Name).SingleOrDefault() }
+            { nameof(ContentTypeField), ContentType.Fields.Where(x => x.Name == fieldModel.Name).SingleOrDefault() }
         };
 
         return parameters;

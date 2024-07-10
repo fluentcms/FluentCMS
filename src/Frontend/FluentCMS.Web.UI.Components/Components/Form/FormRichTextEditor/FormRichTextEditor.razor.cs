@@ -216,7 +216,7 @@ public partial class FormRichTextEditor
                 {
                     Name = "(parent)",
                     IsFolder = true,
-                    Id = folderDetail.FolderId == Guid.Empty ? null : folderDetail.FolderId,
+                    Id = folderDetail.FolderId,
                     IsParentFolder = true
                 });
             }
@@ -253,7 +253,7 @@ public partial class FormRichTextEditor
     {
         ImageModalOpen = false;
 
-        ImageUrl = "/API/File/Download/" + image.Id.Value;
+        ImageUrl = "/API/File/Download/" + image.Id;
         ImageAlt = "(TODO) Image ALT";
 
         if (module != null)

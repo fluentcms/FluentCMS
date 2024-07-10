@@ -11,11 +11,11 @@ public partial class FolderCreateModal
     [Parameter]
     public EventCallback OnCancel { get; set; }
 
-    public FolderCreateRequest Model { get; set; }
+    public FolderCreateRequest Model { get; set; } = new();
 
     protected override async Task OnInitializedAsync()
     {
-        Model ??= new();
+        await Task.CompletedTask;
     }
 
     private async Task HandleSubmit()

@@ -50,7 +50,7 @@
                                 <DataTableItem Label="Name">
                                     @if (context.IsFolder)
                                     {
-                                        <Button Link @onclick="() => OnNavigateFolder(context.Id.Value)">
+                                        <Button Link @onclick="() => OnNavigateFolder(context.Id)">
                                             @context.Name
                                         </Button>
                                     }
@@ -131,7 +131,7 @@
                                 <DataTableItem Label="Name">
                                     @if (context.IsFolder)
                                     {
-                                        <Button Link @onclick="() => OnNavigateFolder(context.Id.Value)">
+                                        <Button Link @onclick="() => OnNavigateFolder(context.Id)">
                                             @context.Name
                                         </Button>
                                     }

@@ -32,7 +32,7 @@ public static class ModelHelpers
                 return new FieldValue<DateTime?> { Name = fieldModel.Name };
 
             case FieldTypes.MULTI_SELECT:
-                return new FieldValue<ICollection<string>?> { Name = fieldModel.Name, Value = (valuesDict[fieldModel.Name] as object[] ?? []).Select(x => x.ToString()).ToList() };
+                return new FieldValue<ICollection<string>> { Name = fieldModel.Name, Value = (List<string>)(valuesDict[fieldModel.Name] as object[] ?? []).Select(x => x.ToString()).ToList() };
 
             default:
                 throw new NotSupportedException($"Field type '{fieldModel.Type}' is not supported.");
@@ -59,7 +59,7 @@ public static class ModelHelpers
                 return new FieldValue<DateTime?> { Name = fieldModel.Name };
 
             case FieldTypes.MULTI_SELECT:
-                return new FieldValue<ICollection<string>?> { Name = fieldModel.Name };
+                return new FieldValue<ICollection<string>> { Name = fieldModel.Name };
 
             default:
                 throw new NotSupportedException($"Field type '{fieldModel.Type}' is not supported.");

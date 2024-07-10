@@ -3,7 +3,7 @@ namespace FluentCMS.Web.Plugins.Admin.FileManagement;
 public partial class FileUploadModal
 {
     [Parameter]
-    public FileUploadConfiguration Config { get; set; }
+    public FileUploadConfiguration Config { get; set; } = new();
 
     [Parameter]
     public EventCallback<List<FileParameter>> OnSubmit { get; set; }
@@ -13,7 +13,7 @@ public partial class FileUploadModal
 
     private string Model { get; set; } = string.Empty;
 
-    private List<FileParameter> Files { get; set; }
+    private List<FileParameter> Files { get; set; } = [];
 
     private async Task OnFilesChanged(InputFileChangeEventArgs e)
     {

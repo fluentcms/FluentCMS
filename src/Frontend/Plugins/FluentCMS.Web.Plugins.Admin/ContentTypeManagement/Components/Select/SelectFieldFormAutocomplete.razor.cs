@@ -2,11 +2,11 @@
 
 public partial class SelectFieldFormAutocomplete
 {
-    private List<string> Items { get; set; }
+    private List<string> Options { get; set; } = [];
 
     protected override Task OnInitializedAsync()
     {
-        Items = Field.Options.Split("\n").Select(x => x.Trim()).ToList();
+        Options = Field.Options.Split("\n").Select(x => x.Trim()).ToList();
 
         return base.OnInitializedAsync();
     }

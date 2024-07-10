@@ -2,7 +2,7 @@
 
 public partial class MultiSelectFieldFormAutocomplete
 {
-    private List<string> Options { get; set; }
+    private List<string> Options { get; set; } = [];
 
     protected override Task OnInitializedAsync()
     {

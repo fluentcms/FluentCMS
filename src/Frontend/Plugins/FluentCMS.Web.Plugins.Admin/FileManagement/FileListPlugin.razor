@@ -1,6 +1,16 @@
 ﻿@inherits BasePlugin
 @rendermode InteractiveServer
 
+<div class="px-4">
+    <Spacer />
+    <Breadcrumb>
+        @foreach (var item in BreadcrumbItems)
+        {
+            <BreadcrumbItem IconName="@item.Icon" Href="@item.Href">@item.Title</BreadcrumbItem>
+        }
+    </Breadcrumb>
+</div>
+
 <PluginBody Title="File/Folders List">
     <ActionsFragment>
         <ActionButtonBack Visible="FolderId != null && FolderId != Guid.Empty" Href="@GetUrl("Files List", new { folderId = ParentId })" />
