@@ -10,7 +10,7 @@ public class FieldTypes
     public const string SINGLE_SELECT = "single-select";
     public const string MULTI_SELECT = "multi-select";
     public const string DATE_TIME = "datetime";
-    public const string MEDIA = "media";
+    public const string SINGLE_FILE = "single-file";
 
     public static Type GetSettingType(string fieldTypeKey) =>
         All[fieldTypeKey].SettingViewType;
@@ -97,7 +97,9 @@ public class FieldTypes
                 SettingViewType = typeof(MultiSelectFieldSettings),
                 FormComponents =
                 [
-                    new FieldType.Component("Checkboxes", typeof(MultiSelectFieldFormCheckboxes))
+                    new FieldType.Component("Checkboxes", typeof(MultiSelectFieldFormCheckboxes)),
+                    new FieldType.Component("Autocomplete", typeof(MultiSelectFieldFormAutocomplete))
+
                 ],
                 DataTableComponents =
                 [
@@ -118,7 +120,8 @@ public class FieldTypes
                 FormComponents =
                 [
                     new FieldType.Component("Dropdown", typeof(SelectFieldFormSelect)),
-                    new FieldType.Component("Radio Group", typeof(SelectFieldFormRadioGroup))
+                    new FieldType.Component("Radio Group", typeof(SelectFieldFormRadioGroup)),
+                    new FieldType.Component("Autocomplete", typeof(SelectFieldFormAutocomplete))
                 ],
                 DataTableComponents =
                 [
@@ -147,14 +150,30 @@ public class FieldTypes
                     new FieldType.Component("Text", typeof(DateFieldDataTableView)),
                 ]
             }
+        },
+        {
+            SINGLE_FILE,
+            new FieldType
+            {
+                Title = "Single File",
+                Icon = IconName.ClipboardList,
+                Description = "Files like images, videos, etc",
+                Key = SINGLE_FILE,
+                Order = 7,
+                SettingViewType = typeof(SingleFileFieldSettings),
+                FormComponents =
+                [
+                    new FieldType.Component("File Picker", typeof(SingleFileFieldFormFilePicker)),
+                    // new FieldType.Component("Time Picker", typeof(DateFieldFormTime)),
+                    // new FieldType.Component("DateTime Picker", typeof(DateFieldFormDateTime)),
+                ],
+                DataTableComponents =
+                [
+                    new FieldType.Component("File", typeof(SingleFileFieldDataTableFile)),
+
+                    // new FieldType.Component("Text", typeof(DateFieldDataTableView)),
+                ]
+            }
         }
-        //{MEDIA, new FieldType
-        //{
-        //    Title = "Media",
-        //    Icon = IconName.ClipboardList,
-        //    Description = "Files like images, videos, etc",
-        //    Key = MEDIA,
-        //    Order = 6
-        //}}
     };
 }

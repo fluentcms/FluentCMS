@@ -1,4 +1,4 @@
-namespace FluentCMS.Web.Plugins.Admin.FileManagement;
+namespace FluentCMS;
 
 public class AssetDetail
 {
@@ -9,4 +9,4 @@ public class AssetDetail
     public bool IsFolder { get; set; }
     public Guid? FolderId { get; set; }
     public bool IsParentFolder { get; set; } = false;
-};
+}
