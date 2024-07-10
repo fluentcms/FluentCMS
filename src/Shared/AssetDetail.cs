@@ -1,4 +1,4 @@
-namespace FluentCMS.Web.ApiClients;
+namespace FluentCMS;
 
 public class AssetDetail
 {
