@@ -5,7 +5,7 @@ public partial class ToastProvider
     [Inject]
     ToastService toastService { get; set; } = default!;
 
-    List<ToastModel> toasts = new List<ToastModel>();
+    List<ToastModel> toasts = [];
 
     public void Show(string message, ToastType? type)
     {

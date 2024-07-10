@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Components;
-
-namespace FluentCMS.Web.UI;
+﻿namespace FluentCMS.Web.UI;
 
 public partial class PluginsSection
 {
@@ -9,5 +7,5 @@ public partial class PluginsSection
     public string Name { get; set; } = default!;
 
     [CascadingParameter]
-    private ViewContext ViewContext { get; set; } = default!;
+    private ViewState ViewState { get; set; } = default!;
 }

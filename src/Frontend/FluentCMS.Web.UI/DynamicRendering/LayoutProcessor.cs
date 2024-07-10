@@ -1,25 +1,24 @@
-﻿using FluentCMS.Web.ApiClients;
-using Scriban;
+﻿using Scriban;
 using Scriban.Runtime;
 using System.Text.RegularExpressions;
 
 namespace FluentCMS.Web.UI.DynamicRendering;
 
-public class LayoutProcessor(UserLoginResponse userLogin)
+public interface ILayoutProcessor
 {
-    private string PreProcess(string? content)
+    List<Segment> ProcessSegments(string htmlContent, Dictionary<string, object> keyValues);
+}
+
+public class LayoutProcessor : ILayoutProcessor
+{
+    private static string PreProcess(string? content, Dictionary<string, object> keyValues)
     {
         if (string.IsNullOrEmpty(content))
             return string.Empty;
 
-        var scriptObject = new ScriptObject
-        {
-            ["user"] = new
-            {
-                username = userLogin?.UserName ?? string.Empty,
-                email = userLogin?.Email ?? string.Empty
-            }
-        };
+        var scriptObject = new ScriptObject();
+        foreach (var keyValue in keyValues)
+            scriptObject.Add(keyValue.Key, keyValue.Value);
 
         var context = new TemplateContext();
         context.PushGlobal(scriptObject);
@@ -36,9 +35,9 @@ public class LayoutProcessor(UserLoginResponse userLogin)
             throw new Exception($"Component type {typeName} not found");
     }
 
-    public List<Segment> ProcessSegments(string htmlContent)
+    public List<Segment> ProcessSegments(string htmlContent, Dictionary<string, object> keyValues)
     {
-        var content = PreProcess(htmlContent);
+        var content = PreProcess(htmlContent, keyValues);
 
         var segments = new List<Segment>();
 

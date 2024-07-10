@@ -93,5 +93,12 @@ public class MappingProfile : Profile
 
         #endregion
 
+
+        #region PluginContent
+
+        CreateMap<PluginContent, PluginContentDetailResponse>();
+
+        #endregion
+
     }
 }
