@@ -22,7 +22,7 @@
                 <Tabs Active="@Mode">
                     <TabList>
                         <TabItem Name="Page">Page</TabItem>
-                        @* <TabItem Name="File">File</TabItem> *@
+                        <TabItem Name="File">File</TabItem>
                         <TabItem Name="External">External</TabItem>
                     </TabList>
                     <TabContent>
@@ -38,22 +38,56 @@
                                     </Stack>
                                 </DataTableItem>
                             </DataTable>
+                            <Spacer />
+                            <Stack>
+                                <Button @onclick="OnLinkModalClose">Cancel</Button>
+                                <Button Color="Color.Danger" @onclick="OnLinkClear">Clear</Button>
+                            </Stack>
+
                         </TabPanel>
-                        @* <TabPanel Name="File">
-                            <DataTable Items="Files">
-                                <DataTableItem Label="Title">@context.Title</DataTableItem>
-                                <DataTableItem Label="Path">@context.Path</DataTableItem>
-                                <DataTableItem>
-                                    <Stack>
-                                        <Button Color="Color.Primary" @onclick="() => OnChoosePage(context)">
+                        <TabPanel Name="File">
+                            <DataTable Items="Assets">
+                                <DataTableItem Label="Name">
+                                    @if (context.IsFolder)
+                                    {
+                                        <Button Link @onclick="() => OnNavigateFolder(context.Id.Value)">
+                                            @context.Name
+                                        </Button>
+                                    }
+                                    else
+                                    {
+                                        @context.Name
+                                    }
+                                </DataTableItem>
+                                <DataTableItem Label="Type">
+                                    <Badge Color="Color.Info" Visible="@context.IsFolder">
+                                        Folder
+                                    </Badge>
+                                    <Badge Color="Color.Success" Visible="!context.IsFolder">
+                                        @context.ContentType
+                                    </Badge>
+                                </DataTableItem>
+                                <DataTableItem Label="Size">
+                                    @context.Size
+                                </DataTableItem>
+                                <DataTableItem Label="">
+                                    <Stack Justify="StackJustify.End" class="!gap-0">
+                                        <Button Visible="!context.IsFolder" Size="ButtonSize.Small" @onclick="() => OnChooseFile(context)" Color="Color.Primary">
                                             Choose
+                                        </Button>
+                                        <Button Visible="context.IsFolder" Size="ButtonSize.Small" @onclick="() => OnNavigateFolder(context.Id)" Color="Color.Primary">
+                                            <Icon Name="IconName.Eye" />
+                                            Open
                                         </Button>
                                     </Stack>
                                 </DataTableItem>
                             </DataTable>
-                            <FormInput Label="Url" Placeholder="Enter url" @bind-Value="Href" />
-                            <FormInput Label="Text" Placeholder="Enter text" @bind-Value="Text" />
-                        </TabPanel> *@
+                            <Spacer />
+                            <Stack>
+                                <Button @onclick="OnLinkModalClose">Cancel</Button>
+                                <Button Color="Color.Danger" @onclick="OnLinkClear">Clear</Button>
+                            </Stack>
+                        </TabPanel>
                         <TabPanel Name="External">
                             <Grid>
                                 <FormInput Label="Url" Placeholder="Enter url" @bind-Value="Href" />
@@ -61,6 +95,7 @@
                                 <GridItem Small="GridItemColumn.Twelve">
                                     <Stack>
                                         <Button @onclick="OnLinkModalClose">Cancel</Button>
+                                        <Button Color="Color.Danger" @onclick="OnLinkClear">Clear</Button>
                                         <Button Color="Color.Primary" @onclick="OnChooseExternal">Done</Button>
                                     </Stack>
                                 </GridItem>

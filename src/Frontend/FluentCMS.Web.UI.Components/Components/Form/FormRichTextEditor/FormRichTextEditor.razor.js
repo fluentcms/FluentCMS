@@ -31,7 +31,7 @@ const toolbarTypes = {
         [{ direction: "rtl" }],
         [{ color: [] }, { background: [] }],
         [{ font: [] }],
-        ["pageLink", "fileLink", "externalLink"],
+        ["link"],
         ["clean"],
     ],
 };
@@ -74,64 +74,52 @@ export function setLink(dotnet, element, value) {
 
     const range = textEditor.getSelection(true);
 
-    textEditor.deleteText(range.index, range.length)
-    if(mode == "Page") {
-        textEditor.format('pageLink', {text, href})
-    } else if(mode == "File") {
-        textEditor.format('fileLink', {text, href})
+    const [leaf, offset] = textEditor.getLeaf(range.index)
+
+    if(leaf.parent && leaf.parent.statics.blotName == 'link') {
+        if(value.mode == 'Clear') {
+            textEditor.setSelection(range.index - offset, leaf.parent.attributes.domNode.textContent.length)
+            textEditor.format('link', false)   
+            return;
+        } else {
+            leaf.parent.attributes.domNode.innerHTML = value.text
+            leaf.parent.attributes.domNode.dataset.mode = value.mode
+            leaf.parent.attributes.domNode.setAttribute('href', href)
+        }
     } else {
-        textEditor.format('externalLink', {text, href})
+        textEditor.deleteText(range.index, range.length)
+        textEditor.insertText(range.index, text, 'link', {href, mode})
     }
+    textEditor.setSelection(range.index + text.length)
 }
 
-class BaseLinkModule extends Quill.imports["blots/inline"] {
-    static blotName = 'pageLink';
+class LinkModule extends Quill.imports["blots/inline"] {
+    static blotName = 'link';
     static tagName = 'a'
 
     static create(value) {
         const node = super.create();
         node.setAttribute('href', value.href);
-        
-        node.innerHTML = value.text;
+        node.setAttribute('data-mode', value.mode);
+        node.setAttribute('_target', 'blank');
+
         return node;
     }
 
     static value(node) {
         return {
-          id: node.getAttribute('href'),
+          href: node.getAttribute('href'),
+          mode: node.dataset.mode,
           text: node.innerHTML
         };
     }
-
-    static formats(node) {
-        return {            
-            href: node.getAttribute('href'),
-            text: node.innerHTML,
-            id: node.getAttribute('href')
-        }
-    }
-}
-
-class PageLinkModule extends BaseLinkModule {
-    static blotName = "pageLink";
-}
-
-class FileLinkModule extends BaseLinkModule {
-    static blotName = "fileLink";
-}
-
-class ExternalLinkModule extends BaseLinkModule {
-    static blotName = "externalLink";
 }
 
 export function initialize(dotnet, element, config) {
     dispose(dotnet, element);
 
     Quill.register('modules/resize', window.QuillResizeImage)
-
-    Quill.register('formats/pageLink', PageLinkModule)
-    Quill.register('formats/fileLink', FileLinkModule)
-    Quill.register('formats/externalLink', ExternalLinkModule)
+    Quill.register(LinkModule, true)
 
     const options = {
         modules: {
@@ -149,34 +137,35 @@ export function initialize(dotnet, element, config) {
     
     const toolbar = instance.getModule('toolbar');
 
-    function getLinkHandler(mode) {
+    function linkHandler() {
+        const range = instance.getSelection(true)
+        const text = instance.getText(range.index, range.length)
         
-        return () => {
-            const range = instance.getSelection(true)
-            const text = instance.getText(range.index, range.length)
-            
-            dotnet.invokeMethodAsync('OpenLinkModal', text, mode)
+        const [leaf] = instance.getLeaf(range.index)
+
+        let value = {
+            text, 
+            mode: text ? 'External' : 'Page',
+            href: ''
         }
+
+        if(leaf.parent && leaf.parent.statics.blotName == 'link') {
+            const val = leaf.parent.statics.value(leaf.parent.attributes.domNode)
+            
+            value.href = val.href
+            value.mode = val.mode
+            value.text = val.text
+        }
+
+        dotnet.invokeMethodAsync('OpenLinkModal', value)
     }
 
-    toolbar.addHandler('pageLink', getLinkHandler('Page'))
-    toolbar.addHandler('fileLink', getLinkHandler('File'))
-    toolbar.addHandler('externalLink', getLinkHandler('External'))
+    toolbar.addHandler('link', linkHandler)
 
-    var pageLink = toolbar.container.querySelector('.ql-pageLink')
-    var fileLink = toolbar.container.querySelector('.ql-fileLink')
-    var externalLink = toolbar.container.querySelector('.ql-externalLink')
+    var Link = toolbar.container.querySelector('.ql-link')
 
-    pageLink.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M18.5 20a.5.5 0 0 1-.5.5h-4.229a5 5 0 0 1-.77 1.5H18a2 2 0 0 0 2-2V9.828a2 2 0 0 0-.586-1.414l-5.829-5.828l-.049-.04l-.036-.03a2 2 0 0 0-.219-.18a1 1 0 0 0-.08-.044l-.048-.024l-.05-.029c-.054-.031-.109-.063-.166-.087a2 2 0 0 0-.624-.138q-.03-.002-.059-.007L12.172 2H6a2 2 0 0 0-2 2v10h1.5V4a.5.5 0 0 1 .5-.5h6V8a2 2 0 0 0 2 2h4.5zm-5-15.379L17.378 8.5H14a.5.5 0 0 1-.5-.5zM5.75 15.75A.75.75 0 0 0 5 15l-.2.005A4 4 0 0 0 5 23l.102-.007A.75.75 0 0 0 5 21.5l-.164-.005A2.5 2.5 0 0 1 5 16.5l.102-.007a.75.75 0 0 0 .648-.743M13 19a4 4 0 0 0-4-4l-.102.007A.75.75 0 0 0 9 16.5l.164.005A2.5 2.5 0 0 1 9 21.5l-.102.007A.75.75 0 0 0 9 23l.2-.005A4 4 0 0 0 13 19m-4.25-.75h-3.5l-.102.007a.75.75 0 0 0 .102 1.493h3.5l.102-.007a.75.75 0 0 0-.102-1.493"/></svg>
-    `
-
-    fileLink.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M4 4.25A2.25 2.25 0 0 1 6.25 2h11.5A2.25 2.25 0 0 1 20 4.25v9.583a4.7 4.7 0 0 0-1.5-.326V4.25a.75.75 0 0 0-.75-.75H6.25a.75.75 0 0 0-.75.75v15.5c0 .414.336.75.75.75h4.316a4.8 4.8 0 0 0 1.268 1.5H6.25A2.25 2.25 0 0 1 4 19.75zM7.75 6.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5zM7 11.75a.75.75 0 0 1 .75-.75h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1-.75-.75m15 6.5a3.75 3.75 0 0 0-3.75-3.75l-.102.007A.75.75 0 0 0 18.25 16l.154.005a2.25 2.25 0 0 1-.154 4.495l-.003.005l-.102.007a.75.75 0 0 0 .108 1.493V22l.2-.005A3.75 3.75 0 0 0 22 18.25m-6.5-3a.75.75 0 0 0-.75-.75l-.2.005a3.75 3.75 0 0 0 .2 7.495l.102-.007a.75.75 0 0 0-.102-1.493l-.154-.005A2.25 2.25 0 0 1 14.75 16l.102-.007a.75.75 0 0 0 .648-.743m3.5 3a.75.75 0 0 0-.75-.75h-3.5l-.102.007A.75.75 0 0 0 14.75 19h3.5l.102-.007A.75.75 0 0 0 19 18.25"/></svg>
-    `
-
-    externalLink.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 5H8.2c-1.12 0-1.68 0-2.108.218a1.999 1.999 0 0 0-.874.874C5 6.52 5 7.08 5 8.2v7.6c0 1.12 0 1.68.218 2.108a2 2 0 0 0 .874.874c.427.218.987.218 2.105.218h7.606c1.118 0 1.677 0 2.104-.218c.377-.192.683-.498.875-.874c.218-.428.218-.987.218-2.105V14m1-5V4m0 0h-5m5 0l-7 7"/></svg>
+    Link.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M10.59 13.41c.41.39.41 1.03 0 1.42c-.39.39-1.03.39-1.42 0a5.003 5.003 0 0 1 0-7.07l3.54-3.54a5.003 5.003 0 0 1 7.07 0a5.003 5.003 0 0 1 0 7.07l-1.49 1.49c.01-.82-.12-1.64-.4-2.42l.47-.48a2.98 2.98 0 0 0 0-4.24a2.98 2.98 0 0 0-4.24 0l-3.53 3.53a2.98 2.98 0 0 0 0 4.24m2.82-4.24c.39-.39 1.03-.39 1.42 0a5.003 5.003 0 0 1 0 7.07l-3.54 3.54a5.003 5.003 0 0 1-7.07 0a5.003 5.003 0 0 1 0-7.07l1.49-1.49c-.01.82.12 1.64.4 2.43l-.47.47a2.98 2.98 0 0 0 0 4.24a2.98 2.98 0 0 0 4.24 0l3.53-3.53a2.98 2.98 0 0 0 0-4.24a.973.973 0 0 1 0-1.42"/></svg>
     `
 
     // TODO: Don't remove these Icons. will be used for image upload/external feature
