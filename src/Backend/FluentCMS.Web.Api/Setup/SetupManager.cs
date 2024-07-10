@@ -25,6 +25,7 @@ public class SetupManager : ISetupManager
     private readonly IUserService _userService;
     private readonly IPageService _pageService;
     private readonly IPluginService _pluginService;
+    private readonly IPluginContentService _pluginContentService;
     private readonly IContentTypeService _contentTypeService;
     private readonly IContentService _contentService;
 
@@ -49,6 +50,7 @@ public class SetupManager : ISetupManager
         IUserService userService,
         IPageService pageService,
         IPluginService pluginService,
+        IPluginContentService pluginContentService,
         IContentTypeService contentTypeService,
         IContentService contentService,
         IHostEnvironment env)
@@ -64,6 +66,7 @@ public class SetupManager : ISetupManager
         _userService = userService;
         _pageService = pageService;
         _pluginService = pluginService;
+        _pluginContentService = pluginContentService;
         _contentTypeService = contentTypeService;
         _contentService = contentService;
 
@@ -306,7 +309,20 @@ public class SetupManager : ISetupManager
                 Locked = pluginTemplate.Locked
             };
             order++;
-            await _pluginService.Create(plugin);
+            var pluginResponse = await _pluginService.Create(plugin);
+            if (pluginTemplate.Content != null)
+            {
+                foreach (var pluginContentTemplate in pluginTemplate.Content)
+                {
+                    var pluginContent = new PluginContent {
+                        PluginId = pluginResponse.Id,
+                        Type = pluginTemplate.Type,
+                        Data = pluginContentTemplate
+                    };
+
+                    await _pluginContentService.Create(pluginContent);
+                }
+            }
         }
     }
 

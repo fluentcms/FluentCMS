@@ -1,0 +1,37 @@
+[data-plugin-item-id] {
+    position: relative;
+}
+[data-plugin-item-id]:first-child {
+    margin-top: 1.5rem;
+}
+
+[data-plugin-item-id]:hover {
+    box-shadow: 0 0 1px #7a7a7a;
+}
+
+[data-plugin-item-id] [data-plugin-items], .f-plugin-container [data-plugin-items-root] {
+    opacity: 0;
+    display: flex;
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-color: #2c5dd9;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    z-index: 3;
+}
+
+[data-plugin-item-id]:hover [data-plugin-items], .f-plugin-container:hover [data-plugin-items-root] {
+    opacity: 1;
+    pointer-events: all;
+
+}
+
+[data-plugin-item-action] .icon {
+    padding: 4px;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: white;
+
+}

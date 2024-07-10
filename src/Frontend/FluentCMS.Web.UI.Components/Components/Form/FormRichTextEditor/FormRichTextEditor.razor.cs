@@ -7,9 +7,18 @@ public partial class FormRichTextEditor
     [Inject]
     public IJSRuntime? JS { get; set; }
 
+    [Inject]
+    private ApiClientFactory ApiClient { get; set; } = default!;
+
     public ElementReference element;
 
     private IJSObjectReference module = default!;
+
+    private List<PageDetailResponse> Pages { get; set; } = [];
+    private bool LinkModalOpen { get; set; } = false;
+    private string? Href { get; set; }
+    private string? Text { get; set; }
+    private string Mode { get; set; } = "Page";
 
     [Parameter]
     public int Cols { get; set; } = 12;
@@ -23,8 +32,78 @@ public partial class FormRichTextEditor
         await ValueChanged.InvokeAsync(value);
     }
 
+    [JSInvokable]
+    public async Task OpenLinkModal(string text, string mode)
+    {
+        Text = text;
+        Mode = mode;
+        LinkModalOpen = true;
+        StateHasChanged();
+    }
+
+    private async Task OnLinkModalClose()
+    {
+        LinkModalOpen = false;
+    }
+
+    private async Task OnChooseExternal() 
+    {
+
+        LinkModalOpen = false;
+
+        if (module != null)
+            await module.InvokeVoidAsync("setLink", DotNetObjectReference.Create(this), element, new { Href = Href, Text = Text, Mode = "External" });
+
+    }
+
+    private async Task OnChooseFile(FileDetailResponse file) 
+    {
+        Text = file.Name;
+        Href = $"/API/File/Download/{file.Id}";
+
+        LinkModalOpen = false;
+
+        if (module != null)
+            await module.InvokeVoidAsync("setLink", DotNetObjectReference.Create(this), element, new { Href = Href, Text = Text, Mode = "File" });
+
+    }
+
+    string GetPageUrl(Guid? pageId)
+    {
+        var page = Pages.Where(x => x.Id == pageId).FirstOrDefault();
+
+        if (page.ParentId != null)
+        {
+            return GetPageUrl(page.ParentId) + page.Path;
+        }
+        return page.Path;
+    }
+
+    private async Task OnChoosePage(PageDetailResponse page) 
+    {
+        Text = page.Title;
+        Href = GetPageUrl(page.Id);
+
+        LinkModalOpen = false;
+
+        if (module != null)
+            await module.InvokeVoidAsync("setLink", DotNetObjectReference.Create(this), element, new { Href = Href, Text = Text, Mode = "Page" });
+
+    }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // TODO: Site url
+        var pagesResponse = await ApiClient.Page.GetAllAsync("localhost:5000");
+        if(pagesResponse?.Data != null)
+        {
+            Pages = pagesResponse.Data.ToList();
+        }
+    }
+
     protected override async Task OnParametersSetAsync()
     {
+        base.OnParametersSetAsync();
         if (Value == _value) return;
 
         _value = Value;

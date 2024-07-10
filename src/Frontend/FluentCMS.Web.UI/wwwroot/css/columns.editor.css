@@ -19,6 +19,7 @@
     width: 1px;
     background-color: #c9c9c921;
     opacity: 0;
+    pointer-events: none;
 }
 
 .f-section.dragging .line {
