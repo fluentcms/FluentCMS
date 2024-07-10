@@ -3,7 +3,7 @@
 public partial class PluginContainer
 {
     [Parameter]
-    public PluginDetailResponse Plugin { get; set; } = default!;
+    public PluginViewState Plugin { get; set; } = default!;
 
     [Parameter]
     public string SectionName { get; set; } = default!;
@@ -15,7 +15,7 @@ public partial class PluginContainer
     private PluginLoader PluginLoader { get; set; } = default!;
 
     [CascadingParameter]
-    private ViewContext ViewContext { get; set; } = default!;
+    private ViewState ViewState { get; set; } = default!;
 
     private IDictionary<string, object> Parameters { get; set; } = new Dictionary<string, object>();
 
@@ -30,12 +30,12 @@ public partial class PluginContainer
 
     private Type? GetPluginType()
     {
-        PluginDefinitionType? pluginDefType;
+        PluginDefinitionTypeViewState? pluginDefType;
 
-        if (ViewContext.Type == ViewType.Default || ViewContext.Type == ViewType.PagePreview)
+        if (ViewState.Type == ViewStateType.Default || ViewState.Type == ViewStateType.PagePreview)
             pluginDefType = Plugin.Definition.Types?.Where(p => p.IsDefault).FirstOrDefault();
         else
-            pluginDefType = Plugin.Definition?.Types?.Where(p => p!.Name!.Equals(ViewContext.PluginViewName, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+            pluginDefType = Plugin.Definition?.Types?.Where(p => p!.Name!.Equals(ViewState.PluginViewName, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
 
         if (pluginDefType is null)
             throw new InvalidOperationException("Plugin definition type not found!");

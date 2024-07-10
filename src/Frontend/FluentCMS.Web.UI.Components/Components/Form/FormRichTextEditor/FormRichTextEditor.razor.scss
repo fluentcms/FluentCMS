@@ -16,6 +16,10 @@ $form-rich-text-editor: $prefix + 'form-rich-text-editor';
         @apply fill-gray-500 dark:fill-gray-400;
     }
 
+    .ql-editor a[href] {
+        pointer-events: none;
+    }
+
     .ql-container.ql-snow {
         max-height: calc(100% - 50px);
         @apply border border-t-0 rounded-b-lg border-gray-200 dark:border-gray-600 dark:bg-gray-700;

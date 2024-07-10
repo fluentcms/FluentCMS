@@ -2,6 +2,7 @@
 
 namespace FluentCMS.Web.ApiClients;
 
+// TODO: Move to a its own plugin projects
 public class MappingProfile : Profile
 {
     public MappingProfile()

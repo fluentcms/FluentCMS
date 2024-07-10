@@ -1,0 +1,136 @@
+function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 768, breakpointLg = 1200} = {}) {
+    let windowWidth = window.innerWidth;
+    let oneColWidth = element.clientWidth / 12;
+
+    function initColumn(el) {
+        let resizer;
+        let dragging = false
+        let x = 0;
+
+        if(isNaN(el.dataset.cols) || el.dataset.cols == 0) {
+            el.dataset.cols = 12
+        }
+        if(isNaN(el.dataset.colsMd) || el.dataset.colsMd == 0) {
+            el.dataset.colsMd = 12
+        }
+        if(isNaN(el.dataset.colsLg) || el.dataset.colsLg == 0) {
+            el.dataset.colsLg = 12
+        }
+
+        function onMouseDown(event) {
+            x = event.x;
+            dragging = true
+            element.classList.add('dragging')
+            resizer.classList.add('dragging')
+        }
+
+        function onMouseMove(event) {
+            if(dragging) {
+                let field = 'cols'
+
+                if(windowWidth > breakpointLg) {
+                    field = 'colsLg'
+                } else if(windowWidth > breakpointMd) {
+                    field = 'colsMd'
+                }
+
+                if(event.x - x < -oneColWidth / 2) {
+
+                    el.dataset[field] = +(el.dataset[field]) - 1
+                    x = x - oneColWidth
+                }
+                if(event.x - x > oneColWidth / 2) {
+                    el.dataset[field] = +(el.dataset[field]) + 1
+                    x = x + oneColWidth
+                }
+            }
+        }
+
+        function onMouseUp(event) {
+            resizer.style.right = '-8px'
+            dragging = false
+
+            element.classList.remove('dragging')
+            resizer.classList.remove('dragging')
+        }
+
+        function init() {
+            resizer = document.createElement('div')
+            resizer.classList.add('resizer-handle')
+            el.appendChild(resizer)
+
+            resizer.addEventListener('mousedown', onMouseDown)
+            document.addEventListener('mousemove', onMouseMove)
+            document.addEventListener('mouseup', onMouseUp)
+        }
+
+        function destroy() {
+            resizer.removeEventListener('mousedown', onMouseDown)
+            document.removeEventListener('mousemove', onMouseMove)
+            document.removeEventListener('mouseup', onMouseUp)
+
+            resizer.remove()
+        }
+
+        init()
+        return { init, destroy }
+    }
+
+    let columns = []
+
+    function updateSize() {
+        windowWidth = window.innerWidth;
+        oneColWidth = element.clientWidth / 12
+
+        if(gridLines) {
+            element.querySelectorAll('.line').forEach((el, index) => {
+                el.style.left = (oneColWidth * index + 1) + 'px'
+            })
+        }
+    }
+
+    function init() {
+        if(gridLines) {
+            for(let i=0; i<12; i++) {
+                const line = document.createElement('div')
+                line.classList.add('line')
+                line.style.left = (oneColWidth * i) + 'px'
+
+                element.appendChild(line)
+            }
+        }
+        element.dataset.columns = ''
+        element.classList.add('active')
+
+        element.querySelectorAll('.' + colClass).forEach(el => {
+            columns.push(initColumn(el))
+        })  
+        window.addEventListener('resize', updateSize)
+    }
+
+    function destroy() {
+        element.classList.remove('active')
+        if(gridLines) {
+            element.querySelectorAll('.line').forEach(el => el.remove())
+        }
+        columns.map(column => column.destroy())
+        columns = []
+        window.removeEventListener('resize', updateSize)
+    }
+
+    function append(el) {
+        element.appendChild(el)
+        setTimeout(() => {
+            columns.push(initColumn(el))
+        })
+    }
+
+    return {
+        init, 
+        destroy, 
+        append,
+        updateSize
+    }
+}
+
+window.Columns = Columns
