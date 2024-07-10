@@ -5,7 +5,7 @@ public partial class SingleFileFieldFormFilePicker
     [Inject]
     protected ApiClientFactory ApiClient { get; set; } = default!;
 
-    private List<FileParameter> Files { get; set; }
+    private List<FileParameter> Files { get; set; } = [];
 
     private async Task OnFilesChanged(InputFileChangeEventArgs e)
     {
@@ -17,9 +17,9 @@ public partial class SingleFileFieldFormFilePicker
         }
 
         var result = await ApiClient.File.UploadAsync(default, Files);
-        if (result?.Data.Count > 0)
+        if (result?.Data != null && result.Data.Count > 0)
         {
-            FieldValue.Value = result?.Data.Select(x => x.Id).ToList()[0];
+            FieldValue.Value = result.Data.Select(x => x.Id).ToList()[0];
             await Load();
         }
     }
@@ -27,14 +27,14 @@ public partial class SingleFileFieldFormFilePicker
     private string FileName { get; set; } = string.Empty;
     private bool TableAction { get; set; } = true;
 
-    private FileUploadConfiguration FileUploadConfig { get; set; }
+    private FileUploadConfiguration? FileUploadConfig { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
         var settingsResponse = await ApiClient.GlobalSettings.GetAsync();
         if (settingsResponse?.Data != null)
         {
-            FileUploadConfig = settingsResponse?.Data.FileUpload;
+            FileUploadConfig = settingsResponse.Data.FileUpload;
         }
         await Load();
     }
@@ -44,7 +44,9 @@ public partial class SingleFileFieldFormFilePicker
         if (FieldValue.Value != null)
         {
             var fileResponse = await ApiClient.File.GetByIdAsync(FieldValue.Value.Value);
-            FileName = fileResponse?.Data.Name;
+
+            if (fileResponse.Data != null)
+                FileName = fileResponse?.Data.Name;
         }
     }
 }

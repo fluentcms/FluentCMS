@@ -4,9 +4,6 @@ public partial class ContentUpdatePlugin
 {
     public const string FORM_NAME = "ContentUpdateForm";
 
-    [Inject]
-    protected ApiClientFactory ApiClient { get; set; } = default!;
-
     [SupplyParameterFromQuery(Name = "id")]
     public Guid Id { get; set; }
 

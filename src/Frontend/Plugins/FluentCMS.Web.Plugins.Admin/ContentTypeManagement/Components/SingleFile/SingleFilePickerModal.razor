@@ -2,7 +2,7 @@
 
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
-@if (Visible && Model != null)
+@if (Visible)
 {
     <EditForm Model="@Model" OnSubmit="HandleSubmit">
         <Modal Size="ModalSize.Large">
@@ -18,7 +18,7 @@
                 <DataTableItem Context="tableContext">
                 @if (!tableContext.IsFolder)
                 {
-                    <div class="w-6 h-6 rounded-full border border-gray-500 @(SelectedFile == tableContext.Id ? "bg-blue-500" : "")" @onclick="() => SelectedFile = tableContext.Id.Value">
+                    <div class="w-6 h-6 rounded-full border border-gray-500 @(SelectedFile == tableContext.Id ? "bg-blue-500" : "")" @onclick="() => SelectedFile = tableContext.Id">
                     </div>
                 }
                 </DataTableItem>

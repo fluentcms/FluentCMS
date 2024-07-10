@@ -2,9 +2,6 @@ namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
 public partial class SingleFilePickerModal
 {
-    [Inject]
-    protected ApiClientFactory ApiClient { get; set; } = default!;
-
     [Parameter]
     public Guid Model { get; set; }
 
@@ -21,7 +18,7 @@ public partial class SingleFilePickerModal
     private Guid? ParentId { get; set; }
 
     private bool FileUploadModalOpen { get; set; }
-    private FolderDetailResponse RootFolder { get; set; }
+    private FolderDetailResponse? RootFolder { get; set; }
     private List<AssetDetail> Items { get; set; } = [];
 
     private Guid SelectedFile { get; set; }
@@ -29,11 +26,15 @@ public partial class SingleFilePickerModal
     public async Task OnUploadClicked()
     {
         FileUploadModalOpen = true;
+        await Task.CompletedTask;
     }
 
 
-    FolderDetailResponse? FindFolderById(ICollection<FolderDetailResponse> folders, Guid folderId)
+    FolderDetailResponse? FindFolderById(ICollection<FolderDetailResponse>? folders, Guid folderId)
     {
+        if (folders is null)
+            return null;
+
         foreach (var folder in folders)
         {
             if (folder.Id == folderId)
@@ -52,61 +53,65 @@ public partial class SingleFilePickerModal
     private async Task Load()
     {
         var rootFolderResponse = await ApiClient.Folder.GetAllAsync();
-        RootFolder = rootFolderResponse?.Data;
-
-        FolderDetailResponse? folderDetail = default!;
-
-        var folderDetailResponse = await ApiClient.Folder.GetAllAsync();
-
-        if (CurrentFolderId is null || CurrentFolderId == Guid.Empty)
+        if (rootFolderResponse?.Data != null)
         {
-            folderDetail = folderDetailResponse?.Data;
-        }
-        else
-        {
-            folderDetail = FindFolderById(folderDetailResponse?.Data?.Folders, CurrentFolderId.Value);
-        }
 
-        if (folderDetail != null)
-        {
-            ParentId = folderDetail.FolderId;
+            RootFolder = rootFolderResponse.Data;
 
-            Items = [];
+            FolderDetailResponse? folderDetail = default!;
 
-            if (CurrentFolderId != null && CurrentFolderId != Guid.Empty)
+            var folderDetailResponse = await ApiClient.Folder.GetAllAsync();
+
+            if (CurrentFolderId is null || CurrentFolderId == Guid.Empty)
             {
-                Items.Add(new AssetDetail
-                {
-                    Name = "(parent)",
-                    IsFolder = true,
-                    Id = folderDetail.FolderId == Guid.Empty ? null : folderDetail.FolderId,
-                    IsParentFolder = true
-                });
+                folderDetail = folderDetailResponse?.Data;
+            }
+            else
+            {
+                folderDetail = FindFolderById(RootFolder.Folders, CurrentFolderId.Value);
             }
 
-            foreach (var item in folderDetail.Folders)
+            if (folderDetail != null)
             {
-                Items.Add(new AssetDetail
-                {
-                    Name = item.Name,
-                    IsFolder = true,
-                    Id = item.Id,
-                    FolderId = item.FolderId,
-                    Size = item.Size,
-                });
-            }
+                ParentId = folderDetail.FolderId;
 
-            foreach (var item in folderDetail.Files)
-            {
-                Items.Add(new AssetDetail
+                Items = [];
+
+                if (CurrentFolderId != null && CurrentFolderId != Guid.Empty)
                 {
-                    Name = item.Name,
-                    IsFolder = false,
-                    FolderId = item.FolderId,
-                    Id = item.Id,
-                    Size = item.Size,
-                    ContentType = item.ContentType
-                });
+                    Items.Add(new AssetDetail
+                    {
+                        Name = "(parent)",
+                        IsFolder = true,
+                        Id = folderDetail.FolderId,
+                        IsParentFolder = true
+                    });
+                }
+
+                foreach (var item in folderDetail.Folders)
+                {
+                    Items.Add(new AssetDetail
+                    {
+                        Name = item.Name,
+                        IsFolder = true,
+                        Id = item.Id,
+                        FolderId = item.FolderId,
+                        Size = item.Size,
+                    });
+                }
+
+                foreach (var item in folderDetail.Files)
+                {
+                    Items.Add(new AssetDetail
+                    {
+                        Name = item.Name,
+                        IsFolder = false,
+                        FolderId = item.FolderId,
+                        Id = item.Id,
+                        Size = item.Size,
+                        ContentType = item.ContentType
+                    });
+                }
             }
         }
     }
@@ -126,12 +131,13 @@ public partial class SingleFilePickerModal
     public async Task OnUpload()
     {
         FileUploadModalOpen = true;
-        Console.WriteLine("Open local File Picker");
+        await Task.CompletedTask;
     }
 
     public async Task OnUploadCancel()
     {
         FileUploadModalOpen = false;
+        await Task.CompletedTask;
     }
 
     private async Task HandleSubmit()
