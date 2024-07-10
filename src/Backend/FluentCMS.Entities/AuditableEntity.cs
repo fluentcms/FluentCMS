@@ -8,9 +8,8 @@ public interface IAuditableEntity : IEntity
     DateTime? ModifiedAt { get; set; }
 }
 
-public abstract class AuditableEntity : IAuditableEntity
+public abstract class AuditableEntity : Entity, IAuditableEntity
 {
-    public Guid Id { get; set; }
     public string CreatedBy { get; set; } = default!;
     public DateTime CreatedAt { get; set; }
     public string? ModifiedBy { get; set; }
