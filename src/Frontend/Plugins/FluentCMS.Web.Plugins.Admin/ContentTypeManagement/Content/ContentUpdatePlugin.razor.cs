@@ -62,7 +62,6 @@ public partial class ContentUpdatePlugin
         var data = FieldValues.ToDictionary(x => x.Name, x => x.GetValue());
         await ApiClient.Content.UpdateAsync(ContentTypeSlug!, Id, data);
 
-        await Task.CompletedTask;
         NavigateBack();
     }
 }
