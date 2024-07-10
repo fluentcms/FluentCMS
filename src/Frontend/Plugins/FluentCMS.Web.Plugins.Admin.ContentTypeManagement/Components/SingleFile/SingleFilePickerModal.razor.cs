@@ -2,21 +2,6 @@ namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 
 public partial class SingleFilePickerModal
 {
-    // #region Base Plugin
-
-    // [Inject]
-    // protected IHttpClientFactory HttpClientFactory { get; set; } = default!;
-
-    // [Inject]
-    // protected UserLoginResponse? UserLogin { get; set; }
-
-    // protected T GetApiClient<T>()
-    // {
-    //     return HttpClientFactory.CreateApiClient<T>(UserLogin);
-    // }
-
-    // #endregion
-
     [Parameter]
     public Guid Model { get; set; }
 
@@ -41,7 +26,6 @@ public partial class SingleFilePickerModal
     public async Task OnUploadClicked()
     {
         FileUploadModalOpen = true;
-        Console.WriteLine("Open local File Picker");
     }
 
 
@@ -122,12 +106,6 @@ public partial class SingleFilePickerModal
                 });
             }
         }
-    }
-
-    private async Task LoadFiles()
-    {
-        // CurrentFolderId
-
     }
 
     protected override async Task OnParametersSetAsync()
