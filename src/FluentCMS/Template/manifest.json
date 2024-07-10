@@ -666,7 +666,7 @@
                         "DataTableViewComponent": "SelectFieldDataTableBadge",
                         "FormViewOrder": 5,
                         "FormColWidth": 12,
-                        "FormViewComponent": "SelectFieldFormRadioGroup",
+                        "FormViewComponent": "SelectFieldFormAutocomplete",
                         "DefaultValue": "Draft",
                         "Options": "Draft\nIn Review\nPublished\nRejected\nArchived"
                     }
@@ -683,7 +683,7 @@
                         "DataTableViewComponent": "MultiSelectFieldDataTableBadges",
                         "FormViewOrder": 6,
                         "FormColWidth": 12,
-                        "FormViewComponent": "MultiSelectFieldFormCheckboxes",
+                        "FormViewComponent": "MultiSelectFieldFormAutocomplete",
                         "Options": "C#\nHtml\nCss\nJavascript\nBlazor\nAsp.net\nOther\nWeb Development\nResponsive Design"
                     }
                 },
