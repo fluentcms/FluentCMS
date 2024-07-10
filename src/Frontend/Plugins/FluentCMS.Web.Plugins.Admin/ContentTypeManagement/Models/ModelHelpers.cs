@@ -18,6 +18,9 @@ public static class ModelHelpers
             case FieldTypes.NUMBER:
                 return new FieldValue<double?> { Name = fieldModel.Name, Value = (double?)valuesDict[fieldModel.Name] };
 
+            case FieldTypes.SINGLE_FILE:
+                return new FieldValue<Guid?> { Name = fieldModel.Name, Value = valuesDict.TryGetValue(fieldModel.Name, out object? value) ? (Guid?)value : default! };
+
             case FieldTypes.BOOLEAN:
                 return new FieldValue<bool> { Name = fieldModel.Name, Value = (bool)(valuesDict[fieldModel.Name] ?? false) };
 
@@ -42,6 +45,9 @@ public static class ModelHelpers
             case FieldTypes.STRING:
             case FieldTypes.SINGLE_SELECT:
                 return new FieldValue<string?> { Name = fieldModel.Name };
+
+            case FieldTypes.SINGLE_FILE:
+                return new FieldValue<Guid?> { Name = fieldModel.Name };
 
             case FieldTypes.NUMBER:
                 return new FieldValue<double?> { Name = fieldModel.Name };
@@ -109,6 +115,7 @@ public static class ModelHelpers
             FieldTypes.BOOLEAN => src.ToFieldModel<bool, BooleanFieldModel>(),
             FieldTypes.DATE_TIME => src.ToFieldModel<DateTime?, DateFieldModel>(),
             FieldTypes.SINGLE_SELECT => src.ToFieldModel<string?, SelectFieldModel>(),
+            FieldTypes.SINGLE_FILE => src.ToFieldModel<Guid?, SingleFileFieldModel>(),
             FieldTypes.MULTI_SELECT => src.ToFieldModel<ICollection<string>, MultiSelectFieldModel>(),
             _ => throw new NotSupportedException($"Field type '{typeName}' is not supported."),
         };

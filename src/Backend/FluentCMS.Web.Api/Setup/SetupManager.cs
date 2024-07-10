@@ -314,7 +314,8 @@ public class SetupManager : ISetupManager
             {
                 foreach (var pluginContentTemplate in pluginTemplate.Content)
                 {
-                    var pluginContent = new PluginContent {
+                    var pluginContent = new PluginContent
+                    {
                         PluginId = pluginResponse.Id,
                         Type = pluginTemplate.Type,
                         Data = pluginContentTemplate

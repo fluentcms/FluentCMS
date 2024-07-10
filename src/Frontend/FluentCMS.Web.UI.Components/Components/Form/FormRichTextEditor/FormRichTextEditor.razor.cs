@@ -55,7 +55,7 @@ public partial class FormRichTextEditor
         public string? Url { get; set; }
         public string? Alt { get; set; }
     }
-    
+
 
     [JSInvokable]
     public async Task OpenLinkModal(OpenLinkParams value)
@@ -82,9 +82,9 @@ public partial class FormRichTextEditor
     private async Task OnLinkClear()
     {
         LinkModalOpen = false;
-        
+
         if (module != null)
-            await module.InvokeVoidAsync("setLink", DotNetObjectReference.Create(this), element, new { Mode = "Clear"});
+            await module.InvokeVoidAsync("setLink", DotNetObjectReference.Create(this), element, new { Mode = "Clear" });
 
     }
 
@@ -93,7 +93,7 @@ public partial class FormRichTextEditor
         LinkModalOpen = false;
     }
 
-    private async Task OnChooseExternal() 
+    private async Task OnChooseExternal()
     {
 
         LinkModalOpen = false;
@@ -103,7 +103,7 @@ public partial class FormRichTextEditor
 
     }
 
-    private async Task OnChooseFile(AssetDetail file) 
+    private async Task OnChooseFile(AssetDetail file)
     {
         Text = file.Name;
         Href = $"/API/File/Download/{file.Id}";
@@ -126,7 +126,7 @@ public partial class FormRichTextEditor
         return page.Path;
     }
 
-    private async Task OnChoosePage(PageDetailResponse page) 
+    private async Task OnChoosePage(PageDetailResponse page)
     {
         Text = page.Title;
         Href = GetPageUrl(page.Id);
@@ -137,7 +137,7 @@ public partial class FormRichTextEditor
             await module.InvokeVoidAsync("setLink", DotNetObjectReference.Create(this), element, new { Href = Href, Text = Text, Mode = "Page" });
 
     }
-    
+
     protected override async Task OnInitializedAsync()
     {
         var settingsResponse = await ApiClient.GlobalSettings.GetAsync();
@@ -148,7 +148,7 @@ public partial class FormRichTextEditor
 
         // TODO: Site url
         var pagesResponse = await ApiClient.Page.GetAllAsync("localhost:5000");
-        if(pagesResponse?.Data != null)
+        if (pagesResponse?.Data != null)
         {
             Pages = pagesResponse.Data.ToList();
         }
@@ -282,12 +282,12 @@ public partial class FormRichTextEditor
 
     public async Task OnImageModalClose()
     {
-        ImageModalOpen = false;   
+        ImageModalOpen = false;
     }
 
     public async Task OnChooseImageExternal()
     {
-        ImageModalOpen = false;   
+        ImageModalOpen = false;
 
         if (module != null)
             await module.InvokeVoidAsync("setImage", DotNetObjectReference.Create(this), element, new { Alt = ImageAlt, Url = ImageUrl });

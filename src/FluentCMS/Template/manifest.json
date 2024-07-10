@@ -620,6 +620,21 @@
                     }
                 },
                 {
+                    "Name": "Featured Image",
+                    "Type": "single-file",
+                    "Label": "Featured Image",
+                    "Description": "Blog post main image",
+                    "Required": false,
+                    "Settings": {
+                        "Placeholder": "Choose post main image",
+                        "DataTableVisible": true,
+                        "DataTableViewComponent": "SingleFileFieldDataTableFile",
+                        "FormViewOrder": 4,
+                        "FormColWidth": 12,
+                        "FormViewComponent": "SingleFileFieldFormFilePicker"
+                    }
+                },
+                {
                     "Name": "Slug",
                     "Type": "string",
                     "Required": true,
