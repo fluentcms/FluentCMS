@@ -1,0 +1,47 @@
+$autocomplete: $prefix + "form-autocomplete";
+
+.#{$autocomplete}, .#{$autocomplete}-multiple {
+    @apply relative;
+    &.ts-hidden-accessible {
+        display: none;
+    }
+
+    .ts-control {
+        @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus-within:ring-blue-500 focus-within:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus-within:ring-blue-500 dark:focus-within:border-blue-500;
+        @apply flex items-center;
+
+        input {
+            @apply flex-1 p-0 border-none focus:shadow-none bg-transparent;
+        }
+
+        input:focus {
+            --tw-ring-shadow: none;
+        }
+    }
+
+    &.has-items:not(.focus) .ts-control input {
+        @apply hidden;
+    }
+    &.multi .item {
+        @apply cursor-pointer bg-blue-100 text-blue-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300;
+
+        &.active {
+            @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300;
+        }
+    }
+
+    .ts-dropdown {
+        @apply absolute py-2 text-sm border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 z-10 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-full dark:bg-gray-700;
+
+        .option {
+            @apply cursor-pointer block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white;
+        }
+        .option[aria-disabled="true"] {
+            @apply hidden;
+        }
+    }
+
+    &-disabled-true .ts-control {
+        @apply cursor-not-allowed opacity-70;
+    }
+}

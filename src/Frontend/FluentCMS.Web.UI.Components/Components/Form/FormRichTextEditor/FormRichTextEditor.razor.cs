@@ -14,11 +14,20 @@ public partial class FormRichTextEditor
 
     private IJSObjectReference module = default!;
 
+    private List<AssetDetail> Assets { get; set; } = [];
     private List<PageDetailResponse> Pages { get; set; } = [];
     private bool LinkModalOpen { get; set; } = false;
+    private bool ImageModalOpen { get; set; } = false;
+    private string ImageMode = "Library";
+    private string? ImageUrl { get; set; }
+    private Guid? ImageId { get; set; }
+    private Guid? FolderId { get; set; }
+    private string? ImageAlt { get; set; }
     private string? Href { get; set; }
     private string? Text { get; set; }
     private string Mode { get; set; } = "Page";
+
+    private FileUploadConfiguration Config { get; set; }
 
     [Parameter]
     public int Cols { get; set; } = 12;
@@ -32,13 +41,51 @@ public partial class FormRichTextEditor
         await ValueChanged.InvokeAsync(value);
     }
 
-    [JSInvokable]
-    public async Task OpenLinkModal(string text, string mode)
+    public class OpenLinkParams
     {
-        Text = text;
-        Mode = mode;
+        public string Mode { get; set; }
+        public string Text { get; set; }
+        public string Href { get; set; }
+    }
+
+    public class OpenImageParams
+    {
+        public string Mode { get; set; }
+        public Guid? Id { get; set; }
+        public string? Url { get; set; }
+        public string? Alt { get; set; }
+    }
+
+
+    [JSInvokable]
+    public async Task OpenLinkModal(OpenLinkParams value)
+    {
+        Text = value.Text ?? "";
+        Mode = value.Mode ?? "External";
+        Href = value.Href ?? "";
         LinkModalOpen = true;
         StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task OpenImageModal(OpenImageParams value)
+    {
+        ImageMode = value.Mode;
+        ImageUrl = value.Url ?? "";
+        ImageAlt = value.Alt ?? "";
+        // ImageId = value.Id ?? "";
+
+        ImageModalOpen = true;
+        StateHasChanged();
+    }
+
+    private async Task OnLinkClear()
+    {
+        LinkModalOpen = false;
+
+        if (module != null)
+            await module.InvokeVoidAsync("setLink", DotNetObjectReference.Create(this), element, new { Mode = "Clear" });
+
     }
 
     private async Task OnLinkModalClose()
@@ -56,7 +103,7 @@ public partial class FormRichTextEditor
 
     }
 
-    private async Task OnChooseFile(FileDetailResponse file)
+    private async Task OnChooseFile(AssetDetail file)
     {
         Text = file.Name;
         Href = $"/API/File/Download/{file.Id}";
@@ -93,12 +140,20 @@ public partial class FormRichTextEditor
 
     protected override async Task OnInitializedAsync()
     {
+        var settingsResponse = await ApiClient.GlobalSettings.GetAsync();
+        if (settingsResponse?.Data != null)
+        {
+            Config = settingsResponse?.Data.FileUpload;
+        }
+
         // TODO: Site url
         var pagesResponse = await ApiClient.Page.GetAllAsync("localhost:5000");
         if (pagesResponse?.Data != null)
         {
             Pages = pagesResponse.Data.ToList();
         }
+
+        await OnNavigateFolder(null);
     }
 
     protected override async Task OnParametersSetAsync()
@@ -116,6 +171,127 @@ public partial class FormRichTextEditor
     {
         if (module != null)
             await module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
+    }
+
+    FolderDetailResponse? FindFolderById(ICollection<FolderDetailResponse> folders, Guid folderId)
+    {
+        foreach (var folder in folders)
+        {
+            if (folder.Id == folderId)
+                return folder;
+
+            if (folder.Folders != null && folder.Folders.Any())
+            {
+                var foundFolder = FindFolderById(folder.Folders, folderId);
+                if (foundFolder != null)
+                    return foundFolder;
+            }
+        }
+        return null;
+    }
+
+    private async Task OnNavigateFolder(Guid? folderId)
+    {
+        FolderId = folderId;
+        FolderDetailResponse? folderDetail = default!;
+
+        var folderDetailResponse = await ApiClient.Folder.GetAllAsync();
+
+        if (folderId is null || folderId == Guid.Empty)
+        {
+            folderDetail = folderDetailResponse?.Data;
+        }
+        else
+        {
+            folderDetail = FindFolderById(folderDetailResponse?.Data?.Folders, folderId.Value);
+        }
+
+        if (folderDetail != null)
+        {
+            Assets = [];
+
+            if (folderId != null && folderId != Guid.Empty)
+            {
+                Assets.Add(new AssetDetail
+                {
+                    Name = "(parent)",
+                    IsFolder = true,
+                    Id = folderDetail.FolderId == Guid.Empty ? null : folderDetail.FolderId,
+                    IsParentFolder = true
+                });
+            }
+
+            foreach (var item in folderDetail.Folders)
+            {
+                Assets.Add(new AssetDetail
+                {
+                    Name = item.Name,
+                    IsFolder = true,
+                    Id = item.Id,
+                    FolderId = item.FolderId,
+                    Size = item.Size,
+                });
+            }
+
+            foreach (var item in folderDetail.Files)
+            {
+                Assets.Add(new AssetDetail
+                {
+                    Name = item.Name,
+                    IsFolder = false,
+                    FolderId = item.FolderId,
+                    Id = item.Id,
+                    Size = item.Size,
+                    ContentType = item.ContentType
+                });
+            }
+        }
+        StateHasChanged();
+    }
+
+    public async Task OnChooseImage(AssetDetail image)
+    {
+        ImageModalOpen = false;
+
+        ImageUrl = "/API/File/Download/" + image.Id.Value;
+        ImageAlt = "(TODO) Image ALT";
+
+        if (module != null)
+            await module.InvokeVoidAsync("setImage", DotNetObjectReference.Create(this), element, new { Alt = ImageAlt, Url = ImageUrl });
+
+    }
+
+    public async Task OnUpload()
+    {
+        if (module != null)
+            await module.InvokeVoidAsync("openFileUpload", DotNetObjectReference.Create(this), element, new { Id = "upload-" + Id });
+    }
+
+
+    private async Task OnFilesChanged(InputFileChangeEventArgs e)
+    {
+        List<FileParameter> files = [];
+        foreach (var file in e.GetMultipleFiles(Config.MaxCount))
+        {
+            var Data = file.OpenReadStream(Config.MaxSize);
+            files.Add(new FileParameter(Data, file.Name, file.ContentType));
+        }
+        await ApiClient.File.UploadAsync(FolderId, files);
+        OnNavigateFolder(FolderId);
+    }
+
+    public async Task OnImageModalClose()
+    {
+        ImageModalOpen = false;
+    }
+
+    public async Task OnChooseImageExternal()
+    {
+        ImageModalOpen = false;
+
+        if (module != null)
+            await module.InvokeVoidAsync("setImage", DotNetObjectReference.Create(this), element, new { Alt = ImageAlt, Url = ImageUrl });
+
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

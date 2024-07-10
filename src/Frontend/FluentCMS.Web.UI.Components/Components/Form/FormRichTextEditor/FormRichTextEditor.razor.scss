@@ -76,4 +76,9 @@ $form-rich-text-editor: $prefix + 'form-rich-text-editor';
         border: none;
         @apply block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white;
     }
+
+    #editor-resizer .toolbar {
+        top: auto;
+        bottom: -5em;
+    }
 }
