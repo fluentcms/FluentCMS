@@ -36,8 +36,8 @@
     z-index: 1;
     top: 0;
     height: 100%;
-    right: -8px;
-    width: 16px;
+    right: -24px;
+    width: 48px;
     cursor:col-resize;
 }
 
@@ -47,9 +47,9 @@
     transition: all 0.3s ease;
     opacity: 0;
     display: block;
-    right: 5px;
+    right: 17px;
     height: 100%;
-    width: 6px;
+    width: 12px;
     background-color: #ddd;
     cursor: col-resize;
 }
@@ -60,12 +60,12 @@
     transition: all 0.3s ease;
     opacity: 0;
     display: block;
-    right: 6px;
+    right: 19px;
     top: 50%;
     transform: translate(-50%, -50%);
     bottom: 50%;
-    height: 40px;
-    width: 2px;
+    height: clamp(40px, 25%, 100px);
+    width: 4px;
     background-color: #7a7a7a;
     cursor: col-resize;
 }

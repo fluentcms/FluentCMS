@@ -10,12 +10,6 @@ function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 76
         if(isNaN(el.dataset.cols) || el.dataset.cols == 0) {
             el.dataset.cols = 12
         }
-        if(isNaN(el.dataset.colsMd) || el.dataset.colsMd == 0) {
-            el.dataset.colsMd = 12
-        }
-        if(isNaN(el.dataset.colsLg) || el.dataset.colsLg == 0) {
-            el.dataset.colsLg = 12
-        }
 
         function onMouseDown(event) {
             x = event.x;
@@ -34,20 +28,29 @@ function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 76
                     field = 'colsMd'
                 }
 
-                if(event.x - x < -oneColWidth / 2) {
 
-                    el.dataset[field] = +(el.dataset[field]) - 1
-                    x = x - oneColWidth
-                }
-                if(event.x - x > oneColWidth / 2) {
-                    el.dataset[field] = +(el.dataset[field]) + 1
-                    x = x + oneColWidth
+                const diffLength = event.x - x
+                
+                if(diffLength < -oneColWidth/2 || diffLength > oneColWidth / 2) {
+                    if(el.dataset[field] == 0) {
+                        if(field == 'colsLg' && el.dataset['colsMd']) {
+                            el.dataset[field] = el.dataset['cols']
+                        } 
+                        el.dataset[field] = el.dataset['cols']
+                    }
+                    if(diffLength < -oneColWidth / 2) {
+                        el.dataset[field] = +(el.dataset[field]) - 1
+                        x = x - oneColWidth
+                    } else {
+                        el.dataset[field] = +(el.dataset[field]) + 1
+                        x = x + oneColWidth
+                    }
                 }
             }
         }
 
         function onMouseUp(event) {
-            resizer.style.right = '-8px'
+            resizer.style.right = '-24px'
             dragging = false
 
             element.classList.remove('dragging')
