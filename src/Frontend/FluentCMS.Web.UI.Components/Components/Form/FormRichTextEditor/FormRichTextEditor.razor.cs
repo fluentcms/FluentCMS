@@ -17,6 +17,11 @@ public partial class FormRichTextEditor
     private List<AssetDetail> Assets { get; set; } = [];
     private List<PageDetailResponse> Pages { get; set; } = [];
     private bool LinkModalOpen { get; set; } = false;
+    private bool ImageModalOpen { get; set; } = false;
+    private string ImageMode = "Library";
+    private string? ImageUrl { get; set; }
+    private Guid? ImageId { get; set; }
+    private string? ImageAlt { get; set; }
     private string? Href { get; set; }
     private string? Text { get; set; }
     private string Mode { get; set; } = "Page";
@@ -39,6 +44,14 @@ public partial class FormRichTextEditor
         public string Text { get; set; }
         public string Href { get; set; }
     }
+
+    public class OpenImageParams
+    {
+        public string Mode { get; set; }
+        public Guid? Id { get; set; }
+        public string? Url { get; set; }
+        public string? Alt { get; set; }
+    }
     
 
     [JSInvokable]
@@ -48,6 +61,18 @@ public partial class FormRichTextEditor
         Mode = value.Mode ?? "External";
         Href = value.Href ?? "";
         LinkModalOpen = true;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task OpenImageModal(OpenImageParams value)
+    {
+        ImageMode = value.Mode;
+        ImageUrl = value.Url ?? "";
+        ImageAlt = value.Alt ?? "";
+        // ImageId = value.Id ?? "";
+
+        ImageModalOpen = true;
         StateHasChanged();
     }
 
@@ -211,6 +236,32 @@ public partial class FormRichTextEditor
                 });
             }
         }
+    }
+
+    public async Task OnChooseImage(AssetDetail image)
+    {
+        ImageModalOpen = false;
+
+        ImageUrl = "/API/File/Download/" + image.Id.Value;
+        ImageAlt = "(TODO) Image ALT";
+
+        if (module != null)
+            await module.InvokeVoidAsync("setImage", DotNetObjectReference.Create(this), element, new { Alt = ImageAlt, Url = ImageUrl });
+
+    }
+
+    public async Task OnImageModalClose()
+    {
+        ImageModalOpen = false;   
+    }
+
+    public async Task OnChooseImageExternal()
+    {
+        ImageModalOpen = false;   
+
+        if (module != null)
+            await module.InvokeVoidAsync("setImage", DotNetObjectReference.Create(this), element, new { Alt = ImageAlt, Url = ImageUrl });
+
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

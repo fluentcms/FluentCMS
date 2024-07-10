@@ -31,7 +31,7 @@ const toolbarTypes = {
         [{ direction: "rtl" }],
         [{ color: [] }, { background: [] }],
         [{ font: [] }],
-        ["link"],
+        ["link", 'image'],
         ["clean"],
     ],
 };
@@ -93,6 +93,23 @@ export function setLink(dotnet, element, value) {
     textEditor.setSelection(range.index + text.length)
 }
 
+export function setImage(dotnet, element, value) {
+    var textEditor = textEditors.get(element)
+
+    const src = value.url
+    const alt = value.alt
+    const mode = value.mode
+
+    const range = textEditor.getSelection(true);
+    textEditor.insertText(range.index, '\n', Quill.sources.USER);
+    textEditor.insertEmbed(range.index + 1, 'image', {
+      alt,
+      src,
+      mode,
+    }, Quill.sources.USER);
+    textEditor.setSelection(range.index + 2, Quill.sources.SILENT);
+}
+
 class LinkModule extends Quill.imports["blots/inline"] {
     static blotName = 'link';
     static tagName = 'a'
@@ -115,11 +132,32 @@ class LinkModule extends Quill.imports["blots/inline"] {
     }
 }
 
+class ImageModule extends Quill.imports["blots/block/embed"] {
+    static blotName = 'image';
+    static tagName = 'img'
+
+    static create(value) {
+        const node = super.create();
+        node.setAttribute('src', value.src);
+        node.setAttribute('alt', value.alt);
+
+        return node;
+    }
+
+    static value(node) {
+        return {
+          src: node.getAttribute('src'),
+          alt: node.getAttribute('alt'),
+        };
+    }
+}
+
 export function initialize(dotnet, element, config) {
     dispose(dotnet, element);
 
     Quill.register('modules/resize', window.QuillResizeImage)
     Quill.register(LinkModule, true)
+    Quill.register(ImageModule, true)
 
     const options = {
         modules: {
@@ -160,13 +198,23 @@ export function initialize(dotnet, element, config) {
         dotnet.invokeMethodAsync('OpenLinkModal', value)
     }
 
+    function imageHandler() {
+        const value = {
+            url: '',
+            alt: '',
+            mode: 'Library'
+        }
+        dotnet.invokeMethodAsync('OpenImageModal', value)
+    }
+
     toolbar.addHandler('link', linkHandler)
+    toolbar.addHandler('image', imageHandler)
 
-    var Link = toolbar.container.querySelector('.ql-link')
+    // var Link = toolbar.container.querySelector('.ql-link')
 
-    Link.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M10.59 13.41c.41.39.41 1.03 0 1.42c-.39.39-1.03.39-1.42 0a5.003 5.003 0 0 1 0-7.07l3.54-3.54a5.003 5.003 0 0 1 7.07 0a5.003 5.003 0 0 1 0 7.07l-1.49 1.49c.01-.82-.12-1.64-.4-2.42l.47-.48a2.98 2.98 0 0 0 0-4.24a2.98 2.98 0 0 0-4.24 0l-3.53 3.53a2.98 2.98 0 0 0 0 4.24m2.82-4.24c.39-.39 1.03-.39 1.42 0a5.003 5.003 0 0 1 0 7.07l-3.54 3.54a5.003 5.003 0 0 1-7.07 0a5.003 5.003 0 0 1 0-7.07l1.49-1.49c-.01.82.12 1.64.4 2.43l-.47.47a2.98 2.98 0 0 0 0 4.24a2.98 2.98 0 0 0 4.24 0l3.53-3.53a2.98 2.98 0 0 0 0-4.24a.973.973 0 0 1 0-1.42"/></svg>
-    `
+    // Link.innerHTML = `
+    //     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M10.59 13.41c.41.39.41 1.03 0 1.42c-.39.39-1.03.39-1.42 0a5.003 5.003 0 0 1 0-7.07l3.54-3.54a5.003 5.003 0 0 1 7.07 0a5.003 5.003 0 0 1 0 7.07l-1.49 1.49c.01-.82-.12-1.64-.4-2.42l.47-.48a2.98 2.98 0 0 0 0-4.24a2.98 2.98 0 0 0-4.24 0l-3.53 3.53a2.98 2.98 0 0 0 0 4.24m2.82-4.24c.39-.39 1.03-.39 1.42 0a5.003 5.003 0 0 1 0 7.07l-3.54 3.54a5.003 5.003 0 0 1-7.07 0a5.003 5.003 0 0 1 0-7.07l1.49-1.49c-.01.82.12 1.64.4 2.43l-.47.47a2.98 2.98 0 0 0 0 4.24a2.98 2.98 0 0 0 4.24 0l3.53-3.53a2.98 2.98 0 0 0 0-4.24a.973.973 0 0 1 0-1.42"/></svg>
+    // `
 
     // TODO: Don't remove these Icons. will be used for image upload/external feature
     // toolbar.container.querySelector('.ql-imageExternal').innerHTML = `
