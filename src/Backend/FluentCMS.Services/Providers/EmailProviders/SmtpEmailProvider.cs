@@ -3,7 +3,7 @@ using System.Net.Mail;
 
 namespace FluentCMS.Providers;
 
-public class SmtpEmailProvider(SmtpServerConfiguration smtpServerConfiguration) : IEmailProvider
+public class SmtpEmailProvider(SmtpServerConfig smtpServerConfiguration) : IEmailProvider
 {
     public async Task Send(string from, string recipients, string? subject, string? body, CancellationToken cancellationToken = default)
     {
