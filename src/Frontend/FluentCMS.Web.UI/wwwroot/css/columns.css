@@ -45,7 +45,7 @@
     width: calc(1200% / 12);
 }
 
-@media (min-width: 768px) {
+@media (min-width: 480px) {
     
     .f-section-row > [data-cols-md="1"] {
         width: calc(100% / 12);
@@ -86,7 +86,7 @@
 
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 992px) {
     
     .f-section-row > [data-cols-lg="1"] {
         width: calc(100% / 12);

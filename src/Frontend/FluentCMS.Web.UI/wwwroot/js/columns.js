@@ -1,4 +1,4 @@
-function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 768, breakpointLg = 1200} = {}) {
+function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 480, breakpointLg = 992} = {}) {
     let windowWidth = window.innerWidth;
     let oneColWidth = element.clientWidth / 12;
 
@@ -122,7 +122,6 @@ function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 76
     }
 
     function append(el) {
-        element.appendChild(el)
         setTimeout(() => {
             columns.push(initColumn(el))
         })
