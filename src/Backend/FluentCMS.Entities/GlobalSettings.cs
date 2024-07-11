@@ -2,11 +2,11 @@
 
 public class GlobalSettings : AuditableEntity
 {
-    public SmtpServerConfiguration Email { get; set; } = default!;
-    public FileUploadConfiguration FileUpload { get; set; } = default!;
+    public SmtpServerConfig Email { get; set; } = default!;
+    public FileUploadConfig FileUpload { get; set; } = default!;
 }
 
-public class SmtpServerConfiguration
+public class SmtpServerConfig
 {
     public string Server { get; set; } = default!;
     public int Port { get; set; } = default!;
@@ -16,7 +16,7 @@ public class SmtpServerConfiguration
     public string From { get; set; } = default!;
 }
 
-public class FileUploadConfiguration
+public class FileUploadConfig
 {
     public long MaxSize { get; set; } = default!;
     public int MaxCount { get; set; } = default!;
