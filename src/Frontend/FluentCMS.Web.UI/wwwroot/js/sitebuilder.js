@@ -99,13 +99,13 @@ function updateResponsive(mode, silent) {
         pageEditorElement.dataset.responsiveMode = responsiveMode
         if(!silent) {
             if(responsiveMode == 'tablet') {
-                iframeElement.style.width = '800px';
+                iframeElement.style.width = '768px';
             }
             if(responsiveMode == 'mobile') {
-                iframeElement.style.width = '500px';
+                iframeElement.style.width = '440px';
             }
             if(responsiveMode == 'desktop') {
-                iframeElement.style.width = '1200px';
+                iframeElement.style.width = '1024px';
             }
             updateResizerPosition()
         }
@@ -230,9 +230,9 @@ function initializeResponsive() {
         if(dragging) {
             const iframeWidth = iframeElement.getClientRects()[0].width
 
-            if(iframeWidth > 1200) {
+            if(iframeWidth > 992) {
                 updateResponsive('desktop', true)
-            } else if(iframeWidth > 768) {
+            } else if(iframeWidth > 480) {
                 updateResponsive('tablet', true)
             } else {
                 updateResponsive('mobile', true)
@@ -263,6 +263,9 @@ function initializeResponsive() {
 function createPlugin({definitionId, sectionName, item}) {
     item.classList.remove('f-plugin-definition-item')
     item.classList.add('f-plugin-container')
+    item.dataset.cols = 12
+    item.dataset.colsMd = 0
+    item.dataset.colsLg = 0
 
     item.dataset.id = '00000000-0000-0000-0000-000000000000';
     item.dataset.definitionId = definitionId;
@@ -272,19 +275,16 @@ function createPlugin({definitionId, sectionName, item}) {
     const description = "You can preview new plugins after save"
 
     const pluginContainerActionsTemplate = `<div class="f-plugin-container-actions">
-    <div class="f-plugin-container-actions-inner">
-        <button class="f-plugin-container-action-drag">
-            <svg class="icon" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M18 11V8l4 4l-4 4v-3h-5v5h3l-4 4l-4-4h3v-5H6v3l-4-4l4-4v3h5V6H8l4-4l4 4h-3v5z"></path>
-            </svg>
-        </button>
+        <div class="f-plugin-container-action-text f-plugin-container-action-drag">
+            <svg class="icon" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M18 11V8l4 4l-4 4v-3h-5v5h3l-4 4l-4-4h3v-5H6v3l-4-4l4-4v3h5V6H8l4-4l4 4h-3v5z"/></svg>
+            ${name}
+        </div>
         <button data-action="plugin-container-action-delete">
             <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                 <path fill-rule="evenodd" d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z" clip-rule="evenodd">
                 </path>
             </svg>
         </button>
-    </div>
 </div>`
 
 
