@@ -8,7 +8,7 @@ namespace Microsoft.Extensions.DependencyInjection;
 
 public static class ApiClientServiceExtensions
 {
-    public const string HTTP_CLIENT_API_NAME = "FluentCMS.Web.Api";
+    private const string _httpClientApiName = "FluentCMS.Web.Api";
 
     public static IServiceCollection AddApiClients(this IServiceCollection services, IConfiguration configuration)
     {
@@ -21,10 +21,10 @@ public static class ApiClientServiceExtensions
 
         services.AddScoped<ApiClientFactory>();
 
-        services.AddHttpClient(HTTP_CLIENT_API_NAME, (sp, client) =>
+        services.AddHttpClient(_httpClientApiName, (sp, client) =>
         {
-            string apiServer = configuration?["ApiServer"] ??
-                               throw new InvalidOperationException("ApiServer is not configured in appsettings.json");
+            var apiServer = configuration?["ApiServer"] ??
+                            throw new InvalidOperationException("ApiServer is not configured in appsettings.json");
 
             client.BaseAddress = new Uri(apiServer);
             client.DefaultRequestHeaders.Accept.Clear();
@@ -39,14 +39,14 @@ public static class ApiClientServiceExtensions
         foreach (var apiClientType in apiClientTypes ?? [])
         {
             // find the implementation of the interface
-            var implementationType = Assembly.GetAssembly(apiClientType)?.GetTypes()
-                .FirstOrDefault(t => apiClientType.IsAssignableFrom(t) && !t.IsInterface);
+            var implementationType = Array.Find(Assembly.GetAssembly(apiClientType)?.GetTypes() ?? Type.EmptyTypes,
+                t => apiClientType.IsAssignableFrom(t) && !t.IsInterface);
 
             // register the interface with the implementation
-            if (implementationType != null)
+            if (implementationType is not null)
                 services.AddScoped(apiClientType, sp =>
                 {
-                    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient(HTTP_CLIENT_API_NAME);
+                    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient(_httpClientApiName);
 
                     var userLogin = sp.GetRequiredService<UserLoginResponse>();
 
