@@ -22,9 +22,6 @@ $accordion: $prefix + "accordion";
     &:last-of-type {
         @apply rounded-b-xl overflow-hidden border border-gray-200 dark:border-gray-700;
 
-        .#{$accordion}-content {
-            @apply border-0 border-t;
-        }
         .#{$accordion}-toggler {
             @apply border-0;
         }
