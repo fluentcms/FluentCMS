@@ -22,7 +22,7 @@ public class MappingProfile : Profile
 
         #region Role
 
-        CreateMap<RoleDetailResponse, RoleUpdateRequest>();
+        CreateMap<RoleDetailResponse, RoleRequest>();
 
         #endregion
 

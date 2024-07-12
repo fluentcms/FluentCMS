@@ -32,21 +32,22 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
 
     [HttpPost]
     [Policy(AREA, CREATE)]
-    public async Task<IApiResult<RoleDetailResponse>> Create([FromBody] RoleCreateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<RoleDetailResponse>> Create([FromBody] RoleRequest request, CancellationToken cancellationToken = default)
     {
         var role = mapper.Map<Role>(request);
-        var newRole = await roleService.Create(role, cancellationToken);
-        var roleResponse = mapper.Map<RoleDetailResponse>(newRole);
+        await roleService.Create(role, cancellationToken);
+        var roleResponse = mapper.Map<RoleDetailResponse>(role);
         return Ok(roleResponse);
     }
 
-    [HttpPut]
+    [HttpPut("{id}")]
     [Policy(AREA, UPDATE)]
-    public async Task<IApiResult<RoleDetailResponse>> Update([FromBody] RoleUpdateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<RoleDetailResponse>> Update([FromRoute] Guid id, [FromBody] RoleRequest request, CancellationToken cancellationToken = default)
     {
         var role = mapper.Map<Role>(request);
-        var updated = await roleService.Update(role, cancellationToken);
-        var roleResponse = mapper.Map<RoleDetailResponse>(updated);
+        role.Id = id;
+        await roleService.Update(role, cancellationToken);
+        var roleResponse = mapper.Map<RoleDetailResponse>(role);
         return Ok(roleResponse);
     }
 

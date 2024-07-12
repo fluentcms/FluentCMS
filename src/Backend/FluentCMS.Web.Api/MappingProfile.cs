@@ -56,8 +56,7 @@ public class MappingProfile : Profile
 
         #region Role
 
-        CreateMap<RoleCreateRequest, Role>();
-        CreateMap<RoleUpdateRequest, Role>();
+        CreateMap<RoleRequest, Role>();
         CreateMap<Role, RoleDetailResponse>();
 
         #endregion
@@ -92,7 +91,6 @@ public class MappingProfile : Profile
         CreateMap<FolderUpdateRequest, Folder>();
 
         #endregion
-
 
         #region PluginContent
 

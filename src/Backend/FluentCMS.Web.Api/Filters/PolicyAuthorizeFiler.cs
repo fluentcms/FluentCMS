@@ -41,7 +41,7 @@ public class PolicyAuthorizeFiler : IAsyncAuthorizationFilter
             }
 
             // extract admin access roles
-            var adminRole = roles.Where(r => r.IsAdmin).FirstOrDefault();
+            var adminRole = roles.Where(r => r.Type == RoleType.SuperAdmin).FirstOrDefault();
             if (adminRole == null)
                 return;
 
@@ -49,22 +49,24 @@ public class PolicyAuthorizeFiler : IAsyncAuthorizationFilter
             if (user.RoleIds.Contains(adminRole.Id))
                 return;
 
-            // check if user has access to the requested area and action
-            foreach (var policyAttribute in policyAttributes)
-            {
-                var accessibleArea = roles.SelectMany(r => r.Policies).Where(p => p.Area == policyAttribute.Area).FirstOrDefault();
-                if (accessibleArea == null)
-                {
-                    context.Result = new ForbidResult();
-                    return;
-                }
+            return;
 
-                if (!accessibleArea.Actions.Contains(policyAttribute.Action))
-                {
-                    context.Result = new ForbidResult();
-                    return;
-                }
-            }
+            //// check if user has access to the requested area and action
+            //foreach (var policyAttribute in policyAttributes)
+            //{
+            //    var accessibleArea = roles.SelectMany(r => r.Policies).Where(p => p.Area == policyAttribute.Area).FirstOrDefault();
+            //    if (accessibleArea == null)
+            //    {
+            //        context.Result = new ForbidResult();
+            //        return;
+            //    }
+
+            //    if (!accessibleArea.Actions.Contains(policyAttribute.Action))
+            //    {
+            //        context.Result = new ForbidResult();
+            //        return;
+            //    }
+            //}
         }
         else
         {

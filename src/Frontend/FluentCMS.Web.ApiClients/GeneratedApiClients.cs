@@ -7316,21 +7316,21 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(RoleCreateRequest? body);
+        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(RoleRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(RoleRequest? body, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(RoleUpdateRequest? body);
+        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(System.Guid id, RoleRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(System.Guid id, RoleRequest? body, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -7545,7 +7545,7 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(RoleCreateRequest? body)
+        public virtual System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(RoleRequest? body)
         {
             return CreateAsync(body, System.Threading.CancellationToken.None);
         }
@@ -7553,7 +7553,7 @@ namespace FluentCMS.Web.ApiClients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(RoleCreateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<RoleDetailResponseIApiResult> CreateAsync(RoleRequest? body, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -7627,16 +7627,19 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(RoleUpdateRequest? body)
+        public virtual System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(System.Guid id, RoleRequest? body)
         {
-            return UpdateAsync(body, System.Threading.CancellationToken.None);
+            return UpdateAsync(id, body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(RoleUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<RoleDetailResponseIApiResult> UpdateAsync(System.Guid id, RoleRequest? body, System.Threading.CancellationToken cancellationToken)
         {
+            if (id == null)
+                throw new System.ArgumentNullException("id");
+
             var client_ = _httpClient;
             var disposeClient_ = false;
             try
@@ -7652,8 +7655,9 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/Role/Update"
-                    urlBuilder_.Append("api/Role/Update");
+                    // Operation Path: "api/Role/Update/{id}"
+                    urlBuilder_.Append("api/Role/Update/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -10234,7 +10238,7 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class FileUploadConfiguration
+    public partial class FileUploadConfig
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("maxSize")]
@@ -10364,10 +10368,10 @@ namespace FluentCMS.Web.ApiClients
         public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("email")]
-        public SmtpServerConfiguration Email { get; set; } = default!;
+        public SmtpServerConfig Email { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("fileUpload")]
-        public FileUploadConfiguration FileUpload { get; set; } = default!;
+        public FileUploadConfig FileUpload { get; set; } = default!;
 
     }
 
@@ -10406,7 +10410,7 @@ namespace FluentCMS.Web.ApiClients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("email")]
-        public SmtpServerConfiguration Email { get; set; } = default!;
+        public SmtpServerConfig Email { get; set; } = default!;
 
     }
 
@@ -11302,23 +11306,6 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class RoleCreateRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("name")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public string Name { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("description")]
-        public string? Description { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("policies")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public System.Collections.Generic.ICollection<Policy> Policies { get; set; } = new System.Collections.ObjectModel.Collection<Policy>();
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RoleDetailResponse
     {
 
@@ -11343,8 +11330,9 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string? Description { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("policies")]
-        public System.Collections.Generic.ICollection<Policy>? Policies { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+        public RoleType Type { get; set; } = default!;
 
     }
 
@@ -11427,7 +11415,7 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class RoleUpdateRequest
+    public partial class RoleRequest
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("name")]
@@ -11437,12 +11425,26 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string? Description { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("policies")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public System.Collections.Generic.ICollection<Policy> Policies { get; set; } = new System.Collections.ObjectModel.Collection<Policy>();
+    }
 
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid Id { get; set; } = default!;
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum RoleType
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Default")]
+        Default = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"SuperAdmin")]
+        SuperAdmin = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Authenticated")]
+        Authenticated = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Guest")]
+        Guest = 3,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"All")]
+        All = 4,
 
     }
 
@@ -11623,7 +11625,7 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class SmtpServerConfiguration
+    public partial class SmtpServerConfig
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("server")]

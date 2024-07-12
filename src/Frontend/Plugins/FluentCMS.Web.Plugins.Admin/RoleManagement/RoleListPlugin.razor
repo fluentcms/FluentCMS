@@ -1,7 +1,7 @@
 ﻿@inherits BasePlugin
 @rendermode InteractiveServer
 
-<PluginBody Title="Roles List">
+<PluginBody Title="Roles">
     <ActionsFragment>
         <ActionButtonCreate Href="@GetUrl("Create Role")" Label="Add Role" />
     </ActionsFragment>
@@ -9,9 +9,13 @@
         <DataTable Items="Roles">
             <DataTableItem Label="Name">@context.Name</DataTableItem>
             <DataTableItem Label="Description">@context.Description</DataTableItem>
+            <DataTableItem Label="Create Date">@context.CreatedAt</DataTableItem>
+            <DataTableItem Label="Create By">@context.CreatedBy</DataTableItem>
+            <DataTableItem Label="Modified Date">@context.ModifiedAt</DataTableItem>
+            <DataTableItem Label="Modified By">@context.ModifiedBy</DataTableItem>
             <ActionButtons>
-                <ActionButtonEdit Href="@GetUrl("Update Role", new { id = @context.Id })" />
-                <ActionButtonDelete @onclick="() => OnConfirm(context)" />
+                <ActionButtonEdit Visible="@(context.Type == RoleType.Default)" Href="@GetUrl("Update Role", new { id = @context.Id })" />
+                <ActionButtonDelete Visible="@(context.Type == RoleType.Default)" @onclick="() => OnConfirm(context)" />
             </ActionButtons>
         </DataTable>
     </ChildContent>
