@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Web.ApiClients;
 
-public partial class ApiClientException : Exception
+public class ApiClientException : Exception
 {
     public int StatusCode { get; private set; }
     public string? Response { get; private set; }
@@ -16,14 +16,17 @@ public partial class ApiClientException : Exception
         Response = response;
         Headers = headers;
 
-        if (!string.IsNullOrEmpty(response))
-            try
-            {
-                var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-                ApiResult = JsonSerializer.Deserialize<ApiExceptionResult>(response, options);
-            }
-            catch (Exception)
-            {
-            }
+        if (string.IsNullOrEmpty(response))
+            return;
+
+        try
+        {
+            var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            ApiResult = JsonSerializer.Deserialize<ApiExceptionResult>(response, options);
+        }
+        catch (Exception)
+        {
+            // ignored
+        }
     }
 }
