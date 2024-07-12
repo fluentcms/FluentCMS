@@ -4,8 +4,8 @@ namespace FluentCMS.Web.UI;
 
 public class PluginLoader
 {
-    private Dictionary<string, Assembly> _loadedAssemblies = [];
-    private Dictionary<string, Dictionary<string, Type>> _loadedTypes = [];
+    private readonly Dictionary<string, Assembly> _loadedAssemblies = [];
+    private readonly Dictionary<string, Dictionary<string, Type>> _loadedTypes = [];
 
     private Assembly Load(string relativePath)
     {

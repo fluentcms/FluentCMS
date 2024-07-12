@@ -24,7 +24,6 @@ public class ApiPagingResult<TData> : ApiResult<IEnumerable<TData>>, IApiPagingR
         PageNumber = 1;
         PageSize = data.Count();
         TotalCount = data.Count();
-        //TotalPages = CalculateTotalPages(data.Count());
         HasPrevious = PageNumber > 1;
         HasNext = PageNumber < TotalPages;
     }

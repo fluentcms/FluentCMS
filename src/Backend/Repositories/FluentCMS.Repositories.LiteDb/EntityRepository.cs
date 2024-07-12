@@ -18,7 +18,7 @@ public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntit
         LiteDbContext = liteDbContext;
     }
 
-    protected virtual string GetCollectionName()
+    private string GetCollectionName()
     {
         var entityTypeName = typeof(TEntity).Name;
         return entityTypeName.Pluralize().ToLowerInvariant();

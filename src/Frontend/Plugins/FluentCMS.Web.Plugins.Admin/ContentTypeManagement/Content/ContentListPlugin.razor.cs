@@ -31,8 +31,8 @@ public partial class ContentListPlugin
 
     private static Type GetDataTableComponent(string fieldTypeName, string viewName)
     {
-        return FieldTypes.All[fieldTypeName].DataTableComponents.Where(x => x.Name == viewName).FirstOrDefault()?.Type ??
-            throw new NotSupportedException($"Field type '{fieldTypeName}' is not supported.");
+        return FieldTypes.All[fieldTypeName].DataTableComponents.FirstOrDefault(x => x.Name == viewName)?.Type ??
+               throw new NotSupportedException($"Field type '{fieldTypeName}' is not supported.");
     }
 
     private Dictionary<string, object> GetParameters(ContentDetailResponse content, IFieldModel fieldModel)

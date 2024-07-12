@@ -13,13 +13,13 @@ public partial class Confirm
     public EventCallback OnCancel { get; set; }
 
     [JSInvokable]
-    public async void CancelClicked()
+    public async Task CancelClicked()
     {
         Visible = false;
         await OnCancel.InvokeAsync();
     }
 
-    public async void ConfirmClicked()
+    public async Task ConfirmClicked()
     {
         Visible = false;
         await OnConfirm.InvokeAsync();

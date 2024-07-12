@@ -15,7 +15,7 @@ public class FieldTypes
     public static Type GetSettingType(string fieldTypeKey) =>
         All[fieldTypeKey].SettingViewType;
 
-    public static Dictionary<string, FieldType> All = new()
+    public static readonly Dictionary<string, FieldType> All = new()
     {
         {
             STRING,
