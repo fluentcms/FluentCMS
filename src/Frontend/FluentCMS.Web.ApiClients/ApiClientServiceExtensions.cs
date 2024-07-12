@@ -24,7 +24,7 @@ public static class ApiClientServiceExtensions
         services.AddHttpClient(HTTP_CLIENT_API_NAME, (sp, client) =>
         {
             string apiServer = configuration?["ApiServer"] ??
-                throw new ArgumentNullException("ApiServer is not configured in appsettings.json");
+                               throw new InvalidOperationException("ApiServer is not configured in appsettings.json");
 
             client.BaseAddress = new Uri(apiServer);
             client.DefaultRequestHeaders.Accept.Clear();
