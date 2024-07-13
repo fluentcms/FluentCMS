@@ -311,6 +311,8 @@ async function onInit() {
     initializeActions(frameDocument)
     initializeActions(document)
     initializeSortable(frameDocument)
+    
+    frameDocument.body.classList.add('f-edit-content')
 }
 
 document.addEventListener('fluentcms:afterenhanced', () => {

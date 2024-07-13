@@ -8,9 +8,7 @@
 .f-plugin-container-content {
     border: 1px solid #dddddd;
     position: relative;
-    overflow: hidden;
     min-height: 100px;
-    pointer-events: none;
     user-select: none;
     border-radius: 8px;
     transition: all 0.3s ease;
@@ -18,7 +16,6 @@
 
 .f-plugin-container:hover .f-plugin-container-content {
     border: 1px solid #3979da;
-    opacity: 0.8;
     border-top-left-radius: 0;
 }
 .f-plugin-container:hover .f-plugin-container-content::after {
@@ -28,6 +25,7 @@
     left: 0rem;
     right: 0rem;
     position: absolute;
+    pointer-events: none;
     background-color: #1639ff11;
 }
 
