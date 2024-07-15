@@ -33,6 +33,7 @@
     justify-content: flex-start;
     right: 0rem;
     top: 0;
+    z-index: 2;
 }
 .f-edit-content [data-plugin-item-id]:hover [data-plugin-items] {
     opacity: 1;
@@ -47,7 +48,7 @@
     border-top-right-radius: 8px;
     overflow: hidden;
     justify-content: flex-start;
-    right: 0rem;
+    right: -1px;
     bottom: calc(100% - 2rem);
 }
 

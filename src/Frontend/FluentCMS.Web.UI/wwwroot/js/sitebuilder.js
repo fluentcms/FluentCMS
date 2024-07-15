@@ -78,22 +78,27 @@ function save() {
     }
 
     updateForm.querySelector('#f-update-form-inputs').outerHTML = updateInputs
-    setTimeout(() => updateForm.submit())
+    setTimeout(() => {
+        const body = new FormData(updateForm)
+
+        fetch(window.location.href, {
+            method: 'POST',
+            body
+        })
+    })
 }
 
 function updateResponsive(mode, silent) {
-    if(responsiveMode == mode) {
-        if(silent) return;
-        responsiveMode = null;
-        document.querySelector(`[data-action="responsive-${mode}"]`).classList.remove('f-page-editor-header-button-primary');
-    }
-    else {
-        if(responsiveMode)
-            document.querySelector(`[data-action="responsive-${responsiveMode}"]`).classList.remove('f-page-editor-header-button-primary')
+    if(responsiveMode == mode && silent)
+        return;        
+     
+    // toggle classes
+    if(responsiveMode)
+        document.querySelector(`[data-action="responsive-${responsiveMode}"]`).classList.remove('f-page-editor-header-button-primary')
 
-        responsiveMode = mode;
-        document.querySelector(`[data-action="responsive-${mode}"]`).classList.add('f-page-editor-header-button-primary');
-    }
+    responsiveMode = mode;
+    document.querySelector(`[data-action="responsive-${mode}"]`).classList.add('f-page-editor-header-button-primary');
+
 
     if(responsiveMode) {
         pageEditorElement.dataset.responsiveMode = responsiveMode
@@ -104,16 +109,15 @@ function updateResponsive(mode, silent) {
             if(responsiveMode == 'mobile') {
                 iframeElement.style.width = '440px';
             }
-            if(responsiveMode == 'desktop') {
+            if(responsiveMode == 'laptop') {
                 iframeElement.style.width = '1024px';
+            }
+            if(responsiveMode == 'large') {
+                delete pageEditorElement.dataset['responsiveMode']
+                iframeElement.style.width = '100%';
             }
             updateResizerPosition()
         }
-
-    } else {
-        delete pageEditorElement.dataset['responsiveMode']
-        iframeElement.style.width = '100%';
-
     }
 }
 
@@ -122,18 +126,21 @@ const actions = {
         actions["hide-sidebar"]()
         window.location.href = window.location.href.replace('?pageEdit=true', '')
     },
-    'save-edit-mode'() {
-        actions["hide-sidebar"]()
-        save()
-    },
+    // 'save-edit-mode'() {
+    //     // actions["hide-sidebar"]()
+    //     save()
+    // },
     'responsive-mobile'() {
         updateResponsive('mobile')
     },
     'responsive-tablet'() {
         updateResponsive('tablet')
     },
-    'responsive-desktop'() {
-        updateResponsive('desktop')
+    'responsive-laptop'() {
+        updateResponsive('laptop')
+    },
+    'responsive-large'() {
+        updateResponsive('large')
     },
     'plugin-container-action-delete'(el) {
         const id = el.parentElement.parentElement.dataset.id
@@ -207,7 +214,9 @@ function initializeSortable(frameDocument) {
             const item = event.item
             const sectionName = event.to.dataset.name
 
-            createPlugin({ definitionId, item, sectionName })
+            console.log(event)
+
+            createPlugin({ definitionId, item, index: event.newIndex, sectionName })
         }
     });
 }
@@ -220,6 +229,7 @@ function updateResizerPosition() {
     }
 }
 function initializeResponsive() {
+    updateResponsive('large', false)
     let dragging = false;
 
     resizerElement.addEventListener('mousedown', (e) => {
@@ -230,8 +240,10 @@ function initializeResponsive() {
         if(dragging) {
             const iframeWidth = iframeElement.getClientRects()[0].width
 
-            if(iframeWidth > 992) {
-                updateResponsive('desktop', true)
+            if(iframeWidth > 1920) {
+                updateResponsive('large', true)
+            } else if(iframeWidth > 992) {
+                updateResponsive('laptop', true)
             } else if(iframeWidth > 480) {
                 updateResponsive('tablet', true)
             } else {
@@ -260,46 +272,52 @@ function initializeResponsive() {
     iframeElement.contentWindow.addEventListener('mouseup', onMouseUp)
 }
 
-function createPlugin({definitionId, sectionName, item}) {
+function createPlugin({definitionId, sectionName, index, item}) {
     item.classList.remove('f-plugin-definition-item')
     item.classList.add('f-plugin-container')
-    item.dataset.cols = 12
-    item.dataset.colsMd = 0
-    item.dataset.colsLg = 0
+    const cols = 12
+    const colsMd = 0
+    const colsLg = 0
 
-    item.dataset.id = '00000000-0000-0000-0000-000000000000';
-    item.dataset.definitionId = definitionId;
-
-    const name = item.querySelector('.f-name').textContent
-    // const description = item.querySelector('.f-description').textContent
-    const description = "You can preview new plugins after save"
-
-    const pluginContainerActionsTemplate = `<div class="f-plugin-container-actions">
-        <div class="f-plugin-container-action-text f-plugin-container-action-drag">
-            <svg class="icon" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M18 11V8l4 4l-4 4v-3h-5v5h3l-4 4l-4-4h3v-5H6v3l-4-4l4-4v3h5V6H8l4-4l4 4h-3v5z"/></svg>
-            ${name}
-        </div>
-        <button data-action="plugin-container-action-delete">
-            <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                <path fill-rule="evenodd" d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z" clip-rule="evenodd">
-                </path>
-            </svg>
-        </button>
-</div>`
-
-
-    const pluginContainerContentTemplate = `<div class="f-plugin-container-content">
-    <div class="f-plugin-container-content-new">
-        <div class="f-name">${name}</div>
-        <div class="f-description">${description}</div>
-    </div>
-</div>`
-
-    item.innerHTML = [pluginContainerActionsTemplate, pluginContainerContentTemplate].join('')
+    const pageId = '00000000-0000-0000-0000-000000000000';
 
     setTimeout(() => {
-        initializeActions(item)
-        iframeElement.contentWindow.sections[sectionName].append(item)
+        // _handler: UpdatePluginForm
+        // __RequestVerificationToken: CfDJ8PuVbaR1sHBOvuLydAdhPdS6nFFhM7eu29IOqf-5F1JRXcEXCWrMS7nUql8VqVNT4ctfGixG1DwfugOxVUgVPp6nEculRq8apOwX66kkwTmzoQ9_GQld_t89NFl1QQ5-W_EfAun8bDQLQNCWQ5_d-njmF1yG0yZw_Qk7iMJbyJGR7y59tE9_vUSG2Y9nC4NJwg
+
+        const requestBody = {
+            '_handler': 'UpdatePluginForm',
+            '__RequestVerificationToken': document.querySelector('[name="__RequestVerificationToken"]').value,
+            'Model.CreatePlugins[0].PageId': pageId,
+            'Model.CreatePlugins[0].DefinitionId': definitionId,
+            'Model.CreatePlugins[0].Order': index - 1,
+            'Model.CreatePlugins[0].Cols': cols,
+            'Model.CreatePlugins[0].ColsMd': colsMd,
+            'Model.CreatePlugins[0].ColsLg': colsLg,
+            'Model.CreatePlugins[0].Section': sectionName,
+            "Model.Submitted": true,
+            'Model.UpdatePlugins': '[]', // TODO
+            'Model.DeleteIds': '[]', // TODO
+        }
+
+        const body = new FormData()
+        for(let key in requestBody) {
+            body.append(key, requestBody[key])
+            // body.set('Model.DeleteIds', [])
+        }
+
+        fetch(window.location.href, {
+            method: 'POST',
+            body
+        }).then(async res => {
+            
+            iframeElement.contentWindow.location.reload()
+            // const html = await fetch(window.location.href).then(res => res.text())
+            // document.documentElement.innerHTML = html
+            setTimeout(() => {
+                onInit()
+            })
+        })
     })
 }
 
@@ -312,6 +330,8 @@ async function onInit() {
     initializeActions(document)
     initializeSortable(frameDocument)
     
+    window.initPluginActions(frameDocument)
+
     frameDocument.body.classList.add('f-edit-content')
 }
 

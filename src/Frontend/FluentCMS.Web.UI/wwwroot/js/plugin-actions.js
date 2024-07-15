@@ -7,9 +7,11 @@ function getUrl(pluginId, mode, itemId) {
     return url
 }
 
-function openModal(id) {
-    const modal = document.getElementById(id)
-    const modalBackdrop = document.getElementById(id + '-backdrop')
+function openModal(id, doc) {
+    console.log('openModal', id)
+    console.log(doc.querySelector('#' + id))
+    const modal = doc.getElementById(id)
+    const modalBackdrop = doc.getElementById(id + '-backdrop')
 
     modal.classList.remove('hidden')
     modal.classList.add('flex')
@@ -33,8 +35,8 @@ function openModal(id) {
     })
 }
 
-window.initPluginActions = function (element) {
-    element.querySelectorAll('[data-plugin-item-id]').forEach(pluginItem => {
+window.initPluginActions = function (doc) {
+    doc.querySelectorAll('[data-plugin-item-id]').forEach(pluginItem => {
         const itemId = pluginItem.getAttribute('data-plugin-item-id');
         const pluginId = pluginItem.getAttribute('data-plugin-id');
 
@@ -44,11 +46,11 @@ window.initPluginActions = function (element) {
 
                 if(mode == 'delete') {
                     const typeName = item.getAttribute('data-plugin-item-type')
-                    document.getElementById("f-action-delete-item-id").value = itemId
-                    document.getElementById("f-action-delete-item-plugin-id").value = pluginId
-                    document.getElementById("f-action-delete-item-type-name").value = typeName
+                    doc.getElementById("f-action-delete-item-id").value = itemId
+                    doc.getElementById("f-action-delete-item-plugin-id").value = pluginId
+                    doc.getElementById("f-action-delete-item-type-name").value = typeName
 
-                    openModal('f-action-delete-modal')
+                    openModal('f-action-delete-modal', doc)
 
                     return;
                 }
@@ -58,7 +60,7 @@ window.initPluginActions = function (element) {
         })
     })
 
-    element.querySelectorAll('[data-plugin-items-root]').forEach(pluginItem => {
+    doc.querySelectorAll('[data-plugin-items-root]').forEach(pluginItem => {
         const pluginId = pluginItem.getAttribute('data-plugin-id');
 
         pluginItem.querySelectorAll('[data-plugin-item-action]').forEach(item => {

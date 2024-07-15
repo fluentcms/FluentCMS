@@ -17,6 +17,7 @@
 .f-plugin-container:hover .f-plugin-container-content {
     border: 1px solid #3979da;
     border-top-left-radius: 0;
+    border-top-right-radius: 0;
 }
 .f-plugin-container:hover .f-plugin-container-content::after {
     content: '';
