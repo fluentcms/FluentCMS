@@ -1,7 +1,7 @@
 ﻿@inherits BasePlugin
 @rendermode InteractiveServer
 
-<PluginBody Title="Sites List">
+<PluginBody Title="Sites">
     <ActionsFragment>
         <ActionButtonCreate Href="@GetUrl("Create Site")" Label="Add Site"/>
     </ActionsFragment>
@@ -32,5 +32,5 @@
 </PluginBody>
 
 <Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedSite != null">
-    Are you sure to delete site @SelectedSite!.Name?
+    Are you sure to delete <b>"@SelectedSite!.Name"</b> site?
 </Confirm>
