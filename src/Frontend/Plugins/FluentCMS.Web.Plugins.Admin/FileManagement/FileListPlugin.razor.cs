@@ -35,7 +35,8 @@ public partial class FileListPlugin
         {
             if (folder.Id == folderId)
             {
-                BreadcrumbItems.Add( new FolderBreadcrumbItemType {
+                BreadcrumbItems.Add(new FolderBreadcrumbItemType
+                {
                     Title = folder.Name,
                 });
                 return folder;
@@ -46,9 +47,10 @@ public partial class FileListPlugin
                 var foundFolder = FindFolderById(folder.Folders, folderId);
                 if (foundFolder != null)
                 {
-                    BreadcrumbItems.Add( new FolderBreadcrumbItemType {
+                    BreadcrumbItems.Add(new FolderBreadcrumbItemType
+                    {
                         Title = folder.Name,
-                        Href = GetUrl("Files List", new { folderId = folder.Id }) 
+                        Href = GetUrl("Files List", new { folderId = folder.Id })
                     });
                     return foundFolder;
                 }
@@ -89,7 +91,8 @@ public partial class FileListPlugin
 
             if (FolderId is null || FolderId == Guid.Empty)
             {
-                BreadcrumbItems.Add( new FolderBreadcrumbItemType {
+                BreadcrumbItems.Add(new FolderBreadcrumbItemType
+                {
                     Icon = IconName.Folder,
                     Title = "Root"
                 });
@@ -99,10 +102,11 @@ public partial class FileListPlugin
             {
                 folderDetail = FindFolderById(RootFolder!.Folders, FolderId.Value);
 
-                BreadcrumbItems.Add( new FolderBreadcrumbItemType {
+                BreadcrumbItems.Add(new FolderBreadcrumbItemType
+                {
                     Icon = IconName.Folder,
                     Title = "Root",
-                    Href = GetUrl("Files List", new { folderId = Guid.Empty }) 
+                    Href = GetUrl("Files List", new { folderId = Guid.Empty })
                 });
                 BreadcrumbItems.Reverse();
             }
@@ -124,7 +128,7 @@ public partial class FileListPlugin
                     });
                 }
 
-                if(folderDetail != null)
+                if (folderDetail != null)
                 {
                     foreach (var item in folderDetail.Folders)
                     {

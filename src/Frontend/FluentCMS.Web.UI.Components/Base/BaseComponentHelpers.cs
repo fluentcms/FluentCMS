@@ -28,14 +28,11 @@ public static class BaseComponentHelper
 
         foreach (var property in properties)
         {
-            if (property.GetValue(baseComponent, null) is var value)
-            {
-                if (value != null)
-                {
-                    var propertyValue = value.ToString()?.FromPascalCaseToKebabCase() ?? string.Empty;
-                    classes.Add(string.Join(SEPARATOR, [CSS_PREFIX, cssName, property.Name.FromPascalCaseToKebabCase(), propertyValue]));
-                }
-            }
+            if (property.GetValue(baseComponent, null) is not { } value)
+                continue;
+
+            var propertyValue = value.ToString()?.FromPascalCaseToKebabCase() ?? string.Empty;
+            classes.Add(string.Join(SEPARATOR, [CSS_PREFIX, cssName, property.Name.FromPascalCaseToKebabCase(), propertyValue]));
         }
 
         return classes;

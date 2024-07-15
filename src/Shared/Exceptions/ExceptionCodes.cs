@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS;
 
-public class ExceptionCodes
+public static class ExceptionCodes
 {
     #region Setup
 

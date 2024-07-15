@@ -88,13 +88,13 @@ public class UserService(
         return true;
     }
 
-    public async Task<User> Update(User entity, CancellationToken cancellationToken = default)
+    public async Task<User> Update(User user, CancellationToken cancellationToken = default)
     {
-        var prevUser = await GetById(entity.Id, cancellationToken);
-        entity = Merge(prevUser, entity);
-        var result = await userManager.UpdateAsync(entity);
+        var prevUser = await GetById(user.Id, cancellationToken);
+        user = Merge(prevUser, user);
+        var result = await userManager.UpdateAsync(user);
         result.ThrowIfInvalid();
-        return await GetById(entity.Id, cancellationToken);
+        return await GetById(user.Id, cancellationToken);
     }
 
     public async Task<bool> Delete(Guid id, CancellationToken cancellationToken = default)

@@ -9,14 +9,14 @@ public class AuthContext : IAuthContext
     {
         var user = httpContextAccessor.HttpContext?.User;
 
-        if (user != null)
-        {
-            var idClaimValue = user.FindFirstValue(ClaimTypes.Sid);
+        if (user is null)
+            return;
 
-            UserId = idClaimValue == null ? Guid.Empty : Guid.Parse(idClaimValue);
-            Username = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-            IsAuthenticated = user?.Identity?.IsAuthenticated ?? false;
-        }
+        var idClaimValue = user.FindFirstValue(ClaimTypes.Sid);
+
+        UserId = idClaimValue == null ? Guid.Empty : Guid.Parse(idClaimValue);
+        Username = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        IsAuthenticated = user.Identity?.IsAuthenticated ?? false;
     }
 
     public string Username { get; private set; } = string.Empty;
