@@ -18,7 +18,7 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
         MongoDbContext = mongoDbContext;
     }
 
-    protected virtual string GetCollectionName()
+    private string GetCollectionName()
     {
         var entityTypeName = typeof(TEntity).Name;
         return entityTypeName.Pluralize().ToLowerInvariant();

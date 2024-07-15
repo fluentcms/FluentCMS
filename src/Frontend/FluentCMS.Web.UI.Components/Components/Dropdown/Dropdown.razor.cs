@@ -43,7 +43,7 @@ public partial class Dropdown : IAsyncDisposable
     }
 
     [JSInvokable]
-    public async void Update(bool open)
+    public async Task Update(bool open)
     {
         await OpenChanged.InvokeAsync(Open = open);
     }

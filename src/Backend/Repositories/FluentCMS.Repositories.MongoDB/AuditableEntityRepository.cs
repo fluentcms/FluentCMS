@@ -31,7 +31,7 @@ public abstract class AuditableEntityRepository<TEntity> : EntityRepository<TEnt
         cancellationToken.ThrowIfCancellationRequested();
 
         var existing = await GetById(entity.Id, cancellationToken);
-        if (existing == null)
+        if (existing is null)
             return default;
 
         SetAuditableFieldsForUpdate(entity, existing);

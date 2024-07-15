@@ -9,7 +9,7 @@ public partial class Modal
     [Parameter]
     public EventCallback OnClose { get; set; }
 
-    public async void Close()
+    public async Task Close()
     {
         Visible = false;
         await OnClose.InvokeAsync();
