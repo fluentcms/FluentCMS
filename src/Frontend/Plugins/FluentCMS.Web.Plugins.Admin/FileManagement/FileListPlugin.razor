@@ -1,17 +1,15 @@
 ﻿@inherits BasePlugin
 @rendermode InteractiveServer
 
-<div class="px-4">
-    <Spacer />
-    <Breadcrumb>
-        @foreach (var item in BreadcrumbItems)
-        {
-            <BreadcrumbItem IconName="@item.Icon" Href="@item.Href">@item.Title</BreadcrumbItem>
-        }
-    </Breadcrumb>
-</div>
-
-<PluginBody Title="File/Folders List">
+<PluginBody Title="File Management">
+    <SubtitleFragment>
+        <Breadcrumb>
+            @foreach (var item in BreadcrumbItems)
+            {
+                <BreadcrumbItem IconName="@item.Icon" Href="@item.Href">@item.Title</BreadcrumbItem>
+            }
+        </Breadcrumb>
+    </SubtitleFragment>
     <ActionsFragment>
         <ActionButtonBack Visible="FolderId != null && FolderId != Guid.Empty" Href="@GetUrl("Files List", new { folderId = ParentId })" />
         <ActionButton IconName="IconName.Plus" @onclick="() => FolderCreateModalOpen = true" Label="Add Folder" />
@@ -42,7 +40,18 @@
                 </Badge>
             </DataTableItem>
             <DataTableItem Label="Size">
-                @context.Size
+                @if (context.Size > 1024 * 1024)
+                {
+                    <text>@(context.Size / (1024 * 1024)) MB</text>
+                }
+                else if(context.Size > 1024)
+                {
+                    <text>@(context.Size / 1024) KB</text>
+                }
+                else 
+                {
+                    <text>...</text>
+                }
             </DataTableItem>
             <ActionButtons>
                 <ActionButton Visible="!context.IsFolder" IconName="IconName.Download" Label="Download" download="@context.Name" Href="@GetUrl("Files List", new { folderId = context.Id })" Color="Color.Primary" target="_blank" />
@@ -59,7 +68,7 @@
 </PluginBody>
 
 <Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedItem != null">
-    Are you sure to delete @(SelectedItem!.IsFolder ? "folder" : "file") @SelectedItem!.Name?
+    Are you sure to delete <b>"@SelectedItem!.Name"</b> @(SelectedItem!.IsFolder ? "folder" : "file")?
 </Confirm>
 
 <FolderCreateModal FolderId="@FolderId" Visible="FolderCreateModalOpen" OnSubmit="OnCreateFolder" OnCancel="OnCreateFolderCancel"/>
