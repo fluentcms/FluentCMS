@@ -199,7 +199,7 @@ public class SetupManager : ISetupManager
         foreach (var role in _adminTemplate.Roles)
         {
             await _roleService.Create(role);
-            if (role.Type == RoleType.SuperAdmin)
+            if (role.Type == RoleType.Administrators)
                 adminRoles.Add(role);
         }
 

@@ -59,6 +59,7 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
         return Ok(true);
     }
 
+    // TODO: Move this method to ApiToken controller
     [HttpGet]
     [Policy(AREA, READ)]
     public async Task<IApiPagingResult<Policy>> GetPolicies(CancellationToken cancellationToken = default)

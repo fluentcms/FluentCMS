@@ -11434,8 +11434,8 @@ namespace FluentCMS.Web.ApiClients
         [System.Runtime.Serialization.EnumMember(Value = @"Default")]
         Default = 0,
 
-        [System.Runtime.Serialization.EnumMember(Value = @"SuperAdmin")]
-        SuperAdmin = 1,
+        [System.Runtime.Serialization.EnumMember(Value = @"Administrators")]
+        Administrators = 1,
 
         [System.Runtime.Serialization.EnumMember(Value = @"Authenticated")]
         Authenticated = 2,

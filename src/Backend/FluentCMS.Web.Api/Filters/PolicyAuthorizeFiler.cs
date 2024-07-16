@@ -41,7 +41,7 @@ public class PolicyAuthorizeFiler : IAsyncAuthorizationFilter
             }
 
             // extract admin access roles
-            var adminRole = roles.Where(r => r.Type == RoleType.SuperAdmin).FirstOrDefault();
+            var adminRole = roles.Where(r => r.Type == RoleType.Administrators).FirstOrDefault();
             if (adminRole == null)
                 return;
 
