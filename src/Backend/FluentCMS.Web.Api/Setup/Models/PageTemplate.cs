@@ -5,6 +5,6 @@ internal class PageTemplate
     public string Title { get; set; } = default!;
     public string? Layout { get; set; } = default!;
     public List<PageTemplate> Children { get; set; } = [];
-    public List<PluginTemplate> Plugins { get; set; } = [];
+    public List<PageSectionTemplate> Sections { get; set; } = [];
     public bool Locked { get; set; } = false;
 }

@@ -74,6 +74,9 @@ public static class ServiceExtensions
             if (pageResponse?.Data == null)
                 throw new Exception("Error while loading ViewState");
 
+
+            throw new Exception("TODO: Should update these codes for section, row and column");
+
             viewState.Page = mapper.Map<PageViewState>(pageResponse.Data);
             viewState.Layout = mapper.Map<LayoutViewState>(pageResponse.Data.Layout);
             viewState.Site = mapper.Map<SiteViewState>(pageResponse.Data.Site);

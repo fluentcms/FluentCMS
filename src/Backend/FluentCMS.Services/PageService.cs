@@ -7,6 +7,10 @@ public interface IPageService : IAutoRegisterService
     Task<IEnumerable<PageSection>> GetSectionsByPageId(Guid pageId, CancellationToken cancellationToken = default);
     Task<IEnumerable<PageRow>> GetRowsBySectionId(Guid sectionId, CancellationToken cancellationToken = default);
     Task<IEnumerable<PageColumn>> GetColumnsByRowId(Guid rowId, CancellationToken cancellationToken = default);
+    Task<PageSection> CreateSection(PageSection section, CancellationToken cancellationToken = default);
+    Task<PageRow> CreateRow(PageRow row, CancellationToken cancellationToken = default);
+    Task<PageColumn> CreateColumn(PageColumn column, CancellationToken cancellationToken = default);
+    
     Task<Page> GetByPath(Guid siteId, string path, CancellationToken cancellationToken = default);
     Task<Page> Create(Page page, CancellationToken cancellationToken = default);
     Task<Page> Update(Page page, CancellationToken cancellationToken = default);
@@ -87,6 +91,24 @@ public class PageService(
     public async Task<IEnumerable<PageColumn>> GetColumnsByRowId(Guid rowId, CancellationToken cancellationToken = default)
     {
         return await pageColumnRepository.GetByRowId(rowId, cancellationToken) ?? 
+            throw new AppException(ExceptionCodes.PageSectionNotFound);
+    }
+
+    public async Task<PageSection> CreateSection(PageSection section, CancellationToken cancellationToken = default)
+    {
+        return await pageSectionRepository.Create(section, cancellationToken) ?? 
+            throw new AppException(ExceptionCodes.PageSectionNotFound);
+    }
+
+    public async Task<PageRow> CreateRow(PageRow row, CancellationToken cancellationToken = default)
+    {
+        return await pageRowRepository.Create(row, cancellationToken) ?? 
+            throw new AppException(ExceptionCodes.PageSectionNotFound);
+    }
+
+    public async Task<PageColumn> CreateColumn(PageColumn column, CancellationToken cancellationToken = default)
+    {
+        return await pageColumnRepository.Create(column, cancellationToken) ?? 
             throw new AppException(ExceptionCodes.PageSectionNotFound);
     }
 

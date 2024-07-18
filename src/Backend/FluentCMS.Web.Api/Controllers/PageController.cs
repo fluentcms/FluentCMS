@@ -133,20 +133,7 @@ public class PageController(
             }
             section.Rows = mappedRows;
         }
-        // page.Sections = mapper.Map<List<PageSectionDetailResponse>>(sections);
-
-        // pageResponse.Sections = [];
-
-        // foreach (var plugin in plugins)
-        // {
-        //     if (!pageResponse.Sections.ContainsKey(plugin.Section))
-        //         pageResponse.Sections.Add(plugin.Section, []);
-
-        //     var pluginResponse = mapper.Map<PluginDetailResponse>(plugin);
-        //     pluginResponse.Definition = mapper.Map<PluginDefinitionDetailResponse>(pluginDefinitions[plugin.DefinitionId]);
-        //     pageResponse.Sections[plugin.Section].Add(pluginResponse);
-        // }
-
+        
         return Ok(pageResponse);
     }
 

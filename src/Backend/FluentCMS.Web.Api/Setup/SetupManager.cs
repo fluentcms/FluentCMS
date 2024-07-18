@@ -138,25 +138,25 @@ public class SetupManager : ISetupManager
                 Head = System.IO.File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.head.html"))
             },
             Site = new(),
-            Sections = new List<PageSectionDetailResponse>
-            {
+            Sections =
+            [
                 new()
                 {
-                    Rows = new List<PageRowDetailResponse>
-                    {
+                    Rows =
+                    [
                         new()
                         {
-                            Columns = new List<PageColumnDetailResponse>
-                            {
+                            Columns =
+                            [
                                 new()
                                 {
-                                    Plugins = new List<PluginDetailResponse>
-                                    {
+                                    Plugins =
+                                    [
                                         new()
                                         {
                                             Locked = true,
                                             Section = "Main",
-                                            Definition = new PluginDefinitionDetailResponse
+                                            Definition = new()
                                             {
                                                 Name = "Setup",
                                                 Description = "Setup View Plugin",
@@ -164,7 +164,7 @@ public class SetupManager : ISetupManager
                                                 Locked = true,
                                                 Types =
                                                 [
-                                                    new PluginDefinitionType
+                                                    new()
                                                     {
                                                         IsDefault = true,
                                                         Name="Setup",
@@ -173,40 +173,14 @@ public class SetupManager : ISetupManager
                                                 ]
                                             }
                                         }       
-                                    }
+                                    ]
                                 }
-                            }
+                            ]
                         }
 
-                    }
+                    ]
                 }
-            }
-            // Sections = new Dictionary<string, List<PluginDetailResponse>>
-            // {
-            //     ["Main"] =
-            //     [
-            //         new() {
-            //             Locked = true,
-            //             Section = "Main",
-            //             Definition = new PluginDefinitionDetailResponse
-            //             {
-            //                 Name = "Setup",
-            //                 Description = "Setup View Plugin",
-            //                 Assembly = "FluentCMS.Web.Plugins.Admin.dll",
-            //                 Locked = true,
-            //                 Types =
-            //                 [
-            //                     new PluginDefinitionType
-            //                     {
-            //                         IsDefault = true,
-            //                         Name="Setup",
-            //                         Type = "SetupViewPlugin"
-            //                     }
-            //                 ]
-            //             }
-            //         }
-            //     ]
-            // }
+            ]
         };
         return Task.FromResult(page);
     }
@@ -339,35 +313,67 @@ public class SetupManager : ISetupManager
     private async Task InitPagePlugins(PageTemplate pageTemplate, Guid pageId)
     {
         var order = 0;
-        // foreach (var pluginTemplate in pageTemplate.Plugins)
-        // {
-        //     var pluginDefinition = _pluginDefinitions.Where(p => p.Name.Equals(pluginTemplate.Definition, StringComparison.InvariantCultureIgnoreCase)).Single();
-        //     var plugin = new Plugin
-        //     {
-        //         Order = order,
-        //         Section = pluginTemplate.Section,
-        //         DefinitionId = pluginDefinition.Id,
-        //         PageId = pageId,
-        //         SiteId = _site.Id,
-        //         Locked = pluginTemplate.Locked
-        //     };
-        //     order++;
-        //     var pluginResponse = await _pluginService.Create(plugin);
-        //     if (pluginTemplate.Content != null)
-        //     {
-        //         foreach (var pluginContentTemplate in pluginTemplate.Content)
-        //         {
-        //             var pluginContent = new PluginContent
-        //             {
-        //                 PluginId = pluginResponse.Id,
-        //                 Type = pluginTemplate.Type,
-        //                 Data = pluginContentTemplate
-        //             };
+        foreach (var pageSectionTemplate in pageTemplate.Sections)
+        {
+            
+            var section = new PageSection
+            {
+                PageId = pageId,
+                Styles = pageSectionTemplate.Styles
+            };
+            var sectionResponse = await _pageService.CreateSection(section);
 
-        //             await _pluginContentService.Create(pluginContent);
-        //         }
-        //     }
-        // }
+            foreach (var pageRowTemplate in pageSectionTemplate.Rows)
+            {
+                var row = new PageRow
+                {
+                    SectionId = sectionResponse.Id,
+                    Styles = pageRowTemplate.Styles
+                };
+                var rowResponse = await _pageService.CreateRow(row);
+
+                foreach (var pageColumnTemplate in pageRowTemplate.Columns)
+                {   
+                    var column = new PageColumn
+                    {
+                        RowId = rowResponse.Id,
+                        Styles = pageColumnTemplate.Styles
+                    };
+
+                    var columnResponse = await _pageService.CreateColumn(column);
+                    
+                    foreach (var pluginTemplate in pageColumnTemplate.Plugins)
+                    {
+                        var pluginDefinition = _pluginDefinitions.Where(p => p.Name.Equals(pluginTemplate.Definition, StringComparison.InvariantCultureIgnoreCase)).Single();
+                        var plugin = new Plugin
+                        {
+                            Order = order,
+                            Section = pluginTemplate.Section,
+                            DefinitionId = pluginDefinition.Id,
+                            ColumnId = columnResponse.Id,
+                            SiteId = _site.Id,
+                            Locked = pluginTemplate.Locked
+                        };
+                        order++;
+                        var pluginResponse = await _pluginService.Create(plugin);
+                        if (pluginTemplate.Content != null)
+                        {
+                            foreach (var pluginContentTemplate in pluginTemplate.Content)
+                            {
+                                var pluginContent = new PluginContent
+                                {
+                                    PluginId = pluginResponse.Id,
+                                    Type = pluginTemplate.Type,
+                                    Data = pluginContentTemplate
+                                };
+
+                                await _pluginContentService.Create(pluginContent);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private Page GetPage(PageTemplate pageTemplate, Guid? parentId, int order)
