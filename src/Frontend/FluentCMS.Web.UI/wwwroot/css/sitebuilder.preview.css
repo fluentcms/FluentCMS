@@ -1,3 +1,10 @@
+@import './plugin-actions.css';
+@import './columns.editor.css';
+@import './columns.css';
+/* <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/plugin-actions.css"> */
+/* <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.preview.css"> */
+/* <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.editor.css"> */
+/* <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.css"> */
 
 .f-plugin-container {
     position: relative;

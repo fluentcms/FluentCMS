@@ -4,7 +4,7 @@
 @if (ViewState.Type == ViewStateType.PageEdit)
 {
     <HeadContent>
-        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.css">
+        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.editor.css">
     </HeadContent>
     <div class="f-page-editor f-page-editor-sidebar-open f-page-editor-loading dark">
         <PageEditorHeader />
@@ -17,56 +17,21 @@
         <PageEditorSidebar />
     </div>
     <PageEditorForms />
+    <a href="/">Home</a>
 
-    <script src="/_content/FluentCMS.Web.UI/js/plugin-actions.js"></script>
-    <script src="/_content/FluentCMS.Web.UI/js/sortable.js"></script>
-    <script src="/_content/FluentCMS.Web.UI/js/sitebuilder.js"></script>
-    <script src="/js/tailwind.cdn.js"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        primary: {
-                            50:        '#f4f8fd',
-                            100:       '#e8f1fb',
-                            200:       '#c6ddf4',
-                            300:       '#a3c8ed',
-                            400:       '#5e9fe0',
-                            500:       '#1976d2',
-                            600:       '#176abd',
-                            700:       '#13599e',
-                            800:       '#0f477e',
-                            900:       '#0c3a67',
-                            on:        '#f4f8fd',
-                            dark: {
-                                DEFAULT: '#a3c8ed',
-                                on:      '#0f477e', 
-                            }
-                        },
-                    },
-                },
-            }
-        }
-    </script>
-
+    <script type="module" src="/_content/FluentCMS.Web.UI/js/sitebuilder.editor.js"></script>
 }
 else if (ViewState.Type == ViewStateType.PagePreview)
 {
     <HeadContent>
-        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/plugin-actions.css">
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.preview.css">
-        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.editor.css">
-        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.css">
         @RenderDynamicContent(ViewState.Layout?.Head ?? string.Empty)
     </HeadContent>
     @RenderDynamicContent(ViewState.Layout?.Body ?? string.Empty)
 
     <PluginActionsForms />
 
-    <script src="/_content/FluentCMS.Web.UI/js/columns.js"></script>
-    <script src="/_content/FluentCMS.Web.UI/js/sitebuilder.preview.js"></script>
+    <script type="module" src="/_content/FluentCMS.Web.UI/js/sitebuilder.preview.js"></script>
 }
 else
 {
@@ -75,7 +40,6 @@ else
         @RenderDynamicContent(ViewState.Layout?.Head ?? string.Empty)
         @if (ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked)
         {
-            <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/plugin-actions.css">
             <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.default.css">
         }            
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.css">
@@ -97,6 +61,7 @@ else
             </svg>
         </button>
     }
-    <script src="/_content/FluentCMS.Web.UI/js/plugin-actions.js"></script>
-    <script src="/_content/FluentCMS.Web.UI/js/sitebuilder.default.js"></script>
+    <a href="/?pageEdit=true">Home</a>
+
+    <script type="module" src="/_content/FluentCMS.Web.UI/js/sitebuilder.default.js"></script>
 }

@@ -8,11 +8,11 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
     public const string CREATE = "Create";
     public const string DELETE = $"Delete/{READ}";
 
-    [HttpGet("{pageId}")]
+    [HttpGet("{columnId}")]
     [Policy(AREA, READ)]
-    public async Task<IApiPagingResult<PluginDetailResponse>> GetByPageId([FromRoute] Guid pageId, CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<PluginDetailResponse>> GetByColumnId([FromRoute] Guid columnId, CancellationToken cancellationToken = default)
     {
-        var plugins = await pluginService.GetByPageId(pageId, cancellationToken);
+        var plugins = await pluginService.GetByColumnId(columnId, cancellationToken);
         var pluginsResponse = mapper.Map<List<PluginDetailResponse>>(plugins);
         return OkPaged(pluginsResponse);
     }

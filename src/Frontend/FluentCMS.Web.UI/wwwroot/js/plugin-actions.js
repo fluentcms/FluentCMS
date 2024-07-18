@@ -35,7 +35,7 @@ function openModal(id, doc) {
     })
 }
 
-window.initPluginActions = function (doc) {
+export function initPluginActions(doc) {
     doc.querySelectorAll('[data-plugin-item-id]').forEach(pluginItem => {
         const itemId = pluginItem.getAttribute('data-plugin-item-id');
         const pluginId = pluginItem.getAttribute('data-plugin-id');

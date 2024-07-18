@@ -1,3 +1,5 @@
+import { Columns } from './columns.js';
+
 window.sections = {}
 
 document.querySelectorAll('.f-section').forEach(section => {

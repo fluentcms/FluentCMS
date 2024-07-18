@@ -1,7 +1,9 @@
-﻿let iframeElement = document.querySelector('.f-page-editor-iframe')
-let pageEditorElement = document.querySelector('.f-page-editor')
+﻿import { updateResponsive, updateResizerPosition } from "./responsive.js"
+import Sortable from "./sortable.js"
+import {initPluginActions} from './plugin-actions.js'
 
-let responsiveMode = null
+let iframeElement = document.querySelector('.f-page-editor-iframe')
+let pageEditorElement = document.querySelector('.f-page-editor')
 
 const resizerElement = document.querySelector('.f-page-editor-iframe-resizer')
 
@@ -86,39 +88,6 @@ function save() {
             body
         })
     })
-}
-
-function updateResponsive(mode, silent) {
-    if(responsiveMode == mode && silent)
-        return;        
-     
-    // toggle classes
-    if(responsiveMode)
-        document.querySelector(`[data-action="responsive-${responsiveMode}"]`).classList.remove('f-page-editor-header-button-primary')
-
-    responsiveMode = mode;
-    document.querySelector(`[data-action="responsive-${mode}"]`).classList.add('f-page-editor-header-button-primary');
-
-
-    if(responsiveMode) {
-        pageEditorElement.dataset.responsiveMode = responsiveMode
-        if(!silent) {
-            if(responsiveMode == 'tablet') {
-                iframeElement.style.width = '768px';
-            }
-            if(responsiveMode == 'mobile') {
-                iframeElement.style.width = '440px';
-            }
-            if(responsiveMode == 'laptop') {
-                iframeElement.style.width = '1024px';
-            }
-            if(responsiveMode == 'large') {
-                delete pageEditorElement.dataset['responsiveMode']
-                iframeElement.style.width = '100%';
-            }
-            updateResizerPosition()
-        }
-    }
 }
 
 const actions = {
@@ -221,13 +190,6 @@ function initializeSortable(frameDocument) {
     });
 }
 
-function updateResizerPosition() {
-    resizerElement.style.left = (iframeElement.getBoundingClientRect().right + 2) + 'px'
-
-    for(let key of Object.keys(iframeElement.contentWindow.sections)) {
-        iframeElement.contentWindow.sections[key].updateSize()
-    }
-}
 function initializeResponsive() {
     updateResponsive('large', false)
     let dragging = false;
@@ -321,7 +283,8 @@ function createPlugin({definitionId, sectionName, index, item}) {
     })
 }
 
-async function onInit() {
+export async function onInit() {
+    console.log('onInit')
     const frameDocument = await getFrameDocument()
 
     initializeResponsive()
@@ -330,15 +293,7 @@ async function onInit() {
     initializeActions(document)
     initializeSortable(frameDocument)
     
-    window.initPluginActions(frameDocument)
+    initPluginActions(frameDocument)
 
     frameDocument.body.classList.add('f-edit-content')
 }
-
-document.addEventListener('fluentcms:afterenhanced', () => {
-    onInit()
-})
-
-document.addEventListener('fluentcms:init', () => {
-    onInit()
-})

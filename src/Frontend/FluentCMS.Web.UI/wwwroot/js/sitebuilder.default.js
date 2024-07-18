@@ -1,4 +1,5 @@
-﻿function onEditButtonClicked() {
+﻿import {initPluginActions} from './plugin-actions.js'
+function onEditButtonClicked() {
     window.location.href = window.location.href + '?pageEdit=true'
 }
 function onEditContentButtonClicked() {
@@ -10,7 +11,7 @@ function init() {
         editButton.addEventListener('click', onEditButtonClicked)    
         editContentButton.addEventListener('click', onEditContentButtonClicked)    
     }
-    window.initPluginActions(document)
+    initPluginActions(document)
 }
 
 function destroy () {

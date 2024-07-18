@@ -1,4 +1,4 @@
-function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 480, breakpointLg = 992} = {}) {
+export function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 480, breakpointLg = 992} = {}) {
     let windowWidth = window.innerWidth;
     let oneColWidth = element.clientWidth / 12;
 

@@ -2,7 +2,7 @@
 
 public interface IPluginService : IAutoRegisterService
 {
-    Task<IEnumerable<Plugin>> GetByPageId(Guid pageId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Plugin>> GetByColumnId(Guid columnId, CancellationToken cancellationToken = default);
     Task<Plugin> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<Plugin> Create(Plugin plugin, CancellationToken cancellationToken = default);
     Task<Plugin> Update(Plugin plugin, CancellationToken cancellationToken = default);
@@ -30,9 +30,9 @@ public class PluginService(IPluginRepository pluginRepository) : IPluginService
             throw new AppException(ExceptionCodes.PluginNotFound);
     }
 
-    public async Task<IEnumerable<Plugin>> GetByPageId(Guid pageId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Plugin>> GetByColumnId(Guid columnId, CancellationToken cancellationToken = default)
     {
-        return await pluginRepository.GetByPageId(pageId, cancellationToken);
+        return await pluginRepository.GetByColumnId(columnId, cancellationToken);
     }
 
     public async Task<Plugin> Update(Plugin plugin, CancellationToken cancellationToken = default)

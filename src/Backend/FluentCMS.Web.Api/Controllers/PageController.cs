@@ -110,23 +110,42 @@ public class PageController(
 
         var layoutId = page.LayoutId ?? site.LayoutId;
         var layout = await layoutService.GetById(layoutId, cancellationToken);
-        var plugins = await pluginService.GetByPageId(page.Id, cancellationToken);
+        // var plugins = await pluginService.GetByPageId(page.Id, cancellationToken);
+        var sections = await pageService.GetSectionsByPageId(page.Id, cancellationToken);
+        var mappedSections = mapper.Map<List<PageSectionDetailResponse>>(sections);
 
+        
         var pageResponse = mapper.Map<PageFullDetailResponse>(page);
         pageResponse.Site = mapper.Map<SiteDetailResponse>(site);
         pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
+        pageResponse.Sections = mappedSections;
         pageResponse.FullPath = path;
-        pageResponse.Sections = [];
 
-        foreach (var plugin in plugins)
+        foreach (var section in mappedSections)
         {
-            if (!pageResponse.Sections.ContainsKey(plugin.Section))
-                pageResponse.Sections.Add(plugin.Section, []);
+            var rows = await pageService.GetRowsBySectionId(section.Id, cancellationToken);
+            var mappedRows = mapper.Map<List<PageRowDetailResponse>>(rows);
 
-            var pluginResponse = mapper.Map<PluginDetailResponse>(plugin);
-            pluginResponse.Definition = mapper.Map<PluginDefinitionDetailResponse>(pluginDefinitions[plugin.DefinitionId]);
-            pageResponse.Sections[plugin.Section].Add(pluginResponse);
+            foreach (var row in mappedRows)
+            {
+                var columns = await pageService.GetColumnsByRowId(row.Id, cancellationToken);
+                row.Columns = mapper.Map<List<PageColumnDetailResponse>>(columns);
+            }
+            section.Rows = mappedRows;
         }
+        // page.Sections = mapper.Map<List<PageSectionDetailResponse>>(sections);
+
+        // pageResponse.Sections = [];
+
+        // foreach (var plugin in plugins)
+        // {
+        //     if (!pageResponse.Sections.ContainsKey(plugin.Section))
+        //         pageResponse.Sections.Add(plugin.Section, []);
+
+        //     var pluginResponse = mapper.Map<PluginDetailResponse>(plugin);
+        //     pluginResponse.Definition = mapper.Map<PluginDefinitionDetailResponse>(pluginDefinitions[plugin.DefinitionId]);
+        //     pageResponse.Sections[plugin.Section].Add(pluginResponse);
+        // }
 
         return Ok(pageResponse);
     }

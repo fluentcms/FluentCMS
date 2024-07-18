@@ -33,6 +33,9 @@ public class MappingProfile : Profile
         CreateMap<PageUpdateRequest, Page>();
         CreateMap<Page, PageDetailResponse>();
         CreateMap<Page, PageFullDetailResponse>();
+        CreateMap<PageSection, PageSectionDetailResponse>();
+        CreateMap<PageRow, PageRowDetailResponse>();
+        CreateMap<PageColumn, PageColumnDetailResponse>();
 
         #endregion
 

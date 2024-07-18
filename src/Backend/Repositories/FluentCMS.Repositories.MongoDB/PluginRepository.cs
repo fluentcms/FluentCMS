@@ -6,11 +6,11 @@ public class PluginRepository : SiteAssociatedRepository<Plugin>, IPluginReposit
     {
     }
 
-    public async Task<IEnumerable<Plugin>> GetByPageId(Guid pageId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Plugin>> GetByColumnId(Guid columnId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var filter = Builders<Plugin>.Filter.Eq(x => x.PageId, pageId);
+        var filter = Builders<Plugin>.Filter.Eq(x => x.ColumnId, columnId);
         var result = await Collection.FindAsync(filter, cancellationToken: cancellationToken);
         return await result.ToListAsync(cancellationToken);
     }

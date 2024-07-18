@@ -4,6 +4,9 @@ public interface IPageService : IAutoRegisterService
 {
     Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     Task<Page> GetById(Guid id, CancellationToken cancellationToken = default);
+    Task<IEnumerable<PageSection>> GetSectionsByPageId(Guid pageId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<PageRow>> GetRowsBySectionId(Guid sectionId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<PageColumn>> GetColumnsByRowId(Guid rowId, CancellationToken cancellationToken = default);
     Task<Page> GetByPath(Guid siteId, string path, CancellationToken cancellationToken = default);
     Task<Page> Create(Page page, CancellationToken cancellationToken = default);
     Task<Page> Update(Page page, CancellationToken cancellationToken = default);
@@ -12,6 +15,9 @@ public interface IPageService : IAutoRegisterService
 
 public class PageService(
     IPageRepository pageRepository,
+    IPageSectionRepository pageSectionRepository,
+    IPageRowRepository pageRowRepository,
+    IPageColumnRepository pageColumnRepository,
     ISiteRepository siteRepository) : IPageService
 {
 
@@ -40,6 +46,7 @@ public class PageService(
 
     public async Task<Page> Delete(Guid id, CancellationToken cancellationToken = default)
     {
+        // TODO: Delete PageSections, PageRows, PageColumns and all Plugins of this page.
         //fetch original page from db
         var originalPage = await pageRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
@@ -63,6 +70,24 @@ public class PageService(
         return await pageRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
 
+    }
+
+    public async Task<IEnumerable<PageSection>> GetSectionsByPageId(Guid pageId, CancellationToken cancellationToken = default)
+    {
+        return await pageSectionRepository.GetByPageId(pageId, cancellationToken) ?? 
+            throw new AppException(ExceptionCodes.PageNotFound);
+    }
+
+    public async Task<IEnumerable<PageRow>> GetRowsBySectionId(Guid sectionId, CancellationToken cancellationToken = default)
+    {
+        return await pageRowRepository.GetBySectionId(sectionId, cancellationToken) ?? 
+            throw new AppException(ExceptionCodes.PageSectionNotFound);
+    }
+
+    public async Task<IEnumerable<PageColumn>> GetColumnsByRowId(Guid rowId, CancellationToken cancellationToken = default)
+    {
+        return await pageColumnRepository.GetByRowId(rowId, cancellationToken) ?? 
+            throw new AppException(ExceptionCodes.PageSectionNotFound);
     }
 
     public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)

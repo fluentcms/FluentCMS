@@ -6,10 +6,10 @@ public class PluginRepository : SiteAssociatedRepository<Plugin>, IPluginReposit
     {
     }
 
-    public async Task<IEnumerable<Plugin>> GetByPageId(Guid pageId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Plugin>> GetByColumnId(Guid columnId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        return await Collection.Query().Where(x => x.PageId == pageId).ToListAsync();
+        return await Collection.Query().Where(x => x.ColumnId == columnId).ToListAsync();
     }
 }

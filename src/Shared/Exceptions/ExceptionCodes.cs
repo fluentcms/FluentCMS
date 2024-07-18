@@ -138,6 +138,7 @@ public class ExceptionCodes
     public const string PageViewPermissionsAreNotASubsetOfParent = "Page.ViewPermissionsAreNotASubsetOfParent";
     public const string PageSiteIdCannotBeChanged = "Page.SiteIdCannotBeChanged";
     public const string PageHasChildren = "Page.PageHasChildren";
+    public const string PageSectionNotFound = "Page.SectionNotFound";
 
     #endregion
 

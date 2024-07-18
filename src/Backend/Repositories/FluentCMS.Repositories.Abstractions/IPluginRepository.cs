@@ -2,5 +2,5 @@
 
 public interface IPluginRepository : IAuditableEntityRepository<Plugin>
 {
-    Task<IEnumerable<Plugin>> GetByPageId(Guid pageId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Plugin>> GetByColumnId(Guid columnId, CancellationToken cancellationToken = default);
 }
