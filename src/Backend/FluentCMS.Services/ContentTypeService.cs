@@ -88,14 +88,14 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
             throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);
     }
 
-    public async Task<ContentType> DeleteField(Guid contentTypeId, string fieldName, CancellationToken cancellationToken = default)
+    public async Task<ContentType> DeleteField(Guid contentTypeId, string name, CancellationToken cancellationToken = default)
     {
         // load the content type
         var contentType = await contentTypeRepository.GetById(contentTypeId, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeNotFound);
 
         // check the field exists
-        var original = contentType.Fields.FirstOrDefault(f => f.Name == fieldName) ??
+        var original = contentType.Fields.FirstOrDefault(f => f.Name == name) ??
             throw new AppException(ExceptionCodes.ContentTypeFieldNotFound);
 
         // remove the field

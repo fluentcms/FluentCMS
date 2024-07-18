@@ -32,13 +32,6 @@ public static class SwaggerServiceExtensions
             });
 
             c.OrderActionsBy((apiDesc) => $"{apiDesc.ActionDescriptor.RouteValues["controller"]}");
-
-            //// Include XML comments if available
-            //var xmlFilename = $"{typeof(FluentCMS.Web.Api.Controllers.BaseController).Assembly.GetName().Name}.xml";
-            //c.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
-
-            //var xmlEntityFilename = $"{typeof(FluentCMS.Entities.AuditableEntity).Assembly.GetName().Name}.xml";
-            //c.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlEntityFilename));
         });
 
         return services;

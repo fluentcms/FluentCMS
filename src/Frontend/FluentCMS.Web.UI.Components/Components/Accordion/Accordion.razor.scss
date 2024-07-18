@@ -25,6 +25,7 @@ $accordion: $prefix + "accordion";
         .#{$accordion}-content {
             @apply border-0 border-t;
         }
+
         .#{$accordion}-toggler {
             @apply border-0;
         }

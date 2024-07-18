@@ -6,6 +6,9 @@ public partial class PluginBody
     public RenderFragment? ActionsFragment { get; set; }
 
     [Parameter]
+    public RenderFragment? SubtitleFragment { get; set; }
+
+    [Parameter]
     public string? Title { get; set; }
 
     [Parameter]

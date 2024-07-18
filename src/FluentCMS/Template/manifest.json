@@ -538,6 +538,7 @@
                 {
                     "Title": "Login",
                     "Path": "/login",
+                    "Locked": true,
                     "Layout": "AuthLayout",
                     "Plugins": [
                         {
@@ -549,6 +550,7 @@
                 {
                     "Title": "Logout",
                     "Path": "/logout",
+                    "Locked": true,
                     "Plugins": [
                         {
                             "Definition": "Logout",
@@ -559,6 +561,7 @@
                 {
                     "Title": "Register",
                     "Path": "/register",
+                    "Locked": true,
                     "Layout": "AuthLayout",
                     "Plugins": [
                         {
@@ -570,6 +573,7 @@
                 {
                     "Title": "Reset Password",
                     "Path": "/reset-password",
+                    "Locked": true,
                     "Layout": "AuthLayout",
                     "Plugins": [
                         {
@@ -581,6 +585,7 @@
                 {
                     "Title": "Forgot Password",
                     "Path": "/forgot-password",
+                    "Locked": true,
                     "Layout": "AuthLayout",
                     "Plugins": [
                         {
@@ -593,6 +598,7 @@
                     "Title": "Profile",
                     "Path": "/profile",
                     "Layout": "AdminLayout",
+                    "Locked": true,
                     "Plugins": [
                         {
                             "Definition": "Profile",

@@ -35,8 +35,6 @@ setup.Reset().ConfigureAwait(false).GetAwaiter().GetResult();
 
 app.UseHttpsRedirection();
 
-//app.UseDefaultFiles();
-
 app.UseStaticFiles();
 
 app.UseApiService();
