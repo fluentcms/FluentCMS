@@ -5053,30 +5053,30 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageSectionDetailResponseIApiResult> CreateSectionAsync(PageSectionCreateRequest body);
+        System.Threading.Tasks.Task<PageSectionDetailResponseIApiResult> CreateSectionAsync(PageSectionCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageSectionDetailResponseIApiResult> CreateSectionAsync(PageSectionCreateRequest body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PageSectionDetailResponseIApiResult> CreateSectionAsync(PageSectionCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageRowDetailResponseIApiResult> CreateRowAsync(PageRowCreateRequest body);
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageRowDetailResponseIApiResult> CreateRowAsync(PageRowCreateRequest body, System.Threading.CancellationToken cancellationToken);
-
-        /// <returns>OK</returns>
-        /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageColumnDetailResponseIApiResult> CreateColumnAsync(PageColumnCreateRequest body);
+        System.Threading.Tasks.Task<PageRowDetailResponseIApiResult> CreateRowAsync(PageRowCreateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageColumnDetailResponseIApiResult> CreateColumnAsync(PageColumnCreateRequest body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PageRowDetailResponseIApiResult> CreateRowAsync(PageRowCreateRequest? body, System.Threading.CancellationToken cancellationToken);
+
+        /// <returns>OK</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<PageColumnDetailResponseIApiResult> CreateColumnAsync(PageColumnCreateRequest? body);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<PageColumnDetailResponseIApiResult> CreateColumnAsync(PageColumnCreateRequest? body, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -5095,7 +5095,6 @@ namespace FluentCMS.Web.ApiClients
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<PageColumnDetailResponseIApiResult> UpdateColumnAsync(PageColumnUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
-
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -5467,7 +5466,6 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PageSectionDetailResponseIApiResult> CreateSectionAsync(PageSectionCreateRequest? body)
@@ -5495,7 +5493,7 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/Page/Create"
+                    // Operation Path: "api/Page/CreateSection"
                     urlBuilder_.Append("api/Page/CreateSection");
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -5550,8 +5548,6 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-
-
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PageRowDetailResponseIApiResult> CreateRowAsync(PageRowCreateRequest? body)
@@ -5579,7 +5575,7 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/Page/Create"
+                    // Operation Path: "api/Page/CreateRow"
                     urlBuilder_.Append("api/Page/CreateRow");
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -5634,7 +5630,6 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PageColumnDetailResponseIApiResult> CreateColumnAsync(PageColumnCreateRequest? body)
@@ -5662,7 +5657,7 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/Page/Create"
+                    // Operation Path: "api/Page/CreateColumn"
                     urlBuilder_.Append("api/Page/CreateColumn");
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -5716,8 +5711,6 @@ namespace FluentCMS.Web.ApiClients
                     client_.Dispose();
             }
         }
-
-
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -5801,7 +5794,6 @@ namespace FluentCMS.Web.ApiClients
             }
         }
 
-
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<PageColumnDetailResponseIApiResult> UpdateColumnAsync(PageColumnUpdateRequest? body)
@@ -5829,7 +5821,7 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/Page/Update"
+                    // Operation Path: "api/Page/UpdateColumn"
                     urlBuilder_.Append("api/Page/UpdateColumn");
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -5883,7 +5875,6 @@ namespace FluentCMS.Web.ApiClients
                     client_.Dispose();
             }
         }
-
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -10892,6 +10883,21 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PageColumnCreateRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("rowId")]
+        public System.Guid RowId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("order")]
+        public int Order { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("styles")]
+        public System.Collections.Generic.Dictionary<string, string>? Styles { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageColumnDetailResponse
     {
 
@@ -10931,6 +10937,54 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PageColumnDetailResponseIApiResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+        public string? TraceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        public string? SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+        public string? UniqueId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+        public double Duration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public int Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
+        public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public PageColumnDetailResponse Data { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PageColumnUpdateRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("rowId")]
+        public System.Guid RowId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("order")]
+        public int Order { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("styles")]
+        public System.Collections.Generic.Dictionary<string, string>? Styles { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid Id { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageCreateRequest
     {
 
@@ -10949,46 +11003,6 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("order")]
         public int Order { get; set; } = default!;
 
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class PageSectionCreateRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("pageId")]
-        public System.Guid PageId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("order")]
-        public int Order { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("styles")]
-        public Dictionary<string, string> Styles { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class PageRowCreateRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("sectionId")]
-        public System.Guid SectionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("order")]
-        public int Order { get; set; } = default!;
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class PageColumnCreateRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("rowId")]
-        public System.Guid RowId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("order")]
-        public int Order { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("styles")]
-        public Dictionary<string, string> Styles { get; set; } = default!;
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -11115,97 +11129,6 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class PageSectionDetailResponseIApiResult
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
-        public string? UniqueId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
-        public bool IsSuccess { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public PageSectionDetailResponse Data { get; set; } = default!;
-
-    }
-
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class PageRowDetailResponseIApiResult
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
-        public string? UniqueId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
-        public bool IsSuccess { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public PageRowDetailResponse Data { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class PageColumnDetailResponseIApiResult
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("errors")]
-        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
-        public string? TraceId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
-        public string? SessionId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
-        public string? UniqueId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("duration")]
-        public double Duration { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
-        public bool IsSuccess { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("data")]
-        public PageColumnDetailResponse Data { get; set; } = default!;
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageFullDetailResponse
     {
 
@@ -11287,6 +11210,18 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PageRowCreateRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sectionId")]
+        public System.Guid SectionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("order")]
+        public int Order { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageRowDetailResponse
     {
 
@@ -11322,6 +11257,51 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("columns")]
         public System.Collections.Generic.ICollection<PageColumnDetailResponse>? Columns { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PageRowDetailResponseIApiResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+        public string? TraceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        public string? SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+        public string? UniqueId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+        public double Duration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public int Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
+        public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public PageRowDetailResponse Data { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PageSectionCreateRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageId")]
+        public System.Guid PageId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("order")]
+        public int Order { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("styles")]
+        public System.Collections.Generic.Dictionary<string, string>? Styles { get; set; } = default!;
 
     }
 
@@ -11365,6 +11345,36 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PageSectionDetailResponseIApiResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("errors")]
+        public System.Collections.Generic.ICollection<AppError>? Errors { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("traceId")]
+        public string? TraceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        public string? SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("uniqueId")]
+        public string? UniqueId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("duration")]
+        public double Duration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public int Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuccess")]
+        public bool IsSuccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("data")]
+        public PageSectionDetailResponse Data { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageUpdateRequest
     {
 
@@ -11387,28 +11397,6 @@ namespace FluentCMS.Web.ApiClients
         public System.Guid Id { get; set; } = default!;
 
     }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class PageColumnUpdateRequest
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("rowId")]
-        public System.Guid RowId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("parentId")]
-        public System.Guid? ParentId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("styles")]
-        public Dictionary<string, string>? Styles { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("order")]
-        public int Order { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid Id { get; set; } = default!;
-
-    }
-
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginContentDetailResponse
