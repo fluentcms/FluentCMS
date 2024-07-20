@@ -1,16 +1,71 @@
-﻿@if (ViewState.Type == ViewStateType.Default || ViewState.Type == ViewStateType.PagePreview)
-{
-    <div class="f-section f-section-row" data-name="@Name">
-        @foreach (var Plugin in ViewState.Plugins.Where(x => x.Section.ToLower() == Name.ToLower()).OrderBy(p => p.Order))
+﻿<div class="f-section-root">
+    @if (ViewState.Type == ViewStateType.Default || ViewState.Type == ViewStateType.PagePreview)
+    {
+        var sectionIndex = 0;
+        @foreach (var Section in ViewState.Sections)
         {
-            <PluginContainer @key="@Plugin" Plugin=@Plugin SectionName=@Name />
-        }
-    </div>
-}
+            sectionIndex += 1;
+            <div class="f-section" id="section-@Section.Id" data-full-width="@IsFullWidth(Section.Styles)" style="@GetStyles(Section.Styles)">
+                <div class="f-section-actions">
+                    <button>Delete</button>
+                    <button>Move</button>
+                    <button>ToggleFullWidth</button>
+                </div>
+                @foreach (var Row in Section.Rows)
+                {
+                    <div class="f-row" id="row-@Row.Id" style="@GetStyles(Row.Styles)">
+                        @{var index = 0;}
+                        @foreach (var Column in Row.Columns)
+                        {
+                            index += 1;
 
-@if (ViewState.Type == ViewStateType.PluginEdit && Name.ToLower() == "main")
-{
-    <div class="f-section" data-name="@Name">
-        <PluginContainer Plugin=@ViewState.Plugin SectionName=@Name />
-    </div>
-}
+                            <div class="f-column" id="column-@Column.Id" data-cols="@GetStyleValue(Column.Styles, "Cols")"  data-cols-sm="@GetStyleValue(Column.Styles, "ColsSm")"  data-cols-md="@GetStyleValue(Column.Styles, "ColsMd")"  data-cols-lg="@GetStyleValue(Column.Styles, "ColsLg")" style="@GetStyles(Column.Styles)">
+                                <div class="f-column-actions">
+                                    <button>Delete</button>
+                                    <button>Move</button>
+                                    <button>...</button>
+                                </div>
+                                @foreach (var Plugin in Column.Plugins.OrderBy(p => p.Order))
+                                {
+                                    <PluginContainer @key="@Plugin" Plugin=@Plugin />
+                                }
+                                @if (Column.Plugins.Count == 0)
+                                {
+                                    <div data-action="add-plugin" class="f-column-empty-add-plugin-button">
+                                        <span>(ICON)</span>
+                                        <span>Click to add Plugin</span>
+                                    </div>
+                                }
+                                <div data-action="add-column" data-row-id="@Row.Id" data-mode="4" data-order="@index" class="f-add-column"></div>
+                            </div>
+                        }
+                           
+                        @if (Row.Columns.Count == 0)
+                        {
+                            <div class="f-column-empty-wrapper">
+                                <button data-action="add-column" data-mode="1" data-row-id="@Row.Id" class="f-column-empty-add-button">1 Column</button>
+                                <button data-action="add-column" data-mode="2" data-row-id="@Row.Id" class="f-column-empty-add-button">2 Columns</button>
+                                <button data-action="add-column" data-mode="3" data-row-id="@Row.Id" class="f-column-empty-add-button">3 Columns</button>
+                            </div>
+                        }
+                    </div>
+                }
+                <div data-action="add-section" data-order="@sectionIndex" class="f-add-section"></div>
+
+            </div>
+        }
+            
+            
+        @if (ViewState.Sections.Count == 0)
+        {
+            <button data-action="add-section" class="f-section-empty-add-button">Add Section</button>
+        }
+    }
+
+    @if (ViewState.Type == ViewStateType.PluginEdit)
+    {
+        <div class="f-section">
+            <PluginContainer Plugin=@ViewState.Plugin />
+        </div>
+    }
+</div>

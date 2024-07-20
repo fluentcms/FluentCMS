@@ -1,4 +1,7 @@
+@import './base.css';
 @import './plugin-actions.css';
+@import './toolbar.css';
+
 
 .f-edit-button {
     position: fixed;

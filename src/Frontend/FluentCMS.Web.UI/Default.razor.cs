@@ -58,7 +58,7 @@ public partial class Default : IDisposable
             { "user", ViewState.User },
             { "site", ViewState.Site },
             { "page", ViewState.Page },
-            { "plugins", ViewState.Plugins }
+            // { "plugins", ViewState.Plugins }
         };
 
         var segments = LayoutProcessor.ProcessSegments(content, parameters);

@@ -64,6 +64,36 @@ public class PageController(
         return Ok(pageResponse);
     }
 
+    [HttpPost]
+    [Policy(AREA, CREATE)]
+    public async Task<IApiResult<PageSectionDetailResponse>> CreateSection(PageSectionCreateRequest request, CancellationToken cancellationToken = default)
+    {
+        var entity = mapper.Map<PageSection>(request);
+        var newEntity = await pageService.CreateSection(entity);
+        var response = mapper.Map<PageSectionDetailResponse>(newEntity);
+        return Ok(response);
+    }
+
+    [HttpPost]
+    [Policy(AREA, CREATE)]
+    public async Task<IApiResult<PageRowDetailResponse>> CreateRow(PageRowCreateRequest request, CancellationToken cancellationToken = default)
+    {
+        var entity = mapper.Map<PageRow>(request);
+        var newEntity = await pageService.CreateRow(entity);
+        var response = mapper.Map<PageRowDetailResponse>(newEntity);
+        return Ok(response);
+    }
+
+    [HttpPost]
+    [Policy(AREA, CREATE)]
+    public async Task<IApiResult<PageColumnDetailResponse>> CreateColumn(PageColumnCreateRequest request, CancellationToken cancellationToken = default)
+    {
+        var entity = mapper.Map<PageColumn>(request);
+        var newEntity = await pageService.CreateColumn(entity);
+        var response = mapper.Map<PageColumnDetailResponse>(newEntity);
+        return Ok(response);
+    }
+
     [HttpPut]
     [Policy(AREA, UPDATE)]
     public async Task<IApiResult<PageDetailResponse>> Update(PageUpdateRequest request, CancellationToken cancellationToken = default)
@@ -71,6 +101,16 @@ public class PageController(
         var entity = mapper.Map<Page>(request);
         var updatedEntity = await pageService.Update(entity, cancellationToken);
         var entityResponse = mapper.Map<PageDetailResponse>(updatedEntity);
+        return Ok(entityResponse);
+    }
+
+    [HttpPut]
+    [Policy(AREA, UPDATE)]
+    public async Task<IApiResult<PageColumnDetailResponse>> UpdateColumn(PageColumnUpdateRequest request, CancellationToken cancellationToken = default)
+    {
+        var entity = mapper.Map<PageColumn>(request);
+        var updatedEntity = await pageService.UpdateColumn(entity, cancellationToken);
+        var entityResponse = mapper.Map<PageColumnDetailResponse>(updatedEntity);
         return Ok(entityResponse);
     }
 
@@ -129,7 +169,22 @@ public class PageController(
             foreach (var row in mappedRows)
             {
                 var columns = await pageService.GetColumnsByRowId(row.Id, cancellationToken);
-                row.Columns = mapper.Map<List<PageColumnDetailResponse>>(columns);
+                var mappedColumns = mapper.Map<List<PageColumnDetailResponse>>(columns);
+
+                foreach (var column in mappedColumns)
+                {
+                    var plugins = await pluginService.GetByColumnId(column.Id);
+                    var mappedPlugins = mapper.Map<List<PluginDetailResponse>>(plugins);
+                    
+                    foreach (var plugin in mappedPlugins)
+                    {
+                        // Definition
+                        plugin.Definition = mapper.Map<PluginDefinitionDetailResponse>(await pluginDefinitionService.GetById(plugin.DefinitionId));
+                    }
+
+                    column.Plugins = mappedPlugins;
+                }
+                row.Columns = mappedColumns;
             }
             section.Rows = mappedRows;
         }

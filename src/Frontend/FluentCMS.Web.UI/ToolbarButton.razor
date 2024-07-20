@@ -1,0 +1,24 @@
+@if (!string.IsNullOrEmpty(Href))
+{
+    <a href="@Href" @attributes="AdditionalAttributes" class="f-toolbar-button">
+        @ChildContent
+    </a>
+}
+else 
+{
+    <button @attributes="AdditionalAttributes" class="f-toolbar-button">
+        @ChildContent
+    </button>
+}
+
+
+@code {
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object> AdditionalAttributes { get; set; } = [];
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    [Parameter]
+    public string Href { get; set; } = default!;
+}

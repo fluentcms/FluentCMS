@@ -1,10 +1,198 @@
+@import './base.css';
 @import './plugin-actions.css';
 @import './columns.editor.css';
 @import './columns.css';
-/* <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/plugin-actions.css"> */
+
 /* <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.preview.css"> */
-/* <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.editor.css"> */
-/* <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.css"> */
+
+.f-section {
+    padding-top: 2rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+
+.f-section-root {
+    min-height: 200px;
+    /* border: 1px solid red; */
+    position: relative;
+}
+
+.f-section-add-button {
+    position: absolute;
+    height: 64px;
+    bottom: -32px;
+    /* background-color: #3979da; */
+    width: 100%;
+}
+
+.f-section-add-button::after {
+    content: '';
+    position: absolute;
+    opacity: 0;
+    bottom: 0;
+    background-color: #3979da;
+    height: 32px;
+    width: 32px;
+    left: 50%;
+    right: 50%;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.f-section-add-button:hover::after {
+    opacity: 1;
+}
+
+.f-section:not([data-full-width]) .f-row {
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.f-section-root:has(.f-section-empty-add-button) {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+}
+
+.f-section-empty-add-button {
+    background-color: #3979da;
+    color: white;
+    padding: 8px 32px;
+    border-radius: 4px;
+    border: none;
+}
+
+.f-section {
+    position: relative;
+}
+
+.f-section-actions {
+    display: flex;
+    position: absolute;
+    opacity: 0;
+    transition: all 0.3s ease;
+    top: 0;
+    right: 0;
+    background-color: #2032ff;
+}
+.f-section:hover .f-section-actions {
+    opacity: 1;
+}
+
+
+.f-add-section {
+    opacity: 0;
+    left: 0;
+    position: absolute;
+    height: 32px;
+    width: 100%;
+    bottom: -32px;
+}
+.f-section:hover .f-add-section {
+    opacity: 1;
+}
+.f-add-section::before {
+    z-index: 10;
+    content: '+';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    width: 32px;
+    height: 32px;
+    background-color: #2032ff;
+    color: white;
+    position: absolute;
+    left: 50%;
+    right: 50%;
+    bottom: 0;
+    border-radius: 16px;
+    transform: translate(-50%, -50%);
+}
+
+.f-column-empty-wrapper {
+    width: 100%;
+    padding-top: 50px;
+    padding-bottom: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+}
+
+.f-column-empty-add-button {
+    width: calc(100% / 6);
+    height: 80px;
+    border: 1px solid blue;
+    border-radius: 8px;
+}
+
+.f-row {
+    box-shadow: 0 0 1px 0 black;
+}
+
+.f-column {
+    position: relative;
+    min-height: 100px;
+    border: 1px dashed #c9c9c9; 
+}
+
+.f-column:hover {
+    border: 1px solid #999999; 
+}
+.f-column-actions {
+    opacity: 0;
+    transition: all 0.3s ease;
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-color: #2032ff;
+}
+.f-column:hover .f-column-actions {
+    opacity: 1;
+}
+
+.f-column-empty-add-plugin-button {
+    min-height: 100px;
+    padding: 50px;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
+}
+
+.f-add-column {
+    opacity: 0;
+    position: absolute;
+    width: 32px;
+    height: 100%;
+    right: -32px;
+    top: 0;
+}
+.f-column:hover .f-add-column {
+    opacity: 1;
+}
+.f-add-column::before {
+    z-index: 10;
+    content: '+';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+    background-color: #2032ff;
+    color: white;
+    position: absolute;
+    /* top: 50%; */
+    bottom: 0;
+    border-radius: 16px;
+    transform: translate(-50%, -50%);
+    right: 8px;
+}
 
 .f-plugin-container {
     position: relative;
@@ -96,7 +284,7 @@
     min-height: 100px;
     /* background-color: #ffffff; */
     border: 1px solid rgba(95, 95, 95, 0.486);
-    padding: 2rem 0.5rem 0.5rem 0.5rem;
+    /* padding: 2rem 0.5rem 0.5rem 0.5rem; */
 }
 .f-section:hover {
     /* background-color: #ffffff; */

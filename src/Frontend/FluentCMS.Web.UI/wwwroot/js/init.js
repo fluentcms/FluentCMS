@@ -90,62 +90,6 @@ function save() {
     })
 }
 
-const actions = {
-    'cancel-edit-mode'() {
-        actions["hide-sidebar"]()
-        window.location.href = window.location.href.replace('?pageEdit=true', '')
-    },
-    // 'save-edit-mode'() {
-    //     // actions["hide-sidebar"]()
-    //     save()
-    // },
-    'responsive-mobile'() {
-        updateResponsive('mobile')
-    },
-    'responsive-tablet'() {
-        updateResponsive('tablet')
-    },
-    'responsive-laptop'() {
-        updateResponsive('laptop')
-    },
-    'responsive-large'() {
-        updateResponsive('large')
-    },
-    'plugin-container-action-delete'(el) {
-        const id = el.parentElement.parentElement.dataset.id
-
-        if(id == '00000000-0000-0000-0000-000000000000') {
-            el.parentElement.parentElement.remove()
-        } else {
-            el.parentElement.parentElement.dataset.deleted = true
-            el.parentElement.parentElement.classList.add('f-hidden')
-        }
-    },
-    'show-sidebar'() {
-        pageEditorElement.classList.remove('f-page-editor-sidebar-close')
-        pageEditorElement.classList.add('f-page-editor-sidebar-open')
-        setTimeout(() => {
-            updateResizerPosition()
-        }, 300)
-    },
-    'hide-sidebar'() {
-        pageEditorElement.classList.add('f-page-editor-sidebar-close')
-        pageEditorElement.classList.remove('f-page-editor-sidebar-open')
-        setTimeout(() => {
-            updateResizerPosition()
-        }, 300)
-    }
-}
-
-function initializeActions(element) {
-    element.querySelectorAll('[data-action]').forEach(action => {
-        action.addEventListener('click', () => {
-            actions[action.dataset.action](action)
-        })
-    })
-    initPluginActions(element)
-}
-
 function submitForm(form, data) {
     for(let key in data) {
         form.querySelector(`[name="${key}"]`).value = data[key]
@@ -283,16 +227,200 @@ function createPlugin({definitionId, sectionName, index, item}) {
     })
 }
 
+function parseStyles(styleStr, dataset) {
+    let object = {}
+    let stylesSplitted = styleStr.split(';').filter(Boolean);
+    console.log({stylesSplitted})
+
+    for(let style in stylesSplitted) {
+        const [key, value] = style.split(':').map(x => x.trim());
+        console.log({key , value})
+        object[key] = value
+    }
+
+    console.log({dataset})
+    for(let key in dataset) {
+        object[key[0].toUpperCase() + key.slice(1)] = dataset[key]
+    }
+
+    console.log(object)
+    return object
+}
+
+async function saveColumns() {
+    console.log('saveColumns')
+    let columns = {}
+    iframeElement.contentDocument.querySelectorAll('.f-row').forEach(row => {
+        // columns[el.id.replace('column-', '')] = el.dataset
+        let colIndex = 0 
+        row.querySelectorAll('.f-column').forEach(el => {
+            const key = el.id.replace('column-', '')
+            columns[key] = {}
+            columns[key].dataset = el.dataset
+            columns[key].order = colIndex++;
+            columns[key].rowId = row.id.replace('row-', '');
+            columns[key].style = el.getAttribute('style') ?? '';
+        })
+    
+    })
+
+    let requestBody = {
+        '_handler': "ColumnUpdateForm",
+    }
+
+    let index = 0;
+    for(let id in columns) {
+        const column = columns[id]
+        requestBody[`ColumnUpdateModel.Columns[${index}].Id`] = id
+        requestBody[`ColumnUpdateModel.Columns[${index}].Order`] = column.order
+        requestBody[`ColumnUpdateModel.Columns[${index}].RowId`] = column.rowId
+        const styles = parseStyles(column.style, column.dataset)
+
+        for(let key in styles) {
+            requestBody[`ColumnUpdateModel.Columns[${index}].Styles[${key}]`] = styles[key] 
+        }
+
+        index++;
+    }
+    await request(requestBody)
+    // alert(JSON.stringify(columns))
+    // Order based on index
+    
+}
+
+
+async function request(values) {
+    const url = window.location.href
+    const body = new FormData()
+            
+    // body.set('_handler', 'UpdatePluginForm');
+    body.set('__RequestVerificationToken', document.querySelector('[name="__RequestVerificationToken"]').value)
+
+    for(let key in values) {
+        body.set(key, values[key])
+    }
+
+    await fetch(url, {
+        method: 'POST',
+        body
+    }).then(res => {
+        res.text()
+    }).then(res => {
+        console.log(res)
+    });
+
+    // update iframe content
+    console.log(iframeElement.contentDocument.body)
+    const response = await fetch(url.replace('pageEdit', 'pagePreview')).then(res => res.text())
+    iframeElement.contentDocument.documentElement.innerHTML = response
+    setTimeout(() => {
+        initializeActions(iframeElement.contentDocument)
+        initializeColumns()
+    })
+}
+
+function initializeColumns() {
+    iframeElement.contentWindow.initializeColumns({
+        onResize: () => {
+            saveColumns()
+        }
+    })
+}
+async function onAddSection(el) {
+    // console.log('add section')
+    await request({
+        '_handler': "AddSectionForm",
+        'AddSectionModel.Submitted': true,
+        'AddSectionModel.Order': el.dataset.order ?? 0
+    })
+    
+}
+
+async function onAddColumn(el) {
+    await request({
+        '_handler': "AddColumnForm",
+        'AddColumnModel.Submitted': true,
+        'AddColumnModel.Mode': el.dataset.mode,
+        'AddColumnModel.Order': el.dataset.order ?? 0,
+        'AddColumnModel.RowId': el.dataset.rowId,
+    })   
+}
+
+async function onAddPlugin(el) {
+    console.log('should open plugins sidebar')
+
+}
+
+const actions = {
+    'add-section': onAddSection,
+    'add-column': onAddColumn,
+    'add-plugin': onAddPlugin
+    // 'cancel-edit-mode'() {
+    //     actions["hide-sidebar"]()
+    //     window.location.href = window.location.href.replace('?pageEdit=true', '')
+    // },
+    // 'save-edit-mode'() {
+    //     // actions["hide-sidebar"]()
+    //     save()
+    // },
+    // 'responsive-mobile'() {
+    //     updateResponsive('mobile')
+    // },
+    // 'responsive-tablet'() {
+    //     updateResponsive('tablet')
+    // },
+    // 'responsive-laptop'() {
+    //     updateResponsive('laptop')
+    // },
+    // 'responsive-large'() {
+    //     updateResponsive('large')
+    // },
+    // 'plugin-container-action-delete'(el) {
+    //     const id = el.parentElement.parentElement.dataset.id
+
+    //     if(id == '00000000-0000-0000-0000-000000000000') {
+    //         el.parentElement.parentElement.remove()
+    //     } else {
+    //         el.parentElement.parentElement.dataset.deleted = true
+    //         el.parentElement.parentElement.classList.add('f-hidden')
+    //     }
+    // },
+    // 'show-sidebar'() {
+    //     pageEditorElement.classList.remove('f-page-editor-sidebar-close')
+    //     pageEditorElement.classList.add('f-page-editor-sidebar-open')
+    //     setTimeout(() => {
+    //         updateResizerPosition()
+    //     }, 300)
+    // },
+    // 'hide-sidebar'() {
+    //     pageEditorElement.classList.add('f-page-editor-sidebar-close')
+    //     pageEditorElement.classList.remove('f-page-editor-sidebar-open')
+    //     setTimeout(() => {
+    //         updateResizerPosition()
+    //     }, 300)
+    // }
+}
+
+function initializeActions(element) {
+    element.querySelectorAll('[data-action]').forEach(action => {
+        action.addEventListener('click', () => {
+            actions[action.dataset.action](action)
+        })
+    })
+    initPluginActions(element)
+}
+
 export async function onInit() {
     console.log('onInit')
     const frameDocument = await getFrameDocument()
 
-    initializeResponsive()
+    // initializeResponsive()
 
     initializeActions(frameDocument)
     initializeActions(document)
     initializeSortable(frameDocument)
-    
+    initializeColumns()
+   
     initPluginActions(frameDocument)
 
     frameDocument.body.classList.add('f-edit-content')

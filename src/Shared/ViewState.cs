@@ -6,7 +6,7 @@ public class ViewState
     public SiteViewState Site { get; set; } = default!;
     public PageViewState Page { get; set; } = default!;
     public LayoutViewState Layout { get; set; } = default!;
-    public List<PluginViewState> Plugins { get; set; } = default!;
+    public List<PageSectionState> Sections { get; set; } = default!;
     public UserViewState User { get; set; } = default!;
     public PluginViewState? Plugin { get; set; }
     public string? PluginViewName { get; set; }
@@ -44,6 +44,27 @@ public class PageViewState
     public string Path { get; set; } = string.Empty;
     public string FullPath { get; set; } = string.Empty;
     public bool Locked { get; set; } = false;
+}
+
+public class PageSectionState
+{
+    public Guid Id { get; set; }
+    public Dictionary<string, string> Styles { get; set; } = [];
+    public List<PageRowState> Rows { get; set; } = [];
+}
+
+public class PageRowState
+{
+    public Guid Id { get; set; }
+    public Dictionary<string, string> Styles { get; set; } = [];
+    public List<PageColumnState> Columns { get; set; } = [];
+}
+
+public class PageColumnState
+{
+    public Guid Id { get; set; }
+    public Dictionary<string, string> Styles { get; set; } = [];
+    public List<PluginViewState> Plugins { get; set; } = [];
 }
 
 public class PluginViewState

@@ -23,7 +23,6 @@ public partial class PluginContainer
     {
         Parameters = new Dictionary<string, object>
         {
-            { "SectionName", SectionName },
             { "Plugin", Plugin }
         };
     }

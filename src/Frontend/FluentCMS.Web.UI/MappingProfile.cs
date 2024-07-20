@@ -12,6 +12,9 @@ public class MappingProfile : Profile
         CreateMap<SiteDetailResponse, SiteViewState>();
         CreateMap<LayoutDetailResponse, LayoutViewState>();
         CreateMap<PluginDetailResponse, PluginViewState>();
+        CreateMap<PageSectionDetailResponse, PageSectionState>();
+        CreateMap<PageRowDetailResponse, PageRowState>();
+        CreateMap<PageColumnDetailResponse, PageColumnState>();
         CreateMap<PluginDefinitionDetailResponse, PluginDefinitionViewState>();
         CreateMap<PluginDefinitionType, PluginDefinitionTypeViewState>();
         CreateMap<UserLoginResponse, UserViewState>();

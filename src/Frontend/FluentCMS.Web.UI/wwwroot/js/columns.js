@@ -1,4 +1,4 @@
-export function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 480, breakpointLg = 992} = {}) {
+export function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 480, breakpointLg = 992, onResize} = {}) {
     let windowWidth = window.innerWidth;
     let oneColWidth = element.clientWidth / 12;
 
@@ -6,6 +6,8 @@ export function Columns(element, {gridLines = true, colClass = 'col', breakpoint
         let resizer;
         let dragging = false
         let x = 0;
+        let field = 'cols'
+        let value = el.dataset[field]
 
         if(isNaN(el.dataset.cols) || el.dataset.cols == 0) {
             el.dataset.cols = 12
@@ -20,17 +22,20 @@ export function Columns(element, {gridLines = true, colClass = 'col', breakpoint
 
         function onMouseMove(event) {
             if(dragging) {
-                let field = 'cols'
+                console.log('onMouseMove')
 
-                if(windowWidth > breakpointLg) {
-                    field = 'colsLg'
-                } else if(windowWidth > breakpointMd) {
-                    field = 'colsMd'
-                }
+
+                // if(windowWidth > breakpointLg) {
+                //     field = 'colsLg'
+                // } else if(windowWidth > breakpointMd) {
+                //     field = 'colsMd'
+                // }
+                // value = el.dataset[field]
 
 
                 const diffLength = event.x - x
                 
+                console.log(diffLength , oneColWidth)
                 if(diffLength < -oneColWidth/2 || diffLength > oneColWidth / 2) {
                     if(el.dataset[field] == 0) {
                         if(field == 'colsLg' && el.dataset['colsMd']) {
@@ -52,6 +57,10 @@ export function Columns(element, {gridLines = true, colClass = 'col', breakpoint
         function onMouseUp(event) {
             resizer.style.right = '-24px'
             dragging = false
+
+            if(onResize && value !== el.dataset[field]) {
+                onResize({field, value})
+            }
 
             element.classList.remove('dragging')
             resizer.classList.remove('dragging')
@@ -93,6 +102,7 @@ export function Columns(element, {gridLines = true, colClass = 'col', breakpoint
     }
 
     function init() {
+        console.log('init')
         if(gridLines) {
             for(let i=0; i<12; i++) {
                 const line = document.createElement('div')
@@ -105,8 +115,12 @@ export function Columns(element, {gridLines = true, colClass = 'col', breakpoint
         element.dataset.columns = ''
         element.classList.add('active')
 
+        console.log('init', element.querySelectorAll('.' + colClass))
+
         element.querySelectorAll('.' + colClass).forEach(el => {
+
             columns.push(initColumn(el))
+            console.log('columns: ', columns)
         })  
         window.addEventListener('resize', updateSize)
     }

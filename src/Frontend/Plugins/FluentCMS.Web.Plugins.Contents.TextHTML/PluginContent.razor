@@ -1,0 +1,22 @@
+<div class="f-plugin-container-content">
+    @ChildContent
+</div>
+
+
+<div data-plugin-id="@Plugin.Id" data-plugin-items-root>
+    @ActionsEnd
+</div>
+
+@code {
+    [Parameter]
+    public PluginViewState Plugin { get; set; } = default!;
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    [Parameter]
+    public RenderFragment ActionsEnd { get; set; } = default!;
+
+    [Parameter]
+    public RenderFragment ActionsStart { get; set; } = default!;
+}

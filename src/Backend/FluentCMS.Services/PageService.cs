@@ -14,6 +14,7 @@ public interface IPageService : IAutoRegisterService
     Task<Page> GetByPath(Guid siteId, string path, CancellationToken cancellationToken = default);
     Task<Page> Create(Page page, CancellationToken cancellationToken = default);
     Task<Page> Update(Page page, CancellationToken cancellationToken = default);
+    Task<PageColumn> UpdateColumn(PageColumn column, CancellationToken cancellationToken = default);
     Task<Page> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
@@ -78,19 +79,19 @@ public class PageService(
 
     public async Task<IEnumerable<PageSection>> GetSectionsByPageId(Guid pageId, CancellationToken cancellationToken = default)
     {
-        return await pageSectionRepository.GetByPageId(pageId, cancellationToken) ?? 
+        return (await pageSectionRepository.GetByPageId(pageId, cancellationToken)).OrderBy(x => x.Order).ToList() ?? 
             throw new AppException(ExceptionCodes.PageNotFound);
     }
 
     public async Task<IEnumerable<PageRow>> GetRowsBySectionId(Guid sectionId, CancellationToken cancellationToken = default)
     {
-        return await pageRowRepository.GetBySectionId(sectionId, cancellationToken) ?? 
+        return (await pageRowRepository.GetBySectionId(sectionId, cancellationToken)).OrderBy(x => x.Order).ToList() ?? 
             throw new AppException(ExceptionCodes.PageSectionNotFound);
     }
 
     public async Task<IEnumerable<PageColumn>> GetColumnsByRowId(Guid rowId, CancellationToken cancellationToken = default)
     {
-        return await pageColumnRepository.GetByRowId(rowId, cancellationToken) ?? 
+        return (await pageColumnRepository.GetByRowId(rowId, cancellationToken)).OrderBy(x => x.Order).ToList() ?? 
             throw new AppException(ExceptionCodes.PageSectionNotFound);
     }
 
@@ -110,6 +111,13 @@ public class PageService(
     {
         return await pageColumnRepository.Create(column, cancellationToken) ?? 
             throw new AppException(ExceptionCodes.PageSectionNotFound);
+    }
+
+
+    public async Task<PageColumn> UpdateColumn(PageColumn column, CancellationToken cancellationToken = default)
+    {
+        return await pageColumnRepository.Update(column, cancellationToken) ?? 
+            throw new AppException(ExceptionCodes.PageColumnNotFound);
     }
 
     public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)

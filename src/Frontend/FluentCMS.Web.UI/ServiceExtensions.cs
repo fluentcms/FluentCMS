@@ -75,12 +75,13 @@ public static class ServiceExtensions
                 throw new Exception("Error while loading ViewState");
 
 
-            throw new Exception("TODO: Should update these codes for section, row and column");
-
             viewState.Page = mapper.Map<PageViewState>(pageResponse.Data);
             viewState.Layout = mapper.Map<LayoutViewState>(pageResponse.Data.Layout);
             viewState.Site = mapper.Map<SiteViewState>(pageResponse.Data.Site);
-            viewState.Plugins = pageResponse.Data.Sections!.Values.SelectMany(x => x).Select(p => mapper.Map<PluginViewState>(p)).ToList();
+
+            viewState.Sections = pageResponse.Data.Sections.Select(x => mapper.Map<PageSectionState>(x)).ToList();
+            // viewState.Plugins = pageResponse.Data.Sections!.Values.SelectMany(x => x).Select(p => mapper.Map<PluginViewState>(p)).ToList();
+            
             viewState.User = mapper.Map<UserViewState>(sp.GetRequiredService<UserLoginResponse>());
 
             // check if the page is in edit mode
@@ -93,7 +94,13 @@ public static class ServiceExtensions
                 if (Guid.TryParse(queryParams["pluginId"], out var pluginId))
                 {
                     viewState.Type = ViewStateType.PluginEdit;
-                    viewState.Plugin = viewState.Plugins.Single(x => x.Id == pluginId);
+                    viewState.Plugin = viewState.Sections
+                        .SelectMany(section => section.Rows)
+                        .SelectMany(row => row.Columns)
+                        .SelectMany(column => column.Plugins)
+                        .FirstOrDefault(plugin => plugin.Id == pluginId);
+
+
                     viewState.PluginViewName = queryParams["viewName"];
                 }
             }
