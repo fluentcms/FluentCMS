@@ -23,6 +23,8 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
 
     public async Task<ApiToken> Create(ApiToken apiToken, CancellationToken cancellationToken = default)
     {
+        apiToken.ApiKey = GenerateApiKey();
+     
         apiToken = await apiTokenRepository.Create(apiToken, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenUnableToCreate);
         await UpdateJwt(apiToken);
@@ -58,5 +60,10 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
 
         return await apiTokenRepository.Delete(tokenId, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenUnableToDelete);
+    }
+
+    private string? GenerateApiKey()
+    {
+        return Guid.NewGuid().ToString();
     }
 }
