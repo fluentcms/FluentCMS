@@ -1,4 +1,5 @@
-﻿namespace FluentCMS.Repositories.LiteDb;
+﻿
+namespace FluentCMS.Repositories.LiteDb;
 
 public class ApiTokenRepository(
     ILiteDBContext liteDbContext,
@@ -6,5 +7,15 @@ public class ApiTokenRepository(
     AuditableEntityRepository<ApiToken>(liteDbContext, authContext),
     IApiTokenRepository
 {
+    public override Task<ApiToken?> Create(ApiToken entity, CancellationToken cancellationToken = default)
+    {
+        entity.ApiKey = GenerateApiKey();
+        return base.Create(entity, cancellationToken);
+    }
+
+    private string? GenerateApiKey()
+    {
+        return Guid.NewGuid().ToString();
+    }
 
 }

@@ -8,4 +8,5 @@ public class ApiToken : AuditableEntity
     public DateTime? ExpiredAt { get; set; }
     public bool Enabled { get; set; } = true;
     public ICollection<Policy> Policies { get; set; } = [];
+    public string? ApiKey { get; set; }
 }

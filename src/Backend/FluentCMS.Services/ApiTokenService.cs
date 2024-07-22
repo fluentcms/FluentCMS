@@ -35,7 +35,7 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
         await apiTokenRepository.Update(apiToken);
     }
 
-    public async Task<ApiToken> Update(Guid tokenId, string name, string? description, bool enabled, List<Policy> policies, CancellationToken cancellationToken = default)
+    public async Task<ApiToken> Update(Guid tokenId, string name, string? description,  bool enabled, List<Policy> policies, CancellationToken cancellationToken = default)
     {
         var apiToken = await apiTokenRepository.GetById(tokenId, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenNotFound);
@@ -44,6 +44,8 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
         apiToken.Description = description;
         apiToken.Enabled = enabled;
         apiToken.Policies = policies;
+        
+        //apiKey is not updated here as it should be generated automatically only
 
         return await apiTokenRepository.Update(apiToken, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenUnableToUpdate);

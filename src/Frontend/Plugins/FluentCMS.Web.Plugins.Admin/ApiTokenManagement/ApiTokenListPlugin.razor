@@ -8,6 +8,7 @@
         <DataTable Items="ApiTokens">
             <DataTableItem Label="Name">@context.Name</DataTableItem>
             <DataTableItem Label="Description">@context.Description</DataTableItem>
+            <DataTableItem Label="ApiKey">@context.ApiKey</DataTableItem>
             <ActionButtons>
                 <ActionButtonEdit Href="@GetUrl("Update Api Token", new { id = @context.Id })" />
             </ActionButtons>
