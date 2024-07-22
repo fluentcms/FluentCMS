@@ -1,10 +1,7 @@
 @import './base.css';
 @import './actions.css';
-@import './plugin-actions.css';
 @import './columns.editor.css';
 @import './grid-system.css';
-
-/* <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.preview.css"> */
 
 .f-section {
     padding: 2rem;
@@ -18,7 +15,6 @@
 
 .f-section-root {
     min-height: 200px;
-    /* border: 1px solid red; */
     position: relative;
 }
 
@@ -26,7 +22,6 @@
     position: absolute;
     height: 64px;
     bottom: -32px;
-    /* background-color: #3979da; */
     width: 100%;
 }
 
@@ -66,8 +61,6 @@
 .f-section {
     position: relative;
 }
-
-
 
 .f-add-section {
     opacity: 0;

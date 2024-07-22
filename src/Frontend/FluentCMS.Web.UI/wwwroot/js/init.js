@@ -17,86 +17,6 @@ function getFrameDocument() {
     })
 }
 
-// let updateForm = document.querySelector("#f-page-editor-form-update")
-
-// function save() {
-//     const sections = {}
-
-//     frameDocument.querySelectorAll('.f-section').forEach(section => {
-//         sections[section.dataset.name] = []
-
-//         section.querySelectorAll('.f-plugin-container').forEach(plugin => {
-//             sections[section.dataset.name].push(plugin.dataset)
-//         })
-//     })
-
-//     var updateInputs = '<input type="hidden" name="Model.Submitted" value="true" />'
-//     let deleteIndex = 0;
-//     let newPluginsIndex = 0;
-//     let updatedPluginsIndex = 0;
-//     let pluginOrder = 0;
-//     for(let section in sections) {
-//         for(let index in sections[section]) {
-//             const plugin = sections[section][index].id
-//             const cols = sections[section][index].cols
-//             const colsMd = sections[section][index].colsMd
-//             const colsLg = sections[section][index].colsLg
-//             const definitionId = sections[section][index].definitionId
-//             const deleted = sections[section][index].deleted
-
-//             if(deleted) {
-//                 updateInputs += `
-//                     <input type="hidden" name="Model.DeleteIds[${deleteIndex}]" value="${plugin}" />
-//                 `
-//                 deleteIndex++;
-//             }
-//             else if(plugin == '00000000-0000-0000-0000-000000000000') {
-//                 // PageId will be filled in backend
-//                 updateInputs += `
-//                     <input type="hidden" name="Model.CreatePlugins[${newPluginsIndex}].PageId" value="00000000-0000-0000-0000-000000000000" />
-//                     <input type="hidden" name="Model.CreatePlugins[${newPluginsIndex}].DefinitionId" value="${definitionId}" />
-//                     <input type="hidden" name="Model.CreatePlugins[${newPluginsIndex}].Order" value="${pluginOrder}" />
-//                     <input type="hidden" name="Model.CreatePlugins[${newPluginsIndex}].Cols" value="${cols}" />
-//                     <input type="hidden" name="Model.CreatePlugins[${newPluginsIndex}].ColsMd" value="${colsMd}" />
-//                     <input type="hidden" name="Model.CreatePlugins[${newPluginsIndex}].ColsLg" value="${colsLg}" />
-//                     <input type="hidden" name="Model.CreatePlugins[${newPluginsIndex}].Section" value="${section}" />
-//                 `
-//                 pluginOrder++;
-//                 newPluginsIndex++;
-//             }
-//             else {
-//                 updateInputs += `
-//                     <input type="hidden" name="Model.UpdatePlugins[${updatedPluginsIndex}].Section" value="${section}" />
-//                     <input type="hidden" name="Model.UpdatePlugins[${updatedPluginsIndex}].Id" value="${plugin}" />
-//                     <input type="hidden" name="Model.UpdatePlugins[${updatedPluginsIndex}].Order" value="${pluginOrder}" />
-//                     <input type="hidden" name="Model.UpdatePlugins[${updatedPluginsIndex}].Cols" value="${cols}" />
-//                     <input type="hidden" name="Model.UpdatePlugins[${updatedPluginsIndex}].ColsMd" value="${colsMd}" />
-//                     <input type="hidden" name="Model.UpdatePlugins[${updatedPluginsIndex}].ColsLg" value="${colsLg}" />
-//                 `
-//                 pluginOrder++;
-//                 updatedPluginsIndex++;
-//             }
-//         }
-//     }
-
-//     updateForm.querySelector('#f-update-form-inputs').outerHTML = updateInputs
-//     setTimeout(() => {
-//         const body = new FormData(updateForm)
-
-//         fetch(window.location.href, {
-//             method: 'POST',
-//             body
-//         })
-//     })
-// }
-
-// function submitForm(form, data) {
-//     for(let key in data) {
-//         form.querySelector(`[name="${key}"]`).value = data[key]
-//     }
-//     form.submit()
-// }
-
 function initializeSortable(frameDocument) {
     frameDocument.querySelectorAll('.f-section-root').forEach(root => {
         Sortable.get(root)?.destroy()
@@ -119,20 +39,10 @@ function initializeSortable(frameDocument) {
             animation: 150,
             group: 'shared-row',
             draggable: '.f-column',
-            // ghostClass: 'f-plugin-container-moving',
-            // chosenClass: 'f-plugin-container-chosen',
             handle: '.f-action-draggable',
             onEnd(event) {
-                // const rowId = event.to.id.replace('row-', '');
-                // const id = event.item.id.replace('column-', '')
                 saveColumns()
-                // updatePlugin({ id, index: event.newIndex, rowId})
             }
-            // onEnd(event) {
-            //     // const columnId = event.to.id.replace('column-', '');
-            //     // const id = event.item.dataset.id
-
-            // }
         });
     });
 
@@ -147,15 +57,12 @@ function initializeSortable(frameDocument) {
             draggable: '.f-plugin-container',
             ghostClass: 'f-plugin-container-moving',
             chosenClass: 'f-plugin-container-chosen',
-            // handle: '.f-plugin-container-action-drag',
             handle: '.f-action-draggable',
             onEnd(event) {
-
                 const columnId = event.to.id.replace('column-', '');
                 const id = event.item.id.replace('plugin-', '')
 
                 updatePlugin({ id, index: event.newIndex,  columnId})
-
             }
         });
     });
@@ -241,60 +148,12 @@ function initializeResponsive() {
 }
 
 function createPlugin({definitionId, columnId, index, item}) {
-    // item.classList.remove('f-plugin-definition-item')
-    // item.classList.add('f-plugin-container')
-    // const cols = 12
-    // const colsMd = 0
-    // const colsLg = 0
-
     request({
         '_handler': 'PluginCreateForm',
         'PluginCreateModel.DefinitionId': definitionId,
         'PluginCreateModel.ColumnId': columnId,
         'PluginCreateModel.Order': index,
     })
-
-
-    // const pageId = '00000000-0000-0000-0000-000000000000';
-
-    // setTimeout(() => {
-    //     // _handler: UpdatePluginForm
-    //     // __RequestVerificationToken: CfDJ8PuVbaR1sHBOvuLydAdhPdS6nFFhM7eu29IOqf-5F1JRXcEXCWrMS7nUql8VqVNT4ctfGixG1DwfugOxVUgVPp6nEculRq8apOwX66kkwTmzoQ9_GQld_t89NFl1QQ5-W_EfAun8bDQLQNCWQ5_d-njmF1yG0yZw_Qk7iMJbyJGR7y59tE9_vUSG2Y9nC4NJwg
-
-    //     const requestBody = {
-    //         '_handler': 'UpdatePluginForm',
-    //         '__RequestVerificationToken': document.querySelector('[name="__RequestVerificationToken"]').value,
-    //         'Model.CreatePlugins[0].PageId': pageId,
-    //         'Model.CreatePlugins[0].DefinitionId': definitionId,
-    //         'Model.CreatePlugins[0].Order': index - 1,
-    //         'Model.CreatePlugins[0].Cols': cols,
-    //         'Model.CreatePlugins[0].ColsMd': colsMd,
-    //         'Model.CreatePlugins[0].ColsLg': colsLg,
-    //         'Model.CreatePlugins[0].Section': sectionName,
-    //         "Model.Submitted": true,
-    //         'Model.UpdatePlugins': '[]', // TODO
-    //         'Model.DeleteIds': '[]', // TODO
-    //     }
-
-    //     const body = new FormData()
-    //     for(let key in requestBody) {
-    //         body.append(key, requestBody[key])
-    //         // body.set('Model.DeleteIds', [])
-    //     }
-
-    //     fetch(window.location.href, {
-    //         method: 'POST',
-    //         body
-    //     }).then(async res => {
-            
-    //         iframeElement.contentWindow.location.reload()
-    //         // const html = await fetch(window.location.href).then(res => res.text())
-    //         // document.documentElement.innerHTML = html
-    //         setTimeout(() => {
-    //             onInit()
-    //         })
-    //     })
-    // })
 }
 
 function parseStyles(styleStr, dataset) {
@@ -317,7 +176,6 @@ function parseStyles(styleStr, dataset) {
 async function saveColumns() {
     let columns = {}
     iframeElement.contentDocument.querySelectorAll('.f-row').forEach(row => {
-        // columns[el.id.replace('column-', '')] = el.dataset
         let colIndex = 0 
         row.querySelectorAll('.f-column').forEach(el => {
             const key = el.id.replace('column-', '')
@@ -349,9 +207,6 @@ async function saveColumns() {
         index++;
     }
     await request(requestBody)
-    // alert(JSON.stringify(columns))
-    // Order based on index
-    
 }
 
 
@@ -359,7 +214,6 @@ async function request(values) {
     const url = window.location.href
     const body = new FormData()
             
-    // body.set('_handler', 'UpdatePluginForm');
     body.set('__RequestVerificationToken', document.querySelector('[name="__RequestVerificationToken"]').value)
 
     for(let key in values) {
@@ -375,7 +229,6 @@ async function request(values) {
     iframeElement.contentDocument.documentElement.innerHTML = response
     setTimeout(() => {
         initializeColumns()
-        // initializeActions(document)
         initializeActions(frameDocument)
         initializeSortable(frameDocument)
         initPluginActions(frameDocument)
@@ -397,7 +250,6 @@ async function onAddSection(el) {
         'AddSectionModel.Order': el.dataset.order ?? 0
     })
     
-    // update order
     await saveSectionsOrder()
 }
 
@@ -407,7 +259,6 @@ async function saveSectionsOrder() {
 
     let index = 0;
     iframeElement.contentDocument.querySelectorAll('.f-section').forEach(el => {
-        // el.dataset.order = index++
         sections.push({
             id: el.id.replace('section-', ''),
             index: index++,
@@ -415,7 +266,6 @@ async function saveSectionsOrder() {
             dataset: el.dataset,
         })
     })
-    console.log(sections)
 
     for(let section of sections)
     {
@@ -433,47 +283,6 @@ async function saveSectionsOrder() {
         ...body
     })
 }
-
-
-// async function saveOrders() {
-//     saveSectionsOrder()
-//     alert('save columns order')
-//     alert('save rows order')
-//     alert('save plugins order')
-//     // await newFunction()
-
-//     // async function newFunction() {
-//     //     const body = {}
-//     //     let sections = []
-
-//     //     let index = 0
-//     //     iframeElement.contentDocument.querySelectorAll('.f-section').forEach(el => {
-//     //         // el.dataset.order = index++
-//     //         sections.push({
-//     //             id: el.id.replace('section-', ''),
-//     //             index: index++,
-//     //             style: el.getAttribute('style'),
-//     //             dataset: el.dataset,
-//     //         })
-//     //     })
-
-//     //     for (let section of sections) {
-//     //         body[`SectionsUpdateModel.Sections[${section.index}].Id`] = section.id
-//     //         body[`SectionsUpdateModel.Sections[${section.index}].Order`] = section.index
-
-//     //         const styles = parseStyles(section.style, section.dataset)
-
-//     //         for (let key in styles) {
-//     //             requestBody[`SectionsUpdateModel.Sections[${section.index}].Styles[${key}]`] = styles[key]
-//     //         }
-//     //     }
-//     //     await request({
-//     //         '_handler': "SectionsUpdateForm",
-//     //         ...body
-//     //     })
-//     // }
-// }
-
 
 async function onAddColumn(el) {
     await request({
@@ -502,7 +311,6 @@ async function onDeleteColumn(el) {
         'ColumnDeleteModel.Submitted': true,
         'ColumnDeleteModel.Id': id,
     }) 
-    // await saveSectionsOrder()
 }
 
 function disableResponsiveButtons() {
@@ -726,10 +534,6 @@ const actions = {
     },
     'add-style-item': onAddStyleItem,
     'save-styles': onSaveStyles,
-    // 'save-edit-mode'() {
-    //     // actions["hide-sidebar"]()
-    //     save()
-    // },
     // 'responsive-mobile'() {
     //     updateResponsive('mobile')
     // },
@@ -742,24 +546,8 @@ const actions = {
     // 'responsive-large'() {
     //     updateResponsive('large')
     // },
-    // 'plugin-container-action-delete'(el) {
-    //     const id = el.parentElement.parentElement.dataset.id
-
-    //     if(id == '00000000-0000-0000-0000-000000000000') {
-    //         el.parentElement.parentElement.remove()
-    //     } else {
-    //         el.parentElement.parentElement.dataset.deleted = true
-    //         el.parentElement.parentElement.classList.add('f-hidden')
-    //     }
-    // },
-    'show-sidebar'() {
-        pageEditorElement.classList.remove('f-page-editor-sidebar-close')
-        pageEditorElement.classList.add('f-page-editor-sidebar-open')
-        setTimeout(() => {
-            updateResizerPosition()
-        }, 300)
-    },
     'hide-sidebar'() {
+        alert('enable responsive buttons')
         pageEditorElement.classList.add('f-page-editor-sidebar-close')
         pageEditorElement.classList.remove('f-page-editor-sidebar-open')
         setTimeout(() => {

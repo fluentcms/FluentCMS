@@ -1,11 +1,7 @@
 .f-row {
     position: relative;
-    /* overflow-x: hidden; */
 }
 
-.f-column {
-    /* overflow: hidden; */
-}
 .f-row.dragging * {
     user-select: none;
 }
@@ -26,7 +22,6 @@
 .f-row.active [data-cols] {
     transition: all 0.3s ease;
     position: relative;
-    /* box-shadow: 0 0 0 1px rgba(161, 161, 161, 0.459); */
 }  
 
 .f-row.active .resizer-handle {

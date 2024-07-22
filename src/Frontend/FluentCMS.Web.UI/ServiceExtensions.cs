@@ -80,7 +80,6 @@ public static class ServiceExtensions
             viewState.Site = mapper.Map<SiteViewState>(pageResponse.Data.Site);
 
             viewState.Sections = pageResponse.Data.Sections.Select(x => mapper.Map<PageSectionState>(x)).ToList();
-            // viewState.Plugins = pageResponse.Data.Sections!.Values.SelectMany(x => x).Select(p => mapper.Map<PluginViewState>(p)).ToList();
             
             viewState.User = mapper.Map<UserViewState>(sp.GetRequiredService<UserLoginResponse>());
 

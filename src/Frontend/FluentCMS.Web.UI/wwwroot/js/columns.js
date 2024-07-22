@@ -25,8 +25,6 @@ export function Columns(element, {gridLines = true, colClass = 'col', breakpoint
 
         function onMouseMove(event) {
             if(dragging) {
-                console.log('onMouseMove')
-
 
                 // if(windowWidth > breakpointLg) {
                 //     field = 'colsLg'
@@ -38,7 +36,6 @@ export function Columns(element, {gridLines = true, colClass = 'col', breakpoint
 
                 const diffLength = event.x - x
                 
-                console.log(diffLength , oneColWidth)
                 if(diffLength < -oneColWidth/2 || diffLength > oneColWidth / 2) {
                     if(el.dataset[field] == 0) {
                         if(field == 'colsLg' && el.dataset['colsMd']) {
@@ -107,7 +104,6 @@ export function Columns(element, {gridLines = true, colClass = 'col', breakpoint
     }
 
     function init() {
-        console.log('init')
         if(gridLines) {
             for(let i=0; i<12; i++) {
                 const line = document.createElement('div')
@@ -120,12 +116,9 @@ export function Columns(element, {gridLines = true, colClass = 'col', breakpoint
         element.dataset.columns = ''
         element.classList.add('active')
 
-        console.log('init', element.querySelectorAll('.' + colClass))
-
         element.querySelectorAll('.' + colClass).forEach(el => {
 
             columns.push(initColumn(el))
-            console.log('columns: ', columns)
         })  
         window.addEventListener('resize', updateSize)
     }
