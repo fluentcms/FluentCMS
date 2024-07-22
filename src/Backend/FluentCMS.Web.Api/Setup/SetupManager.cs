@@ -155,7 +155,6 @@ public class SetupManager : ISetupManager
                                         new()
                                         {
                                             Locked = true,
-                                            Section = "Main",
                                             Definition = new()
                                             {
                                                 Name = "Setup",
@@ -348,7 +347,7 @@ public class SetupManager : ISetupManager
                         var plugin = new Plugin
                         {
                             Order = order,
-                            Section = pluginTemplate.Section,
+                            // Section = pluginTemplate.Section,
                             DefinitionId = pluginDefinition.Id,
                             ColumnId = columnResponse.Id,
                             SiteId = _site.Id,

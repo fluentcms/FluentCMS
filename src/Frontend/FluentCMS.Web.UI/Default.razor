@@ -64,7 +64,7 @@ else
         {
             <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.default.css">
         }            
-        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.css">
+        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/grid-system.css">
     </HeadContent>
     <Toolbar>
         <ActionsStart>
@@ -80,6 +80,10 @@ else
 
         </ActionsCenter>
         <ActionsEnd>
+            <ToolbarButton id="editContentButton">
+                Edit Content
+            </ToolbarButton>
+
             <ToolbarButton id="editButton">
                 Edit
             </ToolbarButton>
@@ -89,18 +93,6 @@ else
     @if (ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked)
     {
         <PluginActionsForms />
-
-        <!-- <button id="editButton" class="f-edit-button">
-            <svg class="w-6 h-6 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                <path fill-rule="evenodd" d="M11.32 6.176H5c-1.105 0-2 .949-2 2.118v10.588C3 20.052 3.895 21 5 21h11c1.105 0 2-.948 2-2.118v-7.75l-3.914 4.144A2.46 2.46 0 0 1 12.81 16l-2.681.568c-1.75.37-3.292-1.263-2.942-3.115l.536-2.839c.097-.512.335-.983.684-1.352l2.914-3.086Z" clip-rule="evenodd" />
-                <path fill-rule="evenodd" d="M19.846 4.318a2.148 2.148 0 0 0-.437-.692 2.014 2.014 0 0 0-.654-.463 1.92 1.92 0 0 0-1.544 0 2.014 2.014 0 0 0-.654.463l-.546.578 2.852 3.02.546-.579a2.14 2.14 0 0 0 .437-.692 2.244 2.244 0 0 0 0-1.635ZM17.45 8.721 14.597 5.7 9.82 10.76a.54.54 0 0 0-.137.27l-.536 2.84c-.07.37.239.696.588.622l2.682-.567a.492.492 0 0 0 .255-.145l4.778-5.06Z" clip-rule="evenodd" />
-            </svg>
-        </button> -->
-        <button id="editContentButton" class="f-edit-content-button">
-            <svg class="w-5 h-5 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                <path fill-rule="evenodd" d="M15.514 3.293a1 1 0 0 0-1.415 0L12.151 5.24a.93.93 0 0 1 .056.052l6.5 6.5a.97.97 0 0 1 .052.056L20.707 9.9a1 1 0 0 0 0-1.415l-5.193-5.193ZM7.004 8.27l3.892-1.46 6.293 6.293-1.46 3.893a1 1 0 0 1-.603.591l-9.494 3.355a1 1 0 0 1-.98-.18l6.452-6.453a1 1 0 0 0-1.414-1.414l-6.453 6.452a1 1 0 0 1-.18-.98l3.355-9.494a1 1 0 0 1 .591-.603Z" clip-rule="evenodd"/>
-            </svg>
-        </button>
     }
 
     <script type="module" src="/_content/FluentCMS.Web.UI/js/sitebuilder.default.js"></script>

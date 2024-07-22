@@ -8,12 +8,15 @@ export function Columns(element, {gridLines = true, colClass = 'col', breakpoint
         let x = 0;
         let field = 'cols'
         let value = el.dataset[field]
+        let resized = false
 
         if(isNaN(el.dataset.cols) || el.dataset.cols == 0) {
             el.dataset.cols = 12
         }
 
         function onMouseDown(event) {
+            resized = false
+
             x = event.x;
             dragging = true
             element.classList.add('dragging')
@@ -58,7 +61,9 @@ export function Columns(element, {gridLines = true, colClass = 'col', breakpoint
             resizer.style.right = '-24px'
             dragging = false
 
-            if(onResize && value !== el.dataset[field]) {
+            if(!resized && onResize && value !== el.dataset[field]) {
+                resized = true
+
                 onResize({field, value})
             }
 

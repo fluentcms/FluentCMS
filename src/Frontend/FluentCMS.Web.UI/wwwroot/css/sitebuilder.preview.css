@@ -1,14 +1,19 @@
 @import './base.css';
+@import './actions.css';
 @import './plugin-actions.css';
 @import './columns.editor.css';
-@import './columns.css';
+@import './grid-system.css';
 
 /* <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.preview.css"> */
 
 .f-section {
-    padding-top: 2rem;
-    padding-left: 2rem;
-    padding-right: 2rem;
+    padding: 2rem;
+    border: 1px solid rgba(95, 95, 95, 0.486);
+    min-height: 100px;
+}
+
+.f-section:hover {
+    border: 1px solid var(--f-primary);
 }
 
 .f-section-root {
@@ -30,7 +35,7 @@
     position: absolute;
     opacity: 0;
     bottom: 0;
-    background-color: #3979da;
+    background-color: var(--f-primary);
     height: 32px;
     width: 32px;
     left: 50%;
@@ -39,15 +44,6 @@
     transform: translate(-50%, -50%);
 }
 
-.f-section-add-button:hover::after {
-    opacity: 1;
-}
-
-.f-section:not([data-full-width]) .f-row {
-    max-width: 1200px;
-    margin-left: auto;
-    margin-right: auto;
-}
 
 .f-section-root:has(.f-section-empty-add-button) {
     display: flex;
@@ -57,52 +53,50 @@
 }
 
 .f-section-empty-add-button {
-    background-color: #3979da;
+    background-color: var(--f-primary);
     color: white;
     padding: 8px 32px;
     border-radius: 4px;
     border: none;
+}
+.f-section-empty-add-button:hover {
+    background-color: var(--f-primary-hover);
 }
 
 .f-section {
     position: relative;
 }
 
-.f-section-actions {
-    display: flex;
-    position: absolute;
-    opacity: 0;
-    transition: all 0.3s ease;
-    top: 0;
-    right: 0;
-    background-color: #2032ff;
-}
-.f-section:hover .f-section-actions {
-    opacity: 1;
-}
 
 
 .f-add-section {
     opacity: 0;
+    transition: all 0.2s ease;
+
     left: 0;
     position: absolute;
-    height: 32px;
+    height: 64px;
     width: 100%;
     bottom: -32px;
+    z-index: 3;
 }
-.f-section:hover .f-add-section {
+
+.f-add-section:hover {
     opacity: 1;
 }
+
 .f-add-section::before {
+    cursor: pointer;
     z-index: 10;
-    content: '+';
+    content: '+ Add Section';
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
-    width: 32px;
+    font-size: 16px;
+    padding: 4px 16px;
+    width: max-content;
     height: 32px;
-    background-color: #2032ff;
+    background-color: var(--f-primary);
     color: white;
     position: absolute;
     left: 50%;
@@ -110,6 +104,9 @@
     bottom: 0;
     border-radius: 16px;
     transform: translate(-50%, -50%);
+}
+.f-add-section::before:hover {
+    background-color: var(--f-primary-hover);
 }
 
 .f-column-empty-wrapper {
@@ -125,8 +122,16 @@
 .f-column-empty-add-button {
     width: calc(100% / 6);
     height: 80px;
-    border: 1px solid blue;
+    border: 1px solid var(--f-primary);
+    background-color: var(--f-primary-soft);
     border-radius: 8px;
+    text-align: center;
+
+}
+
+.f-column-empty-add-button:hover {
+    background-color: var(--f-primary-soft-hover);
+    border: 1px solid var(--f-primary-hover);
 }
 
 .f-row {
@@ -134,27 +139,18 @@
 }
 
 .f-column {
-    position: relative;
-    min-height: 100px;
-    border: 1px dashed #c9c9c9; 
+    padding: 2rem 0.5rem 0.5rem 0.5rem !important;
+    position: relative !important;
+    min-height: 100px !important;
+    border: 1px dashed var(--f-gray-300); 
 }
 
 .f-column:hover {
-    border: 1px solid #999999; 
-}
-.f-column-actions {
-    opacity: 0;
-    transition: all 0.3s ease;
-    position: absolute;
-    top: 0;
-    right: 0;
-    background-color: #2032ff;
-}
-.f-column:hover .f-column-actions {
-    opacity: 1;
+    border: 1px solid var(--f-primary); 
 }
 
 .f-column-empty-add-plugin-button {
+    cursor: pointer;
     min-height: 100px;
     padding: 50px;
     display: flex;
@@ -162,6 +158,8 @@
     flex-direction: column;
     justify-content: center;
     width: 100%;
+    font-weight: bold;
+    font-size: 12px;
 }
 
 .f-add-column {
@@ -172,6 +170,7 @@
     right: -32px;
     top: 0;
 }
+
 .f-column:hover .f-add-column {
     opacity: 1;
 }
@@ -184,7 +183,7 @@
     font-size: 24px;
     width: 24px;
     height: 24px;
-    background-color: #2032ff;
+    background-color: var(--f-primary);
     color: white;
     position: absolute;
     /* top: 50%; */
@@ -193,138 +192,57 @@
     transform: translate(-50%, -50%);
     right: 8px;
 }
-
-.f-plugin-container {
-    position: relative;
-    transition: all 0.3s ease;
-    padding: 0.5rem;
+.f-add-column::before:hover {
+    background-color: var(--f-primary-hover);
 }
 
-.f-plugin-container-content {
-    border: 1px solid #dddddd;
-    position: relative;
-    min-height: 100px;
-    user-select: none;
-    border-radius: 8px;
-    transition: all 0.3s ease;
+.f-section-root:has(.f-plugin-definition-item) .f-column {
+    box-shadow: inset 0 0 16px var(--f-primary);
+    /* border: 1px solid rgb(0, 81, 255); */
 }
 
-.f-plugin-container:hover .f-plugin-container-content {
-    border: 1px solid #3979da;
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
+.f-plugin-actions {
+    right: 48px;
 }
-.f-plugin-container:hover .f-plugin-container-content::after {
-    content: '';
-    top: 0rem;
-    bottom: 0rem;
-    left: 0rem;
-    right: 0rem;
-    position: absolute;
-    pointer-events: none;
-    background-color: #1639ff11;
-}
-
-.f-page-editor-forms {
-    display: none;
-}
-.f-plugin-container-actions {
-    position: absolute;
-    display: flex;
-    opacity: 0;
-    transition: all 0.2s ease;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-    overflow: hidden;
-    justify-content: flex-start;
-    left: 0.5rem;
-    bottom: calc(100% - 2.5rem);
-}
-
-.f-plugin-container:hover .f-plugin-container-actions {
-    bottom: calc(100% - 0.5rem);
-    opacity: 1;
-}
-
-.f-plugin-container-actions button {
-    background-color: rgba(62, 62, 209, 0.9);
-    padding: 6px;
+.f-column-empty-add-plugin-icon {
     width: 32px;
     height: 32px;
 }
-.f-plugin-container-actions .f-plugin-container-action-text {
-    background-color: rgba(62, 62, 209, 0.9);
-    gap: 4px;
-    padding: 6px;
-    color: white;
-    display: flex;
-    align-items: center;
-    font-weight: bold;
-    height: 32px;
-}
-
-.f-plugin-container-actions .icon {
-    fill: white;
-    color: white;
-    width: 20px;
-    height: 20px;
-}
-
-.f-plugin-container-action-drag {
-    cursor: grab;
-}
-
-.f-plugin-container-moving {
-    opacity: 0.5;
-}
-
-
-.f-section {
-    /* border: 1px dashed #7a7a7a; */
-    min-height: 100px;
-    /* background-color: #ffffff; */
-    border: 1px solid rgba(95, 95, 95, 0.486);
-    /* padding: 2rem 0.5rem 0.5rem 0.5rem; */
-}
-.f-section:hover {
-    /* background-color: #ffffff; */
-    border: 1px solid rgb(0, 81, 255);
-    box-shadow: inset 0 0 16px #2033ff59;
-
-}
-
-.f-section:has(.f-plugin-definition-item) {
-    box-shadow: inset 0 0 32px #2032ff;
-    border: 1px solid rgb(0, 81, 255);
-
-}
-
-a[disabled] {
-    pointer-events: none;
-    cursor: default;
-}
-
-.f-plugin-container-content-new {
-    width: 100%;
-    min-height: 120px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 0.25rem;
-    background-color: white;
-}
-.f-plugin-container-content-new .f-name {
-    font-weight: bold;
-    font-size: 16px;
-}
-
-.f-plugin-container-content-new .f-description {
-    opacity: 0.7;
-    font-size: 12px;
-}
-
 
 .f-hidden {
-    display: none;
+    display: none !important;
+}
+
+.f-column-add-plugin-button {
+    cursor: pointer;
+    z-index: 4;
+    padding: 2px 8px;
+    font-weight: bold;
+    font-size: 12px;
+    opacity: 0;
+    border: 1px solid var(--f-primary);
+    background-color: var(--f-primary);
+    color: white;
+    border-radius: 12px;
+    width: max-content;
+    display: flex;
+    align-items: center;
+    position: absolute;
+    bottom: -1.5rem;
+    left: 50%;
+    right: 50%;
+    transform: translate(-50%, -50%);
+    gap: 4px;
+    height: 24px;
+}
+.f-column-add-plugin-icon {
+    width: 16px;
+}
+
+.f-column:hover .f-column-add-plugin-button {
+    opacity: 1;
+}
+
+.f-section-add-button:hover::after {
+    opacity: 1;
 }

@@ -11,6 +11,7 @@ public partial class PluginsSection
 
         foreach (var key in styles.Keys)
         {
+            if(string.IsNullOrEmpty(key)) continue;
             if (char.IsUpper(key[0]))
                 continue;
             result += key + ": " + styles[key] + "; ";
@@ -32,18 +33,17 @@ public partial class PluginsSection
 
     private bool IsFullWidth(Dictionary<string, string> styles)
     {
-        object value = null;
-        if(styles.ContainsKey("FullWidth")) {
-
-            value = styles["FullWidth"];
-        }
-
-        if(value is null)
+        var result = GetStyleValue(styles, "FullWidth");
+        Console.WriteLine($"result: {result}");
+        if(string.IsNullOrEmpty(result) || result == "false")
         {
+            Console.WriteLine($"false");
             return false;
         }
         else
         {
+            Console.WriteLine($"true");
+
             return true;
         }
     }

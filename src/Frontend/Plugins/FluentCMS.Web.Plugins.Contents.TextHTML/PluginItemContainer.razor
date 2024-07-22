@@ -1,0 +1,14 @@
+<div class="f-plugin-item-container" data-plugin-id="@Plugin.Id" data-plugin-item-id="@Id">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter]
+    public PluginViewState Plugin { get; set; } = default!;
+    
+    [Parameter]
+    public Guid Id { get; set; } = default!;
+    
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+}

@@ -114,11 +114,37 @@ public class PageController(
         return Ok(entityResponse);
     }
 
+    [HttpPut]
+    [Policy(AREA, UPDATE)]
+    public async Task<IApiResult<PageSectionDetailResponse>> UpdateSection(PageSectionUpdateRequest request, CancellationToken cancellationToken = default)
+    {
+        var entity = mapper.Map<PageSection>(request);
+        var updatedEntity = await pageService.UpdateSection(entity, cancellationToken);
+        var entityResponse = mapper.Map<PageSectionDetailResponse>(updatedEntity);
+        return Ok(entityResponse);
+    }
+
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
     {
         await pageService.Delete(id);
+        return Ok(true);
+    }
+
+    [HttpDelete("{id}")]
+    [Policy(AREA, DELETE)]
+    public async Task<IApiResult<bool>> DeleteSection([FromRoute] Guid id)
+    {
+        await pageService.DeleteSection(id);
+        return Ok(true);
+    }
+
+    [HttpDelete("{id}")]
+    [Policy(AREA, DELETE)]
+    public async Task<IApiResult<bool>> DeleteColumn([FromRoute] Guid id)
+    {
+        await pageService.DeleteColumn(id);
         return Ok(true);
     }
 

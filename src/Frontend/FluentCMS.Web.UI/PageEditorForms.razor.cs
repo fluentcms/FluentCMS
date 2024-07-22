@@ -47,26 +47,58 @@ public partial class PageEditorForms
     [SupplyParameterFromForm(FormName = "ColumnUpdateForm")]
     private ColumnsUpdateRequest ColumnUpdateModel { get; set; } = new();
     
+    [SupplyParameterFromForm(FormName = "SectionsUpdateForm")]
+    private SectionsUpdateRequest SectionsUpdateModel { get; set; } = new();
+    
+    [SupplyParameterFromForm(FormName = "SectionDeleteForm")]
+    private SectionDeleteRequest SectionDeleteModel { get; set; } = new();
+    
+    [SupplyParameterFromForm(FormName = "ColumnDeleteForm")]
+    private ColumnDeleteRequest ColumnDeleteModel { get; set; } = new();
+    
+    [SupplyParameterFromForm(FormName = "PluginCreateForm")]
+    private PluginCreateRequest PluginCreateModel { get; set; } = new();
+    
+    [SupplyParameterFromForm(FormName = "PluginUpdateForm")]
+    private PluginUpdateRequest PluginUpdateModel { get; set; } = new();
+    
     private async Task OnColumnUpdateSubmit()
     {
         foreach (var column in ColumnUpdateModel.Columns)
         {
-            Console.WriteLine($"column.Id: {column.Id}");
-            Console.WriteLine($"column.Order: {column.Order}");
-            Console.WriteLine($"column.RowId: {column.RowId}");
-            Console.WriteLine($"column.Styles: {column.Styles}");
-            // Console.WriteLine($"co   lumn.Styles['cols']: {column.Styles["Cols"]}");
-
             await ApiClient.Page.UpdateColumnAsync(column);
-            Console.WriteLine("________");
-            foreach (var key in column.Styles.Keys)
-            {
+        }
+    }
 
-                Console.WriteLine($"key: {key}, value: {column.Styles[key]}");
-            }
-            Console.WriteLine("________");
+    private async Task OnPluginCreateSubmit()
+    {
+        PluginCreateModel.PageId = ViewState.Page.Id;
+        await ApiClient.Plugin.CreateAsync(PluginCreateModel);
+    }
 
-            // 
+    private async Task OnPluginUpdateSubmit()
+    {
+        await ApiClient.Plugin.UpdateAsync(PluginUpdateModel);
+    }
+
+    private async Task OnSectionDeleteSubmit()
+    {
+        await ApiClient.Page.DeleteSectionAsync(SectionDeleteModel.Id);
+    }
+
+    private async Task OnColumnDeleteSubmit()
+    {
+        await ApiClient.Page.DeleteColumnAsync(ColumnDeleteModel.Id);
+    }
+    
+    private async Task OnSectionsUpdateSubmit()
+    {
+        foreach (var section in SectionsUpdateModel.Sections)
+        {
+            section.PageId = ViewState.Page.Id;
+            section.Styles ??= new Dictionary<string, string> {};
+            
+            await ApiClient.Page.UpdateSectionAsync(section);
         }
     }
 
@@ -208,6 +240,24 @@ public partial class PageEditorForms
     {
         public bool Submitted { get; set; } = true;
         public List<PageColumnUpdateRequest> Columns { get; set; } = [];
+    };
+
+    class SectionDeleteRequest
+    {
+        public bool Submitted { get; set; } = true;
+        public Guid Id { get; set; }
+    };
+
+    class ColumnDeleteRequest
+    {
+        public bool Submitted { get; set; } = true;
+        public Guid Id { get; set; }
+    };
+
+    class SectionsUpdateRequest
+    {
+        public bool Submitted { get; set; } = true;
+        public List<PageSectionUpdateRequest> Sections { get; set; } = [];
     };
 
     class PageEditorSaveRequest

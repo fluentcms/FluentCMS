@@ -1,10 +1,11 @@
-<div class="f-plugin-container-content">
-    @ChildContent
-</div>
+@ChildContent
 
 
-<div data-plugin-id="@Plugin.Id" data-plugin-items-root>
-    @ActionsEnd
+<div class="f-actions f-actions-no-bg f-plugin-actions">
+<div class="f-actions-start"> </div>
+    <div class="f-actions-end" data-plugin-id="@Plugin.Id" data-plugin-items-root>
+        @ActionsEnd
+    </div>
 </div>
 
 @code {

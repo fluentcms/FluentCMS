@@ -1,41 +1,41 @@
 @import './base.css';
-@import './plugin-actions.css';
+@import './actions.css';
 @import './toolbar.css';
 
-
-.f-edit-button {
-    position: fixed;
-    bottom: 1rem;
-    right: 1rem;
-    width: 48px;
-    height: 48px;
-    background-color: #2c5dd9;
-    box-shadow: 0 0 16px -4px black;
+body:not(.f-edit-content) .f-actions {
+    display: none;
+}
+body:not(.f-edit-content) .f-plugin-container {
     border: none;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
 }
 
-.f-edit-content-button {
-    position: fixed;
-    bottom: 5rem;
-    right: 1.5rem;
-    width: 32px;
-    height: 32px;
-    background-color: #e4e4e4;
-    border: 1px solid #888888;
-    color: black;
-    box-shadow: 0 0 16px -4px black;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
+body:not(.f-edit-content) .f-plugin-container-content {
+    padding-top: unset;
+    border: none;
 }
 
+body:not(.f-edit-content) .f-plugin-container:hover {
+    border: none;
+}
+
+
+body:not(.f-edit-content) .f-plugin-item-container {
+    padding: unset;
+    position: unset;
+    border: none;
+}
+
+body:not(.f-edit-content) .f-plugin-item-container:hover {
+    border: none;
+}
+
+body:not(.f-edit-content) .f-plugin-container-content:hover {
+    border: none;
+}
+
+body:not(.f-edit-content) .f-plugin-container-content {
+    min-height: unset;
+}
 
 .f-edit-content .f-plugin-container {
     position: relative;
@@ -58,51 +58,51 @@
 } 
 
 .f-edit-content .f-plugin-container-actions-inner button {
-    background-color: rgba(62, 62, 209, 0.9);
+    /* background-color: rgba(62, 62, 209, 0.9);
     padding: 4px;
     width: 24px;
-    height: 24px;
+    height: 24px; */
 }
 
 .f-edit-content .f-plugin-container-actions-inner button .icon {
-    fill: white;
+    /* fill: white;
     color: white;
     width: 16px;
-    height: 16px;
+    height: 16px; */
 }
 
 .f-edit-content .f-plugin-container {
-    padding: 0.5rem;
+    /* padding: 0.5rem; */
 }
 
 .f-edit-content .f-plugin-container-content {
-    border: 1px solid #dddddd;
+    /* border: 1px solid #dddddd;
     border-radius: 0.5rem;
-    position: relative;
+    position: relative; */
 
 }
 
 .f-edit-content .f-plugin-container:hover .f-plugin-container-content {
-    border: 1px solid #3979da;
-    border-top-right-radius: 0;
+    /* border: 1px solid #3979da;
+    border-top-right-radius: 0; */
 }
 
 .f-edit-content .f-plugin-container:hover .f-plugin-container-content::after {
-    content: '';
+    /* content: '';
     position: absolute;
     top: 0;
     bottom: 0;
     left: 0;
     right: 0;
     background-color: #1639ff11;
-    pointer-events: none;
+    pointer-events: none; */
 }
 
 a[disabled] {
-    pointer-events: none;
-    cursor: default;
+    /* pointer-events: none;
+    cursor: default; */
 }
 
 .f-hidden {
-    display: none;
+    /* display: none; */
 }

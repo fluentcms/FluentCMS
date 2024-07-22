@@ -2,3 +2,94 @@
 @import './sitebuilder.css';
 @import './plugin-actions.css';
 @import './toolbar.css';
+@import './sidebar.css';
+
+body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+
+}
+.f-hidden {
+    display: none !important;
+}
+
+.f-style-editor-table {
+    width: 100%;
+    border: 1px solid var(--f-gray-100);
+}
+.f-style-editor-table thead tr {
+    background-color: var(--f-gray-100);
+}
+.f-style-editor-table th, 
+.f-style-editor-table td  {
+    padding: 0;
+    text-align: start;
+    height: 32px;
+    font-size: 16px;
+    padding-left: 4px;
+    padding-right: 4px;
+}
+
+.f-style-editor-table tr {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.f-style-editor-table td div {
+    display: flex; 
+    align-items: center;
+}
+
+.f-style-editor-table td input {
+    height: 18px; 
+    background-color: transparent;
+    outline : none; 
+    border: none; 
+    padding: 0; 
+    width: 100%;
+}
+
+.f-style-editor-buttons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.f-style-editor-add-btn {
+    color: white;
+    width: 24px;
+    background-color: var(--f-primary);
+    border: 1px solid var(--f-primary);
+    padding: 4px 8px;
+    cursor: pointer; 
+}
+
+.f-style-editor-add-btn:hover {
+    background-color: var(--f-primary-hover);
+}
+
+
+.f-style-editor-save-btn {
+    color: var(--f-primary);
+    width: 24px;
+    border: 1px solid var(--f-primary);
+    padding: 4px 8px;
+    cursor: pointer; 
+}
+
+.f-style-editor-save-btn:hover {
+    background-color: var(--f-primary-hover);
+    color: white;
+}
+
+.f-style-editor-remove-btn {
+    background-image: url('data:image/svg+xml;utf8,<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="white" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z" clip-rule="evenodd"/></svg>');
+    background-repeat: no-repeat;
+    background-position: 4px;
+    border: none;
+    background-color: #f04040;
+    color: white;
+    width: 24px;
+    height: 24px;
+    margin-top: 2px;
+    padding: 4px;
+    cursor: pointer; 
+}

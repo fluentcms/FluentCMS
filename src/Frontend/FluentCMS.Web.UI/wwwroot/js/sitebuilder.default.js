@@ -23,7 +23,8 @@ function destroy () {
 }
 
 window.addEventListener('fluentcms:afterenhanced', init)
-window.addEventListener('fluentcms:init', init)
+// window.addEventListener('fluentcms:init', init)
+init()
 
 
 window.addEventListener('fluentcms:beforeenhanced', destroy)

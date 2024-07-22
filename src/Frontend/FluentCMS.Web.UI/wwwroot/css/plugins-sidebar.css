@@ -1,0 +1,40 @@
+
+.f-plugin-definition-list {
+    overflow: scroll;
+    height: 100%;
+    display: flex;
+    padding: 0.5rem;
+    box-sizing: border-box;
+    flex-direction: column;
+    gap: 6px;
+    overflow: auto;
+    width: 100%;
+}
+
+.f-plugin-definition-item {
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    font-family: sans-serif;
+    flex-direction: column;
+    gap: 0.25rem;
+    border: 1px solid #f0f0f0;
+    background-color: white;
+    border-radius: 4px;
+}
+
+.f-plugin-definition-item:hover {
+    /* box-shadow: 0 0px 8px -4px black; */
+    background-color: #f0f0f0;
+    border-color: #d0d0d0;
+    cursor: grab;
+}
+
+.f-plugin-definition-item .f-name {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.f-plugin-definition-item .f-description {
+    opacity: 0.7;
+    font-size: 14px;
+}

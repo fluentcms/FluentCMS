@@ -1,0 +1,42 @@
+@import './plugins-sidebar.css';
+
+.f-sidebar-header {
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.f-sidebar-title {
+    margin: 0;
+    font-weight: bold;
+    font-size: 18px;
+
+}
+.f-sidebar-close-btn {
+    width: 24px;
+    height: 24px;
+}
+
+.f-sidebar-body {
+    padding-left: 16px;
+    padding-right: 16px;
+}
+
+
+.f-page-editor-sidebar {
+    width: var(--f-sidebar-width);
+    background-color: #ffffff;
+    border-left: 1px solid #dfdfdf;
+    box-shadow: 1px 0 8px -4px black;
+    transition: all 0.3s ease;
+    position: fixed;
+    top: 40px;
+    bottom: 0;
+    right: calc(var(--f-sidebar-width) * -1);
+    z-index: 100;
+}
+
+.f-page-editor-sidebar-open .f-page-editor-sidebar {
+    right: 0;
+}

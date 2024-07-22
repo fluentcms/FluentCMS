@@ -1,0 +1,7 @@
+@import './columns.css';
+
+.f-section:not([data-full-width]) .f-row {
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+}

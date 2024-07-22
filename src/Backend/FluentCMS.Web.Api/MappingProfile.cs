@@ -33,12 +33,18 @@ public class MappingProfile : Profile
         CreateMap<PageUpdateRequest, Page>();
         CreateMap<Page, PageDetailResponse>();
         CreateMap<Page, PageFullDetailResponse>();
+
         CreateMap<PageSection, PageSectionDetailResponse>();
         CreateMap<PageSectionCreateRequest, PageSection>();
+        CreateMap<PageSectionUpdateRequest, PageSection>();
+
+        
         CreateMap<PageRow, PageRowDetailResponse>();
         CreateMap<PageRowCreateRequest, PageRow>();
+        
         CreateMap<PageColumn, PageColumnDetailResponse>();
         CreateMap<PageColumnCreateRequest, PageColumn>();
+        CreateMap<PageColumnUpdateRequest, PageColumn>();
 
 
         #endregion

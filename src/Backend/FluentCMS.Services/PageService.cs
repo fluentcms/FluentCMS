@@ -14,7 +14,10 @@ public interface IPageService : IAutoRegisterService
     Task<Page> GetByPath(Guid siteId, string path, CancellationToken cancellationToken = default);
     Task<Page> Create(Page page, CancellationToken cancellationToken = default);
     Task<Page> Update(Page page, CancellationToken cancellationToken = default);
+    Task<PageSection> UpdateSection(PageSection section, CancellationToken cancellationToken = default);
     Task<PageColumn> UpdateColumn(PageColumn column, CancellationToken cancellationToken = default);
+    Task<PageSection> DeleteSection(Guid sectionId, CancellationToken cancellationToken = default);
+    Task<PageColumn> DeleteColumn(Guid columnId, CancellationToken cancellationToken = default);
     Task<Page> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
@@ -117,6 +120,24 @@ public class PageService(
     public async Task<PageColumn> UpdateColumn(PageColumn column, CancellationToken cancellationToken = default)
     {
         return await pageColumnRepository.Update(column, cancellationToken) ?? 
+            throw new AppException(ExceptionCodes.PageColumnNotFound);
+    }
+
+    public async Task<PageSection> UpdateSection(PageSection section, CancellationToken cancellationToken = default)
+    {
+        return await pageSectionRepository.Update(section, cancellationToken) ?? 
+            throw new AppException(ExceptionCodes.PageSectionNotFound);
+    }
+
+    public async Task<PageSection> DeleteSection(Guid sectionId, CancellationToken cancellationToken = default)
+    {
+        return await pageSectionRepository.Delete(sectionId, cancellationToken) ?? 
+            throw new AppException(ExceptionCodes.PageSectionNotFound);
+    }
+
+    public async Task<PageColumn> DeleteColumn(Guid columnId, CancellationToken cancellationToken = default)
+    {
+        return await pageColumnRepository.Delete(columnId, cancellationToken) ?? 
             throw new AppException(ExceptionCodes.PageColumnNotFound);
     }
 

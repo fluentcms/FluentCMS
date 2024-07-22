@@ -2,4 +2,26 @@
     --f-toolbar-background-color: #dfdfdf;
     --f-toolbar-border-color: #858585;
     --f-toolbar-button-background-color: #ffffff;
+    --f-primary: #2032ff;
+    --f-primary-soft: #eaecff;
+    --f-primary-soft-hover: #d8dcfd;
+    --f-primary-hover: #3445fd;
+    --f-gray-100: #f0f0f0;
+    --f-gray-200: #e0e0e0;
+    --f-gray-300: #d0d0d0;
+    --f-gray-400: #c0c0c0;
+    --f-gray-500: #b0b0b0;
+    --f-gray-600: #a0a0a0;
+    --f-gray-700: #909090;
+
+    --f-sidebar-width: 300px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    padding: 0;
+    margin: 0;
 }

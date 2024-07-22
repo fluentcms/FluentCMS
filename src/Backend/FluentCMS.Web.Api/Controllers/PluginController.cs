@@ -31,6 +31,7 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
     public async Task<IApiResult<PluginDetailResponse>> Create([FromBody] PluginCreateRequest request, CancellationToken cancellationToken = default)
     {
         var plugin = mapper.Map<Plugin>(request);
+        Console.WriteLine($"ColumnId: {plugin.ColumnId}");
         var newPlugin = await pluginService.Create(plugin, cancellationToken);
         var response = mapper.Map<PluginDetailResponse>(newPlugin);
         return Ok(response);
@@ -42,10 +43,7 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
     {
         var plugin = await pluginService.GetById(request.Id, cancellationToken);
         plugin.Order = request.Order;
-        plugin.Cols = request.Cols;
-        plugin.ColsMd = request.ColsMd;
-        plugin.ColsLg = request.ColsLg;
-        plugin.Section = request.Section;
+        plugin.ColumnId = request.ColumnId;
 
         var updated = await pluginService.Update(plugin, cancellationToken);
         var response = mapper.Map<PluginDetailResponse>(updated);
