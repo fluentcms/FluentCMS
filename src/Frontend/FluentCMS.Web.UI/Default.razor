@@ -12,10 +12,10 @@
                 <ToolbarButton data-action="back">
                     Back
                 </ToolbarButton>
-                <ToolbarButton>
+                <ToolbarButton data-action="pages-list">
                     Pages
                 </ToolbarButton>
-                <ToolbarButton>
+                <ToolbarButton data-action="page-settings">
                     (ICON) Page Settings
                 </ToolbarButton>
             </ActionsStart>
@@ -66,29 +66,33 @@ else
         }            
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/grid-system.css">
     </HeadContent>
-    <Toolbar>
-        <ActionsStart>
-            <ToolbarButton>
-                Pages
-            </ToolbarButton>
-            <ToolbarButton>
-                (ICON) Page Settings
-            </ToolbarButton>
-        </ActionsStart>
-        
-        <ActionsCenter>
+    @if (ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked)
+    {
+        <Toolbar>
+            <ActionsStart>
+                <ToolbarButton data-action="pages-list">
+                    Pages
+                </ToolbarButton>
+                <ToolbarButton data-action="page-settings">
+                    (ICON) Page Settings
+                </ToolbarButton>
+            </ActionsStart>
+            
+            <ActionsCenter>
 
-        </ActionsCenter>
-        <ActionsEnd>
-            <ToolbarButton id="editContentButton">
-                Edit Content
-            </ToolbarButton>
+            </ActionsCenter>
+            <ActionsEnd>
+                <ToolbarButton id="editContentButton">
+                    Edit Content
+                </ToolbarButton>
 
-            <ToolbarButton id="editButton">
-                Edit
-            </ToolbarButton>
-        </ActionsEnd>
-    </Toolbar>
+                <ToolbarButton id="editButton">
+                    Edit
+                </ToolbarButton>
+            </ActionsEnd>
+        </Toolbar>
+    }
+
     @RenderDynamicContent(ViewState.Layout?.Body ?? string.Empty)
     @if (ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked)
     {

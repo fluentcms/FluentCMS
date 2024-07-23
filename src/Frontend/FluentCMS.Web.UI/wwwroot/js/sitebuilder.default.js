@@ -25,5 +25,6 @@ function destroy () {
 window.addEventListener('fluentcms:afterenhanced', init)
 window.addEventListener('fluentcms:beforeenhanced', destroy)
 init()
+console.log('call init')
 
 

@@ -60,3 +60,26 @@
     </div>
 
 </div>
+
+<div data-action="close-offcanvas" class="f-page-editor-offcanvas-backdrop">
+</div>
+<div class="f-page-editor-offcanvas">
+    <div class="f-offcanvas-pane" id="f-offcanvas-pages-list">
+        @if (PluginDefinitions != null)
+        {
+            <div class="f-pages-list">
+                @foreach (var _page in Pages)
+                {
+                    <div class="f-page-item">@_page.Title</div>
+                }
+            </div>
+        }
+    </div>
+    <div class="f-offcanvas-pane" id="f-offcanvas-page-settings">
+        page settings
+    </div>
+    <div class="f-offcanvas-pane" id="f-offcanvas-plugin-edit">
+
+        <iframe class="f-edit-plugin-iframe" frameborder="0" id="f-edit-plugin-iframe"></iframe>
+    </div>
+</div>

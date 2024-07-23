@@ -1,38 +1,3 @@
 @import './base.css';
 @import './actions.css';
 @import './toolbar.css';
-
-body:not(.f-edit-content) .f-actions {
-    display: none;
-}
-body:not(.f-edit-content) .f-plugin-container {
-    border: none;
-}
-
-body:not(.f-edit-content) .f-plugin-container-content {
-    padding-top: unset;
-    border: none;
-}
-
-body:not(.f-edit-content) .f-plugin-container:hover {
-    border: none;
-}
-
-
-body:not(.f-edit-content) .f-plugin-item-container {
-    padding: unset;
-    position: unset;
-    border: none;
-}
-
-body:not(.f-edit-content) .f-plugin-item-container:hover {
-    border: none;
-}
-
-body:not(.f-edit-content) .f-plugin-container-content:hover {
-    border: none;
-}
-
-body:not(.f-edit-content) .f-plugin-container-content {
-    min-height: unset;
-}

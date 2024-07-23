@@ -1,5 +1,6 @@
 .f-actions {
-    display: flex;
+    line-height: 11px;
+    display: none;
     align-items: start;
     justify-content: space-between;
     position: absolute;
@@ -9,12 +10,18 @@
     left: 0;
     z-index: 4;
     pointer-events: none;
-    border-bottom: 1px solid var(--f-primary-soft-hover);
-    background-color: var(--f-primary-soft);
+}
+
+.f-edit-content .f-actions {
+    display: flex;
 }
 
 .f-actions-start, .f-actions-end  {
     pointer-events: all;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: end;
+    align-items: start;
 }
 
 .f-action-text span {
@@ -24,8 +31,23 @@
     display: inline-block;
     white-space: nowrap;
 }
-.f-action-text, .f-action-icon  {
+
+.f-actions-center {
+    pointer-events: all;
+    display: flex;
     background-color: var(--f-primary);
+    width: max-content;
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    right: 50%;
+    padding: 4px 12px;
+    border-radius: 24px;
+    transform: translate(-50%, 0%);
+    overflow: hidden;
+}
+.f-actions-center .f-action-icon {
+    border-radius: 4px;
 }
 
 .f-actions-end {
@@ -56,29 +78,58 @@
     color: white;
     width: 24px;
     height: 24px;
+    cursor: pointer;
 }
 
-.f-plugin-container {
+.f-action-primary {
+    background-color: var(--f-primary);
+}
+
+.f-action-primary:hover {
+    background-color: var(--f-primary-hover);
+}
+
+.f-action-secondary {
+    background-color: var(--f-secondary);
+}
+
+.f-action-secondary:hover {
+    background-color: var(--f-secondary-hover);
+}
+
+.f-actions-secondary {
+    background-color: var(--f-secondary);
+}
+
+.f-action-danger {
+    background-color: var(--f-danger);
+}
+.f-action-danger:hover {
+    background-color: var(--f-danger-hover);
+}
+
+.f-edit-content .f-plugin-container {
     position: relative;
-    border: 1px dashed var(--f-gray-300);
+    box-shadow: inset 0 0 0 1px var(--f-gray-200);
 }
 
 .f-plugin-item-container {
-    padding: 0.5rem;
+    /* padding: 0.5rem; */
     position: relative;
-    border: 1px solid var(--f-gray-200);
+    /* border: 1px solid var(--f-gray-200); */
+    /* box-shadow: inset 0 0 1px 1px var(--f-gray-200); */
 
 }
-.f-plugin-container-content {
+.f-edit-content .f-plugin-container-content {
     position: relative;
-    padding-top: 24px;
+    /* padding-top: 24px; */
     min-height: 100px;
 
 }
 
-.f-plugin-item-container:hover,
-.f-plugin-container:hover {
-    border: 1px solid var(--f-primary);
+/* .f-edit-content .f-plugin-item-container:hover, */
+.f-edit-content .f-plugin-container:hover {
+    box-shadow: inset 0 0 0 1px var(--f-primary);
 }
 
 .f-section:hover > .f-actions {
@@ -99,4 +150,47 @@
 
 .f-plugin-container-content:hover > .f-actions {
     opacity: 1;
+}
+
+.f-action-toggler {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.f-action-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    color: white;
+    padding-right: 16px;
+    width: 100%;
+}
+
+.f-action-toggler svg {
+    width: 16px;
+}
+
+.f-actions-dropdown {
+    position: relative;
+}
+.f-action-menu {
+    position: absolute;
+    left: 0;
+    background-color: var(--f-secondary);
+}
+.f-actions-dropdown-end .f-action-menu {
+    left: unset;
+    right: 0;
+}
+
+.f-actions-dropdown .f-action-menu {
+    display: none;
+
+}
+.f-actions-dropdown:has(.f-action-toggler:hover) .f-action-menu, .f-actions-dropdown:has(.f-action-menu:hover) .f-action-menu {
+    display: flex;
+    flex-direction: column;
+
 }

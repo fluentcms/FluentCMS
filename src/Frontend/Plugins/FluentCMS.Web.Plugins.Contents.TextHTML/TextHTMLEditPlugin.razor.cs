@@ -22,7 +22,7 @@ public partial class TextHTMLEditPlugin
     protected virtual void NavigateBack()
     {
         var url = new Uri(NavigationManager.Uri).LocalPath;
-        NavigateTo(url);
+        NavigateTo(url + "?close=true");
     }
 
     protected virtual void NavigateTo(string path)
@@ -36,7 +36,7 @@ public partial class TextHTMLEditPlugin
     [SupplyParameterFromForm(FormName = CONTENT_TYPE_NAME)]
     private TextHTMLContent? Model { get; set; }
 
-    [SupplyParameterFromQuery(Name = nameof(Id))]
+    // [SupplyParameterFromQuery(Name = nameof(Id))]
     private Guid? Id { get; set; } = default!;
 
     protected virtual string GetBackUrl()
@@ -48,11 +48,14 @@ public partial class TextHTMLEditPlugin
     {
         if (Model is null)
         {
-            if (Id != null)
-            {
-                var response = await ApiClient.PluginContent.GetByIdAsync(CONTENT_TYPE_NAME, Plugin!.Id, Id.Value);
+            var response = await ApiClient.PluginContent.GetAllAsync(CONTENT_TYPE_NAME, Plugin!.Id);
 
-                var content = response.Data.Data.ToContent<TextHTMLContent>();
+            if (response.Data?.Count > 0)
+            {
+                var content = response.Data?.ToContentList<TextHTMLContent>()[0];
+
+                Id = content.Id;
+                // var content = response.Data.Data.ToContent<TextHTMLContent>();
 
                 Model = new TextHTMLContent
                 {

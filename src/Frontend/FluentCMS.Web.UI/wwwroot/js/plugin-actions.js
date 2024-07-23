@@ -36,6 +36,7 @@ function openModal(id, doc) {
 }
 
 export function initPluginActions(doc) {
+    console.log('initPluginActions')
     doc.querySelectorAll('[data-plugin-item-id]').forEach(pluginItem => {
         const itemId = pluginItem.getAttribute('data-plugin-item-id');
         const pluginId = pluginItem.getAttribute('data-plugin-id');
@@ -60,15 +61,13 @@ export function initPluginActions(doc) {
         })
     })
 
-    doc.querySelectorAll('[data-plugin-items-root]').forEach(pluginItem => {
-        const pluginId = pluginItem.getAttribute('data-plugin-id');
+    // doc.querySelectorAll('[data-plugin-item-action]').forEach(item => {
+    //     item.addEventListener('click', () => {
+    //         // const mode = item.getAttribute('data-plugin-item-action');
+    //         const mode = item.dataset.pluginItemAction
+    //         const pluginId = item.dataset.pluginId
 
-        pluginItem.querySelectorAll('[data-plugin-item-action]').forEach(item => {
-            item.addEventListener('click', () => {
-                const mode = item.getAttribute('data-plugin-item-action');
-
-                window.location.href = getUrl(pluginId, mode);
-            })
-        })
-    })
+    //         window.location.href = getUrl(pluginId, mode);
+    //     })
+    // })
 }

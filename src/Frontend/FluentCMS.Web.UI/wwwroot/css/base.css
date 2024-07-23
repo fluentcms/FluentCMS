@@ -2,10 +2,21 @@
     --f-toolbar-background-color: #dfdfdf;
     --f-toolbar-border-color: #858585;
     --f-toolbar-button-background-color: #ffffff;
-    --f-primary: #2032ff;
-    --f-primary-soft: #eaecff;
-    --f-primary-soft-hover: #d8dcfd;
-    --f-primary-hover: #3445fd;
+    --f-primary: #3a4aff;
+    --f-primary-soft: #bac1ff50;
+    --f-primary-soft-hover: #bac1ff69;
+    --f-primary-hover: #5361ff;
+    
+    --f-secondary: #8f929c;
+    --f-secondary-soft: #797c861f;
+    --f-secondary-soft-hover: #797c862d;
+    --f-secondary-hover: #7a7e85;
+    
+    --f-danger: #ff3a3a;
+    --f-danger-soft: #ffbaba50;
+    --f-danger-soft-hover: #ffbaba69;
+    --f-danger-hover: #ff5353;
+    
     --f-gray-100: #f0f0f0;
     --f-gray-200: #e0e0e0;
     --f-gray-300: #d0d0d0;
@@ -24,4 +35,9 @@
 body {
     padding: 0;
     margin: 0;
+}
+
+button {
+    padding: 0;
+    border: none;
 }

@@ -27,9 +27,9 @@
 .f-row.active .resizer-handle {
     position: absolute;
     z-index: 1;
-    top: 0;
-    height: 100%;
-    right: -24px;
+    top: 1.5rem;
+    bottom: 1.5rem;
+    right: -22px;
     width: 48px;
     cursor:col-resize;
 }
@@ -42,10 +42,10 @@
     opacity: 0;
     display: block;
     right: 19px;
-    top: 1rem;
-    bottom: 1rem;
+    top: 0rem;
+    bottom: 0rem;
     width: 8px;
-    background-color: #8a8a8a41;
+    background-color: var(--f-gray-200);
     cursor: col-resize;
 }
 

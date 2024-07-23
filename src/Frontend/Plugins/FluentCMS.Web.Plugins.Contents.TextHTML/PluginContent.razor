@@ -2,9 +2,17 @@
 
 
 <div class="f-actions f-actions-no-bg f-plugin-actions">
-<div class="f-actions-start"> </div>
+<div class="f-actions-start">
+    @if (ActionsStart != null)
+    {
+        @ActionsStart
+    }
+</div>
     <div class="f-actions-end" data-plugin-id="@Plugin.Id" data-plugin-items-root>
+    @if (ActionsEnd != null)
+    {
         @ActionsEnd
+    }
     </div>
 </div>
 

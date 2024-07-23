@@ -23,7 +23,7 @@ function initializeSortable(frameDocument) {
         new Sortable(root, {
             animation: 150,
             draggable: '.f-section',
-            handle: '.f-action-draggable',
+            handle: '.f-actions',
             onEnd(event) {
                 saveSectionsOrder()
             }
@@ -39,7 +39,7 @@ function initializeSortable(frameDocument) {
             animation: 150,
             group: 'shared-row',
             draggable: '.f-column',
-            handle: '.f-action-draggable',
+            handle: '.f-actions',
             onEnd(event) {
                 saveColumns()
             }
@@ -57,7 +57,7 @@ function initializeSortable(frameDocument) {
             draggable: '.f-plugin-container',
             ghostClass: 'f-plugin-container-moving',
             chosenClass: 'f-plugin-container-chosen',
-            handle: '.f-action-draggable',
+            handle: '.f-actions',
             onEnd(event) {
                 const columnId = event.to.id.replace('column-', '');
                 const id = event.item.id.replace('plugin-', '')
@@ -209,6 +209,19 @@ async function saveColumns() {
     await request(requestBody)
 }
 
+async function reload() {
+    const url = window.location.href
+    const response = await fetch(url.replace('pageEdit', 'pagePreview')).then(res => res.text())
+    iframeElement.contentDocument.documentElement.innerHTML = response
+    setTimeout(() => {
+        initializeColumns()
+        initializeActions(frameDocument)
+        initializeSortable(frameDocument)
+        initPluginActions(frameDocument)
+        frameDocument.body.classList.add('f-edit-content')
+    })
+
+}
 
 async function request(values) {
     const url = window.location.href
@@ -225,15 +238,7 @@ async function request(values) {
         body
     })
 
-    const response = await fetch(url.replace('pageEdit', 'pagePreview')).then(res => res.text())
-    iframeElement.contentDocument.documentElement.innerHTML = response
-    setTimeout(() => {
-        initializeColumns()
-        initializeActions(frameDocument)
-        initializeSortable(frameDocument)
-        initPluginActions(frameDocument)
-    
-    })
+    await reload()
 }
 
 function initializeColumns() {
@@ -291,7 +296,8 @@ async function onAddColumn(el) {
         'AddColumnModel.Mode': el.dataset.mode,
         'AddColumnModel.Order': el.dataset.order ?? 0,
         'AddColumnModel.RowId': el.dataset.rowId,
-    })   
+    })
+    await saveColumns()
 }
 
 async function onDeleteSection(el) {
@@ -444,13 +450,13 @@ function onToggleFullWidth(el) {
     saveSectionsOrder()
 }
 
-function onHideSidebar() {
-    pageEditorElement.classList.add('f-page-editor-sidebar-close')
-    pageEditorElement.classList.remove('f-page-editor-sidebar-open')
-    setTimeout(() => {
-        updateResizerPosition()
-    }, 300)
-}
+// function onHideSidebar() {
+//     pageEditorElement.classList.add('f-page-editor-sidebar-close')
+//     pageEditorElement.classList.remove('f-page-editor-sidebar-open')
+//     setTimeout(() => {
+//         updateResizerPosition()
+//     }, 300)
+// }
 
 function onEditSectionPermissionsButtonClicked(el) {
     showSidebar({title: 'Section Permissions', mode: 'section-permissions', id: el.dataset.id})
@@ -514,6 +520,79 @@ function onSaveStyles() {
 
 }
 
+function openOffcanvas(id, width = 400) {
+    if(pageEditorElement.dataset.offcanvasId == id) {
+        onCloseOffcanvas()
+    } else {
+        pageEditorElement.dataset.offcanvasId = id
+        document.querySelector('.f-page-editor-offcanvas').setAttribute('style', '--f-offcanvas-width: ' + width + 'px;')
+        onHideSidebar()
+    }
+}
+
+function onCloseOffcanvas() {
+    delete pageEditorElement.dataset['offcanvasId']    
+}
+
+function onPagesList() {
+    openOffcanvas('f-offcanvas-pages-list')
+    // 
+}
+
+function onPageSettings() {
+    openOffcanvas('f-offcanvas-page-settings')    
+}
+
+
+function getUrl(pluginId, mode, itemId) {
+    let url = window.location.origin  + window.location.pathname + `?pluginId=${pluginId}&viewName=${mode}`
+    if(itemId) {
+        url += '&id=' + itemId
+    }
+    return url
+}
+
+async function onPluginEdit(el) {
+    console.log('onPluginEdit')
+    // frameDocument.querySelectorAll('[data-plugin-item-action]').forEach(item => {
+        // item.addEventListener('click', () => {
+            // const mode = item.getAttribute('data-plugin-item-action');
+
+    const mode = el.dataset.pluginItemAction
+    const pluginId = el.dataset.pluginId
+    const editPluginIframe = document.getElementById('f-edit-plugin-iframe')
+    var res = await fetch(getUrl(pluginId, mode)).then(res => res.text())
+
+    // editPluginIframe.srcdoc = res
+    editPluginIframe.setAttribute('src', getUrl(pluginId, mode));
+    setTimeout(() => {
+        editPluginIframe.contentDocument.querySelectorAll('form').forEach(x => {
+            x.addEventListener('submit', e => {
+                onCloseOffcanvas()
+                reload()
+            })
+        })
+    }, 1000)
+
+    // editPluginIframe.contentWindow.addEventListener('fluentcms:closepage', () => {
+    //     onCloseOffcanvas()
+    // })
+
+            // window.location.href = getUrl(pluginId, mode);
+        // })
+    // })
+    openOffcanvas('f-offcanvas-plugin-edit', 800)    
+}
+
+function onHideSidebar() {
+    // alert('enable responsive buttons')
+    pageEditorElement.classList.add('f-page-editor-sidebar-close')
+    pageEditorElement.classList.remove('f-page-editor-sidebar-open')
+    setTimeout(() => {
+        updateResizerPosition()
+    }, 300)
+}
+
 const actions = {
     'add-section': onAddSection,
     'delete-section': onDeleteSection,
@@ -532,6 +611,10 @@ const actions = {
         onHideSidebar()
         window.location.href = window.location.href.replace('?pageEdit=true', '')
     },
+    'pages-list': onPagesList,
+    'page-settings': onPageSettings,
+    'plugin-edit': onPluginEdit,
+    'close-offcanvas': onCloseOffcanvas,
     'add-style-item': onAddStyleItem,
     'save-styles': onSaveStyles,
     // 'responsive-mobile'() {
@@ -546,19 +629,13 @@ const actions = {
     // 'responsive-large'() {
     //     updateResponsive('large')
     // },
-    'hide-sidebar'() {
-        alert('enable responsive buttons')
-        pageEditorElement.classList.add('f-page-editor-sidebar-close')
-        pageEditorElement.classList.remove('f-page-editor-sidebar-open')
-        setTimeout(() => {
-            updateResizerPosition()
-        }, 300)
-    }
+    'hide-sidebar': onHideSidebar
 }
 
 function initializeActions(element) {
     element.querySelectorAll('[data-action]').forEach(action => {
         action.addEventListener('click', () => {
+            console.log(action.dataset.action, actions)
             actions[action.dataset.action](action)
         })
     })

@@ -5,12 +5,24 @@
 
 .f-section {
     padding: 2rem;
-    border: 1px solid rgba(95, 95, 95, 0.486);
+    position: relative;
+    /* border: 1px solid rgba(95, 95, 95, 0.486); */
+    /* box-shadow: inset 0 0 0 1px var(--f-gray-100); */
     min-height: 100px;
 }
 
 .f-section:hover {
-    border: 1px solid var(--f-primary);
+    box-shadow: inset 0 0 0 1px var(--f-secondary);
+    /* border: 1px solid var(--f-gray-500); */
+}
+
+.f-section:has(.f-column:hover):hover {
+    box-shadow: inset 0 0 0 1px var(--f-gray-300);
+    /* border: 1px solid var(--f-gray-500); */
+}
+.f-column:has(.f-plugin-container:hover):hover {
+    box-shadow: inset 0 0 0 1px var(--f-gray-300);
+    /* border: 1px solid var(--f-gray-500); */
 }
 
 .f-section-root {
@@ -40,9 +52,10 @@
 }
 
 
-.f-section-root:has(.f-section-empty-add-button) {
+.f-add-section-wrapper {
     display: flex;
     width: 100%;
+    height: 300px;
     align-items: center;
     justify-content: center;
 }
@@ -58,24 +71,23 @@
     background-color: var(--f-primary-hover);
 }
 
-.f-section {
-    position: relative;
-}
-
 .f-add-section {
     opacity: 0;
     transition: all 0.2s ease;
-
     left: 0;
     position: absolute;
     height: 64px;
     width: 100%;
-    bottom: -32px;
+    top: -32px;
     z-index: 3;
 }
 
-.f-add-section:hover {
+.f-section:hover .f-add-section {
     opacity: 1;
+}
+
+.f-plugin-actions {
+    left: 24px;
 }
 
 .f-add-section::before {
@@ -115,9 +127,10 @@
 .f-column-empty-add-button {
     width: calc(100% / 6);
     height: 80px;
-    border: 1px solid var(--f-primary);
-    background-color: var(--f-primary-soft);
-    border-radius: 8px;
+    border: 1px solid var(--f-secondary-soft-hover);
+    background-color: var(--f-secondary-soft);
+    color: var(--f-secondary-hover);
+    border-radius: 4px;
     text-align: center;
 
 }
@@ -128,31 +141,43 @@
 }
 
 .f-row {
-    box-shadow: 0 0 1px 0 black;
+    box-shadow: inset 0 0 0 1px var(--f-gray-100);
+}
+.f-row:has(.f-column) {
+    box-shadow: none;
 }
 
 .f-column {
-    padding: 2rem 0.5rem 0.5rem 0.5rem !important;
+    /* padding: 2rem 0.5rem 0.5rem 0.5rem !important; */
     position: relative !important;
     min-height: 100px !important;
-    border: 1px dashed var(--f-gray-300); 
+    /* border: 1px dashed var(--f-gray-300);  */
+    /* box-shadow: inset 0 0 0 1px var(--f-gray-100); */
 }
 
 .f-column:hover {
-    border: 1px solid var(--f-primary); 
+    box-shadow: inset 0 0 0 1px var(--f-gray-500); 
 }
 
 .f-column-empty-add-plugin-button {
     cursor: pointer;
     min-height: 100px;
     padding: 50px;
+    margin: 0.5rem;
+    border: 1px solid var(--f-secondary-soft-hover);
+    background-color: var(--f-secondary-soft);
+    color: var(--f-secondary);
     display: flex;
     align-items: center;
     flex-direction: column;
     justify-content: center;
-    width: 100%;
+    width: calc(100% - 1rem);
     font-weight: bold;
     font-size: 12px;
+}
+.f-column-empty-add-plugin-button:hover {
+    background-color: var(--f-secondary-soft-hover);
+
 }
 
 .f-add-column {
@@ -176,7 +201,7 @@
     font-size: 24px;
     width: 24px;
     height: 24px;
-    background-color: var(--f-primary);
+    background-color: var(--f-secondary);
     color: white;
     position: absolute;
     /* top: 50%; */
@@ -186,7 +211,7 @@
     right: 8px;
 }
 .f-add-column::before:hover {
-    background-color: var(--f-primary-hover);
+    background-color: var(--f-secondary-hover);
 }
 
 .f-section-root:has(.f-plugin-definition-item) .f-column {
@@ -194,9 +219,6 @@
     /* border: 1px solid rgb(0, 81, 255); */
 }
 
-.f-plugin-actions {
-    right: 48px;
-}
 .f-column-empty-add-plugin-icon {
     width: 32px;
     height: 32px;

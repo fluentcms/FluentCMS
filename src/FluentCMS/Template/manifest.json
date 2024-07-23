@@ -342,30 +342,7 @@
             "Title": "Bootstrap",
             "Path": "/bootstrap",
             "Layout": "Bootstrap",
-            "Sections": [
-                {
-                    "Rows": [
-                        {
-                            "Columns": [
-                                {
-                                    "Plugins": [
-                                        {
-                                            "Definition": "TextHTML Plugin",
-                                            "Section": "Main",
-                                            "Type": "TextHTMLContent",
-                                            "Content": [
-                                                {
-                                                    "Content": "<div class=\"row gy-4\">\n          <div class=\"col-lg-6 order-2 order-lg-1 d-flex flex-column justify-content-center\">\n            <h1 data-aos=\"fade-up\" class=\"aos-init aos-animate\">We offer modern solutions for growing your business</h1>\n            <p data-aos=\"fade-up\" data-aos-delay=\"100\" class=\"aos-init aos-animate\">We are team of talented designers making websites with Bootstrap</p>\n            <div class=\"d-flex flex-column flex-md-row aos-init aos-animate\" data-aos=\"fade-up\" data-aos-delay=\"200\">\n              <a href=\"#about\" class=\"btn-get-started\">Get Started <i class=\"bi bi-arrow-right\"></i></a>\n              <a href=\"https://www.youtube.com/watch?v=LXb3EKWsInQ\" class=\"glightbox btn-watch-video d-flex align-items-center justify-content-center ms-0 ms-md-4 mt-4 mt-md-0\"><i class=\"bi bi-play-circle\"></i><span>Watch Video</span></a>\n            </div>\n          </div>\n          <div class=\"col-lg-6 order-1 order-lg-2 hero-img aos-init aos-animate\" data-aos=\"zoom-out\">\n            <img src=\"assets/img/hero-img.png\" class=\"img-fluid animated\" alt=\">\n          </div>\n        </div></div>"
-                                                }
-                                            ]
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ]
+            "Sections": []
         },
         {
             "Title": "Sample",
@@ -384,7 +361,6 @@
                                     "Plugins": [
                                         {
                                             "Definition": "TextHTML Plugin",
-                                            "Section": "Main",
                                             "Type": "TextHTMLContent",
                                             "Content": [
                                                 {
@@ -394,7 +370,6 @@
                                         },
                                         {
                                             "Definition": "TextHTML Plugin",
-                                            "Section": "Main",
                                             "Type": "TextHTMLContent",
                                             "Content": [
                                                 {
@@ -404,7 +379,6 @@
                                         },
                                         {
                                             "Definition": "TextHTML Plugin",
-                                            "Section": "Bottom",
                                             "Type": "TextHTMLContent",
                                             "Content": [
                                                 {
@@ -515,11 +489,22 @@
                     "Path": "/content-types",
                     "Layout": "AdminLayout",
                     "Locked": true,
-                    "Plugins": [
+                    "Sections": [
                         {
-                            "Definition": "ContentType Management",
-                            "Section": "Main",
-                            "Locked": true
+                            "Rows": [
+                                {
+                                    "Columns": [
+                                        {
+                                            "Plugins": [
+                                                {
+                                                    "Definition": "ContentType Management",
+                                                    "Locked": true
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -528,11 +513,22 @@
                     "Path": "/users",
                     "Layout": "AdminLayout",
                     "Locked": true,
-                    "Plugins": [
+                    "Sections": [
                         {
-                            "Definition": "User Management",
-                            "Section": "Main",
-                            "Locked": true
+                            "Rows": [
+                                {
+                                    "Columns": [
+                                        {
+                                            "Plugins": [
+                                                {
+                                                    "Definition": "User Management",
+                                                    "Locked": true
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -541,11 +537,22 @@
                     "Path": "/files",
                     "Layout": "AdminLayout",
                     "Locked": true,
-                    "Plugins": [
+                    "Sections": [
                         {
-                            "Definition": "File Management",
-                            "Section": "Main",
-                            "Locked": true
+                            "Rows": [
+                                {
+                                    "Columns": [
+                                        {
+                                            "Plugins": [
+                                                {
+                                                    "Definition": "File Management",
+                                                    "Locked": true
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -554,11 +561,22 @@
                     "Path": "/api-tokens",
                     "Layout": "AdminLayout",
                     "Locked": true,
-                    "Plugins": [
+                    "Sections": [
                         {
-                            "Definition": "Api Token Management",
-                            "Section": "Main",
-                            "Locked": true
+                            "Rows": [
+                                {
+                                    "Columns": [
+                                        {
+                                            "Plugins": [
+                                                {
+                                                    "Definition": "Api Token Management",
+                                                    "Locked": true
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -567,11 +585,22 @@
                     "Path": "/roles",
                     "Layout": "AdminLayout",
                     "Locked": true,
-                    "Plugins": [
+                    "Sections": [
                         {
-                            "Definition": "Role Management",
-                            "Section": "Main",
-                            "Locked": true
+                            "Rows": [
+                                {
+                                    "Columns": [
+                                        {
+                                            "Plugins": [
+                                                {
+                                                    "Definition": "Role Management",
+                                                    "Locked": true
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -580,11 +609,22 @@
                     "Path": "/sites",
                     "Layout": "AdminLayout",
                     "Locked": true,
-                    "Plugins": [
+                    "Sections": [
                         {
-                            "Definition": "Site Management",
-                            "Section": "Main",
-                            "Locked": true
+                            "Rows": [
+                                {
+                                    "Columns": [
+                                        {
+                                            "Plugins": [
+                                                {
+                                                    "Definition": "Site Management",
+                                                    "Locked": true
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -593,11 +633,22 @@
                     "Path": "/layouts",
                     "Layout": "AdminLayout",
                     "Locked": true,
-                    "Plugins": [
+                    "Sections": [
                         {
-                            "Definition": "Layout Management",
-                            "Section": "Main",
-                            "Locked": true
+                            "Rows": [
+                                {
+                                    "Columns": [
+                                        {
+                                            "Plugins": [
+                                                {
+                                                    "Definition": "Layout Management",
+                                                    "Locked": true
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 }
@@ -612,10 +663,21 @@
                     "Path": "/login",
                     "Locked": true,
                     "Layout": "AuthLayout",
-                    "Plugins": [
+                    "Sections": [
                         {
-                            "Definition": "Login",
-                            "Section": "Main"
+                            "Rows": [
+                                {
+                                    "Columns": [
+                                        {
+                                            "Plugins": [
+                                                {
+                                                    "Definition": "Login"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -623,10 +685,21 @@
                     "Title": "Logout",
                     "Path": "/logout",
                     "Locked": true,
-                    "Plugins": [
+                    "Sections": [
                         {
-                            "Definition": "Logout",
-                            "Section": "Main"
+                            "Rows": [
+                                {
+                                    "Columns": [
+                                        {
+                                            "Plugins": [
+                                                {
+                                                    "Definition": "Logout"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -635,10 +708,21 @@
                     "Path": "/register",
                     "Locked": true,
                     "Layout": "AuthLayout",
-                    "Plugins": [
+                    "Sections": [
                         {
-                            "Definition": "Register",
-                            "Section": "Main"
+                            "Rows": [
+                                {
+                                    "Columns": [
+                                        {
+                                            "Plugins": [
+                                                {
+                                                    "Definition": "Register"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -647,10 +731,21 @@
                     "Path": "/reset-password",
                     "Locked": true,
                     "Layout": "AuthLayout",
-                    "Plugins": [
+                    "Sections": [
                         {
-                            "Definition": "Reset Password",
-                            "Section": "Main"
+                            "Rows": [
+                                {
+                                    "Columns": [
+                                        {
+                                            "Plugins": [
+                                                {
+                                                    "Definition": "Reset Password"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -659,10 +754,21 @@
                     "Path": "/forgot-password",
                     "Locked": true,
                     "Layout": "AuthLayout",
-                    "Plugins": [
+                    "Sections": [
                         {
-                            "Definition": "Forgot Password",
-                            "Section": "Main"
+                            "Rows": [
+                                {
+                                    "Columns": [
+                                        {
+                                            "Plugins": [
+                                                {
+                                                    "Definition": "Forgot Password"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },

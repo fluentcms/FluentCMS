@@ -1,7 +1,32 @@
 @import './columns.css';
 
-.f-section:not([data-full-width]) .f-row {
+.f-container {
+    padding-left: var(--f-gutter);
+    padding-right: var(--f-gutter);
+}
+
+.f-section:not([data-full-width]) .f-container {
     max-width: 1200px;
     margin-left: auto;
     margin-right: auto;
+}
+.f-section[data-gutter="sm"] {
+    --f-gutter: 8px;
+}
+.f-section[data-gutter="md"] {
+    --f-gutter: 16px;
+}
+
+.f-section[data-gutter="lg"] {
+    --f-gutter: 24px;
+}
+
+.f-container > .f-row {
+    margin-left: calc(-1 * var(--f-gutter));
+    margin-right: calc(-1 * var(--f-gutter));
+}
+
+.f-container > .f-row > .f-column {
+    padding-left: var(--f-gutter);
+    padding-right: var(--f-gutter);
 }
