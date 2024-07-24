@@ -472,9 +472,13 @@ function onEditPluginPermissionsButtonClicked(el) {
     showSidebar({title: 'Plugin Permissions', mode: 'plugin-permissions', id: el.dataset.id})
 }
 
-function onDeletePlugin(el) {
+async function onDeletePlugin(el) {
     const id = el.dataset.id
-    alert('Should Delete plugin with id: ' + id)
+    await request({
+        '_handler': 'PluginDeleteForm',
+        'PluginDeleteModel.Submitted': true,
+        'PluginDeleteModel.Id': id
+    })
 } 
 
 function onAddStyleItem(el) {

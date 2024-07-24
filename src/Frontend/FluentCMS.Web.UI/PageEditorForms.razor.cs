@@ -62,12 +62,20 @@ public partial class PageEditorForms
     [SupplyParameterFromForm(FormName = "PluginUpdateForm")]
     private PluginUpdateRequest PluginUpdateModel { get; set; } = new();
     
+    [SupplyParameterFromForm(FormName = "PluginDeleteForm")]
+    private PluginDeleteRequest PluginDeleteModel { get; set; } = new();
+
     private async Task OnColumnUpdateSubmit()
     {
         foreach (var column in ColumnUpdateModel.Columns)
         {
             await ApiClient.Page.UpdateColumnAsync(column);
         }
+    }
+
+    private async Task OnPluginDeleteSubmit()
+    {
+        await ApiClient.Plugin.DeleteAsync(PluginDeleteModel.Id);
     }
 
     private async Task OnPluginCreateSubmit()
@@ -249,6 +257,12 @@ public partial class PageEditorForms
     };
 
     class ColumnDeleteRequest
+    {
+        public bool Submitted { get; set; } = true;
+        public Guid Id { get; set; }
+    };
+
+    class PluginDeleteRequest
     {
         public bool Submitted { get; set; } = true;
         public Guid Id { get; set; }
