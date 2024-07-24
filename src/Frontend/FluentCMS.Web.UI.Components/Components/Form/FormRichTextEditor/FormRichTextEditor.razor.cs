@@ -150,7 +150,7 @@ public partial class FormRichTextEditor
         }
 
         // TODO: Site url
-        var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Url);
+        var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Urls[0]);
         if (pagesResponse?.Data != null)
         {
             Pages = pagesResponse.Data.ToList();

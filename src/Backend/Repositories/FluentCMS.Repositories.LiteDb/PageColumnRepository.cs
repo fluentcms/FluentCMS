@@ -6,9 +6,9 @@ public class PageColumnRepository : SiteAssociatedRepository<PageColumn>, IPageC
     {
     }
 
-    public async Task<IEnumerable<PageColumn>> GetByRowId(Guid rowId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<PageColumn>> GetByColumnId(Guid columnId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return await Collection.Query().Where(x => x.RowId == rowId).ToEnumerableAsync();
+        return await Collection.Query().Where(x => x.ColumnId == columnId).ToEnumerableAsync();
     }
 }

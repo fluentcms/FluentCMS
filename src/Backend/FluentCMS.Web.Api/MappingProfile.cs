@@ -37,10 +37,6 @@ public class MappingProfile : Profile
         CreateMap<PageSection, PageSectionDetailResponse>();
         CreateMap<PageSectionCreateRequest, PageSection>();
         CreateMap<PageSectionUpdateRequest, PageSection>();
-
-        
-        CreateMap<PageRow, PageRowDetailResponse>();
-        CreateMap<PageRowCreateRequest, PageRow>();
         
         CreateMap<PageColumn, PageColumnDetailResponse>();
         CreateMap<PageColumnCreateRequest, PageColumn>();

@@ -200,14 +200,14 @@ function parseStyles(styleStr, dataset) {
 
 async function saveColumns() {
     let columns = {}
-    iframeElement.contentDocument.querySelectorAll('.f-row').forEach(row => {
+    iframeElement.contentDocument.querySelectorAll('.f-section').forEach(section => {
         let colIndex = 0 
-        row.querySelectorAll('.f-column').forEach(el => {
+        section.querySelectorAll('.f-column').forEach(el => {
             const key = el.id.replace('column-', '')
             columns[key] = {}
             columns[key].dataset = el.dataset
             columns[key].order = colIndex++;
-            columns[key].rowId = row.id.replace('row-', '');
+            columns[key].sectionId = section.id.replace('section-', '');
             columns[key].style = el.getAttribute('style') ?? '';
         })
     
@@ -222,7 +222,7 @@ async function saveColumns() {
         const column = columns[id]
         requestBody[`ColumnUpdateModel.Columns[${index}].Id`] = id
         requestBody[`ColumnUpdateModel.Columns[${index}].Order`] = column.order
-        requestBody[`ColumnUpdateModel.Columns[${index}].RowId`] = column.rowId
+        requestBody[`ColumnUpdateModel.Columns[${index}].SectionId`] = column.sectionId
         const styles = parseStyles(column.style, column.dataset)
 
         for(let key in styles) {
@@ -288,7 +288,7 @@ async function onAddColumn(el) {
         'AddColumnModel.Submitted': true,
         'AddColumnModel.Mode': el.dataset.mode,
         'AddColumnModel.Order': el.dataset.order ?? 0,
-        'AddColumnModel.RowId': el.dataset.rowId,
+        'AddColumnModel.SectionId': el.dataset.sectionId,
     })
     await saveColumns()
 }
@@ -491,25 +491,39 @@ function onSaveStyles() {
     const dataset = document.getElementById('styles-sidebar').dataset
 
     let stylesStr = ''
+    let elementDataset = {}
     for(let key in styles) {
-        stylesStr += `${key}: ${styles[key]};`
+        if(key[0] > 'A' && key[0] < 'Z') {
+            elementDataset[key[0].toLowerCase() + key.slice(1)] = styles[key]
+        } else {
+            stylesStr += `${key}: ${styles[key]};`
+        }
     }
 
     let element = null
     if(dataset.type === 'section') {
         element = frameDocument.getElementById('section-' + dataset.id)
         element.setAttribute('style', stylesStr)    
+        for(let key in elementDataset) {
+            element.dataset[key] = elementDataset[key]
+        }
         setTimeout(() => {
             saveSectionsOrder()
         })
     } else if(dataset.type === 'plugin') {
         element = frameDocument.getElementById('plugin-' + dataset.id)
         element.setAttribute('style', stylesStr)    
+        for(let key in elementDataset) {
+            element.dataset[key] = elementDataset[key]
+        }
         // save plugin
         
     } else if(dataset.type === 'column') {
         element = frameDocument.getElementById('column-' + dataset.id)
         element.setAttribute('style', stylesStr)    
+        for(let key in elementDataset) {
+            element.dataset[key] = elementDataset[key]
+        }
         setTimeout(() => {
             saveColumns()
         })

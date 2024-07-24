@@ -45,96 +45,91 @@
                 }
 
                 <div class="f-container">
-                    @foreach (var Row in Section.Rows)
-                    {
-                        <div class="f-row" id="row-@Row.Id" style="@GetStyles(Row.Styles)">
-                            @{var index = 0;}
-                            @foreach (var Column in Row.Columns)
-                            {
-                                <div class="f-column" id="column-@Column.Id" data-cols="@GetStyleValue(Column.Styles, "Cols")"  data-cols-sm="@GetStyleValue(Column.Styles, "ColsSm")"  data-cols-md="@GetStyleValue(Column.Styles, "ColsMd")"  data-cols-lg="@GetStyleValue(Column.Styles, "ColsLg")" style="@GetStyles(Column.Styles)">
-                                    @if (ViewState.Type == ViewStateType.PagePreview)
-                                    {
-                                        <div class="f-actions">
-                                            <div class="f-actions-start">
-                                            </div>
-                                            <div class="f-actions-end">
-                                                <div class="f-actions-dropdown f-actions-dropdown-end f-action-secondary">
-                                                    <div class="f-action-icon f-action-secondary f-action-toggler">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M3 18v-2h18v2zm0-5v-2h18v2zm0-5V6h18v2z"/></svg>
-                                                        <!-- <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 512 512"><path d="M128 192l128 128 128-128z" fill="currentColor"/></svg> -->
-                                                        <!-- <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zm9-1v18"/></svg> -->
+                    <div class="f-row">
+                        @{var index = 0;}
+                        @foreach (var Column in Section.Columns)
+                        {
+                            <div class="f-column" id="column-@Column.Id" data-cols="@GetStyleValue(Column.Styles, "Cols")"  data-cols-sm="@GetStyleValue(Column.Styles, "ColsSm")"  data-cols-md="@GetStyleValue(Column.Styles, "ColsMd")"  data-cols-lg="@GetStyleValue(Column.Styles, "ColsLg")" style="@GetStyles(Column.Styles)">
+                                @if (ViewState.Type == ViewStateType.PagePreview)
+                                {
+                                    <div class="f-actions">
+                                        <div class="f-actions-start">
+                                        </div>
+                                        <div class="f-actions-end">
+                                            <div class="f-actions-dropdown f-actions-dropdown-end f-action-secondary">
+                                                <div class="f-action-icon f-action-secondary f-action-toggler">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M3 18v-2h18v2zm0-5v-2h18v2zm0-5V6h18v2z"/></svg>
+                                                    <!-- <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 512 512"><path d="M128 192l128 128 128-128z" fill="currentColor"/></svg> -->
+                                                    <!-- <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zm9-1v18"/></svg> -->
+                                                </div>
+                                                <div class="f-action-menu">
+                                                    <div class="f-action-item f-action-secondary" data-id="@Column.Id" data-action="edit-column">
+                                                        <svg class="f-action-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                                            <path fill-rule="evenodd" d="M9.586 2.586A2 2 0 0 1 11 2h2a2 2 0 0 1 2 2v.089l.473.196.063-.063a2.002 2.002 0 0 1 2.828 0l1.414 1.414a2 2 0 0 1 0 2.827l-.063.064.196.473H20a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-.089l-.196.473.063.063a2.002 2.002 0 0 1 0 2.828l-1.414 1.414a2 2 0 0 1-2.828 0l-.063-.063-.473.196V20a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-.089l-.473-.196-.063.063a2.002 2.002 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.827l.063-.064L4.089 15H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h.09l.195-.473-.063-.063a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.827 0l.064.063L9 4.089V4a2 2 0 0 1 .586-1.414ZM8 12a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z" clip-rule="evenodd"/>
+                                                        </svg>
+                                                        Edit
                                                     </div>
-                                                    <div class="f-action-menu">
-                                                        <div class="f-action-item f-action-secondary" data-id="@Column.Id" data-action="edit-column">
-                                                            <svg class="f-action-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                                                                <path fill-rule="evenodd" d="M9.586 2.586A2 2 0 0 1 11 2h2a2 2 0 0 1 2 2v.089l.473.196.063-.063a2.002 2.002 0 0 1 2.828 0l1.414 1.414a2 2 0 0 1 0 2.827l-.063.064.196.473H20a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-.089l-.196.473.063.063a2.002 2.002 0 0 1 0 2.828l-1.414 1.414a2 2 0 0 1-2.828 0l-.063-.063-.473.196V20a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-.089l-.473-.196-.063.063a2.002 2.002 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.827l.063-.064L4.089 15H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h.09l.195-.473-.063-.063a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.827 0l.064.063L9 4.089V4a2 2 0 0 1 .586-1.414ZM8 12a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z" clip-rule="evenodd"/>
-                                                            </svg>
-                                                            Edit
-                                                        </div>
-                                                        <div class="f-action-item f-action-danger" data-action="delete-column" data-id="@Column.Id">
-                                                            <svg class="f-action-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                                                                <path fill-rule="evenodd" d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z" clip-rule="evenodd"/>
-                                                            </svg>
-                                                            Delete
-                                                        </div>
+                                                    <div class="f-action-item f-action-danger" data-action="delete-column" data-id="@Column.Id">
+                                                        <svg class="f-action-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                                            <path fill-rule="evenodd" d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z" clip-rule="evenodd"/>
+                                                        </svg>
+                                                        Delete
                                                     </div>
                                                 </div>
-                                                <button data-action="add-column" data-row-id="@Row.Id" data-mode="4" data-order="@index">
-                                                    <svg class="f-action-icon f-action-secondary" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M4 5v14h6V5zM2 21V3h18v4h-2V5h-6v14h6v-2h2v4zm8-9h2zm8 3v-2h-2v-2h2V9h2v2h2v2h-2v2z"/></svg>
-                                                </button>
                                             </div>
+                                            <button data-action="add-column" data-section-id="@Section.Id" data-mode="4" data-order="@index">
+                                                <svg class="f-action-icon f-action-secondary" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M4 5v14h6V5zM2 21V3h18v4h-2V5h-6v14h6v-2h2v4zm8-9h2zm8 3v-2h-2v-2h2V9h2v2h2v2h-2v2z"/></svg>
+                                            </button>
                                         </div>
-                                    }
-                                    @foreach (var Plugin in Column.Plugins.OrderBy(p => p.Order))
-                                    {
-                                        <PluginContainer @key="@Plugin" Plugin=@Plugin />
-                                    }
-
-                                    @if (ViewState.Type == ViewStateType.PagePreview)
-                                    {
-                                        @if (Column.Plugins.Count == 0)
-                                        {
-                                                <div data-action="add-plugin" class="f-column-empty-add-plugin-button">
-                                                <span>
-                                                    <svg class="f-column-empty-add-plugin-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7 7V5"/>
-                                                    </svg>
-                                                </span>
-                                                <span>Click to add Plugin</span>
-                                            </div>
-
-                                        }
-                                        else 
-                                        {
-                                            <div data-action="add-plugin" class="f-column-add-plugin-button">
-                                                <svg class="f-column-add-plugin-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7 7V5"/>
-                                                </svg>
-                                                <span>Add Plugin</span>
-                                            </div>
-                                        }
-                                        <!-- <div data-action="add-column" data-row-id="@Row.Id" data-mode="4" data-order="@index" class="f-add-column"></div> -->
-                                    }
-                                </div>
-                                index += 1;
-                            }
-                            
-
-                            @if (ViewState.Type == ViewStateType.PagePreview)
-                            {
-                                @if (Row.Columns.Count == 0)
-                                {
-                                    <div class="f-column-empty-wrapper">
-                                        <button data-action="add-column" data-mode="1" data-row-id="@Row.Id" class="f-column-empty-add-button">1 Column</button>
-                                        <button data-action="add-column" data-mode="2" data-row-id="@Row.Id" class="f-column-empty-add-button">2 Columns</button>
-                                        <button data-action="add-column" data-mode="3" data-row-id="@Row.Id" class="f-column-empty-add-button">3 Columns</button>
                                     </div>
                                 }
-                            }
-                        </div>
-                    }
-                </div>
+                                @foreach (var Plugin in Column.Plugins.OrderBy(p => p.Order))
+                                {
+                                    <PluginContainer @key="@Plugin" Plugin=@Plugin />
+                                }
 
+                                @if (ViewState.Type == ViewStateType.PagePreview)
+                                {
+                                    @if (Column.Plugins.Count == 0)
+                                    {
+                                            <div data-action="add-plugin" class="f-column-empty-add-plugin-button">
+                                            <span>
+                                                <svg class="f-column-empty-add-plugin-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7 7V5"/>
+                                                </svg>
+                                            </span>
+                                            <span>Click to add Plugin</span>
+                                        </div>
+
+                                    }
+                                    else 
+                                    {
+                                        <div data-action="add-plugin" class="f-column-add-plugin-button">
+                                            <svg class="f-column-add-plugin-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7 7V5"/>
+                                            </svg>
+                                            <span>Add Plugin</span>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                            index += 1;
+                        }
+                        
+
+                        @if (ViewState.Type == ViewStateType.PagePreview)
+                        {
+                            @if (Section.Columns.Count == 0)
+                            {
+                                <div class="f-column-empty-wrapper">
+                                    <button data-action="add-column" data-mode="1" data-section-id="@Section.Id" class="f-column-empty-add-button">1 Column</button>
+                                    <button data-action="add-column" data-mode="2" data-section-id="@Section.Id" class="f-column-empty-add-button">2 Columns</button>
+                                    <button data-action="add-column" data-mode="3" data-section-id="@Section.Id" class="f-column-empty-add-button">3 Columns</button>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
             </div>
             sectionIndex += 1;
         }

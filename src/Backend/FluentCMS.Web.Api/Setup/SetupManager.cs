@@ -142,41 +142,34 @@ public class SetupManager : ISetupManager
             [
                 new()
                 {
-                    Rows =
+                    Columns =
                     [
                         new()
                         {
-                            Columns =
+                            Plugins =
                             [
                                 new()
                                 {
-                                    Plugins =
-                                    [
-                                        new()
-                                        {
-                                            Locked = true,
-                                            Definition = new()
+                                    Locked = true,
+                                    Definition = new()
+                                    {
+                                        Name = "Setup",
+                                        Description = "Setup View Plugin",
+                                        Assembly = "FluentCMS.Web.Plugins.Admin.dll",
+                                        Locked = true,
+                                        Types =
+                                        [
+                                            new()
                                             {
-                                                Name = "Setup",
-                                                Description = "Setup View Plugin",
-                                                Assembly = "FluentCMS.Web.Plugins.Admin.dll",
-                                                Locked = true,
-                                                Types =
-                                                [
-                                                    new()
-                                                    {
-                                                        IsDefault = true,
-                                                        Name="Setup",
-                                                        Type = "SetupViewPlugin"
-                                                    }
-                                                ]
+                                                IsDefault = true,
+                                                Name="Setup",
+                                                Type = "SetupViewPlugin"
                                             }
-                                        }       
-                                    ]
-                                }
+                                        ]
+                                    }
+                                }       
                             ]
                         }
-
                     ]
                 }
             ]
@@ -322,52 +315,42 @@ public class SetupManager : ISetupManager
             };
             var sectionResponse = await _pageService.CreateSection(section);
 
-            foreach (var pageRowTemplate in pageSectionTemplate.Rows)
+            foreach (var pageColumnTemplate in pageSectionTemplate.Columns)
             {
-                var row = new PageRow
+                var column = new PageColumn
                 {
                     SectionId = sectionResponse.Id,
-                    Styles = pageRowTemplate.Styles
+                    Styles = pageColumnTemplate.Styles
                 };
-                var rowResponse = await _pageService.CreateRow(row);
 
-                foreach (var pageColumnTemplate in pageRowTemplate.Columns)
-                {   
-                    var column = new PageColumn
+                var columnResponse = await _pageService.CreateColumn(column);
+                
+                foreach (var pluginTemplate in pageColumnTemplate.Plugins)
+                {
+                    var pluginDefinition = _pluginDefinitions.Where(p => p.Name.Equals(pluginTemplate.Definition, StringComparison.InvariantCultureIgnoreCase)).Single();
+                    var plugin = new Plugin
                     {
-                        RowId = rowResponse.Id,
-                        Styles = pageColumnTemplate.Styles
+                        Order = order,
+                        // Section = pluginTemplate.Section,
+                        DefinitionId = pluginDefinition.Id,
+                        ColumnId = columnResponse.Id,
+                        SiteId = _site.Id,
+                        Locked = pluginTemplate.Locked
                     };
-
-                    var columnResponse = await _pageService.CreateColumn(column);
-                    
-                    foreach (var pluginTemplate in pageColumnTemplate.Plugins)
+                    order++;
+                    var pluginResponse = await _pluginService.Create(plugin);
+                    if (pluginTemplate.Content != null)
                     {
-                        var pluginDefinition = _pluginDefinitions.Where(p => p.Name.Equals(pluginTemplate.Definition, StringComparison.InvariantCultureIgnoreCase)).Single();
-                        var plugin = new Plugin
+                        foreach (var pluginContentTemplate in pluginTemplate.Content)
                         {
-                            Order = order,
-                            // Section = pluginTemplate.Section,
-                            DefinitionId = pluginDefinition.Id,
-                            ColumnId = columnResponse.Id,
-                            SiteId = _site.Id,
-                            Locked = pluginTemplate.Locked
-                        };
-                        order++;
-                        var pluginResponse = await _pluginService.Create(plugin);
-                        if (pluginTemplate.Content != null)
-                        {
-                            foreach (var pluginContentTemplate in pluginTemplate.Content)
+                            var pluginContent = new PluginContent
                             {
-                                var pluginContent = new PluginContent
-                                {
-                                    PluginId = pluginResponse.Id,
-                                    Type = pluginTemplate.Type,
-                                    Data = pluginContentTemplate
-                                };
+                                PluginId = pluginResponse.Id,
+                                Type = pluginTemplate.Type,
+                                Data = pluginContentTemplate
+                            };
 
-                                await _pluginContentService.Create(pluginContent);
-                            }
+                            await _pluginContentService.Create(pluginContent);
                         }
                     }
                 }

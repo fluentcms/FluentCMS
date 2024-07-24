@@ -6,5 +6,5 @@ public class PageSectionDetailResponse : BaseSiteAssociatedResponse
     public string Title { get; set; } = default!;
     public int Order { get; set; }
     public Dictionary<string, string> Styles { get; set; } = [];
-    public List<PageRowDetailResponse> Rows { get; set; } = [];
+    public List<PageColumnDetailResponse> Columns { get; set; } = [];
 }

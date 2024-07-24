@@ -6,11 +6,11 @@ public class PageColumnRepository : SiteAssociatedRepository<PageColumn>, IPageC
     {
     }
 
-    public async Task<IEnumerable<PageColumn>> GetByRowId(Guid rowId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<PageColumn>> GetBySectionId(Guid sectionId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var filter = Builders<PageColumn>.Filter.Eq(x => x.RowId, rowId);
+        var filter = Builders<PageColumn>.Filter.Eq(x => x.SectionId, sectionId);
         var result = await Collection.FindAsync(filter, cancellationToken: cancellationToken);
         return await result.ToListAsync(cancellationToken);
     }

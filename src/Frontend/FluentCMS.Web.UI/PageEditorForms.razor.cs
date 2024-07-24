@@ -116,7 +116,7 @@ public partial class PageEditorForms
         {
             var column = new PageColumnCreateRequest 
             {
-                RowId = AddColumnModel.RowId,
+                SectionId = AddColumnModel.SectionId,
                 Order = 0,
                 Styles = new Dictionary<string, string> 
                 {
@@ -133,7 +133,7 @@ public partial class PageEditorForms
         {
             var column = new PageColumnCreateRequest 
             {
-                RowId = AddColumnModel.RowId,
+                SectionId = AddColumnModel.SectionId,
                 Order = 0,
                 Styles = new Dictionary<string, string> 
                 {
@@ -151,7 +151,7 @@ public partial class PageEditorForms
         {
             var column = new PageColumnCreateRequest 
             {
-                RowId = AddColumnModel.RowId,
+                SectionId = AddColumnModel.SectionId,
                 Order = 0,
                 Styles = new Dictionary<string, string> 
                 {
@@ -170,7 +170,7 @@ public partial class PageEditorForms
         {
             var column = new PageColumnCreateRequest 
             {
-                RowId = AddColumnModel.RowId,
+                SectionId = AddColumnModel.SectionId,
                 Order = AddColumnModel.Order,
                 Styles = new Dictionary<string, string> 
                 {
@@ -195,17 +195,6 @@ public partial class PageEditorForms
         };
 
         var response = await ApiClient.Page.CreateSectionAsync(section);
-
-        if (response?.Data?.Id != null)
-        {
-            var row = new PageRowCreateRequest
-            {
-                SectionId = response.Data.Id,
-                Order = 0
-            };
-
-            var response2 = await ApiClient.Page.CreateRowAsync(row);
-        }
 
     }
     private async Task OnUpdateSubmit()
@@ -240,7 +229,7 @@ public partial class PageEditorForms
     {
         public bool Submitted { get; set; } = true;
         public int Mode { get; set; } = 1;
-        public Guid RowId { get; set; }
+        public Guid SectionId { get; set; }
         public int Order { get; set; } = 0;
     };
 

@@ -94,8 +94,7 @@ public static class ServiceExtensions
                 {
                     viewState.Type = ViewStateType.PluginEdit;
                     viewState.Plugin = viewState.Sections
-                        .SelectMany(section => section.Rows)
-                        .SelectMany(row => row.Columns)
+                        .SelectMany(section => section.Columns)
                         .SelectMany(column => column.Plugins)
                         .FirstOrDefault(plugin => plugin.Id == pluginId);
 

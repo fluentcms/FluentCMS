@@ -24,7 +24,7 @@ public class SiteViewState
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = default!;
-    public string Url { get; set; } = default!;
+    public List<string> Urls { get; set; } = default!;
     public string? Description { get; set; }
 }
 
@@ -48,13 +48,6 @@ public class PageViewState
 }
 
 public class PageSectionState
-{
-    public Guid Id { get; set; }
-    public Dictionary<string, string> Styles { get; set; } = [];
-    public List<PageRowState> Rows { get; set; } = [];
-}
-
-public class PageRowState
 {
     public Guid Id { get; set; }
     public Dictionary<string, string> Styles { get; set; } = [];

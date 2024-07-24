@@ -76,16 +76,6 @@ public class PageController(
 
     [HttpPost]
     [Policy(AREA, CREATE)]
-    public async Task<IApiResult<PageRowDetailResponse>> CreateRow(PageRowCreateRequest request, CancellationToken cancellationToken = default)
-    {
-        var entity = mapper.Map<PageRow>(request);
-        var newEntity = await pageService.CreateRow(entity);
-        var response = mapper.Map<PageRowDetailResponse>(newEntity);
-        return Ok(response);
-    }
-
-    [HttpPost]
-    [Policy(AREA, CREATE)]
     public async Task<IApiResult<PageColumnDetailResponse>> CreateColumn(PageColumnCreateRequest request, CancellationToken cancellationToken = default)
     {
         var entity = mapper.Map<PageColumn>(request);
@@ -189,30 +179,24 @@ public class PageController(
 
         foreach (var section in mappedSections)
         {
-            var rows = await pageService.GetRowsBySectionId(section.Id, cancellationToken);
-            var mappedRows = mapper.Map<List<PageRowDetailResponse>>(rows);
+        
+            var columns = await pageService.GetColumnsBySectionId(section.Id, cancellationToken);
+            var mappedColumns = mapper.Map<List<PageColumnDetailResponse>>(columns);
 
-            foreach (var row in mappedRows)
+            foreach (var column in mappedColumns)
             {
-                var columns = await pageService.GetColumnsByRowId(row.Id, cancellationToken);
-                var mappedColumns = mapper.Map<List<PageColumnDetailResponse>>(columns);
-
-                foreach (var column in mappedColumns)
+                var plugins = await pluginService.GetByColumnId(column.Id);
+                var mappedPlugins = mapper.Map<List<PluginDetailResponse>>(plugins);
+                
+                foreach (var plugin in mappedPlugins)
                 {
-                    var plugins = await pluginService.GetByColumnId(column.Id);
-                    var mappedPlugins = mapper.Map<List<PluginDetailResponse>>(plugins);
-                    
-                    foreach (var plugin in mappedPlugins)
-                    {
-                        // Definition
-                        plugin.Definition = mapper.Map<PluginDefinitionDetailResponse>(await pluginDefinitionService.GetById(plugin.DefinitionId));
-                    }
-
-                    column.Plugins = mappedPlugins;
+                    // Definition
+                    plugin.Definition = mapper.Map<PluginDefinitionDetailResponse>(await pluginDefinitionService.GetById(plugin.DefinitionId));
                 }
-                row.Columns = mappedColumns;
+
+                column.Plugins = mappedPlugins;
             }
-            section.Rows = mappedRows;
+            section.Columns = mappedColumns;
         }
         
         return Ok(pageResponse);

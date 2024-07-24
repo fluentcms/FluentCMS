@@ -35,7 +35,8 @@ public partial class PageEditorOffcanvas
 
         try {
             // TODO: Site url
-            var response = await ApiClient.Page.GetAllAsync(ViewState.Site.Url);
+            Console.WriteLine($"Site URL {ViewState.Site.Urls[0]}");
+            var response = await ApiClient.Page.GetAllAsync(ViewState.Site.Urls[0]);
             Pages = response.Data.Where(x => !x.Locked).ToList();
         }
         catch (Exception)
