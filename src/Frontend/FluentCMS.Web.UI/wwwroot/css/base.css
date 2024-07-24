@@ -1,7 +1,7 @@
 :root {
-    --f-toolbar-background-color: #dfdfdf;
-    --f-toolbar-border-color: #858585;
-    --f-toolbar-button-background-color: #ffffff;
+    --f-toolbar-background-color: #cccccc;
+    --f-toolbar-border-color: #bdbdbd;
+    --f-toolbar-button-background-color: #fafafa;
     --f-primary: #3a4aff;
     --f-primary-soft: #bac1ff50;
     --f-primary-soft-hover: #bac1ff69;
@@ -26,6 +26,7 @@
     --f-gray-700: #909090;
 
     --f-sidebar-width: 300px;
+    --f-toolbar-height: 32px;
 }
 
 * {

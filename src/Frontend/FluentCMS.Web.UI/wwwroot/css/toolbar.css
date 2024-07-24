@@ -5,7 +5,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 4px;
+    padding: 2px;
+    height: var(--f-toolbar-height);
 }
 
 .f-toolbar-start {
@@ -35,9 +36,18 @@
 
 .f-toolbar-button {
     background-color: var(--f-toolbar-button-background-color);
-    padding: 8px;
+    padding: 4px 8px;
     border-radius: 4px;
-    color: rgb(37, 37, 37);
+    color: rgb(88, 88, 88);
     font-size: 12px;
     border: none;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    gap: 4px;
+}
+
+.f-toolbar-icon {
+    width: 16px;
+    height: 16px;
 }

@@ -13,10 +13,12 @@
                     Back
                 </ToolbarButton>
                 <ToolbarButton data-action="pages-list">
+                    <svg class="f-toolbar-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M7 2h9.5L21 6.5V19"/><path d="M3 20.5v-14A1.5 1.5 0 0 1 4.5 5h9.752a.6.6 0 0 1 .424.176l3.148 3.148A.6.6 0 0 1 18 8.75V20.5a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 3 20.5"/><path d="M14 5v3.4a.6.6 0 0 0 .6.6H18"/></g></svg>
                     Pages
                 </ToolbarButton>
                 <ToolbarButton data-action="page-settings">
-                    (ICON) Page Settings
+                    <svg class="f-toolbar-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M12 15a3 3 0 1 0 0-6a3 3 0 0 0 0 6"/><path d="m19.622 10.395l-1.097-2.65L20 6l-2-2l-1.735 1.483l-2.707-1.113L12.935 2h-1.954l-.632 2.401l-2.645 1.115L6 4L4 6l1.453 1.789l-1.08 2.657L2 11v2l2.401.656L5.516 16.3L4 18l2 2l1.791-1.46l2.606 1.072L11 22h2l.604-2.387l2.651-1.098C16.697 18.832 18 20 18 20l2-2l-1.484-1.75l1.098-2.652l2.386-.62V11z"/></g></svg>
+                    Settings
                 </ToolbarButton>
             </ActionsStart>
             
@@ -27,8 +29,8 @@
                 <ToolbarButton>Monitor</ToolbarButton>
             </ActionsCenter>
             <ActionsEnd>
-                <ToolbarButton Href="?pageEdit=true">
-                    Edit
+                <ToolbarButton data-enhance-nav="false" Href="@NavigationManager.Uri.Replace("?pageEdit=true", "")">
+                    Done
                 </ToolbarButton>
             </ActionsEnd>
         </Toolbar>
@@ -70,12 +72,7 @@ else
     {
         <Toolbar>
             <ActionsStart>
-                <ToolbarButton data-action="pages-list">
-                    Pages
-                </ToolbarButton>
-                <ToolbarButton data-action="page-settings">
-                    (ICON) Page Settings
-                </ToolbarButton>
+                
             </ActionsStart>
             
             <ActionsCenter>
@@ -91,6 +88,7 @@ else
                 </ToolbarButton>
             </ActionsEnd>
         </Toolbar>
+
     }
 
     @RenderDynamicContent(ViewState.Layout?.Body ?? string.Empty)

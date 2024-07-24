@@ -31,7 +31,7 @@
     box-shadow: 1px 0 8px -4px black;
     transition: all 0.3s ease;
     position: fixed;
-    top: 40px;
+    top: var(--f-toolbar-height);
     bottom: 0;
     right: calc(var(--f-sidebar-width) * -1);
     z-index: 100;

@@ -4,7 +4,7 @@
         var sectionIndex = -1;
         @foreach (var Section in ViewState.Sections)
         {
-            <div class="f-section" id="section-@Section.Id" data-gutter="@GetStyleValue(Section.Styles, "Gutter")" data-full-width="@IsFullWidth(Section.Styles)" style="@GetStyles(Section.Styles)">
+            <div class="f-section" id="section-@Section.Id" data-gutter="@GetStyleValue(Section.Styles, "Gutter")" data-full-width="@GetStyleValue(Section.Styles, "FullWidth")" style="@GetStyles(Section.Styles)">
                 @if (ViewState.Type == ViewStateType.PagePreview)
                 {
                     <div class="f-actions">
@@ -23,7 +23,7 @@
                                 </svg>
                             </div>
                             <div data-action="toggle-full-width" data-id="@Section.Id">
-                                @if (IsFullWidth(Section.Styles))
+                                @if (GetStyleValue(Section.Styles, "FullWidth") == "true")
                                 {
                                     <svg class="f-action-icon f-action-secondary" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M9 11h6V8l4 4l-4 4v-3H9v3l-4-4l4-4zm-7 9V4h2v16zm18 0V4h2v16z"/></svg>
                                 }

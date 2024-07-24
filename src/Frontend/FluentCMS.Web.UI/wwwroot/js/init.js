@@ -1,6 +1,9 @@
 ﻿import { updateResponsive, updateResizerPosition } from "./responsive.js"
 import Sortable from "./sortable.js"
-import {initPluginActions} from './plugin-actions.js'
+import { initializeActions } from "./actions.js"
+import { onHideSidebar } from "./helpers.js"
+import { onCloseOffcanvas, onPageSettings, onPagesList } from "./toolbar-actions.js"
+import { onPluginEdit } from "./plugin-actions.js"
 
 let iframeElement = document.querySelector('.f-page-editor-iframe')
 let pageEditorElement = document.querySelector('.f-page-editor')
@@ -215,9 +218,8 @@ async function reload() {
     iframeElement.contentDocument.documentElement.innerHTML = response
     setTimeout(() => {
         initializeColumns()
-        initializeActions(frameDocument)
+        initializeActions(frameDocument, actions)
         initializeSortable(frameDocument)
-        initPluginActions(frameDocument)
         frameDocument.body.classList.add('f-edit-content')
     })
 
@@ -349,7 +351,7 @@ function showStyleEditor(el, type, id) {
    
     let result = ''
 
-    let parsedStyles = parseStyles(el.getAttribute('style') ?? '', {})
+    let parsedStyles = parseStyles(el.getAttribute('style') ?? '', el.dataset)
     console.log(parsedStyles)
     for(let key in parsedStyles) {
         if(key) {
@@ -423,28 +425,28 @@ function onAddPluginButtonClicked() {
 }
 
 function onEditPluginButtonClicked(el) {
-    showSidebar({title: 'Plugin Styles', mode: 'plugin-styles', id: el.dataset.id, el})
+    showSidebar({title: 'Edit Plugin', mode: 'plugin-styles', id: el.dataset.id, el})
     // document.getElementById('stlyes-table')
     
 
 }
 
 function onEditColumnButtonClicked(el) {
-    showSidebar({title: 'Column Styles', mode: 'column-styles', id: el.dataset.id, el})
+    showSidebar({title: 'Edit Column', mode: 'column-styles', id: el.dataset.id, el})
 
 }
 function onEditSectionButtonClicked(el) {
-    showSidebar({title: 'Section Styles', mode: 'section-styles', id: el.dataset.id, el})
+    showSidebar({title: 'Edit Section', mode: 'section-styles', id: el.dataset.id, el})
 
 }
 
 function onToggleFullWidth(el) {
     const section = frameDocument.querySelector('#section-' + el.dataset.id)
 
-    if(section.dataset.fullWidth == '') {
-        delete section.dataset['fullWidth']
+    if(section.dataset.fullWidth == 'true') {
+        section.dataset['fullWidth'] = 'false'
     } else {
-        section.dataset['fullWidth'] = true
+        section.dataset['fullWidth'] = 'true'
     }
 
     saveSectionsOrder()
@@ -520,79 +522,6 @@ function onSaveStyles() {
 
 }
 
-function openOffcanvas(id, width = 400) {
-    if(pageEditorElement.dataset.offcanvasId == id) {
-        onCloseOffcanvas()
-    } else {
-        pageEditorElement.dataset.offcanvasId = id
-        document.querySelector('.f-page-editor-offcanvas').setAttribute('style', '--f-offcanvas-width: ' + width + 'px;')
-        onHideSidebar()
-    }
-}
-
-function onCloseOffcanvas() {
-    delete pageEditorElement.dataset['offcanvasId']    
-}
-
-function onPagesList() {
-    openOffcanvas('f-offcanvas-pages-list')
-    // 
-}
-
-function onPageSettings() {
-    openOffcanvas('f-offcanvas-page-settings')    
-}
-
-
-function getUrl(pluginId, mode, itemId) {
-    let url = window.location.origin  + window.location.pathname + `?pluginId=${pluginId}&viewName=${mode}`
-    if(itemId) {
-        url += '&id=' + itemId
-    }
-    return url
-}
-
-async function onPluginEdit(el) {
-    console.log('onPluginEdit')
-    // frameDocument.querySelectorAll('[data-plugin-item-action]').forEach(item => {
-        // item.addEventListener('click', () => {
-            // const mode = item.getAttribute('data-plugin-item-action');
-
-    const mode = el.dataset.pluginItemAction
-    const pluginId = el.dataset.pluginId
-    const editPluginIframe = document.getElementById('f-edit-plugin-iframe')
-    var res = await fetch(getUrl(pluginId, mode)).then(res => res.text())
-
-    // editPluginIframe.srcdoc = res
-    editPluginIframe.setAttribute('src', getUrl(pluginId, mode));
-    setTimeout(() => {
-        editPluginIframe.contentDocument.querySelectorAll('form').forEach(x => {
-            x.addEventListener('submit', e => {
-                onCloseOffcanvas()
-                reload()
-            })
-        })
-    }, 1000)
-
-    // editPluginIframe.contentWindow.addEventListener('fluentcms:closepage', () => {
-    //     onCloseOffcanvas()
-    // })
-
-            // window.location.href = getUrl(pluginId, mode);
-        // })
-    // })
-    openOffcanvas('f-offcanvas-plugin-edit', 800)    
-}
-
-function onHideSidebar() {
-    // alert('enable responsive buttons')
-    pageEditorElement.classList.add('f-page-editor-sidebar-close')
-    pageEditorElement.classList.remove('f-page-editor-sidebar-open')
-    setTimeout(() => {
-        updateResizerPosition()
-    }, 300)
-}
-
 const actions = {
     'add-section': onAddSection,
     'delete-section': onDeleteSection,
@@ -632,24 +561,14 @@ const actions = {
     'hide-sidebar': onHideSidebar
 }
 
-function initializeActions(element) {
-    element.querySelectorAll('[data-action]').forEach(action => {
-        action.addEventListener('click', () => {
-            console.log(action.dataset.action, actions)
-            actions[action.dataset.action](action)
-        })
-    })
-    initPluginActions(element)
-}
 
 export async function onInit() {
     const frameDocument = await getFrameDocument()
 
     // initializeResponsive()
 
-    initPluginActions(frameDocument)
-    initializeActions(frameDocument)
-    initializeActions(document)
+    initializeActions(frameDocument, actions)
+    initializeActions(document, actions)
     initializeSortable(frameDocument)
     initializeColumns()
    

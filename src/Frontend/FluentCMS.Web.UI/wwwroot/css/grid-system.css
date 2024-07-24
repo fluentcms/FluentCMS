@@ -5,7 +5,7 @@
     padding-right: var(--f-gutter);
 }
 
-.f-section:not([data-full-width]) .f-container {
+.f-section:not([data-full-width="true"]) .f-container {
     max-width: 1200px;
     margin-left: auto;
     margin-right: auto;
