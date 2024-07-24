@@ -1,6 +1,9 @@
 /* GENERAL */
+.f-page-editor-offcanvas {
+    --f-offcanvas-width: 400px;
+}
 
-.f-page-editor-offcanvas-backdrop {
+.f-offcanvas-backdrop {
     width: 100%;
     position: fixed;
     top: var(--f-toolbar-height);
@@ -13,8 +16,7 @@
 
 }
 
-.f-page-editor-offcanvas {
-    --f-offcanvas-width: 400px;
+.f-offcanvas {
     width: var(--f-offcanvas-width);
     max-width: 80%;
     position: fixed;
@@ -29,13 +31,17 @@
     display: none;
 }
 
-[data-offcanvas-id] .f-page-editor-offcanvas-backdrop {
+[data-offcanvas-id] .f-offcanvas-backdrop {
     opacity: 1;
     pointer-events: all;
 }
 
-[data-offcanvas-id] .f-page-editor-offcanvas {
+[data-offcanvas-id] .f-offcanvas {
     left: 0;
+}
+
+.f-offcanvas-pane {
+    height: 100%;
 }
 
 [data-offcanvas-id="f-offcanvas-pages-list"] #f-offcanvas-pages-list {
@@ -50,9 +56,7 @@
 
 /* SPECIFIC */
 
-.f-offcanvas-pane {
-    height: 100%;
-}
+
 .f-edit-plugin-iframe {
     width: 100%;
     height: 100%;

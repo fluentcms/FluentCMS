@@ -1,23 +1,45 @@
 ﻿import { updateResponsive, updateResizerPosition } from "./responsive.js"
 import Sortable from "./sortable.js"
 import { initializeActions } from "./actions.js"
-import { onHideSidebar } from "./helpers.js"
+import { getFrameDocument, onHideSidebar } from "./helpers.js"
 import { onCloseOffcanvas, onPageSettings, onPagesList } from "./toolbar-actions.js"
 import { onPluginEdit } from "./plugin-actions.js"
 
 let iframeElement = document.querySelector('.f-page-editor-iframe')
 let pageEditorElement = document.querySelector('.f-page-editor')
+let frameDocument
 
 const resizerElement = document.querySelector('.f-page-editor-iframe-resizer')
 
-let frameDocument;
-function getFrameDocument() {
-    return new Promise(resolve => {
-        iframeElement.onload = () => {
-            frameDocument = iframeElement.contentDocument;
-            resolve(frameDocument)
-        }
+
+async function reload() {
+    const url = window.location.href
+    const response = await fetch(url.replace('pageEdit', 'pagePreview')).then(res => res.text())
+    iframeElement.contentDocument.documentElement.innerHTML = response
+    setTimeout(() => {
+        initializeColumns()
+        initializeActions(frameDocument, actions)
+        initializeSortable(frameDocument)
+        frameDocument.body.classList.add('f-edit-content')
     })
+}
+
+async function request(values) {
+    const url = window.location.href
+    const body = new FormData()
+            
+    body.set('__RequestVerificationToken', document.querySelector('[name="__RequestVerificationToken"]').value)
+
+    for(let key in values) {
+        body.set(key, values[key])
+    }
+
+    await fetch(url, {
+        method: 'POST',
+        body
+    })
+
+    await reload()
 }
 
 function initializeSortable(frameDocument) {
@@ -210,37 +232,6 @@ async function saveColumns() {
         index++;
     }
     await request(requestBody)
-}
-
-async function reload() {
-    const url = window.location.href
-    const response = await fetch(url.replace('pageEdit', 'pagePreview')).then(res => res.text())
-    iframeElement.contentDocument.documentElement.innerHTML = response
-    setTimeout(() => {
-        initializeColumns()
-        initializeActions(frameDocument, actions)
-        initializeSortable(frameDocument)
-        frameDocument.body.classList.add('f-edit-content')
-    })
-
-}
-
-async function request(values) {
-    const url = window.location.href
-    const body = new FormData()
-            
-    body.set('__RequestVerificationToken', document.querySelector('[name="__RequestVerificationToken"]').value)
-
-    for(let key in values) {
-        body.set(key, values[key])
-    }
-
-    await fetch(url, {
-        method: 'POST',
-        body
-    })
-
-    await reload()
 }
 
 function initializeColumns() {
@@ -546,7 +537,7 @@ const actions = {
     },
     'pages-list': onPagesList,
     'page-settings': onPageSettings,
-    'plugin-edit': onPluginEdit,
+    'plugin-edit': (el) => onPluginEdit(el, reload),
     'close-offcanvas': onCloseOffcanvas,
     'add-style-item': onAddStyleItem,
     'save-styles': onSaveStyles,
@@ -567,7 +558,7 @@ const actions = {
 
 
 export async function onInit() {
-    const frameDocument = await getFrameDocument()
+    frameDocument = await getFrameDocument()
 
     // initializeResponsive()
 

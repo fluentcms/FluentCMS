@@ -1,0 +1,60 @@
+<div class="f-page-editor-offcanvas">
+    <div data-action="close-offcanvas" class="f-offcanvas-backdrop"></div>
+    <div class="f-offcanvas">
+        <div class="f-offcanvas-pane" id="f-offcanvas-pages-list">
+            @if (Pages != null)
+            {
+                <div class="f-pages-list">
+                    @foreach (var _page in Pages)
+                    {
+                        <a data-enhance-nav="false" href="@GetPageUrl(_page)" class="f-page-item">@_page.Title</a>
+                    }
+                </div>
+            }
+        </div>
+        <div class="f-offcanvas-pane" id="f-offcanvas-page-settings">
+            <div style="padding-left: 1rem">
+                <h3>Edit Page settings</h3>
+            </div>
+            <form class="f-form" method="POST">
+            <label class="f-form-label">
+                <span class="f-form-label-text">Parent Page:</span>
+                <select class="f-form-select" name="ParentId">
+                    <option value="null">(none)</option>
+
+                    @foreach (var _page in Pages)
+                    {
+                        <option value="@_page.Id">@_page.Title</option>
+                    }
+                </select>
+            </label>
+            <label class="f-form-label">
+                <span class="f-form-label-text">Title:</span>
+                <input type="text" class="f-form-input" name="Title">
+            </label>
+            <label class="f-form-label">
+                <span class="f-form-label-text">Order:</span>
+                <input type="number" class="f-form-input" name="Order">
+            </label>
+            <label class="f-form-label">
+                <span class="f-form-label-text">Path:</span>
+                <input type="text" class="f-form-input" name="Path">
+            </label>
+            <label class="f-form-label">
+                <span class="f-form-label-text">Layout:</span>
+                <select class="f-form-select" name="Layout">
+                    @foreach (var _layout in Layouts)
+                    {
+                        <option value="@_layout.Id">@_layout.Name</option>
+                    }
+                </select>
+            </label>
+            <button class="f-form-button" type="submit">Save</button>
+        </form>
+        </div>
+        <div class="f-offcanvas-pane" id="f-offcanvas-plugin-edit">
+
+            <iframe class="f-edit-plugin-iframe" frameborder="0" id="f-edit-plugin-iframe"></iframe>
+        </div>
+    </div>
+</div>

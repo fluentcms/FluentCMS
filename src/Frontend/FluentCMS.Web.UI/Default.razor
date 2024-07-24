@@ -41,6 +41,8 @@
             </iframe>
         </div>
         <PageEditorSidebar />
+        <PageEditorOffcanvas />
+
     </div>
     <PageEditorForms />
     <script type="module" src="/_content/FluentCMS.Web.UI/js/sitebuilder.editor.js"></script>
@@ -79,12 +81,16 @@ else
 
             </ActionsCenter>
             <ActionsEnd>
-                <ToolbarButton id="editContentButton">
+                <ToolbarButton Class="f-hide-on-edit-content" id="editContentButton">
                     Edit Content
                 </ToolbarButton>
 
-                <ToolbarButton id="editButton">
+                <ToolbarButton Class="f-hide-on-edit-content" id="editButton">
                     Edit
+                </ToolbarButton>
+
+                <ToolbarButton Class="f-hide-on-default" data-enhance-nav="false" id="doneButton">
+                    Done
                 </ToolbarButton>
             </ActionsEnd>
         </Toolbar>
@@ -95,6 +101,7 @@ else
     @if (ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked)
     {
         <PluginActionsForms />
+        <PageEditorOffcanvas />
     }
 
     <script type="module" src="/_content/FluentCMS.Web.UI/js/sitebuilder.default.js"></script>

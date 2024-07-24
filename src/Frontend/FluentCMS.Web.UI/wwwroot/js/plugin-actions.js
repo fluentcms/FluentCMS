@@ -7,7 +7,7 @@ function getUrl(pluginId, mode, itemId) {
     }
     return url
 }
-export async function onPluginEdit(el) {
+export async function onPluginEdit(el, callback) {
     console.log('onPluginEdit')
     // frameDocument.querySelectorAll('[data-plugin-item-action]').forEach(item => {
         // item.addEventListener('click', () => {
@@ -16,17 +16,29 @@ export async function onPluginEdit(el) {
     const mode = el.dataset.pluginItemAction
     const pluginId = el.dataset.pluginId
     const editPluginIframe = document.getElementById('f-edit-plugin-iframe')
-    var res = await fetch(getUrl(pluginId, mode)).then(res => res.text())
+    // var res = await fetch(getUrl(pluginId, mode)).then(res => res.text())
 
     // editPluginIframe.srcdoc = res
     editPluginIframe.setAttribute('src', getUrl(pluginId, mode));
     setTimeout(() => {
-        editPluginIframe.contentDocument.querySelectorAll('form').forEach(x => {
-            x.addEventListener('submit', e => {
-                closeOffcanvas()
-                reload()
-            })
+        console.log('here')
+        console.log(editPluginIframe.contentDocument.querySelectorAll('form'))
+        editPluginIframe.contentWindow.addEventListener('fluentcms:afterenhanced', async () => {
+            closeOffcanvas()
+            // reload()
+            
+            callback()
         })
+        // editPluginIframe.contentDocument.querySelectorAll('form').forEach(x => {
+        //     console.log('form', x)
+
+        //     x.onsubmit = e => {
+        //         console.log('x submitted', e)
+        //         // form submitted
+        //         // reload()
+        //         // edit
+        //     }   
+        // })
     }, 1000)
 
     // editPluginIframe.contentWindow.addEventListener('fluentcms:closepage', () => {

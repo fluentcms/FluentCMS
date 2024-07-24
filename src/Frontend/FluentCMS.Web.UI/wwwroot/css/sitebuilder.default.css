@@ -1,3 +1,13 @@
 @import './base.css';
 @import './actions.css';
 @import './toolbar.css';
+@import './offcanvas.css';
+
+
+.f-edit-content .f-hide-on-edit-content {
+    display: none;
+}
+
+body:not(.f-edit-content) .f-hide-on-default {
+    display: none;
+}

@@ -10,6 +10,9 @@ public partial class FormRichTextEditor
     [Inject]
     private ApiClientFactory ApiClient { get; set; } = default!;
 
+    [CascadingParameter]
+    public ViewState ViewState { get; set; } = default!;
+
     public ElementReference element;
 
     private IJSObjectReference module = default!;
@@ -147,7 +150,7 @@ public partial class FormRichTextEditor
         }
 
         // TODO: Site url
-        var pagesResponse = await ApiClient.Page.GetAllAsync("localhost:5000");
+        var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Url);
         if (pagesResponse?.Data != null)
         {
             Pages = pagesResponse.Data.ToList();

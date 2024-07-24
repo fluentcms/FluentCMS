@@ -1,12 +1,12 @@
 @if (!string.IsNullOrEmpty(Href))
 {
-    <a href="@Href" @attributes="AdditionalAttributes" class="f-toolbar-button">
+    <a href="@Href" @attributes="AdditionalAttributes" class="f-toolbar-button @Class">
         @ChildContent
     </a>
 }
 else 
 {
-    <button @attributes="AdditionalAttributes" class="f-toolbar-button">
+    <button @attributes="AdditionalAttributes" class="f-toolbar-button @Class">
         @ChildContent
     </button>
 }
@@ -21,4 +21,7 @@ else
 
     [Parameter]
     public string Href { get; set; } = default!;
+
+    [Parameter]
+    public string Class { get; set; } = default!;
 }
