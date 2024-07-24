@@ -71,47 +71,8 @@
     background-color: var(--f-primary-hover);
 }
 
-.f-add-section {
-    opacity: 0;
-    transition: all 0.2s ease;
-    left: 0;
-    position: absolute;
-    height: 64px;
-    width: 100%;
-    top: -32px;
-    z-index: 3;
-}
-
-.f-section:hover .f-add-section {
-    opacity: 1;
-}
-
 .f-plugin-actions {
     left: 24px;
-}
-
-.f-add-section::before {
-    cursor: pointer;
-    z-index: 10;
-    content: '+ Add Section';
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    padding: 4px 16px;
-    width: max-content;
-    height: 32px;
-    background-color: var(--f-primary);
-    color: white;
-    position: absolute;
-    left: 50%;
-    right: 50%;
-    bottom: 0;
-    border-radius: 16px;
-    transform: translate(-50%, -50%);
-}
-.f-add-section::before:hover {
-    background-color: var(--f-primary-hover);
 }
 
 .f-column-empty-wrapper {
