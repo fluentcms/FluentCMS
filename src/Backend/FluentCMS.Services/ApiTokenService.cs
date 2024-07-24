@@ -7,6 +7,7 @@ public interface IApiTokenService : IAutoRegisterService
     Task<IEnumerable<ApiToken>> GetAll(CancellationToken cancellationToken = default);
     Task<ApiToken?> GetById(Guid tokenId, CancellationToken cancellationToken = default);
     Task<ApiToken> Update(Guid tokenId, string name, string? description, bool enabled, List<Policy> policies, CancellationToken cancellationToken = default);
+    Task<bool> IsApiKeyValidAsync(string apiKey, CancellationToken cancellationToken = default);
 }
 
 public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenProvider apiTokenProvider) : IApiTokenService
@@ -24,7 +25,7 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
     public async Task<ApiToken> Create(ApiToken apiToken, CancellationToken cancellationToken = default)
     {
         apiToken.ApiKey = GenerateApiKey();
-     
+
         apiToken = await apiTokenRepository.Create(apiToken, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenUnableToCreate);
         await UpdateJwt(apiToken);
@@ -37,7 +38,7 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
         await apiTokenRepository.Update(apiToken);
     }
 
-    public async Task<ApiToken> Update(Guid tokenId, string name, string? description,  bool enabled, List<Policy> policies, CancellationToken cancellationToken = default)
+    public async Task<ApiToken> Update(Guid tokenId, string name, string? description, bool enabled, List<Policy> policies, CancellationToken cancellationToken = default)
     {
         var apiToken = await apiTokenRepository.GetById(tokenId, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenNotFound);
@@ -46,7 +47,7 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
         apiToken.Description = description;
         apiToken.Enabled = enabled;
         apiToken.Policies = policies;
-        
+
         //apiKey is not updated here as it should be generated automatically only
 
         return await apiTokenRepository.Update(apiToken, cancellationToken) ??
@@ -60,6 +61,16 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
 
         return await apiTokenRepository.Delete(tokenId, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenUnableToDelete);
+    }
+
+    public async Task<bool> IsApiKeyValidAsync(string apiKey, CancellationToken cancellationToken = default)
+    {
+        var apiToken = await apiTokenRepository.GetByApiKeyAsync(apiKey, cancellationToken);
+
+        if (apiToken == null)
+            return false;
+        else
+            return true;
     }
 
     private string? GenerateApiKey()

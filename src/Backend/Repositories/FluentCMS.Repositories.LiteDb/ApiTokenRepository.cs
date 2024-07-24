@@ -1,4 +1,5 @@
 ﻿
+
 namespace FluentCMS.Repositories.LiteDb;
 
 public class ApiTokenRepository(
@@ -7,4 +8,9 @@ public class ApiTokenRepository(
     AuditableEntityRepository<ApiToken>(liteDbContext, authContext),
     IApiTokenRepository
 {
+    public Task<ApiToken> GetByApiKeyAsync(string apiKey, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
+
 }
