@@ -11,7 +11,10 @@ public partial class DropdownItem
     [Parameter]
     public EventCallback OnClick { get; set; }
 
-    private async Task OnClicked()
+	[Parameter]
+	public RenderFragment ChildContent { get; set; } = default!;
+
+	private async Task OnClicked()
     {
         Parent?.Close();
 

@@ -9,7 +9,10 @@ public partial class Modal
     [Parameter]
     public EventCallback OnClose { get; set; }
 
-    public async Task Close()
+	[Parameter]
+	public RenderFragment ChildContent { get; set; } = default!;
+
+	public async Task Close()
     {
         Visible = false;
         await OnClose.InvokeAsync();

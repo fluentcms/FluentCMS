@@ -12,7 +12,10 @@ public partial class Tooltip : IAsyncDisposable
     [Parameter]
     public TooltipPlacement? Placement { get; set; }
 
-    public async ValueTask DisposeAsync()
+	[Parameter]
+	public RenderFragment ChildContent { get; set; } = default!;
+
+	public async ValueTask DisposeAsync()
     {
         module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
     }

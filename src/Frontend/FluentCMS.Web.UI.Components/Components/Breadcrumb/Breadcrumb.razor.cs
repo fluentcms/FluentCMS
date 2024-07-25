@@ -1,6 +1,6 @@
-namespace FluentCMS.Web.UI.Components;
+﻿namespace FluentCMS.Web.UI.Components;
 
-public partial class Card
+public partial class Breadcrumb
 {
 	[Parameter]
 	public RenderFragment ChildContent { get; set; } = default!;

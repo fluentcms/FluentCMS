@@ -28,13 +28,13 @@ public partial class FormFileUpload : IAsyncDisposable
     [Parameter]
     public bool Required { get; set; }
 
-    #endregion
+	#endregion
 
-    [Parameter]
+	[Inject]
+	public IJSRuntime JS { get; set; } = default!;
+
+	[Parameter]
     public int Cols { get; set; } = 12;
-
-    [Inject]
-    public IJSRuntime? JS { get; set; }
 
     [Parameter]
     public string? Accept { get; set; }
@@ -45,7 +45,10 @@ public partial class FormFileUpload : IAsyncDisposable
     [Parameter]
     public EventCallback<InputFileChangeEventArgs> OnChange { get; set; }
 
-    public ElementReference Element;
+	[Parameter]
+	public RenderFragment ChildContent { get; set; } = default!;
+
+	public ElementReference Element;
 
     public IJSObjectReference Module = default!;
 

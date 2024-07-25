@@ -34,7 +34,10 @@ public partial class Accordion : IAsyncDisposable
     [Parameter]
     public EventCallback<bool> OpenChanged { get; set; }
 
-    public ElementReference Element;
+	[Parameter]
+	public RenderFragment ChildContent { get; set; } = default!;
+
+	public ElementReference Element;
 
     public IJSObjectReference Module = default!;
 
