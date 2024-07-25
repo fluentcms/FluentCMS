@@ -5,6 +5,8 @@ namespace FluentCMS.Web.Api.Filters;
 
 public class PolicyAuthorizeFilter : IAsyncAuthorizationFilter
 {
+    const string _header = "X-API-Key-Header";
+
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
         // get all PolicyAttributes for the current method
@@ -17,6 +19,24 @@ public class PolicyAuthorizeFilter : IAsyncAuthorizationFilter
         var authContext = context.HttpContext.RequestServices.GetRequiredService<IAuthContext>();
         var userService = context.HttpContext.RequestServices.GetRequiredService<IUserService>();
         var roleService = context.HttpContext.RequestServices.GetRequiredService<IRoleService>();
+        var apiTokenService = context.HttpContext.RequestServices.GetRequiredService<IApiTokenService>();
+
+        // Check if the required header is present
+        if (!context.HttpContext.Request.Headers.ContainsKey(_header))
+        {
+            context.Result = new ForbidResult(); // Reject the request
+            return;
+        }
+
+        var headerValue = context.HttpContext.Request.Headers[_header].ToString();
+
+        // Check if the value exists in the database
+        var isValid = await apiTokenService.IsApiKeyValidAsync(headerValue);
+
+        if (!isValid)
+        {
+            context.Result = new ForbidResult(); // Reject the request
+        }
 
         // check if user is authenticated
         if (authContext.IsAuthenticated)
