@@ -18,6 +18,6 @@ public partial class Typography
     [CSSProperty]
     public TextWeight Weight { get; set; } = TextWeight.Default;
 
-	[Parameter]
-	public RenderFragment ChildContent { get; set; } = default!;
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
 }
