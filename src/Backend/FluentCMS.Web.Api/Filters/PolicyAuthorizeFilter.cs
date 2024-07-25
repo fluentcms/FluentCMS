@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Web.Api.Filters;
 
-public class PolicyAuthorizeFiler : IAsyncAuthorizationFilter
+public class PolicyAuthorizeFilter : IAsyncAuthorizationFilter
 {
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {

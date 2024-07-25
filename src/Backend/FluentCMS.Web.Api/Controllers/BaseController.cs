@@ -5,7 +5,7 @@ namespace FluentCMS.Web.Api.Controllers;
 [ApiController]
 [Produces("application/json")]
 [JwtAuthorize]
-[TypeFilter(typeof(PolicyAuthorizeFiler))]
+[TypeFilter(typeof(PolicyAuthorizeFilter))]
 public abstract class BaseController
 {
     public static ApiResult<T> Ok<T>(T item)
