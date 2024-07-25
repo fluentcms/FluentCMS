@@ -9,6 +9,6 @@ public partial class DataTable<TItem>
     [CSSProperty]
     public bool Hoverable { get; set; } = true;
 
-	[Parameter]
-	public RenderFragment ChildContent { get; set; } = default!;
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
 }

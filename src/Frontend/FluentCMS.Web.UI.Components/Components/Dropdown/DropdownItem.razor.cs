@@ -11,10 +11,10 @@ public partial class DropdownItem
     [Parameter]
     public EventCallback OnClick { get; set; }
 
-	[Parameter]
-	public RenderFragment ChildContent { get; set; } = default!;
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
 
-	private async Task OnClicked()
+    private async Task OnClicked()
     {
         Parent?.Close();
 

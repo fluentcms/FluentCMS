@@ -37,7 +37,7 @@ public partial class Accordion : IAsyncDisposable
     [Parameter]
     public RenderFragment ChildContent { get; set; } = default!;
 
-	public ElementReference Element;
+    public ElementReference Element;
 
     public IJSObjectReference Module = default!;
 

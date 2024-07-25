@@ -8,10 +8,10 @@ public partial class TabItem
     [Parameter]
     public string Name { get; set; } = default!;
 
-	[Parameter]
-	public RenderFragment ChildContent { get; set; } = default!;
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
 
-	[CascadingParameter]
+    [CascadingParameter]
     public Tabs? Parent { get; set; }
 
     private async Task OnClicked()

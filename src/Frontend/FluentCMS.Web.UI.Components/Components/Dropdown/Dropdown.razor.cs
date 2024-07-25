@@ -30,10 +30,10 @@ public partial class Dropdown : IAsyncDisposable
     [Parameter]
     public EventCallback<bool> OpenChanged { get; set; }
 
-	[Parameter]
-	public RenderFragment ChildContent { get; set; } = default!;
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
 
-	public ElementReference Element;
+    public ElementReference Element;
 
     public IJSObjectReference Module = default!;
 

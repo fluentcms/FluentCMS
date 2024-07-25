@@ -6,6 +6,6 @@ public partial class Stepper
     [CSSProperty]
     public bool Vertical { get; set; } = true;
 
-	[Parameter]
-	public RenderFragment ChildContent { get; set; } = default!;
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
 }

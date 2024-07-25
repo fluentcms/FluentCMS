@@ -32,7 +32,7 @@ public partial class GridItem
     [CSSProperty]
     public bool? HideLarge { get; set; }
 
-	#endregion
+    #endregion
 
     [Parameter]
     public RenderFragment ChildContent { get; set; } = default!;
