@@ -34,6 +34,6 @@ public partial class GridItem
 
 	#endregion
 
-	[Parameter]
-	public RenderFragment ChildContent { get; set; } = default!;
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
 }

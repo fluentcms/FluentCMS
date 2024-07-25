@@ -2,6 +2,6 @@
 
 public partial class Breadcrumb
 {
-	[Parameter]
-	public RenderFragment ChildContent { get; set; } = default!;
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
 }

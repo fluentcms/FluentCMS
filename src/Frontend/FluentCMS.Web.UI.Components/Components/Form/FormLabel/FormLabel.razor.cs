@@ -8,6 +8,6 @@ public partial class FormLabel
     [Parameter]
     public bool Required { get; set; }
 
-	[Parameter]
-	public RenderFragment ChildContent { get; set; } = default!;
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
 }

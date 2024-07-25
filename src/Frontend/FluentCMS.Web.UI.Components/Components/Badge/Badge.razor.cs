@@ -6,6 +6,6 @@ public partial class Badge
     [CSSProperty]
     public Color Color { get; set; } = Color.Default;
 
-	[Parameter]
-	public RenderFragment ChildContent { get; set; } = default!;
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
 }

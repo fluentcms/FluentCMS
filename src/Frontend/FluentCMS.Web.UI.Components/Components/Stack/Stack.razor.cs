@@ -18,6 +18,6 @@ public partial class Stack
     [CSSProperty]
     public bool Vertical { get; set; }
 
-	[Parameter]
-	public RenderFragment ChildContent { get; set; } = default!;
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
 }
