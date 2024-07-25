@@ -17,7 +17,10 @@ public partial class FieldSettingForm
     [Parameter, EditorRequired]
     public EventCallback OnSubmit { get; set; }
 
-    protected async Task OnFormSubmit()
+	[Parameter]
+	public RenderFragment ChildContent { get; set; } = default!;
+
+	protected async Task OnFormSubmit()
     {
         await OnSubmit.InvokeAsync();
     }
