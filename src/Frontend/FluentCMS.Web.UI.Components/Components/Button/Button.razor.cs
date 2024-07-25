@@ -35,4 +35,7 @@ public partial class Button
 
     [Parameter]
     public ButtonType Type { get; set; } = ButtonType.Button;
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
 }

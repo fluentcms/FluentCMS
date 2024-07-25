@@ -8,6 +8,9 @@ public partial class Tabs
     [Parameter]
     public EventCallback<string> OnChange { get; set; }
 
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
     public string Value { get; set; }
 
     protected override async Task OnInitializedAsync()

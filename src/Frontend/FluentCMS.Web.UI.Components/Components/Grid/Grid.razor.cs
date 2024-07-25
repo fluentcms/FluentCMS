@@ -53,4 +53,7 @@ public partial class Grid
     [Parameter]
     [CSSProperty]
     public bool NoWrap { get; set; }
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
 }
