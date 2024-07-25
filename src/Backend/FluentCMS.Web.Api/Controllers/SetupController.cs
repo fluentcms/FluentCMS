@@ -4,15 +4,17 @@ namespace FluentCMS.Web.Api.Controllers;
 
 public class SetupController(ISetupManager setupManager) : BaseGlobalController
 {
+    public const string AREA = "Setup Management";
+
     [HttpGet]
-    [PolicyAll]
+    [Policy(AREA, Constants.Policy.READ)]
     public async Task<IApiResult<bool>> IsInitialized()
     {
         return Ok(await setupManager.IsInitialized());
     }
 
     [HttpPost]
-    [PolicyAll]
+    [Policy(AREA, Constants.Policy.READ)]
     public async Task<IApiResult<bool>> Start(SetupRequest request)
     {
         return Ok(await setupManager.Start(request));
