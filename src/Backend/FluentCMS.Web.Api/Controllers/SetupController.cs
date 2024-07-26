@@ -7,7 +7,7 @@ public class SetupController(ISetupManager setupManager) : BaseGlobalController
     public const string AREA = "Setup Management";
 
     [HttpGet]
-    [Policy(AREA, Constants.Policy.READ)]
+    [PolicyAll]
     public async Task<IApiResult<bool>> IsInitialized()
     {
         return Ok(await setupManager.IsInitialized());

@@ -16,6 +16,11 @@ public class PolicyAuthorizeFilter : IAsyncAuthorizationFilter
         if (!policyAttributes.Any())
             return;
 
+        // check if exists PolicyAllAttribute	
+        var policyAllAttribute = policyAttributes.OfType<PolicyAllAttribute>().FirstOrDefault();	
+        if (policyAllAttribute != null)	
+            return;	
+            
         var authContext = context.HttpContext.RequestServices.GetRequiredService<IAuthContext>();
         var userService = context.HttpContext.RequestServices.GetRequiredService<IUserService>();
         var roleService = context.HttpContext.RequestServices.GetRequiredService<IRoleService>();

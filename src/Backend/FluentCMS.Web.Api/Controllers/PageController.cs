@@ -40,7 +40,7 @@ public class PageController(
 
     [HttpGet]
     [DecodeQueryParam]
-    [Policy(AREA, Constants.Policy.READ)]
+    [PolicyAll]
     public async Task<IApiResult<PageFullDetailResponse>> GetByUrl([FromQuery] string url, CancellationToken cancellationToken = default)
     {
         var uri = new Uri(url);

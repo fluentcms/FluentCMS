@@ -72,6 +72,15 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
                 continue;
 
             var policyAttributes = actionDescriptor.MethodInfo.GetCustomAttributes<PolicyAttribute>(true);
+
+            foreach (var policyAttribute in policyAttributes.Where(x => x.Area != PolicyAllAttribute.AREA))	
+            {	
+                if (!policiesDict.ContainsKey(policyAttribute.Area))	
+                    policiesDict.Add(policyAttribute.Area, new Policy { Area = policyAttribute.Area, Actions = [] });	
+
+                if (!policiesDict[policyAttribute.Area].Actions.Where(x => x == policyAttribute.Action).Any())	
+                    policiesDict[policyAttribute.Area].Actions.Add(policyAttribute.Action);	
+            }
         }
 
         return await Task.FromResult(OkPaged(policiesDict.Values.ToList()));
