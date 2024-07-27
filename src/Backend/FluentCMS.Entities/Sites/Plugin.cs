@@ -6,4 +6,5 @@ public class Plugin : SiteAssociatedEntity
     public Guid ColumnId { get; set; }
     public int Order { get; set; } = 0;
     public bool Locked { get; set; } = false;
+    public Dictionary<string, string> Styles { get; set; } = [];
 }

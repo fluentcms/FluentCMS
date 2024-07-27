@@ -62,6 +62,9 @@ public partial class PageEditorForms
     [SupplyParameterFromForm(FormName = "PluginUpdateForm")]
     private PluginUpdateRequest PluginUpdateModel { get; set; } = new();
     
+    [SupplyParameterFromForm(FormName = "PluginsUpdateForm")]
+    private PluginsUpdateRequest PluginsUpdateModel { get; set; } = new();
+    
     [SupplyParameterFromForm(FormName = "PluginDeleteForm")]
     private PluginDeleteRequest PluginDeleteModel { get; set; } = new();
 
@@ -87,6 +90,14 @@ public partial class PageEditorForms
     private async Task OnPluginUpdateSubmit()
     {
         await ApiClient.Plugin.UpdateAsync(PluginUpdateModel);
+    }
+
+    private async Task OnPluginsUpdateSubmit()
+    {
+        foreach(var plugin in PluginsUpdateModel.Plugins)
+        {
+            await ApiClient.Plugin.UpdateAsync(plugin);
+        }
     }
 
     private async Task OnSectionDeleteSubmit()
@@ -237,6 +248,12 @@ public partial class PageEditorForms
     {
         public bool Submitted { get; set; } = true;
         public List<PageColumnUpdateRequest> Columns { get; set; } = [];
+    };
+
+    class PluginsUpdateRequest
+    {
+        public bool Submitted { get; set; } = true;
+        public List<PluginUpdateRequest> Plugins { get; set; } = [];
     };
 
     class SectionDeleteRequest

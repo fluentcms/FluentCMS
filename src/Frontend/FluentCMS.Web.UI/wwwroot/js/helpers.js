@@ -13,6 +13,16 @@ export function getFrameDocument() {
     })
 }
 
+export function debounce(cb, timeout = 300) {
+    let timer;
+    return (...args) => {
+        if(timer) clearTimeout(timer)
+        timer = setTimeout(() => {
+            cb(args)
+        }, timeout)
+    }
+}
+
 function getPageMode() {
     const isPageEditorMode = window.location.href.includes('?pageEdit=true')
 
@@ -45,4 +55,21 @@ export function openOffcanvas(id, width = 400) {
         if(getPageMode() === 'edit')
             onHideSidebar()
     }
+}
+
+export function parseStyles(styleStr, dataset) {
+    let object = {}
+    let stylesSplitted = styleStr.split(';').filter(Boolean);
+
+    for(let style of stylesSplitted) {
+        const [key, value] = style.split(':').map(x => x.trim());
+        object[key] = value
+    }
+
+    for(let key in dataset) {
+        if(dataset[key] != 'undefined')
+            object[key[0].toUpperCase() + key.slice(1)] = dataset[key]
+    }
+
+    return object
 }

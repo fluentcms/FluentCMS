@@ -21,37 +21,7 @@
 
         <div id="styles-sidebar">
             <!-- Style Editor (<span id="style-type"></span>: <span id="style-id"></span>) -->
-            <table class="f-style-editor-table" cellspacing="0">
-                <thead>
-                    <tr>
-                        <th><div style="height: 24px">CSS Styles</div></th>
-                        <th><div style="height: 24px"></div></th>
-                        <th style="width: 0;">
-                            
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr id="f-style-editor-body-actions">
-                        <td style="padding: 4px" colspan="3">
-                        <div class="f-style-editor-buttons">
-                            <div data-action="add-style-item" class="f-style-editor-add-btn f-outline" style="display: flex; align-items: center; gap: 4px; width: max-content; padding-right: 16px;">
-                                <svg style="width: 16px; height: 16px;" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7 7V5"/>
-                                </svg>
-                                <span>Add</span>
-                            </div>
-                            <div data-action="save-styles" class="f-style-editor-save-btn" style="display: flex; align-items: center; gap: 4px; width: max-content; padding-right: 16px;">
-                                <svg style="width: 1rem; height: 1rem;" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M21 7v12q0 .825-.587 1.413T19 21H5q-.825 0-1.412-.587T3 19V5q0-.825.588-1.412T5 3h12zm-9 11q1.25 0 2.125-.875T15 15t-.875-2.125T12 12t-2.125.875T9 15t.875 2.125T12 18m-6-8h9V6H6z"/></svg>
-                                <span>Save</span>
-                            </div>
-                        </div>
-
-                        </td>
-                    </tr>
-                </tbody>
-                
-            </table>
+            <div data-style-editor></div>
         </div>
 
         <div id="permissions-sidebar">

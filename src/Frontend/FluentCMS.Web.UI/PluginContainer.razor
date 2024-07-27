@@ -1,9 +1,9 @@
-<div class="f-plugin-container" id="plugin-@Plugin.Id">
+<div class="f-plugin-container">
     <PluginContainerActions Plugin="@Plugin" />
     
     <ErrorBoundary>
         <ChildContent>
-            <div class="f-plugin-container-content">
+            <div class="f-plugin-container-content" id="plugin-@Plugin.Id" style="STYLE">
                 <DynamicComponent Type=@GetPluginType() Parameters=@Parameters />
             </div>
         </ChildContent>

@@ -1,3 +1,4 @@
+import { lifecycle } from "./lifecycle.js"
 import { closeOffcanvas, openOffcanvas } from "./helpers.js"
 
 function getUrl(pluginId, mode, itemId) {
@@ -7,47 +8,21 @@ function getUrl(pluginId, mode, itemId) {
     }
     return url
 }
-export async function onPluginEdit(el, callback) {
+export async function onPluginEdit(el) {
     console.log('onPluginEdit')
-    // frameDocument.querySelectorAll('[data-plugin-item-action]').forEach(item => {
-        // item.addEventListener('click', () => {
-            // const mode = item.getAttribute('data-plugin-item-action');
 
     const mode = el.dataset.pluginItemAction
     const pluginId = el.dataset.pluginId
     const editPluginIframe = document.getElementById('f-edit-plugin-iframe')
-    // var res = await fetch(getUrl(pluginId, mode)).then(res => res.text())
 
-    // editPluginIframe.srcdoc = res
     editPluginIframe.setAttribute('src', getUrl(pluginId, mode));
-    setTimeout(() => {
-        console.log('here')
-        console.log(editPluginIframe.contentDocument.querySelectorAll('form'))
+    editPluginIframe.onload = () => {
         editPluginIframe.contentWindow.addEventListener('fluentcms:afterenhanced', async () => {
             closeOffcanvas()
-            // reload()
-            
-            callback()
+            lifecycle.trigger('reload')
         })
-        // editPluginIframe.contentDocument.querySelectorAll('form').forEach(x => {
-        //     console.log('form', x)
+    }
 
-        //     x.onsubmit = e => {
-        //         console.log('x submitted', e)
-        //         // form submitted
-        //         // reload()
-        //         // edit
-        //     }   
-        // })
-    }, 1000)
-
-    // editPluginIframe.contentWindow.addEventListener('fluentcms:closepage', () => {
-    //     onCloseOffcanvas()
-    // })
-
-            // window.location.href = getUrl(pluginId, mode);
-        // })
-    // })
     openOffcanvas('f-offcanvas-plugin-edit', 800)    
 }
 

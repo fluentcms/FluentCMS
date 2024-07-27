@@ -38,11 +38,12 @@
     background-color: var(--f-primary);
     width: max-content;
     position: absolute;
-    top: -16px;
+    top: -30px;
     left: 50%;
     right: 50%;
     padding: 4px 12px;
-    border-radius: 24px;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
     transform: translate(-50%, 0%);
     overflow: hidden;
 }
@@ -164,6 +165,7 @@
     gap: 4px;
     cursor: pointer;
     color: white;
+    font-size: 12px;
     padding-right: 16px;
     width: 100%;
 }

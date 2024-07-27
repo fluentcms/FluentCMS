@@ -1,6 +1,7 @@
-﻿import {initializeActions} from './actions.js'
+﻿import { ActionManager } from './actions.js'
 import { onCloseOffcanvas , onPageSettings, onPagesList } from './toolbar-actions.js'
 import { onPluginEdit } from './plugin-actions.js'
+import { lifecycle } from './lifecycle.js'
 
 function reload() { 
     setTimeout(() => {
@@ -10,7 +11,7 @@ function reload() {
 const actions = {
     // 'pages-list': onPagesList,
     // 'page-settings': onPageSettings,
-    'plugin-edit': (el) => onPluginEdit(el, reload),
+    // 'plugin-edit': (el) => ,
     'close-offcanvas': onCloseOffcanvas,
 }
 
@@ -32,7 +33,14 @@ function init() {
         editContentButton.addEventListener('click', onEditContentButtonClicked)    
         doneButton.addEventListener('click', onDoneButtonClicked)
     }
-    initializeActions(document, actions)
+    const actionManager = ActionManager(document)
+    
+    actionManager.register('plugin-edit', onPluginEdit)
+    actionManager.register('close-offcanvas', onCloseOffcanvas)
+
+    lifecycle.on('reload', () => {
+        window.location.reload() 
+    })
 }
 
 function destroy () {

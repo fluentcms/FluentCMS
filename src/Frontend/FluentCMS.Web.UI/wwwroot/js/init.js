@@ -1,46 +1,22 @@
 ﻿import { updateResponsive, updateResizerPosition } from "./responsive.js"
 import Sortable from "./sortable.js"
-import { initializeActions } from "./actions.js"
-import { getFrameDocument, onHideSidebar } from "./helpers.js"
+import { ActionManager } from "./actions.js"
+import { getFrameDocument, onHideSidebar, parseStyles } from "./helpers.js"
 import { onCloseOffcanvas, onPageSettings, onPagesList } from "./toolbar-actions.js"
 import { onPluginEdit } from "./plugin-actions.js"
+import { lifecycle } from "./lifecycle.js"
+import { request } from "./request.js"
+import { StyleManager } from "./styles.js"
 
 let iframeElement = document.querySelector('.f-page-editor-iframe')
 let pageEditorElement = document.querySelector('.f-page-editor')
-let frameDocument
-
 const resizerElement = document.querySelector('.f-page-editor-iframe-resizer')
 
+let frameDocument;
 
-async function reload() {
-    const url = window.location.href
-    const response = await fetch(url.replace('pageEdit', 'pagePreview')).then(res => res.text())
-    iframeElement.contentDocument.documentElement.innerHTML = response
-    setTimeout(() => {
-        initializeColumns()
-        initializeActions(frameDocument, actions)
-        initializeSortable(frameDocument)
-        frameDocument.body.classList.add('f-edit-content')
-    })
-}
-
-async function request(values) {
-    const url = window.location.href
-    const body = new FormData()
-            
-    body.set('__RequestVerificationToken', document.querySelector('[name="__RequestVerificationToken"]').value)
-
-    for(let key in values) {
-        body.set(key, values[key])
-    }
-
-    await fetch(url, {
-        method: 'POST',
-        body
-    })
-
-    await reload()
-}
+let styleManager
+let actionManager;
+let frameActionManager;
 
 function initializeSortable(frameDocument) {
     frameDocument.querySelectorAll('.f-section-root').forEach(root => {
@@ -50,7 +26,7 @@ function initializeSortable(frameDocument) {
             draggable: '.f-section',
             handle: '.f-actions',
             onEnd(event) {
-                saveSectionsOrder()
+                saveSections()
             }
         });
     })
@@ -84,10 +60,7 @@ function initializeSortable(frameDocument) {
             chosenClass: 'f-plugin-container-chosen',
             handle: '.f-actions',
             onEnd(event) {
-                const columnId = event.to.id.replace('column-', '');
-                const id = event.item.id.replace('plugin-', '')
-
-                updatePlugin({ id, index: event.newIndex,  columnId})
+                savePlugins()
             }
         });
     });
@@ -117,15 +90,15 @@ function initializeSortable(frameDocument) {
 
 async function updatePlugin({id, columnId, index}) {
     const body = {
-        '_handler': 'PluginUpdateForm',
         'PluginUpdateModel.Id': id,
         'PluginUpdateModel.ColumnId': columnId,
         'PluginUpdateModel.Order': index,
     }
 
-    
-    await request(body)
-
+    await request({
+        handler: 'PluginUpdateForm',
+        body
+    })
 }
 
 function initializeResponsive() {
@@ -172,30 +145,16 @@ function initializeResponsive() {
     iframeElement.contentWindow.addEventListener('mouseup', onMouseUp)
 }
 
-function createPlugin({definitionId, columnId, index, item}) {
-    request({
-        '_handler': 'PluginCreateForm',
-        'PluginCreateModel.DefinitionId': definitionId,
-        'PluginCreateModel.ColumnId': columnId,
-        'PluginCreateModel.Order': index,
+async function createPlugin({definitionId, columnId, index, item}) {
+    await request({
+        handler: 'PluginCreateForm',
+        body: {
+            'PluginCreateModel.DefinitionId': definitionId,
+            'PluginCreateModel.ColumnId': columnId,
+            'PluginCreateModel.Order': index,
+        },
     })
-}
-
-function parseStyles(styleStr, dataset) {
-    console.log('parseStyles', styleStr, dataset)
-    let object = {}
-    let stylesSplitted = styleStr.split(';').filter(Boolean);
-
-    for(let style of stylesSplitted) {
-        const [key, value] = style.split(':').map(x => x.trim());
-        object[key] = value
-    }
-
-    for(let key in dataset) {
-        object[key[0].toUpperCase() + key.slice(1)] = dataset[key]
-    }
-
-    return object
+    await savePlugins()
 }
 
 async function saveColumns() {
@@ -214,7 +173,7 @@ async function saveColumns() {
     })
 
     let requestBody = {
-        '_handler': "ColumnUpdateForm",
+        
     }
 
     let index = 0;
@@ -231,9 +190,55 @@ async function saveColumns() {
 
         index++;
     }
-    await request(requestBody)
+
+    await request({
+        handler: "ColumnUpdateForm",
+        body: requestBody
+    })
 }
 
+
+async function savePlugins() {
+    let plugins = {}
+    iframeElement.contentDocument.querySelectorAll('.f-column').forEach(column => {
+        let colIndex = 0 
+        column.querySelectorAll('.f-plugin-container-content').forEach(el => {
+            const key = el.id.replace('plugin-', '')
+            plugins[key] = {}
+            plugins[key].dataset = el.dataset
+            plugins[key].order = colIndex++;
+            plugins[key].columnId = column.id.replace('column-', '');
+            plugins[key].style = el.getAttribute('style') ?? '';
+        })
+    
+    })
+
+    let requestBody = {
+        
+    }
+
+    let index = 0;
+    for(let id in plugins) {
+        const plugin = plugins[id]
+        requestBody[`PluginsUpdateModel.Pluginss[${index}].Id`] = id
+        requestBody[`PluginsUpdateModel.Pluginss[${index}].Order`] = plugin.order
+        requestBody[`PluginsUpdateModel.Pluginss[${index}].ColumnId`] = plugin.columnId
+        const styles = parseStyles(plugin.style, plugin.dataset)
+
+        for(let key in styles) {
+            requestBody[`PluginsUpdateModel.Plugins[${index}].Styles[${key}]`] = styles[key] 
+        }
+
+        index++;
+    }
+
+    await request({
+        handler: "PluginsUpdateForm",
+        body: requestBody
+    })
+}
+
+// savePlugins
 function initializeColumns() {
     iframeElement.contentWindow.initializeColumns({
         onResize: () => {
@@ -241,17 +246,21 @@ function initializeColumns() {
         }
     })
 }
+
 async function onAddSection(el) {
     await request({
-        '_handler': "AddSectionForm",
-        'AddSectionModel.Submitted': true,
-        'AddSectionModel.Order': el.dataset.order ?? 0
+        handler: "AddSectionForm",
+        body: {
+            'AddSectionModel.Submitted': true,
+            'AddSectionModel.Order': el.dataset.order ?? 0
+        },
+        reload: false
     })
     
-    await saveSectionsOrder()
+    await saveSections()
 }
 
-async function saveSectionsOrder() {
+async function saveSections() {
     const body = {}
     let sections = []
 
@@ -276,19 +285,23 @@ async function saveSectionsOrder() {
             body[`SectionsUpdateModel.Sections[${section.index}].Styles[${key}]`] = styles[key] 
         }
     }
+
     await request({
-        '_handler': "SectionsUpdateForm",
-        ...body
+        handler: "SectionsUpdateForm",
+        body
     })
 }
 
 async function onAddColumn(el) {
     await request({
-        '_handler': "AddColumnForm",
-        'AddColumnModel.Submitted': true,
-        'AddColumnModel.Mode': el.dataset.mode,
-        'AddColumnModel.Order': el.dataset.order ?? 0,
-        'AddColumnModel.SectionId': el.dataset.sectionId,
+        handler: "AddColumnForm",
+        body: {
+            'AddColumnModel.Submitted': true,
+            'AddColumnModel.Mode': el.dataset.mode,
+            'AddColumnModel.Order': el.dataset.order ?? 0,
+            'AddColumnModel.SectionId': el.dataset.sectionId,
+        },
+        reload: false
     })
     await saveColumns()
 }
@@ -296,66 +309,40 @@ async function onAddColumn(el) {
 async function onDeleteSection(el) {
     const id = el.dataset.id
     await request({
-        '_handler': "SectionDeleteForm",
-        'SectionDeleteModel.Submitted': true,
-        'SectionDeleteModel.Id': id,
+        handler: "SectionDeleteForm",
+        body: {
+
+            'SectionDeleteModel.Submitted': true,
+            'SectionDeleteModel.Id': id,
+        },
+        reload: false
     }) 
-    await saveSectionsOrder()
+    await saveSections()
 }
 
 async function onDeleteColumn(el) {
     const id = el.dataset.id
     await request({
-        '_handler': "ColumnDeleteForm",
-        'ColumnDeleteModel.Submitted': true,
-        'ColumnDeleteModel.Id': id,
-    }) 
+        handler: "ColumnDeleteForm",
+        body: {
+            'ColumnDeleteModel.Submitted': true,
+            'ColumnDeleteModel.Id': id,
+        },
+        reload: false
+    })
+    await saveColumns()
 }
 
 function disableResponsiveButtons() {
     console.log('Should disable responsive buttons')
 }
 
-function getStyleEditorRow(key, value) {
-    const template = `<tr data-type="style">
-        <td><div><input data-type="key" placeholder="key" value="$0" /></div></td>
-        <td><div><input data-type="value" placeholder="value" value="$1" /></div></td>
-        <td>
-            <button class="f-style-editor-remove-btn"></button>
-        </td>
-    </tr>`
-
-    return template.replace('$0', key).replace('$1', value)
-}
-
 function showStyleEditor(el, type, id) {
-    document.querySelectorAll('[data-type="style"]').forEach(el => {
-        el.parentNode.removeChild(el)
-    })
-
     document.getElementById('styles-sidebar').classList.remove('f-hidden')
     document.getElementById('plugins-sidebar').classList.add('f-hidden')
     document.getElementById('permissions-sidebar').classList.add('f-hidden')
 
-    document.getElementById('styles-sidebar').dataset.type = type;
-    document.getElementById('styles-sidebar').dataset.id = id;
-   
-    let result = ''
-
-    let parsedStyles = parseStyles(el.getAttribute('style') ?? '', el.dataset)
-    console.log(parsedStyles)
-    for(let key in parsedStyles) {
-        if(key) {
-            result += getStyleEditorRow(key, parsedStyles[key])
-        }
-    }
-    // document.getElementById('f-style-editor-body').outerHTML = result
-    const styleActionsEl = document.getElementById('f-style-editor-body-actions')
-    var element = document.createElement('div')
-    styleActionsEl.parentElement.insertBefore(element, styleActionsEl)
-    element.outerHTML = result
-
-    console.log(result)
+    styleManager.open(el)
 }
 
 function showSidebar({title, mode, id, el} = {}) {
@@ -378,26 +365,7 @@ function showSidebar({title, mode, id, el} = {}) {
         showStyleEditor(frameDocument.getElementById(`section-${id}`), 'section', id)
     } else if(mode === 'column-styles') {
         showStyleEditor(frameDocument.getElementById(`column-${id}`), 'column', id)
-
-    } else if(mode === 'section-permissions') {
-        document.getElementById('permissions-sidebar').classList.remove('f-hidden')
-        document.getElementById('styles-sidebar').classList.add('f-hidden')
-        document.getElementById('plugins-sidebar').classList.add('f-hidden')
-
-
-        document.getElementById('permission-type').textContent = 'section'
-        document.getElementById('permission-id').textContent = id
-
-    } else if(mode === 'column-permissions') {
-        document.getElementById('permissions-sidebar').classList.remove('f-hidden')
-        document.getElementById('styles-sidebar').classList.add('f-hidden')
-        document.getElementById('plugins-sidebar').classList.add('f-hidden')
-
-
-        document.getElementById('permission-type').textContent = 'column'
-        document.getElementById('permission-id').textContent = id
-    }
-    else if(mode === 'plugin-permissions') {
+    } else if(mode === 'plugin-permissions') {
         document.getElementById('permissions-sidebar').classList.remove('f-hidden')
         document.getElementById('styles-sidebar').classList.add('f-hidden')
         document.getElementById('plugins-sidebar').classList.add('f-hidden')
@@ -417,9 +385,6 @@ function onAddPluginButtonClicked() {
 
 function onEditPluginButtonClicked(el) {
     showSidebar({title: 'Edit Plugin', mode: 'plugin-styles', id: el.dataset.id, el})
-    // document.getElementById('stlyes-table')
-    
-
 }
 
 function onEditColumnButtonClicked(el) {
@@ -440,35 +405,24 @@ function onToggleFullWidth(el) {
         section.dataset['fullWidth'] = 'true'
     }
 
-    saveSectionsOrder()
-}
-
-// function onHideSidebar() {
-//     pageEditorElement.classList.add('f-page-editor-sidebar-close')
-//     pageEditorElement.classList.remove('f-page-editor-sidebar-open')
-//     setTimeout(() => {
-//         updateResizerPosition()
-//     }, 300)
-// }
-
-function onEditSectionPermissionsButtonClicked(el) {
-    showSidebar({title: 'Section Permissions', mode: 'section-permissions', id: el.dataset.id})
-}
-
-function onEditColumnPermissionsButtonClicked(el) {
-    showSidebar({title: 'Column Permissions', mode: 'column-permissions', id: el.dataset.id})
+    saveSections()
 }
 
 function onEditPluginPermissionsButtonClicked(el) {
     showSidebar({title: 'Plugin Permissions', mode: 'plugin-permissions', id: el.dataset.id})
 }
+function onEditPluginStylesButtonClicked(el) {
+    showSidebar({title: 'Plugin Styles', mode: 'plugin-styles', id: el.dataset.id})
+}
 
 async function onDeletePlugin(el) {
     const id = el.dataset.id
     await request({
-        '_handler': 'PluginDeleteForm',
-        'PluginDeleteModel.Submitted': true,
-        'PluginDeleteModel.Id': id
+        handler: 'PluginDeleteForm',
+        body: {
+            'PluginDeleteModel.Submitted': true,
+            'PluginDeleteModel.Id': id
+        }
     })
 } 
 
@@ -480,56 +434,6 @@ function onAddStyleItem(el) {
     element.outerHTML = getStyleEditorRow('', '')
 }
 
-function onSaveStyles() {
-    const styles = {}
-    document.getElementById('styles-sidebar').querySelectorAll('tbody tr[data-type="style"]').forEach(el => {
-        const key = el.querySelector('input[data-type="key"]').value
-        const value = el.querySelector('input[data-type="value"]').value
-        styles[key] = value
-    })
-
-    const dataset = document.getElementById('styles-sidebar').dataset
-
-    let stylesStr = ''
-    let elementDataset = {}
-    for(let key in styles) {
-        if(key[0] > 'A' && key[0] < 'Z') {
-            elementDataset[key[0].toLowerCase() + key.slice(1)] = styles[key]
-        } else {
-            stylesStr += `${key}: ${styles[key]};`
-        }
-    }
-
-    let element = null
-    if(dataset.type === 'section') {
-        element = frameDocument.getElementById('section-' + dataset.id)
-        element.setAttribute('style', stylesStr)    
-        for(let key in elementDataset) {
-            element.dataset[key] = elementDataset[key]
-        }
-        setTimeout(() => {
-            saveSectionsOrder()
-        })
-    } else if(dataset.type === 'plugin') {
-        element = frameDocument.getElementById('plugin-' + dataset.id)
-        element.setAttribute('style', stylesStr)    
-        for(let key in elementDataset) {
-            element.dataset[key] = elementDataset[key]
-        }
-        // save plugin
-        
-    } else if(dataset.type === 'column') {
-        element = frameDocument.getElementById('column-' + dataset.id)
-        element.setAttribute('style', stylesStr)    
-        for(let key in elementDataset) {
-            element.dataset[key] = elementDataset[key]
-        }
-        setTimeout(() => {
-            saveColumns()
-        })
-    }
-
-}
 
 const actions = {
     'add-section': onAddSection,
@@ -542,19 +446,17 @@ const actions = {
     'edit-section': onEditSectionButtonClicked,
     'edit-column': onEditColumnButtonClicked,
     'toggle-full-width': onToggleFullWidth,
-    'edit-section-permissions': onEditSectionPermissionsButtonClicked,
-    'edit-column-permissions': onEditColumnPermissionsButtonClicked,
     'edit-plugin-permissions': onEditPluginPermissionsButtonClicked,
+    'edit-plugin-styles': onEditPluginStylesButtonClicked,
     'back'() {
         onHideSidebar()
         window.location.href = window.location.href.replace('?pageEdit=true', '')
     },
     'pages-list': onPagesList,
     'page-settings': onPageSettings,
-    'plugin-edit': (el) => onPluginEdit(el, reload),
+    'plugin-edit': onPluginEdit,
     'close-offcanvas': onCloseOffcanvas,
     'add-style-item': onAddStyleItem,
-    'save-styles': onSaveStyles,
     // 'responsive-mobile'() {
     //     updateResponsive('mobile')
     // },
@@ -570,16 +472,59 @@ const actions = {
     'hide-sidebar': onHideSidebar
 }
 
+function initializeActions() {
+    for(let key in actions) {
+        frameActionManager.register(key, actions[key])
+        actionManager.register(key, actions[key])
+    }
+}
+
+function initializeStyleManager() {
+    styleManager = StyleManager({
+        frameDocument,
+        async onChange(el) {
+            if(el.id.startsWith('section-')) {
+                await saveSections()
+            }
+            else if(el.id.startsWith('column-')) {
+                await saveColumns()
+            } 
+            else {
+                await savePlugins()
+            } 
+        }
+    })
+    
+}
 
 export async function onInit() {
     frameDocument = await getFrameDocument()
 
-    // initializeResponsive()
+    frameActionManager = ActionManager(frameDocument)
+    actionManager = ActionManager(document)
 
-    initializeActions(frameDocument, actions)
-    initializeActions(document, actions)
-    initializeSortable(frameDocument)
-    initializeColumns()
-   
-    frameDocument.body.classList.add('f-edit-content')
+    // initializeResponsive()
+    lifecycle.on('afterLoad', () => {
+        initializeColumns()
+        frameActionManager.init()
+        initializeSortable(iframeElement.contentDocument)
+        iframeElement.contentDocument.body.classList.add('f-edit-content')
+    })
+
+    lifecycle.on('reload', async () => {
+        const url = window.location.href
+        const response = await fetch(url.replace('pageEdit', 'pagePreview')).then(res => res.text())
+        const body = response.match(/<body[^>]*>([\s\S]*?)<\/body>/)
+        iframeElement.contentDocument.body.innerHTML = body[1]
+
+        setTimeout(() => {
+            lifecycle.trigger('afterLoad')        
+        })
+    })
+
+    initializeStyleManager()
+    initializeActions()
+    actionManager.init()
+
+    lifecycle.trigger('afterLoad')
 }
