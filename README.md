@@ -66,7 +66,7 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
   - [x] User Management
   - [x] Role Management
   - [ ] Application Settings
-  - [x] Haedleass CMS Features
+  - [x] Headleass CMS Features
     - [x] Media Management
     - [x] Content Type Definition
       - [x] Text Field
