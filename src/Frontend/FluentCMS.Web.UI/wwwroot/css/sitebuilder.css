@@ -1,4 +1,6 @@
-﻿* {
+﻿@import './toolbar.css';
+
+* {
     box-sizing: border-box;
 }
 
@@ -25,36 +27,36 @@
     font-family: sans-serif;
     flex-direction: column;
     gap: 0.25rem;
-    border: 1px solid #f0f0f0;
+    border: 1px solid #C1C1C1;
     background-color: white;
-    border-radius: 4px;
+    border-radius: 3px;
 }
 
 .f-page-editor-sidebar .f-plugin-definition-item:hover {
-    /* box-shadow: 0 0px 8px -4px black; */
-    background-color: #f0f0f0;
-    border-color: #d0d0d0;
+    background-color: white;
+    border-color: #C1C1C1;
     cursor: grab;
 }
 
 .f-page-editor-sidebar .f-plugin-definition-item .f-name {
-    font-weight: bold;
-    font-size: 16px;
+    /* font-weight: bold; */
+    font-size: 14px;
+    color: #222222;
 }
 
 .f-page-editor-sidebar .f-plugin-definition-item .f-description {
-    opacity: 0.7;
-    font-size: 14px;
+    font-size: 12px;
+    color: #333333;
+
 }
 
 .f-page-editor-sidebar {
     width: 240px;
     background-color: #ffffff;
     border-left: 1px solid #dfdfdf;
-    box-shadow: 1px 0 8px -4px black;
     transition: all 0.3s ease;
     position: fixed;
-    top: 40px;
+    top: 46px;
     bottom: 0;
     right: -240px;
     z-index: 100;
@@ -113,7 +115,7 @@ body {
 }
 
 .f-page-editor-iframe-wrapper {
-    background-color: #242424;
+    background-color: #EBEBEB;
     position: relative;
     height: calc(100% - 40px);
     transition: all 0.3s ease;

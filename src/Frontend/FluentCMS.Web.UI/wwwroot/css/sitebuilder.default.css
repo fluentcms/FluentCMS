@@ -1,3 +1,5 @@
+@import './toolbar.css';
+
 .f-edit-button {
     position: fixed;
     bottom: 1rem;
@@ -40,14 +42,14 @@
     min-height: 100px;
 }
 
-.f-plugin-container-actions {
+/* .f-plugin-container-actions {
     display: none;
-}
+} */
 
 .f-page-editor-forms {
     display: none;
 }
-
+/* 
 .f-edit-content .f-plugin-container-actions-inner {
     display: flex;
 } 
@@ -64,7 +66,7 @@
     color: white;
     width: 16px;
     height: 16px;
-}
+} */
 
 .f-edit-content .f-plugin-container {
     padding: 0.5rem;

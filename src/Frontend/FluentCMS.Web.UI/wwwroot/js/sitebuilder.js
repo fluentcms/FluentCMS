@@ -139,10 +139,10 @@ const actions = {
         const id = el.parentElement.parentElement.dataset.id
 
         if(id == '00000000-0000-0000-0000-000000000000') {
-            el.parentElement.parentElement.remove()
+            el.parentElement.parentElement.parentElement.remove()
         } else {
-            el.parentElement.parentElement.dataset.deleted = true
-            el.parentElement.parentElement.classList.add('f-hidden')
+            el.parentElement.parentElement.parentElement.dataset.deleted = true
+            el.parentElement.parentElement.parentElement.classList.add('f-hidden')
         }
     },
     'show-sidebar'() {
