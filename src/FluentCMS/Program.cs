@@ -11,7 +11,7 @@ services.AddUIComponents();
 
 services.AddCmsServices(configuration);
 
-services.AddMongoDbRepositories("MongoDb");
+services.AddLiteDbRepositories("LiteDb");
 
 services.AddApiServices();
 
