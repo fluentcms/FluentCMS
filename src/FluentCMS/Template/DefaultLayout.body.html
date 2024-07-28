@@ -7,7 +7,7 @@
 
             </a>
             <div class="flex items-center lg:order-2">
-                <a class="dark:invert" target="_blank" href="https://github.com/fluentcms/FluentCMS">
+                <a class="me-3 dark:invert" target="_blank" href="https://github.com/fluentcms/FluentCMS">
                     <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd" clip-rule="evenodd"
                               d="M16.9952 2.125C13.2956 2.12692 9.71741 3.43722 6.90032 5.82161C4.08322 8.206 2.21096 11.509 1.61832 15.14C1.02567 18.771 1.75128 22.4932 3.6654 25.641C5.57953 28.7889 8.55734 31.1571 12.0664 32.3223C12.8405 32.466 13.1321 31.9862 13.1321 31.5782C13.1321 31.1702 13.1167 29.9874 13.1115 28.6942C8.77624 29.6307 7.86016 26.8648 7.86016 26.8648C7.1531 25.0687 6.13122 24.5966 6.13122 24.5966C4.7171 23.6369 6.23703 23.6549 6.23703 23.6549C7.8034 23.7652 8.62658 25.2534 8.62658 25.2534C10.0149 27.6217 12.2728 26.9366 13.1605 26.5363C13.2999 25.5331 13.705 24.8506 14.1514 24.4631C10.6884 24.0731 7.04988 22.744 7.04988 16.8067C7.02842 15.2669 7.60308 13.7778 8.65496 12.6475C8.49497 12.2575 7.9608 10.6821 8.80721 8.54215C8.80721 8.54215 10.1155 8.12648 13.0934 10.1304C15.6477 9.43586 18.3426 9.43586 20.8969 10.1304C23.8722 8.12648 25.178 8.54215 25.178 8.54215C26.0269 10.6769 25.4928 12.2523 25.3328 12.6475C26.388 13.778 26.9639 15.2697 26.9405 16.8118C26.9405 22.762 23.2942 24.0731 19.826 24.4554C20.3834 24.9378 20.8814 25.8795 20.8814 27.3266C20.8814 29.3998 20.8634 31.0676 20.8634 31.5782C20.8634 31.9913 21.1446 32.4737 21.9343 32.3223C25.4437 31.157 28.4218 28.7883 30.3359 25.6399C32.25 22.4915 32.9752 18.7688 32.3819 15.1375C31.7886 11.5061 29.9154 8.2031 27.0974 5.81912C24.2794 3.43514 20.7003 2.1257 17.0003 2.125H16.9952Z"
@@ -28,11 +28,12 @@
                               fill="#191717" />
                     </svg>
                 </a>
-
-                <a href="/auth/login"
-                   class="text-gray-800 dark:text-white hover:bg-gray-50 focus:ring-4 focus:ring-gray-300 font-medium rounded-lg text-sm px-4 lg:px-5 py-2 lg:py-2.5 mr-2 dark:hover:bg-gray-700 focus:outline-none dark:focus:ring-gray-800">
-                    Log In
-                </a>
+                {{if(!user.user_name)}}
+                    <a href="/auth/login"
+                    class="text-gray-800 dark:text-white hover:bg-gray-50 focus:ring-4 focus:ring-gray-300 font-medium rounded-lg text-sm px-4 lg:px-5 py-2 lg:py-2.5 mr-2 dark:hover:bg-gray-700 focus:outline-none dark:focus:ring-gray-800">
+                        Log In
+                    </a>
+                {{end}}
                 <a href="/admin"
                    class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 lg:px-5 py-2 lg:py-2.5 mr-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">
                     Admin Panel
