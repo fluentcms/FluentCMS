@@ -140,9 +140,9 @@ body {
 
 .f-page-editor-iframe-resizer {
     border-radius: 2px;
-    box-shadow: 0 0 8px -4px black;
+    box-shadow: 0 0 8px -4px rgb(129, 129, 129);
     display: none;
-    background-color: #303030;
+    background-color: #cfcfcf;
     height: 64px;
     width: 12px;
     position: absolute;
@@ -152,7 +152,7 @@ body {
     cursor: grab;
 }
 .f-page-editor-iframe-resizer:hover {
-    background-color: #404040;
+    background-color: #d4d4d4;
     height: 64px;
     width: 12px;
     position: absolute;
@@ -164,7 +164,7 @@ body {
 
 .f-page-editor-iframe-resizer::before, .f-page-editor-iframe-resizer::after {
     content: '';
-    background-color: #404040;
+    background-color: #aaaaaa;
     position: absolute;
     height: 48px;
     width: 2px;
@@ -173,7 +173,7 @@ body {
 }
 
 .f-page-editor-iframe-resizer:hover::after, .f-page-editor-iframe-resizer:hover::before {
-    background-color: #606060;
+    background-color: #c0c0c0;
 }
 
 .f-page-editor-iframe-resizer::before {

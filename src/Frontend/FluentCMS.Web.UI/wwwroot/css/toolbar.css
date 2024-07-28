@@ -11,7 +11,6 @@
     max-width: 1280px;
     display: flex;
     justify-content: space-between;
-
 }
 
 .f-toolbar-start, .f-toolbar-center, .f-toolbar-end {
@@ -58,7 +57,6 @@
     background-color: #5C90BD;
     color: white;
 }
-
 
 .f-toolbar-button-icon {
     width: 34px;

@@ -85,14 +85,14 @@ function updateResponsive(mode, silent) {
     if(responsiveMode == mode) {
         if(silent) return;
         responsiveMode = null;
-        document.querySelector(`[data-action="responsive-${mode}"]`).classList.remove('f-page-editor-header-button-primary');
+        document.querySelector(`[data-action="responsive-${mode}"]`).classList.remove('f-toolbar-responsive-button-active');
     }
     else {
         if(responsiveMode)
-            document.querySelector(`[data-action="responsive-${responsiveMode}"]`).classList.remove('f-page-editor-header-button-primary')
+            document.querySelector(`[data-action="responsive-${responsiveMode}"]`).classList.remove('f-toolbar-responsive-button-active')
 
         responsiveMode = mode;
-        document.querySelector(`[data-action="responsive-${mode}"]`).classList.add('f-page-editor-header-button-primary');
+        document.querySelector(`[data-action="responsive-${mode}"]`).classList.add('f-toolbar-responsive-button-active');
     }
 
     if(responsiveMode) {
