@@ -11,7 +11,11 @@ services.AddUIComponents();
 
 services.AddCmsServices(configuration);
 
+// Use LiteDB as database
 services.AddLiteDbRepositories("LiteDb");
+
+// Use MongoDB as database
+//services.AddMongoDbRepositories("MongoDb");
 
 services.AddApiServices();
 
