@@ -24,7 +24,7 @@ FluentCMS is an open-source project, and we welcome contributions from the commu
 - **Page Management**: Create and manage pages with custom layouts.
 - **Plugin Management**: Extend functionality with custom plugins.
 
-## Databases
+## Supported Databases
 
 - LiteDb
 - MongoDb
