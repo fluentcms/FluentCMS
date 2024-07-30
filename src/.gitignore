@@ -405,3 +405,5 @@ FodyWeavers.xsd
 *.sln.iml
 
 FluentCMS/files
+FluentCMS/LiteDb-log.db
+FluentCMS/LiteDb.db
