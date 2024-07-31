@@ -14,6 +14,9 @@ public partial class FormFileUpload : IAsyncDisposable
     public string Id { get; set; } = Guid.NewGuid().ToString();
 
     [Parameter]
+    public string? Hint { get; set; }
+
+    [Parameter]
     public string? Label { get; set; }
 
     [Parameter]

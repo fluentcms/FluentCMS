@@ -8,7 +8,7 @@
 
 @if (Visible)
 {
-    <FormField Cols="Cols" Dense="@Dense" Id="@Id" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
+    <FormField Cols="Cols" Dense="@Dense" Id="@Id" Hint="@Hint" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
         <select @ref="Element" @attributes="AdditionalAttributes" Placeholder="@Placeholder" autocomplete="off" class="@this.GetClasses()" disabled="@Disabled" id="@Id"
                 name="@NameAttributeValue" @bind="@CurrentValueAsString">
             @if (!string.IsNullOrEmpty(Placeholder))
