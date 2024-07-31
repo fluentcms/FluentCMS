@@ -7,4 +7,7 @@ public partial class BreadcrumbItem
 
     [Parameter]
     public IconName IconName { get; set; } = IconName.Default;
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
 }

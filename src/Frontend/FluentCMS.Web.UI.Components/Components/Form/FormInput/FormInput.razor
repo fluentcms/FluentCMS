@@ -4,7 +4,7 @@
 
 @if (Visible)
 {
-    <FormField Cols="Cols" Dense="@Dense" Id="@Id" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
+    <FormField Cols="Cols" Dense="@Dense" Id="@Id" Hint="@Hint" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
         <input type="text" @attributes="AdditionalAttributes" class="@this.GetClasses() @Class" disabled="@Disabled" id="@Id"
                name="@NameAttributeValue" placeholder="@Placeholder" readonly="@Readonly" @bind=CurrentValueAsString />
     </FormField>

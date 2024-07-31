@@ -24,12 +24,20 @@ FluentCMS is an open-source project, and we welcome contributions from the commu
 - **Page Management**: Create and manage pages with custom layouts.
 - **Plugin Management**: Extend functionality with custom plugins.
 
+## Supported Databases
+
+- LiteDb
+- MongoDb
+- MySQL (comming soon)
+- SQL Server (comming soon)
+- SQLite (comming soon)
+
 ## Getting Started
 
 ### Prerequisites
 
 - .NET SDK 8.0 or higher
-- MongoDb
+- MongoDb (if you want to use MongoDb as database)
 
 ### Installation
 
@@ -66,7 +74,7 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
   - [x] User Management
   - [x] Role Management
   - [ ] Application Settings
-  - [x] Haedleass CMS Features
+  - [x] Headleass CMS Features
     - [x] Media Management
     - [x] Content Type Definition
       - [x] Text Field

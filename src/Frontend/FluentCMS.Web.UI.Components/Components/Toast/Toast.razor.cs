@@ -12,6 +12,9 @@ public partial class Toast
     [CSSProperty]
     public ToastType Type { get; set; }
 
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
     public void Close()
     {
         Show = false;

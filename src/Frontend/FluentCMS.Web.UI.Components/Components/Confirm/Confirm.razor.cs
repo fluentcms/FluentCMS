@@ -12,6 +12,9 @@ public partial class Confirm
     [Parameter]
     public EventCallback OnCancel { get; set; }
 
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
     [JSInvokable]
     public async Task CancelClicked()
     {

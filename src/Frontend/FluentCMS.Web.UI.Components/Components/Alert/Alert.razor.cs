@@ -9,6 +9,9 @@ public partial class Alert
     [CSSProperty]
     public AlertType Type { get; set; }
 
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
     private Task Close()
     {
         Visible = false;

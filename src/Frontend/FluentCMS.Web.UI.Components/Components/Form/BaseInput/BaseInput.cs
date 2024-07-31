@@ -40,6 +40,9 @@ public abstract class BaseInput<T> : InputBase<T>, IBaseComponent
     public string? Label { get; set; }
 
     [Parameter]
+    public string? Hint { get; set; }
+
+    [Parameter]
     public RenderFragment? LabelFragment { get; set; }
 
     [Parameter]

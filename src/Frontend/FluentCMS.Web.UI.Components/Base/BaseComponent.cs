@@ -6,9 +6,6 @@ public abstract class BaseComponent : ComponentBase, IBaseComponent
     public bool Visible { get; set; } = true;
 
     [Parameter]
-    public RenderFragment ChildContent { get; set; } = default!;
-
-    [Parameter]
     public string? Class { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
