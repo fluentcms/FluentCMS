@@ -1,0 +1,7 @@
+$form-field: $prefix + "form-form-field";
+
+.#{$form-field} {
+    &-label {
+        @apply mt-2 text-sm text-gray-500 dark:text-gray-400;
+    }
+}
