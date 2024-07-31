@@ -19,6 +19,10 @@
             </FormLabel>
         }
         @ChildContent
+        @if (!string.IsNullOrEmpty(Hint))
+        {
+            <small class="@this.ClassName("FormFieldHint")">@Hint</small>
+        }
         @if (!Dense)
         {
             <Spacer Size="SpacerSize.Medium" />
