@@ -41,21 +41,6 @@
     color: #005590;
 }
 
-/* .f-plugin-container:hover .f-plugin-container-content {
-    border: 1px solid #3979da;
-    opacity: 0.8;
-    border-top-left-radius: 0;
-}
-.f-plugin-container:hover .f-plugin-container-content::after {
-    content: '';
-    top: 0rem;
-    bottom: 0rem;
-    left: 0rem;
-    right: 0rem;
-    position: absolute;
-    background-color: #1639ff11;
-} */
-
 .f-page-editor-forms {
     display: none;
 }
@@ -75,6 +60,17 @@
     justify-content: space-between;
     left: 0;
     right: 0;
+}
+
+.f-plugin-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: transparent;
+    pointer-events: none;
 }
 
 .f-plugin-container:hover .f-plugin-container-actions {
