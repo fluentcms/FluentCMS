@@ -1,0 +1,40 @@
+// TODO
+
+$accordion: $prefix + "accordion";
+
+.#{$accordion} {
+    .#{$accordion}-content {
+        @apply p-5 border border-gray-200 dark:bg-gray-900 dark:border-gray-700;
+    }
+
+    &:last-of-type .#{$accordion}-content {
+        @apply border-t-0;
+    }
+
+    .#{$accordion}-toggler {
+        @apply flex items-center justify-between w-full p-5 font-medium rtl:text-right text-gray-500 border border-gray-200 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-800 dark:border-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 gap-3;
+    }
+
+    &:first-of-type .#{$accordion}-toggler {
+        @apply rounded-t-xl;
+    }
+
+    &:last-of-type {
+        @apply rounded-b-xl overflow-hidden border border-gray-200 dark:border-gray-700;
+
+        .#{$accordion}-content {
+            @apply border-0 border-t;
+        }
+
+        .#{$accordion}-toggler {
+            @apply border-0;
+        }
+    }
+
+    &:not(:last-of-type) {
+        .#{$accordion}-content,
+        .#{$accordion}-toggler {
+            @apply border-b-0;
+        }
+    }
+}
