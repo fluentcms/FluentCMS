@@ -47,11 +47,10 @@ FluentCMS is an open-source project, and we welcome contributions from the commu
    git clone https://github.com/fluentcms/FluentCMS.git
    ```
 
-2. Navigate to the project directory and restore the NuGet packages:
+2. Navigate to the project directory:
 
    ```bash
-   cd FluentCMS
-   dotnet restore
+   cd FluentCMS/src/FluentCMS/
    ```
 
 3. Run the application:
