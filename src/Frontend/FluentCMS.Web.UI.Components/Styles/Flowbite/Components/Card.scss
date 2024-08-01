@@ -1,0 +1,21 @@
+$card: $prefix + 'card';
+
+.#{$card} {
+    @apply bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700;
+
+    &-body, &-header, &-actions {
+        @apply p-3;
+
+        @screen sm {
+            @apply p-4;
+        }
+    }
+
+    &-title {
+        @apply text-2xl font-semibold tracking-tight text-gray-900 dark:text-white;
+    }
+
+    &-actions {
+        @apply flex gap-2 items-center justify-end;
+    }
+}
