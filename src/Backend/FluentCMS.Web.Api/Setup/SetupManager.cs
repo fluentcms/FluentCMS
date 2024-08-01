@@ -306,7 +306,10 @@ public class SetupManager : ISetupManager
                 DefinitionId = pluginDefinition.Id,
                 PageId = pageId,
                 SiteId = _site.Id,
-                Locked = pluginTemplate.Locked
+                Locked = pluginTemplate.Locked,
+                Cols = pluginTemplate.Cols,
+                ColsMd = pluginTemplate.ColsMd,
+                ColsLg = pluginTemplate.ColsLg,
             };
             order++;
             var pluginResponse = await _pluginService.Create(plugin);
