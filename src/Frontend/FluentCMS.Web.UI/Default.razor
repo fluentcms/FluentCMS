@@ -72,14 +72,12 @@
     <PageEditorForms />
     <iframe class="f-plugin-edit-iframe" src=""></iframe>
 
-    <script src="/_content/FluentCMS.Web.UI/js/plugin-actions.js"></script>
     <script src="/_content/FluentCMS.Web.UI/js/sortable.js"></script>
     <script src="/_content/FluentCMS.Web.UI/js/sitebuilder.js"></script>
 }
 else if (ViewState.Type == ViewStateType.PagePreview)
 {
     <HeadContent>
-        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/plugin-actions.css">
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.preview.css">
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.editor.css">
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.css">
@@ -138,6 +136,5 @@ else
     }
     @RenderDynamicContent(ViewState.Layout?.Body ?? string.Empty)
 
-    <script src="/_content/FluentCMS.Web.UI/js/plugin-actions.js"></script>
     <script src="/_content/FluentCMS.Web.UI/js/sitebuilder.default.js"></script>
 }

@@ -1,90 +1,33 @@
 @import './toolbar.css';
 
-.f-edit-button {
-    position: fixed;
-    bottom: 1rem;
-    right: 1rem;
-    width: 48px;
-    height: 48px;
-    background-color: #2c5dd9;
-    box-shadow: 0 0 16px -4px black;
-    border: none;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-}
-
-.f-edit-content-button {
-    position: fixed;
-    bottom: 5rem;
-    right: 1.5rem;
-    width: 32px;
-    height: 32px;
-    background-color: #e4e4e4;
-    border: 1px solid #888888;
-    color: black;
-    box-shadow: 0 0 16px -4px black;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-}
-
-
-.f-edit-content .f-plugin-container {
+.f-plugin-container {
     position: relative;
 }
 
-.f-edit-content .f-plugin-container-content {
+.f-plugin-container-content {
     min-height: 100px;
 }
-
-/* .f-plugin-container-actions {
-    display: none;
-} */
 
 .f-page-editor-forms {
     display: none;
 }
-/* 
-.f-edit-content .f-plugin-container-actions-inner {
-    display: flex;
-} 
 
-.f-edit-content .f-plugin-container-actions-inner button {
-    background-color: rgba(62, 62, 209, 0.9);
-    padding: 4px;
-    width: 24px;
-    height: 24px;
-}
-
-.f-edit-content .f-plugin-container-actions-inner button .icon {
-    fill: white;
-    color: white;
-    width: 16px;
-    height: 16px;
-} */
-
-.f-edit-content .f-plugin-container {
+.f-plugin-container {
     padding: 0.5rem;
 }
 
-.f-edit-content .f-plugin-container-content {
+.f-plugin-container-content {
     border: 1px solid #dddddd;
     border-radius: 0.5rem;
     position: relative;
-
 }
 
-.f-edit-content .f-plugin-container:hover .f-plugin-container-content {
+.f-plugin-container:hover .f-plugin-container-content {
     border: 1px solid #3979da;
     border-top-right-radius: 0;
 }
 
-.f-edit-content .f-plugin-container:hover .f-plugin-container-content::after {
+.f-plugin-container:hover .f-plugin-container-content::after {
     content: '';
     position: absolute;
     top: 0;

@@ -6,7 +6,6 @@ function init() {
     if(window.editButton) {
         editButton.addEventListener('click', onEditButtonClicked)    
     }
-    window.initPluginActions(document)
 }
 
 function destroy () {

@@ -195,7 +195,6 @@ function initializeActions(element) {
             })
         }
     })
-    initPluginActions(element)
 }
 
 function submitForm(form, data) {
