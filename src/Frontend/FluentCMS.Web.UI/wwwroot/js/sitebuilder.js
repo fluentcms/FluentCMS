@@ -85,14 +85,14 @@ function updateResponsive(mode, silent) {
     if(responsiveMode == mode) {
         if(silent) return;
         responsiveMode = null;
-        document.querySelector(`[data-action="responsive-${mode}"]`).classList.remove('f-page-editor-header-button-primary');
+        document.querySelector(`[data-action="responsive-${mode}"]`).classList.remove('f-toolbar-responsive-button-active');
     }
     else {
         if(responsiveMode)
-            document.querySelector(`[data-action="responsive-${responsiveMode}"]`).classList.remove('f-page-editor-header-button-primary')
+            document.querySelector(`[data-action="responsive-${responsiveMode}"]`).classList.remove('f-toolbar-responsive-button-active')
 
         responsiveMode = mode;
-        document.querySelector(`[data-action="responsive-${mode}"]`).classList.add('f-page-editor-header-button-primary');
+        document.querySelector(`[data-action="responsive-${mode}"]`).classList.add('f-toolbar-responsive-button-active');
     }
 
     if(responsiveMode) {
@@ -139,10 +139,10 @@ const actions = {
         const id = el.parentElement.parentElement.dataset.id
 
         if(id == '00000000-0000-0000-0000-000000000000') {
-            el.parentElement.parentElement.remove()
+            el.parentElement.parentElement.parentElement.remove()
         } else {
-            el.parentElement.parentElement.dataset.deleted = true
-            el.parentElement.parentElement.classList.add('f-hidden')
+            el.parentElement.parentElement.parentElement.dataset.deleted = true
+            el.parentElement.parentElement.parentElement.classList.add('f-hidden')
         }
     },
     'show-sidebar'() {
@@ -158,16 +158,43 @@ const actions = {
         setTimeout(() => {
             updateResizerPosition()
         }, 300)
+    },
+    'move-to-toolbar'(el) {
+        const pluginId = el.dataset.pluginId
+
+        const toolbar = frameDocument.querySelector(`[data-id="${pluginId}"] .f-plugin-toolbar-actions`)
+
+        setTimeout(() => {
+            for(let child of el.childNodes) {
+                toolbar.appendChild(child)
+            }
+        })
+    },
+    'open-plugin-view'(el) {
+        const viewName = el.dataset.viewName
+        const pluginId = el.dataset.pluginId
+        const id = el.dataset.id
+
+        let url = window.location.pathname
+
+        if(pluginId) url += '?pluginId=' + pluginId;
+        if(viewName) url += '&viewName=' + viewName;
+        if(id) url += '&id=' + id;
+
+        window.location.href = url
     }
 }
 
 function initializeActions(element) {
     element.querySelectorAll('[data-action]').forEach(action => {
-        action.addEventListener('click', () => {
+        if(action.dataset.trigger === 'load') {
             actions[action.dataset.action](action)
-        })
+        } else {
+            action.addEventListener('click', () => {
+                actions[action.dataset.action](action)
+            })
+        }
     })
-    initPluginActions(element)
 }
 
 function submitForm(form, data) {
@@ -189,7 +216,6 @@ function initializeSortable(frameDocument) {
             chosenClass: 'f-plugin-container-chosen',
             handle: '.f-plugin-container-action-drag',
         });
-
     });
 
     new Sortable(document.querySelector('.f-plugin-definition-list'), {
