@@ -337,3 +337,19 @@ body {
     
     background-color: #3b48bd;
 }
+
+
+.f-plugin-edit-iframe {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: none;
+    z-index: 100;
+    background-color: white;
+}
+
+.f-plugin-edit-iframe.open {
+    display: block;
+}

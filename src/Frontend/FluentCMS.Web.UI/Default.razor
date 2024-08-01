@@ -70,6 +70,7 @@
         <PageEditorSidebar />
     </div>
     <PageEditorForms />
+    <iframe class="f-plugin-edit-iframe" src=""></iframe>
 
     <script src="/_content/FluentCMS.Web.UI/js/plugin-actions.js"></script>
     <script src="/_content/FluentCMS.Web.UI/js/sortable.js"></script>
@@ -91,6 +92,15 @@ else if (ViewState.Type == ViewStateType.PagePreview)
     <script src="/_content/FluentCMS.Web.UI/js/columns.js"></script>
     <script src="/_content/FluentCMS.Web.UI/js/sitebuilder.preview.js"></script>
 }
+else if (ViewState.Type == ViewStateType.PluginEdit)
+{
+    <HeadContent>
+        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/toolbar.css">
+        @RenderDynamicContent(ViewState.Layout?.Head ?? string.Empty)
+    </HeadContent>
+
+    @RenderDynamicContent(ViewState.Layout?.Body ?? string.Empty)
+}
 else
 {
     
@@ -98,7 +108,6 @@ else
         @RenderDynamicContent(ViewState.Layout?.Head ?? string.Empty)
         @if (ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked)
         {
-            <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/plugin-actions.css">
             <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.default.css">
         }            
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.css">

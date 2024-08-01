@@ -22,7 +22,7 @@ public partial class TextHTMLEditPlugin
     protected virtual void NavigateBack()
     {
         var url = new Uri(NavigationManager.Uri).LocalPath;
-        NavigateTo(url);
+        NavigateTo(url + "?pageEdit=true");
     }
 
     protected virtual void NavigateTo(string path)
@@ -30,7 +30,7 @@ public partial class TextHTMLEditPlugin
         if (HttpContextAccessor?.HttpContext != null && !HttpContextAccessor.HttpContext.Response.HasStarted)
             HttpContextAccessor.HttpContext.Response.Redirect(path);
         else
-            NavigationManager.NavigateTo(path);
+            NavigationManager.NavigateTo(path, true);
     }
 
     [SupplyParameterFromForm(FormName = CONTENT_TYPE_NAME)]

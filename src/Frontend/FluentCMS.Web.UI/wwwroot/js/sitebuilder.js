@@ -158,14 +158,42 @@ const actions = {
         setTimeout(() => {
             updateResizerPosition()
         }, 300)
+    },
+    'move-to-toolbar'(el) {
+        const pluginId = el.dataset.pluginId
+
+        const toolbar = frameDocument.querySelector(`[data-id="${pluginId}"] .f-plugin-toolbar-actions`)
+
+        setTimeout(() => {
+            for(let child of el.childNodes) {
+                toolbar.appendChild(child)
+            }
+        })
+    },
+    'open-plugin-view'(el) {
+        const viewName = el.dataset.viewName
+        const pluginId = el.dataset.pluginId
+        const id = el.dataset.id
+
+        let url = window.location.pathname
+
+        if(pluginId) url += '?pluginId=' + pluginId;
+        if(viewName) url += '&viewName=' + viewName;
+        if(id) url += '&id=' + id;
+
+        window.location.href = url
     }
 }
 
 function initializeActions(element) {
     element.querySelectorAll('[data-action]').forEach(action => {
-        action.addEventListener('click', () => {
+        if(action.dataset.trigger === 'load') {
             actions[action.dataset.action](action)
-        })
+        } else {
+            action.addEventListener('click', () => {
+                actions[action.dataset.action](action)
+            })
+        }
     })
     initPluginActions(element)
 }
@@ -189,7 +217,6 @@ function initializeSortable(frameDocument) {
             chosenClass: 'f-plugin-container-chosen',
             handle: '.f-plugin-container-action-drag',
         });
-
     });
 
     new Sortable(document.querySelector('.f-plugin-definition-list'), {
