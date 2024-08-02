@@ -61,8 +61,6 @@ FluentCMS is an open-source project, and we welcome contributions from the commu
 
 4. Visit `http://localhost:5000` in your browser.
 
-_(You can expand on more detailed setup instructions, configurations, etc.)_
-
 ## Contributing
 
 We welcome contributions! If you're interested in improving FluentCMS, please read our [CONTRIBUTING.md](./CONTRIBUTING.md) guide.
