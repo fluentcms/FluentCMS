@@ -44,6 +44,7 @@ body {
 @import './Components/DataTable';
 @import './Components/Divider';
 @import './Components/Dropdown';
+@import './Components/Form/FormAutocomplete.core';
 @import './Components/Form/FormAutocomplete';
 @import './Components/Form/FormCheckbox';
 @import './Components/Form/FormCheckboxGroup';
@@ -52,10 +53,10 @@ body {
 @import './Components/Form/FormFileUpload';
 @import './Components/Form/FormInput';
 @import './Components/Form/FormLabel';
-@import './Components/Form/FormMarkdownEditor';
+@import './Components/Form/FormMarkdownEditor.core';
 @import './Components/Form/FormMarkdownEditor';
 @import './Components/Form/FormNumberInput';
-@import './Components/Form/FormRichTextEditor';
+@import './Components/Form/FormRichTextEditor.core';
 @import './Components/Form/FormRichTextEditor';
 @import './Components/Form/FormRadioGroup';
 @import './Components/Form/FormSelect';
