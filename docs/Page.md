@@ -38,7 +38,7 @@ FluentCMS offers comprehensive tools for DailyNews to create and manage dynamic 
 * Page Listing: Display a comprehensive list of all pages with search and paging capability managed within FluentCMS .
 * Page Templates: Utilize pre-defined templates to quickly create consistent and visually appealing pages.
 * Drag-and-Drop Interface: Use a drag-and-drop interface to easily add, move, and organize content blocks on a page.
-* Plugins: Add pre-defined plugins or custom plugins to specific blocks of a page by simple drag-and-drop. For more details, refer to the [Plugin Definition](/PluginDefinition.md).
+* Plugins: Add pre-defined plugins or custom plugins to specific blocks of a page by simple drag-and-drop. For more details, refer to the [Plugin Definition](./PluginDefinition.md).
 * Multi Appearance😧: users can define multiple appearance (views) for same page and switch between different view types and customize the appearance of their 
   pages according to their preferences.
 * Multi Language 

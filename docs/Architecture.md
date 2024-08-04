@@ -1,2 +1,2 @@
-![Architecture Image](/resources/Architecture.png)
+![Architecture Image](./resources/Architecture.png)
 
