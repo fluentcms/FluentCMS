@@ -26,8 +26,8 @@ FluentCMS is an open-source project, and we welcome contributions from the commu
 
 ## Supported Databases
 
-- LiteDb
-- MongoDb
+- LiteDB
+- MongoDB
 - MySQL (comming soon)
 - SQL Server (comming soon)
 - SQLite (comming soon)
@@ -37,7 +37,7 @@ FluentCMS is an open-source project, and we welcome contributions from the commu
 ### Prerequisites
 
 - .NET SDK 8.0 or higher
-- MongoDb (if you want to use MongoDb as database)
+- MongoDb (if you want to use MongoDB as database)
 
 ### Installation
 
@@ -60,6 +60,11 @@ FluentCMS is an open-source project, and we welcome contributions from the commu
    ```
 
 4. Visit `http://localhost:5000` in your browser.
+
+## Documentation
+
+For more information on how to use FluentCMS, please refer to our [documentation](./docs/README.md). We are actively working on expanding our documentation to provide more detailed information.
+
 
 ## Contributing
 
