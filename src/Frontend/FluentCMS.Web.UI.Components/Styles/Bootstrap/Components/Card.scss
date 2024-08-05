@@ -1,0 +1,29 @@
+$card: $prefix + 'card';
+
+.#{$card} {
+    @extend .card;
+    // @apply bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700;
+
+    &-body {
+        @extend .card-body;
+    }
+    &-actions {
+        @extend .card-footer;
+    }
+    
+    // &-body, &-header, &-actions {
+    //     @apply p-3;
+
+    //     @screen sm {
+    //         @apply p-4;
+    //     }
+    // }
+
+    &-title {
+        @apply .card-title;
+    }
+
+    &-actions {
+        @apply flex gap-2 items-center justify-end;
+    }
+}

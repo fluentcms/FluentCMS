@@ -1,0 +1,92 @@
+$button: $prefix + "button";
+
+.#{$button} {
+    @extend .btn;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    &-block-true {
+        @extend .w-100;
+    }
+
+    &-size-small.#{$button}-link-false {
+        @extend .btn-sm;
+    }
+
+    &-size-large.#{$button}-link-false {
+        @extend .btn-lg;
+    }
+}
+
+@each $key, $value in $theme-colors {
+    .#{$button}-color-#{$key}.#{$button}-link-false.#{$button}-outline-false.#{$button}-disabled-false.#{$button}-ghost-false {
+        @extend .btn-#{$key};
+    }
+
+    .#{$button}-color-#{$key}.#{$button}-link-false.#{$button}-disabled-true {
+        @extend .disabled;
+        @extend .btn-#{$key};
+    }
+
+    .#{$button}-color-#{$key}.#{$button}-link-false.#{$button}-outline-true.#{$button}-ghost-false {
+        @extend .btn-outline-#{$key};
+    }
+
+    .#{$button}-color-#{$key}.#{$button}-link-false.#{$button}-ghost-true.#{$button}-outline-false {
+        @extend .text-#{$key};
+    }
+
+    .#{$button}-color-#{$key}.#{$button}-link-true.#{$button}-ghost-false.#{$button}-outline-false {
+        @extend .btn-link;
+        @extend .text-#{$key};
+    }
+}
+
+html:not([data-bs-theme="dark"]) {
+    .#{$button}-color-default.#{$button}-link-false.#{$button}-ghost-false.#{$button}-outline-false {
+        @extend .btn-light;
+    }
+    
+    .#{$button}-color-default.#{$button}-link-false.#{$button}-ghost-true.#{$button}-outline-false {
+        @extend .text-dark;
+    }
+    
+    .#{$button}-color-default.#{$button}-link-false.#{$button}-outline-true.#{$button}-ghost-false {
+        @extend .btn-outline-light;
+    }
+    
+    .#{$button}-color-default.#{$button}-link-false.#{$button}-disabled-true {
+        @extend .disabled;
+        @extend .btn-light;
+    }
+    
+    .#{$button}-color-default.#{$button}-link-true.#{$button}-ghost-false.#{$button}-outline-false {
+        @extend .text-dark;
+        @extend .btn-link;
+    }
+}
+
+[data-bs-theme="dark"] {
+    .#{$button}-color-default.#{$button}-link-false.#{$button}-ghost-false.#{$button}-outline-false {
+        @extend .btn-dark;
+    }
+
+    .#{$button}-color-default.#{$button}-link-false.#{$button}-ghost-true.#{$button}-outline-false {
+        @extend .text-light;
+    }
+
+    .#{$button}-color-default.#{$button}-link-false.#{$button}-outline-true.#{$button}-ghost-false {
+        @extend .btn-outline-dark;
+    }
+
+    .#{$button}-color-default.#{$button}-link-false.#{$button}-disabled-true {
+        @extend .disabled;
+        @extend .btn-dark;
+    }
+
+    .#{$button}-color-default.#{$button}-link-true.#{$button}-ghost-false.#{$button}-outline-false {
+        @extend .text-light;
+        @extend .btn-link;
+    }
+}

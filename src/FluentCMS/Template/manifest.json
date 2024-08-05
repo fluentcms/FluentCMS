@@ -28,6 +28,10 @@
             "IsDefault": false
         },
         {
+            "Name": "BootstrapAdminLayout",
+            "IsDefault": false
+        },
+        {
             "Name": "Bootstrap",
             "IsDefault": false
         },
@@ -458,14 +462,14 @@
         {
             "Title": "Admin",
             "Path": "/admin",
-            "Layout": "AdminLayout",
+            "Layout": "BootstrapAdminLayout",
             "Locked": false,
             "Plugins": [],
             "Children": [
                 {
                     "Title": "Content Type Builder",
                     "Path": "/content-types",
-                    "Layout": "AdminLayout",
+                    "Layout": "BootstrapAdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -478,7 +482,7 @@
                 {
                     "Title": "Users",
                     "Path": "/users",
-                    "Layout": "AdminLayout",
+                    "Layout": "BootstrapAdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -491,7 +495,7 @@
                 {
                     "Title": "File Management",
                     "Path": "/files",
-                    "Layout": "AdminLayout",
+                    "Layout": "BootstrapAdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -504,7 +508,7 @@
                 {
                     "Title": "Api Tokens",
                     "Path": "/api-tokens",
-                    "Layout": "AdminLayout",
+                    "Layout": "BootstrapAdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -517,7 +521,7 @@
                 {
                     "Title": "Roles",
                     "Path": "/roles",
-                    "Layout": "AdminLayout",
+                    "Layout": "BootstrapAdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -530,7 +534,7 @@
                 {
                     "Title": "Sites",
                     "Path": "/sites",
-                    "Layout": "AdminLayout",
+                    "Layout": "BootstrapAdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -543,7 +547,7 @@
                 {
                     "Title": "Layouts",
                     "Path": "/layouts",
-                    "Layout": "AdminLayout",
+                    "Layout": "BootstrapAdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -621,7 +625,7 @@
                 {
                     "Title": "Profile",
                     "Path": "/profile",
-                    "Layout": "AdminLayout",
+                    "Layout": "BootstrapAdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {

@@ -1,0 +1,15 @@
+$spacer: $prefix + 'spacer';
+
+.#{$spacer} {
+    &-size-default, &-size-medium {
+        @extend .pt-3;
+    }
+
+    &-size-small {
+        @extend .pt-2;
+    }
+
+    &-size-large {
+        @extend .pt-4;
+    }
+}

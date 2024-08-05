@@ -1,0 +1,52 @@
+$confirm: $prefix + "confirm";
+
+.#{$confirm} {
+    @extend .modal;
+    display: block;
+
+    &-backdrop {
+        @extend .modal-backdrop;
+        @extend .fade;
+        @extend .show;
+    }
+    
+    &-body {
+        @extend .modal-body; 
+        max-height: 80vh;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        
+        & > .#{$prefix + "icon"} {
+            width: 3rem;
+            height: 3rem;
+            display: block;
+            @extend .text-secondary;
+        }
+    }
+
+    &-content {
+        @extend .modal-content;
+        & > .#{$prefix}close-button {
+            top: 1rem;
+            right: 0.75rem;
+            position: absolute;
+            z-index: 1;
+        }
+    
+    }
+
+    &-message {
+        font-size: 16px;
+    }
+
+    &-wrapper {
+        @extend .modal-dialog;
+    }
+
+    &-button-stack {
+        justify-content: center;
+    }
+}

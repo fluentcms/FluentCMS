@@ -1,0 +1,105 @@
+@use "sass:math";
+
+$grid: $prefix + "grid";
+
+$grid-column-width: math.div(100%, 12);
+
+$grid-breakpoint: ( small: 'sm', medium: 'md', large: 'lg' );
+
+$grid-items: ( start, end, center, baseline, stretch);
+
+$grid-gutter: ( small: 1, medium: 2, large: 3 );
+
+$grid-justify: ( start, end, center, between, around, evenly);
+
+$grid-item-column: ( one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 );
+
+.#{$grid} {
+    & > div {
+        @extend .row;
+        @extend .row-cols-auto;
+
+    }
+    --grid-gutter-x: 0;
+    --grid-gutter-y: 0;
+
+    @each $gutter, $value in $grid-gutter {
+        &-gutter-#{$gutter} {
+            @extend .g-#{$value};
+        }
+    }
+
+    @each $gutter, $value in $grid-gutter {
+        @each $key in (x, y) {
+            &-gutter-#{$key}-#{$gutter} {
+                @extend .g#{$key}-#{$value};
+            }
+        }
+    }
+
+    @each $breakpoint, $breakpoint-value in $grid-breakpoint {
+        @each $key in $grid-items {
+            &.#{$grid}-align-#{$breakpoint}-#{$key} > div {
+                @extend .align-items-#{$breakpoint-value}-#{$key};
+            }
+        }
+
+        @each $key in $grid-justify {
+            &.#{$grid}-justify-#{$breakpoint}-#{$key} > div {
+                @extend .justify-content-#{$breakpoint-value}-#{$key};
+            }
+        }
+    }
+
+    &-no-wrap-true > div {
+        @extend .flex-nowrap;
+    }
+}
+
+.#{$grid}-item {
+    // @apply grow-0 basis-auto max-w-none box-border;
+
+    & {
+        @apply pt-[var(--grid-gutter-y)] ps-[var(--grid-gutter-x)];
+    }
+
+    @each $breakpoint, $breakpoint-value in $grid-breakpoint {
+        // @media (min-width: $value) {
+            // &-#{$breakpoint}-auto {
+            //     @apply basis-auto max-w-none;
+            // }
+
+            // &-#{$breakpoint}-grow {
+            //     @apply grow basis-0 max-w-full;
+            // }
+
+            @each $key, $value in $grid-item-column {
+                &.#{$grid}-item-#{$breakpoint}-#{$key} {
+                    @extend .col-#{$breakpoint-value}-#{$value};
+                }
+                // &-#{$breakpoint}-#{$key} {
+                //     flex-basis: $value * $grid-column-width;
+                //     max-width: $value * $grid-column-width;
+                // }
+            }
+        // }
+    }
+
+    @media (min-width: 0) and (max-width: 767px) {
+        &-hide-small-true {
+            display: none;
+        }
+    }
+
+    @media (min-width: 768px) and (max-width: 1199px) {
+        &-hide-medium-true {
+            display: none;
+        }
+    }
+
+    @media (min-width: 1200px) {
+        &-hide-large-true {
+            display: none;
+        }
+    }
+}

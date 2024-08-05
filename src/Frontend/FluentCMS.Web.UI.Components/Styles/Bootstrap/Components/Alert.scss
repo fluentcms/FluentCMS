@@ -1,0 +1,33 @@
+$alert: $prefix + "alert";
+
+$alert-types: ( 
+    "info": "blue", 
+    "danger": "red", 
+    "warning": "yellow", 
+    "success": "green", 
+);
+
+.#{$alert} {
+    @extend .alert;
+
+    [data-bs-theme="light"] &-type-default {
+        @extend .alert-light;
+    }
+    [data-bs-theme="dark"] &-type-default {
+        @extend .alert-dark;
+    }
+    
+    &:has(.#{$alert}-close) {
+        @extend .alert-dismissible;
+    }
+
+    @each $type, $color in $alert-types {
+        &-type-#{$type} {
+            @extend .alert-#{$type};
+            
+            .#{$alert}-close {
+                @extend .btn-close;
+            }
+        }
+    }
+}

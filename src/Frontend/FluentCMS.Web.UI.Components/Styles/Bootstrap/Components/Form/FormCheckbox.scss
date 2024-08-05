@@ -1,0 +1,13 @@
+$prefix-form-checkbox: $prefix + 'form-checkbox';
+
+.#{$prefix-form-checkbox} {
+    @extend .form-check;
+
+    &-input {
+        @extend .form-check-input;
+    }
+
+    &-label {
+        @extend .form-check-label;
+    }
+}

@@ -1,0 +1,24 @@
+$data-table: $prefix + "data-table";
+
+.#{$data-table} {
+    @extend .table;
+    margin-bottom: 0;
+
+    &-cell {
+        white-space: nowrap;
+    }
+
+    &-head {
+        .#{$data-table}-cell:last-child {
+            width: 0;
+        }
+    }
+
+    &-wrapper {
+        @extend .table-responsive;
+    }
+
+    &-hoverable-true {
+        @extend .table-hover;
+    }
+}

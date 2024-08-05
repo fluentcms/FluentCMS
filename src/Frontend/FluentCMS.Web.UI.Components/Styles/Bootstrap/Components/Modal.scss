@@ -1,0 +1,49 @@
+$modal: $prefix + "modal";
+
+.#{$modal} {
+    @extend .modal;
+    display: block;
+
+    &-body {
+        @extend .modal-body; 
+        max-height: 80vh;
+        overflow: auto;
+    }
+
+    &-content {
+        @extend .modal-content;
+    }
+
+    &-footer {
+        @extend .modal-footer;
+    }
+
+    &-header {
+        @extend .modal-header;
+    }
+
+    &-title {
+        @extend .modal-title;
+    }
+
+    &-wrapper {
+        @extend .modal-dialog;
+    }
+
+    &-size-small > .#{$modal}-wrapper {
+        // @apply max-w-md;
+        @extend .modal-sm;
+    }
+
+
+    &-size-large > .#{$modal}-wrapper {
+        @extend .modal-xl;
+    }
+
+
+    &-backdrop {
+        @extend .modal-backdrop;
+        @extend .fade;
+        @extend .show;
+    }
+} 

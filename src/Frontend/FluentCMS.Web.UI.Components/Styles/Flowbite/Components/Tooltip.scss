@@ -1,9 +1,5 @@
 $tooltip: $prefix + 'tooltip';
 
 .#{$tooltip} {
-    @apply absolute z-10 inline-block px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-sm tooltip dark:bg-gray-700;
-
-    &:not(.visible) {
-        @apply invisible opacity-0;
-    }
+    @apply absolute z-10 hidden inline-block px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-sm tooltip dark:bg-gray-700;
 }

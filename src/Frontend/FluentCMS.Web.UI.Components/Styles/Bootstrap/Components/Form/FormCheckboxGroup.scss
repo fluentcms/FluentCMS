@@ -1,0 +1,15 @@
+$form-checkbox-group: $prefix + 'form-checkbox-group';
+.#{$form-checkbox-group} {
+    &-input {
+        @extend .form-check-input;
+    }
+
+    &-vertical-false .#{$form-checkbox-group}-input-wrapper {
+        @extend .form-check; 
+        @extend .form-check-inline;
+    }
+
+    &-label {
+        @extend .form-check-label;
+    }
+}

@@ -3,7 +3,9 @@
     "scripts": {
         "tailwind": "tailwindcss -i ./dist/flowbite.css -o ../wwwroot/css/flowbite.min.css --minify",
         "sass": "sass ./Flowbite/App.scss:./dist/flowbite.css",
-        "build": "npm run sass && npm run tailwind"
+        "sass:bootstrap": "sass ./Bootstrap/App.scss:../wwwroot/css/bootstrap.min.css",
+        "build": "npm run sass && npm run tailwind",
+        "build:bootstrap": "npm run sass:bootstrap"
     },
     "devDependencies": {
         "conc": "^0.0.3",
@@ -12,5 +14,8 @@
         "flowbite-typography": "^1.0.3",
         "sass": "^1.69.5",
         "tailwindcss": "^3.3.5"
+    },
+    "dependencies": {
+        "bootstrap": "^5.3.3"
     }
 }

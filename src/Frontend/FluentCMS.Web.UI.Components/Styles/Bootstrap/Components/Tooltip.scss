@@ -1,0 +1,12 @@
+$tooltip: $prefix + 'tooltip';
+
+.#{$tooltip} {
+    position: absolute;
+    display: none;
+    @extend .tooltip;
+    @extend .show;
+    @extend .bg-dark;
+    @extend .text-light;
+    @extend .p-1;
+    border-radius: 4px;
+}

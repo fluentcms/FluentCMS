@@ -1,0 +1,15 @@
+$badge: $prefix + 'badge';
+
+.#{$badge} {
+    @extend .badge;
+
+    &-color-default {
+        @extend .text-bg-secondary;
+    }
+
+    @each $key, $value in $theme-colors {
+        &-color-#{$key} {
+            @apply .text-bg-#{$key};
+        }
+    }
+}

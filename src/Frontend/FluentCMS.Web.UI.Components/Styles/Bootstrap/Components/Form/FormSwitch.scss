@@ -1,0 +1,14 @@
+$prefix-form-switch: $prefix + 'form-switch';
+
+.#{$prefix-form-switch} {
+    @extend .form-check;
+    @extend .form-switch;
+
+    &-input {
+        @extend .form-check-input;
+    }
+
+    &-label {
+        @extend .form-check-label;
+    }
+}
