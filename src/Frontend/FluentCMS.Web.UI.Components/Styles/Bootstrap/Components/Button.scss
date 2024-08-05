@@ -39,6 +39,7 @@ $button: $prefix + "button";
 
     .#{$button}-color-#{$key}.#{$button}-link-true.#{$button}-ghost-false.#{$button}-outline-false {
         @extend .btn-link;
+        @extend .p-0;
         @extend .text-#{$key};
     }
 }

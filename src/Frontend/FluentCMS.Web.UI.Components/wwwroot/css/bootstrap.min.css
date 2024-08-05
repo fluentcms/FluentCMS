@@ -8119,7 +8119,7 @@ textarea.form-control-lg {
   margin-left: auto !important;
 }
 
-.p-0 {
+.p-0, .f-button-color-dark.f-button-link-true.f-button-ghost-false.f-button-outline-false, .f-button-color-light.f-button-link-true.f-button-ghost-false.f-button-outline-false, .f-button-color-danger.f-button-link-true.f-button-ghost-false.f-button-outline-false, .f-button-color-warning.f-button-link-true.f-button-ghost-false.f-button-outline-false, .f-button-color-info.f-button-link-true.f-button-ghost-false.f-button-outline-false, .f-button-color-success.f-button-link-true.f-button-ghost-false.f-button-outline-false, .f-button-color-secondary.f-button-link-true.f-button-ghost-false.f-button-outline-false, .f-button-color-primary.f-button-link-true.f-button-ghost-false.f-button-outline-false {
   padding: 0 !important;
 }
 

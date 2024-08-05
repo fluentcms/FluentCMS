@@ -32,6 +32,10 @@
             "IsDefault": false
         },
         {
+            "Name": "BootstrapAuthLayout",
+            "IsDefault": false
+        },
+        {
             "Name": "Bootstrap",
             "IsDefault": false
         },
@@ -567,7 +571,7 @@
                     "Title": "Login",
                     "Path": "/login",
                     "Locked": true,
-                    "Layout": "AuthLayout",
+                    "Layout": "BootstrapAuthLayout",
                     "Plugins": [
                         {
                             "Definition": "Login",
@@ -590,7 +594,7 @@
                     "Title": "Register",
                     "Path": "/register",
                     "Locked": true,
-                    "Layout": "AuthLayout",
+                    "Layout": "BootstrapAuthLayout",
                     "Plugins": [
                         {
                             "Definition": "Register",
@@ -602,7 +606,7 @@
                     "Title": "Reset Password",
                     "Path": "/reset-password",
                     "Locked": true,
-                    "Layout": "AuthLayout",
+                    "Layout": "BootstrapAuthLayout",
                     "Plugins": [
                         {
                             "Definition": "Reset Password",
@@ -614,7 +618,7 @@
                     "Title": "Forgot Password",
                     "Path": "/forgot-password",
                     "Locked": true,
-                    "Layout": "AuthLayout",
+                    "Layout": "BootstrapAuthLayout",
                     "Plugins": [
                         {
                             "Definition": "Forgot Password",
