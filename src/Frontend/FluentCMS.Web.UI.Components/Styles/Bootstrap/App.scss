@@ -56,7 +56,10 @@ $prefix: "f-";
 @import "../node_modules/bootstrap/scss/utilities/api";
 // scss-docs-end import-stack
 
-
+// Shared
+@import '../Shared/FormAutocomplete.core';
+@import '../Shared/FormMarkdownEditor.core';
+@import '../Shared/FormRichTextEditor.core';
 
 // COMPONENTS
 // @import "./Components/Accordion"; // SKIP
@@ -71,19 +74,17 @@ $prefix: "f-";
 @import './Components/DataTable';
 // @import './Components/Divider'; // SKIP
 // @import './Components/Dropdown'; // SKIP
-// @import './Components/Form/FormAutocomplete';
+@import './Components/Form/FormAutocomplete';
 @import './Components/Form/FormCheckbox';
 @import './Components/Form/FormCheckboxGroup';
 @import './Components/Form/FormDateInput';
 @import './Components/Form/FormField';
-// @import './Components/Form/FormFileUpload';
+@import './Components/Form/FormFileUpload';
 @import './Components/Form/FormInput';
 @import './Components/Form/FormLabel';
-// @import './Components/Form/FormMarkdownEditor';
-// @import './Components/Form/FormMarkdownEditor';
+@import './Components/Form/FormMarkdownEditor';
 @import './Components/Form/FormNumberInput';
-// @import './Components/Form/FormRichTextEditor';
-// @import './Components/Form/FormRichTextEditor';
+@import './Components/Form/FormRichTextEditor';
 @import './Components/Form/FormRadioGroup';
 @import './Components/Form/FormSelect';
 @import './Components/Form/FormSwitch';

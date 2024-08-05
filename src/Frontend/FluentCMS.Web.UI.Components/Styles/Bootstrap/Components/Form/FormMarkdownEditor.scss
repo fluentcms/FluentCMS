@@ -1,0 +1,54 @@
+// TODO: Customize to match with other elements
+
+$form-markdown-editor: $prefix + "form-markdown-editor";
+
+.#{$form-markdown-editor} {
+    .EasyMDEContainer {
+        // @apply w-full mb-4 border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600;
+    }
+    
+    .editor-toolbar {
+        // border-top: none;
+        // border-left: none;
+        // border-right: none;
+        // border-bottom: 1px solid white;
+        // @apply flex flex-wrap items-center justify-start px-3 py-2 border-gray-200 dark:border-gray-600;
+
+        & > button {
+            // @apply flex items-center p-2 text-gray-500 rounded cursor-pointer hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-600;
+        }
+
+        & > button.active {
+            // @apply bg-gray-100 dark:bg-gray-600 dark:text-gray-300 dark:border-gray-500;
+        }
+
+        & > i.separator {
+            // @apply border-gray-500;
+        }
+            
+    }
+    
+    .CodeMirror, .editor-preview {
+        // border-top: none;
+        // border-left: none;
+        // border-right: none;
+        // border-bottom: 1px solid white;
+        // @apply border-gray-200 dark:border-gray-600 px-4 py-2 bg-white  dark:text-white dark:bg-gray-800;
+    }
+
+    .editor-preview {
+        // @apply format lg:format-lg dark:format-invert;
+    }
+    
+    .CodeMirror-cursor {
+        // @apply border dark:border-gray-100;
+    }
+    
+    span.CodeMirror-selectedtext *::selection {
+        // @apply dark:bg-gray-700;
+    }
+    
+    .editor-preview-active-side {
+        // @apply border-s border-gray-200 dark:border-gray-600;
+    }    
+}

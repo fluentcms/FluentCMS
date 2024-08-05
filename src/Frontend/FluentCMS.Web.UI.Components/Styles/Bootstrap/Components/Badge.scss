@@ -9,7 +9,7 @@ $badge: $prefix + 'badge';
 
     @each $key, $value in $theme-colors {
         &-color-#{$key} {
-            @apply .text-bg-#{$key};
+            @extend .text-bg-#{$key};
         }
     }
 }
