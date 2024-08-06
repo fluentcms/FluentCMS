@@ -1,42 +1,18 @@
 namespace FluentCMS.Web.UI;
 
-public partial class PageEditorForms
+public partial class SiteBuilderForms
 {
-    #region Base Plugin
-
-    [Inject]
-    protected NavigationManager NavigationManager { get; set; } = default!;
-
     [Inject]
     private ApiClientFactory ApiClient { get; set; } = default!;
-
-    [Inject]
-    protected IHttpContextAccessor? HttpContextAccessor { get; set; }
-
-    // due to open issue in NavigationManager
-    // https://github.com/dotnet/aspnetcore/issues/55685
-    // https://github.com/dotnet/aspnetcore/issues/53996
-    protected virtual void NavigateTo(string path)
-    {
-        if (HttpContextAccessor?.HttpContext != null && !HttpContextAccessor.HttpContext.Response.HasStarted)
-            HttpContextAccessor.HttpContext.Response.Redirect(path);
-        else
-            NavigationManager.NavigateTo(path);
-    }
-
-    protected virtual void NavigateBack()
-    {
-        var url = new Uri(NavigationManager.Uri).LocalPath;
-        NavigateTo(url);
-    }
-
-    #endregion
 
     [CascadingParameter]
     private ViewState ViewState { get; set; } = default!;
 
     [SupplyParameterFromForm(FormName = "UpdatePluginForm")]
     private PageEditorSaveRequest Model { get; set; } = new();
+
+    [SupplyParameterFromForm(FormName = "CreatePluginForm")]
+    private PluginCreateRequest CreatePluginModel { get; set; } = new();
 
     private async Task OnUpdateSubmit()
     {
@@ -56,8 +32,13 @@ public partial class PageEditorForms
         {
             await ApiClient.Plugin.UpdateAsync(plugin);
         }
+    }
 
-        NavigateBack();
+    private async Task OnCreatePluginSubmit()
+    {
+        CreatePluginModel.PageId = ViewState.Page.Id;
+
+        await ApiClient.Plugin.CreateAsync(CreatePluginModel);
     }
 
     class PageEditorSaveRequest

@@ -1,9 +1,14 @@
-﻿let iframeElement = document.querySelector('.f-page-editor-iframe')
+﻿import {request, hydrate, initializeSortable, initColumns} from './request.js'
+import './sortable.js'
+
+let iframeElement = document.querySelector('.f-page-editor-iframe')
 let pageEditorElement = document.querySelector('.f-page-editor')
 
 let responsiveMode = null
 
 const resizerElement = document.querySelector('.f-page-editor-iframe-resizer')
+
+// request('TEST', {abc: '123'})
 
 let frameDocument;
 function getFrameDocument() {
@@ -117,125 +122,11 @@ function updateResponsive(mode, silent) {
     }
 }
 
-const actions = {
-    'cancel-edit-mode'() {
-        actions["hide-sidebar"]()
-        window.location.href = window.location.href.replace('?pageEdit=true', '')
-    },
-    'save-edit-mode'() {
-        actions["hide-sidebar"]()
-        save()
-    },
-    'responsive-mobile'() {
-        updateResponsive('mobile')
-    },
-    'responsive-tablet'() {
-        updateResponsive('tablet')
-    },
-    'responsive-desktop'() {
-        updateResponsive('desktop')
-    },
-    'plugin-container-action-delete'(el) {
-        const id = el.parentElement.parentElement.dataset.id
-
-        if(id == '00000000-0000-0000-0000-000000000000') {
-            el.parentElement.parentElement.parentElement.remove()
-        } else {
-            el.parentElement.parentElement.parentElement.dataset.deleted = true
-            el.parentElement.parentElement.parentElement.classList.add('f-hidden')
-        }
-    },
-    'show-sidebar'() {
-        pageEditorElement.classList.remove('f-page-editor-sidebar-close')
-        pageEditorElement.classList.add('f-page-editor-sidebar-open')
-        setTimeout(() => {
-            updateResizerPosition()
-        }, 300)
-    },
-    'hide-sidebar'() {
-        pageEditorElement.classList.add('f-page-editor-sidebar-close')
-        pageEditorElement.classList.remove('f-page-editor-sidebar-open')
-        setTimeout(() => {
-            updateResizerPosition()
-        }, 300)
-    },
-    'move-to-toolbar'(el) {
-        const pluginId = el.dataset.pluginId
-
-        const toolbar = frameDocument.querySelector(`[data-id="${pluginId}"] .f-plugin-toolbar-actions`)
-
-        setTimeout(() => {
-            for(let child of el.childNodes) {
-                toolbar.appendChild(child)
-            }
-        })
-    },
-    'open-plugin-view'(el) {
-        const viewName = el.dataset.viewName
-        const pluginId = el.dataset.pluginId
-        const id = el.dataset.id
-
-        let url = window.location.pathname
-
-        if(pluginId) url += '?pluginId=' + pluginId;
-        if(viewName) url += '&viewName=' + viewName;
-        if(id) url += '&id=' + id;
-
-        window.location.href = url
-    }
-}
-
-function initializeActions(element) {
-    element.querySelectorAll('[data-action]').forEach(action => {
-        if(action.dataset.trigger === 'load') {
-            actions[action.dataset.action](action)
-        } else {
-            action.addEventListener('click', () => {
-                actions[action.dataset.action](action)
-            })
-        }
-    })
-}
-
 function submitForm(form, data) {
     for(let key in data) {
         form.querySelector(`[name="${key}"]`).value = data[key]
     }
     form.submit()
-}
-
-function initializeSortable(frameDocument) {
-    const sectionElements = frameDocument.querySelectorAll('.f-section');
-
-    sectionElements.forEach(section => {
-        new Sortable(section, {
-            animation: 150,
-            group: 'shared',
-            draggable: '.f-plugin-container',
-            ghostClass: 'f-plugin-container-moving',
-            chosenClass: 'f-plugin-container-chosen',
-            handle: '.f-plugin-container-action-drag',
-        });
-    });
-
-    new Sortable(document.querySelector('.f-plugin-definition-list'), {
-        animation: 150,
-        group: {
-            name: 'shared',
-            pull: 'clone',
-            put: false
-        },
-        sort: false,
-        draggable: '.f-plugin-definition-item',
-        onEnd(event) {
-            if(event.from === event.to) return;
-            const definitionId = event.clone.dataset.id
-            const item = event.item
-            const sectionName = event.to.dataset.name
-
-            createPlugin({ definitionId, item, sectionName })
-        }
-    });
 }
 
 function updateResizerPosition() {
@@ -286,63 +177,20 @@ function initializeResponsive() {
     iframeElement.contentWindow.addEventListener('mouseup', onMouseUp)
 }
 
-function createPlugin({definitionId, sectionName, item}) {
-    item.classList.remove('f-plugin-definition-item')
-    item.classList.add('f-plugin-container')
-    item.dataset.cols = 12
-    item.dataset.colsMd = 0
-    item.dataset.colsLg = 0
-
-    item.dataset.id = '00000000-0000-0000-0000-000000000000';
-    item.dataset.definitionId = definitionId;
-
-    const name = item.querySelector('.f-name').textContent
-    // const description = item.querySelector('.f-description').textContent
-    const description = "You can preview new plugins after save"
-
-    const pluginContainerActionsTemplate = `<div class="f-plugin-container-actions">
-        <div class="f-plugin-container-action-text f-plugin-container-action-drag">
-            <svg class="icon" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M18 11V8l4 4l-4 4v-3h-5v5h3l-4 4l-4-4h3v-5H6v3l-4-4l4-4v3h5V6H8l4-4l4 4h-3v5z"/></svg>
-            ${name}
-        </div>
-        <button data-action="plugin-container-action-delete">
-            <svg class="icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                <path fill-rule="evenodd" d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z" clip-rule="evenodd">
-                </path>
-            </svg>
-        </button>
-</div>`
-
-
-    const pluginContainerContentTemplate = `<div class="f-plugin-container-content">
-    <div class="f-plugin-container-content-new">
-        <div class="f-name">${name}</div>
-        <div class="f-description">${description}</div>
-    </div>
-</div>`
-
-    item.innerHTML = [pluginContainerActionsTemplate, pluginContainerContentTemplate].join('')
-
-    setTimeout(() => {
-        initializeActions(item)
-        iframeElement.contentWindow.sections[sectionName].append(item)
-    })
-}
 
 async function onInit() {
     const frameDocument = await getFrameDocument()
 
     initializeResponsive()
 
-    initializeActions(frameDocument)
-    initializeActions(document)
+    hydrate(frameDocument)
+    hydrate(document)
     initializeSortable(frameDocument)
+    initColumns(frameDocument)
 }
 
 document.addEventListener('fluentcms:afterenhanced', () => {
     onInit()
 })
 
-document.addEventListener('fluentcms:init', () => {
-    onInit()
-})
+onInit()

@@ -1,3 +1,5 @@
+@import './columns.editor.css';
+@import './columns.css';
 
 .f-plugin-container {
     position: relative;

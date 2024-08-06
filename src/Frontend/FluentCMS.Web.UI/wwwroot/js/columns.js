@@ -1,4 +1,10 @@
-function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 480, breakpointLg = 992} = {}) {
+export function Columns(element, {
+    doc,
+    gridLines = true, 
+    colClass = 'col', 
+    breakpointMd = 480, 
+    breakpointLg = 992
+} = {}) {
     let windowWidth = window.innerWidth;
     let oneColWidth = element.clientWidth / 12;
 
@@ -58,19 +64,19 @@ function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 48
         }
 
         function init() {
-            resizer = document.createElement('div')
+            resizer = doc.createElement('div')
             resizer.classList.add('resizer-handle')
             el.appendChild(resizer)
 
             resizer.addEventListener('mousedown', onMouseDown)
-            document.addEventListener('mousemove', onMouseMove)
-            document.addEventListener('mouseup', onMouseUp)
+            doc.addEventListener('mousemove', onMouseMove)
+            doc.addEventListener('mouseup', onMouseUp)
         }
 
         function destroy() {
             resizer.removeEventListener('mousedown', onMouseDown)
-            document.removeEventListener('mousemove', onMouseMove)
-            document.removeEventListener('mouseup', onMouseUp)
+            doc.removeEventListener('mousemove', onMouseMove)
+            doc.removeEventListener('mouseup', onMouseUp)
 
             resizer.remove()
         }
@@ -95,7 +101,7 @@ function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 48
     function init() {
         if(gridLines) {
             for(let i=0; i<12; i++) {
-                const line = document.createElement('div')
+                const line = doc.createElement('div')
                 line.classList.add('line')
                 line.style.left = (oneColWidth * i) + 'px'
 
