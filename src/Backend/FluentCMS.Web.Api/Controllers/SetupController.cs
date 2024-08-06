@@ -14,7 +14,7 @@ public class SetupController(ISetupManager setupManager) : BaseGlobalController
     }
 
     [HttpPost]
-    [Policy(AREA, Constants.Policy.READ)]
+    [PolicyAll]
     public async Task<IApiResult<bool>> Start(SetupRequest request)
     {
         return Ok(await setupManager.Start(request));

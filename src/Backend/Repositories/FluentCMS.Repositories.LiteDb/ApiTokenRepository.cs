@@ -1,6 +1,4 @@
-﻿
-
-namespace FluentCMS.Repositories.LiteDb;
+﻿namespace FluentCMS.Repositories.LiteDb;
 
 public class ApiTokenRepository(
     ILiteDBContext liteDbContext,
@@ -8,9 +6,10 @@ public class ApiTokenRepository(
     AuditableEntityRepository<ApiToken>(liteDbContext, authContext),
     IApiTokenRepository
 {
-    public Task<ApiToken> GetByApiKeyAsync(string apiKey, CancellationToken cancellationToken)
+    public async Task<ApiToken?> GetByKey(string apiKey, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        cancellationToken.ThrowIfCancellationRequested();
+                
+        return await Collection.Query().Where(x => x.Key == apiKey).SingleOrDefaultAsync();
     }
-
 }

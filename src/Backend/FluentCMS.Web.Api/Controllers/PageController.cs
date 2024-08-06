@@ -20,7 +20,7 @@ public class PageController(
 
     [HttpGet("{siteUrl}")]
     [DecodeQueryParam]
-    [Policy(AREA, Constants.Policy.READ)]
+    [PolicyAll]
     public async Task<IApiPagingResult<PageDetailResponse>> GetAll([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
     {
         var site = await siteService.GetByUrl(siteUrl, cancellationToken);
@@ -30,7 +30,7 @@ public class PageController(
     }
 
     [HttpGet("{id}")]
-    [Policy(AREA, Constants.Policy.READ)]
+    [PolicyAll]
     public async Task<IApiResult<PageDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var entity = await pageService.GetById(id, cancellationToken);

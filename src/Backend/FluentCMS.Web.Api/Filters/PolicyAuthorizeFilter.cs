@@ -5,7 +5,7 @@ namespace FluentCMS.Web.Api.Filters;
 
 public class PolicyAuthorizeFilter : IAsyncAuthorizationFilter
 {
-    const string _header = "X-API-Key-Header";
+    const string _header = "X-API-AUTH";
 
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
@@ -17,30 +17,46 @@ public class PolicyAuthorizeFilter : IAsyncAuthorizationFilter
             return;
 
         // check if exists PolicyAllAttribute	
-        var policyAllAttribute = policyAttributes.OfType<PolicyAllAttribute>().FirstOrDefault();	
-        if (policyAllAttribute != null)	
-            return;	
-            
+        var policyAllAttribute = policyAttributes.OfType<PolicyAllAttribute>().FirstOrDefault();
+        if (policyAllAttribute != null)
+            return;
+
         var authContext = context.HttpContext.RequestServices.GetRequiredService<IAuthContext>();
         var userService = context.HttpContext.RequestServices.GetRequiredService<IUserService>();
         var roleService = context.HttpContext.RequestServices.GetRequiredService<IRoleService>();
         var apiTokenService = context.HttpContext.RequestServices.GetRequiredService<IApiTokenService>();
 
         // Check if the required header is present
-        if (!context.HttpContext.Request.Headers.ContainsKey(_header))
+        if (!context.HttpContext.Request.Headers.TryGetValue(_header, out var extractedApiHeader))
         {
             context.Result = new ForbidResult(); // Reject the request
             return;
         }
 
-        var headerValue = context.HttpContext.Request.Headers[_header].ToString();
-
-        // Check if the value exists in the database
-        var isValid = await apiTokenService.IsApiKeyValidAsync(headerValue);
-
-        if (!isValid)
+        var combinedKeySecret = extractedApiHeader.First();
+        if (string.IsNullOrEmpty(combinedKeySecret))
         {
             context.Result = new ForbidResult(); // Reject the request
+            return;
+        }
+
+        var parts = combinedKeySecret.Split(':');
+        if (parts.Length != 2)
+        {
+            context.Result = new ForbidResult(); // Reject the request
+            return;
+        }
+
+        var apiKey = parts[0];
+        var providedSecret = parts[1];
+
+        // Check if the api key is valid
+        var isValid = await apiTokenService.Validate(apiKey, providedSecret);
+
+        if (isValid is null)
+        {
+            context.Result = new ForbidResult(); // Reject the request
+            return;
         }
 
         // check if user is authenticated
@@ -92,7 +108,6 @@ public class PolicyAuthorizeFilter : IAsyncAuthorizationFilter
             context.Result = new UnauthorizedResult();
             return;
         }
-
     }
 }
 

@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Services;
+﻿using FluentCMS.Providers;
+
+namespace FluentCMS.Services;
 
 public interface IApiTokenService : IAutoRegisterService
 {
@@ -6,8 +8,9 @@ public interface IApiTokenService : IAutoRegisterService
     Task<ApiToken> Delete(Guid tokenId, CancellationToken cancellationToken = default);
     Task<IEnumerable<ApiToken>> GetAll(CancellationToken cancellationToken = default);
     Task<ApiToken?> GetById(Guid tokenId, CancellationToken cancellationToken = default);
-    Task<ApiToken> Update(Guid tokenId, string name, string? description, bool enabled, List<Policy> policies, CancellationToken cancellationToken = default);
-    Task<bool> IsApiKeyValidAsync(string apiKey, CancellationToken cancellationToken = default);
+    Task<ApiToken> Update(ApiToken apiToken, CancellationToken cancellationToken = default);
+    Task<ApiToken> RegenerateSecret(Guid id, CancellationToken cancellationToken = default);
+    Task<ApiToken> Validate(string apiKey, string apiSecret, CancellationToken cancellationToken = default);
 }
 
 public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenProvider apiTokenProvider) : IApiTokenService
@@ -24,31 +27,23 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
 
     public async Task<ApiToken> Create(ApiToken apiToken, CancellationToken cancellationToken = default)
     {
-        apiToken.ApiKey = GenerateApiKey();
+        apiToken.Key = apiTokenProvider.GenerateKey();
+        apiToken.Secret = apiTokenProvider.GenerateSecret(apiToken.Key);
 
         apiToken = await apiTokenRepository.Create(apiToken, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenUnableToCreate);
-        await UpdateJwt(apiToken);
+
         return apiToken;
     }
 
-    private async Task UpdateJwt(ApiToken apiToken)
+    public async Task<ApiToken> Update(ApiToken apiToken, CancellationToken cancellationToken = default)
     {
-        apiToken.Token = apiTokenProvider.GenerateToken(apiToken);
-        await apiTokenRepository.Update(apiToken);
-    }
-
-    public async Task<ApiToken> Update(Guid tokenId, string name, string? description, bool enabled, List<Policy> policies, CancellationToken cancellationToken = default)
-    {
-        var apiToken = await apiTokenRepository.GetById(tokenId, cancellationToken) ??
+        var existingApiToken = await apiTokenRepository.GetById(apiToken.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenNotFound);
 
-        apiToken.Name = name;
-        apiToken.Description = description;
-        apiToken.Enabled = enabled;
-        apiToken.Policies = policies;
-
         //apiKey is not updated here as it should be generated automatically only
+        apiToken.Secret = existingApiToken.Secret;
+        apiToken.Key = existingApiToken.Key;
 
         return await apiTokenRepository.Update(apiToken, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenUnableToUpdate);
@@ -63,18 +58,34 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
             throw new AppException(ExceptionCodes.ApiTokenUnableToDelete);
     }
 
-    public async Task<bool> IsApiKeyValidAsync(string apiKey, CancellationToken cancellationToken = default)
+    public async Task<ApiToken> Validate(string apiKey, string apiSecret, CancellationToken cancellationToken = default)
     {
-        var apiToken = await apiTokenRepository.GetByApiKeyAsync(apiKey, cancellationToken);
+        var apiToken = await apiTokenRepository.GetByKey(apiKey, cancellationToken) ??
+            throw new AppException(ExceptionCodes.ApiTokenNotFound);
 
-        if (apiToken == null)
-            return false;
-        else
-            return true;
+        // check if token expired or not
+        if (apiToken.ExpireAt.HasValue && apiToken.ExpireAt < DateTime.UtcNow)
+            throw new AppException(ExceptionCodes.ApiTokenExpired);
+
+        // check if the token is active or not
+        if (!apiToken.Enabled)
+            throw new AppException(ExceptionCodes.ApiTokenInactive);
+
+        // check if the secret is valid or not
+        if (apiToken.Secret != apiSecret)
+            throw new AppException(ExceptionCodes.ApiTokenInvalidSecret);
+
+        return apiToken;
     }
 
-    private string? GenerateApiKey()
+    public async Task<ApiToken> RegenerateSecret(Guid id, CancellationToken cancellationToken = default)
     {
-        return Guid.NewGuid().ToString();
+        var apiToken = await apiTokenRepository.GetById(id, cancellationToken) ??
+            throw new AppException(ExceptionCodes.ApiTokenNotFound);
+
+        apiToken.Secret = apiTokenProvider.GenerateSecret(apiToken.Key);
+
+        return await apiTokenRepository.Update(apiToken, cancellationToken) ??
+            throw new AppException(ExceptionCodes.ApiTokenUnableToUpdate);
     }
 }

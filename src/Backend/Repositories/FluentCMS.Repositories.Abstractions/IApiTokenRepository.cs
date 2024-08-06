@@ -3,6 +3,5 @@ namespace FluentCMS.Repositories.Abstractions;
 
 public interface IApiTokenRepository : IAuditableEntityRepository<ApiToken>
 {
-    Task<ApiToken> GetByApiKeyAsync(string apiKey, CancellationToken cancellationToken);
-
+    Task<ApiToken?> GetByKey(string apiKey, CancellationToken cancellationToken);
 }

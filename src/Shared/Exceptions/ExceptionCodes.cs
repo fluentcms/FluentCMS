@@ -145,6 +145,9 @@ public static class ExceptionCodes
 
     public const string ApiTokenUnableToCreate = "ApiToken.UnableToCreate";
     public const string ApiTokenNotFound = "ApiToken.NotFound";
+    public const string ApiTokenExpired = "ApiToken.Expired";
+    public const string ApiTokenInactive = "ApiToken.Inactive";
+    public const string ApiTokenInvalidSecret = "ApiToken.InvalidSecret";
     public const string ApiTokenUnableToUpdate = "ApiToken.UnableToUpdate";
     public const string ApiTokenUnableToDelete = "ApiToken.UnableToDelete";
 
