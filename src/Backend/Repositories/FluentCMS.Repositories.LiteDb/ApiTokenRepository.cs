@@ -9,7 +9,7 @@ public class ApiTokenRepository(
     public async Task<ApiToken?> GetByKey(string apiKey, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-                
+
         return await Collection.Query().Where(x => x.Key == apiKey).SingleOrDefaultAsync();
     }
 }
