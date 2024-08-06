@@ -33,4 +33,7 @@ public partial class GridItem
     public bool? HideLarge { get; set; }
 
     #endregion
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
 }

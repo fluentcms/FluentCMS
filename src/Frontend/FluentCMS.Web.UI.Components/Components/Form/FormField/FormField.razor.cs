@@ -12,6 +12,9 @@ public partial class FormField
     public string Id { get; set; }
 
     [Parameter]
+    public string? Hint { get; set; }
+
+    [Parameter]
     public string? Label { get; set; }
 
     [Parameter]
@@ -19,4 +22,7 @@ public partial class FormField
 
     [Parameter]
     public bool Required { get; set; }
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
 }

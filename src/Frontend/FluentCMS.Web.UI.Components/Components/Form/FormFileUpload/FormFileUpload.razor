@@ -4,7 +4,7 @@
 
 @if (Visible)
 {
-    <FormField Cols="Cols" Dense="@Dense" Id="@Id" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
+    <FormField Cols="Cols" Dense="@Dense" Id="@Id" Hint="@Hint" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
         <div @attributes="AdditionalAttributes" @ref="Element" class="@this.GetClasses()">
             <label class="@this.ClassName("FormFileUploadLabel")" for="@Id">
                 <Icon Name="IconName.CloudArrowUp" Size="IconSize.X2" />

@@ -1,11 +1,8 @@
 {
     "name": "fluentcms.web.ui.components",
     "scripts": {
-        "tailwind:watch": "tailwindcss -i ./dist/app.css -o ../wwwroot/css/app.min.css --watch",
-        "tailwind": "tailwindcss -i ./dist/app.css -o ../wwwroot/css/app.min.css --minify",
-        "sass:watch": "sass ./App.scss:./dist/app.css --watch",
-        "sass": "sass ./App.scss:./dist/app.css",
-        "watch": "conc \"npm run tailwind:watch\" \"npm run sass:watch\"",
+        "tailwind": "tailwindcss -i ./dist/flowbite.css -o ../wwwroot/css/flowbite.min.css --minify",
+        "sass": "sass ./Flowbite/App.scss:./dist/flowbite.css",
         "build": "npm run sass && npm run tailwind"
     },
     "devDependencies": {

@@ -13,7 +13,7 @@
 }
 
 .ts-wrapper.multi.has-items .ts-control {
-    padding: calc(8px - 2px - 0) 8px calc(8px - 2px - 3px - 0);
+    padding: calc(6px - 0px) 8px calc(6px - 3px - 0px);
 }
 
 .full .ts-control {

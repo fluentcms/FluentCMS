@@ -8,6 +8,9 @@ public partial class TabItem
     [Parameter]
     public string Name { get; set; } = default!;
 
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
     [CascadingParameter]
     public Tabs? Parent { get; set; }
 
