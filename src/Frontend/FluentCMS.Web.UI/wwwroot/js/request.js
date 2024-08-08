@@ -1,3 +1,5 @@
+import './sortable.js'
+
 import {actions} from './actions.js'
 import { createPlugin, updatePlugins } from './api.js';
 import {Columns} from './columns.js'
