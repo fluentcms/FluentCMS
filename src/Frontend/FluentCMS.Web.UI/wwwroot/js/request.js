@@ -1,8 +1,9 @@
 import {actions} from './actions.js'
-import { createPlugin } from './api.js';
+import { createPlugin, updatePlugins } from './api.js';
 import {Columns} from './columns.js'
 
 export function initColumns(frameDocument) {
+    window.sections = []
     frameDocument.querySelectorAll('.f-section').forEach(section => {
         const column = new Columns(section, {
             doc: frameDocument,
@@ -13,6 +14,7 @@ export function initColumns(frameDocument) {
         })
         
         column.init()
+        window.sections[section.dataset.name] = column
     })
 }
 
@@ -28,6 +30,9 @@ export function initializeSortable(frameDocument) {
             ghostClass: 'f-plugin-container-moving',
             chosenClass: 'f-plugin-container-chosen',
             handle: '.f-plugin-container-action-drag',
+            onEnd() {
+                updatePlugins()
+            }
         });
     });
 

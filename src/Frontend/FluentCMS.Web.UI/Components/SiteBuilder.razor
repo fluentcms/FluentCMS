@@ -40,11 +40,8 @@
             </Center>
             <End>
 
-                <button data-action="save-edit-mode" class="f-toolbar-button f-toolbar-button-primary">
-                    Submit
-                </button>
-                <button data-action="cancel-edit-mode" class="f-toolbar-button f-toolbar-button-secondary">
-                    Cancel
+                <button data-action="done" class="f-toolbar-button f-toolbar-button-primary">
+                    Done
                 </button>
                 <button data-action="hide-sidebar" class="f-only-sidebar-opened f-toolbar-button f-toolbar-button-outline f-toolbar-button-icon">
                     <svg width="20" height="20" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -66,6 +63,25 @@
             <div class="f-page-editor-iframe-resizer" />
             <iframe class="f-page-editor-iframe" src="@NavigationManager.Uri.Replace("pageEdit", "pagePreview")">
             </iframe>
+        </div>
+
+        <div class="f-page-editor-delete-plugin-confirm">
+            <input type="hidden" class="f-page-editor-delete-plugin-confirm-id">
+            <div class="f-page-editor-delete-plugin-confirm-body">
+                <div>
+                    <h3>Are you sure?</h3>
+                    <p>Are you sure to remove this plugin from page?</p>
+                </div>
+
+                <div class="f-page-editor-delete-plugin-confirm-buttons">
+                    <button data-action="plugin-delete-confirm-no" class="f-page-editor-delete-plugin-confirm-button-no">
+                        No, Cancel
+                    </button>
+                    <button data-action="plugin-delete-confirm-yes" class="f-page-editor-delete-plugin-confirm-button-yes">
+                        Yes, Delete it
+                    </button>
+                </div>
+            </div>
         </div>
         <PageEditorSidebar PluginDefinitions="@PluginDefinitions"/>
         <SiteBuilderForms />

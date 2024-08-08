@@ -1,11 +1,10 @@
+import { deletePlugin } from "./api.js"
+import { updateResizerPosition, updateResponsive } from "./responsive.js"
+
 export const actions = {
-    'cancel-edit-mode'() {
+    'done'() {
         actions["hide-sidebar"]()
         window.location.href = window.location.href.replace('?pageEdit=true', '')
-    },
-    'save-edit-mode'() {
-        actions["hide-sidebar"]()
-        save()
     },
     'responsive-mobile'() {
         updateResponsive('mobile')
@@ -16,17 +15,30 @@ export const actions = {
     'responsive-desktop'() {
         updateResponsive('desktop')
     },
-    'plugin-container-action-delete'(el) {
-        const id = el.parentElement.parentElement.dataset.id
+    async 'plugin-container-action-delete'(el) {
+        const id = el.parentElement.parentElement.parentElement.dataset.id
+        // Confirm delete
 
-        if(id == '00000000-0000-0000-0000-000000000000') {
-            el.parentElement.parentElement.parentElement.remove()
-        } else {
-            el.parentElement.parentElement.parentElement.dataset.deleted = true
-            el.parentElement.parentElement.parentElement.classList.add('f-hidden')
-        }
+        document.querySelector('.f-page-editor-delete-plugin-confirm').classList.add('open')
+        document.querySelector('.f-page-editor-delete-plugin-confirm-id').value = id
+        
+        // await deletePlugin(id)
+    },
+    async 'plugin-delete-confirm-no'(el) {
+        document.querySelector('.f-page-editor-delete-plugin-confirm').classList.remove('open')
+
+    },
+    async 'plugin-delete-confirm-yes'(el) {
+        const id = document.querySelector('.f-page-editor-delete-plugin-confirm-id').value
+        document.querySelector('.f-page-editor-delete-plugin-confirm').classList.remove('open')
+
+        await deletePlugin(id)
+
+        // Confirm delete
     },
     'show-sidebar'() {
+        let pageEditorElement = document.querySelector('.f-page-editor')
+
         pageEditorElement.classList.remove('f-page-editor-sidebar-close')
         pageEditorElement.classList.add('f-page-editor-sidebar-open')
         setTimeout(() => {
@@ -34,6 +46,8 @@ export const actions = {
         }, 300)
     },
     'hide-sidebar'() {
+        let pageEditorElement = document.querySelector('.f-page-editor')
+
         pageEditorElement.classList.add('f-page-editor-sidebar-close')
         pageEditorElement.classList.remove('f-page-editor-sidebar-open')
         setTimeout(() => {
@@ -48,7 +62,6 @@ export const actions = {
         setTimeout(() => {
             for(let child of el.childNodes) {
                 toolbar.prepend(child)
-                
             }
         })
     },

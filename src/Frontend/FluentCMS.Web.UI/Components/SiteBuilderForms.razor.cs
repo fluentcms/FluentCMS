@@ -8,27 +8,19 @@ public partial class SiteBuilderForms
     [CascadingParameter]
     private ViewState ViewState { get; set; } = default!;
 
-    [SupplyParameterFromForm(FormName = "UpdatePluginForm")]
-    private PageEditorSaveRequest Model { get; set; } = new();
+    [SupplyParameterFromForm(FormName = "DeletePluginForm")]
+    private Guid DeletePluginModel { get; set; } = new();
 
     [SupplyParameterFromForm(FormName = "CreatePluginForm")]
     private PluginCreateRequest CreatePluginModel { get; set; } = new();
 
-    private async Task OnUpdateSubmit()
+    [SupplyParameterFromForm(FormName = "UpdatePluginsForm")]
+    private UpdatePluginsRequest UpdatePluginsModel { get; set; } = new();
+
+    private async Task OnUpdatePluginsSubmit()
     {
-        foreach (var deletedId in Model.DeleteIds ?? [])
-        {
-            await ApiClient.Plugin.DeleteAsync(deletedId);
-        }
-
-        foreach (var plugin in Model.CreatePlugins ?? [])
-        {
-            plugin.PageId = ViewState.Page.Id;
-
-            await ApiClient.Plugin.CreateAsync(plugin);
-        }
-
-        foreach (var plugin in Model.UpdatePlugins ?? [])
+        Console.WriteLine($"Update Plugins ${UpdatePluginsModel.Plugins.Count}");
+        foreach (var plugin in UpdatePluginsModel.Plugins)
         {
             await ApiClient.Plugin.UpdateAsync(plugin);
         }
@@ -37,15 +29,17 @@ public partial class SiteBuilderForms
     private async Task OnCreatePluginSubmit()
     {
         CreatePluginModel.PageId = ViewState.Page.Id;
-
         await ApiClient.Plugin.CreateAsync(CreatePluginModel);
     }
 
-    class PageEditorSaveRequest
+    private async Task OnDeletePluginSubmit()
+    {
+        await ApiClient.Plugin.DeleteAsync(DeletePluginModel);
+    }
+
+    class UpdatePluginsRequest
     {
         public bool Submitted { get; set; } = true;
-        public List<Guid> DeleteIds { get; set; } = [];
-        public List<PluginCreateRequest> CreatePlugins { get; set; } = [];
-        public List<PluginUpdateRequest> UpdatePlugins { get; set; } = [];
+        public List<PluginUpdateRequest> Plugins { get; set; } = [];
     }
 }
