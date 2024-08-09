@@ -1,6 +1,7 @@
 namespace FluentCMS.Web.UI;
 
-public partial class SiteBuilder {
+public partial class SiteBuilder
+{
     [Inject]
     public NavigationManager NavigationManager { get; set; } = default!;
 
