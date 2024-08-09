@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Hosting;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace FluentCMS.Web.Api.Setup;
 
@@ -17,6 +18,7 @@ public class SetupManager : ISetupManager
 {
     private static bool? _initialized;
 
+    private readonly IApiTokenService _apiTokenService;
     private readonly ISiteService _siteService;
     private readonly IRoleService _roleService;
     private readonly IGlobalSettingsService _globalSettingsService;
@@ -28,6 +30,7 @@ public class SetupManager : ISetupManager
     private readonly IPluginContentService _pluginContentService;
     private readonly IContentTypeService _contentTypeService;
     private readonly IContentService _contentService;
+    private readonly IConfigManager _configManager;
 
     public const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Template";
 
@@ -42,6 +45,7 @@ public class SetupManager : ISetupManager
     private Guid _defaultLayoutId;
 
     public SetupManager(
+        IApiTokenService apiTokenService,
         ISiteService siteService,
         IRoleService roleService,
         IGlobalSettingsService globalSettingsService,
@@ -53,11 +57,13 @@ public class SetupManager : ISetupManager
         IPluginContentService pluginContentService,
         IContentTypeService contentTypeService,
         IContentService contentService,
+        IConfigManager configManager,
         IHostEnvironment env)
     {
         if (env == null)
             throw new AppException(ExceptionCodes.SetupSettingsHostingEnvironmentIsNull);
 
+        _apiTokenService = apiTokenService;
         _siteService = siteService;
         _roleService = roleService;
         _globalSettingsService = globalSettingsService;
@@ -69,7 +75,7 @@ public class SetupManager : ISetupManager
         _pluginContentService = pluginContentService;
         _contentTypeService = contentTypeService;
         _contentService = contentService;
-
+        _configManager = configManager;
     }
 
     public async Task<bool> IsInitialized()
@@ -95,6 +101,9 @@ public class SetupManager : ISetupManager
 
         _setupRequest = request;
 
+
+        await InitializeDatabase();
+        await InitializeApiToken();
         await InitializeSuperAdmin();
 
         var manifestFile = Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "manifest.json");
@@ -175,6 +184,67 @@ public class SetupManager : ISetupManager
     }
 
     #region Private
+
+    private async Task InitializeDatabase()
+    {
+        var apiServerConfig = new ApiServerConfig
+        {
+            Database = new ApiServerConfig.DatabaseConfig
+            {
+                Provider = "LiteDB",
+                ConnectionString = "./LiteDb.db"
+            }
+        };
+
+        _configManager.UpdateApiServerConfig(apiServerConfig);
+
+        await Task.CompletedTask;
+    }
+
+    private async Task InitializeApiToken()
+    {
+        // Creating full access api token 
+        var apiToken = new ApiToken
+        {
+            Name = "Full Access",
+            Description = "Full Access Token",
+            ExpireAt = null,
+            Policies = [new Policy { Area = "Global", Actions = ["All"] }],
+            Enabled = true
+        };
+
+        await _apiTokenService.Create(apiToken);
+
+        // save the api token result (key and secret) to appsettings.json
+        // so that the user can use it to access the API
+        var appSettingsFilePath = Path.Combine("appsettings.json");
+        var json = System.IO.File.ReadAllText(appSettingsFilePath);
+
+        using (JsonDocument document = JsonDocument.Parse(json))
+        {
+            var jsonObject = document.RootElement.Clone().GetRawText();
+            var updatedConfig = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonObject) ?? [];
+
+            // Update admin configuration
+            if (!updatedConfig.ContainsKey("ApiSettings"))
+            {
+                updatedConfig["ApiSettings"] = new Dictionary<string, string>();
+            }
+            var apiSettings = updatedConfig["ApiSettings"] as Dictionary<string, string> ?? [];
+            apiSettings["Key"] = apiToken.Key + ":" + apiToken.Secret;
+
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Converters = { new JsonStringEnumConverter() }
+            };
+
+            var output = JsonSerializer.Serialize(updatedConfig, options);
+            System.IO.File.WriteAllText(appSettingsFilePath, output);
+        }
+
+
+    }
 
     private async Task InitializeSuperAdmin()
     {
