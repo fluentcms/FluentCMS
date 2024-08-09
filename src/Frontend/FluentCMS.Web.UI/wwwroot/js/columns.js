@@ -1,5 +1,11 @@
-function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 480, breakpointLg = 992} = {}) {
-    let windowWidth = window.innerWidth;
+export function Columns(element, {
+    doc,
+    gridLines = true, 
+    colClass = 'col', 
+    breakpointMd = 480, 
+    breakpointLg = 992
+} = {}) {
+    let windowWidth = doc.body.clientWidth;
     let oneColWidth = element.clientWidth / 12;
 
     function initColumn(el) {
@@ -27,16 +33,19 @@ function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 48
                 } else if(windowWidth > breakpointMd) {
                     field = 'colsMd'
                 }
-
-
+                
                 const diffLength = event.x - x
                 
                 if(diffLength < -oneColWidth/2 || diffLength > oneColWidth / 2) {
+                    console.log(el.dataset[field], field)
                     if(el.dataset[field] == 0) {
+                        console.log(el.dataset['colsLg'], el.dataset['colsMd'], el.dataset['cols'])
+
                         if(field == 'colsLg' && el.dataset['colsMd']) {
-                            el.dataset[field] = el.dataset['cols']
+                            el.dataset[field] = el.dataset['colsMd']
                         } 
                         el.dataset[field] = el.dataset['cols']
+                        console.log(el.dataset[field])
                     }
                     if(diffLength < -oneColWidth / 2) {
                         el.dataset[field] = +(el.dataset[field]) - 1
@@ -58,19 +67,19 @@ function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 48
         }
 
         function init() {
-            resizer = document.createElement('div')
+            resizer = doc.createElement('div')
             resizer.classList.add('resizer-handle')
             el.appendChild(resizer)
 
             resizer.addEventListener('mousedown', onMouseDown)
-            document.addEventListener('mousemove', onMouseMove)
-            document.addEventListener('mouseup', onMouseUp)
+            doc.addEventListener('mousemove', onMouseMove)
+            doc.addEventListener('mouseup', onMouseUp)
         }
 
         function destroy() {
             resizer.removeEventListener('mousedown', onMouseDown)
-            document.removeEventListener('mousemove', onMouseMove)
-            document.removeEventListener('mouseup', onMouseUp)
+            doc.removeEventListener('mousemove', onMouseMove)
+            doc.removeEventListener('mouseup', onMouseUp)
 
             resizer.remove()
         }
@@ -82,7 +91,7 @@ function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 48
     let columns = []
 
     function updateSize() {
-        windowWidth = window.innerWidth;
+        windowWidth = doc.body.clientWidth;
         oneColWidth = element.clientWidth / 12
 
         if(gridLines) {
@@ -95,7 +104,7 @@ function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 48
     function init() {
         if(gridLines) {
             for(let i=0; i<12; i++) {
-                const line = document.createElement('div')
+                const line = doc.createElement('div')
                 line.classList.add('line')
                 line.style.left = (oneColWidth * i) + 'px'
 
@@ -134,5 +143,3 @@ function Columns(element, {gridLines = true, colClass = 'col', breakpointMd = 48
         updateSize
     }
 }
-
-window.Columns = Columns

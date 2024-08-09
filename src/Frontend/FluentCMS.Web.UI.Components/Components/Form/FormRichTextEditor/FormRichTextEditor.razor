@@ -41,7 +41,10 @@
                             <Spacer />
                             <Stack>
                                 <Button @onclick="OnLinkModalClose">Cancel</Button>
-                                <Button Color="Color.Danger" @onclick="OnLinkClear">Clear</Button>
+                                @if (ShowClearButton)
+                                {
+                                    <Button Color="Color.Danger" @onclick="OnLinkClear">Clear</Button>
+                                }
                             </Stack>
 
                         </TabPanel>
@@ -89,7 +92,10 @@
                             <Stack>
                                 <Button @onclick="OnLinkModalClose">Cancel</Button>
                                 <Button Color="Color.Primary" @onclick="OnUpload">Upload file here</Button>
-                                <Button Color="Color.Danger" @onclick="OnLinkClear">Clear</Button>
+                                @if (ShowClearButton)
+                                {
+                                    <Button Color="Color.Danger" @onclick="OnLinkClear">Clear</Button>
+                                }
                             </Stack>
                         </TabPanel>
                         <TabPanel Name="External">
@@ -99,7 +105,10 @@
                                 <GridItem Small="GridItemColumn.Twelve">
                                     <Stack>
                                         <Button @onclick="OnLinkModalClose">Cancel</Button>
-                                        <Button Color="Color.Danger" @onclick="OnLinkClear">Clear</Button>
+                                        @if (ShowClearButton)
+                                        {
+                                            <Button Color="Color.Danger" @onclick="OnLinkClear">Clear</Button>
+                                        }
                                         <Button Color="Color.Primary" @onclick="OnChooseExternal">Done</Button>
                                     </Stack>
                                 </GridItem>

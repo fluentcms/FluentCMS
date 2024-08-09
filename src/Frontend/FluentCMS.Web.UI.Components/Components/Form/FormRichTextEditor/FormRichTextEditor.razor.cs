@@ -5,7 +5,7 @@ namespace FluentCMS.Web.UI.Components;
 public partial class FormRichTextEditor
 {
     [Inject]
-    public IJSRuntime? JS { get; set; }
+    public IJSRuntime JS { get; set; } = default!;
 
     [Inject]
     private ApiClientFactory ApiClient { get; set; } = default!;
@@ -16,6 +16,7 @@ public partial class FormRichTextEditor
 
     private List<AssetDetail> Assets { get; set; } = [];
     private List<PageDetailResponse> Pages { get; set; } = [];
+    private bool ShowClearButton { get; set; } = true;
     private bool LinkModalOpen { get; set; } = false;
     private bool ImageModalOpen { get; set; } = false;
     private string ImageMode = "Library";
@@ -27,7 +28,7 @@ public partial class FormRichTextEditor
     private string? Text { get; set; }
     private string Mode { get; set; } = "Page";
 
-    private FileUploadConfig Config { get; set; }
+    private FileUploadConfiguration? FileUploadConfig { get; set; }
 
     [Parameter]
     public int Cols { get; set; } = 12;
@@ -43,17 +44,17 @@ public partial class FormRichTextEditor
 
     public class OpenLinkParams
     {
-        public string Mode { get; set; }
-        public string Text { get; set; }
-        public string Href { get; set; }
+        public string Mode { get; set; } = default!;
+        public string Text { get; set; } = default!;
+        public string Href { get; set; } = default!;
     }
 
     public class OpenImageParams
     {
-        public string Mode { get; set; }
-        public Guid? Id { get; set; }
-        public string? Url { get; set; }
-        public string? Alt { get; set; }
+        public string Mode { get; set; } = default!;
+        public Guid? Id { get; set; } = default!;
+        public string? Url { get; set; } = default!;
+        public string? Alt { get; set; } = default!;
     }
 
 
@@ -63,8 +64,19 @@ public partial class FormRichTextEditor
         Text = value.Text ?? "";
         Mode = value.Mode ?? "External";
         Href = value.Href ?? "";
+
+        if (string.IsNullOrEmpty(value.Href))
+        {
+            ShowClearButton = false;
+        }
+        else
+        {
+            ShowClearButton = true;
+        }
         LinkModalOpen = true;
         StateHasChanged();
+
+        await Task.CompletedTask;
     }
 
     [JSInvokable]
@@ -77,6 +89,8 @@ public partial class FormRichTextEditor
 
         ImageModalOpen = true;
         StateHasChanged();
+
+        await Task.CompletedTask;
     }
 
     private async Task OnLinkClear()
@@ -91,6 +105,7 @@ public partial class FormRichTextEditor
     private async Task OnLinkModalClose()
     {
         LinkModalOpen = false;
+        await Task.CompletedTask;
     }
 
     private async Task OnChooseExternal()
@@ -119,11 +134,18 @@ public partial class FormRichTextEditor
     {
         var page = Pages.Where(x => x.Id == pageId).FirstOrDefault();
 
-        if (page.ParentId != null)
+        if (page != null)
         {
-            return GetPageUrl(page.ParentId) + page.Path;
+            if (page.ParentId != null)
+            {
+                return GetPageUrl(page.ParentId) + page.Path;
+            }
+            return page?.Path ?? "";
         }
-        return page.Path;
+        else
+        {
+            return "";
+        }
     }
 
     private async Task OnChoosePage(PageDetailResponse page)
@@ -143,7 +165,7 @@ public partial class FormRichTextEditor
         var settingsResponse = await ApiClient.GlobalSettings.GetAsync();
         if (settingsResponse?.Data != null)
         {
-            Config = settingsResponse?.Data.FileUpload;
+            FileUploadConfig = settingsResponse?.Data.FileUpload;
         }
 
         // TODO: Site url
@@ -158,7 +180,7 @@ public partial class FormRichTextEditor
 
     protected override async Task OnParametersSetAsync()
     {
-        base.OnParametersSetAsync();
+        await base.OnParametersSetAsync();
         if (Value == _value) return;
 
         _value = Value;
@@ -203,7 +225,7 @@ public partial class FormRichTextEditor
         }
         else
         {
-            folderDetail = FindFolderById(folderDetailResponse?.Data?.Folders, folderId.Value);
+            folderDetail = FindFolderById(folderDetailResponse?.Data?.Folders ?? [], folderId.Value);
         }
 
         if (folderDetail != null)
@@ -270,19 +292,23 @@ public partial class FormRichTextEditor
 
     private async Task OnFilesChanged(InputFileChangeEventArgs e)
     {
-        List<FileParameter> files = [];
-        foreach (var file in e.GetMultipleFiles(Config.MaxCount))
+        if (FileUploadConfig != null)
         {
-            var Data = file.OpenReadStream(Config.MaxSize);
-            files.Add(new FileParameter(Data, file.Name, file.ContentType));
+            List<FileParameter> files = [];
+            foreach (var file in e.GetMultipleFiles(FileUploadConfig.MaxCount))
+            {
+                var Data = file.OpenReadStream(FileUploadConfig.MaxSize);
+                files.Add(new FileParameter(Data, file.Name, file.ContentType));
+            }
+            await ApiClient.File.UploadAsync(FolderId, files);
+            await OnNavigateFolder(FolderId);
         }
-        await ApiClient.File.UploadAsync(FolderId, files);
-        OnNavigateFolder(FolderId);
     }
 
     public async Task OnImageModalClose()
     {
         ImageModalOpen = false;
+        await Task.CompletedTask;
     }
 
     public async Task OnChooseImageExternal()
