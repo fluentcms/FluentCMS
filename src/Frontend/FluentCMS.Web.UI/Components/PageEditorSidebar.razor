@@ -1,0 +1,13 @@
+@namespace FluentCMS.Web.UI
+
+<div class="f-page-editor-sidebar">
+    <div class="f-plugin-definition-list">
+        @foreach (var pluginDef in PluginDefinitions.Where(x => !x.Locked))
+        {
+            <div data-id="@pluginDef.Id" class="f-plugin-definition-item">
+                <span class="f-name">@pluginDef.Name</span>
+                <span class="f-description">@pluginDef.Description</span>
+            </div>
+        }
+    </div>
+</div>
