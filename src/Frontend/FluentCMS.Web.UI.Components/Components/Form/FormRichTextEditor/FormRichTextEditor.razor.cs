@@ -65,11 +65,11 @@ public partial class FormRichTextEditor
         Mode = value.Mode ?? "External";
         Href = value.Href ?? "";
 
-        if(string.IsNullOrEmpty(value.Href))
+        if (string.IsNullOrEmpty(value.Href))
         {
             ShowClearButton = false;
-        } 
-        else 
+        }
+        else
         {
             ShowClearButton = true;
         }
@@ -134,7 +134,7 @@ public partial class FormRichTextEditor
     {
         var page = Pages.Where(x => x.Id == pageId).FirstOrDefault();
 
-        if(page != null) 
+        if (page != null)
         {
             if (page.ParentId != null)
             {
@@ -292,7 +292,7 @@ public partial class FormRichTextEditor
 
     private async Task OnFilesChanged(InputFileChangeEventArgs e)
     {
-        if(FileUploadConfig != null)
+        if (FileUploadConfig != null)
         {
             List<FileParameter> files = [];
             foreach (var file in e.GetMultipleFiles(FileUploadConfig.MaxCount))
