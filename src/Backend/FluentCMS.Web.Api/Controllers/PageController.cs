@@ -109,12 +109,20 @@ public class PageController(
             throw new AppException(ExceptionCodes.PageNotFound);
 
         var layoutId = page.LayoutId ?? site.LayoutId;
+        var editLayoutId = page.EditLayoutId ?? site.EditLayoutId;
+        var detailLayoutId = page.DetailLayoutId ?? site.DetailLayoutId;
+
         var layout = await layoutService.GetById(layoutId, cancellationToken);
+        var editLayout = await layoutService.GetById(editLayoutId, cancellationToken);
+        var detailLayout = await layoutService.GetById(detailLayoutId, cancellationToken);
+
         var plugins = await pluginService.GetByPageId(page.Id, cancellationToken);
 
         var pageResponse = mapper.Map<PageFullDetailResponse>(page);
         pageResponse.Site = mapper.Map<SiteDetailResponse>(site);
         pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
+        pageResponse.EditLayout = mapper.Map<LayoutDetailResponse>(editLayout);
+        pageResponse.DetailLayout = mapper.Map<LayoutDetailResponse>(detailLayout);
         pageResponse.FullPath = path;
         pageResponse.Sections = [];
 
