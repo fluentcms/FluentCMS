@@ -1,0 +1,26 @@
+@inherits BasePlugin
+@rendermode InteractiveServer
+
+<PluginBody Title="Pages">
+    <ActionsFragment>
+        <ActionButtonCreate Href="@GetUrl("Create Page")" Label="Add Page"/>
+    </ActionsFragment>
+    <ChildContent>
+        <DataTable Items="Pages">
+            <DataTableItem Label="Title">@context.Title</DataTableItem>
+            <DataTableItem Label="Path">@context.Path</DataTableItem>
+            <DataTableItem Label="Layout">
+                <span>@(context.Layout?.Name ?? "(default)")</span>
+            </DataTableItem>
+            <ActionButtons>
+                <ActionButton IconName="IconName.Eye" Color="Color.Success" Label="Open" Href="@GetPageUrl(context)" />
+                <ActionButtonEdit Href="@GetUrl("Update Page", new { id = @context.Id })"/>
+                <ActionButtonDelete @onclick="() => OnConfirm(context)"/>
+            </ActionButtons>
+        </DataTable>
+    </ChildContent>
+</PluginBody>
+
+<Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedPage != null">
+    Are you sure to delete <b>"@SelectedPage!.Title"</b> page?
+</Confirm>

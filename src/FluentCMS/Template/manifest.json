@@ -187,6 +187,28 @@
             ]
         },
         {
+            "Name": "Page Management",
+            "Category": "Admin",
+            "Description": "Page Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
+            "Types": [
+                {
+                    "Name": "Pages List",
+                    "Type": "PageListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create Page",
+                    "Type": "PageCreatePlugin"
+                },
+                {
+                    "Name": "Update Page",
+                    "Type": "PageUpdatePlugin"
+                }
+            ]
+        },
+        {
             "Name": "File Management",
             "Category": "Admin",
             "Description": "File Management Plugin",
@@ -459,7 +481,7 @@
             "Title": "Admin",
             "Path": "/admin",
             "Layout": "AdminLayout",
-            "Locked": false,
+            "Locked": true,
             "Plugins": [],
             "Children": [
                 {
@@ -535,6 +557,19 @@
                     "Plugins": [
                         {
                             "Definition": "Site Management",
+                            "Section": "Main",
+                            "Locked": true
+                        }
+                    ]
+                },
+                {
+                    "Title": "Pages",
+                    "Path": "/pages",
+                    "Layout": "AdminLayout",
+                    "Locked": true,
+                    "Plugins": [
+                        {
+                            "Definition": "Page Management",
                             "Section": "Main",
                             "Locked": true
                         }
