@@ -74,6 +74,20 @@ public class PageController(
         return Ok(entityResponse);
     }
 
+    [HttpPut]
+    [Policy(AREA, UPDATE)]
+    public async Task<IApiResult<bool>> UpdatePluginOrders(PageUpdatePluginOrdersRequest request, CancellationToken cancellationToken = default)
+    {
+        var index = 0;
+        foreach (var pluginId in request.Plugins)
+        {
+            var plugin = await pluginService.GetById(pluginId, cancellationToken);
+            plugin.Order = index++;
+            await pluginService.Update(plugin);
+        }
+        return Ok(true);
+    }
+
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
