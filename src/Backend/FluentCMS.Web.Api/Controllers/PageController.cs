@@ -25,7 +25,19 @@ public class PageController(
     {
         var site = await siteService.GetByUrl(siteUrl, cancellationToken);
         var entities = await pageService.GetBySiteId(site.Id, cancellationToken);
-        var entitiesResponse = mapper.Map<List<PageDetailResponse>>(entities.ToList());
+        var layouts = await layoutService.GetAll(cancellationToken);
+
+        List<PageDetailResponse> entitiesResponse = [];
+
+        foreach (var entity in entities)
+        {
+            var layout = layouts.Where(x => x.Id == entity.LayoutId).FirstOrDefault();
+            
+            var mappedEntity = mapper.Map<PageDetailResponse>(entity);
+            mappedEntity.Layout = mapper.Map<LayoutDetailResponse>(layout);
+            entitiesResponse.Add(mappedEntity);
+        }
+
         return OkPaged(entitiesResponse);
     }
 
@@ -100,10 +112,16 @@ public class PageController(
 
     private static string GetFullPath(Dictionary<Guid, Page> allPages, Page page)
     {
-        // append parents' path to the current page's path recursively
-        // until there is no parent, then return the full path. The separator should be a slash.
-        var currentPath = !page.Path.StartsWith("/") ? "/" + page.Path : page.Path;
-        return page.ParentId.HasValue ? GetFullPath(allPages, allPages[page.ParentId.Value]) + currentPath : currentPath;
+        var result = new List<string>();
+        var currentPage = page;
+        while(currentPage != null)
+        {
+            result.Add(currentPage.Path);
+            currentPage = currentPage.ParentId.HasValue ? allPages[currentPage.ParentId.Value] : default!;
+        }        
+        result.Reverse();
+        
+        return string.Join("", result);
     }
 
     private async Task<IApiResult<PageFullDetailResponse>> GetPageResponse(string domain, string path, CancellationToken cancellationToken = default)
