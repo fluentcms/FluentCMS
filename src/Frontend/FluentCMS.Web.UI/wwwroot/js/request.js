@@ -1,7 +1,7 @@
 import './sortable.js'
 
 import {actions} from './actions.js'
-import { createPlugin, updatePlugins } from './api.js';
+import { createPlugin, updatePlugin, updatePluginOrders } from './api.js';
 import {Columns} from './columns.js'
 
 export function initColumns(frameDocument) {
@@ -13,6 +13,9 @@ export function initColumns(frameDocument) {
             colClass: 'f-plugin-container',
             breakpointLg: 992,
             breakpointMd: 480,
+            onResize(el) {
+                updatePlugin(el, section)
+            }
         })
         
         column.init()
@@ -33,7 +36,7 @@ export function initializeSortable(frameDocument) {
             chosenClass: 'f-plugin-container-chosen',
             handle: '.f-plugin-container-action-drag',
             onEnd() {
-                updatePlugins()
+                updatePluginOrders()
             }
         });
     });

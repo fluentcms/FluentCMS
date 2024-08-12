@@ -28,7 +28,7 @@ public partial class FormRichTextEditor
     private string? Text { get; set; }
     private string Mode { get; set; } = "Page";
 
-    private FileUploadConfiguration? FileUploadConfig { get; set; }
+    private FileUploadConfig? FileUploadConfig { get; set; }
 
     [Parameter]
     public int Cols { get; set; } = 12;

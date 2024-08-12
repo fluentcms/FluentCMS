@@ -3,7 +3,8 @@ export function Columns(element, {
     gridLines = true, 
     colClass = 'col', 
     breakpointMd = 480, 
-    breakpointLg = 992
+    breakpointLg = 992,
+    onResize = () => {}
 } = {}) {
     let windowWidth = doc.body.clientWidth;
     let oneColWidth = element.clientWidth / 12;
@@ -11,6 +12,7 @@ export function Columns(element, {
     function initColumn(el) {
         let resizer;
         let dragging = false
+        let resized = 0;
         let x = 0;
 
         if(isNaN(el.dataset.cols) || el.dataset.cols == 0) {
@@ -50,9 +52,12 @@ export function Columns(element, {
                     if(diffLength < -oneColWidth / 2) {
                         el.dataset[field] = +(el.dataset[field]) - 1
                         x = x - oneColWidth
+                        resized += 1
                     } else {
                         el.dataset[field] = +(el.dataset[field]) + 1
                         x = x + oneColWidth
+                        resized -= 1
+
                     }
                 }
             }
@@ -61,6 +66,10 @@ export function Columns(element, {
         function onMouseUp(event) {
             resizer.style.right = '-24px'
             dragging = false
+
+            if(resized !== 0) {
+                onResize(el)
+            }
 
             element.classList.remove('dragging')
             resizer.classList.remove('dragging')
