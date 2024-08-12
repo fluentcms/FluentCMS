@@ -16,7 +16,9 @@
     },
     "Site": {
         "Name": "FluentCMS Administration",
-        "Description": "FluentCMS Administration Panel"
+        "Description": "FluentCMS Administration Panel",
+        "EditLayout": "EditLayout",
+        "DetailLayout": "SingleLayout"
     },
     "Layouts": [
         {
@@ -33,6 +35,14 @@
         },
         {
             "Name": "AuthLayout",
+            "IsDefault": false
+        },
+        {
+            "Name": "EditLayout",
+            "IsDefault": false
+        },
+        {
+            "Name": "SingleLayout",
             "IsDefault": false
         }
     ],
@@ -380,6 +390,7 @@
         {
             "Title": "Home",
             "Path": "/",
+            "EditLayout": "EditLayout",
             "Plugins": [
                 {
                     "Definition": "TextHTML Plugin",

@@ -10799,6 +10799,12 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("layout")]
         public LayoutDetailResponse Layout { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("editLayout")]
+        public LayoutDetailResponse EditLayout { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("detailLayout")]
+        public LayoutDetailResponse DetailLayout { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("site")]
         public SiteDetailResponse Site { get; set; } = default!;
 
@@ -11561,6 +11567,12 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("layoutId")]
         public System.Guid LayoutId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("editLayoutId")]
+        public System.Guid EditLayoutId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("detailLayoutId")]
+        public System.Guid DetailLayoutId { get; set; } = default!;
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -11596,6 +11608,12 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("layoutId")]
         public System.Guid LayoutId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("editLayoutId")]
+        public System.Guid EditLayoutId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("detailLayoutId")]
+        public System.Guid DetailLayoutId { get; set; } = default!;
 
     }
 
@@ -11692,6 +11710,12 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("layoutId")]
         public System.Guid LayoutId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("editLayoutId")]
+        public System.Guid EditLayoutId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("detailLayoutId")]
+        public System.Guid DetailLayoutId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
         public System.Guid Id { get; set; } = default!;

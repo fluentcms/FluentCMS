@@ -14,3 +14,10 @@
         <PluginContainer Plugin=@ViewState.Plugin SectionName=@Name />
     </div>
 }
+
+@if (ViewState.Type == ViewStateType.PluginDetail && Name.ToLower() == "main")
+{
+    <div class="f-section" data-name="@Name">
+        <PluginContainer Plugin=@ViewState.Plugin SectionName=@Name />
+    </div>
+}

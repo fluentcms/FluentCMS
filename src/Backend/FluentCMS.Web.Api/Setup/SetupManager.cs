@@ -209,9 +209,28 @@ public class SetupManager : ISetupManager
 
     private async Task InitSite()
     {
-        _adminTemplate.Site.Urls = [_setupRequest.AdminDomain];
-        _adminTemplate.Site.LayoutId = _defaultLayoutId;
-        _site = await _siteService.Create(_adminTemplate.Site);
+        Guid? layoutId = _layouts.Where(l => l.Name.Equals(_adminTemplate.Site.Layout?.ToLowerInvariant(), StringComparison.InvariantCultureIgnoreCase)).Select(l => l.Id).SingleOrDefault();
+        Guid? editLayoutId = _layouts.Where(l => l.Name.Equals(_adminTemplate.Site.EditLayout?.ToLowerInvariant(), StringComparison.InvariantCultureIgnoreCase)).Select(l => l.Id).SingleOrDefault();
+        Guid? detailLayoutId = _layouts.Where(l => l.Name.Equals(_adminTemplate.Site.DetailLayout?.ToLowerInvariant(), StringComparison.InvariantCultureIgnoreCase)).Select(l => l.Id).SingleOrDefault();
+
+        if (layoutId == Guid.Empty || layoutId == null)
+            layoutId = _defaultLayoutId;
+
+        if (editLayoutId == Guid.Empty || editLayoutId == null)
+            editLayoutId = _defaultLayoutId;
+
+        if (detailLayoutId == Guid.Empty || detailLayoutId == null)
+            detailLayoutId = _defaultLayoutId;
+
+        var site = new Site {
+            Name = _adminTemplate.Site.Name,
+            Description = _adminTemplate.Site.Description,
+            Urls = [_setupRequest.AdminDomain],
+            LayoutId = layoutId.Value,
+            EditLayoutId = editLayoutId.Value,
+            DetailLayoutId = detailLayoutId.Value,
+        };
+        _site = await _siteService.Create(site);
     }
 
     private async Task InitPluginDefinitions()
@@ -333,14 +352,25 @@ public class SetupManager : ISetupManager
     private Page GetPage(PageTemplate pageTemplate, Guid? parentId, int order)
     {
         Guid? layoutId = _layouts.Where(l => l.Name.Equals(pageTemplate?.Layout?.ToLowerInvariant(), StringComparison.InvariantCultureIgnoreCase)).Select(l => l.Id).SingleOrDefault();
+        Guid? editLayoutId = _layouts.Where(l => l.Name.Equals(pageTemplate?.EditLayout?.ToLowerInvariant(), StringComparison.InvariantCultureIgnoreCase)).Select(l => l.Id).SingleOrDefault();
+        Guid? detailLayoutId = _layouts.Where(l => l.Name.Equals(pageTemplate?.DetailLayout?.ToLowerInvariant(), StringComparison.InvariantCultureIgnoreCase)).Select(l => l.Id).SingleOrDefault();
+
         if (layoutId == Guid.Empty)
             layoutId = null;
+
+        if (editLayoutId == Guid.Empty)
+            editLayoutId = null;
+
+        if (detailLayoutId == Guid.Empty)
+            detailLayoutId = null;
 
         var page = new Page
         {
             Title = pageTemplate.Title,
             Path = pageTemplate.Path,
             LayoutId = layoutId,
+            EditLayoutId = editLayoutId,
+            DetailLayoutId = detailLayoutId,
             SiteId = _site.Id,
             ParentId = parentId,
             Order = order,
