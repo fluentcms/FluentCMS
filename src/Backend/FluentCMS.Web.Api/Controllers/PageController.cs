@@ -32,7 +32,7 @@ public class PageController(
         foreach (var entity in entities)
         {
             var layout = layouts.Where(x => x.Id == entity.LayoutId).FirstOrDefault();
-            
+
             var mappedEntity = mapper.Map<PageDetailResponse>(entity);
             mappedEntity.Layout = mapper.Map<LayoutDetailResponse>(layout);
             entitiesResponse.Add(mappedEntity);
@@ -114,13 +114,13 @@ public class PageController(
     {
         var result = new List<string>();
         var currentPage = page;
-        while(currentPage != null)
+        while (currentPage != null)
         {
             result.Add(currentPage.Path);
             currentPage = currentPage.ParentId.HasValue ? allPages[currentPage.ParentId.Value] : default!;
-        }        
+        }
         result.Reverse();
-        
+
         return string.Join("", result);
     }
 

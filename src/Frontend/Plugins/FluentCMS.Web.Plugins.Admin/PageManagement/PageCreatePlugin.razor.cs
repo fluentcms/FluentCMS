@@ -23,17 +23,19 @@ public partial class PageCreatePlugin
         {
             var layoutsResponse = await ApiClient.Layout.GetAllAsync();
             Layouts = layoutsResponse?.Data?.ToList() ?? [];
-            
-            LayoutOptions = new List<SelectOption> {
+
+            LayoutOptions = [
                 new SelectOption {
                     Title = "(default)",
                     Value = Guid.Empty
                 }
-            };
+            ];
 
-            foreach (var layout in Layouts) {
+            foreach (var layout in Layouts)
+            {
                 LayoutOptions.Add(
-                    new SelectOption {
+                    new SelectOption
+                    {
                         Title = layout.Name,
                         Value = layout.Id
                     }
@@ -46,23 +48,25 @@ public partial class PageCreatePlugin
             var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Urls[0]);
             Pages = pagesResponse?.Data?.Where(x => !x.Locked).ToList();
 
-            PageOptions = new List<SelectOption> {
+            PageOptions = [
                 new SelectOption {
                     Title = "(none)",
                     Value = Guid.Empty
                 }
-            };
+            ];
 
-            foreach (var page in Pages) {
+            foreach (var page in Pages)
+            {
                 PageOptions.Add(
-                    new SelectOption {
-                    Title = page.Title,
-                    Value = page.Id
+                    new SelectOption
+                    {
+                        Title = page.Title,
+                        Value = page.Id
                     }
                 );
             }
         }
-        
+
         Model ??= new();
     }
 
