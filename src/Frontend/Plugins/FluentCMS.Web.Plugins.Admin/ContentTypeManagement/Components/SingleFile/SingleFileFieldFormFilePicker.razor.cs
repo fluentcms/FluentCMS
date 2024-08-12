@@ -27,7 +27,7 @@ public partial class SingleFileFieldFormFilePicker
     private string FileName { get; set; } = string.Empty;
     private bool TableAction { get; set; } = true;
 
-    private FileUploadConfiguration? FileUploadConfig { get; set; }
+    private FileUploadConfig? FileUploadConfig { get; set; }
 
     protected override async Task OnInitializedAsync()
     {

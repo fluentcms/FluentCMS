@@ -17,7 +17,6 @@
 #pragma warning disable 8603 // Disable "CS8603 Possible null reference return"
 #pragma warning disable 8604 // Disable "CS8604 Possible null reference argument for parameter"
 #pragma warning disable 8625 // Disable "CS8625 Cannot convert null literal to non-nullable reference type"
-#pragma warning disable CS8765 // Nullability of type of parameter doesn't match overridden member (possibly because of nullability attributes).
 
 namespace FluentCMS.Web.ApiClients
 {
@@ -97,9 +96,7 @@ namespace FluentCMS.Web.ApiClients
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public AccountClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
         }
@@ -108,7 +105,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach (var converter in converters)
+            foreach(var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -148,7 +145,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Account/Register"
                     urlBuilder_.Append("api/Account/Register");
 
@@ -230,7 +227,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Account/Authenticate"
                     urlBuilder_.Append("api/Account/Authenticate");
 
@@ -312,7 +309,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Account/ChangePassword"
                     urlBuilder_.Append("api/Account/ChangePassword");
 
@@ -394,7 +391,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Account/SendPasswordResetToken"
                     urlBuilder_.Append("api/Account/SendPasswordResetToken");
 
@@ -476,7 +473,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Account/ValidatePasswordResetToken"
                     urlBuilder_.Append("api/Account/ValidatePasswordResetToken");
 
@@ -554,7 +551,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Account/GetCurrent"
                     urlBuilder_.Append("api/Account/GetCurrent");
 
@@ -636,7 +633,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Account/UpdateCurrent"
                     urlBuilder_.Append("api/Account/UpdateCurrent");
 
@@ -761,7 +758,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -773,13 +770,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool)
+            else if (value is bool) 
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -857,9 +854,7 @@ namespace FluentCMS.Web.ApiClients
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public ApiTokenClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
         }
@@ -868,7 +863,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach (var converter in converters)
+            foreach(var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -904,7 +899,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/ApiToken/GetAll"
                     urlBuilder_.Append("api/ApiToken/GetAll");
 
@@ -985,7 +980,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/ApiToken/GetById/{id}"
                     urlBuilder_.Append("api/ApiToken/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -1068,7 +1063,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/ApiToken/Create"
                     urlBuilder_.Append("api/ApiToken/Create");
 
@@ -1150,7 +1145,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/ApiToken/Update"
                     urlBuilder_.Append("api/ApiToken/Update");
 
@@ -1231,7 +1226,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/ApiToken/Delete/{id}"
                     urlBuilder_.Append("api/ApiToken/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -1357,7 +1352,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -1369,13 +1364,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool)
+            else if (value is bool) 
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -1453,9 +1448,7 @@ namespace FluentCMS.Web.ApiClients
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public ContentClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
         }
@@ -1464,7 +1457,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach (var converter in converters)
+            foreach(var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -1503,7 +1496,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Content/{contentTypeSlug}/GetAll"
                     urlBuilder_.Append("api/Content/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(contentTypeSlug, System.Globalization.CultureInfo.InvariantCulture)));
@@ -1589,7 +1582,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Content/{contentTypeSlug}/GetById/{id}"
                     urlBuilder_.Append("api/Content/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(contentTypeSlug, System.Globalization.CultureInfo.InvariantCulture)));
@@ -1677,7 +1670,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Content/{contentTypeSlug}/Create"
                     urlBuilder_.Append("api/Content/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(contentTypeSlug, System.Globalization.CultureInfo.InvariantCulture)));
@@ -1767,7 +1760,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Content/{contentTypeSlug}/Update/{id}"
                     urlBuilder_.Append("api/Content/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(contentTypeSlug, System.Globalization.CultureInfo.InvariantCulture)));
@@ -1854,7 +1847,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Content/{contentTypeSlug}/Delete/{id}"
                     urlBuilder_.Append("api/Content/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(contentTypeSlug, System.Globalization.CultureInfo.InvariantCulture)));
@@ -1982,7 +1975,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -1994,13 +1987,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool)
+            else if (value is bool) 
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -2105,9 +2098,7 @@ namespace FluentCMS.Web.ApiClients
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public ContentTypeClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
         }
@@ -2116,7 +2107,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach (var converter in converters)
+            foreach(var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -2155,7 +2146,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/ContentType/GetBySlug/{slug}"
                     urlBuilder_.Append("api/ContentType/GetBySlug/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(slug, System.Globalization.CultureInfo.InvariantCulture)));
@@ -2237,7 +2228,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/ContentType/GetById/{id}"
                     urlBuilder_.Append("api/ContentType/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -2316,7 +2307,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/ContentType/GetAll"
                     urlBuilder_.Append("api/ContentType/GetAll");
 
@@ -2398,7 +2389,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/ContentType/Create"
                     urlBuilder_.Append("api/ContentType/Create");
 
@@ -2480,7 +2471,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/ContentType/Update"
                     urlBuilder_.Append("api/ContentType/Update");
 
@@ -2561,7 +2552,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/ContentType/Delete/{id}"
                     urlBuilder_.Append("api/ContentType/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -2647,7 +2638,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/ContentType/SetField/{id}"
                     urlBuilder_.Append("api/ContentType/SetField/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -2732,7 +2723,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/ContentType/DeleteField/{id}/{name}"
                     urlBuilder_.Append("api/ContentType/DeleteField/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -2860,7 +2851,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -2872,13 +2863,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool)
+            else if (value is bool) 
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -2956,9 +2947,7 @@ namespace FluentCMS.Web.ApiClients
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public FileClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
         }
@@ -2967,7 +2956,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach (var converter in converters)
+            foreach(var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -3006,7 +2995,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/File/GetById/{id}"
                     urlBuilder_.Append("api/File/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -3103,15 +3092,15 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/File/Upload"
                     urlBuilder_.Append("api/File/Upload");
-                    urlBuilder_.Append('?');
-                    if (folderId != null)
-                    {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("folderId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(folderId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
-                    }
-                    urlBuilder_.Length--;
+            urlBuilder_.Append('?');
+            if (folderId != null)
+            {
+                urlBuilder_.Append(System.Uri.EscapeDataString("folderId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(folderId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+            }
+            urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -3189,7 +3178,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Method = new System.Net.Http.HttpMethod("GET");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/File/Download/{id}"
                     urlBuilder_.Append("api/File/Download/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -3266,7 +3255,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/File/Delete/{id}"
                     urlBuilder_.Append("api/File/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -3349,7 +3338,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/File/Update"
                     urlBuilder_.Append("api/File/Update");
 
@@ -3474,7 +3463,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -3486,13 +3475,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool)
+            else if (value is bool) 
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -3570,9 +3559,7 @@ namespace FluentCMS.Web.ApiClients
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public FolderClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
         }
@@ -3581,7 +3568,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach (var converter in converters)
+            foreach(var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -3617,7 +3604,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Folder/GetAll"
                     urlBuilder_.Append("api/Folder/GetAll");
 
@@ -3698,7 +3685,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Folder/GetById/{id}"
                     urlBuilder_.Append("api/Folder/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -3781,7 +3768,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Folder/Create"
                     urlBuilder_.Append("api/Folder/Create");
 
@@ -3863,7 +3850,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Folder/Update"
                     urlBuilder_.Append("api/Folder/Update");
 
@@ -3944,7 +3931,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Folder/Delete/{id}"
                     urlBuilder_.Append("api/Folder/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4070,7 +4057,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -4082,13 +4069,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool)
+            else if (value is bool) 
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -4139,9 +4126,7 @@ namespace FluentCMS.Web.ApiClients
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public GlobalSettingsClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
         }
@@ -4150,7 +4135,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach (var converter in converters)
+            foreach(var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -4186,7 +4171,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/GlobalSettings/Get"
                     urlBuilder_.Append("api/GlobalSettings/Get");
 
@@ -4268,7 +4253,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/GlobalSettings/Update"
                     urlBuilder_.Append("api/GlobalSettings/Update");
 
@@ -4393,7 +4378,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -4405,13 +4390,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool)
+            else if (value is bool) 
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -4489,9 +4474,7 @@ namespace FluentCMS.Web.ApiClients
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public LayoutClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
         }
@@ -4500,7 +4483,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach (var converter in converters)
+            foreach(var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -4536,7 +4519,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Layout/GetAll"
                     urlBuilder_.Append("api/Layout/GetAll");
 
@@ -4617,7 +4600,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Layout/Get/{id}"
                     urlBuilder_.Append("api/Layout/Get/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4700,7 +4683,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Layout/Create"
                     urlBuilder_.Append("api/Layout/Create");
 
@@ -4782,7 +4765,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Layout/Update"
                     urlBuilder_.Append("api/Layout/Update");
 
@@ -4863,7 +4846,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Layout/Delete/{id}"
                     urlBuilder_.Append("api/Layout/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4989,7 +4972,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -5001,13 +4984,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool)
+            else if (value is bool) 
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -5079,6 +5062,15 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BooleanIApiResult> UpdatePluginOrdersAsync(PageUpdatePluginOrdersRequest? body);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BooleanIApiResult> UpdatePluginOrdersAsync(PageUpdatePluginOrdersRequest? body, System.Threading.CancellationToken cancellationToken);
+
+        /// <returns>OK</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -5094,9 +5086,7 @@ namespace FluentCMS.Web.ApiClients
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public PageClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
         }
@@ -5105,7 +5095,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach (var converter in converters)
+            foreach(var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -5144,7 +5134,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Page/GetAll/{siteUrl}"
                     urlBuilder_.Append("api/Page/GetAll/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(siteUrl, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5226,7 +5216,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Page/GetById/{id}"
                     urlBuilder_.Append("api/Page/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5305,15 +5295,15 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Page/GetByUrl"
                     urlBuilder_.Append("api/Page/GetByUrl");
-                    urlBuilder_.Append('?');
-                    if (url != null)
-                    {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("url")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(url, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
-                    }
-                    urlBuilder_.Length--;
+            urlBuilder_.Append('?');
+            if (url != null)
+            {
+                urlBuilder_.Append(System.Uri.EscapeDataString("url")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(url, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+            }
+            urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -5393,7 +5383,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Page/Create"
                     urlBuilder_.Append("api/Page/Create");
 
@@ -5475,7 +5465,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Page/Update"
                     urlBuilder_.Append("api/Page/Update");
 
@@ -5533,6 +5523,88 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        public virtual System.Threading.Tasks.Task<BooleanIApiResult> UpdatePluginOrdersAsync(PageUpdatePluginOrdersRequest? body)
+        {
+            return UpdatePluginOrdersAsync(body, System.Threading.CancellationToken.None);
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BooleanIApiResult> UpdatePluginOrdersAsync(PageUpdatePluginOrdersRequest? body, System.Threading.CancellationToken cancellationToken)
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, _settings.Value);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/Page/UpdatePluginOrders"
+                    urlBuilder_.Append("api/Page/UpdatePluginOrders");
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BooleanIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiClientException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <returns>OK</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<BooleanIApiResult> DeleteAsync(System.Guid id)
         {
             return DeleteAsync(id, System.Threading.CancellationToken.None);
@@ -5556,7 +5628,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Page/Delete/{id}"
                     urlBuilder_.Append("api/Page/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5682,7 +5754,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -5694,13 +5766,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool)
+            else if (value is bool) 
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -5778,9 +5850,7 @@ namespace FluentCMS.Web.ApiClients
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public PluginClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
         }
@@ -5789,7 +5859,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach (var converter in converters)
+            foreach(var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -5828,7 +5898,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Plugin/GetByPageId/{pageId}"
                     urlBuilder_.Append("api/Plugin/GetByPageId/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pageId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5910,7 +5980,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Plugin/GetById/{id}"
                     urlBuilder_.Append("api/Plugin/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5993,7 +6063,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Plugin/Create"
                     urlBuilder_.Append("api/Plugin/Create");
 
@@ -6075,7 +6145,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Plugin/Update"
                     urlBuilder_.Append("api/Plugin/Update");
 
@@ -6156,7 +6226,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Plugin/Delete/{id}"
                     urlBuilder_.Append("api/Plugin/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6282,7 +6352,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -6294,13 +6364,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool)
+            else if (value is bool) 
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -6378,9 +6448,7 @@ namespace FluentCMS.Web.ApiClients
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public PluginContentClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
         }
@@ -6389,7 +6457,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach (var converter in converters)
+            foreach(var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -6431,7 +6499,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/PluginContent/{pluginContentTypeName}/GetAll/{pluginId}"
                     urlBuilder_.Append("api/PluginContent/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginContentTypeName, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6521,7 +6589,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/PluginContent/{pluginContentTypeName}/GetById/{pluginId}/{id}"
                     urlBuilder_.Append("api/PluginContent/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginContentTypeName, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6614,7 +6682,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/PluginContent/{pluginContentTypeName}/Create/{pluginId}"
                     urlBuilder_.Append("api/PluginContent/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginContentTypeName, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6708,7 +6776,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/PluginContent/{pluginContentTypeName}/Update/{pluginId}/{id}"
                     urlBuilder_.Append("api/PluginContent/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginContentTypeName, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6800,7 +6868,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/PluginContent/{pluginContentTypeName}/Delete/{pluginId}/{id}"
                     urlBuilder_.Append("api/PluginContent/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginContentTypeName, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6930,7 +6998,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -6942,13 +7010,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool)
+            else if (value is bool) 
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -6999,9 +7067,7 @@ namespace FluentCMS.Web.ApiClients
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public PluginDefinitionClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
         }
@@ -7010,7 +7076,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach (var converter in converters)
+            foreach(var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -7050,7 +7116,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/PluginDefinition/Create"
                     urlBuilder_.Append("api/PluginDefinition/Create");
 
@@ -7128,7 +7194,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/PluginDefinition/GetAll"
                     urlBuilder_.Append("api/PluginDefinition/GetAll");
 
@@ -7253,7 +7319,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -7265,13 +7331,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool)
+            else if (value is bool) 
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -7358,9 +7424,7 @@ namespace FluentCMS.Web.ApiClients
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public RoleClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
         }
@@ -7369,7 +7433,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach (var converter in converters)
+            foreach(var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -7405,7 +7469,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Role/GetAll"
                     urlBuilder_.Append("api/Role/GetAll");
 
@@ -7486,7 +7550,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Role/GetById/{id}"
                     urlBuilder_.Append("api/Role/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7569,7 +7633,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Role/Create"
                     urlBuilder_.Append("api/Role/Create");
 
@@ -7651,7 +7715,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Role/Update"
                     urlBuilder_.Append("api/Role/Update");
 
@@ -7732,7 +7796,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Role/Delete/{id}"
                     urlBuilder_.Append("api/Role/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7811,7 +7875,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Role/GetPolicies"
                     urlBuilder_.Append("api/Role/GetPolicies");
 
@@ -7936,7 +8000,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -7948,13 +8012,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool)
+            else if (value is bool) 
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -8005,9 +8069,7 @@ namespace FluentCMS.Web.ApiClients
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public SetupClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
         }
@@ -8016,7 +8078,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach (var converter in converters)
+            foreach(var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -8052,7 +8114,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Setup/IsInitialized"
                     urlBuilder_.Append("api/Setup/IsInitialized");
 
@@ -8134,7 +8196,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Setup/Start"
                     urlBuilder_.Append("api/Setup/Start");
 
@@ -8259,7 +8321,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -8271,13 +8333,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool)
+            else if (value is bool) 
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -8364,9 +8426,7 @@ namespace FluentCMS.Web.ApiClients
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public SiteClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
         }
@@ -8375,7 +8435,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach (var converter in converters)
+            foreach(var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -8414,7 +8474,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Site/GetByUrl/{siteUrl}"
                     urlBuilder_.Append("api/Site/GetByUrl/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(siteUrl, System.Globalization.CultureInfo.InvariantCulture)));
@@ -8493,7 +8553,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Site/GetAll"
                     urlBuilder_.Append("api/Site/GetAll");
 
@@ -8574,7 +8634,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Site/GetById/{id}"
                     urlBuilder_.Append("api/Site/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -8657,7 +8717,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Site/Create"
                     urlBuilder_.Append("api/Site/Create");
 
@@ -8739,7 +8799,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Site/Update"
                     urlBuilder_.Append("api/Site/Update");
 
@@ -8820,7 +8880,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/Site/Delete/{siteId}"
                     urlBuilder_.Append("api/Site/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -8946,7 +9006,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -8958,13 +9018,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool)
+            else if (value is bool) 
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -9042,9 +9102,7 @@ namespace FluentCMS.Web.ApiClients
         private System.Net.Http.HttpClient _httpClient;
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public UserClient(System.Net.Http.HttpClient httpClient)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
         }
@@ -9053,7 +9111,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach (var converter in converters)
+            foreach(var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -9089,7 +9147,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/User/GetAll"
                     urlBuilder_.Append("api/User/GetAll");
 
@@ -9170,7 +9228,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/User/Get/{userId}"
                     urlBuilder_.Append("api/User/Get/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(userId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -9253,7 +9311,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/User/Update"
                     urlBuilder_.Append("api/User/Update");
 
@@ -9335,7 +9393,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/User/SetPassword"
                     urlBuilder_.Append("api/User/SetPassword");
 
@@ -9417,7 +9475,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-
+                
                     // Operation Path: "api/User/Create"
                     urlBuilder_.Append("api/User/Create");
 
@@ -9542,7 +9600,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -9554,13 +9612,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool)
+            else if (value is bool) 
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[])value);
+                return System.Convert.ToBase64String((byte[]) value);
             }
             else if (value is string[])
             {
@@ -9582,7 +9640,7 @@ namespace FluentCMS.Web.ApiClients
         }
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class AccountChangePasswordRequest
     {
 
@@ -9600,7 +9658,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class AccountUpdateRequest
     {
 
@@ -9619,7 +9677,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ApiTokenCreateRequest
     {
 
@@ -9642,7 +9700,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ApiTokenDetailResponse
     {
 
@@ -9681,7 +9739,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ApiTokenDetailResponseIApiPagingResult
     {
 
@@ -9729,7 +9787,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ApiTokenDetailResponseIApiResult
     {
 
@@ -9759,7 +9817,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ApiTokenUpdateRequest
     {
 
@@ -9783,7 +9841,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class AppError
     {
 
@@ -9795,7 +9853,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class BooleanIApiResult
     {
 
@@ -9825,7 +9883,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentDetailResponse
     {
 
@@ -9854,7 +9912,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentDetailResponseIApiPagingResult
     {
 
@@ -9902,7 +9960,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentDetailResponseIApiResult
     {
 
@@ -9932,7 +9990,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentTypeCreateRequest
     {
 
@@ -9949,7 +10007,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentTypeDetailResponse
     {
 
@@ -9982,7 +10040,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentTypeDetailResponseIApiPagingResult
     {
 
@@ -10030,7 +10088,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentTypeDetailResponseIApiResult
     {
 
@@ -10060,7 +10118,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentTypeField
     {
 
@@ -10087,7 +10145,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ContentTypeUpdateRequest
     {
 
@@ -10104,7 +10162,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class FileDetailResponse
     {
 
@@ -10140,7 +10198,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class FileDetailResponseIApiPagingResult
     {
 
@@ -10188,7 +10246,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class FileDetailResponseIApiResult
     {
 
@@ -10218,7 +10276,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class FileUpdateRequest
     {
 
@@ -10233,8 +10291,8 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class FileUploadConfiguration
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class FileUploadConfig
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("maxSize")]
@@ -10248,7 +10306,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class FolderCreateRequest
     {
 
@@ -10261,7 +10319,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class FolderDetailResponse
     {
 
@@ -10297,7 +10355,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class FolderDetailResponseIApiResult
     {
 
@@ -10327,7 +10385,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class FolderUpdateRequest
     {
 
@@ -10344,7 +10402,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class GlobalSettings
     {
 
@@ -10364,14 +10422,14 @@ namespace FluentCMS.Web.ApiClients
         public System.DateTime? ModifiedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("email")]
-        public SmtpServerConfiguration Email { get; set; } = default!;
+        public SmtpServerConfig Email { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("fileUpload")]
-        public FileUploadConfiguration FileUpload { get; set; } = default!;
+        public FileUploadConfig FileUpload { get; set; } = default!;
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class GlobalSettingsIApiResult
     {
 
@@ -10401,16 +10459,16 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class GlobalSettingsUpdateRequest
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("email")]
-        public SmtpServerConfiguration Email { get; set; } = default!;
+        public SmtpServerConfig Email { get; set; } = default!;
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class LayoutCreateRequest
     {
 
@@ -10425,7 +10483,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class LayoutDetailResponse
     {
 
@@ -10455,7 +10513,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class LayoutDetailResponseIApiPagingResult
     {
 
@@ -10503,7 +10561,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class LayoutDetailResponseIApiResult
     {
 
@@ -10533,7 +10591,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class LayoutUpdateRequest
     {
 
@@ -10551,7 +10609,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageCreateRequest
     {
 
@@ -10560,6 +10618,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("parentId")]
         public System.Guid? ParentId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("layoutId")]
+        public System.Guid? LayoutId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("title")]
         public string? Title { get; set; } = default!;
@@ -10572,7 +10633,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageDetailResponse
     {
 
@@ -10597,6 +10658,9 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("parentId")]
         public System.Guid? ParentId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("layoutId")]
+        public System.Guid? LayoutId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("title")]
         public string? Title { get; set; } = default!;
 
@@ -10617,7 +10681,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageDetailResponseIApiPagingResult
     {
 
@@ -10665,7 +10729,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageDetailResponseIApiResult
     {
 
@@ -10695,7 +10759,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageFullDetailResponse
     {
 
@@ -10752,7 +10816,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageFullDetailResponseIApiResult
     {
 
@@ -10782,7 +10846,16 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PageUpdatePluginOrdersRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("plugins")]
+        public System.Collections.Generic.ICollection<System.Guid>? Plugins { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PageUpdateRequest
     {
 
@@ -10791,6 +10864,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("parentId")]
         public System.Guid? ParentId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("layoutId")]
+        public System.Guid? LayoutId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("title")]
         public string? Title { get; set; } = default!;
@@ -10806,7 +10882,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginContentDetailResponse
     {
 
@@ -10839,7 +10915,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginContentDetailResponseIApiPagingResult
     {
 
@@ -10887,7 +10963,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginContentDetailResponseIApiResult
     {
 
@@ -10917,7 +10993,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginCreateRequest
     {
 
@@ -10944,7 +11020,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginDefinitionCreateRequest
     {
 
@@ -10962,7 +11038,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginDefinitionDetailResponse
     {
 
@@ -11001,7 +11077,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginDefinitionDetailResponseIApiPagingResult
     {
 
@@ -11049,7 +11125,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginDefinitionDetailResponseIApiResult
     {
 
@@ -11079,7 +11155,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginDefinitionType
     {
 
@@ -11094,7 +11170,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginDetailResponse
     {
 
@@ -11145,7 +11221,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginDetailResponseIApiPagingResult
     {
 
@@ -11193,7 +11269,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginDetailResponseIApiResult
     {
 
@@ -11223,7 +11299,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PluginUpdateRequest
     {
 
@@ -11247,7 +11323,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Policy
     {
 
@@ -11259,7 +11335,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PolicyIApiPagingResult
     {
 
@@ -11307,7 +11383,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RoleCreateRequest
     {
 
@@ -11324,7 +11400,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RoleDetailResponse
     {
 
@@ -11354,7 +11430,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RoleDetailResponseIApiPagingResult
     {
 
@@ -11402,7 +11478,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RoleDetailResponseIApiResult
     {
 
@@ -11432,7 +11508,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RoleUpdateRequest
     {
 
@@ -11452,7 +11528,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SetupRequest
     {
 
@@ -11475,7 +11551,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SiteCreateRequest
     {
 
@@ -11499,7 +11575,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SiteDetailResponse
     {
 
@@ -11541,7 +11617,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SiteDetailResponseIApiPagingResult
     {
 
@@ -11589,7 +11665,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SiteDetailResponseIApiResult
     {
 
@@ -11619,7 +11695,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SiteUpdateRequest
     {
 
@@ -11646,8 +11722,8 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class SmtpServerConfiguration
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class SmtpServerConfig
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("server")]
@@ -11670,7 +11746,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserCreateRequest
     {
 
@@ -11704,7 +11780,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserDetailResponse
     {
 
@@ -11761,7 +11837,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserDetailResponseIApiPagingResult
     {
 
@@ -11809,7 +11885,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserDetailResponseIApiResult
     {
 
@@ -11839,7 +11915,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserLoginRequest
     {
 
@@ -11856,7 +11932,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserLoginResponse
     {
 
@@ -11877,7 +11953,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserLoginResponseIApiResult
     {
 
@@ -11907,7 +11983,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserRegisterRequest
     {
 
@@ -11929,7 +12005,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserSendPasswordResetTokenRequest
     {
 
@@ -11939,7 +12015,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserSetPasswordRequest
     {
 
@@ -11953,7 +12029,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserUpdateRequest
     {
 
@@ -11986,7 +12062,7 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.8.0 (NJsonSchema v11.0.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.0.1.0 (NJsonSchema v11.0.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserValidatePasswordResetTokenRequest
     {
 
