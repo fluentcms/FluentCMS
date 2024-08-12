@@ -32,7 +32,7 @@ public class PageController(
         foreach (var entity in entities)
         {
             var layout = layouts.Where(x => x.Id == entity.LayoutId).FirstOrDefault();
-            
+
             var mappedEntity = mapper.Map<PageDetailResponse>(entity);
             mappedEntity.Layout = mapper.Map<LayoutDetailResponse>(layout);
             entitiesResponse.Add(mappedEntity);
@@ -86,6 +86,20 @@ public class PageController(
         return Ok(entityResponse);
     }
 
+    [HttpPut]
+    [Policy(AREA, UPDATE)]
+    public async Task<IApiResult<bool>> UpdatePluginOrders(PageUpdatePluginOrdersRequest request, CancellationToken cancellationToken = default)
+    {
+        var index = 0;
+        foreach (var pluginId in request.Plugins)
+        {
+            var plugin = await pluginService.GetById(pluginId, cancellationToken);
+            plugin.Order = index++;
+            await pluginService.Update(plugin);
+        }
+        return Ok(true);
+    }
+
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
@@ -100,13 +114,13 @@ public class PageController(
     {
         var result = new List<string>();
         var currentPage = page;
-        while(currentPage != null)
+        while (currentPage != null)
         {
             result.Add(currentPage.Path);
             currentPage = currentPage.ParentId.HasValue ? allPages[currentPage.ParentId.Value] : default!;
-        }        
+        }
         result.Reverse();
-        
+
         return string.Join("", result);
     }
 

@@ -13,7 +13,7 @@ public partial class PageListPlugin
 
     public async Task Load()
     {
-        if(Id != null)
+        if (Id != null)
         {
             NavigateTo(GetUrl("Update Page", new { Id = Id }));
         }
@@ -32,7 +32,7 @@ public partial class PageListPlugin
     {
         var result = new List<string>();
         var currentPage = page;
-        while(currentPage != null)
+        while (currentPage != null)
         {
             result.Add(currentPage.Path);
             if (currentPage.ParentId.HasValue)
@@ -43,9 +43,9 @@ public partial class PageListPlugin
             {
                 currentPage = default!;
             }
-        }        
+        }
         result.Reverse();
-        
+
         return string.Join("", result);
     }
 

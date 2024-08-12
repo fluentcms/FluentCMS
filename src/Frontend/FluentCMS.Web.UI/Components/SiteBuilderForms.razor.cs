@@ -14,16 +14,20 @@ public partial class SiteBuilderForms
     [SupplyParameterFromForm(FormName = "CreatePluginForm")]
     private PluginCreateRequest CreatePluginModel { get; set; } = new();
 
-    [SupplyParameterFromForm(FormName = "UpdatePluginsForm")]
-    private UpdatePluginsRequest UpdatePluginsModel { get; set; } = new();
+    [SupplyParameterFromForm(FormName = "UpdatePluginForm")]
+    private PluginUpdateRequest UpdatePluginModel { get; set; } = new();
 
-    private async Task OnUpdatePluginsSubmit()
+    [SupplyParameterFromForm(FormName = "UpdatePluginOrdersForm")]
+    private PageUpdatePluginOrdersRequest UpdatePluginOrdersModel { get; set; } = new();
+
+    private async Task OnUpdatePluginSubmit()
     {
-        Console.WriteLine($"Update Plugins ${UpdatePluginsModel.Plugins.Count}");
-        foreach (var plugin in UpdatePluginsModel.Plugins)
-        {
-            await ApiClient.Plugin.UpdateAsync(plugin);
-        }
+        await ApiClient.Plugin.UpdateAsync(UpdatePluginModel);
+    }
+
+    private async Task OnUpdatePluginOrdersSubmit()
+    {
+        await ApiClient.Page.UpdatePluginOrdersAsync(UpdatePluginOrdersModel);
     }
 
     private async Task OnCreatePluginSubmit()
@@ -35,11 +39,5 @@ public partial class SiteBuilderForms
     private async Task OnDeletePluginSubmit()
     {
         await ApiClient.Plugin.DeleteAsync(DeletePluginModel);
-    }
-
-    class UpdatePluginsRequest
-    {
-        public bool Submitted { get; set; } = true;
-        public List<PluginUpdateRequest> Plugins { get; set; } = [];
     }
 }
