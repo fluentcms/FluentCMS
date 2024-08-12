@@ -69,29 +69,47 @@ This proposal outlines the approach for utilizing FluentCMS to create and manage
 ## Properties
 * PageId: Unique identifier for the page.
 * SiteId: The identifier for the site to which the page belongs.
+* LayoutId: The layout structure applied to the page.
 * Path: The path or URL segment for the page.
 * Name: The name of the page.
 * Title: The title of the page, displayed in the browser tab and search results.
-* ThemeId: The theme applied to the page.
-* LayoutId: The layout structure applied to the page.
 * Icon: An icon representing the page.
 * ParentId: The identifier of the parent page, if the page is part of a hierarchy.
 * Order: The display order of the page in navigation.
 * IsNavigation: Indicates if the page should be included in site navigation.
-* Path: The path of the page.
 * UserId: The identifier of the user who created or manages the page.
 * IsPersonalizable: Indicates if the page can be personalized for individual users.
 * Locked: Indicates if the page is locked from editing.
 * IsClickable: Indicates if the page can be clicked in navigation.
 * HeadContent: Custom content for the <head> section of the page's HTML.
 * BodyContent: Custom content for the <body> section of the page's HTML.
-* EffectiveDate: The date and time when the page becomes effective.
-* ExpiryDate: The date and time when the page expires.
-* DeletedBy: The user who deleted the page, if applicable.
-* DeletedOn: The date and time when the page was deleted, if applicable.
-* IsDeleted: Indicates if the page has been deleted.(can replaced by status property)
-* Status: The status of the page with the following values: draft,waiteforConfirm ,edited, published, scheduled, deleted.
+* State: The status of the page with the following values: Draft,Published,Deleted.
+* Status: Preview, NeedApproval ,Scheduled,Active,DeActive
 * ApprovalRequired: Indicates if the page requires approval before publishing.
 * ApprovedBy: The user who approved the page, if applicable.
 * ApprovalDate: The date and time when the page was approved, if applicable
-* ViewTypeIds: The type of view to render for the page (e.g., "Cards", "Grid," "List,","Table","Custom" ... )
+* ActivationDate: The date and time when the page becomes active.
+* ExpiryDate: The date and time when the page expires.
+* ICollection<Plugins>
+
+## Permissions
+* EntityId
+* EntityType (Site, Page, Plugin, etc.)
+* AccessLevel: enum (View, Manage, Admin, etc.)
+* RoleId
+
+public class Role : SiteAssociatedEntity
+{
+    public string Name { get; set; } = default!;
+    public string? Description { get; set; }
+    public RoleType Type { get; set; } = RoleType.Default;
+}
+
+public enum RoleType
+{
+    Default = 0, // user defined roles
+    Administrators = 1, // system defined role for administrators
+    Authenticated = 2, // system defined role for authenticated users (logged in users)
+    Guest = 3, // system defined role for unauthenticated users (guests)
+    All = 4 // system defined role for all users including guests and authenticated users
+}
