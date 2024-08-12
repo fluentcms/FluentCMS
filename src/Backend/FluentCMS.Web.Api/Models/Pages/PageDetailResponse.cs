@@ -3,6 +3,7 @@
 public class PageDetailResponse : BaseSiteAssociatedResponse
 {
     public Guid? ParentId { get; set; }
+    public Guid? LayoutId { get; set; } = default!;
     public string Title { get; set; } = default!;
     public List<PageDetailResponse> Children { get; set; } = [];
     public int Order { get; set; }
