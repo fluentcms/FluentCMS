@@ -44,6 +44,12 @@ public class MappingProfile : Profile
 
         #endregion
 
+        #region Page
+
+        CreateMap<PageDetailResponse, PageUpdateRequest>();
+
+        #endregion
+
         #region File Folder
 
         CreateMap<FolderDetailResponse, FolderUpdateRequest>();
