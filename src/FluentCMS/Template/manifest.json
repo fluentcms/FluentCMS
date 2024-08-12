@@ -345,6 +345,26 @@
                     "Type": "TextHTMLEditPlugin"
                 }
             ]
+        },
+        {
+            "Name": "Blogs Plugin",
+            "Description": "",
+            "Assembly": "FluentCMS.Web.Plugins.Contents.Blogs.dll",
+            "Types": [
+                {
+                    "Name": "Blogs List",
+                    "Type": "BlogViewPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Manage Blogs",
+                    "Type": "BlogManagePlugin"
+                },
+                {
+                    "Name": "Blog Detail",
+                    "Type": "BlogDetailPlugin"
+                }
+            ]
         }
     ],
     "Pages": [
@@ -377,6 +397,38 @@
                     "Content": [
                         {
                             "Content": "<div class=\"max-w-screen-xl px-4 py-8 mx-auto lg:py-16\">\n        <div class=\"grid items-center gap-8 mb-8 lg:mb-16 lg:gap-12 lg:grid-cols-12\">\n            <div class=\"col-span-12 sm:mb-6 text-center lg:mb-0\">\n                <a href=\"https://github.com/fluentcms/FluentCMS\"\n                    class=\"inline-flex items-center justify-between px-1 py-1 pr-4 mb-6 text-sm text-gray-700 bg-gray-50 rounded-full dark:bg-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700\"\n                    role=\"alert\">\n                    <span class=\"px-3 py-1 mr-3 text-xs text-white rounded-full bg-blue-600\">New</span> <span\n                        class=\"text-sm font-medium\">See our latest progress</span>\n                    <svg class=\"w-5 h-5 ml-2\" fill=\"currentColor\" viewBox=\"0 0 20 20\"\n                        xmlns=\"http://www.w3.org/2000/svg\">\n                        <path fill-rule=\"evenodd\"\n                            d=\"M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z\"\n                            clip-rule=\"evenodd\"></path>\n                    </svg>\n                </a>\n                <h1\n                    class=\"text-center my-8 text-4xl font-extrabold leading-none tracking-tight text-gray-900 md:text-3xl xl:text-4xl dark:text-white\">\n                    Welcome to FluentCMS\n                    <div class=\"mt-6\">\n                        AI Driven ASP.NET Core Blazor Content Management System (CMS)\n                    </div>\n\n                </h1>\n                <p\n                    class=\"text-center mx-auto max-w-xl mx-auto mb-6 font-light text-gray-500 xl:mb-8 md:text-lg xl:text-xl dark:text-gray-400\">\n                    Building and managing content has never been easier. Experience the power of AI with FluentCMS.\n                </p>\n                <div class=\"flex justify-center gap-4\">\n                    <img src=\"https://img.shields.io/github/issues/fluentcms/FluentCMS\" alt=\"Issue count\">\n                    <img class=\"hidden\" src=\"https://img.shields.io/nuget/v/FluentCMS\" alt=\"Version\">\n                    <img src=\"https://img.shields.io/badge/version-1.2.3-blue\" alt=\"Version\">\n                </div>\n                <div class=\"pt-12\">\n                    <a href=\"/admin\"\n                        class=\"text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 lg:px-5 py-2 lg:py-2.5 mr-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800\">\n                        Open Administration\n                    </a>\n                </div>\n            </div>\n        </div>\n    </div>"
+                        }
+                    ]
+                },
+                {
+                    "Definition": "Blogs Plugin",
+                    "Section": "Main",
+                    "Type": "BlogContent",
+                    "Content": [
+                        {
+                            "Title": "Introduction to Responsive Web Design",
+                            "Content": "In today's digital landscape, responsive web design is crucial for reaching users on multiple devices. This post explores the principles of responsive design and offers tips for implementation.",
+                            "Description": "In this post You'll learn about Responsive web design"
+                        },
+                        {
+                            "Title": "Exploring the Power of C# LINQ",
+                            "Content": "LINQ (Language-Integrated Query) in C# is a powerful tool for querying and manipulating data. This post dives into the basics of LINQ and demonstrates its usage with practical examples.",
+                            "Description": "In this post You'll learn about LINQ"
+                        },
+                        {
+                            "Title": "Getting Started with Blazor: A Comprehensive Guide",
+                            "Content": "<p>Blazor, Microsoft's innovative web framework, empowers developers to craft interactive web applications seamlessly using C#. This tutorial provides a concise overview of Blazor's core concepts, showcasing its capability to run C# code directly in the browser through WebAssembly.</p><p><br></p><h2>Example</h2><p>Let's explore a basic example: a Blazor component that implements a simple counter.</p><div class=\"ql-code-block-container\" spellcheck=\"false\"><div class=\"ql-code-block\" data-language=\"plain\">Copy code</div><div class=\"ql-code-block\" data-language=\"plain\">@page \"/counter\"</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">&lt;h1&gt;Counter&lt;/h1&gt;</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">&lt;p&gt;Current count: @currentCount&lt;/p&gt;</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">&lt;button class=\"btn btn-primary\" @onclick=\"IncrementCount\"&gt;Click me&lt;/button&gt;</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">@code {</div><div class=\"ql-code-block\" data-language=\"plain\">    private int currentCount = 0;</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">    private void IncrementCount()</div><div class=\"ql-code-block\" data-language=\"plain\">    {</div><div class=\"ql-code-block\" data-language=\"plain\">        currentCount++;</div><div class=\"ql-code-block\" data-language=\"plain\">    }</div><div class=\"ql-code-block\" data-language=\"plain\">}</div></div><p>In this snippet, a Blazor component is defined to maintain and display a count. Upon clicking the button, the count increments without requiring a page refresh, demonstrating Blazor's efficient handling of user interactions and UI updates.</p><p><br></p><h2>Conclusion</h2><p>Blazor presents an enticing opportunity for .NET developers, whether seasoned or new to web development, to harness the power of C# in crafting dynamic web applications. With its seamless integration and intuitive features, Blazor streamlines the development process, making it an invaluable tool in the modern web development landscape.</p><p><br></p><p><br></p><p><br></p><p><br></p>",
+                            "Description": "In this post You'll learn about blazor"
+                        },
+                        {
+                            "Title": "Mastering CSS Grid for Modern Web Layouts",
+                            "Content": "<p>In the realm of web design, CSS Grid has revolutionized the way developers approach layout creation. This comprehensive guide delves into the intricacies of CSS Grid, exploring its two-dimensional grid system that allows for the creation of complex layouts with ease. We will cover the fundamental concepts such as grid containers, grid items, and grid lines, and demonstrate how to use them to build responsive and dynamic web pages.</p><p>You will learn how to define grid tracks, create grid cells, and manage grid areas. Additionally, we will explore advanced techniques like grid auto-placement, grid alignment properties, and the use of CSS Grid with media queries for responsive design. By the end of this post, you will have a solid understanding of how to leverage CSS Grid to create modern, efficient, and visually appealing web layouts.</p>",
+                            "Description": "In this post You'll learn about CSS Grid"
+                        },
+                        {
+                            "Title": "Advanced JavaScript Techniques for Efficient Web Development",
+                            "Content": "<p>JavaScript remains a cornerstone of modern web development, offering endless possibilities for enhancing user interaction and functionality. This post focuses on advanced JavaScript techniques that can significantly improve the efficiency and performance of your web applications. We will explore topics such as asynchronous programming with Promises and async/await, the use of modern JavaScript features like destructuring and template literals, and the importance of modularizing your code with ES6 modules.</p><p>Furthermore, we will delve into the world of JavaScript frameworks and libraries, discussing how they can streamline your development process and help you build scalable and maintainable applications. Whether you are a seasoned JavaScript developer or just starting out, this post will equip you with the knowledge and tools necessary to take your web development skills to the next level.</p>",
+                            "Description": "In this post You'll learn about Advanced JavaScript Techniques"
                         }
                     ]
                 },
