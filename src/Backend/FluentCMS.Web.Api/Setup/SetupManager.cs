@@ -1,10 +1,8 @@
 ﻿using FluentCMS.Web.Api.Setup.Models;
 using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace FluentCMS.Web.Api.Setup;
 
@@ -153,7 +151,8 @@ public class SetupManager : ISetupManager
             {
                 ["Main"] =
                 [
-                    new() {
+                    new()
+                    {
                         Locked = true,
                         Section = "Main",
                         Definition = new PluginDefinitionDetailResponse
@@ -167,7 +166,7 @@ public class SetupManager : ISetupManager
                                 new PluginDefinitionType
                                 {
                                     IsDefault = true,
-                                    Name="Setup",
+                                    Name = "Setup",
                                     Type = "SetupViewPlugin"
                                 }
                             ]
@@ -210,8 +209,8 @@ public class SetupManager : ISetupManager
         dynamic jsonObj = JsonConvert.DeserializeObject(json)!;
 
         // check apiKey, Secret. If it exists, dont create that again. 
-        if (jsonObj["ApiSettings"]["Key"] != string.Empty)
-            return;
+        //if (jsonObj["ApiSettings"]["Key"] != string.Empty)
+        //    return;
 
         // Creating full access api token 
         var apiToken = new ApiToken

@@ -70,22 +70,6 @@ public class PolicyAuthorizeFilter : IAsyncAuthorizationFilter
             var user = userTask.Result;
             var roles = rolesTask.Result;
 
-            if (user == null || !roles.Any())
-            {
-                context.Result = new UnauthorizedResult();
-                return;
-            }
-
-            // extract admin access roles
-            var adminRole = roles.Where(r => r.IsAdmin).FirstOrDefault();
-            if (adminRole == null)
-                return;
-
-            // check if user has admin access
-            if (user.RoleIds.Contains(adminRole.Id))
-                return;
-
-            // check if user has access to the requested area and action
             foreach (var policyAttribute in policyAttributes)
             {
                 var accessibleArea = roles.SelectMany(r => r.Policies).Where(p => p.Area == policyAttribute.Area).FirstOrDefault();
@@ -101,6 +85,27 @@ public class PolicyAuthorizeFilter : IAsyncAuthorizationFilter
                     return;
                 }
             }
+
+            if (user == null || !roles.Any())
+            {
+                context.Result = new UnauthorizedResult();
+                return;
+            }
+
+
+
+            // extract admin access roles
+            var adminRole = roles.Where(r => r.IsAdmin).FirstOrDefault();
+            if (adminRole == null)
+                return;
+
+
+            // check if user has admin access
+            if (user.RoleIds.Contains(adminRole.Id))
+                return;
+
+            // check if user has access to the requested area and action
+
         }
         else
         {
