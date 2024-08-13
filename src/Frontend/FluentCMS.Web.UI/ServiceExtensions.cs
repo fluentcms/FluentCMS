@@ -92,7 +92,7 @@ public static class ServiceExtensions
                 if (Guid.TryParse(queryParams["pluginId"], out var pluginId))
                 {
                     // TODO: Decide when show edit and when show detail view
-                    if(queryParams["viewMode"] == "detail")
+                    if (queryParams["viewMode"] == "detail")
                     {
                         viewState.Type = ViewStateType.PluginDetail;
                     }

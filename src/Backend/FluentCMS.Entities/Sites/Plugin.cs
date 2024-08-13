@@ -10,4 +10,5 @@ public class Plugin : SiteAssociatedEntity
     public int ColsLg { get; set; } = 0;
     public string Section { get; set; } = default!;
     public bool Locked { get; set; } = false;
+    public Dictionary<string, string> Settings { get; set; } = [];
 }

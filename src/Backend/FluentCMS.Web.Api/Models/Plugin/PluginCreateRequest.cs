@@ -9,4 +9,5 @@ public class PluginCreateRequest
     public int ColsMd { get; set; } = 0;
     public int ColsLg { get; set; } = 0;
     public string Section { get; set; } = default!;
+    public Dictionary<string, string> Settings { get; set; } = [];
 }
