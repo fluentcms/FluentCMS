@@ -1,0 +1,12 @@
+@if (Item != null)
+{
+    <div>
+        <h1 class="text-3xl font-bold mb-4">@Item.Title</h1>
+        <p class="text-lg mb-4">@Item.Description</p>
+
+        <div class="">
+            @((MarkupString)Item.Content)
+        </div>
+        
+    </div>
+}

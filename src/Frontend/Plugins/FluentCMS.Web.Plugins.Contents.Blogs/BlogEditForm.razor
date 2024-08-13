@@ -1,0 +1,24 @@
+@if (Model != null)
+{
+    <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="@FormName" Enhance>
+        <DataAnnotationsValidator />
+        <Spacer />
+        <Grid GutterX="GridGutter.Large">
+            <FormHiddenInput @bind-Value="@Model.Id" />
+            <FormInput @bind-Value="Model.Title" Placeholder="Enter blog title" Label="Title" />
+            <FormTextarea Placeholder="Enter blog description" Rows="5" @bind-Value="@Model!.Description" Label="Description" />
+            <FormRichTextEditor Placeholder="Enter blog Content" @bind-Value="@Model!.Content" Label="Content" />
+            
+            <GridItem Small="GridItemColumn.Twelve">
+                <Stack>
+                    <Button Color="Color.Primary" Type="ButtonType.Submit">
+                        Submit
+                    </Button>
+                    <Button @onclick="HandleCancel">
+                        Cancel
+                    </Button>
+                </Stack>
+            </GridItem>
+        </Grid>
+    </EditForm>
+}
