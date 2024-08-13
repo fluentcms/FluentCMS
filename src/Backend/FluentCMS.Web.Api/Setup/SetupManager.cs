@@ -1,5 +1,7 @@
 ﻿using FluentCMS.Web.Api.Setup.Models;
 using Microsoft.Extensions.Hosting;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -102,7 +104,7 @@ public class SetupManager : ISetupManager
         _setupRequest = request;
 
 
-        await InitializeDatabase();
+        // await InitializeDatabase();
         await InitializeApiToken();
         await InitializeSuperAdmin();
 
@@ -114,7 +116,7 @@ public class SetupManager : ISetupManager
         var jsonSerializerOptions = new JsonSerializerOptions { };
         jsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
 
-        _adminTemplate = await JsonSerializer.DeserializeAsync<AdminTemplate>(System.IO.File.OpenRead(manifestFile), jsonSerializerOptions) ??
+        _adminTemplate = await System.Text.Json.JsonSerializer.DeserializeAsync<AdminTemplate>(System.IO.File.OpenRead(manifestFile), jsonSerializerOptions) ??
             throw new AppException("Failed to deserialize manifest.json");
 
         _globalSettings = _adminTemplate.GlobalSettings;
@@ -203,6 +205,14 @@ public class SetupManager : ISetupManager
 
     private async Task InitializeApiToken()
     {
+        var appSettingsFilePath = Path.Combine("appsettings.json");
+        var json = System.IO.File.ReadAllText(appSettingsFilePath);
+        dynamic jsonObj = JsonConvert.DeserializeObject(json)!;
+
+        // check apiKey, Secret. If it exists, dont create that again. 
+        if (jsonObj["ApiSettings"]["Key"] != string.Empty)
+            return;
+
         // Creating full access api token 
         var apiToken = new ApiToken
         {
@@ -217,33 +227,11 @@ public class SetupManager : ISetupManager
 
         // save the api token result (key and secret) to appsettings.json
         // so that the user can use it to access the API
-        var appSettingsFilePath = Path.Combine("appsettings.json");
-        var json = System.IO.File.ReadAllText(appSettingsFilePath);
 
-        using (JsonDocument document = JsonDocument.Parse(json))
-        {
-            var jsonObject = document.RootElement.Clone().GetRawText();
-            var updatedConfig = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonObject) ?? [];
+        jsonObj!["ApiSettings"]["Key"] = apiToken.Key + ":" + apiToken.Secret;
 
-            // Update admin configuration
-            if (!updatedConfig.ContainsKey("ApiSettings"))
-            {
-                updatedConfig["ApiSettings"] = new Dictionary<string, string>();
-            }
-            var apiSettings = updatedConfig["ApiSettings"] as Dictionary<string, string> ?? [];
-            apiSettings["Key"] = apiToken.Key + ":" + apiToken.Secret;
-
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                Converters = { new JsonStringEnumConverter() }
-            };
-
-            var output = JsonSerializer.Serialize(updatedConfig, options);
-            System.IO.File.WriteAllText(appSettingsFilePath, output);
-        }
-
-
+        var output = Newtonsoft.Json.JsonConvert.SerializeObject(jsonObj, Formatting.Indented);
+        System.IO.File.WriteAllText(appSettingsFilePath, output);
     }
 
     private async Task InitializeSuperAdmin()

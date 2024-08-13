@@ -53,7 +53,7 @@ public static class ApiClientServiceExtensions
                 {
                     var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient(HTTP_CLIENT_API_NAME);
 
-                    var apiSettings = sp.GetRequiredService<IOptions<ApiSettings>>()?.Value;
+                    var apiSettings = sp.GetService<IOptionsSnapshot<ApiSettings>>()?.Value;
                     var apiKey = apiSettings?.Key ?? "";
                     httpClient.DefaultRequestHeaders.Add("X-API-AUTH", apiKey);
 
