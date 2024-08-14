@@ -222,7 +222,8 @@ public class SetupManager : ISetupManager
         if (detailLayoutId == Guid.Empty || detailLayoutId == null)
             detailLayoutId = _defaultLayoutId;
 
-        var site = new Site {
+        var site = new Site
+        {
             Name = _adminTemplate.Site.Name,
             Description = _adminTemplate.Site.Description,
             Urls = [_setupRequest.AdminDomain],
