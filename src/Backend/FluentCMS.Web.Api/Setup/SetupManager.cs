@@ -6,7 +6,6 @@ using Microsoft.Extensions.Hosting;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization.Metadata;
 
 namespace FluentCMS.Web.Api.Setup;
 
@@ -26,7 +25,6 @@ public class SetupManager : ISetupManager
     private readonly IPluginContentService _pluginContentService;
     private readonly IContentTypeService _contentTypeService;
     private readonly IContentService _contentService;
-    private readonly IConfigManager _configManager;
 
     public const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Template";
 
@@ -53,7 +51,6 @@ public class SetupManager : ISetupManager
         IPluginContentService pluginContentService,
         IContentTypeService contentTypeService,
         IContentService contentService,
-        IConfigManager configManager,
         IHostEnvironment env)
     {
         if (env == null)
@@ -71,7 +68,6 @@ public class SetupManager : ISetupManager
         _pluginContentService = pluginContentService;
         _contentTypeService = contentTypeService;
         _contentService = contentService;
-        _configManager = configManager;
     }
 
     public async Task<bool> IsInitialized()
@@ -181,22 +177,6 @@ public class SetupManager : ISetupManager
     }
 
     #region Private
-
-    private async Task InitializeDatabase()
-    {
-        var apiServerConfig = new ApiServerConfig
-        {
-            Database = new ApiServerConfig.DatabaseConfig
-            {
-                Provider = "LiteDB",
-                ConnectionString = "./LiteDb.db"
-            }
-        };
-
-        _configManager.UpdateApiServerConfig(apiServerConfig);
-
-        await Task.CompletedTask;
-    }
 
     private async Task InitializeApiToken(string host)
     {

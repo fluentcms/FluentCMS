@@ -31,8 +31,6 @@ public static class ApiClientServiceExtensions
                 var scopedProvider = scope.ServiceProvider;
                 var apiSettings = scopedProvider.GetRequiredService<IOptionsSnapshot<ApiSettings>>()?.Value;
 
-                //var apiSettings = sp.GetService<IOptionsSnapshot<ApiSettings>>()?.Value;
-
                 var apiUrl = apiSettings?.Url ?? "http://localhost:5000";
 
                 client.BaseAddress = new Uri(apiUrl);
