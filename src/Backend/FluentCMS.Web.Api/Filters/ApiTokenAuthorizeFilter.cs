@@ -1,11 +1,9 @@
-﻿using Microsoft.AspNetCore.Components.RenderTree;
-using Microsoft.AspNetCore.Mvc.Filters;
+﻿using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
-using System.Linq;
 
 namespace FluentCMS.Web.Api.Filters;
 
-public class PolicyAuthorizeFilter : IAsyncAuthorizationFilter
+public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
 {
     private const string _apiTokenHearKey = "X-API-AUTH";
     private const string _anyPolicyArea = "Global";
