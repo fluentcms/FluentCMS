@@ -26,14 +26,19 @@ public static class ApiClientServiceExtensions
 
         services.AddHttpClient(HTTP_CLIENT_API_NAME, (sp, client) =>
         {
-            var apiSettings = sp.GetRequiredService<IOptions<ApiSettings>>()?.Value;
+            using (var scope = sp.CreateScope())
+            {
+                var scopedProvider = scope.ServiceProvider;
+                var apiSettings = scopedProvider.GetRequiredService<IOptionsSnapshot<ApiSettings>>()?.Value;
 
-            var apiUrl = apiSettings?.Url ?? "http://localhost:5000";
+                //var apiSettings = sp.GetService<IOptionsSnapshot<ApiSettings>>()?.Value;
 
-            client.BaseAddress = new Uri(apiUrl);
-            client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            
+                var apiUrl = apiSettings?.Url ?? "http://localhost:5000";
+
+                client.BaseAddress = new Uri(apiUrl);
+                client.DefaultRequestHeaders.Accept.Clear();
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            }
         });
 
         // find all interfaces that inherit from IApiClient

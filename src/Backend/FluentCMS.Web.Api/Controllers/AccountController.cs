@@ -5,7 +5,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     public const string AREA = "Account Management";
 
     [HttpPost]
-    [PolicyAll]
+    [AnyPolicy]
     public async Task<IApiResult<UserDetailResponse>> Register([FromBody] UserRegisterRequest request, CancellationToken cancellationToken = default)
     {
         var user = mapper.Map<User>(request);
@@ -15,7 +15,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     }
 
     [HttpPost]
-    [PolicyAll]
+    [AnyPolicy]
     public async Task<IApiResult<UserLoginResponse>> Authenticate([FromBody] UserLoginRequest request, CancellationToken cancellationToken = default)
     {
         var user = await userService.Authenticate(request.Username, request.Password, cancellationToken);
@@ -38,7 +38,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     }
 
     [HttpPost]
-    [PolicyAll]
+    [AnyPolicy]
     public async Task<IApiResult<bool>> SendPasswordResetToken([FromBody] UserSendPasswordResetTokenRequest request, CancellationToken cancellationToken = default)
     {
         var result = await userService.SendPasswordResetToken(request.Email, cancellationToken);
@@ -46,7 +46,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     }
 
     [HttpPost]
-    [PolicyAll]
+    [AnyPolicy]
     public async Task<IApiResult<bool>> ValidatePasswordResetToken([FromBody] UserValidatePasswordResetTokenRequest request, CancellationToken cancellationToken = default)
     {
         _ = await userService.ChangePasswordByResetToken(request.Email, request.Token, request.NewPassword, cancellationToken);

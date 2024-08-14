@@ -2,12 +2,12 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api;
 
-public class PolicyAllAttribute : PolicyAttribute, IAllowAnonymous
+public class AnyPolicyAttribute : PolicyAttribute, IAllowAnonymous
 {
     public const string AREA = "Global";
     public const string ACTION = "All";
 
-    public PolicyAllAttribute() : base(AREA, ACTION)
+    public AnyPolicyAttribute() : base(AREA, ACTION)
     {
     }
 }

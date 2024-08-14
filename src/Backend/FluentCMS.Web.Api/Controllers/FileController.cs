@@ -45,7 +45,7 @@ public class FileController(IFileService fileService, IMapper mapper) : BaseGlob
     }
 
     [HttpGet("{id}")]
-    [PolicyAll]
+    [AnyPolicy]
     public async Task<IResult> Download([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var file = await fileService.GetById(id, cancellationToken);

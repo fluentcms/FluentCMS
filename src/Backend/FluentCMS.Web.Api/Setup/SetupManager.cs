@@ -1,18 +1,14 @@
 ﻿using FluentCMS.Web.Api.Setup.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.Hosting;
-using Newtonsoft.Json;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization.Metadata;
 
 namespace FluentCMS.Web.Api.Setup;
-
-public interface ISetupManager
-{
-    Task<PageFullDetailResponse> GetSetupPage();
-    Task<bool> IsInitialized();
-    Task Reset();
-    Task<bool> Start(SetupRequest request);
-}
 
 public class SetupManager : ISetupManager
 {
@@ -87,7 +83,7 @@ public class SetupManager : ISetupManager
         return _initialized.Value;
     }
 
-    public async Task<bool> Start(SetupRequest request)
+    public async Task<bool> Start(SetupRequest request, string host)
     {
         // Check if this is the first time setup or not
         if (_initialized.HasValue && _initialized.Value)
@@ -103,7 +99,7 @@ public class SetupManager : ISetupManager
 
 
         // await InitializeDatabase();
-        await InitializeApiToken();
+        await InitializeApiToken(host);
         await InitializeSuperAdmin();
 
         var manifestFile = Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "manifest.json");
@@ -202,17 +198,25 @@ public class SetupManager : ISetupManager
         await Task.CompletedTask;
     }
 
-    private async Task InitializeApiToken()
+    private async Task InitializeApiToken(string host)
     {
         var appSettingsFilePath = Path.Combine("appsettings.json");
-        var json = System.IO.File.ReadAllText(appSettingsFilePath);
-        dynamic jsonObj = JsonConvert.DeserializeObject(json)!;
-
-        // check apiKey, Secret. If it exists, dont create that again. 
-        //if (jsonObj["ApiSettings"]["Key"] != string.Empty)
-        //    return;
+        var text = System.IO.File.ReadAllText(appSettingsFilePath);
+        var jsonNode = JsonNode.Parse(text)!;
 
         // Creating full access api token 
+        ApiToken apiToken = await CreateDefaultApiToken();
+
+        // set api token to appsettings.json
+        jsonNode!["ApiSettings"]!["Key"] = apiToken.Key + ":" + apiToken.Secret;
+        jsonNode!["ApiSettings"]!["Url"] = host;
+
+        var output = JsonSerializer.Serialize(jsonNode);
+        System.IO.File.WriteAllText(appSettingsFilePath, output);
+    }
+
+    private async Task<ApiToken> CreateDefaultApiToken()
+    {
         var apiToken = new ApiToken
         {
             Name = "Full Access",
@@ -223,14 +227,7 @@ public class SetupManager : ISetupManager
         };
 
         await _apiTokenService.Create(apiToken);
-
-        // save the api token result (key and secret) to appsettings.json
-        // so that the user can use it to access the API
-
-        jsonObj!["ApiSettings"]["Key"] = apiToken.Key + ":" + apiToken.Secret;
-
-        var output = Newtonsoft.Json.JsonConvert.SerializeObject(jsonObj, Formatting.Indented);
-        System.IO.File.WriteAllText(appSettingsFilePath, output);
+        return apiToken;
     }
 
     private async Task InitializeSuperAdmin()

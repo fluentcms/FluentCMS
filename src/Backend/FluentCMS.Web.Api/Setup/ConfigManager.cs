@@ -5,23 +5,6 @@ using System.Text.Json;
 
 namespace FluentCMS.Web.Api;
 
-public class ApiServerConfig
-{
-    public DatabaseConfig Database { get; set; } = default!;
-    public class DatabaseConfig
-    {
-        public string ConnectionString { get; set; } = default!;
-        public string Provider { get; set; } = default!;
-    }
-}
-
-public interface IConfigManager
-{
-    public ApiServerConfig GetApiServerConfig();
-    public void UpdateApiServerConfig(ApiServerConfig apiServerConfig);
-    public bool IsConfigured();
-}
-
 public class ConfigManager : IConfigManager
 {
     private const string _settingFileName = "appsettings.json";

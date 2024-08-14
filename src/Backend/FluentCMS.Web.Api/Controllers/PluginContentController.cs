@@ -7,7 +7,7 @@ public class PluginContentController(IPluginContentService pluginContentService,
     public const string AREA = "Plugin Content Management";
 
     [HttpGet("{pluginId}")]
-    [PolicyAll]
+    [AnyPolicy]
     public async Task<IApiPagingResult<PluginContentDetailResponse>> GetAll([FromRoute] string pluginContentTypeName, [FromRoute, Required] Guid pluginId, CancellationToken cancellationToken = default)
     {
         var contents = await pluginContentService.GetByPluginId(pluginId, cancellationToken);
@@ -16,7 +16,7 @@ public class PluginContentController(IPluginContentService pluginContentService,
     }
 
     [HttpGet("{pluginId}/{id}")]
-    [PolicyAll]
+    [AnyPolicy]
     public async Task<IApiResult<PluginContentDetailResponse>> GetById([FromRoute] string pluginContentTypeName, [FromRoute, Required] Guid pluginId, [FromRoute, Required] Guid id, CancellationToken cancellationToken = default)
     {
         var pluginContent = await pluginContentService.GetById(pluginContentTypeName, id, cancellationToken);
@@ -25,7 +25,7 @@ public class PluginContentController(IPluginContentService pluginContentService,
     }
 
     [HttpPost("{pluginId}")]
-    [PolicyAll]
+    [AnyPolicy]
     public async Task<IApiResult<PluginContentDetailResponse>> Create([FromRoute] string pluginContentTypeName, [FromRoute, Required] Guid pluginId, [FromBody] Dictionary<string, object?> request, CancellationToken cancellationToken = default)
     {
         var pluginContent = new PluginContent
@@ -43,7 +43,7 @@ public class PluginContentController(IPluginContentService pluginContentService,
     }
 
     [HttpPut("{pluginId}/{id}")]
-    [PolicyAll]
+    [AnyPolicy]
     public async Task<IApiResult<PluginContentDetailResponse>> Update([FromRoute] string pluginContentTypeName, [FromRoute, Required] Guid pluginId, [FromRoute, Required] Guid id, [FromBody] Dictionary<string, object?> request, CancellationToken cancellationToken = default)
     {
         var pluginContent = new PluginContent
@@ -62,7 +62,7 @@ public class PluginContentController(IPluginContentService pluginContentService,
     }
 
     [HttpDelete("{pluginId}/{id}")]
-    [PolicyAll]
+    [AnyPolicy]
     public async Task<IApiResult<bool>> Delete([FromRoute] string pluginContentTypeName, [FromRoute, Required] Guid pluginId, [FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         await pluginContentService.Delete(pluginContentTypeName, id, cancellationToken);
