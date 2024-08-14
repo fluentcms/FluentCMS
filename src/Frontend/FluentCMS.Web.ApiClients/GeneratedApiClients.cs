@@ -9823,11 +9823,14 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string? Description { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("token")]
-        public string? Token { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        public string? Key { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("expiredAt")]
-        public System.DateTime? ExpiredAt { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("secret")]
+        public string? Secret { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expireAt")]
+        public System.DateTime? ExpireAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("enabled")]
         public bool Enabled { get; set; } = default!;
@@ -9927,15 +9930,18 @@ namespace FluentCMS.Web.ApiClients
         [System.ComponentModel.DataAnnotations.Required]
         public string Name { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("description")]
-        public string? Description { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("enabled")]
         public bool Enabled { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("policies")]
         [System.ComponentModel.DataAnnotations.Required]
         public System.Collections.Generic.ICollection<Policy> Policies { get; set; } = new System.Collections.ObjectModel.Collection<Policy>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+        public string? Description { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expireAt")]
+        public System.DateTime? ExpireAt { get; set; } = default!;
 
     }
 
