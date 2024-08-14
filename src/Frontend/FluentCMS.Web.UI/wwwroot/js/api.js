@@ -11,46 +11,55 @@ export async function createPlugin({definitionId, sectionName, order}) {
         'CreatePluginModel.Section': sectionName,
     }).then(reloadIframe)
 
-    await updatePlugins()
+    await updatePluginOrders()
 }
 
 export async function deletePlugin(id) {
     await request('DeletePluginForm', {
         'DeletePluginModel': id,
     }).then(reloadIframe)
+
+    await updatePluginOrders()
 }
 
-export async function updatePlugins() {
-    const sections = document.querySelector('.f-page-editor-iframe').contentDocument.querySelectorAll('.f-section')
-
-    console.log({sections})
+export async function updatePlugin(pluginContainerEl, sectionEl) {
     let result = {}
 
-    result[`UpdatePluginsModel.Submitted`] = true
+    const plugin = pluginContainerEl
+    const pluginId = plugin.dataset.id
+    const section = sectionEl.dataset.name
+    const order = +plugin.dataset.order
 
-    let index = 0;
-    sections.forEach(el => {
-        let order = 0;
-        el.querySelectorAll('.f-plugin-container').forEach(plugin => {
-            const pluginId = plugin.dataset.id
-            const section = el.dataset.name
+    const cols = plugin.dataset.cols
+    const colsMd = plugin.dataset.colsMd
+    const colsLg = plugin.dataset.colsLg
 
-            const cols = plugin.dataset.cols
-            const colsMd = plugin.dataset.colsMd
-            const colsLg = plugin.dataset.colsLg
+    result[`UpdatePluginModel.Id`] = pluginId
+    result[`UpdatePluginModel.Section`] = section
+    result[`UpdatePluginModel.Order`] = order
+    result[`UpdatePluginModel.Cols`] = cols
+    result[`UpdatePluginModel.ColsMd`] = colsMd
+    result[`UpdatePluginModel.ColsLg`] = colsLg
+           
+    await request('UpdatePluginForm', result)
+}
 
-            
-            result[`UpdatePluginsModel.Plugins[${index}].Id`] = pluginId
-            result[`UpdatePluginsModel.Plugins[${index}].Id`] = pluginId
-            result[`UpdatePluginsModel.Plugins[${index}].Section`] = section
-            result[`UpdatePluginsModel.Plugins[${index}].Order`] = order++
-            result[`UpdatePluginsModel.Plugins[${index}].Cols`] = cols
-            result[`UpdatePluginsModel.Plugins[${index}].ColsMd`] = colsMd
-            result[`UpdatePluginsModel.Plugins[${index}].ColsLg`] = colsLg
-                
-            index++;
+
+export async function updatePluginOrders() {
+    setTimeout(async () => {
+        const sections = document.querySelector('.f-page-editor-iframe').contentDocument.querySelectorAll('.f-section')
+
+        let result = {}
+
+        let index = 0;
+        sections.forEach(el => {
+            el.querySelectorAll('.f-plugin-container').forEach(plugin => {
+                const pluginId = plugin.dataset.id
+                result[`UpdatePluginOrdersModel.Plugins[${index}]`] = pluginId
+                index++;
+            })
         })
-    })
-    
-    await request('UpdatePluginsForm', result)
+        
+        await request('UpdatePluginOrdersForm', result)
+    }, 200)
 }

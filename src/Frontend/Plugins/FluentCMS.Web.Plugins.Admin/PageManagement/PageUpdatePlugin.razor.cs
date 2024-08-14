@@ -31,18 +31,20 @@ public partial class PageUpdatePlugin
 
         Pages = pages.ToList();
 
-        PageOptions = new List<SelectOption> {
+        PageOptions = [
             new SelectOption {
                 Title = "(none)",
                 Value = Guid.Empty
             }
-        };
+        ];
 
-        foreach (var page in Pages) {
+        foreach (var page in Pages)
+        {
             PageOptions.Add(
-                new SelectOption {
-                Title = page.Title,
-                Value = page.Id
+                new SelectOption
+                {
+                    Title = page.Title,
+                    Value = page.Id
                 }
             );
         }
@@ -55,16 +57,18 @@ public partial class PageUpdatePlugin
             var layoutsResponse = await ApiClient.Layout.GetAllAsync();
             Layouts = layoutsResponse?.Data?.ToList() ?? [];
 
-            LayoutOptions = new List<SelectOption> {
+            LayoutOptions = [
                 new SelectOption {
                     Title = "(default)",
                     Value = Guid.Empty
                 }
-            };
+            ];
 
-            foreach (var layout in Layouts) {
+            foreach (var layout in Layouts)
+            {
                 LayoutOptions.Add(
-                    new SelectOption {
+                    new SelectOption
+                    {
                         Title = layout.Name,
                         Value = layout.Id
                     }
