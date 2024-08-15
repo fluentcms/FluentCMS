@@ -355,6 +355,22 @@
             ]
         },
         {
+            "Name": "GoogleMap Plugin",
+            "Description": "",
+            "Assembly": "FluentCMS.Web.Plugins.Contents.GoogleMap.dll",
+            "Types": [
+                {
+                    "Name": "GoogleMap View",
+                    "Type": "GoogleMapViewPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "GoogleMap Settings",
+                    "Type": "GoogleMapSettingsPlugin"
+                }
+            ]
+        },
+        {
             "Name": "TextHTML Plugin",
             "Description": "",
             "Assembly": "FluentCMS.Web.Plugins.Contents.TextHTML.dll",
@@ -492,6 +508,15 @@
                     "Definition": "ContactUs Plugin",
                     "Section": "BottomGray",
                     "Type": "ContactUsContent"
+                },
+                {
+                    "Definition": "GoogleMap Plugin",
+                    "Section": "BottomGray",
+                    "Settings": {
+                        "ApiKey": "TODO: Generate ApiKey for FluentCMS",
+                        "Latitude": "43.651070",
+                        "Longitude": "-79.347015"
+                    }
                 }
             ]
         },

@@ -15,6 +15,7 @@
         <ProjectReference Include="..\Frontend\FluentCMS.Web.UI\FluentCMS.Web.UI.csproj" />
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.TextHTML\FluentCMS.Web.Plugins.Contents.TextHTML.csproj" />
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.ContactUs\FluentCMS.Web.Plugins.Contents.ContactUs.csproj" />
+        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.GoogleMap\FluentCMS.Web.Plugins.Contents.GoogleMap.csproj" />
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin\FluentCMS.Web.Plugins.Admin.csproj" />
     </ItemGroup>
 	<ItemGroup>
