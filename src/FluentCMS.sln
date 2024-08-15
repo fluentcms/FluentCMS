@@ -41,6 +41,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Web.Plugins.Conte
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Web.Plugins.Contents.ContactUs", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.ContactUs\FluentCMS.Web.Plugins.Contents.ContactUs.csproj", "{31656D44-E80E-4B48-8414-B001029BFA2A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Web.Plugins.Contents.GoogleMap", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.GoogleMap\FluentCMS.Web.Plugins.Contents.GoogleMap.csproj", "{7C8FA6E4-8C61-4A6C-8FEB-74D5CD479570}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -107,6 +109,10 @@ Global
 		{31656D44-E80E-4B48-8414-B001029BFA2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{31656D44-E80E-4B48-8414-B001029BFA2A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{31656D44-E80E-4B48-8414-B001029BFA2A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7C8FA6E4-8C61-4A6C-8FEB-74D5CD479570}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7C8FA6E4-8C61-4A6C-8FEB-74D5CD479570}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7C8FA6E4-8C61-4A6C-8FEB-74D5CD479570}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7C8FA6E4-8C61-4A6C-8FEB-74D5CD479570}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -127,6 +133,7 @@ Global
 		{70B5742E-C249-4B51-985C-2B4B7BDAB489} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
 		{818F8CD0-5218-4480-A541-BD9D59416CDE} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
 		{31656D44-E80E-4B48-8414-B001029BFA2A} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
+		{7C8FA6E4-8C61-4A6C-8FEB-74D5CD479570} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2E9F4217-7A58-48A4-9850-84CD0CDA31DA}

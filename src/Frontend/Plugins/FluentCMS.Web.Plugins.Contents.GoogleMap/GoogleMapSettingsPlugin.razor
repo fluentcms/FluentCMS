@@ -1,0 +1,32 @@
+@rendermode InteractiveServer
+
+<div class="m-4">
+    <Typography Size="TextSize.H5">Edit Google map settings</Typography>            
+    <Spacer />
+    <Card>
+        <CardBody>
+            @if (Model != null)
+            {
+                <EditForm Model="@Model" OnSubmit="OnSubmit" FormName="@PLUGIN_SETTINGS_FORM" Enhance>
+                    <DataAnnotationsValidator />
+                    <Spacer />
+                    <Grid GutterX="GridGutter.Large">
+                        <FormInput Placeholder="Enter Maps ApiKey" @bind-Value="@Model!.ApiKey" Label="Api key" />
+                        <FormInput Placeholder="Enter Latitude" @bind-Value="@Model!.Latitude" Label="Latitude" />
+                        <FormInput Placeholder="Enter Longitude" @bind-Value="@Model!.Longitude" Label="Longitude" />
+                        <GridItem Small="GridItemColumn.Twelve">
+                            <Stack>
+                                <Button Color="Color.Primary" Type="ButtonType.Submit">
+                                    Submit
+                                </Button>
+                                <Button Href="@GetBackUrl()">
+                                    Cancel
+                                </Button>
+                            </Stack>
+                        </GridItem>
+                    </Grid>
+                </EditForm>
+            }
+        </CardBody>
+    </Card>
+</div>
