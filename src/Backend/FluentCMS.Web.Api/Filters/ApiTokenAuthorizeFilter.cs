@@ -14,7 +14,7 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
         // get all PolicyAttributes for the current method
         var actionPolicies = context.ActionDescriptor.EndpointMetadata.OfType<PolicyAttribute>();
 
-        // if no policy attributes are found or AnyPolicy is used, return
+        // if no policy attributes are found, return
         if (!actionPolicies.Any())
             return;
 
