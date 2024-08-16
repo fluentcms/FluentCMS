@@ -18,7 +18,7 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
         if (!actionPolicies.Any())
             return;
 
-        //if the access is denied, maybe it is for setup proccess access! Let,s do it. 
+        //if the access is denied, maybe it is for setup process access! Let,s do it. 
         var isValidToSetup = await CheckValidityToSetup(context, actionPolicies);
         if (isValidToSetup)
             return;
@@ -35,7 +35,7 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
 
     private static async Task<bool> CheckValidityToSetup(AuthorizationFilterContext context, IEnumerable<PolicyAttribute> actionPolicies)
     {
-        // the below Areas(Controllers+Actions) are necessary to start initial Setup Proccess.
+        // the below Areas(Controllers+Actions) are necessary to start initial Setup Process.
         // so we have to let them to be executed, only in Uninitialized State.
         // this way, we wont have unsecured EndPoint in general. 
         var validAreas = new Dictionary<string, string[]>
@@ -81,14 +81,6 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
 
         if (token.Policies.Any(x => x.Area == _anyPolicyArea && x.Actions.Contains(_anyPolicyAction)))
             return true;
-
-        // Roles
-        var roleService = context.HttpContext.RequestServices.GetRequiredService<IRoleService>();
-        var roles = await roleService.GetAll();
-
-        if (roles == null || !roles.Any())
-            return false;
-
 
         foreach (var policy in actionPolicies)
         {
