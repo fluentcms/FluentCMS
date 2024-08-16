@@ -15,8 +15,14 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
         var actionPolicies = context.ActionDescriptor.EndpointMetadata.OfType<PolicyAttribute>();
 
         // if no policy attributes are found or AnyPolicy is used, return
-        if (!actionPolicies.Any() || actionPolicies.Any(x => x is AnyPolicyAttribute))
+        if (!actionPolicies.Any())
             return;
+
+        //if the access is denied, maybe it is for setup proccess access! Let,s do it. 
+        var isValidToSetup = await CheckValidityToSetup(context, actionPolicies);
+        if (isValidToSetup)
+            return;
+
 
         // Check API Token
         var isApiTokenValid = await ValidateApiToken(context, actionPolicies);
@@ -25,46 +31,32 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
             context.Result = new ForbidResult();
             return;
         }
-
-        // Checked User And Roles
-        var isUserAuthorized = await AuthorizeUser(context);
-        if (!isUserAuthorized)
-        {
-            context.Result = new UnauthorizedResult();
-            return;
-        }
     }
 
-    private async Task<bool> AuthorizeUser(AuthorizationFilterContext context)
+    private static async Task<bool> CheckValidityToSetup(AuthorizationFilterContext context, IEnumerable<PolicyAttribute> actionPolicies)
     {
-        var authContext = context.HttpContext.RequestServices.GetRequiredService<IAuthContext>();
+        // the below Areas(Controllers+Actions) are necessary to start initial Setup Proccess.
+        // so we have to let them to be executed, only in Uninitialized State.
+        // this way, we wont have unsecured EndPoint in general. 
+        var validAreas = new Dictionary<string, string[]>
+        {
+            { "Setup Management", ["Read", "Create"] },
+            { "Page Management", ["Read"] },
+        };
 
-        // if user is not authenticated, return
-        if (!authContext.IsAuthenticated)
-            return false;
+        if (actionPolicies.Any(x => validAreas.ContainsKey(x.Area) && validAreas[x.Area].Contains(x.Action)))
+        {
+            var globalSettingsService = context.HttpContext.RequestServices.GetRequiredService<IGlobalSettingsService>();
+            var userService = context.HttpContext.RequestServices.GetRequiredService<IUserService>();
+            var isInitialized = globalSettingsService.Get() != null && (await userService.Any());
 
-        var userService = context.HttpContext.RequestServices.GetRequiredService<IUserService>();
-        var user = await userService.GetById(authContext.UserId);
+            return !isInitialized;
+        }
 
-        if (user == null)
-            return false;
-
-
-        var roleService = context.HttpContext.RequestServices.GetRequiredService<IRoleService>();
-        var roles = await roleService.GetAll();
-
-        // extract admin access roles
-        //var adminRole = roles.Where(r => r.IsAdmin).FirstOrDefault();
-        //if (adminRole == null)
-        //    return;
-
-
-        // check if user has admin access
-        //if (user.RoleIds.Contains(adminRole.Id))
-        //    return true;
-
-        return true;
+        return false;
     }
+
+
 
     private async Task<bool> ValidateApiToken(AuthorizationFilterContext context, IEnumerable<PolicyAttribute> actionPolicies)
     {
@@ -109,7 +101,6 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
                 return false;
         }
 
-        //return token != null;
         return true;
     }
 }

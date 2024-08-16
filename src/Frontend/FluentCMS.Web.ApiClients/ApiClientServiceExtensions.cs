@@ -1,5 +1,6 @@
 ﻿using FluentCMS.Web.ApiClients;
 using FluentCMS.Web.ApiClients.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
@@ -26,17 +27,16 @@ public static class ApiClientServiceExtensions
 
         services.AddHttpClient(HTTP_CLIENT_API_NAME, (sp, client) =>
         {
-            using (var scope = sp.CreateScope())
-            {
-                var scopedProvider = scope.ServiceProvider;
-                var apiSettings = scopedProvider.GetRequiredService<IOptionsSnapshot<ApiSettings>>()?.Value;
+            using var scope = sp.CreateScope();
+            var apiSettings = scope.ServiceProvider.GetService<IOptions<ApiSettings>>()?.Value;
 
-                var apiUrl = apiSettings?.Url ?? "http://localhost:5000";
+            var apiUrl = apiSettings?.Url;
+            if (string.IsNullOrWhiteSpace(apiUrl))
+                throw new NullReferenceException("AppSettings.Url is null!");
 
-                client.BaseAddress = new Uri(apiUrl);
-                client.DefaultRequestHeaders.Accept.Clear();
-                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            }
+            client.BaseAddress = new Uri(apiUrl);
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         });
 
         // find all interfaces that inherit from IApiClient
@@ -56,7 +56,7 @@ public static class ApiClientServiceExtensions
                 {
                     var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient(HTTP_CLIENT_API_NAME);
 
-                    var apiSettings = sp.GetService<IOptionsSnapshot<ApiSettings>>()?.Value;
+                    var apiSettings = sp.GetService<IOptionsMonitor<ApiSettings>>()?.CurrentValue;
                     var apiKey = apiSettings?.Key ?? "";
                     httpClient.DefaultRequestHeaders.Add("X-API-AUTH", apiKey);
 
@@ -73,10 +73,4 @@ public static class ApiClientServiceExtensions
         }
         return services;
     }
-}
-
-public class ApiSettings
-{
-    public string Url { get; set; } = default!;
-    public string Key { get; set; } = default!;
 }

@@ -1,5 +1,6 @@
 ﻿namespace FluentCMS.Web.Api.Controllers;
 
+[JwtAuthorize]
 public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "API Token Management";

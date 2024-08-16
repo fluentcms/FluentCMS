@@ -1,7 +1,4 @@
 ﻿using FluentCMS.Web.Api.Setup.Models;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Extensions;
-using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.Hosting;
 using System.IO;
 using System.Text.Json;
@@ -79,7 +76,7 @@ public class SetupManager : ISetupManager
         return _initialized.Value;
     }
 
-    public async Task<bool> Start(SetupRequest request, string host)
+    public async Task<bool> Start(SetupRequest request)
     {
         // Check if this is the first time setup or not
         if (_initialized.HasValue && _initialized.Value)
@@ -95,7 +92,7 @@ public class SetupManager : ISetupManager
 
 
         // await InitializeDatabase();
-        await InitializeApiToken(host);
+        await InitializeApiToken();
         await InitializeSuperAdmin();
 
         var manifestFile = Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "manifest.json");
@@ -178,7 +175,7 @@ public class SetupManager : ISetupManager
 
     #region Private
 
-    private async Task InitializeApiToken(string host)
+    private async Task InitializeApiToken()
     {
         var appSettingsFilePath = Path.Combine("appsettings.json");
         var text = System.IO.File.ReadAllText(appSettingsFilePath);
@@ -189,9 +186,8 @@ public class SetupManager : ISetupManager
 
         // set api token to appsettings.json
         jsonNode!["ApiSettings"]!["Key"] = apiToken.Key + ":" + apiToken.Secret;
-        jsonNode!["ApiSettings"]!["Url"] = host;
 
-        var output = JsonSerializer.Serialize(jsonNode);
+        var output = JsonSerializer.Serialize(jsonNode, new JsonSerializerOptions() { WriteIndented = true });
         System.IO.File.WriteAllText(appSettingsFilePath, output);
     }
 

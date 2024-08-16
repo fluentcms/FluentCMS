@@ -1,26 +1,27 @@
 ﻿using FluentCMS.Web.Api.Setup;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class SetupController(ISetupManager setupManager, IHttpContextAccessor httpContextAccessor) : BaseGlobalController
+public class SetupController(ISetupManager setupManager) : BaseGlobalController
 {
     public const string AREA = "Setup Management";
-    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+    public const string READ = "Read";
+    public const string CREATE = "Create";
 
     [HttpGet]
-    [AnyPolicy]
+    [Policy(AREA, READ)]
+    [AllowAnonymous]
     public async Task<IApiResult<bool>> IsInitialized()
     {
         return Ok(await setupManager.IsInitialized());
     }
 
     [HttpPost]
-    [AnyPolicy]
+    [Policy(AREA, CREATE)]
+    [AllowAnonymous]
     public async Task<IApiResult<bool>> Start(SetupRequest request)
     {
-        var host = $"{_httpContextAccessor.HttpContext!.Request.Scheme}://{_httpContextAccessor.HttpContext!.Request.Host}";
-        return Ok(await setupManager.Start(request, host));
+        return Ok(await setupManager.Start(request));
     }
 }

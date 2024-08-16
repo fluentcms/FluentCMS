@@ -1,11 +1,18 @@
+using Microsoft.AspNetCore.Authorization;
+
 namespace FluentCMS.Web.Api.Controllers;
 
 public class AccountController(IMapper mapper, IUserService userService, IAuthContext authContext) : BaseGlobalController
 {
     public const string AREA = "Account Management";
+    public const string READ = "Read";
+    public const string UPDATE = $"Update/{READ}";
+    public const string CREATE = "Create";
+    public const string DELETE = $"Delete/{READ}";
+    public const string AUTHENTICATE = $"Authenticate";
 
     [HttpPost]
-    [AnyPolicy]
+    [Policy(AREA, CREATE)]
     public async Task<IApiResult<UserDetailResponse>> Register([FromBody] UserRegisterRequest request, CancellationToken cancellationToken = default)
     {
         var user = mapper.Map<User>(request);
@@ -15,7 +22,8 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     }
 
     [HttpPost]
-    [AnyPolicy]
+    [Policy(AREA, AUTHENTICATE)]
+    [AllowAnonymous]
     public async Task<IApiResult<UserLoginResponse>> Authenticate([FromBody] UserLoginRequest request, CancellationToken cancellationToken = default)
     {
         var user = await userService.Authenticate(request.Username, request.Password, cancellationToken);
@@ -31,6 +39,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     }
 
     [HttpPost]
+    [Policy(AREA, UPDATE)]
     public async Task<IApiResult<bool>> ChangePassword([FromBody] AccountChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
         await userService.ChangePassword(authContext.UserId, request.OldPassword, request.NewPassword, cancellationToken);
@@ -38,7 +47,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     }
 
     [HttpPost]
-    [AnyPolicy]
+    [Policy(AREA, UPDATE)]
     public async Task<IApiResult<bool>> SendPasswordResetToken([FromBody] UserSendPasswordResetTokenRequest request, CancellationToken cancellationToken = default)
     {
         var result = await userService.SendPasswordResetToken(request.Email, cancellationToken);
@@ -46,7 +55,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     }
 
     [HttpPost]
-    [AnyPolicy]
+    [Policy(AREA, UPDATE)]
     public async Task<IApiResult<bool>> ValidatePasswordResetToken([FromBody] UserValidatePasswordResetTokenRequest request, CancellationToken cancellationToken = default)
     {
         _ = await userService.ChangePasswordByResetToken(request.Email, request.Token, request.NewPassword, cancellationToken);
@@ -54,6 +63,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     }
 
     [HttpGet]
+    [Policy(AREA, READ)]
     public async Task<IApiResult<UserDetailResponse>> GetCurrent(CancellationToken cancellationToken = default)
     {
         var user = await userService.GetById(authContext.UserId, cancellationToken);
@@ -61,6 +71,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     }
 
     [HttpPost]
+    [Policy(AREA, UPDATE)]
     public async Task<IApiResult<UserDetailResponse>> UpdateCurrent(AccountUpdateRequest userUpdateRequest)
     {
         var user = await userService.GetById(authContext.UserId);

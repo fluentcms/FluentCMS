@@ -5,5 +5,5 @@ public interface ISetupManager
     Task<PageFullDetailResponse> GetSetupPage();
     Task<bool> IsInitialized();
     Task Reset();
-    Task<bool> Start(SetupRequest request, string host);
+    Task<bool> Start(SetupRequest request);
 }

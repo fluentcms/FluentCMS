@@ -1,5 +1,6 @@
 ﻿namespace FluentCMS.Web.Api.Controllers;
 
+
 public class PluginDefinitionController(IMapper mapper, IPluginDefinitionService pluginDefinitionService) : BaseGlobalController
 {
     public const string AREA = "Plugin Definition Management";

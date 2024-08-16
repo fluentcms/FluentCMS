@@ -1,5 +1,6 @@
 ﻿namespace FluentCMS.Web.Api.Controllers;
 
+
 public class SiteController(ISiteService siteService, IPageService pageService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "Site Management";
