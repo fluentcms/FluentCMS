@@ -4,7 +4,6 @@ using System.Reflection;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-
 public class RoleController(IMapper mapper, IRoleService roleService, IEnumerable<EndpointDataSource> endpointSources) : BaseGlobalController
 {
     public const string AREA = "Role Management";
