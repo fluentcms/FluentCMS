@@ -6,5 +6,10 @@ public class ApiTokenRepository(
     AuditableEntityRepository<ApiToken>(liteDbContext, authContext),
     IApiTokenRepository
 {
+    public async Task<ApiToken?> GetByKey(string apiKey, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
 
+        return await Collection.Query().Where(x => x.Key == apiKey).SingleOrDefaultAsync();
+    }
 }

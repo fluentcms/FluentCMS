@@ -1,5 +1,6 @@
 ﻿namespace FluentCMS.Web.Api.Controllers;
 
+[JwtAuthorize]
 public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "API Token Management";
@@ -40,7 +41,8 @@ public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper
     [Policy(AREA, UPDATE)]
     public async Task<IApiResult<ApiTokenDetailResponse>> Update([FromBody] ApiTokenUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        var apiToken = await apiTokenService.Update(request.Id, request.Name, request.Description, request.Enabled, request.Policies, cancellationToken);
+        var apiToken = mapper.Map<ApiToken>(request);
+        await apiTokenService.Update(apiToken, cancellationToken);
         var apiTokenResponse = mapper.Map<ApiTokenDetailResponse>(apiToken);
         return Ok(apiTokenResponse);
     }

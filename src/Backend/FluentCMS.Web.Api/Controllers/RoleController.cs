@@ -73,7 +73,7 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
 
             var policyAttributes = actionDescriptor.MethodInfo.GetCustomAttributes<PolicyAttribute>(true);
 
-            foreach (var policyAttribute in policyAttributes.Where(x => x.Area != PolicyAllAttribute.AREA))
+            foreach (var policyAttribute in policyAttributes)
             {
                 if (!policiesDict.ContainsKey(policyAttribute.Area))
                     policiesDict.Add(policyAttribute.Area, new Policy { Area = policyAttribute.Area, Actions = [] });

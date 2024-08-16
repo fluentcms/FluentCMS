@@ -1,5 +1,6 @@
 ﻿using FluentCMS.Web.Api.Filters;
 using FluentCMS.Web.Api.Setup;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
 
@@ -14,13 +15,14 @@ public class PageController(
 {
 
     public const string AREA = "Page Management";
+    public const string READ = $"Read";
     public const string UPDATE = $"Update";
     public const string CREATE = "Create";
     public const string DELETE = $"Delete";
 
     [HttpGet("{siteUrl}")]
     [DecodeQueryParam]
-    [PolicyAll]
+    [Policy(AREA, READ)]
     public async Task<IApiPagingResult<PageDetailResponse>> GetAll([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
     {
         var site = await siteService.GetByUrl(siteUrl, cancellationToken);
@@ -42,7 +44,7 @@ public class PageController(
     }
 
     [HttpGet("{id}")]
-    [PolicyAll]
+    [Policy(AREA, READ)]
     public async Task<IApiResult<PageDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var entity = await pageService.GetById(id, cancellationToken);
@@ -52,7 +54,8 @@ public class PageController(
 
     [HttpGet]
     [DecodeQueryParam]
-    [PolicyAll]
+    [Policy(AREA, READ)]
+    [AllowAnonymous]
     public async Task<IApiResult<PageFullDetailResponse>> GetByUrl([FromQuery] string url, CancellationToken cancellationToken = default)
     {
         var uri = new Uri(url);
