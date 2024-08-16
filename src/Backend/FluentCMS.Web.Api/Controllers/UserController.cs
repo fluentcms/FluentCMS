@@ -1,6 +1,5 @@
 ﻿namespace FluentCMS.Web.Api.Controllers;
 
-
 public class UserController(IUserService userService, IRoleService roleService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "User Management";
