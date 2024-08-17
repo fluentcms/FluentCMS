@@ -1,6 +1,4 @@
-﻿using FluentCMS.Entities.Base;
-
-namespace FluentCMS.Entities;
+﻿namespace FluentCMS.Entities;
 
 public class File : AuditableEntity
 {

@@ -1,6 +1,4 @@
-﻿using FluentCMS.Entities.Base;
-
-namespace FluentCMS.Repositories.Abstractions;
+﻿namespace FluentCMS.Repositories.Abstractions;
 
 public interface IEntityRepository<TEntity> where TEntity : IEntity
 {

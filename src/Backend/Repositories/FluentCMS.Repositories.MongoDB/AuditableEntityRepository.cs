@@ -1,6 +1,4 @@
-﻿
-
-namespace FluentCMS.Repositories.MongoDB;
+﻿namespace FluentCMS.Repositories.MongoDB;
 
 public abstract class AuditableEntityRepository<TEntity> : EntityRepository<TEntity>, IAuditableEntityRepository<TEntity>
     where TEntity : IAuditableEntity
