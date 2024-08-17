@@ -28,9 +28,9 @@ FluentCMS is an open-source project, and we welcome contributions from the commu
 
 - LiteDB
 - MongoDB
-- MySQL (comming soon)
-- SQL Server (comming soon)
-- SQLite (comming soon)
+- MySQL (coming soon)
+- SQL Server (coming soon)
+- SQLite (coming soon)
 
 ## Getting Started
 
@@ -72,11 +72,11 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
 
 ## Roadmap
 
-- [ ] Aministration Dashboard
+- [ ] Administration Dashboard
   - [x] User Management
   - [x] Role Management
   - [ ] Application Settings
-  - [x] Headleass CMS Features
+  - [x] Headless CMS Features
     - [x] Media Management
     - [x] Content Type Definition
       - [x] Text Field
