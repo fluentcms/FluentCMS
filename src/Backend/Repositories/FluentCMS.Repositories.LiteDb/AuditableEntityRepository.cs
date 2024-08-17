@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Repositories.LiteDb;
+﻿using FluentCMS.Entities.Base;
+
+namespace FluentCMS.Repositories.LiteDb;
 
 public class AuditableEntityRepository<TEntity> : EntityRepository<TEntity>, IAuditableEntityRepository<TEntity>
     where TEntity : IAuditableEntity

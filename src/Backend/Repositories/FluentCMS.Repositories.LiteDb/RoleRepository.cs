@@ -1,6 +1,8 @@
-﻿namespace FluentCMS.Repositories.LiteDb;
+﻿using FluentCMS.Entities.Sites;
 
-public class RoleRepository : AuditableEntityRepository<Role>, IRoleRepository
+namespace FluentCMS.Repositories.LiteDb;
+
+public class RoleRepository : SiteAssociatedRepository<Role>, IRoleRepository
 {
     public RoleRepository(ILiteDBContext liteDbContext, IAuthContext authContext) : base(liteDbContext, authContext)
     {

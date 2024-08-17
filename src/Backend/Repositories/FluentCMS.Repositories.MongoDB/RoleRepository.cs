@@ -1,6 +1,8 @@
-﻿namespace FluentCMS.Repositories.MongoDB;
+﻿using FluentCMS.Entities.Sites;
 
-public class RoleRepository : AuditableEntityRepository<Role>, IRoleRepository
+namespace FluentCMS.Repositories.MongoDB;
+
+public class RoleRepository : SiteAssociatedRepository<Role>, IRoleRepository
 {
     public RoleRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
     {

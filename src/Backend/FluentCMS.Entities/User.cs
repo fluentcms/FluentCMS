@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using FluentCMS.Entities.Base;
+using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Entities;
 

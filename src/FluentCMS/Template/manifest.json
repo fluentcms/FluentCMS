@@ -48,16 +48,28 @@
     ],
     "Roles": [
         {
-            "Name": "Admin",
-            "Description": "Default administrators role",
-            "ReadOnly": true,
-            "IsAdmin": true,
-            "Policies": [
-                {
-                    "Area": "Admin",
-                    "Actions": [ "Full Access" ]
-                }
-            ]
+            "Name": "Super Admin",
+            "NormalizedName": "SUPER_ADMIN",
+            "Description": "Default administrators role with full access to system",
+            "Type": 1
+        },
+        {
+            "Name": "Authenticated Users",
+            "NormalizedName": "AUTH",
+            "Description": "All authenticated users (logged in users)",
+            "Type": 2
+        },
+        {
+            "Name": "Guests",
+            "NormalizedName": "?",
+            "Description": "Un-authenticated users (not logged in users)",
+            "Type": 3
+        },
+        {
+            "Name": "All Users",
+            "NormalizedName": "*",
+            "Description": "All users (authenticated or un-authenticated users)",
+            "Type": 4
         }
     ],
     "PluginDefinitions": [

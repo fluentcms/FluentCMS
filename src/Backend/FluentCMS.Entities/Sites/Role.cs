@@ -1,8 +1,8 @@
 ﻿using FluentCMS.Entities.Enums;
 
-namespace FluentCMS.Web.Api.Models;
+namespace FluentCMS.Entities.Sites;
 
-public class RoleDetailResponse : BaseSiteAssociatedResponse
+public class Role : SiteAssociatedEntity
 {
     public string Name { get; set; } = default!;
     public string? Description { get; set; }

@@ -1,5 +1,8 @@
-﻿namespace FluentCMS.Repositories.Abstractions;
+﻿using FluentCMS.Entities.Sites;
 
-public interface IRoleRepository : IAuditableEntityRepository<Role>
+namespace FluentCMS.Repositories.Abstractions;
+
+public interface IRoleRepository : ISiteAssociatedRepository<Role>
 {
+
 }

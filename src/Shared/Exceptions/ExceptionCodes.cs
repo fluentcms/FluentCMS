@@ -44,6 +44,7 @@ public static class ExceptionCodes
     public const string RoleUnableToCreate = "Role.UnableToCreate";
     public const string RoleUnableToUpdate = "Role.UnableToUpdate";
     public const string RoleUnableToDelete = "Role.UnableToDelete";
+    public const string SystemRolesCanNotBeDeleted = "Role.SystemRolesCanNotBeDeleted";
     public const string RoleNotFound = "Role.NotFound";
     public const string RoleNameMustBeUnique = "Role.NameMustBeUnique";
     public const string RoleInvalidAppId = "Role.InvalidAppId";

@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Web.Api.Setup.Models;
+﻿using FluentCMS.Entities.Sites;
+
+namespace FluentCMS.Web.Api.Setup.Models;
 internal class AdminTemplate
 {
     public GlobalSettings GlobalSettings { get; set; } = default!;

@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using FluentCMS.Entities.Base;
 
 namespace FluentCMS.Repositories.Abstractions;
 

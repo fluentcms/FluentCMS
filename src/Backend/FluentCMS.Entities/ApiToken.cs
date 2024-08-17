@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Entities;
+﻿using FluentCMS.Entities.Base;
+
+namespace FluentCMS.Entities;
 
 public class ApiToken : AuditableEntity
 {

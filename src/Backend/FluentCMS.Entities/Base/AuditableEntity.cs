@@ -1,12 +1,4 @@
-﻿namespace FluentCMS.Entities;
-
-public interface IAuditableEntity : IEntity
-{
-    string CreatedBy { get; set; }
-    DateTime CreatedAt { get; set; }
-    string? ModifiedBy { get; set; }
-    DateTime? ModifiedAt { get; set; }
-}
+﻿namespace FluentCMS.Entities.Base;
 
 public abstract class AuditableEntity : Entity, IAuditableEntity
 {

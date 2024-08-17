@@ -1,4 +1,5 @@
-﻿using Humanizer;
+﻿using FluentCMS.Entities.Base;
+using Humanizer;
 using LiteDB;
 
 namespace FluentCMS.Repositories.LiteDb;
