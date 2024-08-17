@@ -1,8 +1,10 @@
+﻿using FluentCMS.Entities.Enums;
+
 ﻿namespace FluentCMS.Web.Api.Models;
 
-public class RoleDetailResponse : BaseAuditableResponse
+public class RoleDetailResponse : BaseSiteAssociatedResponse
 {
     public string Name { get; set; } = default!;
     public string? Description { get; set; }
-    public ICollection<Policy> Policies { get; set; } = [];
+    public RoleTypes Type { get; set; }
 }
