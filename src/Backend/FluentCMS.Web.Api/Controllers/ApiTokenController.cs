@@ -4,7 +4,6 @@ using System.Reflection;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-[JwtAuthorize]
 public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper, IEnumerable<EndpointDataSource> endpointSources) : BaseGlobalController
 {
     public const string AREA = "API Token Management";
