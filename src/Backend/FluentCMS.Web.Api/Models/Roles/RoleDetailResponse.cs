@@ -1,6 +1,4 @@
-﻿using FluentCMS.Entities.Enums;
-
-namespace FluentCMS.Web.Api.Models;
+﻿namespace FluentCMS.Web.Api.Models;
 
 public class RoleDetailResponse : BaseSiteAssociatedResponse
 {

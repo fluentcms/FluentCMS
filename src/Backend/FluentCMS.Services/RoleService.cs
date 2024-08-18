@@ -1,6 +1,4 @@
-﻿using FluentCMS.Entities.Sites;
-
-namespace FluentCMS.Services;
+﻿namespace FluentCMS.Services;
 
 public interface IRoleService : IAutoRegisterService
 {
@@ -40,8 +38,8 @@ public class RoleService(IRoleRepository roleRepository) : IRoleService
 
         // check for system roles, they cant be deleted.
         // we need them for system purposes. 
-        if (existRole.Type != Entities.Enums.RoleTypes.UserDefiend)
-            throw new AppException(ExceptionCodes.SystemRolesCanNotBeDeleted);
+        if (existRole.Type != RoleTypes.UserDefined)
+            throw new AppException(ExceptionCodes.RoleCanNotBeDeleted);
 
         return await roleRepository.Delete(roleId, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleUnableToDelete);

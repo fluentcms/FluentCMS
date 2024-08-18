@@ -1,6 +1,4 @@
-﻿using FluentCMS.Entities.Sites;
-
-namespace FluentCMS.Repositories.LiteDb;
+﻿namespace FluentCMS.Repositories.LiteDb;
 
 public class RoleRepository : SiteAssociatedRepository<Role>, IRoleRepository
 {

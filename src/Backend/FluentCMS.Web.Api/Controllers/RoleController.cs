@@ -1,5 +1,4 @@
-﻿using FluentCMS.Entities.Sites;
-using Microsoft.AspNetCore.Routing;
+﻿using Microsoft.AspNetCore.Routing;
 
 namespace FluentCMS.Web.Api.Controllers;
 
@@ -37,7 +36,7 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
 
         // all roles that user defines them, must be UserDefiend.
         // this is added here and not in service, because service is used by system in Setup process. also it is not taken from user (front), because we have to encapsulate this logic in server side. 
-        role.Type = Entities.Enums.RoleTypes.UserDefiend;
+        role.Type = RoleTypes.UserDefined;
         var newRole = await roleService.Create(role, cancellationToken);
         var roleResponse = mapper.Map<RoleDetailResponse>(newRole);
         return Ok(roleResponse);

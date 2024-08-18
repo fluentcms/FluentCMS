@@ -11647,8 +11647,8 @@ namespace FluentCMS.Web.ApiClients
     public enum RoleTypes
     {
 
-        [System.Runtime.Serialization.EnumMember(Value = @"UserDefiend")]
-        UserDefiend = 0,
+        [System.Runtime.Serialization.EnumMember(Value = @"UserDefined")]
+        UserDefined = 0,
 
         [System.Runtime.Serialization.EnumMember(Value = @"Administrators")]
         Administrators = 1,

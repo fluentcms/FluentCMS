@@ -1,6 +1,4 @@
-﻿using FluentCMS.Entities.Sites;
-
-namespace FluentCMS.Web.Api;
+﻿namespace FluentCMS.Web.Api;
 
 public class MappingProfile : Profile
 {
