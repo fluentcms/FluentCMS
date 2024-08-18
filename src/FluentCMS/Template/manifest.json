@@ -473,7 +473,7 @@
                 {
                     "Title": "Content Type Builder",
                     "Path": "/content-types",
-                    "Layout": "BootstrapAdminLayout",
+                    "Layout": "AdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -525,7 +525,7 @@
                 {
                     "Title": "Roles",
                     "Path": "/roles",
-                    "Layout": "BootstrapAdminLayout",
+                    "Layout": "AdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -551,7 +551,7 @@
                 {
                     "Title": "Layouts",
                     "Path": "/layouts",
-                    "Layout": "BootstrapAdminLayout",
+                    "Layout": "AdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {

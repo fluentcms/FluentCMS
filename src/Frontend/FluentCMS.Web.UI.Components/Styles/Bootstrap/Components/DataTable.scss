@@ -6,12 +6,24 @@ $data-table: $prefix + "data-table";
 
     &-cell {
         white-space: nowrap;
+        background-color: transparent !important;
+        padding: 12px 24px !important;
+        color: #6b7280 !important;
+        font-size: 14px !important;
     }
 
     &-head {
         .#{$data-table}-cell:last-child {
             width: 0;
         }
+
+        .#{$data-table}-cell {
+            color: #374151 !important;
+            font-weight: bold !important;
+            text-transform: uppercase !important;
+            font-size: 12px !important;
+        }
+
     }
 
     &-wrapper {

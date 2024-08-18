@@ -3,12 +3,12 @@
 @* TODO: change class to f-plugin-body *@
 @if (Visible)
 {
-    <div class="m-4">
+    <div class="f-plugin-body">
         <Grid Visible="!string.IsNullOrEmpty(Title)" ItemsSmall="GridItems.Start" JustifySmall="GridJustify.Between">
             <GridItem>
-                <Typography Size="TextSize.H5">@Title</Typography>
+                <h2 class="f-plugin-title">@Title</h2>
             </GridItem>
-            <GridItem>
+            <GridItem class="ms-auto">
                 <Stack>
                     <CascadingValue Value="true" Name="ActionButtonHeader">
                         @ActionsFragment

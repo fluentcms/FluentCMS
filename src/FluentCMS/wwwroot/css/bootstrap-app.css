@@ -1,50 +1,112 @@
-
 .bi {
-    display: inline-block;
-    width: 1rem;
-    height: 1rem;
-  }
-  
-  /*
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+}
+
+.navbar {
+  height: 4rem;
+}
+/*
    * Sidebar
    */
-  
-  @media (min-width: 768px) {
-    .sidebar .offcanvas-lg {
-      position: -webkit-sticky;
-      position: sticky;
-      top: 48px;
-    }
-    .navbar-search {
-      display: block;
-    }
+
+.nav {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .sidebar .offcanvas-lg {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 64px;
   }
-  
-  .sidebar .nav-link {
-    font-size: .875rem;
-    font-weight: 500;
+
+  .navbar-search {
+    display: block;
   }
-  
-  .sidebar .nav-link.active {
-    color: #2470dc;
-  }
-  
-  .sidebar-heading {
-    font-size: .75rem;
-  }
-  
-  /*
+}
+
+.sidebar .nav-item {
+  margin-top: 8px;
+}
+.sidebar .nav-link {
+  padding: 8px;
+  gap: 12px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #111827;
+  border-radius: 4px;
+}
+
+.sidebar .nav-link .nav-link-icon {
+  color: rgb(107 114 128);
+}
+.sidebar .nav-link:hover .nav-link-icon {
+  color: black;
+}
+
+.sidebar .nav-link:hover {
+  background-color: rgb(243 244 246);
+}
+
+.sidebar .nav-link.active {
+  color: #2470dc;
+}
+
+.sidebar-heading {
+  font-size: .75rem;
+}
+
+/*
    * Navbar
    */
+
   
-  .navbar-brand {
-    padding-top: .75rem;
-    padding-bottom: .75rem;
-    background-color: rgba(0, 0, 0, .25);
-    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .25);
+.navbar-brand {
+  padding-top: .75rem;
+  padding-bottom: .75rem;
+  display: flex;
+  gap: 1rem;
+}
+.brand-image {
+  height: 32px;
+}
+
+.navbar .form-control {
+  padding: .75rem 1rem;
+}
+
+.f-plugin-title {
+  font-weight: bold;
+  font-size: 20px;
+}
+
+.sidebar {
+  height: calc(100vh - 64px);
+  position: absolute;
+}
+
+.main {
+  height: calc(100vh - 64px);
+  overflow: auto;
+  padding-right: 0;
+  /* width: calc(100vh - 16rem); */
+  /* margin-left: 16rem; */
+}
+
+@media (min-width: 768px) {
+  .sidebar {
+    width: 16rem;
   }
-  
-  .navbar .form-control {
-    padding: .75rem 1rem;
+
+  .main {
+    padding-left: 16rem;
   }
-  
+
+}
+
+.f-plugin-body {
+  padding: 1rem;
+}

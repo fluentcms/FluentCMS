@@ -2,6 +2,8 @@ $badge: $prefix + 'badge';
 
 .#{$badge} {
     @extend .badge;
+    font-size: 12px;
+    padding: 4px 10px;
 
     &-color-default {
         @extend .text-bg-secondary;
@@ -9,7 +11,10 @@ $badge: $prefix + 'badge';
 
     @each $key, $value in $theme-colors {
         &-color-#{$key} {
-            @extend .text-bg-#{$key};
+            --f-bg-opacity: 0.1;
+            @extend .text-#{$key};
+            @extend .bg-#{$key};
+            
         }
     }
 }

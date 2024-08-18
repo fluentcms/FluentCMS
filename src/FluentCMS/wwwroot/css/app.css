@@ -28,3 +28,13 @@ body:is(.dark *) {
         transform: translateX(100%) scaleX(0.5);
     }
 }
+
+.f-plugin-body {
+    padding: 1rem;
+}
+
+.f-plugin-title {
+    font-weight: bold;
+    font-size: 20px;
+}
+  

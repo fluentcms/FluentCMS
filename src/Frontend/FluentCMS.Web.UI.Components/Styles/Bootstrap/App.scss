@@ -16,6 +16,315 @@ $prefix: "f-";
 @import "../node_modules/bootstrap/scss/mixins";
 @import "../node_modules/bootstrap/scss/utilities";
 
+// #region Colors
+
+
+$blue-50:        #f4f8fd;
+$blue-100:       #e8f1fb;
+$blue-200:       #c6ddf4;
+$blue-300:       #a3c8ed;
+$blue-400:       #5e9fe0;
+$blue-500:       #1976d2;
+$blue-600:       #176abd; 
+$blue-700:       #13599e;
+$blue-800:       #0f477e;
+$blue-900:       #0c3a67;
+
+$gray-50:    #f9fafb;
+$gray-100:   #f3f4f6;
+$gray-200:   #e5e7eb;
+$gray-300:   #d1d5db;
+$gray-400:   #9ca3af;
+$gray-500:   #6b7280;
+$gray-600:   #4b5563;
+$gray-700:   #374151;
+$gray-800:   #1f2937;
+$gray-900:   #111827;
+
+$red-50:     #fef2f2;
+$red-100:    #fee2e2;
+$red-200:    #fecaca;
+$red-300:    #fca5a5;
+$red-400:    #f87171;
+$red-500:    #ef4444;
+$red-600:    #dc2626;
+$red-700:    #b91c1c;
+$red-800:    #991b1b;
+$red-900:    #7f1d1d;
+
+$green-50:   #ecfdf5;
+$green-100:  #d1fae5;
+$green-200:  #a7f3d0;
+$green-300:  #6ee7b7;
+$green-400:  #34d399;
+$green-500:  #10b981;
+$green-600:  #059669;
+$green-700:  #047857;
+$green-800:  #065f46;
+$green-900:  #064e3b;
+
+$yellow-50:  #fefce8;
+$yellow-100: #fef9c3;
+$yellow-200: #fef08a;
+$yellow-300: #fde047;
+$yellow-400: #facc15;
+$yellow-500: #eab308;
+$yellow-600: #ca8a04;
+$yellow-700: #a16207;
+$yellow-800: #854d0e;
+$yellow-900: #713f12;
+
+
+$primary:    $blue-600; // Adjust this based on your primary color
+$secondary:  $gray-600; // Typically used for secondary UI elements
+$success:    $green-600; // Used for success messages or buttons
+$info:       $blue-400; // Used for informational messages
+$warning:    $yellow-500; // Used for warnings
+$danger:     $red-600; // Used for error messages or buttons
+$light:      $gray-100; // Light background or text
+$dark:       $gray-800; // Dark background or text
+
+
+// Primary colors
+$primary:               $blue-600;
+$primary-hover:         $blue-700;
+$primary-active:        $blue-800;
+
+// Secondary (usually gray)
+$secondary:             $gray-600;
+$secondary-hover:       $gray-700;
+$secondary-active:      $gray-800;
+
+// Success colors
+$success:               $green-600;
+$success-hover:         $green-700;
+$success-active:        $green-800;
+
+// Info colors
+$info:                  $blue-400;
+$info-hover:            $blue-500;
+$info-active:           $blue-600;
+
+// Warning colors
+$warning:               $yellow-500;
+$warning-hover:         $yellow-600;
+$warning-active:        $yellow-700;
+
+// Danger colors
+$danger:                $red-600;
+$danger-hover:          $red-700;
+$danger-active:         $red-800;
+
+// Light colors
+$light:                 $gray-100;
+$light-hover:           $gray-200;
+$light-active:          $gray-300;
+
+// Dark colors
+$dark:                  $gray-800;
+$dark-hover:            $gray-900;
+$dark-active:           $gray-900;
+
+// Backgrounds
+$body-bg:               $gray-50;
+$body-color:            $gray-900;
+
+// #endregion
+
+
+// #region Input
+$input-bg:                              $gray-50;
+$input-border-color:                    $gray-300;
+$input-disabled-bg:                     $gray-200; // Similar to Bootstrap
+$input-disabled-border-color:           null;
+
+$input-color:                           $gray-900;
+$input-placeholder-color:               $gray-400;
+
+$input-font-size:                       $font-size-sm;
+$input-padding-y:                       0.625rem; // Equivalent to p-2.5
+$input-padding-x:                       0.625rem;
+
+$input-border-radius:                   $border-radius-lg;
+$input-focus-border-color:              $blue-500;
+$input-focus-box-shadow:                0 0 0 1px $blue-500;
+
+$input-bg-dark:                         $gray-700;
+$input-border-color-dark:               $gray-600;
+$input-color-dark:                      $white;
+$input-placeholder-color-dark:          $gray-400;
+$input-focus-border-color-dark:         $blue-500;
+
+
+$form-label-font-size:                  $font-size-sm;
+
+// #endregion
+// #region Button
+$btn-primary-bg:                  $blue-700;
+$btn-primary-border-color:         $blue-700;
+$btn-primary-hover-bg:             $blue-800;
+$btn-primary-hover-border-color:   $blue-800;
+$btn-primary-color:               $white;
+
+$btn-focus-width:                 0; // Remove the default outline width
+$btn-primary-focus-box-shadow:    0 0 0 0.25rem rgba(59, 130, 246, 0.5); // Similar to Flowbite's focus ring
+
+$btn-border-radius:               $border-radius-lg;
+
+$btn-padding-y:                   0.625rem; // Equivalent to py-2.5
+$btn-padding-x:                   1.25rem;  // Equivalent to px-5
+$btn-font-size:                   $font-size-sm; // Equivalent to text-sm
+
+// Assuming you've defined dark mode color variables
+$btn-primary-bg-dark:             $blue-600;
+$btn-primary-hover-bg-dark:       $blue-700;
+
+// General Button Styling
+$btn-default-color:             $gray-900;
+$btn-default-bg:                $white;
+$btn-default-border:            $gray-200;
+$btn-default-hover-bg:          $gray-100;
+$btn-default-hover-color:       $blue-700;
+$btn-default-focus-ring-color:  $gray-200;
+
+// Dark Theme Button Styling
+$btn-default-dark-bg:           rgba($gray-600, 0.1);
+$btn-default-dark-color:        $gray-400;
+$btn-default-dark-border:       $gray-600;
+$btn-default-dark-hover-color:  $white;
+$btn-default-dark-hover-bg:     $gray-700;
+$btn-default-dark-focus-ring-color: $gray-700;
+
+// Apply to Bootstrap Button Class
+.btn-default {
+    color: $btn-default-color;
+    background-color: $btn-default-bg;
+    border-color: $btn-default-border;
+    &:hover {
+        background-color: $btn-default-hover-bg;
+        color: $btn-default-hover-color;
+    }
+    &:focus {
+        box-shadow: 0 0 0 0.25rem rgba($btn-default-focus-ring-color, 0.5);
+    }
+    // Dark mode
+    &[data-bs-theme="dark"] {
+        background-color: $btn-default-dark-bg;
+        color: $btn-default-dark-color;
+        border-color: $btn-default-dark-border;
+        &:hover {
+            background-color: $btn-default-dark-hover-bg;
+            color: $btn-default-dark-hover-color;
+        }
+        &:focus {
+            box-shadow: 0 0 0 0.25rem rgba($btn-default-dark-focus-ring-color, 0.5);
+        }
+    }
+}
+
+// General Ghost Button Styling
+$btn-ghost-color:               $gray-600;
+$btn-ghost-hover-color:         $gray-800;
+$btn-ghost-dark-color:          $gray-400;
+$btn-ghost-dark-hover-color:    $gray-700;
+
+.btn-ghost {
+    color: $btn-ghost-color;
+    background-color: transparent;
+    &:hover {
+        color: $btn-ghost-hover-color;
+    }
+    // Dark mode
+    &[data-bs-theme="dark"] {
+        color: $btn-ghost-dark-color;
+        &:hover {
+            color: $btn-ghost-dark-hover-color;
+        }
+    }
+}
+
+// General Outline Button Styling
+$btn-outline-color:             $gray-700;
+$btn-outline-border-color:      $gray-700;
+$btn-outline-hover-bg:          $gray-800;
+$btn-outline-hover-color:       $white;
+$btn-outline-focus-ring-color:  $gray-300;
+
+// Dark Theme Outline Button Styling
+$btn-outline-dark-border:       $gray-500;
+$btn-outline-dark-color:        $gray-400;
+$btn-outline-dark-hover-bg:     $gray-500;
+$btn-outline-dark-hover-color:  $white;
+$btn-outline-dark-focus-ring-color: $gray-800;
+
+.btn-outline-default {
+    color: $btn-outline-color;
+    border-color: $btn-outline-border-color;
+    &:hover {
+        background-color: $btn-outline-hover-bg;
+        color: $btn-outline-hover-color;
+    }
+    &:focus {
+        box-shadow: 0 0 0 0.25rem rgba($btn-outline-focus-ring-color, 0.5);
+    }
+    // Dark mode
+    &[data-bs-theme="dark"] {
+        border-color: $btn-outline-dark-border;
+        color: $btn-outline-dark-color;
+        &:hover {
+            background-color: $btn-outline-dark-hover-bg;
+            color: $btn-outline-dark-hover-color;
+        }
+        &:focus {
+            box-shadow: 0 0 0 0.25rem rgba($btn-outline-dark-focus-ring-color, 0.5);
+        }
+    }
+}
+
+// Disabled Button Styling
+$btn-disabled-bg:               $gray-400;
+$btn-disabled-dark-bg:          $gray-500;
+
+.btn-default.disabled,
+.btn-default:disabled {
+    background-color: $btn-disabled-bg;
+    cursor: not-allowed;
+    pointer-events: none;
+    // Dark mode
+    &[data-bs-theme="dark"] {
+        background-color: $btn-disabled-dark-bg;
+    }
+}
+
+// Link Button Styling
+$btn-link-color:                $gray-600;
+$btn-link-hover-color:          $gray-800;
+$btn-link-dark-color:           $gray-400;
+$btn-link-dark-hover-color:     $gray-700;
+
+.btn-link-default {
+    color: $btn-link-color;
+    &:hover {
+        color: $btn-link-hover-color;
+    }
+    // Dark mode
+    &[data-bs-theme="dark"] {
+        color: $btn-link-dark-color;
+        &:hover {
+            color: $btn-link-dark-hover-color;
+        }
+    }
+}
+
+
+// #endregion
+
+// #region Card
+$card-bg:                  $white; // Light background
+$card-border-width:        1px;    // Thin border
+$card-border-color:        $gray-200; // Light gray border
+$card-border-radius:       $border-radius-lg; // Rounded corners
+// #endregion
 // Layout & components
 @import "../node_modules/bootstrap/scss/root";
 @import "../node_modules/bootstrap/scss/reboot";
