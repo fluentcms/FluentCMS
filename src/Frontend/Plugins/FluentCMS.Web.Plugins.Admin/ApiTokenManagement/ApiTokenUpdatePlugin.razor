@@ -4,6 +4,8 @@
 <PluginForm Model="@Model" Name="@FORM_NAME" Title="Update API Token" OnSubmit="OnSubmit">
     <FormInput @bind-Value="Model!.Name" Label="Name" Placeholder="Enter Name" Required />
     <FormTextarea @bind-Value="Model!.Description" Label="Description" Placeholder="Enter Description" />
+    <FormDateInput @bind-Value="Model!.ExpireAt" Label="Expire At" Placeholder="Choose Expire date" />
+    <FormSwitch @bind-Value="Model!.Enabled" Label="Enabled" />
     <PluginFormPolicies Value="Model!.Policies" Policies="@Policies" />
     <FormActions Cancel Submit />
 </PluginForm>

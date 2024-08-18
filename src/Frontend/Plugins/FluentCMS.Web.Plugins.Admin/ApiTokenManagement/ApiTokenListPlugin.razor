@@ -13,8 +13,25 @@
                 <Indicator Color="Color.Success" Visible="@context.Enabled">YES</Indicator>
                 <Indicator Color="Color.Danger" Visible="@(!context.Enabled)">NO</Indicator>
             </DataTableItem>
-            <DataTableItem Label="Token">@($"{context.Key}:{@context.Secret}")</DataTableItem>
+            <DataTableItem Label="Token">
+                @if (ViewApiTokenId == context.Id)
+                {
+                    <span class="f-font-monospace">@($"{context.Key}:{@context.Secret}")</span>
+                }
+                else
+                {
+                    <span class="f-font-monospace">@MaskString($"{context.Key}:{@context.Secret}")</span>
+                }
+            </DataTableItem>
             <ActionButtons>
+                @if (ViewApiTokenId == context.Id)
+                {
+                    <ActionButton IconName="IconName.EyeSlash" @onclick="() => ViewToken(context.Id)" />
+                }
+                else
+                {
+                    <ActionButton IconName="IconName.Eye" @onclick="() => ViewToken(context.Id)" />
+                }
                 <ActionButton IconName="IconName.Refresh" Color="Color.Success" Label="Re-Generate" @onclick="() => OnRegenerateConfirm(context)" />
                 <ActionButtonEdit Href="@GetUrl("Update Api Token", new { id = @context.Id })" />
                 <ActionButtonDelete @onclick="() => OnConfirm(context)" />

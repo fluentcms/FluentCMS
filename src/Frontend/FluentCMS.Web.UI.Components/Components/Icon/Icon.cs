@@ -19,6 +19,7 @@ public enum IconName
     Documentation,
     Download,
     Eye,
+    EyeSlash,
     Edit,
     ExclamationCircle,
     File,
