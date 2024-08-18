@@ -1,6 +1,4 @@
-﻿
-
-namespace FluentCMS.Entities;
+﻿namespace FluentCMS.Entities;
 
 public class Site : AuditableEntity
 {

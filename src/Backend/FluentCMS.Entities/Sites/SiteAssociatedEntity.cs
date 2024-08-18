@@ -1,6 +1,4 @@
-﻿
-
-namespace FluentCMS.Entities;
+﻿namespace FluentCMS.Entities;
 
 public interface ISiteAssociatedEntity : IAuditableEntity
 {
