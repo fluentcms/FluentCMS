@@ -32,6 +32,7 @@ public enum IconName
     PenNib,
     Plus,
     Previous,
+    Refresh,
     TableColumn,
     Text,
 }

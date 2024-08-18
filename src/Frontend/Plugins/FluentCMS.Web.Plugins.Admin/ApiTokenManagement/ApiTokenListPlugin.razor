@@ -1,4 +1,5 @@
 @inherits BasePlugin
+@rendermode InteractiveServer
 
 <PluginBody Title="API Tokens">
     <ActionsFragment>
@@ -8,11 +9,26 @@
         <DataTable Items="ApiTokens">
             <DataTableItem Label="Name">@context.Name</DataTableItem>
             <DataTableItem Label="Description">@context.Description</DataTableItem>
-            <DataTableItem Label="Key">@context.Key</DataTableItem>
-            <DataTableItem Label="Secret">@context.Secret</DataTableItem>
+            <DataTableItem Label="Enabled">
+                <Indicator Color="Color.Success" Visible="@context.Enabled">YES</Indicator>
+                <Indicator Color="Color.Danger" Visible="@(!context.Enabled)">NO</Indicator>
+            </DataTableItem>
+            <DataTableItem Label="Token">@($"{context.Key}:{@context.Secret}")</DataTableItem>
             <ActionButtons>
+                <ActionButton IconName="IconName.Refresh" Color="Color.Success" Label="Re-Generate" @onclick="() => OnRegenerateConfirm(context)" />
                 <ActionButtonEdit Href="@GetUrl("Update Api Token", new { id = @context.Id })" />
+                <ActionButtonDelete @onclick="() => OnConfirm(context)" />
             </ActionButtons>
         </DataTable>
     </ChildContent>
 </PluginBody>
+
+<Confirm OnConfirm="OnDelete" OnCancel="OnConfirmCancel" Visible="@(SelectedApiToken != null && Mode == "Delete")">
+    Are you sure to delete <b>"@SelectedApiToken!.Name"</b> token?
+</Confirm>
+
+<Confirm OnConfirm="OnRegenerate" OnCancel="OnRegenerateCancel" Visible="@(SelectedApiToken != null && Mode == "Regenerate")">
+    After regenerate, previous token will be invalidated and no longer works. Are you sure to re-generate token?
+</Confirm>
+
+
