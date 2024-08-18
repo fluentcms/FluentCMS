@@ -16,7 +16,9 @@
     },
     "Site": {
         "Name": "FluentCMS Administration",
-        "Description": "FluentCMS Administration Panel"
+        "Description": "FluentCMS Administration Panel",
+        "EditLayout": "EditLayout",
+        "DetailLayout": "SingleLayout"
     },
     "Layouts": [
         {
@@ -41,6 +43,14 @@
         },
         {
             "Name": "AuthLayout",
+            "IsDefault": false
+        },
+        {
+            "Name": "EditLayout",
+            "IsDefault": false
+        },
+        {
+            "Name": "SingleLayout",
             "IsDefault": false
         }
     ],
@@ -191,6 +201,28 @@
                 {
                     "Name": "Update Site",
                     "Type": "SiteUpdatePlugin"
+                }
+            ]
+        },
+        {
+            "Name": "Page Management",
+            "Category": "Admin",
+            "Description": "Page Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
+            "Types": [
+                {
+                    "Name": "Pages List",
+                    "Type": "PageListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create Page",
+                    "Type": "PageCreatePlugin"
+                },
+                {
+                    "Name": "Update Page",
+                    "Type": "PageUpdatePlugin"
                 }
             ]
         },
@@ -366,6 +398,7 @@
         {
             "Title": "Home",
             "Path": "/",
+            "EditLayout": "EditLayout",
             "Plugins": [
                 {
                     "Definition": "TextHTML Plugin",
@@ -467,7 +500,7 @@
             "Title": "Admin",
             "Path": "/admin",
             "Layout": "BootstrapAdminLayout",
-            "Locked": false,
+            "Locked": true,
             "Plugins": [],
             "Children": [
                 {
@@ -543,6 +576,19 @@
                     "Plugins": [
                         {
                             "Definition": "Site Management",
+                            "Section": "Main",
+                            "Locked": true
+                        }
+                    ]
+                },
+                {
+                    "Title": "Pages",
+                    "Path": "/pages",
+                    "Layout": "AdminLayout",
+                    "Locked": true,
+                    "Plugins": [
+                        {
+                            "Definition": "Page Management",
                             "Section": "Main",
                             "Locked": true
                         }

@@ -91,7 +91,9 @@ public class PageService(
             ValidateParentPage(page, pages);
         }
 
-        ValidateUrl(page, pages);
+        // Only validate url if user wants to change path
+        if (page.Path != originalPage.Path)
+            ValidateUrl(page, pages);
 
         return await pageRepository.Update(page, cancellationToken)
             ?? throw new AppException(ExceptionCodes.PageUnableToUpdate);

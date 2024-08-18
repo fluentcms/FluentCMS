@@ -1,5 +1,6 @@
 ﻿namespace FluentCMS.Web.Api.Controllers;
 
+
 public class SiteController(ISiteService siteService, IPageService pageService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "Site Management";
@@ -8,7 +9,6 @@ public class SiteController(ISiteService siteService, IPageService pageService, 
     public const string CREATE = "Create";
     public const string DELETE = $"Delete/{READ}";
 
-    [PolicyAll]
     [HttpGet("{siteUrl}")]
     [Policy(AREA, READ)]
     public async Task<IApiResult<SiteDetailResponse>> GetByUrl([FromRoute] string siteUrl, CancellationToken cancellationToken = default)

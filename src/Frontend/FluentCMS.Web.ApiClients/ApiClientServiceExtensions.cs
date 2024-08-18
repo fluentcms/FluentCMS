@@ -1,6 +1,8 @@
 ﻿using FluentCMS.Web.ApiClients;
 using FluentCMS.Web.ApiClients.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
 using System.Reflection;
 
@@ -12,6 +14,8 @@ public static class ApiClientServiceExtensions
 
     public static IServiceCollection AddApiClients(this IServiceCollection services, IConfiguration configuration)
     {
+        services.Configure<ApiSettings>(configuration.GetSection("ApiSettings"));
+
         // TODO: move this to plugins projects
         services.AddAutoMapper(typeof(MappingProfile));
 
@@ -23,10 +27,14 @@ public static class ApiClientServiceExtensions
 
         services.AddHttpClient(HTTP_CLIENT_API_NAME, (sp, client) =>
         {
-            string apiServer = configuration?["ApiServer"] ??
-                throw new ArgumentNullException("ApiServer is not configured in appsettings.json");
+            using var scope = sp.CreateScope();
+            var apiSettings = scope.ServiceProvider.GetService<IOptions<ApiSettings>>()?.Value;
 
-            client.BaseAddress = new Uri(apiServer);
+            var apiUrl = apiSettings?.Url;
+            if (string.IsNullOrWhiteSpace(apiUrl))
+                throw new NullReferenceException("AppSettings.Url is null!");
+
+            client.BaseAddress = new Uri(apiUrl);
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         });
@@ -47,6 +55,10 @@ public static class ApiClientServiceExtensions
                 services.AddScoped(apiClientType, sp =>
                 {
                     var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient(HTTP_CLIENT_API_NAME);
+
+                    var apiSettings = sp.GetService<IOptionsMonitor<ApiSettings>>()?.CurrentValue;
+                    var apiKey = apiSettings?.Key ?? "";
+                    httpClient.DefaultRequestHeaders.Add("X-API-AUTH", apiKey);
 
                     var userLogin = sp.GetRequiredService<UserLoginResponse>();
 

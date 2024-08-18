@@ -1,5 +1,6 @@
 ﻿using FluentCMS.Web.Api.Filters;
 using FluentCMS.Web.Api.Setup;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
 
@@ -14,23 +15,36 @@ public class PageController(
 {
 
     public const string AREA = "Page Management";
+    public const string READ = $"Read";
     public const string UPDATE = $"Update";
     public const string CREATE = "Create";
     public const string DELETE = $"Delete";
 
     [HttpGet("{siteUrl}")]
     [DecodeQueryParam]
-    [PolicyAll]
+    [Policy(AREA, READ)]
     public async Task<IApiPagingResult<PageDetailResponse>> GetAll([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
     {
         var site = await siteService.GetByUrl(siteUrl, cancellationToken);
         var entities = await pageService.GetBySiteId(site.Id, cancellationToken);
-        var entitiesResponse = mapper.Map<List<PageDetailResponse>>(entities.ToList());
+        var layouts = await layoutService.GetAll(cancellationToken);
+
+        List<PageDetailResponse> entitiesResponse = [];
+
+        foreach (var entity in entities)
+        {
+            var layout = layouts.Where(x => x.Id == entity.LayoutId).FirstOrDefault();
+
+            var mappedEntity = mapper.Map<PageDetailResponse>(entity);
+            mappedEntity.Layout = mapper.Map<LayoutDetailResponse>(layout);
+            entitiesResponse.Add(mappedEntity);
+        }
+
         return OkPaged(entitiesResponse);
     }
 
     [HttpGet("{id}")]
-    [PolicyAll]
+    [Policy(AREA, READ)]
     public async Task<IApiResult<PageDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var entity = await pageService.GetById(id, cancellationToken);
@@ -40,7 +54,8 @@ public class PageController(
 
     [HttpGet]
     [DecodeQueryParam]
-    [PolicyAll]
+    [Policy(AREA, READ)]
+    [AllowAnonymous]
     public async Task<IApiResult<PageFullDetailResponse>> GetByUrl([FromQuery] string url, CancellationToken cancellationToken = default)
     {
         var uri = new Uri(url);
@@ -74,6 +89,20 @@ public class PageController(
         return Ok(entityResponse);
     }
 
+    [HttpPut]
+    [Policy(AREA, UPDATE)]
+    public async Task<IApiResult<bool>> UpdatePluginOrders(PageUpdatePluginOrdersRequest request, CancellationToken cancellationToken = default)
+    {
+        var index = 0;
+        foreach (var pluginId in request.Plugins)
+        {
+            var plugin = await pluginService.GetById(pluginId, cancellationToken);
+            plugin.Order = index++;
+            await pluginService.Update(plugin);
+        }
+        return Ok(true);
+    }
+
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
@@ -86,10 +115,16 @@ public class PageController(
 
     private static string GetFullPath(Dictionary<Guid, Page> allPages, Page page)
     {
-        // append parents' path to the current page's path recursively
-        // until there is no parent, then return the full path. The separator should be a slash.
-        var currentPath = !page.Path.StartsWith("/") ? "/" + page.Path : page.Path;
-        return page.ParentId.HasValue ? GetFullPath(allPages, allPages[page.ParentId.Value]) + currentPath : currentPath;
+        var result = new List<string>();
+        var currentPage = page;
+        while (currentPage != null)
+        {
+            result.Add(currentPage.Path);
+            currentPage = currentPage.ParentId.HasValue ? allPages[currentPage.ParentId.Value] : default!;
+        }
+        result.Reverse();
+
+        return string.Join("", result);
     }
 
     private async Task<IApiResult<PageFullDetailResponse>> GetPageResponse(string domain, string path, CancellationToken cancellationToken = default)
@@ -109,12 +144,20 @@ public class PageController(
             throw new AppException(ExceptionCodes.PageNotFound);
 
         var layoutId = page.LayoutId ?? site.LayoutId;
+        var editLayoutId = page.EditLayoutId ?? site.EditLayoutId;
+        var detailLayoutId = page.DetailLayoutId ?? site.DetailLayoutId;
+
         var layout = await layoutService.GetById(layoutId, cancellationToken);
+        var editLayout = await layoutService.GetById(editLayoutId, cancellationToken);
+        var detailLayout = await layoutService.GetById(detailLayoutId, cancellationToken);
+
         var plugins = await pluginService.GetByPageId(page.Id, cancellationToken);
 
         var pageResponse = mapper.Map<PageFullDetailResponse>(page);
         pageResponse.Site = mapper.Map<SiteDetailResponse>(site);
         pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
+        pageResponse.EditLayout = mapper.Map<LayoutDetailResponse>(editLayout);
+        pageResponse.DetailLayout = mapper.Map<LayoutDetailResponse>(detailLayout);
         pageResponse.FullPath = path;
         pageResponse.Sections = [];
 

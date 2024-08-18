@@ -11,7 +11,7 @@
         const { fetch: originalFetch } = window;
 
         window.fetch = async (...args) => {
-            const [url, options] = args;
+            const [url, options = {}] = args;
 
             /*
             https://github.com/dotnet/aspnetcore/blob/c53f7e474ba80124fb9134ebf23d1d626a19b458/src/Components/Web.JS/src/Services/NavigationEnhancement.ts#L34

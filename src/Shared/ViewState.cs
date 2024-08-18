@@ -6,6 +6,8 @@ public class ViewState
     public SiteViewState Site { get; set; } = default!;
     public PageViewState Page { get; set; } = default!;
     public LayoutViewState Layout { get; set; } = default!;
+    public LayoutViewState DetailLayout { get; set; } = default!;
+    public LayoutViewState EditLayout { get; set; } = default!;
     public List<PluginViewState> Plugins { get; set; } = default!;
     public UserViewState User { get; set; } = default!;
     public PluginViewState? Plugin { get; set; }
@@ -16,6 +18,7 @@ public enum ViewStateType
 {
     Default,
     PluginEdit,
+    PluginDetail,
     PagePreview,
     PageEdit
 }
@@ -24,6 +27,7 @@ public class SiteViewState
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = default!;
+    public List<string> Urls { get; set; } = default!;
     public string? Description { get; set; }
 }
 

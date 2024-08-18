@@ -20,7 +20,7 @@ public partial class FileListPlugin
     private FolderUpdateRequest? FolderUpdateModel { get; set; }
     private FileUpdateRequest? FileUpdateModel { get; set; }
     private FolderDetailResponse? RootFolder { get; set; }
-    private FileUploadConfiguration? FileUploadConfig { get; set; }
+    private FileUploadConfig? FileUploadConfig { get; set; }
 
     private string SelectedFileExtension { get; set; } = string.Empty;
 

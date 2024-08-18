@@ -47,9 +47,7 @@ This proposal outlines the approach for utilizing FluentCMS to create and manage
 * Name: The name of the site.
 * Logo: The logo of the site.
 * Favicon: The favicon of the site.
-* DefaultTheme: The default theme used by the site.
 * DefaultLayout: The default layout used by the site.
-* DefaultHomePage: The home/default page of the site.
 * SiteMap: Structure of the site, including pages and navigation.
 * HeadContent: Custom content for the head section of the site’s HTML.
 * BodyContent: Custom content for the body section of the site’s HTML.
@@ -57,7 +55,21 @@ This proposal outlines the approach for utilizing FluentCMS to create and manage
 * Version: The current version of the site settings.
 * Description
 * AdminRoleIds
-* ViewRoleIds
+* ViewRoleIds (can remove)
+* DefaultTheme: The default theme used by the site. (can Remove)
+* AdminUserIds
+* HomePageId: The home/default page of the site.
+* LoginPageId
+* RegistrationPageId
+* UserProfilePageId
+* 404PageId
+* 500PageId
+* RedirectAfterLogin
+* RedirectAfterLogout
+* Title
+* TimeZone
+* Languages
+
 
 ## Permissions
 * EntityId

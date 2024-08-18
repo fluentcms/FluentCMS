@@ -6,4 +6,6 @@ public class SiteCreateRequest
     public string? Description { get; set; }
     public List<string> Urls { get; set; } = [];
     public Guid LayoutId { get; set; } = default!;
+    public Guid DetailLayoutId { get; set; } = default!;
+    public Guid EditLayoutId { get; set; } = default!;
 }

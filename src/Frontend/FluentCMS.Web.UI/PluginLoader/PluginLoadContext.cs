@@ -12,5 +12,4 @@ public class PluginLoadContext : AssemblyLoadContext
     {
         return null; // Return null to use the default load context for dependencies
     }
-
 }
