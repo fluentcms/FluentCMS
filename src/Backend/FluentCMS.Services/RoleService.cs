@@ -2,6 +2,7 @@
 
 public interface IRoleService : IAutoRegisterService
 {
+    Task<IEnumerable<Role>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default);
     Task<IEnumerable<Role>> GetAll(CancellationToken cancellationToken = default);
     Task<Role> Create(Role role, CancellationToken cancellationToken = default);
     Task<Role> Update(Role role, CancellationToken cancellationToken = default);
@@ -11,6 +12,11 @@ public interface IRoleService : IAutoRegisterService
 
 public class RoleService(IRoleRepository roleRepository) : IRoleService
 {
+    public async Task<IEnumerable<Role>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
+    {
+        return await roleRepository.GetAllForSite(siteId, cancellationToken);
+    }
+
     public async Task<IEnumerable<Role>> GetAll(CancellationToken cancellationToken = default)
     {
         return await roleRepository.GetAll(cancellationToken);
@@ -33,8 +39,13 @@ public class RoleService(IRoleRepository roleRepository) : IRoleService
 
     public async Task<Role> Delete(Guid roleId, CancellationToken cancellationToken = default)
     {
-        _ = await roleRepository.GetById(roleId, cancellationToken) ??
+        var existRole = await roleRepository.GetById(roleId, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleNotFound);
+
+        // check for system roles, they cant be deleted.
+        // we need them for system purposes. 
+        if (existRole.Type != RoleTypes.UserDefined)
+            throw new AppException(ExceptionCodes.RoleCanNotBeDeleted);
 
         return await roleRepository.Delete(roleId, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleUnableToDelete);

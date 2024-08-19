@@ -4,9 +4,12 @@ public partial class RoleListPlugin
 {
     private List<RoleDetailResponse> Roles { get; set; } = [];
 
+    [CascadingParameter]
+    private ViewState ViewState { get; set; } = default!;
+
     public async Task Load()
     {
-        var rolesResponse = await ApiClient.Role.GetAllAsync();
+        var rolesResponse = await ApiClient.Role.GetAllForSiteAsync(ViewState.Site.Id);
         Roles = rolesResponse?.Data?.ToList() ?? [];
     }
 

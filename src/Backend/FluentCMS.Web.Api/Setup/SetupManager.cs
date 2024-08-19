@@ -228,8 +228,12 @@ public class SetupManager : ISetupManager
         var adminRoles = new List<Role>();
         foreach (var role in _adminTemplate.Roles)
         {
+            // set default siteId to roles
+            role.SiteId = _site.Id;
             await _roleService.Create(role);
-            if (role.ReadOnly)
+
+            // some other roles should be assigned to superAdmin user. have to talk about. 
+            if (role.Type == RoleTypes.Administrators)
                 adminRoles.Add(role);
         }
 
