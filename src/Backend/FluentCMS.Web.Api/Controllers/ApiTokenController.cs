@@ -49,7 +49,7 @@ public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper
 
     [HttpPut]
     [Policy(AREA, UPDATE)]
-    public async Task<IApiResult<ApiTokenDetailResponse>> RegenerateSecret([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<ApiTokenDetailResponse>> RegenerateSecret(Guid id, CancellationToken cancellationToken = default)
     {
         var apiToken = await apiTokenService.RegenerateSecret(id, cancellationToken);
         var apiTokenResponse = mapper.Map<ApiTokenDetailResponse>(apiToken);
