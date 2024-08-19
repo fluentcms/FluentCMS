@@ -1,0 +1,156 @@
+
+$btn-primary-bg:                  $blue-700;
+$btn-primary-border-color:         $blue-700;
+$btn-primary-hover-bg:             $blue-800;
+$btn-primary-hover-border-color:   $blue-800;
+$btn-primary-color:               $white;
+
+$btn-focus-width:                 0; // Remove the default outline width
+$btn-primary-focus-box-shadow:    0 0 0 0.25rem rgba(59, 130, 246, 0.5); // Similar to Flowbite's focus ring
+
+$btn-border-radius:               $border-radius-lg;
+
+$btn-padding-y:                   0.625rem; // Equivalent to py-2.5
+$btn-padding-x:                   1.25rem;  // Equivalent to px-5
+$btn-font-size:                   $font-size-sm; // Equivalent to text-sm
+
+// Assuming you've defined dark mode color variables
+$btn-primary-bg-dark:             $blue-600;
+$btn-primary-hover-bg-dark:       $blue-700;
+
+// General Button Styling
+$btn-default-color:             $gray-900;
+$btn-default-bg:                $white;
+$btn-default-border:            $gray-200;
+$btn-default-hover-bg:          $gray-100;
+$btn-default-hover-color:       $blue-700;
+$btn-default-focus-ring-color:  $gray-200;
+
+// Dark Theme Button Styling
+$btn-default-dark-bg:           rgba($gray-600, 0.1);
+$btn-default-dark-color:        $gray-400;
+$btn-default-dark-border:       $gray-600;
+$btn-default-dark-hover-color:  $white;
+$btn-default-dark-hover-bg:     $gray-700;
+$btn-default-dark-focus-ring-color: $gray-700;
+
+// Apply to Bootstrap Button Class
+.btn-default {
+    color: $btn-default-color;
+    background-color: $btn-default-bg;
+    border-color: $btn-default-border;
+    &:hover {
+        background-color: $btn-default-hover-bg;
+        color: $btn-default-hover-color;
+    }
+    &:focus {
+        box-shadow: 0 0 0 0.25rem rgba($btn-default-focus-ring-color, 0.5);
+    }
+    // Dark mode
+    &[data-bs-theme="dark"] {
+        background-color: $btn-default-dark-bg;
+        color: $btn-default-dark-color;
+        border-color: $btn-default-dark-border;
+        &:hover {
+            background-color: $btn-default-dark-hover-bg;
+            color: $btn-default-dark-hover-color;
+        }
+        &:focus {
+            box-shadow: 0 0 0 0.25rem rgba($btn-default-dark-focus-ring-color, 0.5);
+        }
+    }
+}
+
+// General Ghost Button Styling
+$btn-ghost-color:               $gray-600;
+$btn-ghost-hover-color:         $gray-800;
+$btn-ghost-dark-color:          $gray-400;
+$btn-ghost-dark-hover-color:    $gray-700;
+
+.btn-ghost {
+    color: $btn-ghost-color;
+    background-color: transparent;
+    &:hover {
+        color: $btn-ghost-hover-color;
+    }
+    // Dark mode
+    &[data-bs-theme="dark"] {
+        color: $btn-ghost-dark-color;
+        &:hover {
+            color: $btn-ghost-dark-hover-color;
+        }
+    }
+}
+
+// General Outline Button Styling
+$btn-outline-color:             $gray-700;
+$btn-outline-border-color:      $gray-700;
+$btn-outline-hover-bg:          $gray-800;
+$btn-outline-hover-color:       $white;
+$btn-outline-focus-ring-color:  $gray-300;
+
+// Dark Theme Outline Button Styling
+$btn-outline-dark-border:       $gray-500;
+$btn-outline-dark-color:        $gray-400;
+$btn-outline-dark-hover-bg:     $gray-500;
+$btn-outline-dark-hover-color:  $white;
+$btn-outline-dark-focus-ring-color: $gray-800;
+
+.btn-outline-default {
+    color: $btn-outline-color;
+    border-color: $btn-outline-border-color;
+    &:hover {
+        background-color: $btn-outline-hover-bg;
+        color: $btn-outline-hover-color;
+    }
+    &:focus {
+        box-shadow: 0 0 0 0.25rem rgba($btn-outline-focus-ring-color, 0.5);
+    }
+    // Dark mode
+    &[data-bs-theme="dark"] {
+        border-color: $btn-outline-dark-border;
+        color: $btn-outline-dark-color;
+        &:hover {
+            background-color: $btn-outline-dark-hover-bg;
+            color: $btn-outline-dark-hover-color;
+        }
+        &:focus {
+            box-shadow: 0 0 0 0.25rem rgba($btn-outline-dark-focus-ring-color, 0.5);
+        }
+    }
+}
+
+// Disabled Button Styling
+$btn-disabled-bg:               $gray-400;
+$btn-disabled-dark-bg:          $gray-500;
+
+.btn-default.disabled,
+.btn-default:disabled {
+    background-color: $btn-disabled-bg;
+    cursor: not-allowed;
+    pointer-events: none;
+    // Dark mode
+    &[data-bs-theme="dark"] {
+        background-color: $btn-disabled-dark-bg;
+    }
+}
+
+// Link Button Styling
+$btn-link-color:                $gray-600;
+$btn-link-hover-color:          $gray-800;
+$btn-link-dark-color:           $gray-400;
+$btn-link-dark-hover-color:     $gray-700;
+
+.btn-link-default {
+    color: $btn-link-color;
+    &:hover {
+        color: $btn-link-hover-color;
+    }
+    // Dark mode
+    &[data-bs-theme="dark"] {
+        color: $btn-link-dark-color;
+        &:hover {
+            color: $btn-link-dark-hover-color;
+        }
+    }
+}

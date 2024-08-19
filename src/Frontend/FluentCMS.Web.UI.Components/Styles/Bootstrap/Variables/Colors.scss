@@ -1,0 +1,109 @@
+$blue-50:        #f4f8fd;
+$blue-100:       #e8f1fb;
+$blue-200:       #c6ddf4;
+$blue-300:       #a3c8ed;
+$blue-400:       #5e9fe0;
+$blue-500:       #1976d2;
+$blue-600:       #176abd; 
+$blue-700:       #13599e;
+$blue-800:       #0f477e;
+$blue-900:       #0c3a67;
+
+$gray-50:    #f9fafb;
+$gray-100:   #f3f4f6;
+$gray-200:   #e5e7eb;
+$gray-300:   #d1d5db;
+$gray-400:   #9ca3af;
+$gray-500:   #6b7280;
+$gray-600:   #4b5563;
+$gray-700:   #374151;
+$gray-800:   #1f2937;
+$gray-900:   #111827;
+
+$red-50:     #fef2f2;
+$red-100:    #fee2e2;
+$red-200:    #fecaca;
+$red-300:    #fca5a5;
+$red-400:    #f87171;
+$red-500:    #ef4444;
+$red-600:    #dc2626;
+$red-700:    #b91c1c;
+$red-800:    #991b1b;
+$red-900:    #7f1d1d;
+
+$green-50:   #ecfdf5;
+$green-100:  #d1fae5;
+$green-200:  #a7f3d0;
+$green-300:  #6ee7b7;
+$green-400:  #34d399;
+$green-500:  #10b981;
+$green-600:  #059669;
+$green-700:  #047857;
+$green-800:  #065f46;
+$green-900:  #064e3b;
+
+$yellow-50:  #fefce8;
+$yellow-100: #fef9c3;
+$yellow-200: #fef08a;
+$yellow-300: #fde047;
+$yellow-400: #facc15;
+$yellow-500: #eab308;
+$yellow-600: #ca8a04;
+$yellow-700: #a16207;
+$yellow-800: #854d0e;
+$yellow-900: #713f12;
+
+
+$primary:    $blue-600; // Adjust this based on your primary color
+$secondary:  $gray-600; // Typically used for secondary UI elements
+$success:    $green-600; // Used for success messages or buttons
+$info:       $blue-400; // Used for informational messages
+$warning:    $yellow-500; // Used for warnings
+$danger:     $red-600; // Used for error messages or buttons
+$light:      $gray-100; // Light background or text
+$dark:       $gray-800; // Dark background or text
+
+
+// Primary colors
+$primary:               $blue-600;
+$primary-hover:         $blue-700;
+$primary-active:        $blue-800;
+
+// Secondary (usually gray)
+$secondary:             $gray-600;
+$secondary-hover:       $gray-700;
+$secondary-active:      $gray-800;
+
+// Success colors
+$success:               $green-600;
+$success-hover:         $green-700;
+$success-active:        $green-800;
+
+// Info colors
+$info:                  $blue-400;
+$info-hover:            $blue-500;
+$info-active:           $blue-600;
+
+// Warning colors
+$warning:               $yellow-500;
+$warning-hover:         $yellow-600;
+$warning-active:        $yellow-700;
+
+// Danger colors
+$danger:                $red-600;
+$danger-hover:          $red-700;
+$danger-active:         $red-800;
+
+// Light colors
+$light:                 $gray-100;
+$light-hover:           $gray-200;
+$light-active:          $gray-300;
+
+// Dark colors
+$dark:                  $gray-800;
+$dark-hover:            $gray-900;
+$dark-active:           $gray-900;
+
+// Backgrounds
+$body-bg:               $gray-50;
+$body-color:            $gray-900;

@@ -1,5 +1,5 @@
 $form-select: $prefix + 'form-select';
 
 .#{$form-select} {
-    @extend .form-control;
+    @extend .form-select;
 }

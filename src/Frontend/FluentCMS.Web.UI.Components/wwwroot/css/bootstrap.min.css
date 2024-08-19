@@ -2204,7 +2204,7 @@ progress {
   color: var(--f-secondary-color);
 }
 
-.form-control, .f-form-textarea, .f-form-select, .f-form-number-input, .f-form-input, .f-form-date-input {
+.form-control, .f-form-textarea, .f-form-number-input, .f-form-input, .f-form-date-input {
   display: block;
   width: 100%;
   padding: 0.625rem 0.625rem;
@@ -2220,41 +2220,41 @@ progress {
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 @media (prefers-reduced-motion: reduce) {
-  .form-control, .f-form-textarea, .f-form-select, .f-form-number-input, .f-form-input, .f-form-date-input {
+  .form-control, .f-form-textarea, .f-form-number-input, .f-form-input, .f-form-date-input {
     transition: none;
   }
 }
-.form-control[type=file], [type=file].f-form-textarea, [type=file].f-form-select, [type=file].f-form-number-input, [type=file].f-form-input, [type=file].f-form-date-input {
+.form-control[type=file], [type=file].f-form-textarea, [type=file].f-form-number-input, [type=file].f-form-input, [type=file].f-form-date-input {
   overflow: hidden;
 }
-.form-control[type=file]:not(:disabled):not([readonly]), [type=file].f-form-textarea:not(:disabled):not([readonly]), [type=file].f-form-select:not(:disabled):not([readonly]), [type=file].f-form-number-input:not(:disabled):not([readonly]), [type=file].f-form-input:not(:disabled):not([readonly]), [type=file].f-form-date-input:not(:disabled):not([readonly]) {
+.form-control[type=file]:not(:disabled):not([readonly]), [type=file].f-form-textarea:not(:disabled):not([readonly]), [type=file].f-form-number-input:not(:disabled):not([readonly]), [type=file].f-form-input:not(:disabled):not([readonly]), [type=file].f-form-date-input:not(:disabled):not([readonly]) {
   cursor: pointer;
 }
-.form-control:focus, .f-form-textarea:focus, .f-form-select:focus, .f-form-number-input:focus, .f-form-input:focus, .f-form-date-input:focus {
+.form-control:focus, .f-form-textarea:focus, .f-form-number-input:focus, .f-form-input:focus, .f-form-date-input:focus {
   color: var(--f-body-color);
   background-color: var(--f-body-bg);
   border-color: #1976d2;
   outline: 0;
   box-shadow: 0 0 0 1px #1976d2;
 }
-.form-control::-webkit-date-and-time-value, .f-form-textarea::-webkit-date-and-time-value, .f-form-select::-webkit-date-and-time-value, .f-form-number-input::-webkit-date-and-time-value, .f-form-input::-webkit-date-and-time-value, .f-form-date-input::-webkit-date-and-time-value {
+.form-control::-webkit-date-and-time-value, .f-form-textarea::-webkit-date-and-time-value, .f-form-number-input::-webkit-date-and-time-value, .f-form-input::-webkit-date-and-time-value, .f-form-date-input::-webkit-date-and-time-value {
   min-width: 85px;
   height: 1.5em;
   margin: 0;
 }
-.form-control::-webkit-datetime-edit, .f-form-textarea::-webkit-datetime-edit, .f-form-select::-webkit-datetime-edit, .f-form-number-input::-webkit-datetime-edit, .f-form-input::-webkit-datetime-edit, .f-form-date-input::-webkit-datetime-edit {
+.form-control::-webkit-datetime-edit, .f-form-textarea::-webkit-datetime-edit, .f-form-number-input::-webkit-datetime-edit, .f-form-input::-webkit-datetime-edit, .f-form-date-input::-webkit-datetime-edit {
   display: block;
   padding: 0;
 }
-.form-control::placeholder, .f-form-textarea::placeholder, .f-form-select::placeholder, .f-form-number-input::placeholder, .f-form-input::placeholder, .f-form-date-input::placeholder {
+.form-control::placeholder, .f-form-textarea::placeholder, .f-form-number-input::placeholder, .f-form-input::placeholder, .f-form-date-input::placeholder {
   color: #9ca3af;
   opacity: 1;
 }
-.form-control:disabled, .f-form-textarea:disabled, .f-form-select:disabled, .f-form-number-input:disabled, .f-form-input:disabled, .f-form-date-input:disabled {
+.form-control:disabled, .f-form-textarea:disabled, .f-form-number-input:disabled, .f-form-input:disabled, .f-form-date-input:disabled {
   background-color: #e5e7eb;
   opacity: 1;
 }
-.form-control::file-selector-button, .f-form-textarea::file-selector-button, .f-form-select::file-selector-button, .f-form-number-input::file-selector-button, .f-form-input::file-selector-button, .f-form-date-input::file-selector-button {
+.form-control::file-selector-button, .f-form-textarea::file-selector-button, .f-form-number-input::file-selector-button, .f-form-input::file-selector-button, .f-form-date-input::file-selector-button {
   padding: 0.625rem 0.625rem;
   margin: -0.625rem -0.625rem;
   margin-inline-end: 0.625rem;
@@ -2269,11 +2269,11 @@ progress {
   transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 @media (prefers-reduced-motion: reduce) {
-  .form-control::file-selector-button, .f-form-textarea::file-selector-button, .f-form-select::file-selector-button, .f-form-number-input::file-selector-button, .f-form-input::file-selector-button, .f-form-date-input::file-selector-button {
+  .form-control::file-selector-button, .f-form-textarea::file-selector-button, .f-form-number-input::file-selector-button, .f-form-input::file-selector-button, .f-form-date-input::file-selector-button {
     transition: none;
   }
 }
-.form-control:hover:not(:disabled):not([readonly])::file-selector-button, .f-form-textarea:hover:not(:disabled):not([readonly])::file-selector-button, .f-form-select:hover:not(:disabled):not([readonly])::file-selector-button, .f-form-number-input:hover:not(:disabled):not([readonly])::file-selector-button, .f-form-input:hover:not(:disabled):not([readonly])::file-selector-button, .f-form-date-input:hover:not(:disabled):not([readonly])::file-selector-button {
+.form-control:hover:not(:disabled):not([readonly])::file-selector-button, .f-form-textarea:hover:not(:disabled):not([readonly])::file-selector-button, .f-form-number-input:hover:not(:disabled):not([readonly])::file-selector-button, .f-form-input:hover:not(:disabled):not([readonly])::file-selector-button, .f-form-date-input:hover:not(:disabled):not([readonly])::file-selector-button {
   background-color: var(--f-secondary-bg);
 }
 
@@ -2320,7 +2320,7 @@ progress {
   margin-inline-end: 1rem;
 }
 
-textarea.form-control, textarea.f-form-textarea, textarea.f-form-select, textarea.f-form-number-input, textarea.f-form-input, textarea.f-form-date-input {
+textarea.form-control, textarea.f-form-textarea, textarea.f-form-number-input, textarea.f-form-input, textarea.f-form-date-input {
   min-height: calc(1.5em + 0.75rem + calc(var(--f-border-width) * 2));
 }
 textarea.form-control-sm {
@@ -2353,7 +2353,7 @@ textarea.form-control-lg {
   height: calc(1.5em + 1rem + calc(var(--f-border-width) * 2));
 }
 
-.form-select {
+.form-select, .f-form-select {
   --f-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
   display: block;
   width: 100%;
@@ -2373,23 +2373,23 @@ textarea.form-control-lg {
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 @media (prefers-reduced-motion: reduce) {
-  .form-select {
+  .form-select, .f-form-select {
     transition: none;
   }
 }
-.form-select:focus {
+.form-select:focus, .f-form-select:focus {
   border-color: #86b7fe;
   outline: 0;
   box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
-.form-select[multiple], .form-select[size]:not([size="1"]) {
+.form-select[multiple], [multiple].f-form-select, .form-select[size]:not([size="1"]), [size].f-form-select:not([size="1"]) {
   padding-right: 0.75rem;
   background-image: none;
 }
-.form-select:disabled {
+.form-select:disabled, .f-form-select:disabled {
   background-color: var(--f-secondary-bg);
 }
-.form-select:-moz-focusring {
+.form-select:-moz-focusring, .f-form-select:-moz-focusring {
   color: transparent;
   text-shadow: 0 0 0 var(--f-body-color);
 }
@@ -2410,7 +2410,7 @@ textarea.form-control-lg {
   border-radius: var(--f-border-radius-lg);
 }
 
-[data-bs-theme=dark] .form-select {
+[data-bs-theme=dark] .form-select, [data-bs-theme=dark] .f-form-select {
   --f-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23dee2e6' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
 }
 
@@ -2629,9 +2629,10 @@ textarea.form-control-lg {
 .form-floating {
   position: relative;
 }
-.form-floating > .form-control, .form-floating > .f-form-textarea, .form-floating > .f-form-select, .form-floating > .f-form-number-input, .form-floating > .f-form-input, .form-floating > .f-form-date-input,
+.form-floating > .form-control, .form-floating > .f-form-textarea, .form-floating > .f-form-number-input, .form-floating > .f-form-input, .form-floating > .f-form-date-input,
 .form-floating > .form-control-plaintext,
-.form-floating > .form-select {
+.form-floating > .form-select,
+.form-floating > .f-form-select {
   height: calc(3.5rem + calc(var(--f-border-width) * 2));
   min-height: calc(3.5rem + calc(var(--f-border-width) * 2));
   line-height: 1.25;
@@ -2657,50 +2658,50 @@ textarea.form-control-lg {
     transition: none;
   }
 }
-.form-floating > .form-control, .form-floating > .f-form-textarea, .form-floating > .f-form-select, .form-floating > .f-form-number-input, .form-floating > .f-form-input, .form-floating > .f-form-date-input,
+.form-floating > .form-control, .form-floating > .f-form-textarea, .form-floating > .f-form-number-input, .form-floating > .f-form-input, .form-floating > .f-form-date-input,
 .form-floating > .form-control-plaintext {
   padding: 1rem 0.75rem;
 }
-.form-floating > .form-control::placeholder, .form-floating > .f-form-textarea::placeholder, .form-floating > .f-form-select::placeholder, .form-floating > .f-form-number-input::placeholder, .form-floating > .f-form-input::placeholder, .form-floating > .f-form-date-input::placeholder,
+.form-floating > .form-control::placeholder, .form-floating > .f-form-textarea::placeholder, .form-floating > .f-form-number-input::placeholder, .form-floating > .f-form-input::placeholder, .form-floating > .f-form-date-input::placeholder,
 .form-floating > .form-control-plaintext::placeholder {
   color: transparent;
 }
-.form-floating > .form-control:focus, .form-floating > .f-form-textarea:focus, .form-floating > .f-form-select:focus, .form-floating > .f-form-number-input:focus, .form-floating > .f-form-input:focus, .form-floating > .f-form-date-input:focus, .form-floating > .form-control:not(:placeholder-shown), .form-floating > .f-form-textarea:not(:placeholder-shown), .form-floating > .f-form-select:not(:placeholder-shown), .form-floating > .f-form-number-input:not(:placeholder-shown), .form-floating > .f-form-input:not(:placeholder-shown), .form-floating > .f-form-date-input:not(:placeholder-shown),
+.form-floating > .form-control:focus, .form-floating > .f-form-textarea:focus, .form-floating > .f-form-number-input:focus, .form-floating > .f-form-input:focus, .form-floating > .f-form-date-input:focus, .form-floating > .form-control:not(:placeholder-shown), .form-floating > .f-form-textarea:not(:placeholder-shown), .form-floating > .f-form-number-input:not(:placeholder-shown), .form-floating > .f-form-input:not(:placeholder-shown), .form-floating > .f-form-date-input:not(:placeholder-shown),
 .form-floating > .form-control-plaintext:focus,
 .form-floating > .form-control-plaintext:not(:placeholder-shown) {
   padding-top: 1.625rem;
   padding-bottom: 0.625rem;
 }
-.form-floating > .form-control:-webkit-autofill, .form-floating > .f-form-textarea:-webkit-autofill, .form-floating > .f-form-select:-webkit-autofill, .form-floating > .f-form-number-input:-webkit-autofill, .form-floating > .f-form-input:-webkit-autofill, .form-floating > .f-form-date-input:-webkit-autofill,
+.form-floating > .form-control:-webkit-autofill, .form-floating > .f-form-textarea:-webkit-autofill, .form-floating > .f-form-number-input:-webkit-autofill, .form-floating > .f-form-input:-webkit-autofill, .form-floating > .f-form-date-input:-webkit-autofill,
 .form-floating > .form-control-plaintext:-webkit-autofill {
   padding-top: 1.625rem;
   padding-bottom: 0.625rem;
 }
-.form-floating > .form-select {
+.form-floating > .form-select, .form-floating > .f-form-select {
   padding-top: 1.625rem;
   padding-bottom: 0.625rem;
 }
-.form-floating > .form-control:focus ~ label, .form-floating > .f-form-textarea:focus ~ label, .form-floating > .f-form-select:focus ~ label, .form-floating > .f-form-number-input:focus ~ label, .form-floating > .f-form-input:focus ~ label, .form-floating > .f-form-date-input:focus ~ label,
+.form-floating > .form-control:focus ~ label, .form-floating > .f-form-textarea:focus ~ label, .form-floating > .f-form-number-input:focus ~ label, .form-floating > .f-form-input:focus ~ label, .form-floating > .f-form-date-input:focus ~ label,
 .form-floating > .form-control:not(:placeholder-shown) ~ label,
 .form-floating > .f-form-textarea:not(:placeholder-shown) ~ label,
-.form-floating > .f-form-select:not(:placeholder-shown) ~ label,
 .form-floating > .f-form-number-input:not(:placeholder-shown) ~ label,
 .form-floating > .f-form-input:not(:placeholder-shown) ~ label,
 .form-floating > .f-form-date-input:not(:placeholder-shown) ~ label,
 .form-floating > .form-control-plaintext ~ label,
-.form-floating > .form-select ~ label {
+.form-floating > .form-select ~ label,
+.form-floating > .f-form-select ~ label {
   color: rgba(var(--f-body-color-rgb), 0.65);
   transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
 }
-.form-floating > .form-control:focus ~ label::after, .form-floating > .f-form-textarea:focus ~ label::after, .form-floating > .f-form-select:focus ~ label::after, .form-floating > .f-form-number-input:focus ~ label::after, .form-floating > .f-form-input:focus ~ label::after, .form-floating > .f-form-date-input:focus ~ label::after,
+.form-floating > .form-control:focus ~ label::after, .form-floating > .f-form-textarea:focus ~ label::after, .form-floating > .f-form-number-input:focus ~ label::after, .form-floating > .f-form-input:focus ~ label::after, .form-floating > .f-form-date-input:focus ~ label::after,
 .form-floating > .form-control:not(:placeholder-shown) ~ label::after,
 .form-floating > .f-form-textarea:not(:placeholder-shown) ~ label::after,
-.form-floating > .f-form-select:not(:placeholder-shown) ~ label::after,
 .form-floating > .f-form-number-input:not(:placeholder-shown) ~ label::after,
 .form-floating > .f-form-input:not(:placeholder-shown) ~ label::after,
 .form-floating > .f-form-date-input:not(:placeholder-shown) ~ label::after,
 .form-floating > .form-control-plaintext ~ label::after,
-.form-floating > .form-select ~ label::after {
+.form-floating > .form-select ~ label::after,
+.form-floating > .f-form-select ~ label::after {
   position: absolute;
   inset: 1rem 0.375rem;
   z-index: -1;
@@ -2709,7 +2710,7 @@ textarea.form-control-lg {
   background-color: #f9fafb;
   border-radius: 0.5rem;
 }
-.form-floating > .form-control:-webkit-autofill ~ label, .form-floating > .f-form-textarea:-webkit-autofill ~ label, .form-floating > .f-form-select:-webkit-autofill ~ label, .form-floating > .f-form-number-input:-webkit-autofill ~ label, .form-floating > .f-form-input:-webkit-autofill ~ label, .form-floating > .f-form-date-input:-webkit-autofill ~ label {
+.form-floating > .form-control:-webkit-autofill ~ label, .form-floating > .f-form-textarea:-webkit-autofill ~ label, .form-floating > .f-form-number-input:-webkit-autofill ~ label, .form-floating > .f-form-input:-webkit-autofill ~ label, .form-floating > .f-form-date-input:-webkit-autofill ~ label {
   color: rgba(var(--f-body-color-rgb), 0.65);
   transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
 }
@@ -2732,16 +2733,18 @@ textarea.form-control-lg {
   align-items: stretch;
   width: 100%;
 }
-.input-group > .form-control, .input-group > .f-form-textarea, .input-group > .f-form-select, .input-group > .f-form-number-input, .input-group > .f-form-input, .input-group > .f-form-date-input,
+.input-group > .form-control, .input-group > .f-form-textarea, .input-group > .f-form-number-input, .input-group > .f-form-input, .input-group > .f-form-date-input,
 .input-group > .form-select,
+.input-group > .f-form-select,
 .input-group > .form-floating {
   position: relative;
   flex: 1 1 auto;
   width: 1%;
   min-width: 0;
 }
-.input-group > .form-control:focus, .input-group > .f-form-textarea:focus, .input-group > .f-form-select:focus, .input-group > .f-form-number-input:focus, .input-group > .f-form-input:focus, .input-group > .f-form-date-input:focus,
+.input-group > .form-control:focus, .input-group > .f-form-textarea:focus, .input-group > .f-form-number-input:focus, .input-group > .f-form-input:focus, .input-group > .f-form-date-input:focus,
 .input-group > .form-select:focus,
+.input-group > .f-form-select:focus,
 .input-group > .form-floating:focus-within {
   z-index: 5;
 }
@@ -2768,8 +2771,9 @@ textarea.form-control-lg {
   border-radius: 0.5rem;
 }
 
-.input-group-lg > .form-control, .input-group-lg > .f-form-textarea, .input-group-lg > .f-form-select, .input-group-lg > .f-form-number-input, .input-group-lg > .f-form-input, .input-group-lg > .f-form-date-input,
+.input-group-lg > .form-control, .input-group-lg > .f-form-textarea, .input-group-lg > .f-form-number-input, .input-group-lg > .f-form-input, .input-group-lg > .f-form-date-input,
 .input-group-lg > .form-select,
+.input-group-lg > .f-form-select,
 .input-group-lg > .input-group-text,
 .input-group-lg > .btn,
 .input-group-lg > .f-button {
@@ -2778,8 +2782,9 @@ textarea.form-control-lg {
   border-radius: var(--f-border-radius-lg);
 }
 
-.input-group-sm > .form-control, .input-group-sm > .f-form-textarea, .input-group-sm > .f-form-select, .input-group-sm > .f-form-number-input, .input-group-sm > .f-form-input, .input-group-sm > .f-form-date-input,
+.input-group-sm > .form-control, .input-group-sm > .f-form-textarea, .input-group-sm > .f-form-number-input, .input-group-sm > .f-form-input, .input-group-sm > .f-form-date-input,
 .input-group-sm > .form-select,
+.input-group-sm > .f-form-select,
 .input-group-sm > .input-group-text,
 .input-group-sm > .btn,
 .input-group-sm > .f-button {
@@ -2788,8 +2793,9 @@ textarea.form-control-lg {
   border-radius: var(--f-border-radius-sm);
 }
 
-.input-group-lg > .form-select,
-.input-group-sm > .form-select {
+.input-group-lg > .form-select, .input-group-lg > .f-form-select,
+.input-group-sm > .form-select,
+.input-group-sm > .f-form-select {
   padding-right: 3rem;
 }
 
@@ -2797,11 +2803,11 @@ textarea.form-control-lg {
 .input-group:not(.has-validation) > .dropdown-toggle:nth-last-child(n+3),
 .input-group:not(.has-validation) > .form-floating:not(:last-child) > .form-control,
 .input-group:not(.has-validation) > .form-floating:not(:last-child) > .f-form-textarea,
-.input-group:not(.has-validation) > .form-floating:not(:last-child) > .f-form-select,
 .input-group:not(.has-validation) > .form-floating:not(:last-child) > .f-form-number-input,
 .input-group:not(.has-validation) > .form-floating:not(:last-child) > .f-form-input,
 .input-group:not(.has-validation) > .form-floating:not(:last-child) > .f-form-date-input,
-.input-group:not(.has-validation) > .form-floating:not(:last-child) > .form-select {
+.input-group:not(.has-validation) > .form-floating:not(:last-child) > .form-select,
+.input-group:not(.has-validation) > .form-floating:not(:last-child) > .f-form-select {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
@@ -2809,11 +2815,11 @@ textarea.form-control-lg {
 .input-group.has-validation > .dropdown-toggle:nth-last-child(n+4),
 .input-group.has-validation > .form-floating:nth-last-child(n+3) > .form-control,
 .input-group.has-validation > .form-floating:nth-last-child(n+3) > .f-form-textarea,
-.input-group.has-validation > .form-floating:nth-last-child(n+3) > .f-form-select,
 .input-group.has-validation > .form-floating:nth-last-child(n+3) > .f-form-number-input,
 .input-group.has-validation > .form-floating:nth-last-child(n+3) > .f-form-input,
 .input-group.has-validation > .form-floating:nth-last-child(n+3) > .f-form-date-input,
-.input-group.has-validation > .form-floating:nth-last-child(n+3) > .form-select {
+.input-group.has-validation > .form-floating:nth-last-child(n+3) > .form-select,
+.input-group.has-validation > .form-floating:nth-last-child(n+3) > .f-form-select {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
@@ -2822,8 +2828,9 @@ textarea.form-control-lg {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }
-.input-group > .form-floating:not(:first-child) > .form-control, .input-group > .form-floating:not(:first-child) > .f-form-textarea, .input-group > .form-floating:not(:first-child) > .f-form-select, .input-group > .form-floating:not(:first-child) > .f-form-number-input, .input-group > .form-floating:not(:first-child) > .f-form-input, .input-group > .form-floating:not(:first-child) > .f-form-date-input,
-.input-group > .form-floating:not(:first-child) > .form-select {
+.input-group > .form-floating:not(:first-child) > .form-control, .input-group > .form-floating:not(:first-child) > .f-form-textarea, .input-group > .form-floating:not(:first-child) > .f-form-number-input, .input-group > .form-floating:not(:first-child) > .f-form-input, .input-group > .form-floating:not(:first-child) > .f-form-date-input,
+.input-group > .form-floating:not(:first-child) > .form-select,
+.input-group > .form-floating:not(:first-child) > .f-form-select {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }
@@ -2857,7 +2864,7 @@ textarea.form-control-lg {
   display: block;
 }
 
-.was-validated .form-control:valid, .was-validated .f-form-textarea:valid, .was-validated .f-form-select:valid, .was-validated .f-form-number-input:valid, .was-validated .f-form-input:valid, .was-validated .f-form-date-input:valid, .form-control.is-valid, .is-valid.f-form-textarea, .is-valid.f-form-select, .is-valid.f-form-number-input, .is-valid.f-form-input, .is-valid.f-form-date-input {
+.was-validated .form-control:valid, .was-validated .f-form-textarea:valid, .was-validated .f-form-number-input:valid, .was-validated .f-form-input:valid, .was-validated .f-form-date-input:valid, .form-control.is-valid, .is-valid.f-form-textarea, .is-valid.f-form-number-input, .is-valid.f-form-input, .is-valid.f-form-date-input {
   border-color: var(--f-form-valid-border-color);
   padding-right: calc(1.5em + 0.75rem);
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
@@ -2865,26 +2872,26 @@ textarea.form-control-lg {
   background-position: right calc(0.375em + 0.1875rem) center;
   background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
 }
-.was-validated .form-control:valid:focus, .was-validated .f-form-textarea:valid:focus, .was-validated .f-form-select:valid:focus, .was-validated .f-form-number-input:valid:focus, .was-validated .f-form-input:valid:focus, .was-validated .f-form-date-input:valid:focus, .form-control.is-valid:focus, .is-valid.f-form-textarea:focus, .is-valid.f-form-select:focus, .is-valid.f-form-number-input:focus, .is-valid.f-form-input:focus, .is-valid.f-form-date-input:focus {
+.was-validated .form-control:valid:focus, .was-validated .f-form-textarea:valid:focus, .was-validated .f-form-number-input:valid:focus, .was-validated .f-form-input:valid:focus, .was-validated .f-form-date-input:valid:focus, .form-control.is-valid:focus, .is-valid.f-form-textarea:focus, .is-valid.f-form-number-input:focus, .is-valid.f-form-input:focus, .is-valid.f-form-date-input:focus {
   border-color: var(--f-form-valid-border-color);
   box-shadow: 0 0 0 0.25rem rgba(var(--f-success-rgb), 0.25);
 }
 
-.was-validated textarea.form-control:valid, .was-validated textarea.f-form-textarea:valid, .was-validated textarea.f-form-select:valid, .was-validated textarea.f-form-number-input:valid, .was-validated textarea.f-form-input:valid, .was-validated textarea.f-form-date-input:valid, textarea.form-control.is-valid, textarea.is-valid.f-form-textarea, textarea.is-valid.f-form-select, textarea.is-valid.f-form-number-input, textarea.is-valid.f-form-input, textarea.is-valid.f-form-date-input {
+.was-validated textarea.form-control:valid, .was-validated textarea.f-form-textarea:valid, .was-validated textarea.f-form-number-input:valid, .was-validated textarea.f-form-input:valid, .was-validated textarea.f-form-date-input:valid, textarea.form-control.is-valid, textarea.is-valid.f-form-textarea, textarea.is-valid.f-form-number-input, textarea.is-valid.f-form-input, textarea.is-valid.f-form-date-input {
   padding-right: calc(1.5em + 0.75rem);
   background-position: top calc(0.375em + 0.1875rem) right calc(0.375em + 0.1875rem);
 }
 
-.was-validated .form-select:valid, .form-select.is-valid {
+.was-validated .form-select:valid, .was-validated .f-form-select:valid, .form-select.is-valid, .is-valid.f-form-select {
   border-color: var(--f-form-valid-border-color);
 }
-.was-validated .form-select:valid:not([multiple]):not([size]), .was-validated .form-select:valid:not([multiple])[size="1"], .form-select.is-valid:not([multiple]):not([size]), .form-select.is-valid:not([multiple])[size="1"] {
+.was-validated .form-select:valid:not([multiple]):not([size]), .was-validated .f-form-select:valid:not([multiple]):not([size]), .was-validated .form-select:valid:not([multiple])[size="1"], .was-validated .f-form-select:valid:not([multiple])[size="1"], .form-select.is-valid:not([multiple]):not([size]), .is-valid.f-form-select:not([multiple]):not([size]), .form-select.is-valid:not([multiple])[size="1"], .is-valid.f-form-select:not([multiple])[size="1"] {
   --f-form-select-bg-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
   padding-right: 4.125rem;
   background-position: right 0.75rem center, center right 2.25rem;
   background-size: 16px 12px, calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
 }
-.was-validated .form-select:valid:focus, .form-select.is-valid:focus {
+.was-validated .form-select:valid:focus, .was-validated .f-form-select:valid:focus, .form-select.is-valid:focus, .is-valid.f-form-select:focus {
   border-color: var(--f-form-valid-border-color);
   box-shadow: 0 0 0 0.25rem rgba(var(--f-success-rgb), 0.25);
 }
@@ -2910,9 +2917,11 @@ textarea.form-control-lg {
   margin-left: 0.5em;
 }
 
-.was-validated .input-group > .form-control:not(:focus):valid, .was-validated .input-group > .f-form-textarea:not(:focus):valid, .was-validated .input-group > .f-form-select:not(:focus):valid, .was-validated .input-group > .f-form-number-input:not(:focus):valid, .was-validated .input-group > .f-form-input:not(:focus):valid, .was-validated .input-group > .f-form-date-input:not(:focus):valid, .input-group > .form-control:not(:focus).is-valid, .input-group > .f-form-textarea:not(:focus).is-valid, .input-group > .f-form-select:not(:focus).is-valid, .input-group > .f-form-number-input:not(:focus).is-valid, .input-group > .f-form-input:not(:focus).is-valid, .input-group > .f-form-date-input:not(:focus).is-valid,
+.was-validated .input-group > .form-control:not(:focus):valid, .was-validated .input-group > .f-form-textarea:not(:focus):valid, .was-validated .input-group > .f-form-number-input:not(:focus):valid, .was-validated .input-group > .f-form-input:not(:focus):valid, .was-validated .input-group > .f-form-date-input:not(:focus):valid, .input-group > .form-control:not(:focus).is-valid, .input-group > .f-form-textarea:not(:focus).is-valid, .input-group > .f-form-number-input:not(:focus).is-valid, .input-group > .f-form-input:not(:focus).is-valid, .input-group > .f-form-date-input:not(:focus).is-valid,
 .was-validated .input-group > .form-select:not(:focus):valid,
+.was-validated .input-group > .f-form-select:not(:focus):valid,
 .input-group > .form-select:not(:focus).is-valid,
+.input-group > .f-form-select:not(:focus).is-valid,
 .was-validated .input-group > .form-floating:not(:focus-within):valid,
 .input-group > .form-floating:not(:focus-within).is-valid {
   z-index: 3;
@@ -2947,7 +2956,7 @@ textarea.form-control-lg {
   display: block;
 }
 
-.was-validated .form-control:invalid, .was-validated .f-form-textarea:invalid, .was-validated .f-form-select:invalid, .was-validated .f-form-number-input:invalid, .was-validated .f-form-input:invalid, .was-validated .f-form-date-input:invalid, .form-control.is-invalid, .is-invalid.f-form-textarea, .is-invalid.f-form-select, .is-invalid.f-form-number-input, .is-invalid.f-form-input, .is-invalid.f-form-date-input {
+.was-validated .form-control:invalid, .was-validated .f-form-textarea:invalid, .was-validated .f-form-number-input:invalid, .was-validated .f-form-input:invalid, .was-validated .f-form-date-input:invalid, .form-control.is-invalid, .is-invalid.f-form-textarea, .is-invalid.f-form-number-input, .is-invalid.f-form-input, .is-invalid.f-form-date-input {
   border-color: var(--f-form-invalid-border-color);
   padding-right: calc(1.5em + 0.75rem);
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
@@ -2955,26 +2964,26 @@ textarea.form-control-lg {
   background-position: right calc(0.375em + 0.1875rem) center;
   background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
 }
-.was-validated .form-control:invalid:focus, .was-validated .f-form-textarea:invalid:focus, .was-validated .f-form-select:invalid:focus, .was-validated .f-form-number-input:invalid:focus, .was-validated .f-form-input:invalid:focus, .was-validated .f-form-date-input:invalid:focus, .form-control.is-invalid:focus, .is-invalid.f-form-textarea:focus, .is-invalid.f-form-select:focus, .is-invalid.f-form-number-input:focus, .is-invalid.f-form-input:focus, .is-invalid.f-form-date-input:focus {
+.was-validated .form-control:invalid:focus, .was-validated .f-form-textarea:invalid:focus, .was-validated .f-form-number-input:invalid:focus, .was-validated .f-form-input:invalid:focus, .was-validated .f-form-date-input:invalid:focus, .form-control.is-invalid:focus, .is-invalid.f-form-textarea:focus, .is-invalid.f-form-number-input:focus, .is-invalid.f-form-input:focus, .is-invalid.f-form-date-input:focus {
   border-color: var(--f-form-invalid-border-color);
   box-shadow: 0 0 0 0.25rem rgba(var(--f-danger-rgb), 0.25);
 }
 
-.was-validated textarea.form-control:invalid, .was-validated textarea.f-form-textarea:invalid, .was-validated textarea.f-form-select:invalid, .was-validated textarea.f-form-number-input:invalid, .was-validated textarea.f-form-input:invalid, .was-validated textarea.f-form-date-input:invalid, textarea.form-control.is-invalid, textarea.is-invalid.f-form-textarea, textarea.is-invalid.f-form-select, textarea.is-invalid.f-form-number-input, textarea.is-invalid.f-form-input, textarea.is-invalid.f-form-date-input {
+.was-validated textarea.form-control:invalid, .was-validated textarea.f-form-textarea:invalid, .was-validated textarea.f-form-number-input:invalid, .was-validated textarea.f-form-input:invalid, .was-validated textarea.f-form-date-input:invalid, textarea.form-control.is-invalid, textarea.is-invalid.f-form-textarea, textarea.is-invalid.f-form-number-input, textarea.is-invalid.f-form-input, textarea.is-invalid.f-form-date-input {
   padding-right: calc(1.5em + 0.75rem);
   background-position: top calc(0.375em + 0.1875rem) right calc(0.375em + 0.1875rem);
 }
 
-.was-validated .form-select:invalid, .form-select.is-invalid {
+.was-validated .form-select:invalid, .was-validated .f-form-select:invalid, .form-select.is-invalid, .is-invalid.f-form-select {
   border-color: var(--f-form-invalid-border-color);
 }
-.was-validated .form-select:invalid:not([multiple]):not([size]), .was-validated .form-select:invalid:not([multiple])[size="1"], .form-select.is-invalid:not([multiple]):not([size]), .form-select.is-invalid:not([multiple])[size="1"] {
+.was-validated .form-select:invalid:not([multiple]):not([size]), .was-validated .f-form-select:invalid:not([multiple]):not([size]), .was-validated .form-select:invalid:not([multiple])[size="1"], .was-validated .f-form-select:invalid:not([multiple])[size="1"], .form-select.is-invalid:not([multiple]):not([size]), .is-invalid.f-form-select:not([multiple]):not([size]), .form-select.is-invalid:not([multiple])[size="1"], .is-invalid.f-form-select:not([multiple])[size="1"] {
   --f-form-select-bg-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
   padding-right: 4.125rem;
   background-position: right 0.75rem center, center right 2.25rem;
   background-size: 16px 12px, calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
 }
-.was-validated .form-select:invalid:focus, .form-select.is-invalid:focus {
+.was-validated .form-select:invalid:focus, .was-validated .f-form-select:invalid:focus, .form-select.is-invalid:focus, .is-invalid.f-form-select:focus {
   border-color: var(--f-form-invalid-border-color);
   box-shadow: 0 0 0 0.25rem rgba(var(--f-danger-rgb), 0.25);
 }
@@ -3000,9 +3009,11 @@ textarea.form-control-lg {
   margin-left: 0.5em;
 }
 
-.was-validated .input-group > .form-control:not(:focus):invalid, .was-validated .input-group > .f-form-textarea:not(:focus):invalid, .was-validated .input-group > .f-form-select:not(:focus):invalid, .was-validated .input-group > .f-form-number-input:not(:focus):invalid, .was-validated .input-group > .f-form-input:not(:focus):invalid, .was-validated .input-group > .f-form-date-input:not(:focus):invalid, .input-group > .form-control:not(:focus).is-invalid, .input-group > .f-form-textarea:not(:focus).is-invalid, .input-group > .f-form-select:not(:focus).is-invalid, .input-group > .f-form-number-input:not(:focus).is-invalid, .input-group > .f-form-input:not(:focus).is-invalid, .input-group > .f-form-date-input:not(:focus).is-invalid,
+.was-validated .input-group > .form-control:not(:focus):invalid, .was-validated .input-group > .f-form-textarea:not(:focus):invalid, .was-validated .input-group > .f-form-number-input:not(:focus):invalid, .was-validated .input-group > .f-form-input:not(:focus):invalid, .was-validated .input-group > .f-form-date-input:not(:focus):invalid, .input-group > .form-control:not(:focus).is-invalid, .input-group > .f-form-textarea:not(:focus).is-invalid, .input-group > .f-form-number-input:not(:focus).is-invalid, .input-group > .f-form-input:not(:focus).is-invalid, .input-group > .f-form-date-input:not(:focus).is-invalid,
 .was-validated .input-group > .form-select:not(:focus):invalid,
+.was-validated .input-group > .f-form-select:not(:focus):invalid,
 .input-group > .form-select:not(:focus).is-invalid,
+.input-group > .f-form-select:not(:focus).is-invalid,
 .was-validated .input-group > .form-floating:not(:focus-within):invalid,
 .input-group > .form-floating:not(:focus-within).is-invalid {
   z-index: 4;
@@ -12332,7 +12343,7 @@ html:not([data-bs-theme=dark]) .f-button-color-default.f-button-link-false.f-but
   cursor: pointer;
 }
 
-.plugin-clear_button.form-select .clear-button,
+.plugin-clear_button.form-select .clear-button, .plugin-clear_button.f-form-select .clear-button,
 .plugin-clear_button.single .clear-button {
   right: max(var(--ts-pr-caret), 8px);
 }
