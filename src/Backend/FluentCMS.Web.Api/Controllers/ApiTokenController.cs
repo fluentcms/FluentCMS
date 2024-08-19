@@ -1,7 +1,10 @@
-﻿namespace FluentCMS.Web.Api.Controllers;
+﻿using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Routing;
+using System.Reflection;
 
-[JwtAuthorize]
-public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper) : BaseGlobalController
+namespace FluentCMS.Web.Api.Controllers;
+
+public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper, IEnumerable<EndpointDataSource> endpointSources) : BaseGlobalController
 {
     public const string AREA = "API Token Management";
     public const string READ = "Read";
@@ -53,5 +56,33 @@ public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper
     {
         await apiTokenService.Delete(id, cancellationToken);
         return Ok(true);
+    }
+
+    [HttpGet]
+    [Policy(AREA, READ)]
+    public async Task<IApiPagingResult<Policy>> GetPolicies(CancellationToken cancellationToken = default)
+    {
+        var policiesDict = new Dictionary<string, Policy>();
+
+        var endpoints = endpointSources.SelectMany(es => es.Endpoints).OfType<RouteEndpoint>();
+        foreach (var endpoint in endpoints)
+        {
+            var actionDescriptor = endpoint.Metadata.OfType<ControllerActionDescriptor>().FirstOrDefault();
+            if (actionDescriptor == null)
+                continue;
+
+            var policyAttributes = actionDescriptor.MethodInfo.GetCustomAttributes<PolicyAttribute>(true);
+
+            foreach (var policyAttribute in policyAttributes)
+            {
+                if (!policiesDict.ContainsKey(policyAttribute.Area))
+                    policiesDict.Add(policyAttribute.Area, new Policy { Area = policyAttribute.Area, Actions = [] });
+
+                if (!policiesDict[policyAttribute.Area].Actions.Where(x => x == policyAttribute.Action).Any())
+                    policiesDict[policyAttribute.Area].Actions.Add(policyAttribute.Action);
+            }
+        }
+
+        return await Task.FromResult(OkPaged(policiesDict.Values.ToList()));
     }
 }
