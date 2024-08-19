@@ -7,6 +7,9 @@ public partial class RoleUpdatePlugin
     [SupplyParameterFromQuery(Name = "id")]
     private Guid Id { get; set; }
 
+    [CascadingParameter]
+    private ViewState ViewState { get; set; } = default!;
+
     private RoleUpdateRequest? Model { get; set; }
 
     private List<Policy>? Policies { get; set; }
@@ -15,6 +18,11 @@ public partial class RoleUpdatePlugin
 
     protected override async Task OnInitializedAsync()
     {
+        if (Model is null)
+        {
+            var roleResponse = await ApiClient.Role.GetByIdAsync(Id);
+            Model = Mapper.Map<RoleUpdateRequest>(roleResponse.Data);
+        }
     }
 
     private async Task OnSubmit()
