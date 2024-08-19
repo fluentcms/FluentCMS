@@ -12,7 +12,6 @@ public interface ISiteService : IAutoRegisterService
 
 public class SiteService(ISiteRepository siteRepository) : ISiteService
 {
-
     public async Task<IEnumerable<Site>> GetAll(CancellationToken cancellationToken = default)
     {
         return await siteRepository.GetAll(cancellationToken);
@@ -42,8 +41,6 @@ public class SiteService(ISiteRepository siteRepository) : ISiteService
         // create the site or throw an exception if it fails
         var newSite = await siteRepository.Create(site, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteUnableToCreate);
-
-
 
         return newSite;
     }
