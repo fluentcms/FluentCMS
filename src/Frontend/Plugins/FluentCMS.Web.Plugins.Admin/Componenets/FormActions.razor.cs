@@ -18,9 +18,9 @@ public partial class FormActions
     {
         var uri = new Uri(NavigationManager.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-        
+
         var redirectTo = query["redirectTo"];
-        
+
         if (!string.IsNullOrEmpty(redirectTo))
         {
             return Uri.UnescapeDataString(redirectTo);

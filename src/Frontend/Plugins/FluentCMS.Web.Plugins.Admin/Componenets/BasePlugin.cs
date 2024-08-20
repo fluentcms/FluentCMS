@@ -24,9 +24,9 @@ public abstract class BasePlugin : ComponentBase
     {
         var uri = new Uri(NavigationManager.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-        
+
         var redirectTo = query["redirectTo"];
-        
+
         if (!string.IsNullOrEmpty(redirectTo))
         {
             NavigationManager.NavigateTo(redirectTo);
@@ -68,7 +68,7 @@ public abstract class BasePlugin : ComponentBase
             oldQueryParams.Remove("redirectTo");
 
             var updatedQuery = string.Join("&", oldQueryParams.AllKeys.Select(key => $"{key}={Uri.EscapeDataString(oldQueryParams[key])}"));
-        
+
             var newPathAndQuery = $"{uri.LocalPath}{(string.IsNullOrEmpty(updatedQuery) ? string.Empty : "?" + updatedQuery)}";
 
             newQueryParams["redirectTo"] = Uri.EscapeDataString(newPathAndQuery);
