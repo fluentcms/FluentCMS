@@ -6,7 +6,7 @@ public class ApiTokenCreateRequest
     public string Name { get; set; } = default!;
     public string? Description { get; set; }
 
-    public DateTime? ExpiredAt { get; set; }
+    public DateTime? ExpireAt { get; set; }
 
     [Required]
     public bool Enabled { get; set; } = true;

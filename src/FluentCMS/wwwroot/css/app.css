@@ -28,3 +28,7 @@ body:is(.dark *) {
         transform: translateX(100%) scaleX(0.5);
     }
 }
+
+.f-font-monospace {
+    font-family: monospace;
+}
