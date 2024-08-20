@@ -112,7 +112,6 @@ public class RoleService : IRoleService
             }
          };
 
-        foreach (var role in primaryRoles)
-            await _roleRepository.Create(role, default);
+        await _roleRepository.CreateMany(primaryRoles, default);
     }
 }
