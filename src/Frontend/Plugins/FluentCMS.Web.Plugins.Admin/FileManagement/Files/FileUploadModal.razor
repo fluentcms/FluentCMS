@@ -6,7 +6,7 @@
 @if (Visible)
 {
     <EditForm Model="@Model" OnSubmit="HandleSubmit">
-        <Modal Size="ModalSize.Large">
+        <Modal Size="ModalSize.Large" OnClose="HandleCancel">
             <ModalHeader Closable>
                 <ModalTitle>
                     Upload File
