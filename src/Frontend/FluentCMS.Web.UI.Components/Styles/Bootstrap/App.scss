@@ -5,10 +5,11 @@ $prefix: "f-";
 }
 
 @import "../node_modules/bootstrap/scss/mixins/banner";
-@include bsBanner("");
+@include bsBanner("");  
 
-// scss-docs-start import-stack
 // Configuration
+@import "./Variables/Colors.scss";
+
 @import "../node_modules/bootstrap/scss/functions";
 @import "../node_modules/bootstrap/scss/variables";
 @import "../node_modules/bootstrap/scss/variables-dark";
@@ -16,10 +17,14 @@ $prefix: "f-";
 @import "../node_modules/bootstrap/scss/mixins";
 @import "../node_modules/bootstrap/scss/utilities";
 
-@import "./Variables/Colors.scss";
 @import "./Variables/Input.scss";
 @import "./Variables/Button.scss";
 @import "./Variables/Card.scss";
+@import "./Variables/Modal.scss";
+@import "./Variables/Switch.scss";
+@import "./Variables/Table.scss";
+@import "./Variables/Tabs.scss";
+
 
 // Layout & components
 @import "../node_modules/bootstrap/scss/root";
@@ -77,7 +82,7 @@ $prefix: "f-";
 @import './Components/CloseButton';
 @import './Components/Confirm';
 @import './Components/DataTable';
-// @import './Components/Divider'; // SKIP
+@import './Components/Divider'; // SKIP
 // @import './Components/Dropdown'; // SKIP
 @import './Components/Form/FormAutocomplete';
 @import './Components/Form/FormCheckbox';
@@ -96,7 +101,7 @@ $prefix: "f-";
 @import './Components/Form/FormTextarea';
 @import './Components/Grid';
 @import './Components/Icon';
-// @import './Components/Indicator'; // SKIP
+@import './Components/Indicator'; // SKIP
 @import './Components/Modal';
 // @import './Components/Pagination'; // SKIP
 @import './Components/Spacer';

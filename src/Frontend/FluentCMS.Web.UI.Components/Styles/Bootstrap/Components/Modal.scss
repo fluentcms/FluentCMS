@@ -24,6 +24,8 @@ $modal: $prefix + "modal";
 
     &-title {
         @extend .modal-title;
+        font-size: 20px;
+        font-weight: bold;
     }
 
     &-wrapper {
@@ -47,3 +49,18 @@ $modal: $prefix + "modal";
         @extend .show;
     }
 } 
+
+@include media-breakpoint-up(lg) {
+    .#{$modal}-title {
+        font-size: 24px;
+    }
+}
+
+@include color-mode(dark) {
+    .#{$modal} {
+        --f-modal-bg: var(--#{$prefix}gray-800);
+        --f-modal-border-color: var(--#{$prefix}gray-700);
+        --f-modal-header-border-color: var(--#{$prefix}gray-700);
+        --f-modal-footer-border-color: var(--#{$prefix}gray-700);
+    }
+}

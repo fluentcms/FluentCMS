@@ -29,3 +29,10 @@ $card: $prefix + 'card';
         @apply flex gap-2 items-center justify-end;
     }
 }
+
+@include color-mode(dark) {
+    .#{$card} {
+        background-color: var(--#{$prefix}gray-800);
+        border-color: var(--#{$prefix}gray-700);
+    }
+}

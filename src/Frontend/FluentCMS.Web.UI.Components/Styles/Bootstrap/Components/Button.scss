@@ -61,49 +61,23 @@ $button: $prefix + "button";
     }
 }
 
-html:not([data-bs-theme="dark"]) {
-    .#{$button}-color-default.#{$button}-link-false.#{$button}-ghost-false.#{$button}-outline-false {
-        @extend .btn-default;
-    }
-    
-    .#{$button}-color-default.#{$button}-link-false.#{$button}-ghost-true.#{$button}-outline-false {
-        @extend .btn-ghost;
-    }
-    
-    .#{$button}-color-default.#{$button}-link-false.#{$button}-outline-true.#{$button}-ghost-false {
-        @extend .btn-outline-default;
-    }
-    
-    .#{$button}-color-default.#{$button}-link-false.#{$button}-disabled-true {
-        @extend .disabled;
-        // @extend .btn-disabled;
-    }
-    
-    .#{$button}-color-default.#{$button}-link-true.#{$button}-ghost-false.#{$button}-outline-false {
-        @extend .btn-link;
-    }
+.#{$button}-color-default.#{$button}-link-false.#{$button}-ghost-false.#{$button}-outline-false {
+    @extend .btn-default;
 }
 
-[data-bs-theme="dark"] {
-    .#{$button}-color-default.#{$button}-link-false.#{$button}-ghost-false.#{$button}-outline-false {
-        @extend .btn-dark;
-    }
+.#{$button}-color-default.#{$button}-link-false.#{$button}-ghost-true.#{$button}-outline-false {
+    @extend .btn-ghost;
+}
 
-    .#{$button}-color-default.#{$button}-link-false.#{$button}-ghost-true.#{$button}-outline-false {
-        @extend .text-light;
-    }
+.#{$button}-color-default.#{$button}-link-false.#{$button}-outline-true.#{$button}-ghost-false {
+    @extend .btn-outline-default;
+}
 
-    .#{$button}-color-default.#{$button}-link-false.#{$button}-outline-true.#{$button}-ghost-false {
-        @extend .btn-outline-dark;
-    }
+.#{$button}-color-default.#{$button}-link-false.#{$button}-disabled-true {
+    @extend .disabled;
+    // @extend .btn-disabled;
+}
 
-    .#{$button}-color-default.#{$button}-link-false.#{$button}-disabled-true {
-        @extend .disabled;
-        @extend .btn-dark;
-    }
-
-    .#{$button}-color-default.#{$button}-link-true.#{$button}-ghost-false.#{$button}-outline-false {
-        @extend .text-light;
-        @extend .btn-link;
-    }
+.#{$button}-color-default.#{$button}-link-true.#{$button}-ghost-false.#{$button}-outline-false {
+    @extend .btn-link-default;
 }

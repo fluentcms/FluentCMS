@@ -1,0 +1,54 @@
+$indicator-wrapper: $prefix + 'indicator-wrapper';
+$indicator-dot: $prefix + 'indicator-dot';
+$indicator: $prefix + 'indicator';
+
+.#{$indicator-wrapper} {
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: $border-radius-pill;
+
+    &.#{$indicator}-color-default {
+        background-color: rgba($gray-500, 0.2);
+    
+        color: $gray-800;
+    }
+
+    @each $key, $value in $theme-colors {
+        &.#{$indicator}-color-#{$key} {
+            background-color: tint-color($value, 60%);
+            color: $value;
+        }
+    }
+}
+
+.#{$indicator-dot} {
+    display: flex;
+    width: 8px;
+    height: 8px;
+    margin-right: 4px;
+    border-radius: 50%;
+    flex-shrink: 0;
+
+    .#{$indicator}-color-default &,
+    &.#{$indicator}-color-default {
+        background-color: $gray-600;
+    }
+
+    @each $key, $value in $theme-colors {
+
+        .#{$indicator}-color-#{$key} &,
+        &.#{$indicator}-color-#{$key} {
+            background-color: $value;
+        }
+    }
+}
+
+ @include color-mode(dark) {
+    @each $key, $value in $theme-colors {
+        .#{$indicator-wrapper}.#{$indicator}-color-#{$key} {
+            background-color: rgba($value, 0.2);
+        }
+    }
+}

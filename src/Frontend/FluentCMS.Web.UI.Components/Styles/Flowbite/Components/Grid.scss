@@ -71,7 +71,7 @@ $grid-item-column: ( one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 
     @each $breakpoint, $value in $grid-breakpoint {
         @media (min-width: $value) {
             &-#{$breakpoint}-auto {
-                @apply basis-auto max-w-none;
+                @apply max-w-none;
             }
 
             &-#{$breakpoint}-grow {

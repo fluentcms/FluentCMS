@@ -75,7 +75,8 @@
       </svg>
     </button>
     <a class="navbar-brand fs-6 text-white" href="/">
-      <img class="brand-image" src="/images/logo.svg" />
+      <img class="brand-image brand-light" src="/images/logo.svg" />
+      <img class="brand-image brand-dark" src="/images/logo-dark.svg" />
     </a>
   
   </div>
@@ -116,9 +117,9 @@
     </div>
 
     <div class="dropdown bd-mode-toggle">
-      <div style="width:40px; height: 40px; cursor: pointer;" id="bd-profile" data-bs-toggle="dropdown" class="position-relative overflow-hidden border rounded-circle">
+      <div class="avatar" id="bd-profile" data-bs-toggle="dropdown" class="position-relative overflow-hidden border rounded-circle">
         <!-- <div class="relative w-10 h-10 overflow-hidden bg-gray-100 rounded-full dark:bg-gray-600 border border-gray-200 dark:border-gray-600"> -->
-          <svg style="width: 48px; height: 48px; color: var(--f-gray-500); left: -5px; position: absolute" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+          <svg class="avatar-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
               <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
           </svg>
       <!-- </div> -->
@@ -152,7 +153,7 @@
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Close"></button>
       </div>
-      <div class="offcanvas-body d-md-flex flex-column p-0 pt-lg-2 overflow-y-auto">
+      <div class="offcanvas-body d-md-flex flex-column p-0 pt-2 overflow-y-auto">
         <ul class="nav flex-column">
           <li class="nav-item">
             <a class="nav-link d-flex align-items-center" aria-current="page" href="/admin">

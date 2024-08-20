@@ -6,15 +6,15 @@ public partial class GridItem
 
     [Parameter]
     [CSSProperty]
-    public GridItemColumn? Small { get; set; }
+    public GridItemColumn Small { get; set; } = GridItemColumn.Auto;
 
     [Parameter]
     [CSSProperty]
-    public GridItemColumn? Medium { get; set; }
+    public GridItemColumn Medium { get; set; } = GridItemColumn.Auto;
 
     [Parameter]
     [CSSProperty]
-    public GridItemColumn? Large { get; set; }
+    public GridItemColumn Large { get; set; } = GridItemColumn.Auto;
 
     #endregion
 

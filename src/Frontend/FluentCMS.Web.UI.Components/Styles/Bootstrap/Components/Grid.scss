@@ -17,7 +17,7 @@ $grid-item-column: ( one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 
 .#{$grid} {
     & > div {
         @extend .row;
-        @extend .row-cols-auto;
+        // @extend .row-cols-auto;
 
     }
     --grid-gutter-x: 0;
@@ -57,7 +57,10 @@ $grid-item-column: ( one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 
 }
 
 .#{$grid}-item {
-    // @apply grow-0 basis-auto max-w-none box-border;
+    &-small-auto {
+        @extend .col-auto;
+        width: unset !important;
+    }
 
     & {
         @apply pt-[var(--grid-gutter-y)] ps-[var(--grid-gutter-x)];

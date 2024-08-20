@@ -1,0 +1,34 @@
+$table-cell-padding-y:        .75rem;
+$table-cell-padding-x:        1.5rem;
+
+$table-cell-vertical-align:   baseline;
+
+$table-color:                 $gray-500;
+$table-bg:                    transparent;
+$table-accent-bg:             transparent;
+
+$table-th-font-weight:        null;
+
+$table-striped-color:         $table-color;
+$table-striped-bg-factor:     .05;
+$table-striped-bg:            rgba($black, $table-striped-bg-factor);
+
+$table-active-color:          $table-color;
+$table-active-bg-factor:      .1;
+$table-active-bg:             rgba($black, $table-active-bg-factor);
+
+$table-hover-color:           $table-color;
+$table-hover-bg-factor:       .075;
+$table-hover-bg:              rgba($black, $table-hover-bg-factor);
+
+$table-border-factor:         .1;
+$table-border-width:          $border-width;
+$table-border-color:          $border-color;
+
+$table-striped-order:         odd;
+
+$table-group-separator-color: currentColor;
+
+$table-caption-color:         $text-muted;
+
+$table-bg-scale:              -80%;

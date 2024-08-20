@@ -47,7 +47,7 @@ $btn-default-dark-focus-ring-color: $gray-700;
         box-shadow: 0 0 0 0.25rem rgba($btn-default-focus-ring-color, 0.5);
     }
     // Dark mode
-    &[data-bs-theme="dark"] {
+    [data-bs-theme="dark"] & {
         background-color: $btn-default-dark-bg;
         color: $btn-default-dark-color;
         border-color: $btn-default-dark-border;
@@ -74,7 +74,7 @@ $btn-ghost-dark-hover-color:    $gray-700;
         color: $btn-ghost-hover-color;
     }
     // Dark mode
-    &[data-bs-theme="dark"] {
+    [data-bs-theme="dark"] & {
         color: $btn-ghost-dark-color;
         &:hover {
             color: $btn-ghost-dark-hover-color;
@@ -107,7 +107,7 @@ $btn-outline-dark-focus-ring-color: $gray-800;
         box-shadow: 0 0 0 0.25rem rgba($btn-outline-focus-ring-color, 0.5);
     }
     // Dark mode
-    &[data-bs-theme="dark"] {
+    [data-bs-theme="dark"] & {
         border-color: $btn-outline-dark-border;
         color: $btn-outline-dark-color;
         &:hover {
@@ -130,7 +130,7 @@ $btn-disabled-dark-bg:          $gray-500;
     cursor: not-allowed;
     pointer-events: none;
     // Dark mode
-    &[data-bs-theme="dark"] {
+    [data-bs-theme="dark"] & {
         background-color: $btn-disabled-dark-bg;
     }
 }
@@ -138,8 +138,8 @@ $btn-disabled-dark-bg:          $gray-500;
 // Link Button Styling
 $btn-link-color:                $gray-600;
 $btn-link-hover-color:          $gray-800;
-$btn-link-dark-color:           $gray-400;
-$btn-link-dark-hover-color:     $gray-700;
+$btn-link-dark-color:           $gray-300;
+$btn-link-dark-hover-color:     $gray-200;
 
 .btn-link-default {
     color: $btn-link-color;
@@ -147,7 +147,7 @@ $btn-link-dark-hover-color:     $gray-700;
         color: $btn-link-hover-color;
     }
     // Dark mode
-    &[data-bs-theme="dark"] {
+    [data-bs-theme="dark"] & {
         color: $btn-link-dark-color;
         &:hover {
             color: $btn-link-dark-hover-color;

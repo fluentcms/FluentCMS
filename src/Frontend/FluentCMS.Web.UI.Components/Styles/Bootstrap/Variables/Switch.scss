@@ -1,0 +1,47 @@
+// SCSS for form-check and form-switch
+$form-check-size: 1.5rem; // Size of the checkbox
+$form-switch-width: 2.5rem; // Width of the switch
+$form-switch-height: 1.5rem; // Height of the switch
+$form-switch-handle-size: 1.2rem; // Size of the switch handle
+
+// Override form-check styles
+.form-check-input {
+  width: $form-check-size;
+  height: $form-check-size;
+  margin-top: calc($form-check-size / 2);
+}
+
+.form-check-label {
+  margin-left: calc($form-check-size + 0.5rem);
+  line-height: $form-check-size;
+}
+
+// Override form-switch styles
+.form-switch {
+  width: $form-switch-width;
+  height: $form-switch-height;
+  
+  .form-check-input {
+    width: $form-switch-width;
+    height: $form-switch-height;
+    border-radius: $form-switch-height;
+  }
+
+  .form-check-label {
+    padding-left: $form-switch-width + 0.5rem;
+    padding-top: calc(($form-switch-height - $form-switch-handle-size) / 2);
+  }
+
+  .form-check-label::before {
+    width: $form-switch-width;
+    height: $form-switch-height;
+    border-radius: $form-switch-height;
+  }
+
+  .form-check-label::after {
+    width: $form-switch-handle-size;
+    height: $form-switch-handle-size;
+    border-radius: $form-switch-handle-size;
+    transform: translateX(calc(($form-switch-width - $form-switch-handle-size) / 2));
+  }
+}

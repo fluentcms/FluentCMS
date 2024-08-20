@@ -1,54 +1,130 @@
-// TODO: Customize to match with other elements
-
 $form-markdown-editor: $prefix + "form-markdown-editor";
 
 .#{$form-markdown-editor} {
     .EasyMDEContainer {
-        // @apply w-full mb-4 border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600;
+        @extend .w-100; // equivalent to Tailwind's w-full
+        @extend .mb-4;
+        @extend .border;
+        border-color: $gray-200;
+        border-radius: $border-radius-lg;
+        background-color: $gray-50;
+
     }
-    
+
     .editor-toolbar {
-        // border-top: none;
-        // border-left: none;
-        // border-right: none;
-        // border-bottom: 1px solid white;
-        // @apply flex flex-wrap items-center justify-start px-3 py-2 border-gray-200 dark:border-gray-600;
+        border-top: none;
+        border-left: none;
+        border-right: none;
+        border-bottom: 1px solid $white;
+        @extend .d-flex;
+        @extend .flex-wrap;
+        @extend .align-items-center;
+        @extend .justify-content-start;
+        @extend .px-3;
+        @extend .py-2;
+        border-color: $gray-200;
 
-        & > button {
-            // @apply flex items-center p-2 text-gray-500 rounded cursor-pointer hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-600;
+        &>button {
+            @extend .d-flex;
+            @extend .align-items-center;
+            @extend .p-2;
+            width: max-content;
+            color: $gray-500;
+            border-radius: $border-radius;
+            cursor: pointer;
+
+            &:hover {
+                color: $gray-900;
+                background-color: $gray-100;
+            }
+
         }
 
-        & > button.active {
-            // @apply bg-gray-100 dark:bg-gray-600 dark:text-gray-300 dark:border-gray-500;
+        &>button.active {
+            background-color: $gray-100;
+
         }
 
-        & > i.separator {
-            // @apply border-gray-500;
+        &>i.separator {
+            border-color: $gray-500;
         }
-            
     }
-    
-    .CodeMirror, .editor-preview {
-        // border-top: none;
-        // border-left: none;
-        // border-right: none;
-        // border-bottom: 1px solid white;
-        // @apply border-gray-200 dark:border-gray-600 px-4 py-2 bg-white  dark:text-white dark:bg-gray-800;
-    }
 
+    .CodeMirror,
     .editor-preview {
-        // @apply format lg:format-lg dark:format-invert;
+        border-top: none;
+        border-left: none;
+        border-right: none;
+        border-bottom: 1px solid $white;
+        border-color: $gray-200;
+
+
+        @extend .px-4;
+        @extend .py-2;
+        background-color: $white;
+
     }
-    
+
     .CodeMirror-cursor {
-        // @apply border dark:border-gray-100;
+        border-color: $gray-100;
+
     }
-    
+
     span.CodeMirror-selectedtext *::selection {
-        // @apply dark:bg-gray-700;
+        background-color: $gray-700;
     }
-    
+
     .editor-preview-active-side {
-        // @apply border-s border-gray-200 dark:border-gray-600;
-    }    
+        border-left: 1px solid $gray-200;
+
+    }
+}
+
+@include color-mode(dark) {
+
+    .#{$form-markdown-editor} {
+        .EasyMDEContainer {
+            background-color: $gray-700;
+            border-color: $gray-600;
+        }
+
+        .editor-toolbar {
+            border-color: $gray-600;
+            
+            &>button {
+                color: $gray-400;
+
+                &:hover {
+                    color: $white;
+                    background-color: $gray-600;
+                }
+            }
+
+            &>button.active {
+                background-color: $gray-600;
+                color: $gray-300;
+                border-color: $gray-500;
+            }
+
+        }
+
+        .CodeMirror,
+        .editor-preview {
+            border-color: $gray-600;
+            background-color: $gray-800;
+            color: $white;
+        }
+
+        .CodeMirror-cursor {
+            border-color: $gray-100;
+        }
+
+        span.CodeMirror-selectedtext *::selection {
+            background-color: $gray-700;
+        }
+
+        .editor-preview-active-side {
+            border-color: $gray-600;
+        }
+    }
 }

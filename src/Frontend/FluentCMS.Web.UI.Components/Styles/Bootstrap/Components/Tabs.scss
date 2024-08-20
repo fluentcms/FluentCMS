@@ -1,21 +1,14 @@
 $tabs: $prefix + 'tabs';
 $tab: $prefix + 'tab';
 
-.#{$tabs} {
-    @apply w-full;
-}
-
 .#{$tab} {
-    &-header {
-        @apply text-sm font-medium text-center text-gray-500 border-b border-gray-200 dark:text-gray-400 dark:border-gray-700;
-    }
 
     &-list {
         &-inner {
-        @extend .nav; 
-        @extend .nav-tabs;
-        // @apply mb-4 border-b border-gray-200 dark:border-gray-700;
-            // @apply flex flex-wrap -mb-px;
+            @extend .nav; 
+            @extend .nav-tabs;
+            border: none;
+            border-bottom: 1px solid $nav-tabs-border-color; 
         }
     }
 
@@ -31,12 +24,27 @@ $tab: $prefix + 'tab';
         @extend .nav-item;
         button {
             @extend .nav-link;
-            // @apply inline-block p-4 border-b-2 border-transparent rounded-t-lg;
+            border-bottom-width: 2px !important;
+            border-top-width: 0 !important;
+            border-left-width: 0 !important;
+            border-right-width: 0 !important;
+            
         }
 
-        &.#{$tab}-item-active-true {
+        &.#{$tab}-item-active-true button {
             @extend .active;
-            // @apply text-blue-600 border-blue-600 dark:text-blue-500 dark:border-blue-500;
         }
     }
+}
+
+@include color-mode(dark) {
+    .#{$tab}-item button {
+        color: var(--#{$prefix}gray-400);
+    }
+
+    .#{$tab}-item.#{$tab}-item-active-true button {
+        color: $blue-400 !important;
+
+    }
+
 }

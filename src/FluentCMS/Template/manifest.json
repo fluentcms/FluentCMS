@@ -508,13 +508,29 @@
             "Title": "Admin",
             "Path": "/admin",
             "Layout": "BootstrapAdminLayout",
+            "EditLayout": "BootstrapAdminLayout",
             "Locked": true,
             "Plugins": [],
             "Children": [
                 {
                     "Title": "Content Type Builder",
                     "Path": "/content-types",
+                    "Layout": "BootstrapAdminLayout",
+                    "EditLayout": "BootstrapAdminLayout",
+                    "Locked": true,
+                    "Plugins": [
+                        {
+                            "Definition": "ContentType Management",
+                            "Section": "Main",
+                            "Locked": true
+                        }
+                    ]
+                },
+                {
+                    "Title": "Content Type Builder",
+                    "Path": "/content-types2",
                     "Layout": "AdminLayout",
+                    "EditLayout": "AdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -528,6 +544,7 @@
                     "Title": "Users",
                     "Path": "/users",
                     "Layout": "BootstrapAdminLayout",
+                    "EditLayout": "BootstrapAdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -541,6 +558,21 @@
                     "Title": "File Management",
                     "Path": "/files",
                     "Layout": "BootstrapAdminLayout",
+                    "EditLayout": "BootstrapAdminLayout",
+                    "Locked": true,
+                    "Plugins": [
+                        {
+                            "Definition": "File Management",
+                            "Section": "Main",
+                            "Locked": true
+                        }
+                    ]
+                },
+                {
+                    "Title": "File Management",
+                    "Path": "/files2",
+                    "Layout": "AdminLayout",
+                    "EditLayout": "AdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -554,6 +586,7 @@
                     "Title": "Api Tokens",
                     "Path": "/api-tokens",
                     "Layout": "BootstrapAdminLayout",
+                    "EditLayout": "BootstrapAdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -566,7 +599,7 @@
                 {
                     "Title": "Roles",
                     "Path": "/roles",
-                    "Layout": "AdminLayout",
+                    "Layout": "BootstrapAdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -580,6 +613,7 @@
                     "Title": "Sites",
                     "Path": "/sites",
                     "Layout": "BootstrapAdminLayout",
+                    "EditLayout": "BootstrapAdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -592,7 +626,7 @@
                 {
                     "Title": "Pages",
                     "Path": "/pages",
-                    "Layout": "AdminLayout",
+                    "Layout": "BootstrapAdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -605,7 +639,7 @@
                 {
                     "Title": "Layouts",
                     "Path": "/layouts",
-                    "Layout": "AdminLayout",
+                    "Layout": "BootstrapAdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -684,6 +718,7 @@
                     "Title": "Profile",
                     "Path": "/profile",
                     "Layout": "BootstrapAdminLayout",
+                    "EditLayout": "BootstrapAdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
