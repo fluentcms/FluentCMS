@@ -6,7 +6,7 @@ public class MessageBus<TMessage> : IMessageBus<TMessage>
 
     public MessageBus()
     {
-        _subscribers = new List<Func<string, TMessage, Task>>();
+        _subscribers = [];
     }
 
     public IReadOnlyList<Func<string, TMessage, Task>> Subscribers => _subscribers;

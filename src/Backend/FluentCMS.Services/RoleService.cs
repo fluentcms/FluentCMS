@@ -86,25 +86,25 @@ public class RoleService : IRoleService
     private async Task AddPrimaryRolesForSite(Site site)
     {
         var primaryRoles = new List<Role>() {
-            new Role() {
+            new() {
                 Name="Super Admin",
                 Description = "Default administrators role with full access to system",
                 Type=RoleTypes.Administrators,
                 SiteId=site.Id,
             },
-            new Role() {
+            new() {
                 Name="Authenticated Users",
                 Description = "All authenticated users (logged in users)",
                 Type=RoleTypes.Authenticated,
                 SiteId=site.Id,
             },
-            new Role() {
+            new() {
                 Name="Guests",
                 Description = "Un-authenticated users (not logged in users)",
                 Type=RoleTypes.Guest,
                 SiteId=site.Id,
             },
-            new Role() {
+            new() {
                 Name="All Users",
                 Description = "All users (authenticated or un-authenticated users)",
                 Type=RoleTypes.AllUsers,
