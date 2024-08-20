@@ -87,8 +87,8 @@ public class RoleService : IRoleService
     {
         var primaryRoles = new List<Role>() {
             new() {
-                Name="Super Admin",
-                Description = "Default administrators role with full access to system",
+                Name="Administrators",
+                Description = "Default administrators role with full access to the site",
                 Type=RoleTypes.Administrators,
                 SiteId=site.Id,
             },
