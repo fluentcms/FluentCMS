@@ -16,6 +16,18 @@ public partial class FormActions
 
     protected virtual string GetBackUrl()
     {
-        return new Uri(NavigationManager.Uri).LocalPath;
+        var uri = new Uri(NavigationManager.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        
+        var redirectTo = query["redirectTo"];
+        
+        if (!string.IsNullOrEmpty(redirectTo))
+        {
+            return Uri.UnescapeDataString(redirectTo);
+        }
+        else
+        {
+            return uri.LocalPath;
+        }
     }
 }

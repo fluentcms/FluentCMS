@@ -11,11 +11,14 @@ public partial class PageListPlugin
     [SupplyParameterFromQuery(Name = "id")]
     private Guid? Id { get; set; } = default!;
 
+    [SupplyParameterFromQuery(Name = "redirectTo")]
+    private string? RedirectTo { get; set; } = default!;
+
     public async Task Load()
     {
         if (Id != null)
         {
-            NavigateTo(GetUrl("Update Page", new { Id = Id }));
+            NavigateTo(GetUrl("Update Page", new { Id = Id, redirectTo = RedirectTo }, false));
         }
         var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Urls[0]);
         Pages = pagesResponse?.Data?.Where(x => !x.Locked).ToList() ?? [];
