@@ -7,7 +7,7 @@ public class ApiTokenUpdateRequest
 
     [Required]
     public string Name { get; set; } = default!;
-    
+
     [Required]
     public bool Enabled { get; set; } = true;
 

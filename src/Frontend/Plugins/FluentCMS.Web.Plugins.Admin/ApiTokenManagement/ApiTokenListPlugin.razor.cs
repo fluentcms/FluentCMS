@@ -5,14 +5,14 @@ public partial class ApiTokenListPlugin
     private List<ApiTokenDetailResponse> ApiTokens { get; set; } = [];
     private ApiTokenDetailResponse? SelectedApiToken { get; set; } = default!;
     private Guid? ViewApiTokenId { get; set; } = default!;
-    
+
     private string Mode { get; set; } = "Delete";
 
     private async Task Load()
     {
         var apiTokensResponse = await ApiClient.ApiToken.GetAllAsync();
         ApiTokens = apiTokensResponse?.Data?.ToList() ?? [];
-    } 
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -23,7 +23,7 @@ public partial class ApiTokenListPlugin
     {
         return new string('*', input.Length);
     }
-    
+
     private async Task OnRegenerateConfirm(ApiTokenDetailResponse token)
     {
         SelectedApiToken = token;
@@ -34,7 +34,7 @@ public partial class ApiTokenListPlugin
 
     private async Task ViewToken(Guid id)
     {
-        if(ViewApiTokenId == id)
+        if (ViewApiTokenId == id)
         {
             ViewApiTokenId = default!;
         }
@@ -54,7 +54,7 @@ public partial class ApiTokenListPlugin
     {
         await ApiClient.ApiToken.RegenerateSecretAsync(SelectedApiToken.Id);
         SelectedApiToken = default!;
-        await Load();        
+        await Load();
     }
 
     private async Task OnDelete()
@@ -67,8 +67,8 @@ public partial class ApiTokenListPlugin
     private async Task OnConfirmCancel()
     {
         SelectedApiToken = default!;
-    }  
-    
+    }
+
     private async Task OnRegenerateCancel()
     {
         SelectedApiToken = default!;
