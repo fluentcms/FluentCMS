@@ -58,9 +58,12 @@ public class SiteService(ISiteRepository siteRepository, IMessagePublisher<Site>
         if (allSites.Any(x => x.Id != site.Id && x.Urls.Any(y => site.Urls.Contains(y))))
             throw new AppException(ExceptionCodes.SiteUrlMustBeUnique);
 
-        var updateSite = await siteRepository.Update(site, cancellationToken);
+        var updateSite = await siteRepository.Update(site, cancellationToken) ??
+            throw new AppException(ExceptionCodes.SiteUnableToUpdate);
 
-        return updateSite ?? throw new AppException(ExceptionCodes.SiteUnableToUpdate);
+        await messagePublisher.Publish(ActionNames.SiteUpdated, updateSite);
+
+        return updateSite;
     }
 
     public async Task<Site> Delete(Guid id, CancellationToken cancellationToken = default)
