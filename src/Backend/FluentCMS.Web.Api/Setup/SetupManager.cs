@@ -112,7 +112,6 @@ public class SetupManager : ISetupManager
         await InitLayouts();
         await InitPluginDefinitions();
         await InitSite();
-        await InitRoles();
         await InitPages();
         await InitContentTypes();
 
@@ -221,24 +220,6 @@ public class SetupManager : ISetupManager
     private async Task InitializeGlobalSettings()
     {
         _globalSettings = await _globalSettingsService.Init(_globalSettings);
-    }
-
-    private async Task InitRoles()
-    {
-        var adminRoles = new List<Role>();
-        foreach (var role in _adminTemplate.Roles)
-        {
-            // set default siteId to roles
-            role.SiteId = _site.Id;
-            await _roleService.Create(role);
-
-            // some other roles should be assigned to superAdmin user. have to talk about. 
-            if (role.Type == RoleTypes.Administrators)
-                adminRoles.Add(role);
-        }
-
-        _superAdmin.RoleIds.AddRange(adminRoles.Select(x => x.Id));
-        await _userService.Update(_superAdmin);
     }
 
     private async Task InitSite()
