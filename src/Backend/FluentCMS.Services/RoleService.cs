@@ -80,7 +80,7 @@ public class RoleService : IRoleService
     {
         var siteRoles = await GetAllForSite(site.Id, default);
         foreach (var role in siteRoles)
-            await Delete(role.Id);
+            await _roleRepository.Delete(role.Id);
     }
 
     private async Task AddPrimaryRolesForSite(Site site)
@@ -113,6 +113,6 @@ public class RoleService : IRoleService
          };
 
         foreach (var role in primaryRoles)
-            await Create(role, default);
+            await _roleRepository.Create(role, default);
     }
 }
