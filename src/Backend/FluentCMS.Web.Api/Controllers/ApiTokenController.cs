@@ -50,6 +50,15 @@ public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper
         return Ok(apiTokenResponse);
     }
 
+    [HttpPut]
+    [Policy(AREA, UPDATE)]
+    public async Task<IApiResult<ApiTokenDetailResponse>> RegenerateSecret(Guid id, CancellationToken cancellationToken = default)
+    {
+        var apiToken = await apiTokenService.RegenerateSecret(id, cancellationToken);
+        var apiTokenResponse = mapper.Map<ApiTokenDetailResponse>(apiToken);
+        return Ok(apiTokenResponse);
+    }
+
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)

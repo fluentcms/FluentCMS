@@ -19,6 +19,7 @@ public enum IconName
     Documentation,
     Download,
     Eye,
+    EyeSlash,
     Edit,
     ExclamationCircle,
     File,
@@ -32,6 +33,7 @@ public enum IconName
     PenNib,
     Plus,
     Previous,
+    Refresh,
     TableColumn,
     Text,
 }

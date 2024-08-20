@@ -7,10 +7,14 @@ public partial class RoleCreatePlugin
     [SupplyParameterFromForm(FormName = FORM_NAME)]
     private RoleCreateRequest Model { get; set; } = new();
 
+    [CascadingParameter]
+    private ViewState ViewState { get; set; } = default!;
+
     private List<Policy>? Policies { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
+        Model.SiteId = ViewState.Site.Id;
     }
 
     private async Task OnSubmit()
