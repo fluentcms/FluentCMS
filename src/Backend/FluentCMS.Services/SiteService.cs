@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Services;
+﻿using FluentCMS.Providers;
+
+namespace FluentCMS.Services;
 
 public interface ISiteService : IAutoRegisterService
 {
@@ -10,7 +12,7 @@ public interface ISiteService : IAutoRegisterService
     Task<Site> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class SiteService(ISiteRepository siteRepository) : ISiteService
+public class SiteService(ISiteRepository siteRepository, IMessagePublisher<Site> messagePublisher) : ISiteService
 {
     public async Task<IEnumerable<Site>> GetAll(CancellationToken cancellationToken = default)
     {
@@ -42,6 +44,8 @@ public class SiteService(ISiteRepository siteRepository) : ISiteService
         var newSite = await siteRepository.Create(site, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteUnableToCreate);
 
+        await messagePublisher.Publish(ActionNames.SiteCreated, newSite);
+
         return newSite;
     }
 
@@ -61,8 +65,12 @@ public class SiteService(ISiteRepository siteRepository) : ISiteService
 
     public async Task<Site> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        return await siteRepository.Delete(id, cancellationToken) ??
+        var existSite = await siteRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteUnableToDelete);
+
+        await messagePublisher.Publish(ActionNames.SiteDeleted, existSite);
+
+        return existSite;
     }
 
     private static void PrepareSite(Site site)
