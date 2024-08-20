@@ -79,8 +79,7 @@ public class RoleService : IRoleService
     private async Task DeleteAllRolesOfSite(Site site)
     {
         var siteRoles = await GetAllForSite(site.Id, default);
-        foreach (var role in siteRoles)
-            await _roleRepository.Delete(role.Id);
+        await _roleRepository.DeleteMany(siteRoles.Select(x => x.Id));
     }
 
     private async Task AddPrimaryRolesForSite(Site site)

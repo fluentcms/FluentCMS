@@ -77,4 +77,14 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
         var entity = await Collection.FindOneAndDeleteAsync(idFilter, null, cancellationToken);
         return entity;
     }
+
+    public virtual async Task<IEnumerable<TEntity?>> DeleteMany(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var entities = await GetByIds(ids, cancellationToken);
+        var entityIds = entities.Select(x => x.Id).ToList();
+        var idsFilter = Builders<TEntity>.Filter.In(x => x.Id, entityIds);
+        await Collection.DeleteManyAsync(idsFilter, cancellationToken);
+        return entities;
+    }
 }
