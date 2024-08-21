@@ -27,8 +27,8 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
 
     public async Task<ApiToken> Create(ApiToken apiToken, CancellationToken cancellationToken = default)
     {
-        var sameApiToken = await apiTokenRepository.TokenBySameNameIsExist(apiToken.Name, cancellationToken);
-        if (sameApiToken)
+        var isSameApiTokenExist = await apiTokenRepository.TokenBySameNameIsExist(apiToken.Name, cancellationToken);
+        if (isSameApiTokenExist)
             throw new AppException(ExceptionCodes.ApiTokenNameIsDuplicated);
 
         apiToken.Key = apiTokenProvider.GenerateKey();
@@ -45,8 +45,8 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
         var existingApiToken = await apiTokenRepository.GetById(apiToken.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenNotFound);
 
-        var sameApiToken = await apiTokenRepository.TokenBySameNameIsExist(apiToken.Name, cancellationToken);
-        if (sameApiToken)
+        var isSameApiTokenExist = await apiTokenRepository.TokenBySameNameIsExist(apiToken.Name, cancellationToken);
+        if (isSameApiTokenExist)
             throw new AppException(ExceptionCodes.ApiTokenNameIsDuplicated);
 
         //apiKey is not updated here as it should be generated automatically only
