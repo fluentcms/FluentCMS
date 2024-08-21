@@ -9,12 +9,6 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
     private const string _apiTokenHearKey = "X-API-AUTH";
     private const string _anyPolicyArea = "Global";
     private const string _anyPolicyAction = "All Actions";
-    private readonly IApiTokenProvider _apiTokenProvider;
-
-    public ApiTokenAuthorizeFilter(IApiTokenProvider apiTokenProvider)
-    {
-        _apiTokenProvider = apiTokenProvider;
-    }
 
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
@@ -63,8 +57,9 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
         return false;
     }
 
-    private async Task<bool> ValidateApiToken(AuthorizationFilterContext context, IEnumerable<PolicyAttribute> actionPolicies)
+    private static async Task<bool> ValidateApiToken(AuthorizationFilterContext context, IEnumerable<PolicyAttribute> actionPolicies)
     {
+        var apiTokenProvider = context.HttpContext.RequestServices.GetRequiredService<IApiTokenProvider>();
         var requestApiToken = context.HttpContext.Request.Headers[_apiTokenHearKey];
         if (string.IsNullOrEmpty(requestApiToken))
             return false;
@@ -76,7 +71,7 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
         var apiKey = parts[0];
         var secretKey = parts[1];
 
-        var checkSignature = CheckSignature(apiKey, secretKey);
+        var checkSignature = apiTokenProvider.Valiadate(apiKey, secretKey);
         if (!checkSignature)
             return false;
 
@@ -103,11 +98,6 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
         }
 
         return true;
-    }
-
-    private bool CheckSignature(string apiKey, string secretKey)
-    {
-        return _apiTokenProvider.Valiadate(apiKey, secretKey);
     }
 }
 
