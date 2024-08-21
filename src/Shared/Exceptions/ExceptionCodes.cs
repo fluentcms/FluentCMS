@@ -149,6 +149,7 @@ public static class ExceptionCodes
     public const string ApiTokenInvalidSecret = "ApiToken.InvalidSecret";
     public const string ApiTokenUnableToUpdate = "ApiToken.UnableToUpdate";
     public const string ApiTokenUnableToDelete = "ApiToken.UnableToDelete";
+    public const string ApiTokenNameIsDuplicated = "ApiToken.NameIsDuplicated";
 
     #endregion
 
