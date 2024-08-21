@@ -29,7 +29,7 @@ public abstract class BasePlugin : ComponentBase
 
         if (!string.IsNullOrEmpty(redirectTo))
         {
-            NavigationManager.NavigateTo(redirectTo);
+            NavigationManager.NavigateTo(Uri.UnescapeDataString(redirectTo));
         }
         else
         {
