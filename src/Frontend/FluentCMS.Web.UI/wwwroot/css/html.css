@@ -1,0 +1,167 @@
+/* Styles are based on quill stylesheet */
+
+.f-plugin-container-content h1 {
+    font-size: 2em;
+    font-weight: bold;
+    color: #333;
+}
+
+.f-plugin-container-content h2 {
+    font-size: 1.75em;
+    font-weight: bold;
+    color: #444;
+}
+
+.f-plugin-container-content h3 {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #555;
+}
+
+.f-plugin-container-content h4,
+.f-plugin-container-content h5,
+.f-plugin-container-content h6 {
+    font-size: 1.25em;
+    font-weight: bold;
+    color: #666;
+}
+
+.f-plugin-container-content p {
+    line-height: 1.6;
+    color: #222;
+}
+
+.f-plugin-container-content a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.f-plugin-container-content a:hover {
+    text-decoration: underline;
+}
+
+.f-plugin-container-content ul {
+    padding-left: 40px;
+    list-style-type: disc;
+}
+
+.f-plugin-container-content ol {
+    padding-left: 40px;
+    list-style-type: decimal;
+}
+
+.f-plugin-container-content li {
+}
+
+.f-plugin-container-content blockquote {
+    padding: 0.5em 10px;
+    border-left: 5px solid #ccc;
+    background: #f9f9f9;
+    color: #666;
+}
+
+.f-plugin-container-content code {
+    font-family: monospace;
+    background: #f8f8f8;
+    padding: 2px 4px;
+    border-radius: 4px;
+    color: #d63384;
+}
+
+.f-plugin-container-content pre {
+    font-family: monospace;
+    background: #f8f8f8;
+    padding: 10px;
+    border-radius: 4px;
+    overflow: auto;
+    color: #d63384;
+}
+
+.f-plugin-container-content .ql-align-left {
+    text-align: left;
+}
+
+.f-plugin-container-content .ql-align-center {
+    text-align: center;
+}
+
+.f-plugin-container-content .ql-align-right {
+    text-align: right;
+}
+
+.f-plugin-container-content .ql-align-justify {
+    text-align: justify;
+}
+
+.f-plugin-container-content .ql-indent-1 {
+    padding-left: 3em;
+}
+
+.f-plugin-container-content .ql-indent-2 {
+    padding-left: 6em;
+}
+
+.f-plugin-container-content .ql-indent-3 {
+    padding-left: 9em;
+}
+
+.f-plugin-container-content .ql-direction-ltr {
+    direction: ltr;
+}
+
+.f-plugin-container-content .ql-direction-rtl {
+    direction: rtl;
+}
+
+.f-plugin-container-content .ql-font-serif {
+    font-family: serif;
+}
+
+.f-plugin-container-content .ql-font-sans {
+    font-family: sans-serif;
+}
+
+.f-plugin-container-content .ql-font-monospace {
+    font-family: monospace;
+}
+
+.f-plugin-container-content .ql-bold {
+    font-weight: bold;
+}
+
+.f-plugin-container-content .ql-italic {
+    font-style: italic;
+}
+
+.f-plugin-container-content .ql-underline {
+    text-decoration: underline;
+}
+
+.f-plugin-container-content .ql-strike {
+    text-decoration: line-through;
+}
+
+.f-plugin-container-content .ql-list-ordered {
+    list-style-type: decimal;
+}
+
+.f-plugin-container-content .ql-list-bullet {
+    list-style-type: disc;
+}
+
+.f-plugin-container-content .ql-code-block {
+    background-color: #f5f5f5;
+    border-left: 4px solid #e0e0e0;
+    padding: 0.5em;
+    font-family: monospace;
+}
+
+.f-plugin-container-content .ql-script-sub {
+    vertical-align: sub;
+    font-size: smaller;
+}
+
+.f-plugin-container-content .ql-script-super {
+    vertical-align: super;
+    font-size: smaller;
+}

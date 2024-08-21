@@ -14,8 +14,16 @@
 else if (ViewState.Type == ViewStateType.PluginEdit)
 {
     <HeadContent>
+        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.default.css">
+
         @RenderDynamicContent(ViewState.EditLayout?.Head ?? string.Empty)
     </HeadContent>
+
+    <PageToolbar>
+        <Start>
+            <img src="/_content/FluentCMS.Web.UI/images/logo.svg" />
+        </Start>
+    </PageToolbar>
     @RenderDynamicContent(ViewState.EditLayout?.Body ?? string.Empty)
 }
 else if (ViewState.Type == ViewStateType.PluginDetail)

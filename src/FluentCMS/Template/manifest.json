@@ -51,6 +51,7 @@
             "Name": "Login",
             "Category": "Auth",
             "Description": "Login Plugin",
+            "Locked": true,
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
                 {
@@ -63,6 +64,7 @@
         {
             "Name": "Logout",
             "Category": "Auth",
+            "Locked": true,
             "Description": "Logout Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
@@ -76,6 +78,7 @@
         {
             "Name": "Register",
             "Category": "Auth",
+            "Locked": true,
             "Description": "Register Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
@@ -89,6 +92,7 @@
         {
             "Name": "Forgot Password",
             "Category": "Auth",
+            "Locked": true,
             "Description": "Forgot Password Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
@@ -102,6 +106,7 @@
         {
             "Name": "Reset Password",
             "Category": "Auth",
+            "Locked": true,
             "Description": "Reset Password Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
             "Types": [
@@ -340,7 +345,7 @@
         },
         {
             "Name": "TextHTML Plugin",
-            "Description": "",
+            "Description": "TextHTML Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Contents.TextHTML.dll",
             "Types": [
                 {
