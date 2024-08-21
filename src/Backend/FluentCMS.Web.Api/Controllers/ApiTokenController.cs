@@ -91,7 +91,8 @@ public class ApiTokenController(IApiTokenService apiTokenService, IMapper mapper
                     policiesDict[policyAttribute.Area].Actions.Add(policyAttribute.Action);
             }
         }
-
-        return await Task.FromResult(OkPaged(policiesDict.Values.ToList()));
+        var policies = policiesDict.Values.ToList();
+        policies.Insert(0, new Policy { Area = "Global", Actions = ["All Actions"] });
+        return await Task.FromResult(OkPaged(policies));
     }
 }

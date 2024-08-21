@@ -8,7 +8,7 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
 {
     private const string _apiTokenHearKey = "X-API-AUTH";
     private const string _anyPolicyArea = "Global";
-    private const string _anyPolicyAction = "All";
+    private const string _anyPolicyAction = "All Actions";
     private readonly IApiTokenProvider _apiTokenProvider;
 
     public ApiTokenAuthorizeFilter(IApiTokenProvider apiTokenProvider)

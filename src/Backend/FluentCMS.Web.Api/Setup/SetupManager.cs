@@ -90,8 +90,6 @@ public class SetupManager : ISetupManager
 
         _setupRequest = request;
 
-
-        // await InitializeDatabase();
         await InitializeApiToken();
         await InitializeSuperAdmin();
 
@@ -197,7 +195,7 @@ public class SetupManager : ISetupManager
             Name = "Full Access",
             Description = "Full Access Token",
             ExpireAt = null,
-            Policies = [new Policy { Area = "Global", Actions = ["All"] }],
+            Policies = [new Policy { Area = "Global", Actions = ["All Actions"] }],
             Enabled = true
         };
 

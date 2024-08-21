@@ -13,9 +13,9 @@ public class ApiTokenRepository(
         return await Collection.Query().Where(x => x.Key == apiKey).SingleOrDefaultAsync();
     }
 
-    public async Task<bool> TokenBySameNameIsExist(string name, CancellationToken cancellationToken = default)
+    public async Task<ApiToken?> GetByName(string name, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return await Collection.Query().Where(x => x.Name == name).ExistsAsync();
+        return await Collection.Query().Where(x => x.Name == name).FirstOrDefaultAsync();
     }
 }
