@@ -343,6 +343,7 @@ public class SetupManager : ISetupManager
                 Cols = pluginTemplate.Cols,
                 ColsMd = pluginTemplate.ColsMd,
                 ColsLg = pluginTemplate.ColsLg,
+                Settings = pluginTemplate.Settings
             };
             order++;
             var pluginResponse = await _pluginService.Create(plugin);

@@ -1,8 +1,11 @@
-namespace FluentCMS.Web.Plugins.Contents.TextHTML;
+namespace FluentCMS.Web.Plugins.Contents.ContactUs;
 
-public partial class TextHTMLEditPlugin
+public partial class ContactUsViewPlugin
 {
-    public const string CONTENT_TYPE_NAME = nameof(TextHTMLContent);
+    public const string CONTENT_TYPE_NAME = nameof(ContactUsContent);
+
+    // [Inject]
+    // private IEmailProvider emailProvider { get; set; } = default!;
 
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = default!;
@@ -54,49 +57,24 @@ public partial class TextHTMLEditPlugin
         }
     }
 
-    [SupplyParameterFromForm(FormName = CONTENT_TYPE_NAME)]
-    private TextHTMLContent? Model { get; set; }
 
-    private bool IsEditMode { get; set; } = false;
+    private ContactUsSettings Settings { get; set; }
+
+    [SupplyParameterFromForm(FormName = CONTENT_TYPE_NAME)]
+    private ContactUsContent Model { get; set; } = new();
 
     protected override async Task OnInitializedAsync()
     {
-        if (Model is null)
-        {
-            var response = await ApiClient.PluginContent.GetAllAsync(CONTENT_TYPE_NAME, Plugin!.Id);
-
-            var content = response.Data.ToContentList<TextHTMLContent>();
-
-            if(content.Count > 0)
-            {
-                Model = new TextHTMLContent
-                {
-                    Id = content[0].Id,
-                    Content = content[0].Content,
-                    IsRichText = content[0].IsRichText,
-                };
-                IsEditMode = true;
-            }
-            else
-            {
-                Model = new TextHTMLContent
-                {
-                    Id = Guid.Empty
-                };
-            }
-        }
+        Settings = Plugin.Settings.ToPluginSettings<ContactUsSettings>();
     }
 
-    private async Task OnSubmit()
+    protected async Task OnSubmit()
     {
-        if (Model is null || Plugin is null)
-            return;
+        Console.WriteLine($"Should send email: {Model.Email} - {Model.Subject} - {Model.Message}");
 
-        if (IsEditMode)
-            await ApiClient.PluginContent.UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.Id, Model.ToDictionary());
-        else
-            await ApiClient.PluginContent.CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.ToDictionary());
+        await ApiClient.PluginContent.CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.ToDictionary());
 
-        NavigateBack();
+        // TODO Import service
+        // await emailProvider.Send(Model.Email, Model.Subject, Model.Message, cancellationToken);
     }
 }

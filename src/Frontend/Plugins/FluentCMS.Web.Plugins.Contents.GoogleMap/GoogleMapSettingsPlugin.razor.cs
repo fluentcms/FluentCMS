@@ -1,8 +1,8 @@
-namespace FluentCMS.Web.Plugins.Contents.TextHTML;
+namespace FluentCMS.Web.Plugins.Contents.GoogleMap;
 
-public partial class TextHTMLEditPlugin
+public partial class GoogleMapSettingsPlugin
 {
-    public const string CONTENT_TYPE_NAME = nameof(TextHTMLContent);
+    public const string PLUGIN_SETTINGS_FORM = nameof(GoogleMapSettings);
 
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = default!;
@@ -54,48 +54,25 @@ public partial class TextHTMLEditPlugin
         }
     }
 
-    [SupplyParameterFromForm(FormName = CONTENT_TYPE_NAME)]
-    private TextHTMLContent? Model { get; set; }
-
-    private bool IsEditMode { get; set; } = false;
+    [SupplyParameterFromForm(FormName = PLUGIN_SETTINGS_FORM)]
+    private GoogleMapSettings? Model { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        if (Model is null)
-        {
-            var response = await ApiClient.PluginContent.GetAllAsync(CONTENT_TYPE_NAME, Plugin!.Id);
-
-            var content = response.Data.ToContentList<TextHTMLContent>();
-
-            if(content.Count > 0)
-            {
-                Model = new TextHTMLContent
-                {
-                    Id = content[0].Id,
-                    Content = content[0].Content,
-                    IsRichText = content[0].IsRichText,
-                };
-                IsEditMode = true;
-            }
-            else
-            {
-                Model = new TextHTMLContent
-                {
-                    Id = Guid.Empty
-                };
-            }
-        }
+        Model = Plugin.Settings.ToPluginSettings<GoogleMapSettings>();
     }
 
     private async Task OnSubmit()
     {
-        if (Model is null || Plugin is null)
-            return;
-
-        if (IsEditMode)
-            await ApiClient.PluginContent.UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.Id, Model.ToDictionary());
-        else
-            await ApiClient.PluginContent.CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.ToDictionary());
+        await ApiClient.Plugin.UpdateAsync(new PluginUpdateRequest {
+            Id = Plugin.Id,
+            Settings = Model.ToDictionary(),
+            Order = Plugin.Order,
+            Section = Plugin.Section,
+            Cols = Plugin.Cols,
+            ColsMd = Plugin.ColsMd,
+            ColsLg = Plugin.ColsLg,
+        });
 
         NavigateBack();
     }

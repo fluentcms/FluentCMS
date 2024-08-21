@@ -1,0 +1,25 @@
+
+<div data-map style="height: 500px" data-latitude="@Settings.Latitude" data-longitude="@Settings.Longitude" data-apikey=""></div>
+<script async
+    src="https://maps.googleapis.com/maps/api/js?key=@Settings.ApiKey&loading=async&callback=initMap">
+</script>
+<script>
+    const mapEl = document.querySelector('[data-map]')
+
+    const latitude = +mapEl.dataset.latitude
+    const longitude = +mapEl.dataset.longitude
+    window.initMap = async () => {
+        const { Map, Marker } = google.maps
+
+        map = new Map(mapEl, {
+            center: { lat: latitude, lng: longitude },
+            zoom: 8,
+        });
+
+        marker = new Marker({
+            map,
+            position: { lat: latitude, lng: longitude }
+        })
+    }
+
+</script>

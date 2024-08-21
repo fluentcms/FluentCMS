@@ -1,26 +1,17 @@
 @rendermode InteractiveServer
 
 <div class="m-4">
-    <Typography Size="TextSize.H5">Edit TextHTML Content</Typography>            
+    <Typography Size="TextSize.H5">Edit Contact Us settings</Typography>            
     <Spacer />
     <Card>
         <CardBody>
             @if (Model != null)
             {
-                <EditForm Model="@Model" OnSubmit="OnSubmit" FormName="@CONTENT_TYPE_NAME" Enhance>
+                <EditForm Model="@Model" OnSubmit="OnSubmit" FormName="@PLUGIN_SETTINGS_FORM" Enhance>
                     <DataAnnotationsValidator />
                     <Spacer />
                     <Grid GutterX="GridGutter.Large">
-                        <FormHiddenInput @bind-Value="@Model.Id" />
-                        <FormSwitch @bind-Value="Model.IsRichText" Label="Rich Text" />
-                        @if (Model.IsRichText)
-                        {
-                            <FormRichTextEditor Placeholder="Enter HTML Content" @bind-Value="@Model!.Content" Label="Content" />
-                        }
-                        else
-                        {
-                            <FormTextarea Placeholder="Enter HTML Content" Rows="20" @bind-Value="@Model!.Content" Label="Content" />
-                        }
+                        <FormInput Placeholder="Enter Your Email address" @bind-Value="@Model!.EmailAddress" Label="EmailAddress" />
                         <FormActions Submit Cancel />
                         <GridItem Small="GridItemColumn.Twelve">
                             <Stack>
@@ -36,5 +27,15 @@
                 </EditForm>
             }
         </CardBody>
+    </Card>
+    <Spacer />
+    <Typography Size="TextSize.H5">Submitted contact requests</Typography>            
+    <Spacer />
+    <Card>
+        <DataTable Items="Items">
+            <DataTableItem Label="Email">@context.Email</DataTableItem>
+            <DataTableItem Label="Subject">@context.Subject</DataTableItem>
+            <DataTableItem Label="Message">@context.Message</DataTableItem>
+        </DataTable>
     </Card>
 </div>
