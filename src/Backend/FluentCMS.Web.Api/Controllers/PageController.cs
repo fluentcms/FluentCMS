@@ -101,7 +101,6 @@ public class PageController(
             if (detail.Section != null)
                 plugin.Section = detail.Section;
 
-
             if (detail.Cols != null)
                 plugin.Cols = detail.Cols.Value;
 
