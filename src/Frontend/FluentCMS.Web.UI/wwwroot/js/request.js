@@ -1,7 +1,7 @@
 import './sortable.js'
 
 import {actions} from './actions.js'
-import { createPlugin, updatePlugin, updatePluginOrders } from './api.js';
+import { createPlugin, updatePlugin, updatePluginCols, updatePluginOrders } from './api.js';
 import {Columns} from './columns.js'
 
 export function initColumns(frameDocument) {
@@ -14,7 +14,7 @@ export function initColumns(frameDocument) {
             breakpointLg: 992,
             breakpointMd: 480,
             onResize(el) {
-                updatePlugin(el, section)
+                updatePluginCols(el, section)
             }
         })
         

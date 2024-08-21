@@ -12,14 +12,13 @@
                     <Spacer />
                     <Grid GutterX="GridGutter.Large">
                         <FormInput Placeholder="Enter Your Email address" @bind-Value="@Model!.EmailAddress" Label="EmailAddress" />
-                        <FormInput Placeholder="Enter Description" @bind-Value="@Model!.Description" Label="Description" />
                         <FormActions Submit Cancel />
                         <GridItem Small="GridItemColumn.Twelve">
                             <Stack>
                                 <Button Color="Color.Primary" Type="ButtonType.Submit">
                                     Submit
                                 </Button>
-                                <Button Href="@GetBackUrl()">
+                                <Button data-enhance-nav="false" Href="@GetBackUrl()">
                                     Cancel
                                 </Button>
                             </Stack>

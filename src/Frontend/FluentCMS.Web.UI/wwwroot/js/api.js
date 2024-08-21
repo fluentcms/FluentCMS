@@ -22,6 +22,22 @@ export async function deletePlugin(id) {
     await updatePluginOrders()
 }
 
+export async function updatePluginCols(pluginEl, section) {
+    const result = {}
+    const pluginId = pluginEl.dataset.id
+    const cols = pluginEl.dataset.cols
+    const colsMd = pluginEl.dataset.colsMd
+    const colsLg = pluginEl.dataset.colsLg
+    result[`UpdatePluginOrdersModel.Plugins[0].Id`] = pluginId
+    result[`UpdatePluginOrdersModel.Plugins[0].Section`] = section.dataset.name
+    result[`UpdatePluginOrdersModel.Plugins[0].Cols`] = cols
+    result[`UpdatePluginOrdersModel.Plugins[0].ColsMd`] = colsMd
+    result[`UpdatePluginOrdersModel.Plugins[0].ColsLg`] = colsLg
+    
+    await request('UpdatePluginOrdersForm', result)
+
+}
+
 export async function updatePlugin(pluginContainerEl, sectionEl) {
     let result = {}
 
@@ -55,7 +71,14 @@ export async function updatePluginOrders() {
         sections.forEach(el => {
             el.querySelectorAll('.f-plugin-container').forEach(plugin => {
                 const pluginId = plugin.dataset.id
-                result[`UpdatePluginOrdersModel.Plugins[${index}]`] = pluginId
+                const cols = plugin.dataset.cols
+                const colsMd = plugin.dataset.colsMd
+                const colsLg = plugin.dataset.colsLg
+                result[`UpdatePluginOrdersModel.Plugins[${index}].Id`] = pluginId
+                result[`UpdatePluginOrdersModel.Plugins[${index}].Section`] = el.dataset.name
+                result[`UpdatePluginOrdersModel.Plugins[${index}].Cols`] = cols
+                result[`UpdatePluginOrdersModel.Plugins[${index}].ColsMd`] = colsMd
+                result[`UpdatePluginOrdersModel.Plugins[${index}].ColsLg`] = colsLg
                 index++;
             })
         })

@@ -94,10 +94,24 @@ public class PageController(
     public async Task<IApiResult<bool>> UpdatePluginOrders(PageUpdatePluginOrdersRequest request, CancellationToken cancellationToken = default)
     {
         var index = 0;
-        foreach (var pluginId in request.Plugins)
+        foreach (var detail in request.Plugins)
         {
-            var plugin = await pluginService.GetById(pluginId, cancellationToken);
+            var plugin = await pluginService.GetById(detail.Id, cancellationToken);
             plugin.Order = index++;
+            if (detail.Section != null)
+                plugin.Section = detail.Section;
+
+
+            if (detail.Cols != null)
+                plugin.Cols = detail.Cols.Value;
+
+            if (detail.ColsMd != null)
+                plugin.ColsMd = detail.ColsMd.Value;
+
+            if (detail.ColsLg != null)
+                plugin.ColsLg = detail.ColsLg.Value;
+
+            
             await pluginService.Update(plugin);
         }
         return Ok(true);

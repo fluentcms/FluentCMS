@@ -1,33 +1,16 @@
-<section class="bg-white dark:bg-gray-900">
-  <div class="py-8 lg:py-16 px-4 mx-auto max-w-screen-md">
-        <h2 class="mb-4 text-4xl tracking-tight font-extrabold text-center text-gray-900 dark:text-white">Contact Us</h2>
-        <p class="mb-8 lg:mb-16 font-light text-center text-gray-500 dark:text-gray-400 sm:text-xl">@Settings.Description</p>
-
-        <EditForm Model="@Model" OnSubmit="OnSubmit" FormName="@CONTENT_TYPE_NAME">
-            <DataAnnotationsValidator />
-            <Spacer />
-            <Grid GutterX="GridGutter.Large">
-                <FormInput Placeholder="Enter Your Email address" @bind-Value="@Model!.Email" Label="Your email" />
-                <FormInput Placeholder="Let us know how we can help you" @bind-Value="@Model!.Subject" Label="Subject" />
-                <FormTextarea Placeholder="Leave a comment..." @bind-Value="@Model!.Message" Label="Message" />
-                <GridItem Small="GridItemColumn.Twelve">
-                    <Stack>
-                        <Button Color="Color.Primary" Type="ButtonType.Submit">
-                            Send Message
-                        </Button>
-                    </Stack>
-                </GridItem>
-            </Grid>
-        </EditForm>
-  </div>
-</section>
-
-
-<div data-action="move-to-toolbar" data-trigger="load" data-plugin-id="@Plugin.Id" style="display: none">
-    <button class="f-plugin-toolbar-action"  data-action="open-plugin-view" data-plugin-id="@Plugin.Id" data-view-name="ContactUs Settings">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M7.32 1.8C7.34204 1.58074 7.44473 1.37749 7.60815 1.22967C7.77158 1.08185 7.98408 0.999997 8.20444 1H9.79556C10.0159 0.999997 10.2284 1.08185 10.3918 1.22967C10.5553 1.37749 10.658 1.58074 10.68 1.8L10.7093 2.096C11.4011 2.26661 12.0631 2.54082 12.6729 2.90933L12.9031 2.72089C13.0737 2.5814 13.29 2.51026 13.5101 2.52127C13.7302 2.53227 13.9384 2.62464 14.0942 2.78044L15.2196 3.90578C15.3754 4.06162 15.4677 4.26977 15.4787 4.48986C15.4897 4.70995 15.4186 4.92629 15.2791 5.09689L15.0907 5.328C15.4542 5.92889 15.7307 6.58933 15.904 7.29067L16.1991 7.32C16.4185 7.34183 16.622 7.44443 16.77 7.60788C16.918 7.77132 17 7.98394 17 8.20444V9.79556C17 10.0159 16.9182 10.2284 16.7703 10.3918C16.6225 10.5553 16.4193 10.658 16.2 10.68L15.904 10.7093C15.7334 11.4011 15.4592 12.0631 15.0907 12.6729L15.2791 12.9031C15.4186 13.0737 15.4897 13.29 15.4787 13.5101C15.4677 13.7302 15.3754 13.9384 15.2196 14.0942L14.0942 15.2196C13.9384 15.3754 13.7302 15.4677 13.5101 15.4787C13.29 15.4897 13.0737 15.4186 12.9031 15.2791L12.672 15.0907C12.0625 15.4592 11.4008 15.7334 10.7093 15.904L10.68 16.1991C10.6582 16.4185 10.5556 16.622 10.3921 16.77C10.2287 16.918 10.0161 17 9.79556 17H8.20444C7.98408 17 7.77158 16.9182 7.60815 16.7703C7.44473 16.6225 7.34204 16.4193 7.32 16.2L7.29067 15.904C6.59889 15.7334 5.93688 15.4592 5.32711 15.0907L5.09689 15.2791C4.92629 15.4186 4.70995 15.4897 4.48986 15.4787C4.26977 15.4677 4.06162 15.3754 3.90578 15.2196L2.78044 14.0933C2.62464 13.9375 2.53227 13.7293 2.52127 13.5092C2.51026 13.2892 2.5814 13.0728 2.72089 12.9022L2.90933 12.6711C2.5409 12.0616 2.2667 11.3999 2.096 10.7084L1.8 10.68C1.58074 10.658 1.37749 10.5553 1.22967 10.3918C1.08185 10.2284 0.999997 10.0159 1 9.79556V8.20444C0.999997 7.98408 1.08185 7.77158 1.22967 7.60815C1.37749 7.44473 1.58074 7.34204 1.8 7.32L2.096 7.29067C2.26661 6.5989 2.54082 5.9369 2.90933 5.32711L2.72089 5.09689C2.5814 4.92629 2.51026 4.70995 2.52127 4.48986C2.53227 4.26977 2.62464 4.06162 2.78044 3.90578L3.90667 2.78044C4.0625 2.62464 4.27066 2.53227 4.49075 2.52127C4.71084 2.51026 4.92718 2.5814 5.09778 2.72089L5.32889 2.90933C5.93837 2.54083 6.60007 2.26662 7.29156 2.096L7.32 1.8Z" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="1" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M9 6.5C10.3807 6.5 11.5 7.61929 11.5 9C11.5 10.3807 10.3807 11.5 9 11.5C7.61929 11.5 6.5 10.3807 6.5 9C6.5 7.61929 7.61929 6.5 9 6.5Z" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="1" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-    </button> 
-</div>
+<EditForm Model="@Model" OnSubmit="OnSubmit" FormName="@CONTENT_TYPE_NAME">
+    <DataAnnotationsValidator />
+    <Spacer />
+    <Grid GutterX="GridGutter.Large">
+        <FormInput Placeholder="Enter Your Email address" @bind-Value="@Model!.Email" Label="Your email" />
+        <FormInput Placeholder="Let us know how we can help you" @bind-Value="@Model!.Subject" Label="Subject" />
+        <FormTextarea Placeholder="Leave a comment..." @bind-Value="@Model!.Message" Label="Message" />
+        <GridItem Small="GridItemColumn.Twelve">
+            <Stack>
+                <Button Color="Color.Primary" Type="ButtonType.Submit">
+                    Send Message
+                </Button>
+            </Stack>
+        </GridItem>
+    </Grid>
+</EditForm>
