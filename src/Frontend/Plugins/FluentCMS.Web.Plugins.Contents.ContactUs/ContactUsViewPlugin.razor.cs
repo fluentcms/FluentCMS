@@ -22,10 +22,19 @@ public partial class ContactUsViewPlugin
     [Inject]
     protected IHttpContextAccessor? HttpContextAccessor { get; set; }
 
+    [SupplyParameterFromQuery(Name = "redirectTo")]
+    private string RedirectTo { get; set; } = string.Empty;
+
     protected virtual void NavigateBack()
     {
-        var url = new Uri(NavigationManager.Uri).LocalPath;
-        NavigateTo(url);
+        if (!string.IsNullOrEmpty(RedirectTo)) {
+            NavigateTo(Uri.UnescapeDataString(RedirectTo));
+        }
+        else
+        {
+            var url = new Uri(NavigationManager.Uri).LocalPath;
+            NavigateTo(url);
+        }
     }
 
     protected virtual void NavigateTo(string path)
@@ -33,8 +42,21 @@ public partial class ContactUsViewPlugin
         if (HttpContextAccessor?.HttpContext != null && !HttpContextAccessor.HttpContext.Response.HasStarted)
             HttpContextAccessor.HttpContext.Response.Redirect(path);
         else
-            NavigationManager.NavigateTo(path);
+            NavigationManager.NavigateTo(path, true);
     }
+
+    protected virtual string GetBackUrl()
+    {
+        if(!string.IsNullOrEmpty(RedirectTo))
+        {
+            return Uri.UnescapeDataString(RedirectTo);
+        }
+        else
+        {
+            return new Uri(NavigationManager.Uri).LocalPath;
+        }
+    }
+
 
     private ContactUsSettings Settings { get; set; }
 

@@ -19,10 +19,19 @@ public partial class GoogleMapSettingsPlugin
     [Inject]
     protected IHttpContextAccessor? HttpContextAccessor { get; set; }
 
+    [SupplyParameterFromQuery(Name = "redirectTo")]
+    private string RedirectTo { get; set; } = string.Empty;
+
     protected virtual void NavigateBack()
     {
-        var url = new Uri(NavigationManager.Uri).LocalPath;
-        NavigateTo(url + "?pageEdit=true");
+        if (!string.IsNullOrEmpty(RedirectTo)) {
+            NavigateTo(Uri.UnescapeDataString(RedirectTo));
+        }
+        else
+        {
+            var url = new Uri(NavigationManager.Uri).LocalPath;
+            NavigateTo(url);
+        }
     }
 
     protected virtual void NavigateTo(string path)
@@ -33,13 +42,20 @@ public partial class GoogleMapSettingsPlugin
             NavigationManager.NavigateTo(path, true);
     }
 
-    [SupplyParameterFromForm(FormName = PLUGIN_SETTINGS_FORM)]
-    private GoogleMapSettings? Model { get; set; }
-
     protected virtual string GetBackUrl()
     {
-        return new Uri(NavigationManager.Uri).LocalPath;
+        if(!string.IsNullOrEmpty(RedirectTo))
+        {
+            return Uri.UnescapeDataString(RedirectTo);
+        }
+        else
+        {
+            return new Uri(NavigationManager.Uri).LocalPath;
+        }
     }
+
+    [SupplyParameterFromForm(FormName = PLUGIN_SETTINGS_FORM)]
+    private GoogleMapSettings? Model { get; set; }
 
     protected override async Task OnInitializedAsync()
     {

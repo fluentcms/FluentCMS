@@ -54,17 +54,6 @@ export const actions = {
             updateResizerPosition()
         }, 300)
     },
-    'move-to-toolbar'(el) {
-        const pluginId = el.dataset.pluginId
-
-        const toolbar = document.querySelector('.f-page-editor-iframe').contentDocument.querySelector(`[data-id="${pluginId}"] .f-plugin-toolbar-actions`)
-
-        setTimeout(() => {
-            for(let child of el.childNodes) {
-                toolbar.prepend(child)
-            }
-        })
-    },
     'open-plugin-view'(el) {
         const viewName = el.dataset.viewName
         const pluginId = el.dataset.pluginId
@@ -75,6 +64,7 @@ export const actions = {
         if(pluginId) url += '?pluginId=' + pluginId;
         if(viewName) url += '&viewName=' + viewName;
         if(id) url += '&id=' + id;
+        url += '&redirectTo=' + encodeURIComponent(window.location.pathname + '?pageEdit=true');
 
         window.location.href = url
     }

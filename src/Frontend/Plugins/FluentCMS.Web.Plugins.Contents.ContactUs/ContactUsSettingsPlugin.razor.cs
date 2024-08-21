@@ -52,7 +52,6 @@ public partial class ContactUsSettingsPlugin
 
         var response = await ApiClient.PluginContent.GetAllAsync(nameof(ContactUsContent), Plugin!.Id);
         Items = response.Data.ToContentList<ContactUsContent>();
-
     }
 
     private async Task OnSubmit()
