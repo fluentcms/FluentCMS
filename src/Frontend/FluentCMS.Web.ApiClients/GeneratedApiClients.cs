@@ -7891,8 +7891,14 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
+<<<<<<< HEAD
                     // Operation Path: "api/Role/Create"
                     urlBuilder_.Append("api/Role/Create");
+=======
+                    // Operation Path: "api/Role/GetById/{id}"
+                    urlBuilder_.Append("api/Role/GetById/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
+>>>>>>> 2d67fc89a2afe666bd8c8f95d4f51f4aae53e1c0
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -7973,8 +7979,13 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
+<<<<<<< HEAD
                     // Operation Path: "api/Role/Update"
                     urlBuilder_.Append("api/Role/Update");
+=======
+                    // Operation Path: "api/Role/Create"
+                    urlBuilder_.Append("api/Role/Create");
+>>>>>>> 2d67fc89a2afe666bd8c8f95d4f51f4aae53e1c0
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -8055,9 +8066,14 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
+<<<<<<< HEAD
                     // Operation Path: "api/Role/Delete/{id}"
                     urlBuilder_.Append("api/Role/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
+=======
+                    // Operation Path: "api/Role/Update"
+                    urlBuilder_.Append("api/Role/Update");
+>>>>>>> 2d67fc89a2afe666bd8c8f95d4f51f4aae53e1c0
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -8137,6 +8153,88 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
+<<<<<<< HEAD
+=======
+                    // Operation Path: "api/Role/Delete/{id}"
+                    urlBuilder_.Append("api/Role/Delete/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BooleanIApiResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiClientException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiClientException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <returns>OK</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        public virtual System.Threading.Tasks.Task<PolicyIApiPagingResult> GetPoliciesAsync()
+        {
+            return GetPoliciesAsync(System.Threading.CancellationToken.None);
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<PolicyIApiPagingResult> GetPoliciesAsync(System.Threading.CancellationToken cancellationToken)
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+>>>>>>> 2d67fc89a2afe666bd8c8f95d4f51f4aae53e1c0
                     // Operation Path: "api/Role/GetPolicies"
                     urlBuilder_.Append("api/Role/GetPolicies");
 
