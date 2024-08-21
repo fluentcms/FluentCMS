@@ -27,6 +27,10 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
 
     public async Task<ApiToken> Create(ApiToken apiToken, CancellationToken cancellationToken = default)
     {
+        var sameApiToken = await apiTokenRepository.TokenBySameNameIsExist(apiToken.Name, cancellationToken);
+        if (sameApiToken)
+            throw new AppException(ExceptionCodes.ApiTokenNameIsDuplicated);
+
         apiToken.Key = apiTokenProvider.GenerateKey();
         apiToken.Secret = apiTokenProvider.GenerateSecret(apiToken.Key);
 
