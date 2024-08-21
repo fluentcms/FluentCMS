@@ -45,6 +45,10 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
         var existingApiToken = await apiTokenRepository.GetById(apiToken.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenNotFound);
 
+        var sameApiToken = await apiTokenRepository.TokenBySameNameIsExist(apiToken.Name, cancellationToken);
+        if (sameApiToken)
+            throw new AppException(ExceptionCodes.ApiTokenNameIsDuplicated);
+
         //apiKey is not updated here as it should be generated automatically only
         apiToken.Secret = existingApiToken.Secret;
         apiToken.Key = existingApiToken.Key;
