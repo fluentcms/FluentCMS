@@ -27,6 +27,10 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
 
     public async Task<ApiToken> Create(ApiToken apiToken, CancellationToken cancellationToken = default)
     {
+        var existingApiToken = await apiTokenRepository.GetByName(apiToken.Name, cancellationToken);
+        if (existingApiToken != null)
+            throw new AppException(ExceptionCodes.ApiTokenNameIsDuplicated);
+
         apiToken.Key = apiTokenProvider.GenerateKey();
         apiToken.Secret = apiTokenProvider.GenerateSecret(apiToken.Key);
 
@@ -41,6 +45,10 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
         var existingApiToken = await apiTokenRepository.GetById(apiToken.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenNotFound);
 
+        var isSameApiTokenExist = await apiTokenRepository.GetByName(apiToken.Name, cancellationToken);
+        if (isSameApiTokenExist != null && apiToken.Id != isSameApiTokenExist.Id)
+            throw new AppException(ExceptionCodes.ApiTokenNameIsDuplicated);
+
         //apiKey is not updated here as it should be generated automatically only
         apiToken.Secret = existingApiToken.Secret;
         apiToken.Key = existingApiToken.Key;
@@ -51,9 +59,6 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
 
     public async Task<ApiToken> Delete(Guid tokenId, CancellationToken cancellationToken = default)
     {
-        _ = await apiTokenRepository.GetById(tokenId, cancellationToken) ??
-            throw new AppException(ExceptionCodes.ApiTokenNotFound);
-
         return await apiTokenRepository.Delete(tokenId, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenUnableToDelete);
     }

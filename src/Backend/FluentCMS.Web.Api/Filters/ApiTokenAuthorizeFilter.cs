@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc.Filters;
+﻿using FluentCMS.Providers;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Web.Api.Filters;
@@ -7,7 +8,7 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
 {
     private const string _apiTokenHearKey = "X-API-AUTH";
     private const string _anyPolicyArea = "Global";
-    private const string _anyPolicyAction = "All";
+    private const string _anyPolicyAction = "All Actions";
 
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
@@ -56,10 +57,9 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
         return false;
     }
 
-
-
-    private async Task<bool> ValidateApiToken(AuthorizationFilterContext context, IEnumerable<PolicyAttribute> actionPolicies)
+    private static async Task<bool> ValidateApiToken(AuthorizationFilterContext context, IEnumerable<PolicyAttribute> actionPolicies)
     {
+        var apiTokenProvider = context.HttpContext.RequestServices.GetRequiredService<IApiTokenProvider>();
         var requestApiToken = context.HttpContext.Request.Headers[_apiTokenHearKey];
         if (string.IsNullOrEmpty(requestApiToken))
             return false;
@@ -69,12 +69,16 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
             return false;
 
         var apiKey = parts[0];
-        var apiSecret = parts[1];
+        var secretKey = parts[1];
+
+        var checkSignature = apiTokenProvider.Valiadate(apiKey, secretKey);
+        if (!checkSignature)
+            return false;
 
         var apiTokenService = context.HttpContext.RequestServices.GetRequiredService<IApiTokenService>();
 
         // Check if the api key is valid
-        var token = await apiTokenService.Validate(apiKey, apiSecret);
+        var token = await apiTokenService.Validate(apiKey, secretKey);
 
         if (token == null)
             return false;

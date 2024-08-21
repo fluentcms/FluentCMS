@@ -15,4 +15,10 @@ public class ApiTokenRepository(
 
         return await findResult.SingleOrDefaultAsync(cancellationToken);
     }
+
+    public async Task<ApiToken?> GetByName(string name, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return await Collection.Find(x => x.Name == name).FirstOrDefaultAsync(cancellationToken);
+    }
 }
