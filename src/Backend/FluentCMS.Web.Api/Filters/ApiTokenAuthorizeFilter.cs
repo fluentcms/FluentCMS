@@ -71,7 +71,7 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
         var apiKey = parts[0];
         var secretKey = parts[1];
 
-        var checkSignature = apiTokenProvider.Valiadate(apiKey, secretKey);
+        var checkSignature = apiTokenProvider.Validate(apiKey, secretKey);
         if (!checkSignature)
             return false;
 
