@@ -24,8 +24,4 @@ async function onInit() {
     initColumns(frameDocument)
 }
 
-document.addEventListener('fluentcms:afterenhanced', () => {
-    onInit()
-})
-
 onInit()

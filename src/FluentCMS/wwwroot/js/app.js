@@ -1,31 +1,7 @@
-let theme = null;
-let sidebar = null;
+Theme()
+Sidebar()
 
-window.addEventListener('fluentcms:beforeenhanced', () => {
-    if(theme) theme.destroy()
-    if(sidebar) sidebar.destroy()
-})
-
-window.addEventListener('fluentcms:afterenhanced', () => {
-    // update elements after page navigated
-    theme = createTheme()
-    sidebar = createSidebar()
-    
-    if(theme) theme.initialize()
-    if(sidebar) sidebar.initialize()
-
-    initFlowbite()
-})
-
-window.addEventListener('fluentcms:init', () => {
-    theme = createTheme();
-    sidebar = createSidebar();
-
-    if(theme) theme.initialize()
-    if(sidebar) sidebar.initialize()
-})
-
-function createSidebar() {
+function Sidebar() {
     const isSidebarExpanded = toggleSidebarEl => {
         return toggleSidebarEl.getAttribute('aria-expanded') === 'true' ? true : false;
     }
@@ -158,13 +134,11 @@ function createSidebar() {
         sidebarBackdrop.removeEventListener('click', onSidebarBackdropClicked);
     }
 
-    return {
-        initialize,
-        destroy
-    }
+
+    initialize()
 }
 
-function createTheme() {
+function Theme() {
     var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
     var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
 
@@ -233,8 +207,5 @@ function createTheme() {
         themeToggleBtn.removeEventListener('click', onToggleThemeBtnClicked);
     }
 
-    return {
-        initialize,
-        destroy
-    }
+    initialize()
 }

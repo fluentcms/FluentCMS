@@ -1,7 +1,7 @@
 ﻿<Typography Size="TextSize.H5">@Title</Typography>
 @if (Model != null)
 {
-    <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="@Name" Enhance>
+    <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="@Name">
         <DataAnnotationsValidator />
         <Spacer />
         @if(!string.IsNullOrEmpty(Description))
