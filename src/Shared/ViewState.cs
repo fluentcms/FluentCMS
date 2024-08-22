@@ -60,6 +60,7 @@ public class PluginViewState
     public int Cols { get; set; } = 12;
     public int ColsMd { get; set; } = 0;
     public int ColsLg { get; set; } = 0;
+    public Dictionary<string, string> Settings { get; set; } = [];
 }
 
 public class PluginDefinitionViewState

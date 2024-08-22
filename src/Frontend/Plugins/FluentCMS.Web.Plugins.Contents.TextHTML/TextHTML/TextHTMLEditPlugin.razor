@@ -12,7 +12,6 @@
                     <DataAnnotationsValidator />
                     <Spacer />
                     <Grid GutterX="GridGutter.Large">
-                        <FormHiddenInput @bind-Value="@Id" />
                         <FormTextarea Placeholder="Enter HTML Content" Rows="20" @bind-Value="@Model!.Content" Label="Content" />
                         <GridItem Small="GridItemColumn.Twelve">
                             <Stack>

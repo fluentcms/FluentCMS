@@ -19,10 +19,19 @@ public partial class TextHTMLEditPlugin
     [Inject]
     protected IHttpContextAccessor? HttpContextAccessor { get; set; }
 
+    [SupplyParameterFromQuery(Name = "redirectTo")]
+    private string RedirectTo { get; set; } = string.Empty;
+
     protected virtual void NavigateBack()
     {
-        var url = new Uri(NavigationManager.Uri).LocalPath;
-        NavigateTo(url + "?pageEdit=true");
+        if (!string.IsNullOrEmpty(RedirectTo)) {
+            NavigateTo(Uri.UnescapeDataString(RedirectTo));
+        }
+        else
+        {
+            var url = new Uri(NavigationManager.Uri).LocalPath;
+            NavigateTo(url);
+        }
     }
 
     protected virtual void NavigateTo(string path)
@@ -33,50 +42,45 @@ public partial class TextHTMLEditPlugin
             NavigationManager.NavigateTo(path, true);
     }
 
-    [SupplyParameterFromForm(FormName = CONTENT_TYPE_NAME)]
-    private TextHTMLContent? Model { get; set; }
-
-    [SupplyParameterFromQuery(Name = nameof(Id))]
-    private Guid? Id { get; set; } = default!;
-
     protected virtual string GetBackUrl()
     {
-        var uri = new Uri(NavigationManager.Uri);
-        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-
-        var redirectTo = query["redirectTo"];
-
-        if (!string.IsNullOrEmpty(redirectTo))
+        if(!string.IsNullOrEmpty(RedirectTo))
         {
-            return Uri.UnescapeDataString(redirectTo);
+            return Uri.UnescapeDataString(RedirectTo);
         }
         else
         {
-            return uri.LocalPath;
+            return new Uri(NavigationManager.Uri).LocalPath;
         }
     }
+
+    [SupplyParameterFromForm(FormName = CONTENT_TYPE_NAME)]
+    private TextHTMLContent? Model { get; set; }
+
+    private bool IsEditMode { get; set; } = false;
 
     protected override async Task OnInitializedAsync()
     {
         if (Model is null)
         {
-            if (Id != null)
+            var response = await ApiClient.PluginContent.GetAllAsync(CONTENT_TYPE_NAME, Plugin!.Id);
+
+            var content = response.Data.ToContentList<TextHTMLContent>();
+
+            if(content.Count > 0)
             {
-                var response = await ApiClient.PluginContent.GetByIdAsync(CONTENT_TYPE_NAME, Plugin!.Id, Id.Value);
-
-                var content = response.Data.Data.ToContent<TextHTMLContent>();
-
                 Model = new TextHTMLContent
                 {
-                    Id = Plugin!.Id,
-                    Content = content.Content,
+                    Id = content[0].Id,
+                    Content = content[0].Content,
                 };
+                IsEditMode = true;
             }
             else
             {
                 Model = new TextHTMLContent
                 {
-                    Id = Plugin!.Id
+                    Id = Guid.Empty
                 };
             }
         }
@@ -87,10 +91,10 @@ public partial class TextHTMLEditPlugin
         if (Model is null || Plugin is null)
             return;
 
-        if (Id is null)
-            await ApiClient.PluginContent.CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.ToDictionary());
+        if (IsEditMode)
+            await ApiClient.PluginContent.UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.Id, Model.ToDictionary());
         else
-            await ApiClient.PluginContent.UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Id.Value, Model.ToDictionary());
+            await ApiClient.PluginContent.CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.ToDictionary());
 
         NavigateBack();
     }

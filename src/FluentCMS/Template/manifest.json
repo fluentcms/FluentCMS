@@ -349,12 +349,12 @@
             "Assembly": "FluentCMS.Web.Plugins.Contents.TextHTML.dll",
             "Types": [
                 {
-                    "Name": "TextHTML View",
+                    "Name": "View",
                     "Type": "TextHTMLViewPlugin",
                     "IsDefault": true
                 },
                 {
-                    "Name": "Edit TextHTML",
+                    "Name": "Edit",
                     "Type": "TextHTMLEditPlugin"
                 }
             ]
@@ -365,12 +365,12 @@
             "Assembly": "FluentCMS.Web.Plugins.Contents.TextHTML.dll",
             "Types": [
                 {
-                    "Name": "RichText View",
+                    "Name": "View",
                     "Type": "RichTextViewPlugin",
                     "IsDefault": true
                 },
                 {
-                    "Name": "Edit RichText",
+                    "Name": "Edit",
                     "Type": "RichTextEditPlugin"
                 }
             ]
