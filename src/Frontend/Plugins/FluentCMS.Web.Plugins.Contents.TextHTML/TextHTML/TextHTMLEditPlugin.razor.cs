@@ -70,7 +70,6 @@ public partial class TextHTMLEditPlugin
                 {
                     Id = Plugin!.Id,
                     Content = content.Content,
-                    IsRichText = content.IsRichText,
                 };
             }
             else

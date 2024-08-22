@@ -19,11 +19,14 @@ else if (ViewState.Type == ViewStateType.PluginEdit)
         @RenderDynamicContent(ViewState.EditLayout?.Head ?? string.Empty)
     </HeadContent>
 
-    <PageToolbar>
-        <Start>
-            <img src="/_content/FluentCMS.Web.UI/images/logo.svg" />
-        </Start>
-    </PageToolbar>
+    @if (!ViewState.Plugin!.Locked)
+    {
+        <PageToolbar>
+            <Start>
+                <img src="/_content/FluentCMS.Web.UI/images/logo.svg" />
+            </Start>
+        </PageToolbar>
+    }
     @RenderDynamicContent(ViewState.EditLayout?.Body ?? string.Empty)
 }
 else if (ViewState.Type == ViewStateType.PluginDetail)

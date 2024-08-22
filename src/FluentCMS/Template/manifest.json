@@ -358,6 +358,22 @@
                     "Type": "TextHTMLEditPlugin"
                 }
             ]
+        },
+        {
+            "Name": "RichText Plugin",
+            "Description": "RichText Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Contents.TextHTML.dll",
+            "Types": [
+                {
+                    "Name": "RichText View",
+                    "Type": "RichTextViewPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Edit RichText",
+                    "Type": "RichTextEditPlugin"
+                }
+            ]
         }
     ],
     "Pages": [
@@ -483,6 +499,7 @@
             "Title": "Admin",
             "Path": "/admin",
             "Layout": "AdminLayout",
+            "EditLayout": "AdminLayout",
             "Locked": true,
             "Plugins": [],
             "Children": [
@@ -490,6 +507,7 @@
                     "Title": "Content Type Builder",
                     "Path": "/content-types",
                     "Layout": "AdminLayout",
+                    "EditLayout": "AdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -503,6 +521,7 @@
                     "Title": "Users",
                     "Path": "/users",
                     "Layout": "AdminLayout",
+                    "EditLayout": "AdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -516,6 +535,7 @@
                     "Title": "File Management",
                     "Path": "/files",
                     "Layout": "AdminLayout",
+                    "EditLayout": "AdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -529,6 +549,7 @@
                     "Title": "Api Tokens",
                     "Path": "/api-tokens",
                     "Layout": "AdminLayout",
+                    "EditLayout": "AdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -542,6 +563,7 @@
                     "Title": "Roles",
                     "Path": "/roles",
                     "Layout": "AdminLayout",
+                    "EditLayout": "AdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -555,6 +577,7 @@
                     "Title": "Sites",
                     "Path": "/sites",
                     "Layout": "AdminLayout",
+                    "EditLayout": "AdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -568,6 +591,7 @@
                     "Title": "Pages",
                     "Path": "/pages",
                     "Layout": "AdminLayout",
+                    "EditLayout": "AdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -581,6 +605,7 @@
                     "Title": "Layouts",
                     "Path": "/layouts",
                     "Layout": "AdminLayout",
+                    "EditLayout": "AdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {
@@ -659,6 +684,7 @@
                     "Title": "Profile",
                     "Path": "/profile",
                     "Layout": "AdminLayout",
+                    "EditLayout": "AdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {

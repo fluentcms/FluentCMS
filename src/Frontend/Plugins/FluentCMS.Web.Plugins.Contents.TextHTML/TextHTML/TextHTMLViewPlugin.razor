@@ -1,6 +1,8 @@
+@namespace FluentCMS.Web.Plugins.Contents.TextHTML
+
 @if (Content?[0] != null)
 {
-    <div>
+    <div class="f-html-content">
         @((MarkupString)Content[0].Content)
     </div>
 }
