@@ -12,7 +12,8 @@
             <DataTableItem Label="Enabled">
                 <Indicator Color="Color.Success" Visible="@context.Enabled">YES</Indicator>
                 <Indicator Color="Color.Danger" Visible="@(!context.Enabled)">NO</Indicator>
-            </DataTableItem>
+            </DataTableItem>            
+            <DataTableItem Label="Expire At">@context.ExpireAt</DataTableItem>
             <DataTableItem Label="Token">
                 @if (ViewApiTokenId == context.Id)
                 {
