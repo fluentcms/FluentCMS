@@ -10,14 +10,15 @@ public class UserRoleService(IUserRoleRepository userRoleRepository) : IUserRole
 {
     public async Task<IEnumerable<Guid>> GetUserRoleIds(Guid userId, Guid siteId, CancellationToken cancellationToken = default)
     {
-        return await userRoleRepository.GetUserRoleIds(userId, siteId, cancellationToken);
+        var userRoles = await userRoleRepository.GetUserRoles(userId, siteId, cancellationToken);
+        return userRoles.Select(x => x.RoleId).ToList();
     }
 
     public async Task<bool> Update(Guid userId, Guid siteId, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default)
     {
         // delete all exist UserRoles. 
-        var existUserRoles = await userRoleRepository.GetUserRoleIds(userId, siteId, cancellationToken);
-        await userRoleRepository.DeleteMany(existUserRoles, cancellationToken);
+        var existUserRoles = await userRoleRepository.GetUserRoles(userId, siteId, cancellationToken);
+        await userRoleRepository.DeleteMany(existUserRoles.Select(x => x.Id), cancellationToken);
 
         // add all new UserRoles
         var userRoles = roleIds.Select(x => new UserRole

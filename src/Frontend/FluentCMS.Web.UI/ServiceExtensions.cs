@@ -52,7 +52,6 @@ public static class ServiceExtensions
                 Email = authState.User.FindFirstValue(ClaimTypes.Email),
                 UserName = authState.User.FindFirstValue(ClaimTypes.NameIdentifier),
                 Token = authState.User.FindFirstValue("jwt"),
-                RoleIds = authState.User.FindAll(ClaimTypes.Role).Select(x => Guid.Parse(x.Value)).ToList()
             };
         });
 

@@ -6,12 +6,10 @@ public class UserRoleRepository : SiteAssociatedRepository<UserRole>, IUserRoleR
     {
     }
 
-    public async Task<IEnumerable<Guid>> GetUserRoleIds(Guid userId, Guid siteId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<UserRole>> GetUserRoles(Guid userId, Guid siteId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var userRoles = await Collection.Find(x => x.SiteId == siteId && x.UserId == userId).ToListAsync(cancellationToken);
-
-        return userRoles.Select(x => x.RoleId).ToList();
+        return await Collection.Find(x => x.SiteId == siteId && x.UserId == userId).ToListAsync(cancellationToken);
     }
 
     public async Task<IEnumerable<UserRole>> GetByUserId(Guid userId, CancellationToken cancellationToken = default)

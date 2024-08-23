@@ -6,9 +6,9 @@ public class RoleRepository : SiteAssociatedRepository<Role>, IRoleRepository
     {
     }
 
-    public async Task<bool> RoleBySameNameIsExistInSite(Guid siteId, string name, CancellationToken cancellationToken = default)
+    public async Task<Role> GetByNameAndSiteId(Guid siteId, string name, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return await Collection.Query().Where(x => x.SiteId == siteId && x.Name == name).ExistsAsync();
+        return await Collection.Query().Where(x => x.SiteId == siteId && x.Name == name).FirstOrDefaultAsync();
     }
 }

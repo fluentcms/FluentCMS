@@ -36,6 +36,7 @@ public enum IconName
     Refresh,
     TableColumn,
     Text,
+    RoleAssignment
 }
 
 public enum IconSize

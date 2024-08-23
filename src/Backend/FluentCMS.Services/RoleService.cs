@@ -37,9 +37,9 @@ public class RoleService : IRoleService
 
     public async Task<Role> Create(Role role, CancellationToken cancellationToken)
     {
-        var isSameRoleExistForSite = await _roleRepository.RoleBySameNameIsExistInSite(role.SiteId, role.Name, cancellationToken);
+        var sameRole = await _roleRepository.GetByNameAndSiteId(role.SiteId, role.Name, cancellationToken);
 
-        if (isSameRoleExistForSite)
+        if (sameRole != null)
             throw new AppException(ExceptionCodes.RoleNameIsDuplicated);
 
         return await _roleRepository.Create(role, cancellationToken) ??
@@ -51,9 +51,9 @@ public class RoleService : IRoleService
         _ = await _roleRepository.GetById(role.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleNotFound);
 
-        var isSameRoleExistForSite = await _roleRepository.RoleBySameNameIsExistInSite(role.SiteId, role.Name, cancellationToken);
+        var sameRole = await _roleRepository.GetByNameAndSiteId(role.SiteId, role.Name, cancellationToken);
 
-        if (isSameRoleExistForSite)
+        if (sameRole != null)
             throw new AppException(ExceptionCodes.RoleNameIsDuplicated);
 
         return await _roleRepository.Update(role, cancellationToken) ??

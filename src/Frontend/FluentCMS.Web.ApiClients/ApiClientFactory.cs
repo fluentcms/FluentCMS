@@ -26,5 +26,6 @@ public class ApiClientFactory(IServiceProvider serviceProvider)
     public IFileClient File => Get<IFileClient>();
     public IGlobalSettingsClient GlobalSettings => Get<IGlobalSettingsClient>();
     public ISetupClient Setup => Get<ISetupClient>();
+    public IUserRoleClient UserRole => Get<IUserRoleClient>();
 
 }

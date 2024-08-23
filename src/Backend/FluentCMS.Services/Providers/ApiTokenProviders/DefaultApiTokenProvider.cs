@@ -20,6 +20,7 @@ public class DefaultApiTokenProvider : IApiTokenProvider
         var signingKey = Encoding.ASCII.GetBytes(apiKey + "." + _secretKey);
         var tokenDescriptor = new SecurityTokenDescriptor
         {
+            Expires = DateTime.UtcNow.AddYears(10),
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(signingKey), SecurityAlgorithms.HmacSha256Signature)
         };
 

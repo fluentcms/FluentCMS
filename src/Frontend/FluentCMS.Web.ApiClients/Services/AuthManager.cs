@@ -33,9 +33,6 @@ public class AuthManager(ApiClientFactory apiClient)
         identityClaims.AddClaim(new Claim(ClaimTypes.Email, account.Email ?? string.Empty));
         identityClaims.AddClaim(new Claim("jwt", account.Token ?? string.Empty));
 
-        foreach (var role in account.RoleIds ?? [])
-            identityClaims.AddClaim(new Claim(ClaimTypes.Role, role.ToString()));
-
         var cookieClaims = new ClaimsPrincipal(identityClaims);
 
         await httpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
