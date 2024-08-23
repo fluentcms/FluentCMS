@@ -17,4 +17,10 @@ public class UserRoleRepository : SiteAssociatedRepository<UserRole>, IUserRoleR
         cancellationToken.ThrowIfCancellationRequested();
         return await Collection.Find(x => x.UserId == userId).ToListAsync(cancellationToken);
     }
+
+    public async Task<IEnumerable<UserRole>> GetByRoleId(Guid roleId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return await Collection.Find(x => x.RoleId == roleId).ToListAsync(cancellationToken);
+    }
 }

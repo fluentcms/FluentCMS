@@ -15,14 +15,14 @@ public interface IRoleService : IAutoRegisterService
 public class RoleService : IRoleService
 {
     private readonly IRoleRepository _roleRepository;
-    private readonly IMessagePublisher<Role> _messagePublisher;
+    private readonly IMessagePublisher<Role> _roleMessagePublisher;
 
-    public RoleService(IRoleRepository roleRepository, IMessageSubscriber<Site> messageSubscriber, IMessagePublisher<Role> messagePublisher)
+    public RoleService(IRoleRepository roleRepository, IMessageSubscriber<Site> siteMessageSubscriber, IMessagePublisher<Role> roleMessagePublisher)
     {
         _roleRepository = roleRepository;
+        _roleMessagePublisher = roleMessagePublisher;
 
-        messageSubscriber.Subscribe(OnSiteMessageReceived);
-        _messagePublisher = messagePublisher;
+        siteMessageSubscriber.Subscribe(OnSiteMessageReceived);
     }
 
     public async Task<IEnumerable<Role>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
@@ -73,7 +73,7 @@ public class RoleService : IRoleService
         var deleteRole = await _roleRepository.Delete(roleId, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleUnableToDelete);
 
-        await _messagePublisher.Publish(ActionNames.RoleDeleted, deleteRole);
+        await _roleMessagePublisher.Publish(ActionNames.RoleDeleted, deleteRole);
 
         return deleteRole;
     }
