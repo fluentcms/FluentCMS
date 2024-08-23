@@ -379,11 +379,11 @@
                     "IsDefault": true
                 },
                 {
-                    "Name": "Manage Blogs",
+                    "Name": "Edit",
                     "Type": "BlogManagePlugin"
                 },
                 {
-                    "Name": "Blog Detail",
+                    "Name": "Detail",
                     "Type": "BlogDetailPlugin"
                 }
             ]
@@ -423,29 +423,73 @@
                     ]
                 },
                 {
+                    "Definition": "TextHTML Plugin",
+                    "Section": "Main",
+                    "Type": "TextHTMLContent",
+                    "Content": [
+                        {
+                            "Content": "<div class=\"mx-auto max-w-screen-sm text-center lg:mb-16 mb-8\">          <h2 class=\"mb-4 text-3xl lg:text-4xl tracking-tight font-extrabold text-gray-900 dark:text-white\">Our Blog</h2>          <p class=\"font-light text-gray-500 sm:text-xl dark:text-gray-400\">We use an agile approach to test assumptions and connect with the needs of your audience early and often.</p>      </div> "
+                        }
+                    ]
+                },
+                {
                     "Definition": "Blogs Plugin",
                     "Section": "Main",
                     "Type": "BlogContent",
                     "Content": [
                         {
+                            "Title": "How to quickly deploy a static website",
+                            "Content": "Static websites are now used to bootstrap lots of websites and are becoming the basis for a variety of tools that even influence both web designers and developers.",
+                            "Description": "Learn how to deploy a static website quickly with this comprehensive guide.",
+                            "Category": "Tutorial",
+                            "CreatedAt": "2024-08-09T00:00:00Z",
+                            "AuthorName": "Jese Leos",
+                            "AuthorProfile": "https://flowbite.s3.amazonaws.com/blocks/marketing-ui/avatars/jese-leos.png"
+                        },
+                        {
+                            "Title": "Our first project with React",
+                            "Content": "Static websites are now used to bootstrap lots of websites and are becoming the basis for a variety of tools that even influence both web designers and developers.",
+                            "Description": "Explore our first project with React and discover the challenges and successes.",
+                            "Category": "Article",
+                            "CreatedAt": "2024-08-09T00:00:00Z",
+                            "AuthorName": "Bonnie Green",
+                            "AuthorProfile": "https://flowbite.s3.amazonaws.com/blocks/marketing-ui/avatars/bonnie-green.png"
+                        },
+                        {
                             "Title": "Introduction to Responsive Web Design",
                             "Content": "In today's digital landscape, responsive web design is crucial for reaching users on multiple devices. This post explores the principles of responsive design and offers tips for implementation.",
-                            "Description": "In this post You'll learn about Responsive web design"
+                            "Description": "In this post, you'll learn about responsive web design.",
+                            "Category": "Tutorial",
+                            "CreatedAt": "2024-08-09T00:00:00Z",
+                            "AuthorName": "Jese Leos",
+                            "AuthorProfile": "https://flowbite.s3.amazonaws.com/blocks/marketing-ui/avatars/jese-leos.png"
                         },
                         {
                             "Title": "Exploring the Power of C# LINQ",
                             "Content": "LINQ (Language-Integrated Query) in C# is a powerful tool for querying and manipulating data. This post dives into the basics of LINQ and demonstrates its usage with practical examples.",
-                            "Description": "In this post You'll learn about LINQ"
+                            "Description": "Learn about LINQ and its power in this post.",
+                            "Category": "Article",
+                            "CreatedAt": "2024-08-09T00:00:00Z",
+                            "AuthorName": "Bonnie Green",
+                            "AuthorProfile": "https://flowbite.s3.amazonaws.com/blocks/marketing-ui/avatars/bonnie-green.png"
                         },
                         {
                             "Title": "Getting Started with Blazor: A Comprehensive Guide",
-                            "Content": "<p>Blazor, Microsoft's innovative web framework, empowers developers to craft interactive web applications seamlessly using C#. This tutorial provides a concise overview of Blazor's core concepts, showcasing its capability to run C# code directly in the browser through WebAssembly.</p><p><br></p><h2>Example</h2><p>Let's explore a basic example: a Blazor component that implements a simple counter.</p><div class=\"ql-code-block-container\" spellcheck=\"false\"><div class=\"ql-code-block\" data-language=\"plain\">Copy code</div><div class=\"ql-code-block\" data-language=\"plain\">@page \"/counter\"</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">&lt;h1&gt;Counter&lt;/h1&gt;</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">&lt;p&gt;Current count: @currentCount&lt;/p&gt;</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">&lt;button class=\"btn btn-primary\" @onclick=\"IncrementCount\"&gt;Click me&lt;/button&gt;</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">@code {</div><div class=\"ql-code-block\" data-language=\"plain\">    private int currentCount = 0;</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">    private void IncrementCount()</div><div class=\"ql-code-block\" data-language=\"plain\">    {</div><div class=\"ql-code-block\" data-language=\"plain\">        currentCount++;</div><div class=\"ql-code-block\" data-language=\"plain\">    }</div><div class=\"ql-code-block\" data-language=\"plain\">}</div></div><p>In this snippet, a Blazor component is defined to maintain and display a count. Upon clicking the button, the count increments without requiring a page refresh, demonstrating Blazor's efficient handling of user interactions and UI updates.</p><p><br></p><h2>Conclusion</h2><p>Blazor presents an enticing opportunity for .NET developers, whether seasoned or new to web development, to harness the power of C# in crafting dynamic web applications. With its seamless integration and intuitive features, Blazor streamlines the development process, making it an invaluable tool in the modern web development landscape.</p><p><br></p><p><br></p><p><br></p><p><br></p>",
-                            "Description": "In this post You'll learn about blazor"
+                            "Content": "<p>Blazor, Microsoft's innovative web framework, empowers developers to craft interactive web applications seamlessly using C#. This tutorial provides a concise overview of Blazor's core concepts, showcasing its capability to run C# code directly in the browser through WebAssembly.</p><p><br></p><h2>Example</h2><p>Let's explore a basic example: a Blazor component that implements a simple counter.</p><div class=\"ql-code-block-container\" spellcheck=\"false\"><div class=\"ql-code-block\" data-language=\"plain\">Copy code</div><div class=\"ql-code-block\" data-language=\"plain\">@page \"/counter\"</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">&lt;h1&gt;Counter&lt;/h1&gt;</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">&lt;p&gt;Current count: @currentCount&lt;/p&gt;</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">&lt;button class=\"btn btn-primary\" @onclick=\"IncrementCount\"&gt;Click me&lt;/button&gt;</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">@code {</div><div class=\"ql-code-block\" data-language=\"plain\">    private int currentCount = 0;</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">    private void IncrementCount()</div><div class=\"ql-code-block\" data-language=\"plain\">    {</div><div class=\"ql-code-block\" data-language=\"plain\">        currentCount++;</div><div class=\"ql-code-block\" data-language=\"plain\">    }</div><div class=\"ql-code-block\" data-language=\"plain\">}</div></div><p>In this snippet, a Blazor component is defined to maintain and display a count. Upon clicking the button, the count increments without requiring a page refresh, demonstrating Blazor's efficient handling of user interactions and UI updates.</p><p><br></p><h2>Conclusion</h2><p>Blazor presents an enticing opportunity for .NET developers, whether seasoned or new to web development, to harness the power of C# in crafting dynamic web applications. With its seamless integration and intuitive features, Blazor streamlines the development process, making it an invaluable tool in the modern web development landscape.</p><p><br></p>",
+                            "Description": "Learn about Blazor and how to get started with it.",
+                            "Category": "Tutorial",
+                            "CreatedAt": "2024-08-09T00:00:00Z",
+                            "AuthorName": "Jese Leos",
+                            "AuthorProfile": "https://flowbite.s3.amazonaws.com/blocks/marketing-ui/avatars/jese-leos.png"
                         },
                         {
                             "Title": "Mastering CSS Grid for Modern Web Layouts",
                             "Content": "<p>In the realm of web design, CSS Grid has revolutionized the way developers approach layout creation. This comprehensive guide delves into the intricacies of CSS Grid, exploring its two-dimensional grid system that allows for the creation of complex layouts with ease. We will cover the fundamental concepts such as grid containers, grid items, and grid lines, and demonstrate how to use them to build responsive and dynamic web pages.</p><p>You will learn how to define grid tracks, create grid cells, and manage grid areas. Additionally, we will explore advanced techniques like grid auto-placement, grid alignment properties, and the use of CSS Grid with media queries for responsive design. By the end of this post, you will have a solid understanding of how to leverage CSS Grid to create modern, efficient, and visually appealing web layouts.</p>",
-                            "Description": "In this post You'll learn about CSS Grid"
+                            "Description": "Learn how to master CSS Grid for modern web layouts.",
+                            "Category": "Article",
+                            "CreatedAt": "2024-08-09T00:00:00Z",
+                            "AuthorName": "Bonnie Green",
+                            "AuthorProfile": "https://flowbite.s3.amazonaws.com/blocks/marketing-ui/avatars/bonnie-green.png"
                         },
                         {
                             "Title": "Advanced JavaScript Techniques for Efficient Web Development",

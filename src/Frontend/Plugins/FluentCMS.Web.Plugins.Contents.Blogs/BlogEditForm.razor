@@ -6,6 +6,10 @@
         <Grid GutterX="GridGutter.Large">
             <FormHiddenInput @bind-Value="@Model.Id" />
             <FormInput @bind-Value="Model.Title" Placeholder="Enter blog title" Label="Title" />
+            <FormInput @bind-Value="Model.Category" Placeholder="Enter blog category" Label="Category" />
+            <FormInput @bind-Value="Model.AuthorName" Placeholder="Enter name of author" Label="Author name" />
+            <FormInput @bind-Value="Model.AuthorProfile" Placeholder="Enter url of author profile" Label="Author Profile url" />
+            <FormInput @bind-Value="Model.Image" Placeholder="Enter url of blog image" Label="Blog image url" />
             <FormTextarea Placeholder="Enter blog description" Rows="5" @bind-Value="@Model!.Description" Label="Description" />
             <FormRichTextEditor Placeholder="Enter blog Content" @bind-Value="@Model!.Content" Label="Content" />
             

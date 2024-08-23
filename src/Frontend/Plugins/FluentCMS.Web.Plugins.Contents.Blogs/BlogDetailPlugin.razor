@@ -1,12 +1,27 @@
 @if (Item != null)
 {
-    <div>
-        <h1 class="text-3xl font-bold mb-4">@Item.Title</h1>
-        <p class="text-lg mb-4">@Item.Description</p>
+    <article class="">
+        <header class="f-blog-header">
+            <h1 class="f-blog-title">@Item.Title</h1>
 
-        <div class="">
-            @((MarkupString)Item.Content)
+            <span class="f-blog-category">
+                @Item.Category
+            </span>
+        </header>
+        <div class="f-blog-author-wrapper">
+            <img class="f-blog-author-profile" src="@Item.AuthorProfile" alt="@Item.AuthorName avatar" />
+            <div>
+                <span class="f-blog-author-name">@Item.AuthorName</span>
+                <p class="f-blog-date">@Item.CreatedAt</p>
+            </div>
         </div>
-        
-    </div>
+
+        <div class="f-spacer f-spacer-size-default" />
+        <figure>
+            <img class="f-blog-image" src="@Item.Image" alt="@Item.Title" />
+        </figure>
+        <div class="f-spacer f-spacer-size-default" />
+        <p class="f-blog-description">@Item.Description</p>
+        <p class="f-blog-content">@((MarkupString)Item.Content)</p>
+    </article>
 }

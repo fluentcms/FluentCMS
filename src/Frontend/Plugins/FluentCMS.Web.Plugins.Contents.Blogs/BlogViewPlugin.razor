@@ -1,16 +1,46 @@
 @if (Items != null)
 {
-    @foreach (var item in Items)
-    {
-        <div class="mb-4">
-            <h2 class="text-xl font-bold"><a href="@GetDetailUrl("Blog Detail", new { Id = item.Id })">@item.Title</a></h2>
-            <p class="text-gray-800">@item.Description</p>
-        </div>
-    }
+    <div class="f-blogs">
+        @foreach (var item in Items)
+        {
+            <article class="f-blog">
+                <div class="f-blog-header">
+                    @if (!string.IsNullOrEmpty(item.Category))
+                    {
+                        <span class="f-blog-category">
+                            @item.Category
+                        </span>
+                    }
+                    @if (item.CreatedAt != null)
+                    {
+                        <span class="f-blog-date">@item.CreatedAt.Value</span>
+                    }
+                </div>
+                <h2 class="f-blog-title">
+                    <a href="@GetDetailUrl("Detail", new { Id = item.Id })">@item.Title</a>
+                </h2>
+                <p class="f-blog-description">
+                    @item.Description
+                </p>
+                <div class="f-stack f-stack-justify-between f-stack-items-center">
+                    <div class="f-blog-author-wrapper">
+                        <img class="f-blog-author-profile" src="@item.AuthorProfile" alt="@item.AuthorName avatar" />
+                        <span class="f-blog-author-name">
+                            @item.AuthorName
+                        </span>
+                    </div>
+                    <a href="@GetDetailUrl("Detail", new { Id = item.Id })" class="f-blog-detail-link">
+                        Read more
+                        <svg class="f-blog-detail-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                    </a>
+                </div>
+            </article> 
+        }
+    </div>
 }
 
 <div data-action="move-to-toolbar" data-trigger="load" data-plugin-id="@Plugin.Id" style="display: none">
-    <button class="f-plugin-toolbar-action" data-action="open-plugin-view" data-plugin-id="@Plugin.Id" data-view-name="Manage Blogs">
+    <button class="f-plugin-toolbar-action" data-action="open-plugin-view" data-plugin-id="@Plugin.Id" data-view-name="Edit">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path transform="translate(4, -1)" fill-rule="evenodd" clip-rule="evenodd" d="M12.3409 2.5698C12.418 2.68687 12.4524 2.82698 12.4382 2.96646C12.424 3.10594 12.3621 3.23625 12.2629 3.33538L4.79953 10.798C4.72318 10.8743 4.62791 10.9289 4.5235 10.9563L1.4149 11.7681C1.31214 11.7949 1.20417 11.7944 1.10168 11.7666C0.999198 11.7387 0.905775 11.6846 0.830684 11.6095C0.755594 11.5344 0.701447 11.441 0.67362 11.3385C0.645793 11.236 0.645253 11.128 0.672053 11.0253L1.48391 7.91749C1.50761 7.8242 1.55232 7.73756 1.61462 7.66419L9.10561 0.178072C9.21977 0.064047 9.37453 0 9.53589 0C9.69725 0 9.85201 0.064047 9.96617 0.178072L12.2629 2.474C12.292 2.50323 12.3182 2.53533 12.3409 2.5698ZM10.9713 2.90428L9.53589 1.46973L2.62051 8.38512L2.1131 10.3279L4.05587 9.82048L10.9713 2.90428Z" fill="currentColor"/>
             <path d="M13.8689 12.1044C14.0908 10.2079 14.1616 8.29673 14.0808 6.38897C14.079 6.34402 14.0865 6.2992 14.1029 6.25729C14.1192 6.21539 14.144 6.1773 14.1758 6.14541L14.9746 5.34655C14.9965 5.32459 15.0242 5.30941 15.0544 5.30282C15.0847 5.29624 15.1162 5.29853 15.1452 5.30942C15.1741 5.32031 15.1994 5.33933 15.2178 5.36421C15.2362 5.38909 15.2471 5.41876 15.249 5.44965C15.3994 7.71573 15.3423 9.99081 15.0785 12.2465C14.887 13.8881 13.5685 15.1749 11.9342 15.3575C9.09708 15.6717 6.23391 15.6717 3.39676 15.3575C1.76331 15.1749 0.444044 13.8881 0.252447 12.2465C-0.0841489 9.36882 -0.0841489 6.4617 0.252447 3.58401C0.444044 1.94244 1.7625 0.655648 3.39676 0.47298C5.5501 0.234199 7.71967 0.176355 9.88267 0.300055C9.91363 0.302278 9.9433 0.313325 9.96817 0.33189C9.99304 0.350454 10.0121 0.375756 10.023 0.404801C10.0339 0.433846 10.0363 0.465416 10.0299 0.495773C10.0234 0.52613 10.0084 0.554001 9.98659 0.576086L9.18042 1.38145C9.14884 1.4129 9.11116 1.43756 9.06969 1.4539C9.02822 1.47024 8.98385 1.4779 8.9393 1.47643C7.13435 1.41508 5.32732 1.48427 3.53234 1.68346C3.00784 1.74151 2.51821 1.97469 2.14257 2.34532C1.76693 2.71596 1.5272 3.2024 1.46211 3.72608C1.1366 6.50938 1.1366 9.32113 1.46211 12.1044C1.5272 12.6281 1.76693 13.1146 2.14257 13.4852C2.51821 13.8558 3.00784 14.089 3.53234 14.1471C6.25612 14.4515 9.07488 14.4515 11.7995 14.1471C12.324 14.089 12.8136 13.8558 13.1892 13.4852C13.5649 13.1146 13.8038 12.6281 13.8689 12.1044Z" fill="currentColor"/>

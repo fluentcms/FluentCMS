@@ -38,7 +38,6 @@ public partial class BlogManagePlugin
         var newQueryParams = new Dictionary<string, string?>()
         {
             { "pluginId", Plugin!.Id.ToString() },
-            { "viewMode", "detail" },
             { "viewName", viewName }
         };
 
