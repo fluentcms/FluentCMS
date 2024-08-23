@@ -47,6 +47,7 @@ public static class ExceptionCodes
     public const string RoleNotFound = "Role.NotFound";
     public const string RoleNameMustBeUnique = "Role.NameMustBeUnique";
     public const string RoleInvalidAppId = "Role.InvalidAppId";
+    public const string RoleNameIsDuplicated = "Role.RoleNameIsDuplicated";
 
     #endregion
 

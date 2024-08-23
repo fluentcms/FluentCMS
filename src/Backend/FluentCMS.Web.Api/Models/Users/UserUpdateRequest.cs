@@ -19,5 +19,8 @@ public class UserUpdateRequest
     public bool Locked { get; set; }
 
     [Required]
+    public Guid SiteId { get; set; }
+
+    [Required]
     public List<Guid> RoleIds { get; set; } = [];
 }

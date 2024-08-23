@@ -17,8 +17,11 @@ public class UserCreateRequest
     public string? LastName { get; set; }
 
     [Required]
+    public Guid SiteId { get; set; }
+
+    [Required]
     public bool Enabled { get; set; }
 
     [Required]
-    public List<Guid> RoleIds { get; set; } = [];
+    public IEnumerable<Guid> RoleIds { get; set; } = [];
 }

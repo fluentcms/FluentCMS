@@ -40,7 +40,7 @@ public class UserController(IUserService userService, IRoleService roleService, 
     public async Task<IApiResult<UserDetailResponse>> Update([FromBody] UserUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var user = mapper.Map<User>(request);
-        var updated = await userService.Update(user, cancellationToken);
+        var updated = await userService.Update(user, request.SiteId, request.RoleIds, cancellationToken);
         var userResponse = mapper.Map<UserDetailResponse>(updated);
         userResponse.Roles = await GetUsersRoles(user, cancellationToken);
 
@@ -61,7 +61,7 @@ public class UserController(IUserService userService, IRoleService roleService, 
     public async Task<IApiResult<UserDetailResponse>> Create([FromBody] UserCreateRequest request, CancellationToken cancellationToken = default)
     {
         var user = mapper.Map<User>(request);
-        var created = await userService.Create(user, request.Password, cancellationToken);
+        var created = await userService.Create(user, request.Password, request.SiteId, request.RoleIds, cancellationToken);
         var userResponse = mapper.Map<UserDetailResponse>(created);
         userResponse.Roles = await GetUsersRoles(user, cancellationToken);
 

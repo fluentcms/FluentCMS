@@ -15,12 +15,14 @@ public interface IRoleService : IAutoRegisterService
 public class RoleService : IRoleService
 {
     private readonly IRoleRepository _roleRepository;
+    private readonly IMessagePublisher<Role> _messagePublisher;
 
-    public RoleService(IRoleRepository roleRepository, IMessageSubscriber<Site> messageSubscriber)
+    public RoleService(IRoleRepository roleRepository, IMessageSubscriber<Site> messageSubscriber, IMessagePublisher<Role> messagePublisher)
     {
         _roleRepository = roleRepository;
 
         messageSubscriber.Subscribe(OnSiteMessageReceived);
+        _messagePublisher = messagePublisher;
     }
 
     public async Task<IEnumerable<Role>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
@@ -35,14 +37,24 @@ public class RoleService : IRoleService
 
     public async Task<Role> Create(Role role, CancellationToken cancellationToken)
     {
+        var isSameRoleExistForSite = await _roleRepository.RoleBySameNameIsExistInSite(role.SiteId, role.Name, cancellationToken);
+
+        if (isSameRoleExistForSite)
+            throw new AppException(ExceptionCodes.RoleNameIsDuplicated);
+
         return await _roleRepository.Create(role, cancellationToken) ??
-            throw new AppException(ExceptionCodes.RoleUnableToCreate);
+           throw new AppException(ExceptionCodes.RoleUnableToCreate);
     }
 
     public async Task<Role> Update(Role role, CancellationToken cancellationToken)
     {
         _ = await _roleRepository.GetById(role.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleNotFound);
+
+        var isSameRoleExistForSite = await _roleRepository.RoleBySameNameIsExistInSite(role.SiteId, role.Name, cancellationToken);
+
+        if (isSameRoleExistForSite)
+            throw new AppException(ExceptionCodes.RoleNameIsDuplicated);
 
         return await _roleRepository.Update(role, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleUnableToUpdate);
@@ -58,8 +70,12 @@ public class RoleService : IRoleService
         if (existRole.Type != RoleTypes.UserDefined)
             throw new AppException(ExceptionCodes.RoleCanNotBeDeleted);
 
-        return await _roleRepository.Delete(roleId, cancellationToken) ??
+        var deleteRole = await _roleRepository.Delete(roleId, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleUnableToDelete);
+
+        await _messagePublisher.Publish(ActionNames.RoleDeleted, deleteRole);
+
+        return deleteRole;
     }
 
     public Task<Role?> GetById(Guid roleId, CancellationToken cancellationToken = default)

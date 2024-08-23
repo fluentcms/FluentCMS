@@ -9,4 +9,10 @@ public static class ActionNames
     public const string SiteDeleted = "SiteDeleted";
 
     #endregion
+
+    #region Role
+
+    public const string RoleDeleted = "RoleDeleted";
+
+    #endregion
 }
