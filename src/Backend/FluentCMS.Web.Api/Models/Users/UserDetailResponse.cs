@@ -13,5 +13,4 @@ public class UserDetailResponse : BaseAuditableResponse
     public bool EmailConfirmed { get; set; }
     public bool PhoneConfirmed { get; set; }
     public bool Locked { get; set; }
-    public List<RoleDetailResponse> Roles { get; set; } = [];
 }

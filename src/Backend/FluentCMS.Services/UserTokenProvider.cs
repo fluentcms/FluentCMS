@@ -86,8 +86,6 @@ public class JwtUserTokenProvider : IUserTokenProvider
         if (!string.IsNullOrWhiteSpace(user.PhoneNumber))
             result.Add(new Claim(ClaimTypes.Email, user.PhoneNumber));
 
-        result.AddRange(user.RoleIds.Select(userRole => new Claim(ClaimTypes.Role, userRole.ToString())));
-
         return result;
     }
 

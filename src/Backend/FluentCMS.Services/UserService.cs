@@ -9,8 +9,8 @@ public interface IUserService : IAutoRegisterService
     Task<User> Authenticate(string username, string password, CancellationToken cancellationToken = default);
     Task<IEnumerable<User>> GetAll(CancellationToken cancellationToken = default);
     Task<User> GetById(Guid id, CancellationToken cancellationToken = default);
-    Task<User> Update(User user, Guid siteId, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);
-    Task<User> Create(User user, string password, Guid siteId, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);
+    Task<User> Update(User user, CancellationToken cancellationToken = default);
+    Task<User> Create(User user, string password, CancellationToken cancellationToken = default);
     Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default);
     Task<bool> ChangePassword(User user, string newPassword, CancellationToken cancellationToken = default);
     Task<User> ChangePassword(Guid id, string oldPassword, string newPassword, CancellationToken cancellationToken = default);
@@ -34,13 +34,10 @@ public class UserService(
     public const string PASSWORD_RESET_PURPOSE = "passwordReset";
     public const string PASSWORD_RESET_TOKEN_PROVIDER = "passwordResetProvider";
 
-    public async Task<User> Create(User user, string password, Guid siteId, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default)
+    public async Task<User> Create(User user, string password, CancellationToken cancellationToken = default)
     {
         var identityResult = await userManager.CreateAsync(user, password);
         identityResult.ThrowIfInvalid();
-
-        await DeleteUserSiteBasedRoles(user.Id, siteId);
-        await AddUserSiteBasedRoles(user.Id, siteId, roleIds);
 
         return await GetById(user.Id, cancellationToken);
     }
@@ -93,15 +90,12 @@ public class UserService(
         return true;
     }
 
-    public async Task<User> Update(User user, Guid siteId, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default)
+    public async Task<User> Update(User user, CancellationToken cancellationToken = default)
     {
         var prevUser = await GetById(user.Id, cancellationToken);
         user = Merge(prevUser, user);
         var result = await userManager.UpdateAsync(user);
         result.ThrowIfInvalid();
-
-        await DeleteUserSiteBasedRoles(user.Id, siteId);
-        await AddUserSiteBasedRoles(user.Id, siteId, roleIds);
 
         return await GetById(user.Id, cancellationToken);
     }
@@ -199,29 +193,10 @@ public class UserService(
         return target;
     }
 
-    private async Task AddUserSiteBasedRoles(Guid userId, Guid siteId, IEnumerable<Guid> roleIds)
-    {
-        // add all new UserRoles
-        var userRoles = roleIds.Select(x => new UserRole
-        {
-            SiteId = siteId,
-            RoleId = x,
-            UserId = userId,
-        });
-        await userRoleRepository.CreateMany(userRoles);
-    }
-
-    private async Task DeleteUserSiteBasedRoles(Guid userId, Guid siteId)
-    {
-        // delete all exist UserRoles. 
-        var existUserRoles = await userRoleRepository.GetBySiteAndUserId(siteId, userId);
-        await userRoleRepository.DeleteMany(existUserRoles.Select(x => x.Id));
-    }
-
-    private async Task DeleteUserAllRoles(Guid userId)
+    private async Task DeleteUserAllRoles(Guid userId, CancellationToken cancellationToken = default)
     {
         // delete all UserRoles for user. 
-        var existUserRoles = await userRoleRepository.GetByUserId(userId);
-        await userRoleRepository.DeleteMany(existUserRoles.Select(x => x.Id));
+        var existUserRoles = await userRoleRepository.GetByUserId(userId, cancellationToken);
+        await userRoleRepository.DeleteMany(existUserRoles.Select(x => x.Id), cancellationToken);
     }
 }

@@ -10,10 +10,10 @@ services.AddUIComponents();
 services.AddCmsServices(configuration);
 
 // Use LiteDB as database
-services.AddLiteDbRepositories("LiteDb");
+//services.AddLiteDbRepositories("LiteDb");
 
 // Use MongoDB as database
-//services.AddMongoDbRepositories("MongoDb");
+services.AddMongoDbRepositories("MongoDb");
 
 services.AddApiServices();
 
@@ -31,7 +31,7 @@ app.UseDeveloperExceptionPage();
 // this will delete all data and re-create the database
 using var scope = app.Services.CreateScope();
 var setup = scope.ServiceProvider.GetRequiredService<FluentCMS.Web.Api.Setup.ISetupManager>();
-setup.Reset().ConfigureAwait(false).GetAwaiter().GetResult();
+//setup.Reset().ConfigureAwait(false).GetAwaiter().GetResult();
 
 #endif
 
