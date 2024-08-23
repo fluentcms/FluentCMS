@@ -1,6 +1,6 @@
 @if (Item != null)
 {
-    <article class="">
+    <article class="f-blog-detail-wrapper">
         <header class="f-blog-header">
             <h1 class="f-blog-title">@Item.Title</h1>
 
@@ -15,7 +15,6 @@
                 <p class="f-blog-date">@Item.CreatedAt</p>
             </div>
         </div>
-
         <div class="f-spacer f-spacer-size-default" />
         <figure>
             <img class="f-blog-image" src="@Item.Image" alt="@Item.Title" />
