@@ -57,7 +57,7 @@ export function initializeSortable(frameDocument) {
             const order = event.newIndex - 1
             const sectionName = event.to.dataset.name
 
-            createPlugin({ definitionId, item, order, sectionName })
+            createPlugin({ definitionId, order, sectionName, blockId: item.dataset.blockId })
         }
     });
 }

@@ -20,9 +20,26 @@ public partial class SiteBuilderForms
     [SupplyParameterFromForm(FormName = "UpdatePluginOrdersForm")]
     private PageUpdatePluginOrdersRequest UpdatePluginOrdersModel { get; set; } = new();
 
+    [SupplyParameterFromForm(FormName = "CreateBlockForm")]
+    private CreateBlockRequest CreateBlockModel { get; set; } = new();
+
     private async Task OnUpdatePluginSubmit()
     {
         await ApiClient.Plugin.UpdateAsync(UpdatePluginModel);
+    }
+
+    private async Task OnCreateBlockSubmit()
+    {
+        CreateBlockModel.Plugin.PageId = ViewState.Page.Id;
+        CreateBlockModel.Plugin.Settings = [];
+
+        var pluginCreateResponse = await ApiClient.Plugin.CreateAsync(CreateBlockModel.Plugin);
+        var content = new Dictionary<string, object>
+        {
+            { "Content", CreateBlockModel.Template }
+        };
+
+        var response = await ApiClient.PluginContent.CreateAsync("TextHTMLContent", pluginCreateResponse.Data.Id, content);
     }
 
     private async Task OnUpdatePluginOrdersSubmit()
@@ -41,5 +58,10 @@ public partial class SiteBuilderForms
     private async Task OnDeletePluginSubmit()
     {
         await ApiClient.Plugin.DeleteAsync(DeletePluginModel);
+    }
+
+    private class CreateBlockRequest {
+        public PluginCreateRequest Plugin { get; set; }
+        public string Template { get; set; } = string.Empty;
     }
 }

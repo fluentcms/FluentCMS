@@ -1,4 +1,5 @@
-﻿import { hydrate, initializeSortable, initColumns } from './request.js'
+﻿import { initializeBlocks } from './blocks.js';
+import { hydrate, initializeSortable, initColumns } from './request.js'
 import { initializeResponsive } from './responsive.js'
 
 let iframeElement = document.querySelector('.f-page-editor-iframe')
@@ -17,6 +18,7 @@ async function onInit() {
     const frameDocument = await getFrameDocument()
 
     initializeResponsive()
+    initializeBlocks()
 
     hydrate(frameDocument)
     hydrate(document)

@@ -1,15 +1,32 @@
 import { reloadIframe, request } from "./request.js";
 
-export async function createPlugin({definitionId, sectionName, order}) {
-    await request('CreatePluginForm', {
-        'CreatePluginModel.DefinitionId': definitionId,
-        'CreatePluginModel.PageId': '00000000-0000-0000-0000-000000000000',
-        'CreatePluginModel.Order': order,
-        'CreatePluginModel.Cols': 12,
-        'CreatePluginModel.ColsMd': 0,
-        'CreatePluginModel.ColsLg': 0,
-        'CreatePluginModel.Section': sectionName,
-    }).then(reloadIframe)
+export async function createPlugin({definitionId, sectionName, order, blockId}) {
+    if(blockId) {
+        const blocks = await fetch('/_content/FluentCMS.Web.UI/blocks.json').then(res => res.json())
+        const block = blocks.find(x => x.Id == blockId);
+
+        await request('CreateBlockForm', {
+            'CreateBlockModel.Plugin.DefinitionId': definitionId,
+            'CreateBlockModel.Plugin.PageId': '00000000-0000-0000-0000-000000000000',
+            'CreateBlockModel.Plugin.Order': order,
+            'CreateBlockModel.Plugin.Cols': 12,
+            'CreateBlockModel.Plugin.ColsMd': 0,
+            'CreateBlockModel.Plugin.ColsLg': 0,
+            'CreateBlockModel.Plugin.Section': sectionName,
+            'CreateBlockModel.Template': block.Template
+
+        }).then(reloadIframe)
+    } else {
+        await request('CreatePluginForm', {
+            'CreatePluginModel.DefinitionId': definitionId,
+            'CreatePluginModel.PageId': '00000000-0000-0000-0000-000000000000',
+            'CreatePluginModel.Order': order,
+            'CreatePluginModel.Cols': 12,
+            'CreatePluginModel.ColsMd': 0,
+            'CreatePluginModel.ColsLg': 0,
+            'CreatePluginModel.Section': sectionName,
+        }).then(reloadIframe)
+}
 
     await updatePluginOrders()
 }
