@@ -4,7 +4,7 @@ $data-table: $prefix + "data-table";
     @apply w-full text-sm text-left text-gray-500 dark:text-gray-400 dark:border-gray-700;
 
     &-cell {
-        @apply px-6 py-3;
+        @apply px-6 py-3 whitespace-nowrap;
 
         &-width-small {
             @apply w-0;

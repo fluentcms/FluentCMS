@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc.Controllers;
-using Microsoft.AspNetCore.Routing;
-using System.Reflection;
+﻿using Microsoft.AspNetCore.Routing;
 
 namespace FluentCMS.Web.Api.Controllers;
 
@@ -21,6 +19,15 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
         return OkPaged(roleResponses);
     }
 
+    [HttpGet]
+    [Policy(AREA, READ)]
+    public async Task<IApiPagingResult<RoleDetailResponse>> GetAllForSite([FromQuery] Guid siteId, CancellationToken cancellationToken = default)
+    {
+        var roles = await roleService.GetAllForSite(siteId, cancellationToken);
+        var roleResponses = mapper.Map<IEnumerable<RoleDetailResponse>>(roles);
+        return OkPaged(roleResponses);
+    }
+
     [HttpGet("{id}")]
     [Policy(AREA, READ)]
     public async Task<IApiResult<RoleDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
@@ -35,6 +42,10 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
     public async Task<IApiResult<RoleDetailResponse>> Create([FromBody] RoleCreateRequest request, CancellationToken cancellationToken = default)
     {
         var role = mapper.Map<Role>(request);
+
+        // all roles that user defines them, must be UserDefiend.
+        // this is added here and not in service, because service is used by system in Setup process. also it is not taken from user (front), because we have to encapsulate this logic in server side. 
+        role.Type = RoleTypes.UserDefined;
         var newRole = await roleService.Create(role, cancellationToken);
         var roleResponse = mapper.Map<RoleDetailResponse>(newRole);
         return Ok(roleResponse);
@@ -56,33 +67,5 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
     {
         await roleService.Delete(id, cancellationToken);
         return Ok(true);
-    }
-
-    [HttpGet]
-    [Policy(AREA, READ)]
-    public async Task<IApiPagingResult<Policy>> GetPolicies(CancellationToken cancellationToken = default)
-    {
-        var policiesDict = new Dictionary<string, Policy>();
-
-        var endpoints = endpointSources.SelectMany(es => es.Endpoints).OfType<RouteEndpoint>();
-        foreach (var endpoint in endpoints)
-        {
-            var actionDescriptor = endpoint.Metadata.OfType<ControllerActionDescriptor>().FirstOrDefault();
-            if (actionDescriptor == null)
-                continue;
-
-            var policyAttributes = actionDescriptor.MethodInfo.GetCustomAttributes<PolicyAttribute>(true);
-
-            foreach (var policyAttribute in policyAttributes.Where(x => x.Area != PolicyAllAttribute.AREA))
-            {
-                if (!policiesDict.ContainsKey(policyAttribute.Area))
-                    policiesDict.Add(policyAttribute.Area, new Policy { Area = policyAttribute.Area, Actions = [] });
-
-                if (!policiesDict[policyAttribute.Area].Actions.Where(x => x == policyAttribute.Action).Any())
-                    policiesDict[policyAttribute.Area].Actions.Add(policyAttribute.Action);
-            }
-        }
-
-        return await Task.FromResult(OkPaged(policiesDict.Values.ToList()));
     }
 }

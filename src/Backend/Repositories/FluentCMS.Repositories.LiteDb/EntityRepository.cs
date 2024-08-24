@@ -73,4 +73,13 @@ public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntit
         await Collection.DeleteAsync(id);
         return entity;
     }
+
+    public virtual async Task<IEnumerable<TEntity?>> DeleteMany(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var entities = await GetByIds(ids, cancellationToken);
+        var entityIds = entities.Select(x => x.Id).ToList();
+        await Collection.DeleteManyAsync(x => entityIds.Contains(x.Id));
+        return entities;
+    }
 }

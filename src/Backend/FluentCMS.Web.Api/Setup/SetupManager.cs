@@ -2,21 +2,15 @@
 using Microsoft.Extensions.Hosting;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace FluentCMS.Web.Api.Setup;
-
-public interface ISetupManager
-{
-    Task<PageFullDetailResponse> GetSetupPage();
-    Task<bool> IsInitialized();
-    Task Reset();
-    Task<bool> Start(SetupRequest request);
-}
 
 public class SetupManager : ISetupManager
 {
     private static bool? _initialized;
 
+    private readonly IApiTokenService _apiTokenService;
     private readonly ISiteService _siteService;
     private readonly IRoleService _roleService;
     private readonly IGlobalSettingsService _globalSettingsService;
@@ -42,6 +36,7 @@ public class SetupManager : ISetupManager
     private Guid _defaultLayoutId;
 
     public SetupManager(
+        IApiTokenService apiTokenService,
         ISiteService siteService,
         IRoleService roleService,
         IGlobalSettingsService globalSettingsService,
@@ -58,6 +53,7 @@ public class SetupManager : ISetupManager
         if (env == null)
             throw new AppException(ExceptionCodes.SetupSettingsHostingEnvironmentIsNull);
 
+        _apiTokenService = apiTokenService;
         _siteService = siteService;
         _roleService = roleService;
         _globalSettingsService = globalSettingsService;
@@ -69,7 +65,6 @@ public class SetupManager : ISetupManager
         _pluginContentService = pluginContentService;
         _contentTypeService = contentTypeService;
         _contentService = contentService;
-
     }
 
     public async Task<bool> IsInitialized()
@@ -95,6 +90,7 @@ public class SetupManager : ISetupManager
 
         _setupRequest = request;
 
+        await InitializeApiToken();
         await InitializeSuperAdmin();
 
         var manifestFile = Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "manifest.json");
@@ -105,7 +101,7 @@ public class SetupManager : ISetupManager
         var jsonSerializerOptions = new JsonSerializerOptions { };
         jsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
 
-        _adminTemplate = await JsonSerializer.DeserializeAsync<AdminTemplate>(System.IO.File.OpenRead(manifestFile), jsonSerializerOptions) ??
+        _adminTemplate = await System.Text.Json.JsonSerializer.DeserializeAsync<AdminTemplate>(System.IO.File.OpenRead(manifestFile), jsonSerializerOptions) ??
             throw new AppException("Failed to deserialize manifest.json");
 
         _globalSettings = _adminTemplate.GlobalSettings;
@@ -114,7 +110,6 @@ public class SetupManager : ISetupManager
         await InitLayouts();
         await InitPluginDefinitions();
         await InitSite();
-        await InitRoles();
         await InitPages();
         await InitContentTypes();
 
@@ -142,7 +137,8 @@ public class SetupManager : ISetupManager
             {
                 ["Main"] =
                 [
-                    new() {
+                    new()
+                    {
                         Locked = true,
                         Section = "Main",
                         Definition = new PluginDefinitionDetailResponse
@@ -156,7 +152,7 @@ public class SetupManager : ISetupManager
                                 new PluginDefinitionType
                                 {
                                     IsDefault = true,
-                                    Name="Setup",
+                                    Name = "Setup",
                                     Type = "SetupViewPlugin"
                                 }
                             ]
@@ -176,6 +172,37 @@ public class SetupManager : ISetupManager
 
     #region Private
 
+    private async Task InitializeApiToken()
+    {
+        var appSettingsFilePath = Path.Combine("appsettings.json");
+        var text = System.IO.File.ReadAllText(appSettingsFilePath);
+        var jsonNode = JsonNode.Parse(text)!;
+
+        // Creating full access api token 
+        ApiToken apiToken = await CreateDefaultApiToken();
+
+        // set api token to appsettings.json
+        jsonNode!["ApiSettings"]!["Key"] = apiToken.Key + ":" + apiToken.Secret;
+
+        var output = JsonSerializer.Serialize(jsonNode, new JsonSerializerOptions() { WriteIndented = true });
+        System.IO.File.WriteAllText(appSettingsFilePath, output);
+    }
+
+    private async Task<ApiToken> CreateDefaultApiToken()
+    {
+        var apiToken = new ApiToken
+        {
+            Name = "Full Access",
+            Description = "Full Access Token",
+            ExpireAt = null,
+            Policies = [new Policy { Area = "Global", Actions = ["All Actions"] }],
+            Enabled = true
+        };
+
+        await _apiTokenService.Create(apiToken);
+        return apiToken;
+    }
+
     private async Task InitializeSuperAdmin()
     {
         // Creating super admin user
@@ -193,20 +220,6 @@ public class SetupManager : ISetupManager
         _globalSettings = await _globalSettingsService.Init(_globalSettings);
     }
 
-    private async Task InitRoles()
-    {
-        var adminRoles = new List<Role>();
-        foreach (var role in _adminTemplate.Roles)
-        {
-            await _roleService.Create(role);
-            if (role.ReadOnly)
-                adminRoles.Add(role);
-        }
-
-        _superAdmin.RoleIds.AddRange(adminRoles.Select(x => x.Id));
-        await _userService.Update(_superAdmin);
-    }
-
     private async Task InitSite()
     {
         Guid? layoutId = _layouts.Where(l => l.Name.Equals(_adminTemplate.Site.Layout?.ToLowerInvariant(), StringComparison.InvariantCultureIgnoreCase)).Select(l => l.Id).SingleOrDefault();
@@ -222,7 +235,8 @@ public class SetupManager : ISetupManager
         if (detailLayoutId == Guid.Empty || detailLayoutId == null)
             detailLayoutId = _defaultLayoutId;
 
-        var site = new Site {
+        var site = new Site
+        {
             Name = _adminTemplate.Site.Name,
             Description = _adminTemplate.Site.Description,
             Urls = [_setupRequest.AdminDomain],
@@ -329,6 +343,7 @@ public class SetupManager : ISetupManager
                 Cols = pluginTemplate.Cols,
                 ColsMd = pluginTemplate.ColsMd,
                 ColsLg = pluginTemplate.ColsLg,
+                Settings = pluginTemplate.Settings
             };
             order++;
             var pluginResponse = await _pluginService.Create(plugin);

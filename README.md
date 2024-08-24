@@ -1,6 +1,6 @@
 # FluentCMS
 
-FluentCMS is a modern Content Management System (CMS) built on the powerful ASP.NET framework and the innovative Blazor technology. FluentCMS assists content writers in crafting content more efficiently. Designed to be fast, flexible, and user-friendly, it not only serves as a traditional content-based CMS but also excels as a headless CMS, making it perfect for a diverse range of digital applications.
+FluentCMS is a modern Content Management System (CMS) built on the powerful ASP.NET Core and the innovative Blazor technology. FluentCMS assists content writers in crafting content more efficiently. Designed to be fast, flexible, and user-friendly, it not only serves as a traditional content-based CMS but also excels as a headless CMS, making it perfect for a diverse range of digital applications.
 
 FluentCMS is an open-source project, and we welcome contributions from the community. If you're interested in helping us improve FluentCMS, please read our [CONTRIBUTING.md](./CONTRIBUTING.md) guide.
 
@@ -28,9 +28,9 @@ FluentCMS is an open-source project, and we welcome contributions from the commu
 
 - LiteDB
 - MongoDB
-- MySQL (comming soon)
-- SQL Server (comming soon)
-- SQLite (comming soon)
+- MySQL (coming soon)
+- SQL Server (coming soon)
+- SQLite (coming soon)
 
 ## Getting Started
 
@@ -72,11 +72,11 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
 
 ## Roadmap
 
-- [ ] Aministration Dashboard
+- [ ] Administration Dashboard
   - [x] User Management
   - [x] Role Management
   - [ ] Application Settings
-  - [x] Headleass CMS Features
+  - [x] Headless CMS Features
     - [x] Media Management
     - [x] Content Type Definition
       - [x] Text Field

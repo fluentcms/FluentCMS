@@ -33,6 +33,8 @@ public partial class SiteBuilderForms
     private async Task OnCreatePluginSubmit()
     {
         CreatePluginModel.PageId = ViewState.Page.Id;
+        CreatePluginModel.Settings = [];
+
         await ApiClient.Plugin.CreateAsync(CreatePluginModel);
     }
 

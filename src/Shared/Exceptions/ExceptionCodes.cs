@@ -40,10 +40,10 @@ public static class ExceptionCodes
 
     #region Role
 
-
     public const string RoleUnableToCreate = "Role.UnableToCreate";
     public const string RoleUnableToUpdate = "Role.UnableToUpdate";
     public const string RoleUnableToDelete = "Role.UnableToDelete";
+    public const string RoleCanNotBeDeleted = "Role.CanNotBeDeleted";
     public const string RoleNotFound = "Role.NotFound";
     public const string RoleNameMustBeUnique = "Role.NameMustBeUnique";
     public const string RoleInvalidAppId = "Role.InvalidAppId";
@@ -90,7 +90,6 @@ public static class ExceptionCodes
     public const string PluginDefinitionNotFound = "PluginDefinition.NotFound";
 
     #endregion
-
 
     #region Asset (File/Folder)
 
@@ -145,8 +144,12 @@ public static class ExceptionCodes
 
     public const string ApiTokenUnableToCreate = "ApiToken.UnableToCreate";
     public const string ApiTokenNotFound = "ApiToken.NotFound";
+    public const string ApiTokenExpired = "ApiToken.Expired";
+    public const string ApiTokenInactive = "ApiToken.Inactive";
+    public const string ApiTokenInvalidSecret = "ApiToken.InvalidSecret";
     public const string ApiTokenUnableToUpdate = "ApiToken.UnableToUpdate";
     public const string ApiTokenUnableToDelete = "ApiToken.UnableToDelete";
+    public const string ApiTokenNameIsDuplicated = "ApiToken.NameIsDuplicated";
 
     #endregion
 

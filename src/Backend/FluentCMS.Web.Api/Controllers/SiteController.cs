@@ -8,7 +8,6 @@ public class SiteController(ISiteService siteService, IPageService pageService, 
     public const string CREATE = "Create";
     public const string DELETE = $"Delete/{READ}";
 
-    [PolicyAll]
     [HttpGet("{siteUrl}")]
     [Policy(AREA, READ)]
     public async Task<IApiResult<SiteDetailResponse>> GetByUrl([FromRoute] string siteUrl, CancellationToken cancellationToken = default)

@@ -22,8 +22,20 @@ public abstract class BasePlugin : ComponentBase
 
     protected virtual void NavigateBack()
     {
-        var url = new Uri(NavigationManager.Uri).LocalPath;
-        NavigateTo(url);
+        var uri = new Uri(NavigationManager.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+
+        var redirectTo = query["redirectTo"];
+
+        if (!string.IsNullOrEmpty(redirectTo))
+        {
+            NavigationManager.NavigateTo(Uri.UnescapeDataString(redirectTo));
+        }
+        else
+        {
+            var url = uri.LocalPath;
+            NavigationManager.NavigateTo(url);
+        }
     }
 
     // due to open issue in NavigationManager
@@ -37,7 +49,7 @@ public abstract class BasePlugin : ComponentBase
             NavigationManager.NavigateTo(path);
     }
 
-    protected virtual string GetUrl(string viewName, object? parameters = null)
+    protected virtual string GetUrl(string viewName, object? parameters = null, bool redirectToCurrentPage = true)
     {
         var uri = new Uri(NavigationManager.Uri);
         var oldQueryParams = HttpUtility.ParseQueryString(uri.Query);
@@ -50,6 +62,17 @@ public abstract class BasePlugin : ComponentBase
             { "pluginId", Plugin!.Id.ToString() },
             { "viewName", viewName }
         };
+
+        if (redirectToCurrentPage)
+        {
+            oldQueryParams.Remove("redirectTo");
+
+            var updatedQuery = string.Join("&", oldQueryParams.AllKeys.Select(key => $"{key}={Uri.EscapeDataString(oldQueryParams[key])}"));
+
+            var newPathAndQuery = $"{uri.LocalPath}{(string.IsNullOrEmpty(updatedQuery) ? string.Empty : "?" + updatedQuery)}";
+
+            newQueryParams["redirectTo"] = Uri.EscapeDataString(newPathAndQuery);
+        }
 
         if (parameters != null)
         {

@@ -1,5 +1,6 @@
 ﻿using FluentCMS.Web.Api.Filters;
 using FluentCMS.Web.Api.Setup;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
 
@@ -14,13 +15,14 @@ public class PageController(
 {
 
     public const string AREA = "Page Management";
+    public const string READ = $"Read";
     public const string UPDATE = $"Update";
     public const string CREATE = "Create";
     public const string DELETE = $"Delete";
 
     [HttpGet("{siteUrl}")]
     [DecodeQueryParam]
-    [PolicyAll]
+    [Policy(AREA, READ)]
     public async Task<IApiPagingResult<PageDetailResponse>> GetAll([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
     {
         var site = await siteService.GetByUrl(siteUrl, cancellationToken);
@@ -42,7 +44,7 @@ public class PageController(
     }
 
     [HttpGet("{id}")]
-    [PolicyAll]
+    [Policy(AREA, READ)]
     public async Task<IApiResult<PageDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var entity = await pageService.GetById(id, cancellationToken);
@@ -52,7 +54,8 @@ public class PageController(
 
     [HttpGet]
     [DecodeQueryParam]
-    [PolicyAll]
+    [Policy(AREA, READ)]
+    [AllowAnonymous]
     public async Task<IApiResult<PageFullDetailResponse>> GetByUrl([FromQuery] string url, CancellationToken cancellationToken = default)
     {
         var uri = new Uri(url);
@@ -90,11 +93,24 @@ public class PageController(
     [Policy(AREA, UPDATE)]
     public async Task<IApiResult<bool>> UpdatePluginOrders(PageUpdatePluginOrdersRequest request, CancellationToken cancellationToken = default)
     {
-        var index = 0;
-        foreach (var pluginId in request.Plugins)
+        foreach (var detail in request.Plugins)
         {
-            var plugin = await pluginService.GetById(pluginId, cancellationToken);
-            plugin.Order = index++;
+            var plugin = await pluginService.GetById(detail.Id, cancellationToken);
+            if (detail.Order != null)
+                plugin.Order = detail.Order.Value;
+
+            if (detail.Section != null)
+                plugin.Section = detail.Section;
+
+            if (detail.Cols != null)
+                plugin.Cols = detail.Cols.Value;
+
+            if (detail.ColsMd != null)
+                plugin.ColsMd = detail.ColsMd.Value;
+
+            if (detail.ColsLg != null)
+                plugin.ColsLg = detail.ColsLg.Value;
+
             await pluginService.Update(plugin);
         }
         return Ok(true);
