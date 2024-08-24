@@ -361,7 +361,7 @@
         },
         {
             "Name": "Blogs Plugin",
-            "Description": "",
+            "Description": "Manages Blog posts",
             "Assembly": "FluentCMS.Web.Plugins.Contents.Blogs.dll",
             "Types": [
                 {
