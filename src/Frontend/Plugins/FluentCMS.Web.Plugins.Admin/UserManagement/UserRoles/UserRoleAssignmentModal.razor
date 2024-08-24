@@ -1,5 +1,7 @@
 ﻿@inherits BaseComponent
 
+@namespace FluentCMS.Web.Plugins.Admin.UserManagement
+
 @if (Visible && Model != null)
 {
     <EditForm Model="@Model" OnSubmit="HandleSubmit">
