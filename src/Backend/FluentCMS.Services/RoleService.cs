@@ -42,8 +42,12 @@ public class RoleService : IRoleService
         if (sameRole != null)
             throw new AppException(ExceptionCodes.RoleNameIsDuplicated);
 
-        return await _roleRepository.Create(role, cancellationToken) ??
+        var newRole = await _roleRepository.Create(role, cancellationToken) ??
            throw new AppException(ExceptionCodes.RoleUnableToCreate);
+
+        await _roleMessagePublisher.Publish(ActionNames.RoleCreated, newRole);
+
+        return newRole;
     }
 
     public async Task<Role> Update(Role role, CancellationToken cancellationToken)
@@ -56,8 +60,12 @@ public class RoleService : IRoleService
         if (sameRole != null)
             throw new AppException(ExceptionCodes.RoleNameIsDuplicated);
 
-        return await _roleRepository.Update(role, cancellationToken) ??
+        var updatedRole = await _roleRepository.Update(role, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleUnableToUpdate);
+
+        await _roleMessagePublisher.Publish(ActionNames.RoleUpdated, updatedRole);
+
+        return updatedRole;
     }
 
     public async Task<Role> Delete(Guid roleId, CancellationToken cancellationToken = default)

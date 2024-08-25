@@ -8,35 +8,35 @@
     <ChildContent>
         <DataTable Items="Users">
             <DataTableItem Label="UserName">@context.Username</DataTableItem>
-                <DataTableItem Label="First Name">@context.FirstName</DataTableItem>
-                <DataTableItem Label="Last Name">@context.LastName</DataTableItem>
-                <DataTableItem Label="Email">@context.Email</DataTableItem>
-                <DataTableItem Label="Email Confirmed">
-                    <Indicator Color="Color.Success" Visible="@context.EmailConfirmed">YES</Indicator>
-                    <Indicator Color="Color.Danger" Visible="@(!context.EmailConfirmed)">NO</Indicator>
-                </DataTableItem>
-                <DataTableItem Label="Phone">@context.PhoneNumber</DataTableItem>
-                <DataTableItem Label="Phone Confirmed">
-                    <Indicator Color="Color.Success" Visible="@context.PhoneConfirmed">YES</Indicator>
-                    <Indicator Color="Color.Danger" Visible="@(!context.PhoneConfirmed)">NO</Indicator>
-                </DataTableItem>
-                <DataTableItem Label="Enable">
-                    <Indicator Color="Color.Success" Visible="@context.Enabled">YES</Indicator>
-                    <Indicator Color="Color.Danger" Visible="@(!context.Enabled)">NO</Indicator>
-                </DataTableItem>
-                <DataTableItem Label="Create Date">@context.CreatedAt</DataTableItem>
-                <DataTableItem Label="Last Login Date">@context.LoginAt</DataTableItem>
-                <DataTableItem Label="Login Count">@context.LoginCount</DataTableItem>
-                <DataTableItem Label="Locked">
-                    <Indicator Color="Color.Success" Visible="@(!context.Locked)">NO</Indicator>
-                    <Indicator Color="Color.Danger" Visible="@context.Locked">YES</Indicator>
-                </DataTableItem>
-                <ActionButtons>
-                    <ActionButtonEdit Href="@GetUrl("Update User", new { id = @context.Id })" />
-                    <ActionButton IconName="IconName.RoleAssignment" Color="Color.Success" Label="RoleAssignment" @onclick="() => OpenRoleAssignment(context)" />
-                </ActionButtons>
-            </DataTable>
-        </ChildContent>
-    </PluginBody>
+            <DataTableItem Label="First Name">@context.FirstName</DataTableItem>
+            <DataTableItem Label="Last Name">@context.LastName</DataTableItem>
+            <DataTableItem Label="Email">@context.Email</DataTableItem>
+            <DataTableItem Label="Email Confirmed">
+                <Indicator Color="Color.Success" Visible="@context.EmailConfirmed">YES</Indicator>
+                <Indicator Color="Color.Danger" Visible="@(!context.EmailConfirmed)">NO</Indicator>
+            </DataTableItem>
+            <DataTableItem Label="Phone">@context.PhoneNumber</DataTableItem>
+            <DataTableItem Label="Phone Confirmed">
+                <Indicator Color="Color.Success" Visible="@context.PhoneConfirmed">YES</Indicator>
+                <Indicator Color="Color.Danger" Visible="@(!context.PhoneConfirmed)">NO</Indicator>
+            </DataTableItem>
+            <DataTableItem Label="Enable">
+                <Indicator Color="Color.Success" Visible="@context.Enabled">YES</Indicator>
+                <Indicator Color="Color.Danger" Visible="@(!context.Enabled)">NO</Indicator>
+            </DataTableItem>
+            <DataTableItem Label="Create Date">@context.CreatedAt</DataTableItem>
+            <DataTableItem Label="Last Login Date">@context.LoginAt</DataTableItem>
+            <DataTableItem Label="Login Count">@context.LoginCount</DataTableItem>
+            <DataTableItem Label="Locked">
+                <Indicator Color="Color.Success" Visible="@(!context.Locked)">NO</Indicator>
+                <Indicator Color="Color.Danger" Visible="@context.Locked">YES</Indicator>
+            </DataTableItem>
+            <ActionButtons>
+                <ActionButtonEdit Href="@GetUrl("Update User", new { id = @context.Id })" />
+                <ActionButton IconName="IconName.RoleAssignment" Color="Color.Success" Label="RoleAssignment" @onclick="() => OpenRoleAssignment(context)" />
+            </ActionButtons>
+        </DataTable>
+    </ChildContent>
+</PluginBody>
 
-    <UserRoleAssignmentModal SiteId="@ViewState.Site.Id" UserId="@SelectedItem?.Id" Roles="@Roles" Visible="UserRoleAssignmentModalOpen" OnSubmit="OnRoleAssignmentSubmit" OnCancel="OnRoleAssignmentCancel" />
+<UserRoleAssignmentModal SiteId="@ViewState.Site.Id" UserId="@SelectedItem?.Id" Roles="@Roles" Visible="UserRoleAssignmentModalOpen" OnSubmit="OnRoleAssignmentSubmit" OnCancel="OnRoleAssignmentCancel" />
