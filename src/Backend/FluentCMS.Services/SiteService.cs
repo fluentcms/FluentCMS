@@ -69,7 +69,7 @@ public class SiteService(ISiteRepository siteRepository, IMessagePublisher messa
         var deletedSite = await siteRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteUnableToDelete);
 
-        await messagePublisher.Publish(new Message<Site>(ActionNames.SiteUpdated, deletedSite), cancellationToken);
+        await messagePublisher.Publish(new Message<Site>(ActionNames.SiteDeleted, deletedSite), cancellationToken);
 
         return deletedSite;
     }
