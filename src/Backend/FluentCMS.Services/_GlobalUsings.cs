@@ -1,4 +1,5 @@
 ﻿global using FluentCMS.Entities;
+global using FluentCMS.Providers;
 global using FluentCMS.Repositories.Abstractions;
 global using System;
 global using System.Collections.Generic;
