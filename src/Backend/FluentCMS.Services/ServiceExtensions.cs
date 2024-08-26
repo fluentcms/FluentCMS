@@ -8,8 +8,7 @@ public static class ServiceExtensions
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(ServiceExtensions).Assembly));
-        services.AddScoped<IMessagePublisher, InMemoryMessagePublisher>();
+        services.AddInMemoryMessageBus();
 
         services.AddScoped<IEmailProvider, SmtpEmailProvider>();
         services.AddScoped<IFileStorageProvider, LocalFileStorageProvider>();
