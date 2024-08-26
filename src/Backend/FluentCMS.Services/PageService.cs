@@ -1,4 +1,7 @@
-﻿namespace FluentCMS.Services;
+﻿using FluentCMS.Dtos;
+using FluentCMS.Permissions;
+
+namespace FluentCMS.Services;
 
 public interface IPageService : IAutoRegisterService
 {
@@ -8,11 +11,15 @@ public interface IPageService : IAutoRegisterService
     Task<Page> Create(Page page, CancellationToken cancellationToken = default);
     Task<Page> Update(Page page, CancellationToken cancellationToken = default);
     Task<Page> Delete(Guid id, CancellationToken cancellationToken = default);
+    Task<bool> SetPermissions(Page page, IEnumerable<Guid> viewRoleIds, IEnumerable<Guid> contributerRoleIds, IEnumerable<Guid> adminRoleIds, CancellationToken cancellationToken);
 }
 
 public class PageService(
     IPageRepository pageRepository,
-    ISiteRepository siteRepository) : IPageService
+    ISiteRepository siteRepository,
+    IMessagePublisher messagePublisher,
+    IPermissionRepository permissionRepository,
+    IPermissionManager<Page> permissionManager) : IPageService
 {
 
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
@@ -40,6 +47,7 @@ public class PageService(
 
     public async Task<Page> Delete(Guid id, CancellationToken cancellationToken = default)
     {
+
         //fetch original page from db
         var originalPage = await pageRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
@@ -53,8 +61,12 @@ public class PageService(
         if (pages.Any(x => x.ParentId == id && x.SiteId == originalPage.SiteId))
             throw new AppException(ExceptionCodes.PageHasChildren);
 
-        return await pageRepository.Delete(id, cancellationToken) ??
-            throw new AppException(ExceptionCodes.PageUnableToDelete);
+        var deletedPage = await pageRepository.Delete(id, cancellationToken) ??
+             throw new AppException(ExceptionCodes.PageUnableToDelete);
+
+        await messagePublisher.Publish(new Message<PageDto>(ActionNames.PageDeleted, new PageDto(originalPage)), cancellationToken);
+
+        return deletedPage;
     }
 
     public async Task<Page> GetById(Guid id, CancellationToken cancellationToken = default)
@@ -95,8 +107,10 @@ public class PageService(
         if (page.Path != originalPage.Path)
             ValidateUrl(page, pages);
 
-        return await pageRepository.Update(page, cancellationToken)
-            ?? throw new AppException(ExceptionCodes.PageUnableToUpdate);
+        var updatedPage = await pageRepository.Update(page, cancellationToken)
+             ?? throw new AppException(ExceptionCodes.PageUnableToUpdate);
+
+        return updatedPage;
     }
 
     public async Task<Page> GetByPath(Guid siteId, string path, CancellationToken cancellationToken = default)
@@ -161,6 +175,36 @@ public class PageService(
         // if page viewRoles are a subset of parent view roles
         //if (!page.ViewRoleIds.ToImmutableHashSet().IsSubsetOf(parent.ViewRoleIds))
         //    throw new AppException(ExceptionCodes.PageViewPermissionsAreNotASubsetOfParent);
+    }
+
+    public Task<Page> Update(Page page, IEnumerable<Guid> viewRoleIds = null, IEnumerable<Guid> updateRoleIds = null, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task<bool> SetPermissions(Page page, IEnumerable<Guid> viewRoleIds, IEnumerable<Guid> contributerRoleIds, IEnumerable<Guid> adminRoleIds, CancellationToken cancellationToken)
+    {
+        var viewPermissions = viewRoleIds.Select(x => MapToPermission(PermissionActionNames.View, page, x));
+
+        var updatePermissions = pageDto.UpdateRoleIds.Select(x => MapToPermission(PermissionActionNames.Update, pageDto, x));
+
+        var permissions = new List<Permission>(viewPermissions);
+        permissions.AddRange(updatePermissions);
+
+        _ = await permissionRepository.CreateMany(permissions, cancellationToken) ??
+         throw new AppException(ExceptionCodes.PermissionUnableToCreate);
+    }
+
+    private Permission MapToPermission(string action, PageDto pageDto, Guid x)
+    {
+        return new Permission
+        {
+            EntityType = nameof(Page),
+            Action = action,
+            EntityId = pageDto.Page.Id,
+            RoleId = x,
+            SiteId = pageDto.Page.SiteId
+        };
     }
 
     #endregion

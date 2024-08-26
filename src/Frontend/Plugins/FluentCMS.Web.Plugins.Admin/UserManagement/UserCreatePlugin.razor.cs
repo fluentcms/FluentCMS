@@ -21,7 +21,6 @@ public partial class UserCreatePlugin
 
     private async Task OnSubmit()
     {
-        Model!.RoleIds ??= [];
         await ApiClient.User.CreateAsync(Model);
         NavigateBack();
     }

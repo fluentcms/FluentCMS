@@ -161,4 +161,13 @@ public static class ExceptionCodes
     public const string PluginContentNotFound = "PluginContent.NotFound";
 
     #endregion
+
+    #region Permission
+
+    public const string PermissionUnableToCreate = "Permission.UnableToCreate";
+    public const string PermissionUnableToUpdate = "Permission.UnableToUpdate";
+    public const string PermissionUnableToDelete = "Permission.UnableToDelete";
+    public const string PermissionNotFound = "Permission.NotFound";
+
+    #endregion
 }

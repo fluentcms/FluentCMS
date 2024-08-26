@@ -10928,6 +10928,14 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("order")]
         public int Order { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("viewRoleIds")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<System.Guid> ViewRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("updateRoleIds")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<System.Guid> UpdateRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.1.0.0 (NJsonSchema v11.0.2.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -10981,6 +10989,12 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("locked")]
         public bool Locked { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("viewRoleIds")]
+        public System.Collections.Generic.ICollection<System.Guid>? ViewRoleIds { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("updateRoleIds")]
+        public System.Collections.Generic.ICollection<System.Guid>? UpdateRoleIds { get; set; } = default!;
 
     }
 
@@ -11149,7 +11163,6 @@ namespace FluentCMS.Web.ApiClients
 
     }
 
-
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.1.0.0 (NJsonSchema v11.0.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PagePluginDetail
     {
@@ -11165,10 +11178,10 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("cols")]
         public int? Cols { get; set; } = default!;
-        
+
         [System.Text.Json.Serialization.JsonPropertyName("colsMd")]
         public int? ColsMd { get; set; } = default!;
-        
+
         [System.Text.Json.Serialization.JsonPropertyName("colsLg")]
         public int? ColsLg { get; set; } = default!;
 
@@ -11179,7 +11192,7 @@ namespace FluentCMS.Web.ApiClients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("plugins")]
-        public System.Collections.Generic.ICollection<PagePluginDetail> Plugins { get; set; } = default!;
+        public System.Collections.Generic.ICollection<PagePluginDetail>? Plugins { get; set; } = default!;
 
     }
 
@@ -11210,6 +11223,14 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("order")]
         public int Order { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("viewRoleIds")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<System.Guid> ViewRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("updateRoleIds")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<System.Guid> UpdateRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
         public System.Guid Id { get; set; } = default!;
@@ -12141,10 +12162,6 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("enabled")]
         public bool Enabled { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("roleIds")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public System.Collections.Generic.ICollection<System.Guid> RoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
 
     }
 

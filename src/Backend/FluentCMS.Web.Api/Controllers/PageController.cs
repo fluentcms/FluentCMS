@@ -1,4 +1,5 @@
-﻿using FluentCMS.Web.Api.Filters;
+﻿using FluentCMS.Services.Permissions;
+using FluentCMS.Web.Api.Filters;
 using FluentCMS.Web.Api.Setup;
 using Microsoft.AspNetCore.Authorization;
 
@@ -11,7 +12,8 @@ public class PageController(
     IPluginService pluginService,
     ILayoutService layoutService,
     ISetupManager setupManager,
-    IMapper mapper) : BaseGlobalController
+    IMapper mapper,
+    IPermissionService permissionService) : BaseGlobalController
 {
 
     public const string AREA = "Page Management";
@@ -49,6 +51,11 @@ public class PageController(
     {
         var entity = await pageService.GetById(id, cancellationToken);
         var entityResponse = mapper.Map<PageDetailResponse>(entity);
+
+        entityResponse.ViewRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageView, cancellationToken)).Select(x => x.RoleId);
+        entityResponse.ContributerRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageContributer, cancellationToken)).Select(x => x.RoleId);
+        entityResponse.AdminRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageAdmin, cancellationToken)).Select(x => x.RoleId);
+
         return Ok(entityResponse);
     }
 
@@ -75,6 +82,11 @@ public class PageController(
     {
         var entity = mapper.Map<Page>(request);
         var newEntity = await pageService.Create(entity, cancellationToken);
+
+        await permissionService.SetPermissions(newEntity, PermissionActionNames.PageView, request.ViewRoleIds, cancellationToken);
+        await permissionService.SetPermissions(newEntity, PermissionActionNames.PageContributer, request.ViewRoleIds, cancellationToken);
+        await permissionService.SetPermissions(newEntity, PermissionActionNames.PageAdmin, request.ViewRoleIds, cancellationToken);
+
         var pageResponse = mapper.Map<PageDetailResponse>(newEntity);
         return Ok(pageResponse);
     }
@@ -85,6 +97,11 @@ public class PageController(
     {
         var entity = mapper.Map<Page>(request);
         var updatedEntity = await pageService.Update(entity, cancellationToken);
+
+        await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageView, request.ViewRoleIds, cancellationToken);
+        await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageContributer, request.ViewRoleIds, cancellationToken);
+        await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageAdmin, request.ViewRoleIds, cancellationToken);
+
         var entityResponse = mapper.Map<PageDetailResponse>(updatedEntity);
         return Ok(entityResponse);
     }
@@ -118,9 +135,11 @@ public class PageController(
 
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]
-    public async Task<IApiResult<bool>> Delete([FromRoute] Guid id)
+    public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        await pageService.Delete(id);
+        var deletedEntity = await pageService.Delete(id);
+
+        await permissionService.DeletePermissions(deletedEntity, cancellationToken);
         return Ok(true);
     }
 

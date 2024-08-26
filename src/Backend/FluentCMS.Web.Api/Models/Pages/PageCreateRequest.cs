@@ -10,4 +10,13 @@ public class PageCreateRequest
     public string Title { get; set; } = string.Empty;
     public string Path { get; set; } = string.Empty;
     public int Order { get; set; }
+
+    [Required]
+    public IEnumerable<Guid> ViewRoleIds { get; set; }
+
+    [Required]
+    public IEnumerable<Guid> ContributerRoleIds { get; set; }
+
+    [Required]
+    public IEnumerable<Guid> AdminRoleIds { get; set; }
 }

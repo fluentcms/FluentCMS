@@ -12,4 +12,7 @@ public class PageDetailResponse : BaseSiteAssociatedResponse
     public LayoutDetailResponse DetailLayout { get; set; } = default!;
     public LayoutDetailResponse EditLayout { get; set; } = default!;
     public bool Locked { get; set; } = false;
+    public IEnumerable<Guid> ViewRoleIds { get; set; } = [];
+    public IEnumerable<Guid> ContributerRoleIds { get; set; } = [];
+    public IEnumerable<Guid> AdminRoleIds { get; set; } = [];
 }

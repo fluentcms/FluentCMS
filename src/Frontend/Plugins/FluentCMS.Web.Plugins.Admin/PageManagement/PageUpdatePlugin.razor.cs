@@ -21,6 +21,8 @@ public partial class PageUpdatePlugin
 
     private PageDetailResponse? Page { get; set; }
 
+    private List<RoleDetailResponse>? Roles { get; set; }
+
     async Task GetAvailableParentPages()
     {
         var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Urls[0]);
@@ -32,7 +34,8 @@ public partial class PageUpdatePlugin
         Pages = pages.ToList();
 
         PageOptions = [
-            new SelectOption {
+            new SelectOption
+            {
                 Title = "(none)",
                 Value = Guid.Empty
             }
@@ -58,7 +61,8 @@ public partial class PageUpdatePlugin
             Layouts = layoutsResponse?.Data?.ToList() ?? [];
 
             LayoutOptions = [
-                new SelectOption {
+                new SelectOption
+                {
                     Title = "(default)",
                     Value = Guid.Empty
                 }
@@ -86,6 +90,12 @@ public partial class PageUpdatePlugin
             var pageResponse = await ApiClient.Page.GetByIdAsync(Id);
             Page = pageResponse.Data;
             Model = Mapper.Map<PageUpdateRequest>(Page);
+        }
+
+        if (Roles is null)
+        {
+            var rolesResponse = await ApiClient.Role.GetAllForSiteAsync(ViewState.Site.Id);
+            Roles = rolesResponse?.Data?.ToList() ?? [];
         }
     }
 
