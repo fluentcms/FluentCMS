@@ -17,3 +17,11 @@
     <FormInput @bind-Value="SetPasswordModel!.Password" Cols="6" Label="New Password" Placeholder="Enter Password" Required type="password" />
     <FormActions Cancel Submit />
 </PluginForm>
+
+<PluginForm Model="@RoleAssignmentModel" Name="@FORM_NAME_ASSIGN_ROLE" OnSubmit="OnRoleAssigment">
+    <FormHiddenInput @bind-Value="RoleAssignmentModel!.UserId" />
+    <FormHiddenInput @bind-Value="RoleAssignmentModel!.SiteId" />
+    
+    <FormCheckboxGroup @bind-Value="@SelectedRoleIds" Data="Roles" Label="Roles" TextField="RoleName" ValueField="RoleId" />
+    <FormActions Cancel Submit />
+</PluginForm>

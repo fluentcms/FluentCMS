@@ -1,5 +1,4 @@
 @inherits BasePlugin
-@rendermode InteractiveServer
 
 <PluginBody Title="Users List">
     <ActionsFragment>
@@ -33,10 +32,8 @@
             </DataTableItem>
             <ActionButtons>
                 <ActionButtonEdit Href="@GetUrl("Update User", new { id = @context.Id })" />
-                <ActionButton IconName="IconName.RoleAssignment" Color="Color.Success" Label="RoleAssignment" @onclick="() => OpenRoleAssignment(context)" />
             </ActionButtons>
         </DataTable>
     </ChildContent>
 </PluginBody>
 
-<UserRoleAssignmentModal SiteId="@ViewState.Site.Id" UserId="@SelectedItem?.Id" Roles="@Roles" Visible="UserRoleAssignmentModalOpen" OnSubmit="OnRoleAssignmentSubmit" OnCancel="OnRoleAssignmentCancel" />
