@@ -1,5 +1,4 @@
-﻿using FluentCMS.Providers;
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 
 namespace FluentCMS.Services;
