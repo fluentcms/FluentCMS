@@ -24,7 +24,8 @@ public partial class RichTextEditPlugin
 
     protected virtual void NavigateBack()
     {
-        if (!string.IsNullOrEmpty(RedirectTo)) {
+        if (!string.IsNullOrEmpty(RedirectTo))
+        {
             NavigateTo(Uri.UnescapeDataString(RedirectTo));
         }
         else
@@ -44,7 +45,7 @@ public partial class RichTextEditPlugin
 
     protected virtual string GetBackUrl()
     {
-        if(!string.IsNullOrEmpty(RedirectTo))
+        if (!string.IsNullOrEmpty(RedirectTo))
         {
             return Uri.UnescapeDataString(RedirectTo);
         }
@@ -67,7 +68,7 @@ public partial class RichTextEditPlugin
 
             var content = response.Data.ToContentList<RichTextContent>();
 
-            if(content.Count > 0)
+            if (content.Count > 0)
             {
                 Model = new RichTextContent
                 {
