@@ -1,6 +1,4 @@
-﻿using FluentCMS.Providers;
-
-namespace FluentCMS.Services;
+﻿namespace FluentCMS.Services;
 
 public interface IRoleService : IAutoRegisterService
 {
@@ -12,17 +10,14 @@ public interface IRoleService : IAutoRegisterService
     Task<Role?> GetById(Guid roleId, CancellationToken cancellationToken = default);
 }
 
-public class RoleService : IRoleService
+public class RoleService : IRoleService, IMessageHandler<Site>
 {
     private readonly IRoleRepository _roleRepository;
     private readonly IMessagePublisher<Role> _roleMessagePublisher;
 
-    public RoleService(IRoleRepository roleRepository, IMessageSubscriber<Site> siteMessageSubscriber, IMessagePublisher<Role> roleMessagePublisher)
+    public RoleService(IRoleRepository roleRepository)
     {
         _roleRepository = roleRepository;
-        _roleMessagePublisher = roleMessagePublisher;
-
-        siteMessageSubscriber.Subscribe(OnSiteMessageReceived);
     }
 
     public async Task<IEnumerable<Role>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
@@ -74,7 +69,7 @@ public class RoleService : IRoleService
             throw new AppException(ExceptionCodes.RoleNotFound);
 
         // check for system roles, they cant be deleted.
-        // we need them for system purposes. 
+        // we need them for system purposes.
         if (existRole.Type != RoleTypes.UserDefined)
             throw new AppException(ExceptionCodes.RoleCanNotBeDeleted);
 
@@ -91,12 +86,17 @@ public class RoleService : IRoleService
         return _roleRepository.GetById(roleId, cancellationToken);
     }
 
-    private async Task OnSiteMessageReceived(string actionName, Site site)
+    public async Task Handle(Message<Site> message, CancellationToken cancellationToken)
     {
-        switch (actionName)
+        switch (message.Action)
         {
-            case ActionNames.SiteCreated: await AddPrimaryRolesForSite(site); break;
-            case ActionNames.SiteDeleted: await DeleteAllRolesOfSite(site); break;
+            case ActionNames.SiteCreated:
+                await AddDefaultRolesForSite(message.Payload);
+                break;
+
+            case ActionNames.SiteDeleted:
+                await DeleteAllRolesOfSite(message.Payload);
+                break;
         }
     }
 
@@ -106,9 +106,9 @@ public class RoleService : IRoleService
         await _roleRepository.DeleteMany(siteRoles.Select(x => x.Id));
     }
 
-    private async Task AddPrimaryRolesForSite(Site site)
+    private async Task AddDefaultRolesForSite(Site site)
     {
-        var primaryRoles = new List<Role>() {
+        var defaultRoles = new List<Role>() {
             new() {
                 Name="Administrators",
                 Description = "Default administrators role with full access to the site",
@@ -135,6 +135,6 @@ public class RoleService : IRoleService
             }
          };
 
-        await _roleRepository.CreateMany(primaryRoles, default);
+        await _roleRepository.CreateMany(defaultRoles, default);
     }
 }
