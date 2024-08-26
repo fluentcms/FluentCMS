@@ -57,7 +57,7 @@ public class RoleService : IRoleService
 
         var sameRole = await _roleRepository.GetByNameAndSiteId(role.SiteId, role.Name, cancellationToken);
 
-        if (sameRole != null)
+        if (sameRole != null && sameRole.Id != role.Id)
             throw new AppException(ExceptionCodes.RoleNameIsDuplicated);
 
         var updatedRole = await _roleRepository.Update(role, cancellationToken) ??
