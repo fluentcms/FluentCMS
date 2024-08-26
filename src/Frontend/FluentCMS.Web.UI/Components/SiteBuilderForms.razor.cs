@@ -36,7 +36,8 @@ public partial class SiteBuilderForms
         var pluginCreateResponse = await ApiClient.Plugin.CreateAsync(CreateBlockModel.Plugin);
         var content = new Dictionary<string, object>
         {
-            { "Content", CreateBlockModel.Template }
+            { "Template", CreateBlockModel.Template },
+            { "Settings", CreateBlockModel.Settings },
         };
 
         var response = await ApiClient.PluginContent.CreateAsync("TextHTMLContent", pluginCreateResponse.Data.Id, content);
@@ -63,5 +64,6 @@ public partial class SiteBuilderForms
     private class CreateBlockRequest {
         public PluginCreateRequest Plugin { get; set; }
         public string Template { get; set; } = string.Empty;
+        public Dictionary<string, object> Settings { get; set; } = [];
     }
 }

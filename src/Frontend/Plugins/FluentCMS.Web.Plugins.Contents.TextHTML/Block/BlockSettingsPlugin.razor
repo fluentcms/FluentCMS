@@ -1,0 +1,43 @@
+@namespace FluentCMS.Web.Plugins.Contents.TextHTML
+
+<div class="m-4">
+    <Typography Size="TextSize.H5">Edit Block settings</Typography>            
+    <Spacer />
+    <Card>
+        <CardBody>
+            @if (Model != null)
+            {
+                <EditForm Model="@Model" OnSubmit="OnSubmit" FormName="@PLUGIN_SETTINGS_FORM" Enhance>
+                    <DataAnnotationsValidator />
+                    <Spacer />
+                    <Grid GutterX="GridGutter.Large">
+                        <!-- @foreach (var input in Content.Settings)
+                        {
+                            <div>
+                                @{
+                                    var inputValue = input.Value as IDictionary<string, object>;
+                                    var inputType = inputValue?["Type"]?.ToString();
+                                }
+                                @if (inputType == "Input")
+                                {
+                                    <FormInput Placeholder="@($"Enter {input.Key}")" @bind-Value="@Model!.Value[input.Key]" Label="@input.Key" />
+                                }
+                            </div>
+                        } -->
+                        <FormActions Submit Cancel />
+                        <GridItem Small="GridItemColumn.Twelve">
+                            <Stack>
+                                <Button Color="Color.Primary" Type="ButtonType.Submit">
+                                    Submit
+                                </Button>
+                                <Button data-enhance-nav="false" Href="@GetBackUrl()">
+                                    Cancel
+                                </Button>
+                            </Stack>
+                        </GridItem>
+                    </Grid>
+                </EditForm>
+            }
+        </CardBody>
+    </Card>
+</div>

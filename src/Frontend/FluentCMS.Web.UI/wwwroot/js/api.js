@@ -5,7 +5,7 @@ export async function createPlugin({definitionId, sectionName, order, blockId}) 
         const blocks = await fetch('/_content/FluentCMS.Web.UI/blocks.json').then(res => res.json())
         const block = blocks.find(x => x.Id == blockId);
 
-        await request('CreateBlockForm', {
+        const body = {
             'CreateBlockModel.Plugin.DefinitionId': definitionId,
             'CreateBlockModel.Plugin.PageId': '00000000-0000-0000-0000-000000000000',
             'CreateBlockModel.Plugin.Order': order,
@@ -13,9 +13,18 @@ export async function createPlugin({definitionId, sectionName, order, blockId}) 
             'CreateBlockModel.Plugin.ColsMd': 0,
             'CreateBlockModel.Plugin.ColsLg': 0,
             'CreateBlockModel.Plugin.Section': sectionName,
-            'CreateBlockModel.Template': block.Template
+            'CreateBlockModel.Template': block.Template,
+        }
 
-        }).then(reloadIframe)
+        for(let key in block.Settings ?? {})
+        {
+            const prefix = `CreateBlockModel.Settings[${key}][`
+            for(let key2 in block.Settings[key]) {
+                body[prefix + key2 + ']'] = block.Settings[key][key2]
+            }
+        }
+        
+        await request('CreateBlockForm', body).then(reloadIframe)
     } else {
         await request('CreatePluginForm', {
             'CreatePluginModel.DefinitionId': definitionId,

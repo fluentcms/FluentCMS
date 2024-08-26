@@ -11,4 +11,8 @@
     <ProjectReference Include="..\..\FluentCMS.Web.UI.Components\FluentCMS.Web.UI.Components.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Scriban" Version="5.10.0" />
+  </ItemGroup>
+
 </Project>

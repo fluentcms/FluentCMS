@@ -360,6 +360,27 @@
             ]
         },
         {
+            "Name": "Block Plugin",
+            "Description": "Block Plugin",
+            "Locked": true,
+            "Assembly": "FluentCMS.Web.Plugins.Contents.TextHTML.dll",
+            "Types": [
+                {
+                    "Name": "View",
+                    "Type": "BlockViewPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Edit",
+                    "Type": "BlockEditPlugin"
+                },
+                {
+                    "Name": "Settings",
+                    "Type": "BlockSettingsPlugin"
+                }
+            ]
+        },
+        {
             "Name": "RichText Plugin",
             "Description": "RichText Plugin",
             "Assembly": "FluentCMS.Web.Plugins.Contents.TextHTML.dll",
