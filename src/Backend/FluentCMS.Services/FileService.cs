@@ -1,6 +1,4 @@
-﻿using FluentCMS.Providers;
-
-namespace FluentCMS.Services;
+﻿namespace FluentCMS.Services;
 
 public interface IFileService : IAutoRegisterService
 {
