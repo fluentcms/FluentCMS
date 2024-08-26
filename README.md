@@ -97,7 +97,7 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
     - [x] API Tokens Management
   - CMS Features
     - [x] Site Management
-    - [ ] Page Management
+    - [x] Page Management
     - [ ] Plugin Definition Management
     - [ ] Plugin Management
     - [x] Layout Management
