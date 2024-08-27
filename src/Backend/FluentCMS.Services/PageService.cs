@@ -1,5 +1,4 @@
-﻿using FluentCMS.Dtos;
-using FluentCMS.Permissions;
+﻿using FluentCMS.Services.Permissions;
 
 namespace FluentCMS.Services;
 
@@ -11,7 +10,6 @@ public interface IPageService : IAutoRegisterService
     Task<Page> Create(Page page, CancellationToken cancellationToken = default);
     Task<Page> Update(Page page, CancellationToken cancellationToken = default);
     Task<Page> Delete(Guid id, CancellationToken cancellationToken = default);
-    Task<bool> SetPermissions(Page page, IEnumerable<Guid> viewRoleIds, IEnumerable<Guid> contributerRoleIds, IEnumerable<Guid> adminRoleIds, CancellationToken cancellationToken);
 }
 
 public class PageService(
@@ -63,8 +61,6 @@ public class PageService(
 
         var deletedPage = await pageRepository.Delete(id, cancellationToken) ??
              throw new AppException(ExceptionCodes.PageUnableToDelete);
-
-        await messagePublisher.Publish(new Message<PageDto>(ActionNames.PageDeleted, new PageDto(originalPage)), cancellationToken);
 
         return deletedPage;
     }
@@ -175,36 +171,6 @@ public class PageService(
         // if page viewRoles are a subset of parent view roles
         //if (!page.ViewRoleIds.ToImmutableHashSet().IsSubsetOf(parent.ViewRoleIds))
         //    throw new AppException(ExceptionCodes.PageViewPermissionsAreNotASubsetOfParent);
-    }
-
-    public Task<Page> Update(Page page, IEnumerable<Guid> viewRoleIds = null, IEnumerable<Guid> updateRoleIds = null, CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task<bool> SetPermissions(Page page, IEnumerable<Guid> viewRoleIds, IEnumerable<Guid> contributerRoleIds, IEnumerable<Guid> adminRoleIds, CancellationToken cancellationToken)
-    {
-        var viewPermissions = viewRoleIds.Select(x => MapToPermission(PermissionActionNames.View, page, x));
-
-        var updatePermissions = pageDto.UpdateRoleIds.Select(x => MapToPermission(PermissionActionNames.Update, pageDto, x));
-
-        var permissions = new List<Permission>(viewPermissions);
-        permissions.AddRange(updatePermissions);
-
-        _ = await permissionRepository.CreateMany(permissions, cancellationToken) ??
-         throw new AppException(ExceptionCodes.PermissionUnableToCreate);
-    }
-
-    private Permission MapToPermission(string action, PageDto pageDto, Guid x)
-    {
-        return new Permission
-        {
-            EntityType = nameof(Page),
-            Action = action,
-            EntityId = pageDto.Page.Id,
-            RoleId = x,
-            SiteId = pageDto.Page.SiteId
-        };
     }
 
     #endregion

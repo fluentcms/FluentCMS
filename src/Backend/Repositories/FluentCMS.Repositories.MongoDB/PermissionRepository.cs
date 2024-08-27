@@ -21,7 +21,7 @@ public class PermissionRepository : SiteAssociatedRepository<Permission>, IPermi
     public async Task<IEnumerable<Permission>> SetPermissions<TEntity>(TEntity entity, string action, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default) where TEntity : ISiteAssociatedEntity
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var existPermissions = await Collection.Find(x => x.EntityId == entity.Id).ToListAsync();
+        var existPermissions = await Collection.Find(x => x.EntityId == entity.Id && x.Action == action).ToListAsync();
         await DeleteMany(existPermissions.Select(x => x.Id), cancellationToken);
 
         var permissions = roleIds.Select(x => new Permission

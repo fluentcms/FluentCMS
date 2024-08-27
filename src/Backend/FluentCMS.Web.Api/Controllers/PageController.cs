@@ -53,7 +53,7 @@ public class PageController(
         var entityResponse = mapper.Map<PageDetailResponse>(entity);
 
         entityResponse.ViewRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageView, cancellationToken)).Select(x => x.RoleId);
-        entityResponse.ContributerRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageContributer, cancellationToken)).Select(x => x.RoleId);
+        entityResponse.ContributorRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageContributor, cancellationToken)).Select(x => x.RoleId);
         entityResponse.AdminRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageAdmin, cancellationToken)).Select(x => x.RoleId);
 
         return Ok(entityResponse);
@@ -84,8 +84,8 @@ public class PageController(
         var newEntity = await pageService.Create(entity, cancellationToken);
 
         await permissionService.SetPermissions(newEntity, PermissionActionNames.PageView, request.ViewRoleIds, cancellationToken);
-        await permissionService.SetPermissions(newEntity, PermissionActionNames.PageContributer, request.ViewRoleIds, cancellationToken);
-        await permissionService.SetPermissions(newEntity, PermissionActionNames.PageAdmin, request.ViewRoleIds, cancellationToken);
+        await permissionService.SetPermissions(newEntity, PermissionActionNames.PageContributor, request.ContributorRoleIds, cancellationToken);
+        await permissionService.SetPermissions(newEntity, PermissionActionNames.PageAdmin, request.AdminRoleIds, cancellationToken);
 
         var pageResponse = mapper.Map<PageDetailResponse>(newEntity);
         return Ok(pageResponse);
@@ -99,8 +99,8 @@ public class PageController(
         var updatedEntity = await pageService.Update(entity, cancellationToken);
 
         await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageView, request.ViewRoleIds, cancellationToken);
-        await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageContributer, request.ViewRoleIds, cancellationToken);
-        await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageAdmin, request.ViewRoleIds, cancellationToken);
+        await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageContributor, request.ContributorRoleIds, cancellationToken);
+        await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageAdmin, request.AdminRoleIds, cancellationToken);
 
         var entityResponse = mapper.Map<PageDetailResponse>(updatedEntity);
         return Ok(entityResponse);
@@ -137,9 +137,8 @@ public class PageController(
     [Policy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        var deletedEntity = await pageService.Delete(id);
+        await pageService.Delete(id, cancellationToken);
 
-        await permissionService.DeletePermissions(deletedEntity, cancellationToken);
         return Ok(true);
     }
 

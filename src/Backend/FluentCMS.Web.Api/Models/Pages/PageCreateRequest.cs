@@ -15,7 +15,7 @@ public class PageCreateRequest
     public IEnumerable<Guid> ViewRoleIds { get; set; }
 
     [Required]
-    public IEnumerable<Guid> ContributerRoleIds { get; set; }
+    public IEnumerable<Guid> ContributorRoleIds { get; set; }
 
     [Required]
     public IEnumerable<Guid> AdminRoleIds { get; set; }

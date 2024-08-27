@@ -10,7 +10,7 @@ public static class ServiceExtensions
     {
         services.AddInMemoryMessageBus();
 
-        // services.AddPermissions();
+        services.AddPermissions();
 
         services.AddScoped<IEmailProvider, SmtpEmailProvider>();
         services.AddScoped<IFileStorageProvider, LocalFileStorageProvider>();

@@ -13,6 +13,6 @@ public class PageDetailResponse : BaseSiteAssociatedResponse
     public LayoutDetailResponse EditLayout { get; set; } = default!;
     public bool Locked { get; set; } = false;
     public IEnumerable<Guid> ViewRoleIds { get; set; } = [];
-    public IEnumerable<Guid> ContributerRoleIds { get; set; } = [];
+    public IEnumerable<Guid> ContributorRoleIds { get; set; } = [];
     public IEnumerable<Guid> AdminRoleIds { get; set; } = [];
 }
