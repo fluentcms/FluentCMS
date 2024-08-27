@@ -29,12 +29,12 @@ public abstract class BasePlugin : ComponentBase
 
         if (!string.IsNullOrEmpty(redirectTo))
         {
-            NavigationManager.NavigateTo(Uri.UnescapeDataString(redirectTo));
+            NavigateTo(Uri.UnescapeDataString(redirectTo));
         }
         else
         {
             var url = uri.LocalPath;
-            NavigationManager.NavigateTo(url);
+            NavigateTo(url);
         }
     }
 
