@@ -13,7 +13,6 @@ public class User : IdentityUser<Guid>, IAuditableEntity
     public DateTime CreatedAt { get; set; }
     public string? ModifiedBy { get; set; }
     public DateTime? ModifiedAt { get; set; }
-    public List<Guid> RoleIds { get; set; } = [];
     public List<IdentityUserLogin<Guid>> Logins { get; set; } = [];
     public List<IdentityUserToken<Guid>> Tokens { get; set; } = [];
     public List<UserTwoFactorRecoveryCode> RecoveryCodes { get; set; } = [];

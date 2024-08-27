@@ -20,5 +20,5 @@ public class UserCreateRequest
     public bool Enabled { get; set; }
 
     [Required]
-    public List<Guid> RoleIds { get; set; } = [];
+    public IEnumerable<Guid> RoleIds { get; set; } = [];
 }

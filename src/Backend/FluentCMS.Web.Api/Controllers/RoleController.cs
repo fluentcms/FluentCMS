@@ -1,8 +1,6 @@
-﻿using Microsoft.AspNetCore.Routing;
+﻿namespace FluentCMS.Web.Api.Controllers;
 
-namespace FluentCMS.Web.Api.Controllers;
-
-public class RoleController(IMapper mapper, IRoleService roleService, IEnumerable<EndpointDataSource> endpointSources) : BaseGlobalController
+public class RoleController(IMapper mapper, IRoleService roleService) : BaseGlobalController
 {
     public const string AREA = "Role Management";
     public const string READ = "Read";
@@ -43,7 +41,7 @@ public class RoleController(IMapper mapper, IRoleService roleService, IEnumerabl
     {
         var role = mapper.Map<Role>(request);
 
-        // all roles that user defines them, must be UserDefiend.
+        // all roles that user defines them, must be UserDefined.
         // this is added here and not in service, because service is used by system in Setup process. also it is not taken from user (front), because we have to encapsulate this logic in server side. 
         role.Type = RoleTypes.UserDefined;
         var newRole = await roleService.Create(role, cancellationToken);

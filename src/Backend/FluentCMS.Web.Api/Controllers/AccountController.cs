@@ -31,7 +31,6 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
         return Ok(new UserLoginResponse
         {
             Token = userToken.AccessToken,
-            RoleIds = user.RoleIds,
             UserId = user.Id,
             UserName = user.UserName ?? string.Empty,
             Email = user.Email ?? string.Empty

@@ -10,7 +10,10 @@ public class PageController(
     IPluginDefinitionService pluginDefinitionService,
     IPluginService pluginService,
     ILayoutService layoutService,
+    IRoleService roleService,
+    IUserRoleService userRoleService,
     ISetupManager setupManager,
+    IAuthContext authContext,
     IMapper mapper) : BaseGlobalController
 {
 
@@ -173,6 +176,23 @@ public class PageController(
         pageResponse.DetailLayout = mapper.Map<LayoutDetailResponse>(detailLayout);
         pageResponse.FullPath = path;
         pageResponse.Sections = [];
+
+        // set all available roles in the site
+        var allRoles = await roleService.GetAllForSite(site.Id, cancellationToken) ?? [];
+        pageResponse.Site.AllRoles = mapper.Map<List<RoleDetailResponse>>(allRoles);
+
+        // set admin roles property for the site
+        // TODO: read from IPermissionService
+        pageResponse.Site.AdminRoles = pageResponse.Site.AllRoles.Where(x => x.Type == RoleTypes.Administrators).ToList();
+
+        // set contributor roles property for the site
+        // TODO: read from IPermissionService
+        pageResponse.Site.ContributorRoles = pageResponse.Site.AllRoles.Where(x => x.Type == RoleTypes.Administrators).ToList();
+
+        // setting current user details and permissions
+        pageResponse.User = mapper.Map<UserRoleDetailResponse>(authContext);
+        var userRoleIds = await userRoleService.GetUserRoleIds(authContext.UserId, site.Id, cancellationToken);
+        pageResponse.User.Roles = pageResponse.Site.AllRoles.Where(x=> userRoleIds.Contains(x.Id)).ToList();
 
         foreach (var plugin in plugins)
         {

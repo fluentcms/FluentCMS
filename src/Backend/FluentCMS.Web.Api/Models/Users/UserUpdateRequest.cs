@@ -17,7 +17,4 @@ public class UserUpdateRequest
     public bool Enabled { get; set; }
 
     public bool Locked { get; set; }
-
-    [Required]
-    public List<Guid> RoleIds { get; set; } = [];
 }
