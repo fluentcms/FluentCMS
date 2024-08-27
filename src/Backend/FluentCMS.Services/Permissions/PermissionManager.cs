@@ -1,29 +1,33 @@
 ﻿namespace FluentCMS.Services.Permissions;
 
-public class PermissionManager<TEntity> : IPermissionManager<TEntity> where TEntity : ISiteAssociatedEntity
+public class PermissionManager : IPermissionManager
 {
     private IAuthContext _authContext;
     private readonly IPermissionRepository _permissionRepository;
-    private readonly IPageRepository _pageRepository;
+    private readonly IUserRoleRepository _userRoleRepository;
     private IEnumerable<Guid> _userRoleIds;
+    private IEnumerable<Permission> _sitePermissions;
 
-    public PermissionManager(IAuthContext authContext, IPermissionRepository permissionRepository, IPageRepository pageRepository)
+    public PermissionManager(IAuthContext authContext, IPermissionRepository permissionRepository, IPageRepository pageRepository, IUserRoleRepository userRoleRepository)
     {
         _authContext = authContext;
         _permissionRepository = permissionRepository;
-        _pageRepository = pageRepository;
+        _userRoleRepository = userRoleRepository;
     }
 
-    public async Task<bool> HasAccess(TEntity entity, string action, CancellationToken cancellationToken = default)
+    public async Task<bool> HasAccess<TEntity>(TEntity entity, string action, CancellationToken cancellationToken = default) where TEntity : ISiteAssociatedEntity
     {
+        return true;
+
         //TODO 
-        _userRoleIds = new List<Guid>();
+        _userRoleIds = (await _userRoleRepository.GetUserRoles(_authContext.UserId, entity.SiteId, cancellationToken)).Select(x => x.RoleId);
+        _sitePermissions = await _permissionRepository.GetAllForSite(entity.SiteId, cancellationToken);
 
         switch (entity.GetType().Name)
         {
-            case nameof(Page): return await CheckPageAccess(entity as Page, action, cancellationToken);
-            case nameof(Site): return await CheckSiteAccess(entity.Id, action, cancellationToken);
-            case nameof(Plugin): return await CheckPluginAccess(entity as Plugin, action, cancellationToken);
+            case nameof(Site): return CheckSiteAccess(entity.Id, action);
+            case nameof(Page): return CheckPageAccess(entity.Id, entity.SiteId, action);
+            case nameof(Plugin): return CheckPluginAccess(entity.Id, (entity as Plugin).PageId, entity.SiteId, action); ;
 
             default: break;
         }
@@ -31,9 +35,9 @@ public class PermissionManager<TEntity> : IPermissionManager<TEntity> where TEnt
         return false;
     }
 
-    private async Task<bool> CheckSiteAccess(Guid siteId, string action, CancellationToken cancellationToken = default)
+    private bool CheckSiteAccess(Guid siteId, string action)
     {
-        var sitePermissions = await _permissionRepository.GetByEntityId(siteId, cancellationToken);
+        var sitePermissions = _sitePermissions.Where(x => x.EntityId == siteId);
         var validActions = GetValidActions(nameof(Site), action);
 
         foreach (var validAction in validActions)
@@ -46,9 +50,13 @@ public class PermissionManager<TEntity> : IPermissionManager<TEntity> where TEnt
         return false;
     }
 
-    private async Task<bool> CheckPageAccess(Page page, string action, CancellationToken cancellationToken = default)
+    private bool CheckPageAccess(Guid pageId, Guid siteId, string action)
     {
-        var pagePermissions = await _permissionRepository.GetByEntityId(page.Id, cancellationToken);
+        var hasSiteAccess = CheckSiteAccess(siteId, PermissionActionNames.SiteContributor);
+        if (hasSiteAccess)
+            return true;
+
+        var pagePermissions = _sitePermissions.Where(x => x.EntityId == pageId);
         var validActions = GetValidActions(nameof(Page), action);
 
         foreach (var validAction in validActions)
@@ -58,12 +66,16 @@ public class PermissionManager<TEntity> : IPermissionManager<TEntity> where TEnt
                 return true;
         }
 
-        return await CheckSiteAccess(page.SiteId, PermissionActionNames.SiteView, cancellationToken);
+        return false;
     }
 
-    private async Task<bool> CheckPluginAccess(Plugin plugin, string action, CancellationToken cancellationToken = default)
+    private bool CheckPluginAccess(Guid pluginId, Guid pageId, Guid siteId, string action)
     {
-        var pluginPermissions = await _permissionRepository.GetByEntityId(plugin.Id, cancellationToken);
+        var hasPageAccess = CheckPageAccess(pageId, siteId, PermissionActionNames.PageView);
+        if (hasPageAccess)
+            return true;
+
+        var pluginPermissions = _sitePermissions.Where(x => x.EntityId == pluginId);
         var validActions = GetValidActions(nameof(Plugin), action);
 
         foreach (var validAction in validActions)
@@ -73,11 +85,7 @@ public class PermissionManager<TEntity> : IPermissionManager<TEntity> where TEnt
                 return true;
         }
 
-        var page = await _pageRepository.GetById(plugin.PageId, cancellationToken);
-        if (page == null)
-            return false;
-
-        return await CheckPageAccess(page, PermissionActionNames.SiteView, cancellationToken);
+        return false;
     }
 
     private IEnumerable<string> GetValidActions(string entityType, string action)
@@ -94,13 +102,7 @@ public class PermissionManager<TEntity> : IPermissionManager<TEntity> where TEnt
 
     private IEnumerable<string> GetSiteValidActions(string action)
     {
-        if (action == PermissionActionNames.SiteView)
-        {
-            yield return PermissionActionNames.SiteAdmin;
-            yield return PermissionActionNames.SiteContributor;
-            yield return PermissionActionNames.SiteAdmin;
-        }
-        else if (action == PermissionActionNames.SiteContributor)
+        if (action == PermissionActionNames.SiteContributor)
         {
             yield return PermissionActionNames.SiteAdmin;
             yield return PermissionActionNames.SiteContributor;
@@ -117,7 +119,7 @@ public class PermissionManager<TEntity> : IPermissionManager<TEntity> where TEnt
         {
             yield return PermissionActionNames.PageAdmin;
             yield return PermissionActionNames.PageContributor;
-            yield return PermissionActionNames.PageAdmin;
+            yield return PermissionActionNames.PageView;
         }
         else if (action == PermissionActionNames.PageContributor)
         {
@@ -136,7 +138,7 @@ public class PermissionManager<TEntity> : IPermissionManager<TEntity> where TEnt
         {
             yield return PermissionActionNames.PluginAdmin;
             yield return PermissionActionNames.PluginContributor;
-            yield return PermissionActionNames.PluginAdmin;
+            yield return PermissionActionNames.PluginView;
         }
         else if (action == PermissionActionNames.PluginContributor)
         {

@@ -35,4 +35,5 @@ public class PermissionRepository : SiteAssociatedRepository<Permission>, IPermi
 
         return await CreateMany(permissions, cancellationToken);
     }
+
 }

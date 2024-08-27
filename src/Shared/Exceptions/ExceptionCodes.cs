@@ -168,6 +168,7 @@ public static class ExceptionCodes
     public const string PermissionUnableToUpdate = "Permission.UnableToUpdate";
     public const string PermissionUnableToDelete = "Permission.UnableToDelete";
     public const string PermissionNotFound = "Permission.NotFound";
+    public const string PermissionDenied = "Permission.Denied";
 
     #endregion
 }

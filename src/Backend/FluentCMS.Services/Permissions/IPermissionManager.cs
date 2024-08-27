@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Services.Permissions;
 
-public interface IPermissionManager<TEntity> where TEntity : ISiteAssociatedEntity
+public interface IPermissionManager
 {
-    Task<bool> HasAccess(TEntity entity, string action, CancellationToken cancellationToken = default);
+    Task<bool> HasAccess<TEntity>(TEntity entity, string action, CancellationToken cancellationToken = default) where TEntity : ISiteAssociatedEntity;
 }

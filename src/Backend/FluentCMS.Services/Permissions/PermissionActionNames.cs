@@ -4,7 +4,6 @@ public static class PermissionActionNames
 {
     #region Site
 
-    public const string SiteView = "View";
     public const string SiteContributor = "Contributor";
     public const string SiteAdmin = "Admin";
 

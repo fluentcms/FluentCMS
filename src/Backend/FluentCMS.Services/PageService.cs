@@ -1,6 +1,4 @@
-﻿using FluentCMS.Services.Permissions;
-
-namespace FluentCMS.Services;
+﻿namespace FluentCMS.Services;
 
 public interface IPageService : IAutoRegisterService
 {
@@ -16,14 +14,16 @@ public class PageService(
     IPageRepository pageRepository,
     ISiteRepository siteRepository,
     IMessagePublisher messagePublisher,
-    IPermissionRepository permissionRepository,
-    IPermissionManager<Page> permissionManager) : IPageService
+    IPermissionManager permissionManager) : IPageService
 {
 
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
     {
+        if (!(await permissionManager.HasAccess(page, PermissionActionNames.PageContributor, cancellationToken)))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
         // Check if site id exists
-        var site = (await siteRepository.GetById(page.SiteId, cancellationToken)) ??
+        _ = (await siteRepository.GetById(page.SiteId, cancellationToken)) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
 
         // If Parent Id is assigned
@@ -39,6 +39,8 @@ public class PageService(
 
         var newPage = await pageRepository.Create(page, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageUnableToCreate);
+
+        await messagePublisher.Publish(new Message<Page>(ActionNames.PageCreated, newPage), cancellationToken);
 
         return newPage;
     }
@@ -61,6 +63,8 @@ public class PageService(
 
         var deletedPage = await pageRepository.Delete(id, cancellationToken) ??
              throw new AppException(ExceptionCodes.PageUnableToDelete);
+
+        await messagePublisher.Publish(new Message<Page>(ActionNames.PageDeleted, deletedPage), cancellationToken);
 
         return deletedPage;
     }
@@ -105,6 +109,8 @@ public class PageService(
 
         var updatedPage = await pageRepository.Update(page, cancellationToken)
              ?? throw new AppException(ExceptionCodes.PageUnableToUpdate);
+
+        await messagePublisher.Publish(new Message<Page>(ActionNames.PageUpdated, updatedPage), cancellationToken);
 
         return updatedPage;
     }

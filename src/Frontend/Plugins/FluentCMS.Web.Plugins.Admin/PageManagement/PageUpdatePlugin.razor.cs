@@ -21,8 +21,6 @@ public partial class PageUpdatePlugin
 
     private PageDetailResponse? Page { get; set; }
 
-    private List<RoleDetailResponse>? Roles { get; set; }
-
     async Task GetAvailableParentPages()
     {
         var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Urls[0]);
@@ -90,12 +88,6 @@ public partial class PageUpdatePlugin
             var pageResponse = await ApiClient.Page.GetByIdAsync(Id);
             Page = pageResponse.Data;
             Model = Mapper.Map<PageUpdateRequest>(Page);
-        }
-
-        if (Roles is null)
-        {
-            var rolesResponse = await ApiClient.Role.GetAllForSiteAsync(ViewState.Site.Id);
-            Roles = rolesResponse?.Data?.ToList() ?? [];
         }
     }
 

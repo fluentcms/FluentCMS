@@ -17,8 +17,6 @@ public partial class PageCreatePlugin
     private List<SelectOption>? LayoutOptions { get; set; }
     private List<SelectOption>? PageOptions { get; set; }
 
-    private List<RoleDetailResponse>? Roles { get; set; }
-
     protected override async Task OnInitializedAsync()
     {
         if (Layouts is null)
@@ -69,12 +67,6 @@ public partial class PageCreatePlugin
                     }
                 );
             }
-        }
-
-        if (Roles is null)
-        {
-            var rolesResponse = await ApiClient.Role.GetAllForSiteAsync(ViewState.Site.Id);
-            Roles = rolesResponse?.Data?.ToList() ?? [];
         }
 
         Model ??= new();
