@@ -45,8 +45,8 @@ public static class ExceptionCodes
     public const string RoleUnableToDelete = "Role.UnableToDelete";
     public const string RoleCanNotBeDeleted = "Role.CanNotBeDeleted";
     public const string RoleNotFound = "Role.NotFound";
-    public const string RoleNameMustBeUnique = "Role.NameMustBeUnique";
     public const string RoleInvalidAppId = "Role.InvalidAppId";
+    public const string RoleNameIsDuplicated = "Role.RoleNameIsDuplicated";
 
     #endregion
 
@@ -159,6 +159,16 @@ public static class ExceptionCodes
     public const string PluginContentUnableToUpdate = "PluginContent.UnableToUpdate";
     public const string PluginContentUnableToDelete = "PluginContent.UnableToDelete";
     public const string PluginContentNotFound = "PluginContent.NotFound";
+
+    #endregion
+
+    #region Permission
+
+    public const string PermissionUnableToCreate = "Permission.UnableToCreate";
+    public const string PermissionUnableToUpdate = "Permission.UnableToUpdate";
+    public const string PermissionUnableToDelete = "Permission.UnableToDelete";
+    public const string PermissionNotFound = "Permission.NotFound";
+    public const string PermissionDenied = "Permission.Denied";
 
     #endregion
 }

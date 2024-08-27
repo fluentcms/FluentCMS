@@ -21,7 +21,7 @@
             </DataTableItem>
             <DataTableItem Label="Enable">
                 <Indicator Color="Color.Success" Visible="@context.Enabled">YES</Indicator>
-                <Indicator Color="Color.Danger" Visible="@(!context.Enabled)">NO</Indicator>   
+                <Indicator Color="Color.Danger" Visible="@(!context.Enabled)">NO</Indicator>
             </DataTableItem>
             <DataTableItem Label="Create Date">@context.CreatedAt</DataTableItem>
             <DataTableItem Label="Last Login Date">@context.LoginAt</DataTableItem>
@@ -30,15 +30,10 @@
                 <Indicator Color="Color.Success" Visible="@(!context.Locked)">NO</Indicator>
                 <Indicator Color="Color.Danger" Visible="@context.Locked">YES</Indicator>
             </DataTableItem>
-            <DataTableItem Label="Roles">
-                @foreach (var role in context.Roles?.Where(_ => !string.IsNullOrEmpty(_.Name)) ?? [])
-                {
-                    <Badge Color="Color.Info">@role.Name</Badge>
-                }
-            </DataTableItem>
             <ActionButtons>
                 <ActionButtonEdit Href="@GetUrl("Update User", new { id = @context.Id })" />
             </ActionButtons>
         </DataTable>
     </ChildContent>
 </PluginBody>
+

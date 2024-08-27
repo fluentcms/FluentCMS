@@ -10,10 +10,7 @@
             <DataTableItem Label="Name">@context.Name</DataTableItem>
             <DataTableItem Label="Description">@context.Description</DataTableItem>
             <ActionButtons>
-                @if (context.Type == RoleTypes.UserDefined)
-                {
-                    <ActionButtonDelete @onclick="() => OnConfirm(context)" />
-                }
+                <ActionButtonDelete @onclick="() => OnConfirm(context)" Visible="@(context.Type == RoleTypes.UserDefined)" />
                 <ActionButtonEdit Href="@GetUrl("Update Role", new { id = @context.Id })" />
             </ActionButtons>
         </DataTable>

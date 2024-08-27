@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Providers;
 
-public interface IMessagePublisher<TMessage>
+public interface IMessagePublisher
 {
-    Task Publish(string actionName, TMessage messsage);
+    Task Publish<TPayload>(Message<TPayload> message, CancellationToken cancellationToken = default);
 }

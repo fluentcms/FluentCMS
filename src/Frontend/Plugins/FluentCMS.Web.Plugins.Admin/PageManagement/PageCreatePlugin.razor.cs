@@ -25,7 +25,8 @@ public partial class PageCreatePlugin
             Layouts = layoutsResponse?.Data?.ToList() ?? [];
 
             LayoutOptions = [
-                new SelectOption {
+                new SelectOption
+                {
                     Title = "(default)",
                     Value = Guid.Empty
                 }
@@ -49,7 +50,8 @@ public partial class PageCreatePlugin
             Pages = pagesResponse?.Data?.Where(x => !x.Locked).ToList();
 
             PageOptions = [
-                new SelectOption {
+                new SelectOption
+                {
                     Title = "(none)",
                     Value = Guid.Empty
                 }

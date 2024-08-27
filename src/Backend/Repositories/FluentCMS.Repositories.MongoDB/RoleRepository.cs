@@ -6,4 +6,9 @@ public class RoleRepository : SiteAssociatedRepository<Role>, IRoleRepository
     {
     }
 
+    public async Task<Role> GetByNameAndSiteId(Guid siteId, string name, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return await Collection.Find(x => x.SiteId == siteId && x.Name == name).FirstOrDefaultAsync(cancellationToken);
+    }
 }

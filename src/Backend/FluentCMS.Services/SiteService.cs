@@ -1,6 +1,4 @@
-﻿using FluentCMS.Providers;
-
-namespace FluentCMS.Services;
+﻿namespace FluentCMS.Services;
 
 public interface ISiteService : IAutoRegisterService
 {
@@ -12,7 +10,7 @@ public interface ISiteService : IAutoRegisterService
     Task<Site> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class SiteService(ISiteRepository siteRepository, IMessagePublisher<Site> messagePublisher) : ISiteService
+public class SiteService(ISiteRepository siteRepository, IMessagePublisher messagePublisher) : ISiteService
 {
     public async Task<IEnumerable<Site>> GetAll(CancellationToken cancellationToken = default)
     {
@@ -44,7 +42,7 @@ public class SiteService(ISiteRepository siteRepository, IMessagePublisher<Site>
         var newSite = await siteRepository.Create(site, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteUnableToCreate);
 
-        await messagePublisher.Publish(ActionNames.SiteCreated, newSite);
+        await messagePublisher.Publish(new Message<Site>(ActionNames.SiteCreated, newSite), cancellationToken);
 
         return newSite;
     }
@@ -61,19 +59,19 @@ public class SiteService(ISiteRepository siteRepository, IMessagePublisher<Site>
         var updateSite = await siteRepository.Update(site, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteUnableToUpdate);
 
-        await messagePublisher.Publish(ActionNames.SiteUpdated, updateSite);
+        await messagePublisher.Publish(new Message<Site>(ActionNames.SiteUpdated, updateSite), cancellationToken);
 
         return updateSite;
     }
 
     public async Task<Site> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        var existSite = await siteRepository.Delete(id, cancellationToken) ??
+        var deletedSite = await siteRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteUnableToDelete);
 
-        await messagePublisher.Publish(ActionNames.SiteDeleted, existSite);
+        await messagePublisher.Publish(new Message<Site>(ActionNames.SiteDeleted, deletedSite), cancellationToken);
 
-        return existSite;
+        return deletedSite;
     }
 
     private static void PrepareSite(Site site)

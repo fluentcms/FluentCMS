@@ -7,5 +7,8 @@
     <FormSelect @bind-Value="Model!.ParentId" Data="PageOptions" ValueField="Value" TextField="Title" Cols="6" Label="Parent page" Placeholder="Choose Parent page" Visible="@(Pages != null)" />
     <FormSelect @bind-Value="Model!.LayoutId" Data="LayoutOptions" ValueField="Value" TextField="Title" Cols="6" Label="Layout" Placeholder="Choose Layout" Visible="@(Layouts != null)" />
     <FormNumberInput @bind-Value="Model!.Order" Cols="6" Label="Order" Placeholder="Enter page order" />
+     <FormCheckboxGroup @bind-Value="Model!.ViewRoleIds" Data="ViewState.Site.AllRoles" Label="ViewRoles" TextField="Name" ValueField="Id" />
+     <FormCheckboxGroup @bind-Value="Model!.ContributorRoleIds" Data="ViewState.Site.AllRoles" Label="ContributorRoles" TextField="Name" ValueField="Id" />
+     <FormCheckboxGroup @bind-Value="Model!.AdminRoleIds" Data="ViewState.Site.AllRoles" Label="AdminRoles" TextField="Name" ValueField="Id" />
     <FormActions Cancel Submit />
 </PluginForm>

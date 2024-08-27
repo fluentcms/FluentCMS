@@ -32,7 +32,8 @@ public partial class PageUpdatePlugin
         Pages = pages.ToList();
 
         PageOptions = [
-            new SelectOption {
+            new SelectOption
+            {
                 Title = "(none)",
                 Value = Guid.Empty
             }
@@ -58,7 +59,8 @@ public partial class PageUpdatePlugin
             Layouts = layoutsResponse?.Data?.ToList() ?? [];
 
             LayoutOptions = [
-                new SelectOption {
+                new SelectOption
+                {
                     Title = "(default)",
                     Value = Guid.Empty
                 }

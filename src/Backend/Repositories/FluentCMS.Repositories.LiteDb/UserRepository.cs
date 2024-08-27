@@ -41,11 +41,4 @@ public class UserRepository(
         var user = AsQueryable().FirstOrDefault(x => x.NormalizedUserName == normalizedUserName);
         return Task.FromResult(user);
     }
-
-    public Task<IList<User>> GetUsersInRole(string roleId, CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        var users = Collection.AsQueryable().Where(x => x.RoleIds.Any(r => roleId.Equals(r))).ToList();
-        return Task.FromResult((IList<User>)users);
-    }
 }
