@@ -55,7 +55,6 @@ public static class ServiceExtensions
             };
         });
 
-
         // add global cascade parameter for Page (PageFullDetailResponse)
         // if we use cascading value in the component, it will be null in component which are rendered as InteractiveMode
         // because the page is SSR and the cascading value is not available in the component
@@ -78,9 +77,8 @@ public static class ServiceExtensions
             viewState.DetailLayout = mapper.Map<LayoutViewState>(pageResponse.Data.DetailLayout);
             viewState.EditLayout = mapper.Map<LayoutViewState>(pageResponse.Data.EditLayout);
             viewState.Site = mapper.Map<SiteViewState>(pageResponse.Data.Site);
-            //viewState.Site.Roles = pageResponse.Data.Roles.Select(x => mapper.Map<RoleViewState>(x)).ToList();
             viewState.Plugins = pageResponse.Data.Sections!.Values.SelectMany(x => x).Select(p => mapper.Map<PluginViewState>(p)).ToList();
-            viewState.User = mapper.Map<UserViewState>(sp.GetRequiredService<UserLoginResponse>());
+            viewState.User = mapper.Map<UserViewState>(pageResponse.Data.User);
 
             // check if the page is in edit mode
             // it should have pluginId and pluginViewName query strings

@@ -11454,6 +11454,9 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("locked")]
         public bool Locked { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("user")]
+        public UserRoleDetailResponse User { get; set; } = default!;
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.1.0.0 (NJsonSchema v11.0.2.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -12319,6 +12322,15 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("editLayoutId")]
         public System.Guid EditLayoutId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("adminRoles")]
+        public System.Collections.Generic.ICollection<RoleDetailResponse>? AdminRoles { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("contributorRoles")]
+        public System.Collections.Generic.ICollection<RoleDetailResponse>? ContributorRoles { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("allRoles")]
+        public System.Collections.Generic.ICollection<RoleDetailResponse>? AllRoles { get; set; } = default!;
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.1.0.0 (NJsonSchema v11.0.2.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -12704,6 +12716,24 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.1.0.0 (NJsonSchema v11.0.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UserRoleDetailResponse
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("username")]
+        public string? Username { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isAuthenticated")]
+        public bool IsAuthenticated { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("userId")]
+        public System.Guid UserId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("roles")]
+        public System.Collections.Generic.ICollection<RoleDetailResponse>? Roles { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.1.0.0 (NJsonSchema v11.0.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserRoleUpdateRequest
     {
 
@@ -12771,10 +12801,6 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("locked")]
         public bool Locked { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("roleIds")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public System.Collections.Generic.ICollection<System.Guid> RoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
 
     }
 

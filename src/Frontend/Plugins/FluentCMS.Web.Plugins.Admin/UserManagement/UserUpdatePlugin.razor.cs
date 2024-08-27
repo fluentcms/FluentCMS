@@ -19,12 +19,7 @@ public partial class UserUpdatePlugin
     private UserSetPasswordRequest? SetPasswordModel { get; set; }
 
     [SupplyParameterFromForm(FormName = FORM_NAME_ASSIGN_ROLE)]
-    private UserRoleUpdateRequest? RoleAssignmentModel { get; set; }
-
-    private List<RoleDetailResponse>? Roles { get; set; }
-
-    [SupplyParameterFromForm(Name = "selectedRoleIds")]
-    private ICollection<Guid>? SelectedRoleIds { get; set; } = default!;
+    private UserRoleUpdateRequest? UserRolesModel { get; set; }
 
     private string? Username { get; set; }
 
@@ -40,19 +35,20 @@ public partial class UserUpdatePlugin
 
         SetPasswordModel ??= new UserSetPasswordRequest() { UserId = Id };
 
-        if (RoleAssignmentModel is null)
+        if (UserRolesModel is null)
         {
-            var rolesResponse = await ApiClient.UserRole.GetUserRolesAsync(Id, ViewState.Site.Id);
-            Roles = rolesResponse?.Data?.ToList() ?? [];
-
-            SelectedRoleIds = Roles?.Where(x => x.HasAccess).Select(x => x.RoleId).ToList();
-            RoleAssignmentModel ??= new UserRoleUpdateRequest() { UserId = Id, SiteId = ViewState.Site.Id };
+            var userRoles = await ApiClient.UserRole.GetUserRolesAsync(Id, ViewState.Site.Id);
+            UserRolesModel = new UserRoleUpdateRequest
+            {
+                UserId = Id,
+                SiteId = ViewState.Site.Id,
+                RoleIds = userRoles.Data?.Select(x => x.Id).ToList() ?? []
+            };
         }
     }
 
-    private async Task OnSubmit()
+    private async Task OnUserUpdate()
     {
-        UpdateModel!.RoleIds ??= [];
         await ApiClient.User.UpdateAsync(UpdateModel);
         NavigateBack();
     }
@@ -63,11 +59,9 @@ public partial class UserUpdatePlugin
         NavigateBack();
     }
 
-    private async Task OnRoleAssigment()
+    private async Task OnRoleUpdate()
     {
-        RoleAssignmentModel!.RoleIds = SelectedRoleIds;
-
-        await ApiClient.UserRole.UpdateAsync(RoleAssignmentModel);
+        await ApiClient.UserRole.UpdateAsync(UserRolesModel);
         NavigateBack();
     }
 }

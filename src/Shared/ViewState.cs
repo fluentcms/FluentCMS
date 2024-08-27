@@ -29,7 +29,9 @@ public class SiteViewState
     public string Name { get; set; } = default!;
     public List<string> Urls { get; set; } = default!;
     public string? Description { get; set; }
-    public List<RoleViewState> Roles { get; set; } = [];
+    public List<RoleViewState> AdminRoles { get; set; } = [];
+    public List<RoleViewState> ContributorRoles { get; set; } = [];
+    public List<RoleViewState> AllRoles { get; set; } = [];
 }
 
 public class RoleViewState
@@ -105,4 +107,5 @@ public class UserViewState
     public string Token { get; set; } = string.Empty;
     public string UserName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
+    public List<RoleViewState> Roles { get; set; } = [];
 }
