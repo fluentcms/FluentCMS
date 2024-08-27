@@ -11265,6 +11265,18 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("order")]
         public int Order { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("viewRoleIds")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<System.Guid> ViewRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("contributorRoleIds")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<System.Guid> ContributorRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("adminRoleIds")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<System.Guid> AdminRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.1.0.0 (NJsonSchema v11.0.2.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -11318,6 +11330,15 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("locked")]
         public bool Locked { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("viewRoleIds")]
+        public System.Collections.Generic.ICollection<System.Guid>? ViewRoleIds { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("contributorRoleIds")]
+        public System.Collections.Generic.ICollection<System.Guid>? ContributorRoleIds { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("adminRoleIds")]
+        public System.Collections.Generic.ICollection<System.Guid>? AdminRoleIds { get; set; } = default!;
 
     }
 
@@ -11549,6 +11570,18 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("order")]
         public int Order { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("viewRoleIds")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<System.Guid> ViewRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("contributorRoleIds")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<System.Guid> ContributorRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("adminRoleIds")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<System.Guid> AdminRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
         public System.Guid Id { get; set; } = default!;

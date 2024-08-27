@@ -12,13 +12,18 @@ public interface IPageService : IAutoRegisterService
 
 public class PageService(
     IPageRepository pageRepository,
-    ISiteRepository siteRepository) : IPageService
+    ISiteRepository siteRepository,
+    IMessagePublisher messagePublisher,
+    IPermissionManager permissionManager) : IPageService
 {
 
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
     {
+        if (!await permissionManager.HasAccess(page, PermissionActionNames.PageContributor, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
         // Check if site id exists
-        var site = (await siteRepository.GetById(page.SiteId, cancellationToken)) ??
+        _ = (await siteRepository.GetById(page.SiteId, cancellationToken)) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
 
         // If Parent Id is assigned
@@ -35,11 +40,14 @@ public class PageService(
         var newPage = await pageRepository.Create(page, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageUnableToCreate);
 
+        await messagePublisher.Publish(new Message<Page>(ActionNames.PageCreated, newPage), cancellationToken);
+
         return newPage;
     }
 
     public async Task<Page> Delete(Guid id, CancellationToken cancellationToken = default)
     {
+
         //fetch original page from db
         var originalPage = await pageRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
@@ -53,8 +61,12 @@ public class PageService(
         if (pages.Any(x => x.ParentId == id && x.SiteId == originalPage.SiteId))
             throw new AppException(ExceptionCodes.PageHasChildren);
 
-        return await pageRepository.Delete(id, cancellationToken) ??
-            throw new AppException(ExceptionCodes.PageUnableToDelete);
+        var deletedPage = await pageRepository.Delete(id, cancellationToken) ??
+             throw new AppException(ExceptionCodes.PageUnableToDelete);
+
+        await messagePublisher.Publish(new Message<Page>(ActionNames.PageDeleted, deletedPage), cancellationToken);
+
+        return deletedPage;
     }
 
     public async Task<Page> GetById(Guid id, CancellationToken cancellationToken = default)
@@ -95,8 +107,12 @@ public class PageService(
         if (page.Path != originalPage.Path)
             ValidateUrl(page, pages);
 
-        return await pageRepository.Update(page, cancellationToken)
-            ?? throw new AppException(ExceptionCodes.PageUnableToUpdate);
+        var updatedPage = await pageRepository.Update(page, cancellationToken)
+             ?? throw new AppException(ExceptionCodes.PageUnableToUpdate);
+
+        await messagePublisher.Publish(new Message<Page>(ActionNames.PageUpdated, updatedPage), cancellationToken);
+
+        return updatedPage;
     }
 
     public async Task<Page> GetByPath(Guid siteId, string path, CancellationToken cancellationToken = default)

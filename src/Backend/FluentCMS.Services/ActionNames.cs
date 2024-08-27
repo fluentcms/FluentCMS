@@ -10,6 +10,14 @@ public static class ActionNames
 
     #endregion
 
+    #region Page
+
+    public const string PageCreated = "PageCreated";
+    public const string PageUpdated = "PageUpdated";
+    public const string PageDeleted = "PageDeleted";
+
+    #endregion
+
     #region Role
 
     public const string RoleCreated = "RoleCreated";
