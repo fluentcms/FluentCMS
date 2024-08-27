@@ -2,11 +2,11 @@
 
 public class PermissionManager : IPermissionManager
 {
-    private IAuthContext _authContext;
+    private readonly IAuthContext _authContext;
     private readonly IPermissionRepository _permissionRepository;
     private readonly IUserRoleRepository _userRoleRepository;
-    private IEnumerable<Guid> _userRoleIds;
-    private IEnumerable<Permission> _sitePermissions;
+    private IEnumerable<Guid> _userRoleIds = [];
+    private IEnumerable<Permission> _sitePermissions = [];
 
     public PermissionManager(IAuthContext authContext, IPermissionRepository permissionRepository, IPageRepository pageRepository, IUserRoleRepository userRoleRepository)
     {
@@ -90,17 +90,16 @@ public class PermissionManager : IPermissionManager
 
     private IEnumerable<string> GetValidActions(string entityType, string action)
     {
-        switch (entityType)
+        return entityType switch
         {
-            case nameof(Page): return GetPageValidActions(action);
-            case nameof(Site): return GetSiteValidActions(action);
-            case nameof(Plugin): return GetPluginValidActions(action);
-
-            default: return [];
-        }
+            nameof(Page) => GetPageValidActions(action),
+            nameof(Site) => GetSiteValidActions(action),
+            nameof(Plugin) => GetPluginValidActions(action),
+            _ => [],
+        };
     }
 
-    private IEnumerable<string> GetSiteValidActions(string action)
+    private static IEnumerable<string> GetSiteValidActions(string action)
     {
         if (action == PermissionActionNames.SiteContributor)
         {
@@ -113,7 +112,7 @@ public class PermissionManager : IPermissionManager
         }
     }
 
-    private IEnumerable<string> GetPageValidActions(string action)
+    private static IEnumerable<string> GetPageValidActions(string action)
     {
         if (action == PermissionActionNames.PageView)
         {
@@ -132,7 +131,7 @@ public class PermissionManager : IPermissionManager
         }
     }
 
-    private IEnumerable<string> GetPluginValidActions(string action)
+    private static IEnumerable<string> GetPluginValidActions(string action)
     {
         if (action == PermissionActionNames.PluginView)
         {
