@@ -3,7 +3,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace FluentCMS.Providers;
+namespace FluentCMS.Providers.ApiTokenProviders;
 
 public class DefaultApiTokenProvider : IApiTokenProvider
 {

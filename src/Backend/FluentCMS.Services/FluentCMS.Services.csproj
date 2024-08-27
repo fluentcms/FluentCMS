@@ -12,6 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Providers\FluentCMS.Providers.ApiTokenProviders\FluentCMS.Providers.ApiTokenProviders.csproj" />
+    <ProjectReference Include="..\..\Providers\FluentCMS.Providers.EmailProviders\FluentCMS.Providers.EmailProviders.csproj" />
+    <ProjectReference Include="..\..\Providers\FluentCMS.Providers.FileStorageProviders\FluentCMS.Providers.FileStorageProviders.csproj" />
+    <ProjectReference Include="..\..\Providers\FluentCMS.Providers.MessageBusProviders\FluentCMS.Providers.MessageBusProviders.csproj" />
     <ProjectReference Include="..\FluentCMS.Identity\FluentCMS.Identity.csproj" />
   </ItemGroup>
 

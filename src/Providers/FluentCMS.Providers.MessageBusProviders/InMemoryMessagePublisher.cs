@@ -1,6 +1,6 @@
 ﻿using MediatR;
 
-namespace FluentCMS.Providers;
+namespace FluentCMS.Providers.MessageBusProviders;
 
 public class InMemoryMessagePublisher(IMediator mediator) : IMessagePublisher
 {

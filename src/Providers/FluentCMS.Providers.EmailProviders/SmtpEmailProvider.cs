@@ -1,7 +1,7 @@
 ﻿using System.Net;
 using System.Net.Mail;
 
-namespace FluentCMS.Providers;
+namespace FluentCMS.Providers.EmailProviders;
 
 public class SmtpEmailProvider(SmtpServerConfig smtpServerConfiguration) : IEmailProvider
 {

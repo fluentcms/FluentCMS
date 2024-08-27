@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Identity;
+using FluentCMS.Providers.EmailProviders;
 using FluentCMS.Services;
 using Microsoft.AspNetCore.Identity;
 
@@ -8,12 +9,8 @@ public static class ServiceExtensions
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        services.AddInMemoryMessageBus();
-
         services.AddPermissions();
 
-        services.AddScoped<IEmailProvider, SmtpEmailProvider>();
-        services.AddScoped<IFileStorageProvider, LocalFileStorageProvider>();
         services.AddScoped(sp =>
         {
             var globalSettingsService = sp.GetRequiredService<IGlobalSettingsService>();
@@ -25,7 +22,12 @@ public static class ServiceExtensions
         });
 
         services.AddScoped<IUserTokenProvider, JwtUserTokenProvider>();
-        services.AddScoped<IApiTokenProvider, DefaultApiTokenProvider>();
+
+        // Register required providers
+        services.AddDefaultApiTokenProvider();
+        services.AddInMemoryMessageBusProvider();
+        services.AddSmtpEmailProvider();
+        services.AddLocalFileStorageProvider();
 
         AddIdentity(services);
 
