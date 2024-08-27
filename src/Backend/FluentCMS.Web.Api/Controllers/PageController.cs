@@ -192,7 +192,7 @@ public class PageController(
         // setting current user details and permissions
         pageResponse.User = mapper.Map<UserRoleDetailResponse>(authContext);
         var userRoleIds = await userRoleService.GetUserRoleIds(authContext.UserId, site.Id, cancellationToken);
-        pageResponse.User.Roles = pageResponse.Site.AllRoles.Where(x=> userRoleIds.Contains(x.Id)).ToList();
+        pageResponse.User.Roles = pageResponse.Site.AllRoles.Where(x => userRoleIds.Contains(x.Id)).ToList();
 
         foreach (var plugin in plugins)
         {

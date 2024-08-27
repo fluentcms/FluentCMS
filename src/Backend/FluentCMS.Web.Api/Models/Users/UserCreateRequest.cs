@@ -18,7 +18,4 @@ public class UserCreateRequest
 
     [Required]
     public bool Enabled { get; set; }
-
-    [Required]
-    public IEnumerable<Guid> RoleIds { get; set; } = [];
 }
