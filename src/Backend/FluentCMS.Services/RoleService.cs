@@ -12,14 +12,6 @@ public interface IRoleService : IAutoRegisterService
 
 public class RoleService(IRoleRepository roleRepository, IMessagePublisher messagePublisher) : IRoleService, IMessageHandler<Site>
 {
-    private readonly IRoleRepository _roleRepository;
-    private readonly IMessagePublisher<Role> _roleMessagePublisher;
-
-    public RoleService(IRoleRepository roleRepository)
-    {
-        _roleRepository = roleRepository;
-    }
-
     public async Task<IEnumerable<Role>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {
         return await roleRepository.GetAllForSite(siteId, cancellationToken);
