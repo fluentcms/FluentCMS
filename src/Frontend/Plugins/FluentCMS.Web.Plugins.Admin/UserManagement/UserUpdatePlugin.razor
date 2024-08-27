@@ -1,6 +1,6 @@
 ﻿@inherits BasePlugin
 
-<PluginForm Model="@UpdateModel" Name="@FORM_NAME" Title="Update User" OnSubmit="OnSubmit">
+<PluginForm Model="@UpdateModel" Name="@FORM_NAME" Title="Update User" OnSubmit="OnUserUpdate">
     <FormHiddenInput @bind-Value="UpdateModel!.Id" />
     <FormInput @bind-Value="Username" Cols="6" Disabled Label="Username" Placeholder="Enter Username" Required />
     <FormInput @bind-Value="UpdateModel!.Email" Cols="6" Label="Email" Placeholder="Enter Email" Required />
@@ -9,7 +9,13 @@
     <FormInput @bind-Value="UpdateModel!.PhoneNumber" Cols="6" Label="Phone Number" Placeholder="Enter Phone Number" />
     <FormCheckbox @bind-Value="UpdateModel!.Enabled" Cols="3" Label="Enabled" Text="Enable/disable user account" />
     <FormCheckbox @bind-Value="UpdateModel!.Locked" Cols="3" Label="Locked" Text="Lock the user access" />
-    <FormCheckboxGroup @bind-Value="UpdateModel!.RoleIds" Data="Roles" Label="Roles" TextField="Name" ValueField="Id" />
+    <FormActions Cancel Submit />
+</PluginForm>
+
+<PluginForm Model="@UserRolesModel" Name="@FORM_NAME_ASSIGN_ROLE" OnSubmit="OnRoleUpdate">
+    <FormHiddenInput @bind-Value="UserRolesModel!.UserId" />
+    <FormHiddenInput @bind-Value="UserRolesModel!.SiteId" />
+    <FormCheckboxGroup @bind-Value="UserRolesModel!.RoleIds" Data="ViewState.Site.AllRoles.Where(x=> x.Type == RoleTypesViewState.UserDefined || x.Type == RoleTypesViewState.Administrators).ToList()" Label="Roles" TextField="Name" ValueField="Id" />
     <FormActions Cancel Submit />
 </PluginForm>
 

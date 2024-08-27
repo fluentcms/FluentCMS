@@ -52,10 +52,8 @@ public static class ServiceExtensions
                 Email = authState.User.FindFirstValue(ClaimTypes.Email),
                 UserName = authState.User.FindFirstValue(ClaimTypes.NameIdentifier),
                 Token = authState.User.FindFirstValue("jwt"),
-                RoleIds = authState.User.FindAll(ClaimTypes.Role).Select(x => Guid.Parse(x.Value)).ToList()
             };
         });
-
 
         // add global cascade parameter for Page (PageFullDetailResponse)
         // if we use cascading value in the component, it will be null in component which are rendered as InteractiveMode
@@ -80,7 +78,7 @@ public static class ServiceExtensions
             viewState.EditLayout = mapper.Map<LayoutViewState>(pageResponse.Data.EditLayout);
             viewState.Site = mapper.Map<SiteViewState>(pageResponse.Data.Site);
             viewState.Plugins = pageResponse.Data.Sections!.Values.SelectMany(x => x).Select(p => mapper.Map<PluginViewState>(p)).ToList();
-            viewState.User = mapper.Map<UserViewState>(sp.GetRequiredService<UserLoginResponse>());
+            viewState.User = mapper.Map<UserViewState>(pageResponse.Data.User);
 
             // check if the page is in edit mode
             // it should have pluginId and pluginViewName query strings
