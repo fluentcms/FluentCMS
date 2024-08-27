@@ -29,6 +29,24 @@ public class SiteViewState
     public string Name { get; set; } = default!;
     public List<string> Urls { get; set; } = default!;
     public string? Description { get; set; }
+    public List<RoleViewState> Roles { get; set; } = [];
+}
+
+public class RoleViewState
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = default!;
+    public string? Description { get; set; }
+    public RoleTypesViewState Type { get; set; }
+}
+
+public enum RoleTypesViewState
+{
+    UserDefined = 0, // user defined roles
+    Administrators = 1, // system defined role for administrators
+    Authenticated = 2, // system defined role for authenticated users (logged in users)
+    Guest = 3, // system defined role for unauthenticated users (guests)
+    AllUsers = 4 // system defined role for all users including guests and authenticated users
 }
 
 public class LayoutViewState

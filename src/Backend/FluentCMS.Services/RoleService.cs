@@ -10,11 +10,10 @@ public interface IRoleService : IAutoRegisterService
     Task<Role?> GetById(Guid roleId, CancellationToken cancellationToken = default);
 }
 
-public class RoleService : IRoleService, IMessageHandler<Site>
+public class RoleService(IRoleRepository roleRepository, IMessagePublisher messagePublisher) : IRoleService, IMessageHandler<Site>
 {
     private readonly IRoleRepository _roleRepository;
     private readonly IMessagePublisher<Role> _roleMessagePublisher;
-
 
     public RoleService(IRoleRepository roleRepository)
     {
@@ -23,50 +22,50 @@ public class RoleService : IRoleService, IMessageHandler<Site>
 
     public async Task<IEnumerable<Role>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {
-        return await _roleRepository.GetAllForSite(siteId, cancellationToken);
+        return await roleRepository.GetAllForSite(siteId, cancellationToken);
     }
 
     public async Task<IEnumerable<Role>> GetAll(CancellationToken cancellationToken = default)
     {
-        return await _roleRepository.GetAll(cancellationToken);
+        return await roleRepository.GetAll(cancellationToken);
     }
 
     public async Task<Role> Create(Role role, CancellationToken cancellationToken)
     {
-        var sameRole = await _roleRepository.GetByNameAndSiteId(role.SiteId, role.Name, cancellationToken);
+        var sameRole = await roleRepository.GetByNameAndSiteId(role.SiteId, role.Name, cancellationToken);
 
         if (sameRole != null)
             throw new AppException(ExceptionCodes.RoleNameIsDuplicated);
 
-        var newRole = await _roleRepository.Create(role, cancellationToken) ??
+        var newRole = await roleRepository.Create(role, cancellationToken) ??
            throw new AppException(ExceptionCodes.RoleUnableToCreate);
 
-        await _roleMessagePublisher.Publish(ActionNames.RoleCreated, newRole);
+        await messagePublisher.Publish(new Message<Role>(ActionNames.RoleCreated, newRole), cancellationToken);
 
         return newRole;
     }
 
     public async Task<Role> Update(Role role, CancellationToken cancellationToken)
     {
-        _ = await _roleRepository.GetById(role.Id, cancellationToken) ??
+        _ = await roleRepository.GetById(role.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleNotFound);
 
-        var sameRole = await _roleRepository.GetByNameAndSiteId(role.SiteId, role.Name, cancellationToken);
+        var sameRole = await roleRepository.GetByNameAndSiteId(role.SiteId, role.Name, cancellationToken);
 
         if (sameRole != null)
             throw new AppException(ExceptionCodes.RoleNameIsDuplicated);
 
-        var updatedRole = await _roleRepository.Update(role, cancellationToken) ??
+        var updatedRole = await roleRepository.Update(role, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleUnableToUpdate);
 
-        await _roleMessagePublisher.Publish(ActionNames.RoleUpdated, updatedRole);
+        await messagePublisher.Publish(new Message<Role>(ActionNames.RoleUpdated, updatedRole), cancellationToken);
 
         return updatedRole;
     }
 
     public async Task<Role> Delete(Guid roleId, CancellationToken cancellationToken = default)
     {
-        var existRole = await _roleRepository.GetById(roleId, cancellationToken) ??
+        var existRole = await roleRepository.GetById(roleId, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleNotFound);
 
         // check for system roles, they cant be deleted.
@@ -74,17 +73,17 @@ public class RoleService : IRoleService, IMessageHandler<Site>
         if (existRole.Type != RoleTypes.UserDefined)
             throw new AppException(ExceptionCodes.RoleCanNotBeDeleted);
 
-        var deleteRole = await _roleRepository.Delete(roleId, cancellationToken) ??
+        var deletedRole = await roleRepository.Delete(roleId, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleUnableToDelete);
 
-        await _roleMessagePublisher.Publish(ActionNames.RoleDeleted, deleteRole);
+        await messagePublisher.Publish(new Message<Role>(ActionNames.RoleDeleted, deletedRole), cancellationToken);
 
-        return deleteRole;
+        return deletedRole;
     }
 
     public Task<Role?> GetById(Guid roleId, CancellationToken cancellationToken = default)
     {
-        return _roleRepository.GetById(roleId, cancellationToken);
+        return roleRepository.GetById(roleId, cancellationToken);
     }
 
     public async Task Handle(Message<Site> message, CancellationToken cancellationToken)
@@ -104,7 +103,7 @@ public class RoleService : IRoleService, IMessageHandler<Site>
     private async Task DeleteAllRolesOfSite(Site site)
     {
         var siteRoles = await GetAllForSite(site.Id, default);
-        await _roleRepository.DeleteMany(siteRoles.Select(x => x.Id));
+        await roleRepository.DeleteMany(siteRoles.Select(x => x.Id));
     }
 
     private async Task AddDefaultRolesForSite(Site site)
@@ -136,6 +135,6 @@ public class RoleService : IRoleService, IMessageHandler<Site>
             }
          };
 
-        await _roleRepository.CreateMany(defaultRoles, default);
+        await roleRepository.CreateMany(defaultRoles, default);
     }
 }

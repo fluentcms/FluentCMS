@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Web.Api.Controllers;
 
-public class UserRoleController(IUserRoleService userRoleService, IRoleService roleService) : BaseGlobalController
+public class UserRoleController(IUserRoleService userRoleService, IRoleService roleService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "User Role Management";
     public const string READ = "Read";
@@ -8,19 +8,13 @@ public class UserRoleController(IUserRoleService userRoleService, IRoleService r
 
     [HttpGet]
     [Policy(AREA, READ)]
-    public async Task<IApiResult<IEnumerable<UserRoleDetailResponse>>> GetUserRoles([FromQuery] Guid userId, Guid siteId, CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<RoleDetailResponse>> GetUserRoles([FromQuery] Guid userId, Guid siteId, CancellationToken cancellationToken = default)
     {
         var userRoleIds = await userRoleService.GetUserRoleIds(userId, siteId, cancellationToken);
         var siteRoles = await roleService.GetAllForSite(siteId, cancellationToken);
-
-        var userRoles = siteRoles.Select(x => new UserRoleDetailResponse
-        {
-            RoleName = x.Name,
-            RoleId = x.Id,
-            HasAccess = userRoleIds.Contains(x.Id)
-        }).ToList();
-
-        return Ok<IEnumerable<UserRoleDetailResponse>>(userRoles);
+        var userRoles = siteRoles.Where(x => userRoleIds.Contains(x.Id));
+        var roleResponses = mapper.Map<IEnumerable<RoleDetailResponse>>(userRoles);
+        return OkPaged(roleResponses);
     }
 
     [HttpPut]

@@ -21,7 +21,7 @@ public partial class UserUpdatePlugin
     [SupplyParameterFromForm(FormName = FORM_NAME_ASSIGN_ROLE)]
     private UserRoleUpdateRequest? RoleAssignmentModel { get; set; }
 
-    private List<UserRoleDetailResponse>? Roles { get; set; }
+    private List<RoleDetailResponse>? Roles { get; set; }
 
     [SupplyParameterFromForm(Name = "selectedRoleIds")]
     private ICollection<Guid>? SelectedRoleIds { get; set; } = default!;
