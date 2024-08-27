@@ -19,7 +19,7 @@ public class PageService(
 
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
     {
-        if (!(await permissionManager.HasAccess(page, PermissionActionNames.PageContributor, cancellationToken)))
+        if (!await permissionManager.HasAccess(page, PermissionActionNames.PageContributor, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
 
         // Check if site id exists
