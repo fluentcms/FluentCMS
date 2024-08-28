@@ -1,4 +1,7 @@
 namespace FluentCMS.Web.UI;
+using System.Text.Json;
+using Microsoft.Extensions.Logging;
+
 
 public partial class SiteBuilderForms
 {
@@ -40,7 +43,10 @@ public partial class SiteBuilderForms
             { "Settings", CreateBlockModel.Settings },
         };
 
-        var response = await ApiClient.PluginContent.CreateAsync("TextHTMLContent", pluginCreateResponse.Data.Id, content);
+        var contentJson = JsonSerializer.Serialize(content, new JsonSerializerOptions { WriteIndented = true });
+        Console.WriteLine($"Content being sent: {contentJson}");
+
+        var response = await ApiClient.PluginContent.CreateAsync("BlockContent", pluginCreateResponse.Data.Id, content);
     }
 
     private async Task OnUpdatePluginOrdersSubmit()
