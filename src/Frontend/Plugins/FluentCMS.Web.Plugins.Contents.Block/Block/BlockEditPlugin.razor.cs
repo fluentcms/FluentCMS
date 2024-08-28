@@ -1,8 +1,8 @@
-namespace FluentCMS.Web.Plugins.Contents.TextHTML;
+namespace FluentCMS.Web.Plugins.Contents.Block;
 using Scriban;
 using Scriban.Runtime;
 
-public partial class BlockViewPlugin
+public partial class BlockEditPlugin
 {
     public const string CONTENT_TYPE_NAME = nameof(BlockContent);
 
@@ -56,27 +56,49 @@ public partial class BlockViewPlugin
         }
     }
 
-    private string Rendered { get; set; } = string.Empty;
-    private BlockContent? Item { get; set; }
+    [SupplyParameterFromForm(FormName = CONTENT_TYPE_NAME)]
+    private BlockContent? Model { get; set; } = default!;
 
+    private bool IsEditMode { get; set; } = false;
+    // Model
     protected override async Task OnInitializedAsync()
     {
-        if (Plugin is not null)
+        if (Model is null)
         {
-            var response = await ApiClient.PluginContent.GetAllAsync(nameof(BlockContent), Plugin.Id);
+            var response = await ApiClient.PluginContent.GetAllAsync(CONTENT_TYPE_NAME, Plugin!.Id);
 
-            if (response?.Data != null && response.Data.ToContentList<BlockContent>().Any())
-                Item = response.Data.ToContentList<BlockContent>().FirstOrDefault();
+            var content = response.Data.ToContentList<BlockContent>();
+
+            if(content.Count > 0)
+            {
+                Model = new BlockContent
+                {
+                    Id = content[0].Id,
+                    Template = content[0].Template,
+                    Settings = content[0].Settings,
+                };
+                IsEditMode = true;
+            }
+            else
+            {
+                Model = new BlockContent
+                {
+                    Id = Guid.Empty
+                };
+            }
         }
+    }
 
-        var scriptObject = new ScriptObject();
-        foreach (var keyValue in Item.Settings)
-            scriptObject.Add(keyValue.Key, keyValue.Value);
+    private async Task OnSubmit()
+    {
+        if (Model is null || Plugin is null)
+            return;
 
-        var context = new TemplateContext();
-        context.PushGlobal(scriptObject);
+        if (IsEditMode)
+            await ApiClient.PluginContent.UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.Id, Model.ToDictionary());
+        else
+            await ApiClient.PluginContent.CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.ToDictionary());
 
-        var template = Template.Parse(Item.Template);
-        Rendered = template.Render(context);
+        NavigateBack();
     }
 }

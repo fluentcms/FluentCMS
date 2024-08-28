@@ -363,7 +363,7 @@
             "Name": "Block Plugin",
             "Description": "Block Plugin",
             "Locked": true,
-            "Assembly": "FluentCMS.Web.Plugins.Contents.TextHTML.dll",
+            "Assembly": "FluentCMS.Web.Plugins.Contents.Block.dll",
             "Types": [
                 {
                     "Name": "View",

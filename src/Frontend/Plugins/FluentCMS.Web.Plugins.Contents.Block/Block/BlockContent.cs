@@ -1,4 +1,4 @@
-namespace FluentCMS.Web.Plugins.Contents.TextHTML;
+namespace FluentCMS.Web.Plugins.Contents.Block;
 
 public class BlockContent : IContent
 {

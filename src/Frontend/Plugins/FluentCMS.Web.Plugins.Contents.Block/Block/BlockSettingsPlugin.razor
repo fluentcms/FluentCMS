@@ -1,4 +1,4 @@
-@namespace FluentCMS.Web.Plugins.Contents.TextHTML
+@namespace FluentCMS.Web.Plugins.Contents.Block
 
 <div class="m-4">
     <Typography Size="TextSize.H5">Edit Block settings</Typography>            
@@ -11,7 +11,7 @@
                     <DataAnnotationsValidator />
                     <Spacer />
                     <Grid GutterX="GridGutter.Large">
-                        <!-- @foreach (var input in Content.Settings)
+                        @foreach (var input in Content.Settings)
                         {
                             <div>
                                 @{
@@ -23,7 +23,7 @@
                                     <FormInput Placeholder="@($"Enter {input.Key}")" @bind-Value="@Model!.Value[input.Key]" Label="@input.Key" />
                                 }
                             </div>
-                        } -->
+                        }
                         <FormActions Submit Cancel />
                         <GridItem Small="GridItemColumn.Twelve">
                             <Stack>
