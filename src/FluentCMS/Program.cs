@@ -30,7 +30,7 @@ app.UseDeveloperExceptionPage();
 // this section is only for development purposes
 // this will delete all data and re-create the database
 using var scope = app.Services.CreateScope();
-var setup = scope.ServiceProvider.GetRequiredService<FluentCMS.Web.Api.Setup.ISetupManager>();
+var setup = scope.ServiceProvider.GetRequiredService<FluentCMS.Services.Setup.ISetupManager>();
 setup.Reset().ConfigureAwait(false).GetAwaiter().GetResult();
 
 #endif

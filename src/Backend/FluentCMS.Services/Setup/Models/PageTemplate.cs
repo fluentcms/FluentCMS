@@ -1,4 +1,5 @@
-﻿namespace FluentCMS.Web.Api.Setup.Models;
+﻿namespace FluentCMS.Services.Setup.Models;
+
 internal class PageTemplate
 {
     public string Path { get; set; } = default!;

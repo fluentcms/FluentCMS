@@ -1,4 +1,5 @@
-namespace FluentCMS.Web.Api.Setup.Models;
+namespace FluentCMS.Services.Setup.Models;
+
 internal class SiteTemplate
 {
     public string Name { get; set; } = default!;
