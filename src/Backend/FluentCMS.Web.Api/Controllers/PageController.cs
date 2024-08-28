@@ -1,6 +1,6 @@
 ﻿using FluentCMS.Services.Permissions;
+using FluentCMS.Services.Setup;
 using FluentCMS.Web.Api.Filters;
-using FluentCMS.Web.Api.Setup;
 using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
@@ -74,7 +74,11 @@ public class PageController(
 
         var initialized = await setupManager.IsInitialized();
         if (!initialized)
-            return Ok(await setupManager.GetSetupPage());
+        {
+            var setupPage = await setupManager.GetSetupPage();
+            var response = mapper.Map<PageFullDetailResponse>(setupPage);
+            return Ok(response);
+        }
 
         return await GetPageResponse(domain, path, cancellationToken);
     }
