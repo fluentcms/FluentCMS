@@ -1,10 +1,10 @@
-﻿using FluentCMS.Web.Api.Setup.Models;
+﻿using FluentCMS.Services.Setup.Models;
 using Microsoft.Extensions.Hosting;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace FluentCMS.Web.Api.Setup;
+namespace FluentCMS.Services.Setup;
 
 public class SetupManager : ISetupManager
 {
@@ -25,7 +25,7 @@ public class SetupManager : ISetupManager
 
     public const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Template";
 
-    private SetupRequest _setupRequest = default!;
+    private SetupModel _setupRequest = default!;
     private AdminTemplate _adminTemplate = default!;
     private GlobalSettings _globalSettings = default!;
     private Site _site = default!;
@@ -76,7 +76,7 @@ public class SetupManager : ISetupManager
         return _initialized.Value;
     }
 
-    public async Task<bool> Start(SetupRequest request)
+    public async Task<bool> Start(SetupModel request)
     {
         // Check if this is the first time setup or not
         if (_initialized.HasValue && _initialized.Value)
@@ -101,7 +101,7 @@ public class SetupManager : ISetupManager
         var jsonSerializerOptions = new JsonSerializerOptions { };
         jsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
 
-        _adminTemplate = await System.Text.Json.JsonSerializer.DeserializeAsync<AdminTemplate>(System.IO.File.OpenRead(manifestFile), jsonSerializerOptions) ??
+        _adminTemplate = await JsonSerializer.DeserializeAsync<AdminTemplate>(System.IO.File.OpenRead(manifestFile), jsonSerializerOptions) ??
             throw new AppException("Failed to deserialize manifest.json");
 
         _globalSettings = _adminTemplate.GlobalSettings;
@@ -116,52 +116,6 @@ public class SetupManager : ISetupManager
         _initialized = true;
 
         return true;
-    }
-
-    public Task<PageFullDetailResponse> GetSetupPage()
-    {
-        if (_initialized.HasValue && _initialized.Value)
-            throw new AppException(ExceptionCodes.SetupSettingsAlreadyInitialized);
-
-        var page = new PageFullDetailResponse
-        {
-            Title = "Setup",
-            Locked = true,
-            Layout = new LayoutDetailResponse
-            {
-                Body = System.IO.File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.body.html")),
-                Head = System.IO.File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.head.html"))
-            },
-            Site = new(),
-            Sections = new Dictionary<string, List<PluginDetailResponse>>
-            {
-                ["Main"] =
-                [
-                    new()
-                    {
-                        Locked = true,
-                        Section = "Main",
-                        Definition = new PluginDefinitionDetailResponse
-                        {
-                            Name = "Setup",
-                            Description = "Setup View Plugin",
-                            Assembly = "FluentCMS.Web.Plugins.Admin.dll",
-                            Locked = true,
-                            Types =
-                            [
-                                new PluginDefinitionType
-                                {
-                                    IsDefault = true,
-                                    Name = "Setup",
-                                    Type = "SetupViewPlugin"
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        };
-        return Task.FromResult(page);
     }
 
     public async Task Reset()

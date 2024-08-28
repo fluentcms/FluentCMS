@@ -2,7 +2,6 @@
 using FluentCMS.Web.Api;
 using FluentCMS.Web.Api.Filters;
 using FluentCMS.Web.Api.Middleware;
-using FluentCMS.Web.Api.Setup;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Options;
@@ -88,8 +87,6 @@ public static class ApiServiceExtensions
         services.AddScoped<ApiExecutionContext>();
 
         services.AddScoped<IAuthContext, AuthContext>();
-
-        services.AddScoped<ISetupManager, SetupManager>();
 
         services.AddAutoMapper(typeof(ApiServiceExtensions));
 

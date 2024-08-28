@@ -1,9 +1,10 @@
-﻿using FluentCMS.Web.Api.Setup;
+﻿using FluentCMS.Services.Setup;
+using FluentCMS.Services.Setup.Models;
 using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class SetupController(ISetupManager setupManager) : BaseGlobalController
+public class SetupController(IMapper mapper, ISetupManager setupManager) : BaseGlobalController
 {
     public const string AREA = "Setup Management";
     public const string READ = "Read";
@@ -22,6 +23,7 @@ public class SetupController(ISetupManager setupManager) : BaseGlobalController
     [AllowAnonymous]
     public async Task<IApiResult<bool>> Start(SetupRequest request)
     {
-        return Ok(await setupManager.Start(request));
+        var setupModel = mapper.Map<SetupModel>(request);
+        return Ok(await setupManager.Start(setupModel));
     }
 }

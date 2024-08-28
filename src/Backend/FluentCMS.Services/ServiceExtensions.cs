@@ -1,5 +1,6 @@
 ﻿using FluentCMS.Identity;
 using FluentCMS.Services;
+using FluentCMS.Services.Setup;
 using Microsoft.AspNetCore.Identity;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -11,6 +12,8 @@ public static class ServiceExtensions
         services.AddInMemoryMessageBus();
 
         services.AddPermissions();
+
+        services.AddScoped<ISetupManager, SetupManager>();
 
         services.AddScoped<IEmailProvider, SmtpEmailProvider>();
         services.AddScoped<IFileStorageProvider, LocalFileStorageProvider>();
