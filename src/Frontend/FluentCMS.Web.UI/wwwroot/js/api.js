@@ -18,9 +18,9 @@ export async function createPlugin({definitionId, sectionName, order, blockId}) 
 
         for(let key in block.Settings ?? {})
         {
-            const prefix = `CreateBlockModel.Settings[${key}][`
+            const prefix = `CreateBlockModel.Settings[${key}].`
             for(let key2 in block.Settings[key]) {
-                body[prefix + key2 + ']'] = block.Settings[key][key2]
+                body[prefix + key2 + ''] = block.Settings[key][key2]
             }
         }
         

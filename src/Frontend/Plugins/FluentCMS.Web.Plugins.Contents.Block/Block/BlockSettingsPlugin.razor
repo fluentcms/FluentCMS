@@ -16,15 +16,22 @@
                             <div>
                                 @{
                                     var inputValue = input.Value as IDictionary<string, object>;
-                                    var inputType = inputValue?["Type"]?.ToString();
+                                    
+                                    var inputType = inputValue.Type;
+                                    var placeholder = $"Enter {input.Key}";
+                                    var label = input.Key;
                                 }
+
                                 @if (inputType == "Input")
                                 {
-                                    <FormInput Placeholder="@($"Enter {input.Key}")" @bind-Value="@Model!.Value[input.Key]" Label="@input.Key" />
+                                    <FormInput Placeholder="@placeholder" @bind-Value="@Model!.Value[input.Key]" Label="@label" />
+                                }
+                                else if (inputType == "Textarea")
+                                {
+                                    <FormTextarea Placeholder="@placeholder" @bind-Value="@Model!.Value[input.Key]" Label="@label" />
                                 }
                             </div>
                         }
-                        <FormActions Submit Cancel />
                         <GridItem Small="GridItemColumn.Twelve">
                             <Stack>
                                 <Button Color="Color.Primary" Type="ButtonType.Submit">

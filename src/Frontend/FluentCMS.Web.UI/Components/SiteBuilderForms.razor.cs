@@ -37,7 +37,13 @@ public partial class SiteBuilderForms
         var content = new Dictionary<string, object>
         {
             { "Template", CreateBlockModel.Template },
-            { "Settings", CreateBlockModel.Settings },
+            { "Settings", CreateBlockModel.Settings.ToDictionary(
+                    kvp => kvp.Key, 
+                    kvp => new Dictionary<string, string> {
+                        {"Type", kvp.Value.Type }
+                    }
+                )
+            },
         };
 
         var response = await ApiClient.PluginContent.CreateAsync("TextHTMLContent", pluginCreateResponse.Data.Id, content);
@@ -61,9 +67,13 @@ public partial class SiteBuilderForms
         await ApiClient.Plugin.DeleteAsync(DeletePluginModel);
     }
 
+    private class BlockFieldSetting {
+        public string Type { get; set; } = string.Empty;
+    }
+
     private class CreateBlockRequest {
         public PluginCreateRequest Plugin { get; set; }
         public string Template { get; set; } = string.Empty;
-        public Dictionary<string, object> Settings { get; set; } = [];
+        public Dictionary<string, BlockFieldSetting> Settings { get; set; } = [];
     }
 }

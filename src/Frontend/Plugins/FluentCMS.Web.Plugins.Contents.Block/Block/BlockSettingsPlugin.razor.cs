@@ -88,7 +88,6 @@ public partial class BlockSettingsPlugin
                 throw new Exception("this Plugin doesn't have any content");
             }
         }
-
     }
 
     private async Task OnSubmit()
