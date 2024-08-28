@@ -1,4 +1,4 @@
-namespace FluentCMS.Web.Plugins.Contents.TextHTML;
+namespace FluentCMS.Web.Plugins.Contents.RichText;
 
 public class RichTextContent : IContent
 {
