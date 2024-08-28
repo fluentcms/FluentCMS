@@ -1,5 +1,4 @@
 ﻿using FluentCMS.Identity;
-using FluentCMS.Providers.EmailProviders;
 using FluentCMS.Services;
 using Microsoft.AspNetCore.Identity;
 

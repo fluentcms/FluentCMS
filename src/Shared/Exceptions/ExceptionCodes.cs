@@ -115,6 +115,12 @@ public static class ExceptionCodes
 
     #endregion
 
+    #region Provider
+
+    public const string ProviderUnableToCreate = "Provider.UnableToCreate";
+
+    #endregion
+
     #region Site
 
     public const string SiteNotFound = "Site.NotFound";
