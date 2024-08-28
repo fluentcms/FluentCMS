@@ -48,6 +48,7 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers.FileStorageProviders", "Providers\FluentCMS.Providers.FileStorageProviders\FluentCMS.Providers.FileStorageProviders.csproj", "{0E16FB9C-7DDE-48CD-9102-0DCD9774F701}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers.EmailProviders", "Providers\FluentCMS.Providers.EmailProviders\FluentCMS.Providers.EmailProviders.csproj", "{3D4A6272-741D-4442-A5DC-BB002EBA6B25}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Web.Plugins.Contents.RichText", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.RichText\FluentCMS.Web.Plugins.Contents.RichText.csproj", "{54DBC633-2A8D-4531-AA22-23824C6CFCD9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -127,6 +128,10 @@ Global
 		{3D4A6272-741D-4442-A5DC-BB002EBA6B25}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3D4A6272-741D-4442-A5DC-BB002EBA6B25}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3D4A6272-741D-4442-A5DC-BB002EBA6B25}.Release|Any CPU.Build.0 = Release|Any CPU
+		{54DBC633-2A8D-4531-AA22-23824C6CFCD9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{54DBC633-2A8D-4531-AA22-23824C6CFCD9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{54DBC633-2A8D-4531-AA22-23824C6CFCD9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{54DBC633-2A8D-4531-AA22-23824C6CFCD9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -150,6 +155,7 @@ Global
 		{4074CC8F-A1B6-429D-A4F2-C119F961BE3C} = {2819D08A-7DA1-4B7B-8319-FF304D481661}
 		{0E16FB9C-7DDE-48CD-9102-0DCD9774F701} = {2819D08A-7DA1-4B7B-8319-FF304D481661}
 		{3D4A6272-741D-4442-A5DC-BB002EBA6B25} = {2819D08A-7DA1-4B7B-8319-FF304D481661}
+		{54DBC633-2A8D-4531-AA22-23824C6CFCD9} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2E9F4217-7A58-48A4-9850-84CD0CDA31DA}
