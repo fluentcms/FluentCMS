@@ -30,6 +30,7 @@ export function initializeSortable(frameDocument) {
     sectionElements.forEach(section => {
         new Sortable(section, {
             animation: 150,
+            direction: 'vertical',
             group: 'shared',
             draggable: '.f-plugin-container',
             ghostClass: 'f-plugin-container-moving',

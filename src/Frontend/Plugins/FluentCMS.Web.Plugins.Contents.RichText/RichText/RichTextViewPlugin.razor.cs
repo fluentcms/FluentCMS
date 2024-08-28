@@ -1,4 +1,4 @@
-namespace FluentCMS.Web.Plugins.Contents.TextHTML;
+namespace FluentCMS.Web.Plugins.Contents.RichText;
 
 public partial class RichTextViewPlugin
 {
@@ -31,16 +31,16 @@ public partial class RichTextViewPlugin
             NavigationManager.NavigateTo(path);
     }
 
-    private List<TextHTMLContent> Content { get; set; }
+    private List<RichTextContent> Content { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
         if (Plugin is not null)
         {
-            var response = await ApiClient.PluginContent.GetAllAsync(nameof(TextHTMLContent), Plugin.Id);
+            var response = await ApiClient.PluginContent.GetAllAsync(nameof(RichTextContent), Plugin.Id);
 
-            if (response?.Data != null && response.Data.ToContentList<TextHTMLContent>().Any())
-                Content = response.Data.ToContentList<TextHTMLContent>();
+            if (response?.Data != null && response.Data.ToContentList<RichTextContent>().Any())
+                Content = response.Data.ToContentList<RichTextContent>();
 
         }
     }

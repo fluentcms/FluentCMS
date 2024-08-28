@@ -383,7 +383,7 @@
         {
             "Name": "RichText Plugin",
             "Description": "RichText Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Contents.TextHTML.dll",
+            "Assembly": "FluentCMS.Web.Plugins.Contents.RichText.dll",
             "Types": [
                 {
                     "Name": "View",
