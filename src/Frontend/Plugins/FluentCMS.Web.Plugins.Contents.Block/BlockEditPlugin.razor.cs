@@ -68,24 +68,16 @@ public partial class BlockEditPlugin
             var response = await ApiClient.PluginContent.GetAllAsync(CONTENT_TYPE_NAME, Plugin!.Id);
 
             var content = response.Data.ToContentList<BlockContent>();
+            if(content.Count == 0)
+                throw new Exception("This plugin doesn't have any content");
 
-            if(content.Count > 0)
+            Model = new BlockContent
             {
-                Model = new BlockContent
-                {
-                    Id = content[0].Id,
-                    Template = content[0].Template,
-                    Settings = content[0].Settings,
-                };
-                IsEditMode = true;
-            }
-            else
-            {
-                Model = new BlockContent
-                {
-                    Id = Guid.Empty
-                };
-            }
+                Id = content[0].Id,
+                Template = content[0].Template
+            };
+            IsEditMode = true;
+            
         }
     }
 
@@ -94,11 +86,8 @@ public partial class BlockEditPlugin
         if (Model is null || Plugin is null)
             return;
 
-        if (IsEditMode)
-            await ApiClient.PluginContent.UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.Id, Model.ToDictionary());
-        else
-            await ApiClient.PluginContent.CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.ToDictionary());
-
+        await ApiClient.PluginContent.UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.Id, Model.ToDictionary());
+        
         NavigateBack();
     }
 }

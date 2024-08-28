@@ -34,17 +34,13 @@ public partial class SiteBuilderForms
     private async Task OnCreateBlockSubmit()
     {
         CreateBlockModel.Plugin.PageId = ViewState.Page.Id;
-        CreateBlockModel.Plugin.Settings = [];
+        CreateBlockModel.Plugin.Settings = CreateBlockModel.Settings;
 
         var pluginCreateResponse = await ApiClient.Plugin.CreateAsync(CreateBlockModel.Plugin);
         var content = new Dictionary<string, object>
         {
             { "Template", CreateBlockModel.Template },
-            { "Settings", CreateBlockModel.Settings },
         };
-
-        var contentJson = JsonSerializer.Serialize(content, new JsonSerializerOptions { WriteIndented = true });
-        Console.WriteLine($"Content being sent: {contentJson}");
 
         var response = await ApiClient.PluginContent.CreateAsync("BlockContent", pluginCreateResponse.Data.Id, content);
     }

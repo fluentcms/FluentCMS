@@ -70,7 +70,7 @@ public partial class BlockViewPlugin
                 Item = response.Data.ToContentList<BlockContent>().FirstOrDefault();
 
                 var scriptObject = new ScriptObject();
-                foreach (var keyValue in Item.Settings) {
+                foreach (var keyValue in Plugin.Settings) {
                     scriptObject.Add(keyValue.Key, keyValue.Value);
                 }
 

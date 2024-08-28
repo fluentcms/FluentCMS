@@ -1,13 +1,14 @@
 @namespace FluentCMS.Web.Plugins.Contents.Block
+@rendermode InteractiveServer
 
 <div class="m-4">
     <Typography Size="TextSize.H5">Edit Block settings</Typography>            
     <Spacer />
     <Card>
         <CardBody>
-            @if (Model != null)
+            @if (Settings != null)
             {
-                <EditForm Model="@Model" OnSubmit="OnSubmit" FormName="@PLUGIN_SETTINGS_FORM" Enhance>
+                <EditForm Model="@Settings" OnSubmit="OnSubmit" FormName="@PLUGIN_SETTINGS_FORM" Enhance>
                     <DataAnnotationsValidator />
                     <Spacer />
                     <Grid GutterX="GridGutter.Large">

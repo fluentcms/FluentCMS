@@ -54,50 +54,39 @@ public partial class BlockSettingsPlugin
         }
     }
 
-    [SupplyParameterFromForm(FormName = PLUGIN_SETTINGS_FORM)]
-
-    private BlockContent? Model { get; set; } = default!;
-    private List<EditableSetting> Settings { get; set; } = [];
+    private List<EditableSetting> Settings { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        if (Model is null)
+        if (Settings is null)
         {
-            var response = await ApiClient.PluginContent.GetAllAsync(PLUGIN_SETTINGS_FORM, Plugin!.Id);
-
-            var content = response.Data.ToContentList<BlockContent>();
-
-            if(content.Count > 0)
+            Settings = [];
+            foreach (var setting in Plugin.Settings.ToList())
             {
-                Model = new BlockContent
-                {
-                    Id = content[0].Id,
-                    Template = content[0].Template,
-                    Settings = content[0].Settings,
-                };
-                Settings = [];
-                foreach (var setting in content[0].Settings.ToList())
-                {
-                    Settings.Add(
-                        new EditableSetting
-                        {
-                            Key = setting.Key,
-                            Value = setting.Value
-                        }
-                    );
-                }
-            }
-            else
-            {                
-                throw new Exception("this Plugin doesn't have any content");
+                Settings.Add(
+                    new EditableSetting
+                    {
+                        Key = setting.Key,
+                        Value = setting.Value
+                    }
+                );
             }
         }
     }
 
     private async Task OnSubmit()
     {
-        await ApiClient.PluginContent.UpdateAsync(PLUGIN_SETTINGS_FORM, Plugin.Id, Model.Id, Model.ToDictionary());
-    
+        await ApiClient.Plugin.UpdateAsync(new PluginUpdateRequest
+        {
+            Id = Plugin.Id,
+            Order = Plugin.Order, 
+            Section = Plugin.Section, 
+            Cols = Plugin.Cols, 
+            ColsMd = Plugin.ColsMd, 
+            ColsLg = Plugin.ColsLg, 
+            Settings = Settings.ToDictionary(x => x.Key, x => x.Value)
+        });
+
         NavigateBack();
     }
 
