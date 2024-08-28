@@ -118,52 +118,6 @@ public class SetupManager : ISetupManager
         return true;
     }
 
-    public Task<PageFullDetailModel> GetSetupPage()
-    {
-        if (_initialized.HasValue && _initialized.Value)
-            throw new AppException(ExceptionCodes.SetupSettingsAlreadyInitialized);
-
-        var page = new PageFullDetailModel
-        {
-            Title = "Setup",
-            Locked = true,
-            Layout = new LayoutDetailModel
-            {
-                Body = System.IO.File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.body.html")),
-                Head = System.IO.File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.head.html"))
-            },
-            Site = new(),
-            Sections = new Dictionary<string, List<PluginDetailModel>>
-            {
-                ["Main"] =
-                [
-                    new()
-                    {
-                        Locked = true,
-                        Section = "Main",
-                        Definition = new PluginDefinitionDetailModel
-                        {
-                            Name = "Setup",
-                            Description = "Setup View Plugin",
-                            Assembly = "FluentCMS.Web.Plugins.Admin.dll",
-                            Locked = true,
-                            Types =
-                            [
-                                new PluginDefinitionType
-                                {
-                                    IsDefault = true,
-                                    Name = "Setup",
-                                    Type = "SetupViewPlugin"
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        };
-        return Task.FromResult(page);
-    }
-
     public async Task Reset()
     {
         await _globalSettingsService.Reset();
