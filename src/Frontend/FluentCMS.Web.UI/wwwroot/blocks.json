@@ -6,12 +6,8 @@
         "Description": "Simple Test Block",
         "Template": "<div class=\"bg-red-300 p-4 text-white\"><h2 class=\"text-4xl\">{{ title }}</h2><div>{{content}}</div></div>",
         "Settings": {
-            "Content": {
-                "Type": "Textarea"
-            },
-            "Title": {
-                "Type": "Input"
-            }
+            "Content": "This is sample content",
+            "Title": "Title"
         }
     },
     {

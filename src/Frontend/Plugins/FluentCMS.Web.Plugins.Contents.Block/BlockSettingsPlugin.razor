@@ -11,26 +11,9 @@
                     <DataAnnotationsValidator />
                     <Spacer />
                     <Grid GutterX="GridGutter.Large">
-                        @foreach (var input in Content.Settings)
+                        @foreach (var input in Settings)
                         {
-                            <div>
-                                @{
-                                    var inputValue = input.Value as IDictionary<string, object>;
-                                    
-                                    var inputType = inputValue.Type;
-                                    var placeholder = $"Enter {input.Key}";
-                                    var label = input.Key;
-                                }
-
-                                @if (inputType == "Input")
-                                {
-                                    <FormInput Placeholder="@placeholder" @bind-Value="@Model!.Value[input.Key]" Label="@label" />
-                                }
-                                else if (inputType == "Textarea")
-                                {
-                                    <FormTextarea Placeholder="@placeholder" @bind-Value="@Model!.Value[input.Key]" Label="@label" />
-                                }
-                            </div>
+                            <FormTextarea Placeholder="@($"Enter {input.Key}")" @bind-Value="@input.Value" Label="@input.Key" />
                         }
                         <GridItem Small="GridItemColumn.Twelve">
                             <Stack>

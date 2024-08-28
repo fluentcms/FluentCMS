@@ -54,33 +54,4 @@ public static class ObjectExtensions
 
         return result;
     }
-
-    public static T ToPluginSettings<T>(this Dictionary<string, string> source) where T : IPluginSettings, new()
-    {
-        var someObject = new T();
-        var someObjectType = someObject.GetType();
-
-        if (someObjectType != null)
-        {
-            foreach (var item in source)
-            {
-                someObjectType.GetProperty(item.Key)?.SetValue(someObject, item.Value, null);
-            }
-        }
-        return someObject;
-    }
-
-    public static Dictionary<string, string> ToDictionary(this IPluginSettings source)
-    {
-        var result = new Dictionary<string, string>();
-        foreach (var prop in source.GetType().GetProperties(_bindingAttr))
-        {
-            var propValue = prop.GetValue(source, null);
-            if (propValue != null)
-            {
-                result.Add(prop.Name, propValue.ToString());
-            }
-        }
-        return result;
-    }
 }

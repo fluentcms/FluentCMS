@@ -66,17 +66,20 @@ public partial class BlockViewPlugin
             var response = await ApiClient.PluginContent.GetAllAsync(nameof(BlockContent), Plugin.Id);
 
             if (response?.Data != null && response.Data.ToContentList<BlockContent>().Any())
+            {
                 Item = response.Data.ToContentList<BlockContent>().FirstOrDefault();
+
+                var scriptObject = new ScriptObject();
+                foreach (var keyValue in Item.Settings) {
+                    scriptObject.Add(keyValue.Key, keyValue.Value);
+                }
+
+                var context = new TemplateContext();
+                context.PushGlobal(scriptObject);
+
+                var template = Template.Parse(Item.Template);
+                Rendered = template.Render(context);
+            }
         }
-
-        var scriptObject = new ScriptObject();
-        foreach (var keyValue in Item.Settings)
-            scriptObject.Add(keyValue.Key, keyValue.Value);
-
-        var context = new TemplateContext();
-        context.PushGlobal(scriptObject);
-
-        var template = Template.Parse(Item.Template);
-        Rendered = template.Render(context);
     }
 }

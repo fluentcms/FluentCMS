@@ -55,20 +55,13 @@ public partial class BlockSettingsPlugin
     }
 
     [SupplyParameterFromForm(FormName = PLUGIN_SETTINGS_FORM)]
-    private BlockSettings? Model { get; set; } = default!;
 
-    private BlockContent? Content { get; set; } = default!;
+    private BlockContent? Model { get; set; } = default!;
+    private List<EditableSetting> Settings { get; set; } = [];
 
-    private bool IsEditMode { get; set; } = false;
-    // Model
     protected override async Task OnInitializedAsync()
     {
         if (Model is null)
-        {
-            Model = Plugin.Settings.ToPluginSettings<BlockSettings>();
-        }
-
-        if (Content is null)
         {
             var response = await ApiClient.PluginContent.GetAllAsync(PLUGIN_SETTINGS_FORM, Plugin!.Id);
 
@@ -76,12 +69,23 @@ public partial class BlockSettingsPlugin
 
             if(content.Count > 0)
             {
-                Content = new BlockContent
+                Model = new BlockContent
                 {
                     Id = content[0].Id,
                     Template = content[0].Template,
                     Settings = content[0].Settings,
                 };
+                Settings = [];
+                foreach (var setting in content[0].Settings.ToList())
+                {
+                    Settings.Add(
+                        new EditableSetting
+                        {
+                            Key = setting.Key,
+                            Value = setting.Value
+                        }
+                    );
+                }
             }
             else
             {                
@@ -92,17 +96,14 @@ public partial class BlockSettingsPlugin
 
     private async Task OnSubmit()
     {
-        
-        await ApiClient.Plugin.UpdateAsync(new PluginUpdateRequest {
-            Id = Plugin.Id,
-            Settings = Model.ToDictionary(),
-            Order = Plugin.Order,
-            Section = Plugin.Section,
-            Cols = Plugin.Cols,
-            ColsMd = Plugin.ColsMd,
-            ColsLg = Plugin.ColsLg,
-        });
+        await ApiClient.PluginContent.UpdateAsync(PLUGIN_SETTINGS_FORM, Plugin.Id, Model.Id, Model.ToDictionary());
     
         NavigateBack();
+    }
+
+    public class EditableSetting
+    {
+        public string Key { get; set; }
+        public string Value { get; set; }
     }
 }
