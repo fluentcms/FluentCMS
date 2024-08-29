@@ -60,7 +60,7 @@ public partial class ContentListSettingsPlugin
     protected override async Task OnInitializedAsync()
     {
         var contentTypeResponse = await ApiClient.ContentType.GetAllAsync();
-        if(contentTypeResponse?.Data != null)
+        if (contentTypeResponse?.Data != null)
         {
             ContentTypes = contentTypeResponse.Data.ToList();
         }
@@ -69,13 +69,13 @@ public partial class ContentListSettingsPlugin
         {
             Plugin.Settings.TryGetValue("ContentTypeSlug", out var slug);
             Plugin.Settings.TryGetValue("Template", out var template);
-        
+
             Model = new()
             {
                 Template = template,
                 ContentTypeSlug = slug,
             };
-        } 
+        }
     }
 
     private async Task OnSubmit()
@@ -102,7 +102,8 @@ public partial class ContentListSettingsPlugin
         NavigateBack();
     }
 
-    class SettingsModel {
+    class SettingsModel
+    {
         public string Template { get; set; } = string.Empty;
         public string ContentTypeSlug { get; set; } = string.Empty;
     }
