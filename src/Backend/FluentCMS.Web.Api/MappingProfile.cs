@@ -115,5 +115,12 @@ public class MappingProfile : Profile
 
         #endregion
 
+        #region GlobalSetting
+
+        CreateMap<GlobalSettings, GlobalSettingsUpdateRequest>();
+        CreateMap<GlobalSettingsUpdateRequest, GlobalSettings>();
+
+        #endregion
+
     }
 }

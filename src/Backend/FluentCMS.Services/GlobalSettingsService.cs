@@ -12,7 +12,12 @@ public class GlobalSettingsService(IGlobalSettingsRepository repository) : IGlob
 {
     public async Task<GlobalSettings> Update(GlobalSettings settings, CancellationToken cancellationToken = default)
     {
-        return await repository.Update(settings, cancellationToken)
+        var existSetting = await repository.Get(cancellationToken) ??
+             throw new AppException(ExceptionCodes.GlobalSettingsNotFound);
+
+        existSetting.SuperAdmins = settings.SuperAdmins;
+
+        return await repository.Update(existSetting, cancellationToken)
             ?? throw new AppException(ExceptionCodes.GlobalSettingsUnableToUpdate);
     }
 

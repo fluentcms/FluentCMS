@@ -374,6 +374,20 @@
                     "Type": "RichTextEditPlugin"
                 }
             ]
+        },
+        {
+            "Name": "Global Settings Management",
+            "Category": "Admin",
+            "Description": "Global Settings Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
+            "Types": [
+                {
+                    "Name": "Globals Setting",
+                    "Type": "GlobalSettingsPlugin",
+                    "IsDefault": true
+                }
+            ]
         }
     ],
     "Pages": [
@@ -610,6 +624,20 @@
                     "Plugins": [
                         {
                             "Definition": "Layout Management",
+                            "Section": "Main",
+                            "Locked": true
+                        }
+                    ]
+                },
+                {
+                    "Title": "GlobalSettings",
+                    "Path": "/globalsettings",
+                    "Layout": "AdminLayout",
+                    "EditLayout": "AdminLayout",
+                    "Locked": true,
+                    "Plugins": [
+                        {
+                            "Definition": "Global Settings Management",
                             "Section": "Main",
                             "Locked": true
                         }

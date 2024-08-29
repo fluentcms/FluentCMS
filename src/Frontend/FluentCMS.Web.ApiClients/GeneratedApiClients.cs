@@ -11055,6 +11055,9 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("fileUpload")]
         public FileUploadConfig FileUpload { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("superAdmins")]
+        public System.Collections.Generic.ICollection<string>? SuperAdmins { get; set; } = default!;
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.1.0.0 (NJsonSchema v11.0.2.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -11091,8 +11094,8 @@ namespace FluentCMS.Web.ApiClients
     public partial class GlobalSettingsUpdateRequest
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("email")]
-        public SmtpServerConfig Email { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("superAdmins")]
+        public System.Collections.Generic.ICollection<string>? SuperAdmins { get; set; } = default!;
 
     }
 

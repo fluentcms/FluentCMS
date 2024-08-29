@@ -4,6 +4,7 @@ public class GlobalSettings : AuditableEntity
 {
     public SmtpServerConfig Email { get; set; } = default!;
     public FileUploadConfig FileUpload { get; set; } = default!;
+    public IEnumerable<string> SuperAdmins { get; set; } = [];
 }
 
 public class SmtpServerConfig
