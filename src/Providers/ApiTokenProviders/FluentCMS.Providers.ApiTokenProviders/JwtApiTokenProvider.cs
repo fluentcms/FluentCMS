@@ -1,14 +1,19 @@
-﻿using Microsoft.IdentityModel.Tokens;
+﻿using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace FluentCMS.Providers;
+namespace FluentCMS.Providers.ApiTokenProviders;
 
-public class DefaultApiTokenProvider : IApiTokenProvider
+public class JwtApiTokenProvider : IApiTokenProvider
 {
-    // TODO: This should be stored securely, and read from appsettings.json maybe?
-    private static readonly string _secretKey = "your-secret-key";
+    private readonly JwtApiTokenConfig _config;
+
+    public JwtApiTokenProvider(IOptions<JwtApiTokenConfig> options)
+    {
+        _config = options.Value;
+    }
 
     public string GenerateKey()
     {
@@ -17,7 +22,7 @@ public class DefaultApiTokenProvider : IApiTokenProvider
 
     public string GenerateSecret(string apiKey)
     {
-        var signingKey = Encoding.ASCII.GetBytes(apiKey + "." + _secretKey);
+        var signingKey = Encoding.ASCII.GetBytes(apiKey + "." + _config.Secret);
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Expires = DateTime.Now.AddYears(10),
@@ -34,7 +39,7 @@ public class DefaultApiTokenProvider : IApiTokenProvider
         try
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var signingKey = Encoding.ASCII.GetBytes(apiKey + "." + _secretKey);
+            var signingKey = Encoding.ASCII.GetBytes(apiKey + "." + _config.Secret);
             tokenHandler.ValidateToken(secretKey, new TokenValidationParameters
             {
                 IssuerSigningKey = new SymmetricSecurityKey(signingKey),

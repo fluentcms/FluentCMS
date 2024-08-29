@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Services;
+﻿using FluentCMS.Providers.MessageBusProviders;
+
+namespace FluentCMS.Services;
 
 public interface IPermissionService : IAutoRegisterService
 {
@@ -7,8 +9,7 @@ public interface IPermissionService : IAutoRegisterService
     Task<IEnumerable<Permission>> GetPermissions(Guid entityId, string action, CancellationToken cancellationToken = default);
 }
 
-public class PermissionService(IPermissionRepository permissionRepository) : IPermissionService,
-    IMessageHandler<Page>
+public class PermissionService(IPermissionRepository permissionRepository) : IPermissionService, IMessageHandler<Page>
 {
     public async Task<IEnumerable<Permission>> SetPermissions<TEntity>(TEntity entity, string action, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default) where TEntity : ISiteAssociatedEntity
     {

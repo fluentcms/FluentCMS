@@ -1,4 +1,5 @@
-﻿using System.Data;
+﻿using FluentCMS.Providers.MessageBusProviders;
+using System.Data;
 
 namespace FluentCMS.Services;
 
