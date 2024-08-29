@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.Plugins.Contents.ContentViewer;
 
-public partial class ContentListEditPlugin
+public partial class ContentListSettingsPlugin
 {
     public const string FORM_NAME = "CONTENT_LIST_EDIT_FORM";
 
