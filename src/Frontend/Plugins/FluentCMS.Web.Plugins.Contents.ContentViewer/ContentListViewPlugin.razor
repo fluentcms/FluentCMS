@@ -1,0 +1,8 @@
+@namespace FluentCMS.Web.Plugins.Contents.ContentViewer
+
+@if (Rendered != null)
+{
+    <div class="f-content-list">
+        @((MarkupString)Rendered)
+    </div>
+}
