@@ -21,6 +21,7 @@
         <ProjectReference Include="..\Providers\EmailProviders\FluentCMS.Providers.EmailProviders\FluentCMS.Providers.EmailProviders.csproj" />
         <ProjectReference Include="..\Providers\FileStorageProviders\FluentCMS.Providers.FileStorageProviders\FluentCMS.Providers.FileStorageProviders.csproj" />
         <ProjectReference Include="..\Providers\MessageBusProviders\FluentCMS.Providers.MessageBusProviders\FluentCMS.Providers.MessageBusProviders.csproj" />
+        <ProjectReference Include="..\Providers\TemplateRenderingProviders\FluentCMS.Providers.TemplateRenderingProviders\FluentCMS.Providers.TemplateRenderingProviders.csproj" />
     </ItemGroup>
 	<ItemGroup>
 		<None Include="wwwroot\**">
