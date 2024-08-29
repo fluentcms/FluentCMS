@@ -1,19 +1,27 @@
-﻿using System.Net;
+﻿using Microsoft.Extensions.Options;
+using System.Net;
 using System.Net.Mail;
 
-namespace FluentCMS.Providers;
+namespace FluentCMS.Providers.EmailProviders;
 
-public class SmtpEmailProvider(SmtpServerConfig smtpServerConfiguration) : IEmailProvider
+public class SmtpEmailProvider : IEmailProvider
 {
+    private readonly SmtpServerConfig _smtpServerConfiguration;
+
+    public SmtpEmailProvider(IOptions<SmtpServerConfig> smtpServerOptions)
+    {
+        _smtpServerConfiguration = smtpServerOptions.Value;
+    }
+
     public async Task Send(string from, string recipients, string? subject, string? body, CancellationToken cancellationToken = default)
     {
         try
         {
             // Create SMTP client
-            var client = new SmtpClient(smtpServerConfiguration.Server, smtpServerConfiguration.Port)
+            var client = new SmtpClient(_smtpServerConfiguration.Server, _smtpServerConfiguration.Port)
             {
-                EnableSsl = smtpServerConfiguration.EnableSsl,
-                Credentials = new NetworkCredential(smtpServerConfiguration.Username, smtpServerConfiguration.Password)
+                EnableSsl = _smtpServerConfiguration.EnableSsl,
+                Credentials = new NetworkCredential(_smtpServerConfiguration.Username, _smtpServerConfiguration.Password)
             };
 
             // Create email message
@@ -41,6 +49,6 @@ public class SmtpEmailProvider(SmtpServerConfig smtpServerConfiguration) : IEmai
 
     public async Task Send(string recipients, string? subject, string? body, CancellationToken cancellationToken = default)
     {
-        await Send(smtpServerConfiguration.From, recipients, subject, body, cancellationToken);
+        await Send(_smtpServerConfiguration.From, recipients, subject, body, cancellationToken);
     }
 }

@@ -15,6 +15,12 @@ services.AddLiteDbRepositories("LiteDb");
 // Use MongoDB as database
 //services.AddMongoDbRepositories("MongoDb");
 
+// register providers
+services.AddJwtApiTokenProvider();
+services.AddSmtpEmailProvider();
+services.AddInMemoryMessageBusProvider();
+services.AddLocalFileStorageProvider();
+
 services.AddApiServices();
 
 #endregion

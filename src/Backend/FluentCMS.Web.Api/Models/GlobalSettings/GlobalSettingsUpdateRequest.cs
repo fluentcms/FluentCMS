@@ -2,5 +2,4 @@
 
 public class GlobalSettingsUpdateRequest
 {
-    public SmtpServerConfig Email { get; set; } = default!;
 }

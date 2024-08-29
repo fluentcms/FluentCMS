@@ -1,13 +1,5 @@
 {
     "GlobalSettings": {
-        "Email": {
-            "Server": "sandbox.smtp.mailtrap.io",
-            "Port": 2525,
-            "Username": "33b3d4be6eff7c",
-            "Password": "3bc847fa1f6d59",
-            "EnableSsl": true,
-            "From": "admin@fluentcms.com"
-        },
         "FileUpload": {
             "MaxSize": 5242880,
             "AllowedExtensions": "jpg,jpeg,png,gif,doc,docx,pdf,txt",
