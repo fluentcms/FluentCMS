@@ -16,6 +16,10 @@ public partial class Stack
 
     [Parameter]
     [CSSProperty]
+    public bool Wrap { get; set; }
+
+    [Parameter]
+    [CSSProperty]
     public bool Vertical { get; set; }
 
     [Parameter]
