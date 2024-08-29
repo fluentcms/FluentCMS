@@ -30,10 +30,6 @@
             "IsDefault": false
         },
         {
-            "Name": "Bootstrap",
-            "IsDefault": false
-        },
-        {
             "Name": "AuthLayout",
             "IsDefault": false
         },
@@ -393,23 +389,6 @@
         }
     ],
     "Pages": [
-        {
-            "Title": "Bootstrap",
-            "Path": "/bootstrap",
-            "Layout": "Bootstrap",
-            "Plugins": [
-                {
-                    "Definition": "TextHTML Plugin",
-                    "Section": "Main",
-                    "Type": "TextHTMLContent",
-                    "Content": [
-                        {
-                            "Content": "<div class=\"row gy-4\">\n          <div class=\"col-lg-6 order-2 order-lg-1 d-flex flex-column justify-content-center\">\n            <h1 data-aos=\"fade-up\" class=\"aos-init aos-animate\">We offer modern solutions for growing your business</h1>\n            <p data-aos=\"fade-up\" data-aos-delay=\"100\" class=\"aos-init aos-animate\">We are team of talented designers making websites with Bootstrap</p>\n            <div class=\"d-flex flex-column flex-md-row aos-init aos-animate\" data-aos=\"fade-up\" data-aos-delay=\"200\">\n              <a href=\"#about\" class=\"btn-get-started\">Get Started <i class=\"bi bi-arrow-right\"></i></a>\n              <a href=\"https://www.youtube.com/watch?v=LXb3EKWsInQ\" class=\"glightbox btn-watch-video d-flex align-items-center justify-content-center ms-0 ms-md-4 mt-4 mt-md-0\"><i class=\"bi bi-play-circle\"></i><span>Watch Video</span></a>\n            </div>\n          </div>\n          <div class=\"col-lg-6 order-1 order-lg-2 hero-img aos-init aos-animate\" data-aos=\"zoom-out\">\n            <img src=\"assets/img/hero-img.png\" class=\"img-fluid animated\" alt=\">\n          </div>\n        </div></div>"
-                        }
-                    ]
-                }
-            ]
-        },
         {
             "Title": "Home",
             "Path": "/",
