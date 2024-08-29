@@ -23,6 +23,10 @@ $stack-justify: ( normal, start, end, center, between, around, evenly, stretch);
         @apply flex-col;
     }
 
+    &-wrap-true {
+        @apply flex-wrap;
+    }
+
     @each $key in $stack-items {
         &-items-#{$key} {
             @apply items-#{$key};
