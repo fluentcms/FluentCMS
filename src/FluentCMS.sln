@@ -51,22 +51,29 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiTokenProviders", "ApiTok
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "MessageBusProviders", "MessageBusProviders", "{2FF62DC2-6027-4F9F-A6A9-3DA46D2B88E2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers.ApiTokenProviders.Abstractions", "Providers\ApiTokenProviders\FluentCMS.Providers.ApiTokenProviders.Abstractions\FluentCMS.Providers.ApiTokenProviders.Abstractions.csproj", "{207E4FB5-2614-4E19-B593-C9F1254DF44D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Providers.ApiTokenProviders.Abstractions", "Providers\ApiTokenProviders\FluentCMS.Providers.ApiTokenProviders.Abstractions\FluentCMS.Providers.ApiTokenProviders.Abstractions.csproj", "{207E4FB5-2614-4E19-B593-C9F1254DF44D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers.ApiTokenProviders", "Providers\ApiTokenProviders\FluentCMS.Providers.ApiTokenProviders\FluentCMS.Providers.ApiTokenProviders.csproj", "{D000CB33-97FD-4074-946B-CED146812CCD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Providers.ApiTokenProviders", "Providers\ApiTokenProviders\FluentCMS.Providers.ApiTokenProviders\FluentCMS.Providers.ApiTokenProviders.csproj", "{D000CB33-97FD-4074-946B-CED146812CCD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers.EmailProviders.Abstractions", "Providers\EmailProviders\FluentCMS.Providers.EmailProviders.Abstractions\FluentCMS.Providers.EmailProviders.Abstractions.csproj", "{1F36D46A-5D9C-42E5-BC17-44C07A4484B4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Providers.EmailProviders.Abstractions", "Providers\EmailProviders\FluentCMS.Providers.EmailProviders.Abstractions\FluentCMS.Providers.EmailProviders.Abstractions.csproj", "{1F36D46A-5D9C-42E5-BC17-44C07A4484B4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers.EmailProviders", "Providers\EmailProviders\FluentCMS.Providers.EmailProviders\FluentCMS.Providers.EmailProviders.csproj", "{A355D8E5-1BA2-4267-BEC5-0F21A8D41B45}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Providers.EmailProviders", "Providers\EmailProviders\FluentCMS.Providers.EmailProviders\FluentCMS.Providers.EmailProviders.csproj", "{A355D8E5-1BA2-4267-BEC5-0F21A8D41B45}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers.FileStorageProviders.Abstractions", "Providers\FileStorageProviders\FluentCMS.Providers.FileStorageProviders.Abstractions\FluentCMS.Providers.FileStorageProviders.Abstractions.csproj", "{A0D762CD-19DF-4F35-B4B2-B2171168F00B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Providers.FileStorageProviders.Abstractions", "Providers\FileStorageProviders\FluentCMS.Providers.FileStorageProviders.Abstractions\FluentCMS.Providers.FileStorageProviders.Abstractions.csproj", "{A0D762CD-19DF-4F35-B4B2-B2171168F00B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers.MessageBusProviders.Abstractions", "Providers\MessageBusProviders\FluentCMS.Providers.MessageBusProviders.Abstractions\FluentCMS.Providers.MessageBusProviders.Abstractions.csproj", "{1ADA3DC1-E56B-4648-AD6D-FE8A166ECAD0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Providers.MessageBusProviders.Abstractions", "Providers\MessageBusProviders\FluentCMS.Providers.MessageBusProviders.Abstractions\FluentCMS.Providers.MessageBusProviders.Abstractions.csproj", "{1ADA3DC1-E56B-4648-AD6D-FE8A166ECAD0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers.MessageBusProviders", "Providers\MessageBusProviders\FluentCMS.Providers.MessageBusProviders\FluentCMS.Providers.MessageBusProviders.csproj", "{F24BF4C8-5E7C-41FE-8E15-1318CEE2F136}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Providers.MessageBusProviders", "Providers\MessageBusProviders\FluentCMS.Providers.MessageBusProviders\FluentCMS.Providers.MessageBusProviders.csproj", "{F24BF4C8-5E7C-41FE-8E15-1318CEE2F136}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Providers.FileStorageProviders", "Providers\FileStorageProviders\FluentCMS.Providers.FileStorageProviders\FluentCMS.Providers.FileStorageProviders.csproj", "{2673EBC9-E99C-4A3F-AEA1-72FF42DEAD0C}"
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Web.Plugins.Contents.ContentViewer", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.ContentViewer\FluentCMS.Web.Plugins.Contents.ContentViewer.csproj", "{2FB1EE8A-F07C-41F6-855C-031CA3346BFA}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Contents.ContentViewer", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.ContentViewer\FluentCMS.Web.Plugins.Contents.ContentViewer.csproj", "{2FB1EE8A-F07C-41F6-855C-031CA3346BFA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TemplateRenderingProviders", "TemplateRenderingProviders", "{7705739E-5D69-4DF4-8C77-34AD3D991683}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers.TemplateRenderingProviders.Abstractions", "Providers\TemplateRenderingProviders\FluentCMS.Providers.TemplateRenderingProviders.Abstractions\FluentCMS.Providers.TemplateRenderingProviders.Abstractions.csproj", "{6238A269-B71B-444D-815C-2CDB340AEEE9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers.TemplateRenderingProviders", "Providers\TemplateRenderingProviders\FluentCMS.Providers.TemplateRenderingProviders\FluentCMS.Providers.TemplateRenderingProviders.csproj", "{6E1E6F02-6930-41C2-B03A-2BE94F167F6F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -170,6 +177,14 @@ Global
 		{2FB1EE8A-F07C-41F6-855C-031CA3346BFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2FB1EE8A-F07C-41F6-855C-031CA3346BFA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2FB1EE8A-F07C-41F6-855C-031CA3346BFA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6238A269-B71B-444D-815C-2CDB340AEEE9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6238A269-B71B-444D-815C-2CDB340AEEE9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6238A269-B71B-444D-815C-2CDB340AEEE9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6238A269-B71B-444D-815C-2CDB340AEEE9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6E1E6F02-6930-41C2-B03A-2BE94F167F6F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E1E6F02-6930-41C2-B03A-2BE94F167F6F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E1E6F02-6930-41C2-B03A-2BE94F167F6F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E1E6F02-6930-41C2-B03A-2BE94F167F6F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -203,6 +218,9 @@ Global
 		{F24BF4C8-5E7C-41FE-8E15-1318CEE2F136} = {2FF62DC2-6027-4F9F-A6A9-3DA46D2B88E2}
 		{2673EBC9-E99C-4A3F-AEA1-72FF42DEAD0C} = {6BF48DBC-42A7-412E-8894-39E61BA7EF8A}
 		{2FB1EE8A-F07C-41F6-855C-031CA3346BFA} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
+		{7705739E-5D69-4DF4-8C77-34AD3D991683} = {CA060C96-322D-4410-8D32-0AF5DA8A975C}
+		{6238A269-B71B-444D-815C-2CDB340AEEE9} = {7705739E-5D69-4DF4-8C77-34AD3D991683}
+		{6E1E6F02-6930-41C2-B03A-2BE94F167F6F} = {7705739E-5D69-4DF4-8C77-34AD3D991683}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2E9F4217-7A58-48A4-9850-84CD0CDA31DA}

@@ -20,6 +20,7 @@ services.AddJwtApiTokenProvider();
 services.AddSmtpEmailProvider();
 services.AddInMemoryMessageBusProvider();
 services.AddLocalFileStorageProvider();
+services.AddScribanTemplateRenderingProvider();
 
 services.AddApiServices();
 

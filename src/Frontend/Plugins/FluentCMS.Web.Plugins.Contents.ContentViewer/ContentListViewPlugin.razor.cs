@@ -1,9 +1,12 @@
+using FluentCMS.Providers.TemplateRenderingProviders.Abstractions;
+
 namespace FluentCMS.Web.Plugins.Contents.ContentViewer;
-using Scriban;
-using Scriban.Runtime;
 
 public partial class ContentListViewPlugin
 {
+    [Inject]
+    protected ITemplateRenderingProvider RenderingProvider { get; set; } = default!;
+
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = default!;
 
@@ -49,23 +52,15 @@ public partial class ContentListViewPlugin
                 }
             }
 
-            if(Items != null)
+            if (Items != null)
             {
-                var scriptObject = new ScriptObject();
-
-                scriptObject.Add("Items", Items.Select(x => x.Data));
-
-                var context = new TemplateContext();
-                context.PushGlobal(scriptObject);
-
-                var template = Template.Parse(Plugin.Settings["Template"] ?? "No Template");
-                Rendered = template.Render(context);
+                var data = new Dictionary<string, object>
+                {
+                    { "Items", Items.Select(x => x.Data) }
+                };
+                var content = Plugin.Settings["Template"] ?? "No Template";
+                Rendered = RenderingProvider.Render(content, data);
             }
-            // var response = await ApiClient.PluginContent.GetAllAsync(nameof(TextHTMLContent), Plugin.Id);
-
-            // if (response?.Data != null && response.Data.ToContentList<TextHTMLContent>().Any())
-            //     Content = response.Data.ToContentList<TextHTMLContent>();
-
         }
     }
 }

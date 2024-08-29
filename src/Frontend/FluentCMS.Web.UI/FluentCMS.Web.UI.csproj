@@ -14,7 +14,6 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="8.0.8" />
         <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.8" />
-        <PackageReference Include="Scriban" Version="5.10.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -22,6 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\..\Providers\TemplateRenderingProviders\FluentCMS.Providers.TemplateRenderingProviders.Abstractions\FluentCMS.Providers.TemplateRenderingProviders.Abstractions.csproj" />
       <ProjectReference Include="..\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj" />
     </ItemGroup>
     
