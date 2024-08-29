@@ -1,6 +1,6 @@
 ﻿using FluentCMS.Providers.TemplateRenderingProviders.Abstractions;
-using Scriban.Runtime;
 using Scriban;
+using Scriban.Runtime;
 
 namespace FluentCMS.Providers.TemplateRenderingProviders;
 
@@ -8,7 +8,7 @@ public class ScribanTemplateRenderingProvider : ITemplateRenderingProvider
 {
     public string Render(string? content, Dictionary<string, object> keyValues)
     {
-        if(string.IsNullOrEmpty(content))
+        if (string.IsNullOrEmpty(content))
             return string.Empty;
 
         var scriptObject = new ScriptObject();
