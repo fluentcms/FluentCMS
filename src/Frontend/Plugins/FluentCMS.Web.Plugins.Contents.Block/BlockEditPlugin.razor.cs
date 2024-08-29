@@ -60,7 +60,7 @@ public partial class BlockEditPlugin
     private BlockContent? Model { get; set; } = default!;
 
     private bool IsEditMode { get; set; } = false;
-    // Model
+
     protected override async Task OnInitializedAsync()
     {
         if (Model is null)
@@ -77,7 +77,6 @@ public partial class BlockEditPlugin
                 Template = content[0].Template
             };
             IsEditMode = true;
-            
         }
     }
 
@@ -87,7 +86,6 @@ public partial class BlockEditPlugin
             return;
 
         await ApiClient.PluginContent.UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.Id, Model.ToDictionary());
-        
         NavigateBack();
     }
 }
