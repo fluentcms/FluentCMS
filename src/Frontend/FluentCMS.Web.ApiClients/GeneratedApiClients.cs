@@ -11868,6 +11868,9 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("type")]
         public string? Type { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+        public string? Title { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("isDefault")]
         public bool IsDefault { get; set; } = default!;
 

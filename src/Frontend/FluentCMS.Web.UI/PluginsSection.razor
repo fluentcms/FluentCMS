@@ -3,7 +3,7 @@
     <div class="f-section f-section-row" data-name="@Name">
         @foreach (var Plugin in ViewState.Plugins.Where(x => x.Section.ToLower() == Name.ToLower()).OrderBy(p => p.Order))
         {
-            <PluginContainer @key="@Plugin" Plugin=@Plugin SectionName=@Name />
+            <PluginContainer @key=@Plugin Plugin="@Plugin" />
         }
     </div>
 }
@@ -11,13 +11,13 @@
 @if (ViewState.Type == ViewStateType.PluginEdit && Name.ToLower() == "main")
 {
     <div class="f-section" data-name="@Name">
-        <PluginContainer Plugin=@ViewState.Plugin SectionName=@Name />
+        <PluginContainer Plugin="@ViewState.Plugin" />
     </div>
 }
 
 @if (ViewState.Type == ViewStateType.PluginDetail && Name.ToLower() == "main")
 {
     <div class="f-section" data-name="@Name">
-        <PluginContainer Plugin=@ViewState.Plugin SectionName=@Name />
+        <PluginContainer Plugin="@ViewState.Plugin" />
     </div>
 }

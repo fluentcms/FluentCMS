@@ -2,9 +2,6 @@ namespace FluentCMS.Web.Plugins.Admin.PageManagement;
 
 public partial class PageCreatePlugin
 {
-    [CascadingParameter]
-    private ViewState ViewState { get; set; } = default!;
-
     public const string FORM_NAME = "PageCreateForm";
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]

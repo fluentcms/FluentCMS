@@ -99,7 +99,7 @@ public static class ServiceExtensions
                         viewState.Type = ViewStateType.PluginEdit;
                     }
                     viewState.Plugin = viewState.Plugins.Single(x => x.Id == pluginId);
-                    viewState.PluginViewName = queryParams["viewName"];
+                    viewState.PluginDefinitionType = viewState.Plugin.Definition.Types.Where(x => x.Name!.Equals(queryParams["viewName"], StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
                 }
             }
 

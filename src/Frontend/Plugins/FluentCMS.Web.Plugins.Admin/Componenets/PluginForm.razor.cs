@@ -3,7 +3,10 @@
 public partial class PluginForm
 {
     [Parameter]
-    public string? Title { get; set; }
+    public string Title { get; set; } = default!;
+
+    [Parameter]
+    public PluginViewState Plugin { get; set; } = default!;
 
     [Parameter]
     public RenderFragment? ChildContent { get; set; }

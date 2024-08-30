@@ -7,9 +7,6 @@ public partial class RoleUpdatePlugin
     [SupplyParameterFromQuery(Name = "id")]
     private Guid Id { get; set; }
 
-    [CascadingParameter]
-    private ViewState ViewState { get; set; } = default!;
-
     private RoleUpdateRequest? Model { get; set; }
 
     private List<Policy>? Policies { get; set; }

@@ -5,9 +5,6 @@ public partial class PluginContainer
     [Parameter]
     public PluginViewState Plugin { get; set; } = default!;
 
-    [Parameter]
-    public string SectionName { get; set; } = default!;
-
     [Inject]
     private NavigationManager NavigationManager { get; set; } = default!;
 
@@ -21,33 +18,38 @@ public partial class PluginContainer
 
     protected override void OnInitialized()
     {
+        Console.WriteLine($"{GetPluginDefinitionType().Title} {Plugin}");
+        Plugin.Title = GetPluginDefinitionType()?.Title ?? "Untitled";
         Parameters = new Dictionary<string, object>
         {
-            { "SectionName", SectionName },
             { "Plugin", Plugin }
         };
     }
 
-    private Type? GetPluginType()
+    private PluginDefinitionTypeViewState? GetPluginDefinitionType()
     {
         PluginDefinitionTypeViewState? pluginDefType;
 
         if (ViewState.Type == ViewStateType.Default || ViewState.Type == ViewStateType.PagePreview)
             pluginDefType = Plugin.Definition.Types?.Where(p => p.IsDefault).FirstOrDefault();
         else
-            pluginDefType = Plugin.Definition?.Types?.Where(p => p!.Name!.Equals(ViewState.PluginViewName, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+            pluginDefType = ViewState.PluginDefinitionType;
 
         if (pluginDefType is null)
             throw new InvalidOperationException("Plugin definition type not found!");
 
+        return pluginDefType;
+    }
+
+    private Type? GetPluginType()
+    {
         var assemblyName = Plugin?.Definition?.Assembly;
         if (string.IsNullOrEmpty(assemblyName))
             throw new InvalidOperationException("Plugin assembly name not found!");
 
-        var type = PluginLoader.GetType(assemblyName, pluginDefType!.Type!) ??
+        var type = PluginLoader.GetType(assemblyName, GetPluginDefinitionType()!.Type!) ??
             throw new InvalidOperationException("Plugin type not found!");
 
         return type;
-
     }
 }

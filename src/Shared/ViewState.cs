@@ -11,7 +11,7 @@ public class ViewState
     public List<PluginViewState> Plugins { get; set; } = default!;
     public UserViewState User { get; set; } = default!;
     public PluginViewState? Plugin { get; set; }
-    public string? PluginViewName { get; set; }
+    public PluginDefinitionTypeViewState? PluginDefinitionType { get; set; } = default!;
 }
 
 public enum ViewStateType
@@ -75,6 +75,7 @@ public class PluginViewState
     public Guid Id { get; set; }
     public int Order { get; set; } = 0;
     public string Section { get; set; } = default!;
+    public string Title { get; set; } = default!;
     public PluginDefinitionViewState Definition { get; set; } = default!;
     public bool Locked { get; set; } = false;
     public int Cols { get; set; } = 12;
@@ -98,6 +99,7 @@ public class PluginDefinitionTypeViewState
 {
     public string Name { get; set; } = default!;
     public string Type { get; set; } = default!;
+    public string Title { get; set; } = default!;
     public bool IsDefault { get; set; } = false;
 }
 

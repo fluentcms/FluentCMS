@@ -115,19 +115,18 @@
                 {
                     "Name": "Api Token List",
                     "Type": "ApiTokenListPlugin",
+                    "Title": "Api Tokens",
                     "IsDefault": true
                 },
                 {
                     "Name": "Create Api Token",
-                    "Type": "ApiTokenCreatePlugin"
+                    "Type": "ApiTokenCreatePlugin",
+                    "Title": "Create New API Token"
                 },
                 {
                     "Name": "Update Api Token",
-                    "Type": "ApiTokenUpdatePlugin"
-                },
-                {
-                    "Name": "Api Token Detail",
-                    "Type": "ApiTokenDetailPlugin"
+                    "Type": "ApiTokenUpdatePlugin",
+                    "Title": "Update API Token"
                 }
             ]
         },
@@ -141,11 +140,13 @@
                 {
                     "Name": "Users List",
                     "Type": "UserListPlugin",
+                    "Title": "Users",
                     "IsDefault": true
                 },
                 {
                     "Name": "Create User",
-                    "Type": "UserCreatePlugin"
+                    "Type": "UserCreatePlugin",
+                    "Title": "Create New User"
                 },
                 {
                     "Name": "Update User",

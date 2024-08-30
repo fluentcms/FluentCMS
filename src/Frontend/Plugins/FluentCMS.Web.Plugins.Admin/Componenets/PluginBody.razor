@@ -4,9 +4,11 @@
 @if (Visible)
 {
     <div class="m-4">
-        <Grid Visible="!string.IsNullOrEmpty(Title)" ItemsSmall="GridItems.Start" JustifySmall="GridJustify.Between">
+        <Grid Visible="!string.IsNullOrEmpty(Title ?? Plugin.Title)" ItemsSmall="GridItems.Start" JustifySmall="GridJustify.Between">
             <GridItem>
-                <Typography Size="TextSize.H5">@Title</Typography>
+                <Typography Size="TextSize.H5">
+                    @(Title ?? Plugin.Title)
+                </Typography>
             </GridItem>
             <GridItem>
                 <Stack>
@@ -22,7 +24,7 @@
             @SubtitleFragment
         }
 
-        <Spacer Visible="!string.IsNullOrEmpty(Title)" />
+        <Spacer Visible="!string.IsNullOrEmpty(Title ?? Plugin.Title)" />
         <Card Visible="ChildContent != null">
             @ChildContent
         </Card>

@@ -8,6 +8,9 @@ public partial class PluginContainerActions
     [CascadingParameter]
     public ViewState ViewState { get; set; } = default!;
 
+    [CascadingParameter]
+    public string PluginTitle { get; set; } = default!;
+
     private bool IsDesignMode = false;
 
     protected override async Task OnInitializedAsync()

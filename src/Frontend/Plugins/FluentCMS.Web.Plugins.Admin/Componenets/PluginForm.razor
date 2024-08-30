@@ -1,6 +1,6 @@
 ﻿@namespace FluentCMS.Web.Plugins
 
-<PluginBody Title="@Title">
+<PluginBody Title="@(Title ?? Plugin.Title)">
     <CardBody>
         @if (Model != null)
         {
