@@ -28,7 +28,7 @@ public partial class FormRichTextEditor
     private string? Text { get; set; }
     private string Mode { get; set; } = "Page";
 
-    //private FileUploadConfig? FileUploadConfig { get; set; }
+    private FileUploadConfig? FileUploadConfig { get; set; }
 
     [Parameter]
     public int Cols { get; set; } = 12;
@@ -165,7 +165,7 @@ public partial class FormRichTextEditor
         var settingsResponse = await ApiClient.GlobalSettings.GetAsync();
         if (settingsResponse?.Data != null)
         {
-            //FileUploadConfig = settingsResponse?.Data.FileUpload;
+            FileUploadConfig = settingsResponse?.Data.FileUpload;
         }
 
         // TODO: Site url
@@ -292,17 +292,17 @@ public partial class FormRichTextEditor
 
     private async Task OnFilesChanged(InputFileChangeEventArgs e)
     {
-        //if (FileUploadConfig != null)
-        //{
-        //    List<FileParameter> files = [];
-        //    foreach (var file in e.GetMultipleFiles(FileUploadConfig.MaxCount))
-        //    {
-        //        var Data = file.OpenReadStream(FileUploadConfig.MaxSize);
-        //        files.Add(new FileParameter(Data, file.Name, file.ContentType));
-        //    }
-        //    await ApiClient.File.UploadAsync(FolderId, files);
-        //    await OnNavigateFolder(FolderId);
-        //}
+        if (FileUploadConfig != null)
+        {
+            List<FileParameter> files = [];
+            foreach (var file in e.GetMultipleFiles(FileUploadConfig.MaxCount))
+            {
+                var Data = file.OpenReadStream(FileUploadConfig.MaxSize);
+                files.Add(new FileParameter(Data, file.Name, file.ContentType));
+            }
+            await ApiClient.File.UploadAsync(FolderId, files);
+            await OnNavigateFolder(FolderId);
+        }
     }
 
     public async Task OnImageModalClose()

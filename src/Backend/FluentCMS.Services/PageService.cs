@@ -125,9 +125,6 @@ public class PageService(
             throw new AppException(ExceptionCodes.PageNotFound);
     }
 
-
-
-
     #region Private Methods
 
     private static void ValidateUrl(Page page, List<Page> pages)
