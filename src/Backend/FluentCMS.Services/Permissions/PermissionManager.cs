@@ -1,6 +1,4 @@
-﻿using FluentCMS.Services.Setup;
-
-namespace FluentCMS.Services.Permissions;
+﻿namespace FluentCMS.Services.Permissions;
 
 public class PermissionManager : IPermissionManager
 {
@@ -8,17 +6,15 @@ public class PermissionManager : IPermissionManager
     private readonly IPermissionRepository _permissionRepository;
     private readonly IUserRoleRepository _userRoleRepository;
     private readonly IGlobalSettingsRepository _globalSettingsRepository;
-    private readonly ISetupManager _setupManager;
     private IEnumerable<Guid> _userRoleIds = [];
     private IEnumerable<Permission> _sitePermissions = [];
 
-    public PermissionManager(IAuthContext authContext, IPermissionRepository permissionRepository, IPageRepository pageRepository, IUserRoleRepository userRoleRepository, IGlobalSettingsRepository globalSettingsRepository, ISetupManager setupManager)
+    public PermissionManager(IAuthContext authContext, IPermissionRepository permissionRepository, IUserRoleRepository userRoleRepository, IGlobalSettingsRepository globalSettingsRepository)
     {
         _authContext = authContext;
         _permissionRepository = permissionRepository;
         _userRoleRepository = userRoleRepository;
         _globalSettingsRepository = globalSettingsRepository;
-        _setupManager = setupManager;
     }
 
     public async Task<bool> HasAccess<TEntity>(TEntity entity, string action, CancellationToken cancellationToken = default) where TEntity : ISiteAssociatedEntity
@@ -26,8 +22,8 @@ public class PermissionManager : IPermissionManager
         if (await IsSuperAdmin(cancellationToken))
             return true;
 
-        if (!await _setupManager.IsInitialized())
-            return true;
+        //if (!await _setupManager.IsInitialized())
+        //    return true;
 
         return true;
 
