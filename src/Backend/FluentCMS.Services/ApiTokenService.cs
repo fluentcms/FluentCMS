@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Services;
+﻿using FluentCMS.Providers.ApiTokenProviders;
+
+namespace FluentCMS.Services;
 
 public interface IApiTokenService : IAutoRegisterService
 {

@@ -62,7 +62,10 @@ public partial class FormFileUpload : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        await Module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), Element);
+        if (Module != null)
+        {
+            await Module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), Element);
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

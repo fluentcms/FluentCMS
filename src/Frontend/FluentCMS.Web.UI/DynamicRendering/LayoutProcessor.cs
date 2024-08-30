@@ -1,5 +1,4 @@
-﻿using Scriban;
-using Scriban.Runtime;
+﻿using FluentCMS.Providers.TemplateRenderingProviders.Abstractions;
 using System.Text.RegularExpressions;
 
 namespace FluentCMS.Web.UI.DynamicRendering;
@@ -9,24 +8,8 @@ public interface ILayoutProcessor
     List<Segment> ProcessSegments(string htmlContent, Dictionary<string, object> keyValues);
 }
 
-public class LayoutProcessor : ILayoutProcessor
+public class LayoutProcessor(ITemplateRenderingProvider renderingProvider) : ILayoutProcessor
 {
-    private static string PreProcess(string? content, Dictionary<string, object> keyValues)
-    {
-        if (string.IsNullOrEmpty(content))
-            return string.Empty;
-
-        var scriptObject = new ScriptObject();
-        foreach (var keyValue in keyValues)
-            scriptObject.Add(keyValue.Key, keyValue.Value);
-
-        var context = new TemplateContext();
-        context.PushGlobal(scriptObject);
-
-        var template = Template.Parse(content);
-        return template.Render(context);
-    }
-
     private Type GetTypeByName(string typeName)
     {
         var type = GetType().Assembly.GetTypes().Where(x => x.Name.Equals(typeName)).FirstOrDefault();
@@ -37,7 +20,7 @@ public class LayoutProcessor : ILayoutProcessor
 
     public List<Segment> ProcessSegments(string htmlContent, Dictionary<string, object> keyValues)
     {
-        var content = PreProcess(htmlContent, keyValues);
+        var content = renderingProvider.Render(htmlContent, keyValues);
 
         var segments = new List<Segment>();
 

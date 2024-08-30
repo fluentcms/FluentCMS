@@ -1,7 +1,7 @@
 $badge: $prefix + 'badge';
 
 .#{$badge} {
-    @apply text-xs font-medium px-2.5 py-0.5 rounded;
+    @apply whitespace-nowrap text-xs font-medium px-2.5 py-0.5 rounded;
 
     &-color-default {
         @apply bg-gray-100 text-gray-800 dark:text-gray-300 dark:bg-gray-700;

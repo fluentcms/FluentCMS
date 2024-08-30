@@ -1,6 +1,6 @@
 ﻿using MediatR;
 
-namespace FluentCMS.Providers;
+namespace FluentCMS.Providers.MessageBusProviders;
 
 public class Message<T>(string action, T payload) : INotification
 {

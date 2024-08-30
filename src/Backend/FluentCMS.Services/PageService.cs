@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Services;
+﻿using FluentCMS.Providers.MessageBusProviders;
+
+namespace FluentCMS.Services;
 
 public interface IPageService : IAutoRegisterService
 {

@@ -9,26 +9,11 @@ public static class ServiceExtensions
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        services.AddInMemoryMessageBus();
-
         services.AddPermissions();
 
         services.AddScoped<ISetupManager, SetupManager>();
 
-        services.AddScoped<IEmailProvider, SmtpEmailProvider>();
-        services.AddScoped<IFileStorageProvider, LocalFileStorageProvider>();
-        services.AddScoped(sp =>
-        {
-            var globalSettingsService = sp.GetRequiredService<IGlobalSettingsService>();
-            var globalSettings = globalSettingsService.Get().Result;
-
-            globalSettings ??= new();
-
-            return globalSettings.Email;
-        });
-
         services.AddScoped<IUserTokenProvider, JwtUserTokenProvider>();
-        services.AddScoped<IApiTokenProvider, DefaultApiTokenProvider>();
 
         AddIdentity(services);
 

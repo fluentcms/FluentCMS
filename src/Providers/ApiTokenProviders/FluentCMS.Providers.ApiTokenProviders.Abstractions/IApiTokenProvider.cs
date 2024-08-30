@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Providers;
+﻿namespace FluentCMS.Providers.ApiTokenProviders;
 
 public interface IApiTokenProvider
 {
