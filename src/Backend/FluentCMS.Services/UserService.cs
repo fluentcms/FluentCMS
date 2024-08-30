@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Providers.EmailProviders;
+using FluentCMS.Providers.MessageBusProviders;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 
@@ -27,7 +28,8 @@ public class UserService(
     IEmailProvider emailProvider,
     IConfiguration configuration,
     IAuthContext authContext,
-    IUserRoleRepository userRoleRepository) : IUserService
+    IUserRoleRepository userRoleRepository,
+    IMessagePublisher messagePublisher) : IUserService
 {
     public const string LOCAL_LOGIN_PROVIDER = "local";
     public const string REFRESH_TOKEN_NAME = "refreshToken";
@@ -110,7 +112,7 @@ public class UserService(
         var userRemoveResult = await userManager.DeleteAsync(user);
         userRemoveResult.ThrowIfInvalid();
 
-        await DeleteUserAllRoles(user.Id);
+        await messagePublisher.Publish(new Message<User>(ActionNames.UserDeleted, user), cancellationToken);
 
         return true;
     }
@@ -191,12 +193,5 @@ public class UserService(
             property.SetValue(target, property.GetValue(source));
         }
         return target;
-    }
-
-    private async Task DeleteUserAllRoles(Guid userId, CancellationToken cancellationToken = default)
-    {
-        // delete all UserRoles for user. 
-        var existUserRoles = await userRoleRepository.GetByUserId(userId, cancellationToken);
-        await userRoleRepository.DeleteMany(existUserRoles.Select(x => x.Id), cancellationToken);
     }
 }
