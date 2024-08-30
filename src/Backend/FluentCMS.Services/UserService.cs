@@ -106,6 +106,11 @@ public class UserService(
         var user = await userManager.FindByIdAsync(id.ToString())
             ?? throw new AppException(ExceptionCodes.UserNotFound);
 
+        var globalSettings = await globalSettingsRepository.Get(cancellationToken) ?? throw new AppException(ExceptionCodes.GlobalSettingsNotFound);
+
+        if (globalSettings.SuperAdmins.Contains(user.UserName))
+            throw new AppException(ExceptionCodes.UserCanNotBeDeleted);
+
         var userRemoveResult = await userManager.DeleteAsync(user);
         userRemoveResult.ThrowIfInvalid();
 

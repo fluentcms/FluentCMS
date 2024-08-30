@@ -23,7 +23,9 @@ public partial class GlobalSettingsPlugin
 
     private async Task OnSubmit()
     {
-        Model!.SuperAdmins = SuperAdminUserNames.Split(",");
+        var superAdmins = SuperAdminUserNames.Split(",").Select(x => x.Trim()).ToList();
+
+        Model!.SuperAdmins = superAdmins;
 
         await ApiClient.GlobalSettings.UpdateAsync(Model);
         NavigateTo("/admin");

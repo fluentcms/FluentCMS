@@ -12580,6 +12580,9 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("locked")]
         public bool Locked { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("isSuperAdmin")]
+        public bool IsSuperAdmin { get; set; } = default!;
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.1.0.0 (NJsonSchema v11.0.2.0 (Newtonsoft.Json v13.0.0.0))")]

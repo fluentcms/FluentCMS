@@ -16,6 +16,7 @@ public static class ExceptionCodes
     public const string GlobalSettingsUnableToUpdate = "GlobalSettings.UnableToUpdate";
     public const string GlobalSettingsUnableToInit = "GlobalSettings.UnableToInit";
     public const string GlobalSettingsNotFound = "GlobalSettings.NotFound";
+    public const string GlobalSettingsSuperAdminCanNotBeDeleted = "GlobalSettings.SuperAdminCanNotBeDeleted";
 
     #endregion
 
@@ -25,6 +26,7 @@ public static class ExceptionCodes
     public const string UserLoginFailed = "User.LoginFailed";
     public const string UserChangePasswordFailed = "User.ChangePasswordFailed";
     public const string UserTokenGenerationFailed = "User.TokenGenerationFailed";
+    public const string UserCanNotBeDeleted = "User.CanNotBeDeleted";
 
     #endregion
 

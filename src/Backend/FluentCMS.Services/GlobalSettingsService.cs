@@ -8,12 +8,15 @@ public interface IGlobalSettingsService : IAutoRegisterService
     Task<bool> Reset(CancellationToken cancellationToken = default);
 }
 
-public class GlobalSettingsService(IGlobalSettingsRepository repository) : IGlobalSettingsService
+public class GlobalSettingsService(IGlobalSettingsRepository repository, IAuthContext authContext) : IGlobalSettingsService
 {
     public async Task<GlobalSettings> Update(GlobalSettings settings, CancellationToken cancellationToken = default)
     {
         var existSetting = await repository.Get(cancellationToken) ??
              throw new AppException(ExceptionCodes.GlobalSettingsNotFound);
+
+        if (existSetting.SuperAdmins.Contains(authContext.Username) && !settings.SuperAdmins.Contains(authContext.Username))
+            throw new AppException(ExceptionCodes.GlobalSettingsSuperAdminCanNotBeDeleted);
 
         existSetting.SuperAdmins = settings.SuperAdmins;
 
