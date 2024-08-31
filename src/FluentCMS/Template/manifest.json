@@ -45,6 +45,7 @@
                 {
                     "Name": "Login",
                     "Type": "LoginViewPlugin",
+                    "Title": "Welcome back",
                     "IsDefault": true
                 }
             ]
@@ -59,6 +60,7 @@
                 {
                     "Name": "Logout",
                     "Type": "LogoutViewPlugin",
+                    "Title": "Logout",
                     "IsDefault": true
                 }
             ]
@@ -73,6 +75,7 @@
                 {
                     "Name": "Regsiter",
                     "Type": "RegisterViewPlugin",
+                    "Title": "Your Best Work Starts Here",
                     "IsDefault": true
                 }
             ]
@@ -87,6 +90,7 @@
                 {
                     "Name": "Forgot Password",
                     "Type": "ForgotPasswordViewPlugin",
+                    "Title": "Forgot Password",
                     "IsDefault": true
                 }
             ]
@@ -101,6 +105,7 @@
                 {
                     "Name": "Reset Password",
                     "Type": "ResetPasswordViewPlugin",
+                    "Title": "Reset your Password",
                     "IsDefault": true
                 }
             ]

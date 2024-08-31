@@ -260,7 +260,8 @@ public class PageController(
                                   {
                                       IsDefault = true,
                                       Name = "Setup",
-                                      Type = "SetupViewPlugin"
+                                      Type = "SetupViewPlugin",
+                                      Title = "Setup Admin Account"
                                   }
                               ]
                           }
