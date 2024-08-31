@@ -1,7 +1,7 @@
 @inherits BasePlugin
 @rendermode InteractiveServer
 
-<PluginForm Model="@Model" Name="@FORM_NAME" Title="Update Page" OnSubmit="OnSubmit">
+<PluginForm Model="@Model" Name="@FORM_NAME" Title="@DefinitionType.Title" OnSubmit="OnSubmit">
     <FormInput @bind-Value="Model!.Title" Cols="6" Label="Title" Placeholder="Enter Title" Required />
      <FormInput @bind-Value="Model!.Path" Cols="6" Label="Path" Placeholder="Enter url path" />
      <FormSelect @bind-Value="Model!.ParentId" Data="PageOptions" ValueField="Value" TextField="Title" Cols="6" Label="Parent page" Placeholder="Choose Parent page" Visible="@(Pages != null)" />

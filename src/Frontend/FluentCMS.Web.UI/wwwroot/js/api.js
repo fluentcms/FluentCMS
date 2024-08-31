@@ -5,6 +5,7 @@ export async function createPlugin({definitionId, sectionName, order}) {
         'CreatePluginModel.DefinitionId': definitionId,
         'CreatePluginModel.PageId': '00000000-0000-0000-0000-000000000000',
         'CreatePluginModel.Order': order,
+        'CreatePluginModel.Title': "",
         'CreatePluginModel.Cols': 12,
         'CreatePluginModel.ColsMd': 0,
         'CreatePluginModel.ColsLg': 0,
@@ -37,7 +38,6 @@ export async function updatePluginCols(pluginEl, section) {
     result[`UpdatePluginOrdersModel.Plugins[0].ColsLg`] = colsLg
     
     await request('UpdatePluginOrdersForm', result)
-
 }
 
 export async function updatePlugin(pluginContainerEl, sectionEl) {

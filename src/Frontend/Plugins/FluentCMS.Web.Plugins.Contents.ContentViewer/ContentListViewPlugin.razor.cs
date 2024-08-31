@@ -7,6 +7,9 @@ public partial class ContentListViewPlugin
     [Inject]
     protected ITemplateRenderingProvider RenderingProvider { get; set; } = default!;
 
+    [Parameter]
+    public PluginDefinitionTypeViewState? DefinitionType { get; set; } = default!;
+
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = default!;
 

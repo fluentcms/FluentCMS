@@ -4,7 +4,7 @@ public class PluginUpdateRequest
 {
     public Guid Id { get; set; }
     public int Order { get; set; } = 0;
-    public string Title { get; set; } = default!;
+    public string? Title { get; set; } = default!;
     public string Section { get; set; } = default!;
     public int Cols { get; set; } = 0;
     public int ColsMd { get; set; } = 0;

@@ -8,6 +8,9 @@ public partial class ContentListSettingsPlugin
     protected NavigationManager NavigationManager { get; set; } = default!;
 
     [Parameter]
+    public PluginDefinitionTypeViewState? DefinitionType { get; set; } = default!;
+
+    [Parameter]
     public PluginViewState? Plugin { get; set; } = default!;
 
     [Inject]

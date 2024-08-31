@@ -150,7 +150,8 @@
                 },
                 {
                     "Name": "Update User",
-                    "Type": "UserUpdatePlugin"
+                    "Type": "UserUpdatePlugin",
+                    "Title": "Update User"
                 }
             ]
         },
@@ -164,15 +165,18 @@
                 {
                     "Name": "Sites List",
                     "Type": "SiteListPlugin",
+                    "Title": "Sites",
                     "IsDefault": true
                 },
                 {
                     "Name": "Create Site",
-                    "Type": "SiteCreatePlugin"
+                    "Type": "SiteCreatePlugin",
+                    "Title": "Create New Site"
                 },
                 {
                     "Name": "Update Site",
-                    "Type": "SiteUpdatePlugin"
+                    "Type": "SiteUpdatePlugin",
+                    "Title": "Update Site"
                 }
             ]
         },
@@ -186,15 +190,18 @@
                 {
                     "Name": "Pages List",
                     "Type": "PageListPlugin",
+                    "Title": "Pages",
                     "IsDefault": true
                 },
                 {
                     "Name": "Create Page",
-                    "Type": "PageCreatePlugin"
+                    "Type": "PageCreatePlugin",
+                    "Title": "Create New Page"
                 },
                 {
                     "Name": "Update Page",
-                    "Type": "PageUpdatePlugin"
+                    "Type": "PageUpdatePlugin",
+                    "Title": "Update Page"
                 }
             ]
         },
@@ -208,31 +215,8 @@
                 {
                     "Name": "Files List",
                     "Type": "FileListPlugin",
+                    "Title": "File Management",
                     "IsDefault": true
-                },
-                {
-                    "Name": "Upload File",
-                    "Type": "FileCreatePlugin"
-                },
-                {
-                    "Name": "Update File",
-                    "Type": "FileUpdatePlugin"
-                },
-                {
-                    "Name": "File Detail",
-                    "Type": "FileDetailPlugin"
-                },
-                {
-                    "Name": "Create Folder",
-                    "Type": "FolderCreatePlugin"
-                },
-                {
-                    "Name": "Update Folder",
-                    "Type": "FolderUpdatePlugin"
-                },
-                {
-                    "Name": "Update File",
-                    "Type": "FileUpdatePlugin"
                 }
             ]
         },
@@ -246,31 +230,38 @@
                 {
                     "Name": "ContentTypes List",
                     "Type": "ContentTypeListPlugin",
+                    "Title": "Content Types",
                     "IsDefault": true
                 },
                 {
                     "Name": "Create ContentType",
-                    "Type": "ContentTypeCreatePlugin"
+                    "Type": "ContentTypeCreatePlugin",
+                    "Title": "New Content Type"
                 },
                 {
                     "Name": "Update ContentType",
-                    "Type": "ContentTypeUpdatePlugin"
+                    "Type": "ContentTypeUpdatePlugin",
+                    "Title": "Update Content Type"
                 },
                 {
                     "Name": "View ContentType",
-                    "Type": "ContentTypeDetailPlugin"
+                    "Type": "ContentTypeDetailPlugin",
+                    "Title": "Content Type Fields"
                 },
                 {
                     "Name": "Contents List",
-                    "Type": "ContentListPlugin"
+                    "Type": "ContentListPlugin",
+                    "Title": "Content List"
                 },
                 {
                     "Name": "Create Content",
-                    "Type": "ContentCreatePlugin"
+                    "Type": "ContentCreatePlugin",
+                    "Title": "Create New Content"
                 },
                 {
                     "Name": "Update Content",
-                    "Type": "ContentUpdatePlugin"
+                    "Type": "ContentUpdatePlugin",
+                    "Title": "Update Content"
                 }
             ]
         },
@@ -284,15 +275,18 @@
                 {
                     "Name": "Roles List",
                     "Type": "RoleListPlugin",
+                    "Title": "Roles",
                     "IsDefault": true
                 },
                 {
                     "Name": "Create Role",
-                    "Type": "RoleCreatePlugin"
+                    "Type": "RoleCreatePlugin",
+                    "Title": "Create New Role"
                 },
                 {
                     "Name": "Update Role",
-                    "Type": "RoleUpdatePlugin"
+                    "Type": "RoleUpdatePlugin",
+                    "Title": "Update Role"
                 }
             ]
         },
@@ -306,6 +300,7 @@
                 {
                     "Name": "Update",
                     "Type": "ProfileUpdatePlugin",
+                    "Title": "Profile",
                     "IsDefault": true
                 }
             ]
@@ -320,15 +315,18 @@
                 {
                     "Name": "Layouts List",
                     "Type": "LayoutListPlugin",
+                    "Title": "Layouts",
                     "IsDefault": true
                 },
                 {
                     "Name": "Create Layout",
-                    "Type": "LayoutCreatePlugin"
+                    "Type": "LayoutCreatePlugin",
+                    "Title": "Create New Layout"
                 },
                 {
                     "Name": "Update Layout",
-                    "Type": "LayoutUpdatePlugin"
+                    "Type": "LayoutUpdatePlugin",
+                    "Title": "Update Layout"
                 }
             ]
         },
@@ -340,11 +338,13 @@
                 {
                     "Name": "View",
                     "Type": "TextHTMLViewPlugin",
+                    "Title": "TextHTML",
                     "IsDefault": true
                 },
                 {
                     "Name": "Edit",
-                    "Type": "TextHTMLEditPlugin"
+                    "Type": "TextHTMLEditPlugin",
+                    "Title": "Update TextHTML Content"
                 }
             ]
         },
@@ -356,11 +356,13 @@
                 {
                     "Name": "View",
                     "Type": "RichTextViewPlugin",
+                    "Title": "RichText",
                     "IsDefault": true
                 },
                 {
                     "Name": "Edit",
-                    "Type": "RichTextEditPlugin"
+                    "Type": "RichTextEditPlugin",
+                    "Title": "Update RichText Content"
                 }
             ]
         },
@@ -372,11 +374,13 @@
                 {
                     "Name": "View",
                     "Type": "ContentListViewPlugin",
+                    "Title": "Content List Viewer",
                     "IsDefault": true
                 },
                 {
                     "Name": "Settings",
-                    "Type": "ContentListSettingsPlugin"
+                    "Type": "ContentListSettingsPlugin",
+                    "Title": "Content List Viewer Settings" 
                 }
             ]
         }

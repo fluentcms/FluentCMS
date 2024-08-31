@@ -1,6 +1,6 @@
 ﻿@inherits BasePlugin
 
-<PluginForm Model="@UpdateModel" Name="@FORM_NAME" Title="Update User" OnSubmit="OnUserUpdate">
+<PluginForm Model="@UpdateModel" Name="@FORM_NAME" Title="@DefinitionType.Title" OnSubmit="OnUserUpdate">
     <FormHiddenInput @bind-Value="UpdateModel!.Id" />
     <FormInput @bind-Value="Username" Cols="6" Disabled Label="Username" Placeholder="Enter Username" Required />
     <FormInput @bind-Value="UpdateModel!.Email" Cols="6" Label="Email" Placeholder="Enter Email" Required />

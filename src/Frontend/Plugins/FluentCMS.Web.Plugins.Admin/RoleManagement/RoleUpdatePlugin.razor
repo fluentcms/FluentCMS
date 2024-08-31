@@ -1,7 +1,7 @@
 @inherits BasePlugin
 @rendermode InteractiveServer
 
-<PluginForm Model="@Model" Name="@FORM_NAME" Title="Update Role" OnSubmit="OnSubmit">
+<PluginForm Model="@Model" Name="@FORM_NAME" Title="@DefinitionType.Title" OnSubmit="OnSubmit">
     <FormInput @bind-Value="Model!.Name" Label="Name" Placeholder="Enter Name" Required />
     <FormTextarea @bind-Value="Model!.Description" Label="Description" Placeholder="Enter Description" />
     <FormActions Cancel Submit />

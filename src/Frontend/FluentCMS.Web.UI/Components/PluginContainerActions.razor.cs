@@ -5,11 +5,11 @@ public partial class PluginContainerActions
     [Parameter]
     public PluginViewState Plugin { get; set; } = default!;
 
-    [CascadingParameter]
-    public ViewState ViewState { get; set; } = default!;
+    [Parameter]
+    public string Title { get; set; } = default!;
 
     [CascadingParameter]
-    public string PluginTitle { get; set; } = default!;
+    public ViewState ViewState { get; set; } = default!;
 
     private bool IsDesignMode = false;
 

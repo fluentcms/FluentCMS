@@ -1,6 +1,6 @@
 ﻿@inherits BasePlugin
 
-<PluginForm Model="@Model" Name="@FORM_NAME" Plugin="@Plugin" OnSubmit="OnSubmit">
+<PluginForm Model="@Model" Name="@FORM_NAME" Title="@DefinitionType.Title" OnSubmit="OnSubmit">
     <FormInput @bind-Value="Model!.Username" Cols="6" Label="Username" Placeholder="Enter Username" Required />
     <FormInput @bind-Value="Model!.Password" Cols="6" Label="Password" Placeholder="Enter Password" Required type="password" />
     <FormInput @bind-Value="Model!.Email" Cols="6" Label="Email" Placeholder="Enter Email" Required />

@@ -10,6 +10,9 @@ public partial class RichTextEditPlugin
     [Parameter]
     public PluginViewState? Plugin { get; set; } = default!;
 
+    [Parameter]
+    public PluginDefinitionTypeViewState? DefinitionType { get; set; } = default!;
+
     [Inject]
     protected ApiClientFactory ApiClient { get; set; } = default!;
 

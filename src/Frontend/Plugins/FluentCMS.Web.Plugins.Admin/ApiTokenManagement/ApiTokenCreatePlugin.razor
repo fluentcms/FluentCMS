@@ -1,7 +1,7 @@
 @inherits BasePlugin
 @rendermode InteractiveServer
 
-<PluginForm Model="@Model" Plugin="@Plugin" Name="@FORM_NAME" OnSubmit="OnSubmit">
+<PluginForm Model="@Model" Title="@DefinitionType.Title" Name="@FORM_NAME" OnSubmit="OnSubmit">
     <FormInput @bind-Value="Model.Name" Label="Name" Placeholder="Enter Name" Required />
     <FormTextarea @bind-Value="Model.Description" Label="Description" Placeholder="Enter Description" />
     <FormDateInput @bind-Value="Model.ExpireAt" Label="Expire At" Placeholder="Choose Expire date" />

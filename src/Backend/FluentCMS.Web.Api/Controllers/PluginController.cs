@@ -42,6 +42,7 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
     {
         var plugin = await pluginService.GetById(request.Id, cancellationToken);
         plugin.Order = request.Order;
+        plugin.Title = request.Title ?? plugin.Title;
         plugin.Cols = request.Cols;
         plugin.ColsMd = request.ColsMd;
         plugin.ColsLg = request.ColsLg;

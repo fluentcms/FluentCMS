@@ -15,7 +15,7 @@ public abstract class BasePlugin : ComponentBase
     public PluginViewState? Plugin { get; set; } = default!;
 
     [Parameter]
-    public string Title { get; set; } = default!;
+    public PluginDefinitionTypeViewState DefinitionType { get; set; } = default!;
 
     [Inject]
     protected ApiClientFactory ApiClient { get; set; } = default!;

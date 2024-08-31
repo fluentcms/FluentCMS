@@ -18,11 +18,10 @@ public partial class PluginContainer
 
     protected override void OnInitialized()
     {
-        Console.WriteLine($"{GetPluginDefinitionType().Title} {Plugin}");
-        Plugin.Title = GetPluginDefinitionType()?.Title ?? "Untitled";
         Parameters = new Dictionary<string, object>
         {
-            { "Plugin", Plugin }
+            { "Plugin", Plugin },
+            { "DefinitionType", GetPluginDefinitionType() }
         };
     }
 
