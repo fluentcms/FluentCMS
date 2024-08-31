@@ -23,6 +23,9 @@
                 <Indicator Color="Color.Success" Visible="@context.Enabled">YES</Indicator>
                 <Indicator Color="Color.Danger" Visible="@(!context.Enabled)">NO</Indicator>
             </DataTableItem>
+            <DataTableItem Label="Level">
+                <Indicator Color="Color.Success" Visible="@context.IsSuperAdmin">SuperAdmin</Indicator>
+            </DataTableItem>
             <DataTableItem Label="Create Date">@context.CreatedAt</DataTableItem>
             <DataTableItem Label="Last Login Date">@context.LoginAt</DataTableItem>
             <DataTableItem Label="Login Count">@context.LoginCount</DataTableItem>

@@ -1,0 +1,13 @@
+@inherits BasePlugin
+
+<PluginForm Model="@Model" Name="@FORM_NAME" Title="Global Setting" OnSubmit="OnSubmit">
+    <FormInput @bind-Value="@Model!.SuperAdminUserNames" Label="Super Admin User Names" Placeholder="Comma-separated usernames" Required />
+    <FormActions>
+        <Button Color="Color.Primary" Type="ButtonType.Submit">
+            Submit
+        </Button>
+        <Button Href="/admin">
+            Cancel
+        </Button>
+    </FormActions>
+</PluginForm>
