@@ -12,9 +12,16 @@ public class GlobalSettingsService(IGlobalSettingsRepository repository, IAuthCo
 {
     public async Task<GlobalSettings> Update(GlobalSettings settings, CancellationToken cancellationToken = default)
     {
+        settings.SuperAdmins = settings.SuperAdmins.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+        // at least one super admin should exist
+        if (!settings.SuperAdmins.Any())
+            throw new AppException(ExceptionCodes.GlobalSettingsSuperAdminAtLeastOne);
+
         var existSetting = await repository.Get(cancellationToken) ??
              throw new AppException(ExceptionCodes.GlobalSettingsNotFound);
 
+        // if the current user is a super admin and is trying to remove himself from the super admin list, throw an exception
         if (existSetting.SuperAdmins.Contains(authContext.Username) && !settings.SuperAdmins.Contains(authContext.Username))
             throw new AppException(ExceptionCodes.GlobalSettingsSuperAdminCanNotBeDeleted);
 

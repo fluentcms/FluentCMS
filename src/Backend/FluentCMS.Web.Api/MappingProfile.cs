@@ -117,7 +117,7 @@ public class MappingProfile : Profile
 
         #region GlobalSetting
 
-        CreateMap<GlobalSettings, GlobalSettingsUpdateRequest>();
+        CreateMap<GlobalSettings, GlobalSettingsResponse>();
         CreateMap<GlobalSettingsUpdateRequest, GlobalSettings>();
 
         #endregion

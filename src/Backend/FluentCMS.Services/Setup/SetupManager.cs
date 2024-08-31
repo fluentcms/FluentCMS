@@ -171,6 +171,7 @@ public class SetupManager : ISetupManager
 
     private async Task InitializeGlobalSettings()
     {
+        _globalSettings.SuperAdmins = [_superAdmin!.UserName!];
         _globalSettings = await _globalSettingsService.Init(_globalSettings);
     }
 
@@ -242,7 +243,6 @@ public class SetupManager : ISetupManager
             }
         }
     }
-
 
     private async Task InitLayouts()
     {

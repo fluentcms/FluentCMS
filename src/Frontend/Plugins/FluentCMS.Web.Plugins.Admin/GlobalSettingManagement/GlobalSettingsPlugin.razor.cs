@@ -2,32 +2,32 @@ namespace FluentCMS.Web.Plugins.Admin.GlobalSettingManagement;
 
 public partial class GlobalSettingsPlugin
 {
-    public const string FORM_NAME = "GlobalSettingForm";
+    public const string FORM_NAME = "GlobalSettingsForm";
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
-    private GlobalSettingsUpdateRequest? Model { get; set; }
-
-    private string SuperAdminUserNames { get; set; } = string.Empty;
+    private GlobalSettingsUpdateModel? Model { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        if (string.IsNullOrEmpty(SuperAdminUserNames))
+        if (Model is null)
         {
             var globalSettings = await ApiClient.GlobalSettings.GetAsync();
-            SuperAdminUserNames = string.Join(",", globalSettings?.Data?.SuperAdmins);
+            Model = new()
+            {
+                SuperAdminUserNames = string.Join(",", globalSettings?.Data?.SuperAdmins ?? [])
+            };
         }
-
-        if (Model is null)
-            Model = new();
     }
 
     private async Task OnSubmit()
     {
-        var superAdmins = SuperAdminUserNames.Split(",").Select(x => x.Trim()).ToList();
+        var superAdmins = Model?.SuperAdminUserNames.Split(",", StringSplitOptions.TrimEntries).Select(x => x.Trim()).ToList() ?? [];
 
-        Model!.SuperAdmins = superAdmins;
-
-        await ApiClient.GlobalSettings.UpdateAsync(Model);
+        var globalSettingsUpdateRequest = new GlobalSettingsUpdateRequest
+        {
+            SuperAdmins = superAdmins
+        };
+        await ApiClient.GlobalSettings.UpdateAsync(globalSettingsUpdateRequest);
         NavigateTo("/admin");
     }
 }
