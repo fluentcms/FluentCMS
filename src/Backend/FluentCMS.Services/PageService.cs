@@ -20,13 +20,12 @@ public class PageService(
 {
 
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
-    {
-        if (!await permissionManager.HasAccess(page, PermissionActionNames.PageContributor, cancellationToken))
-            throw new AppException(ExceptionCodes.PermissionDenied);
-
-        // Check if site id exists
-        _ = (await siteRepository.GetById(page.SiteId, cancellationToken)) ??
+    {        
+        var site = (await siteRepository.GetById(page.SiteId, cancellationToken)) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
+
+        if (!await permissionManager.HasAccess(site, PermissionActionNames.SiteContributor, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);       
 
         // If Parent Id is assigned
         if (page.ParentId != null)
@@ -89,11 +88,8 @@ public class PageService(
     {
         // fetch pages from db
         var sitePages = await pageRepository.GetAllForSite(siteId, cancellationToken);
-        var pages = new List<Page>();
 
-        foreach (var page in sitePages)
-            if (await permissionManager.HasAccess(page, PermissionActionNames.PageView, cancellationToken))
-                pages.Add(page);
+        var pages = await permissionManager.HasAccess(sitePages, PermissionActionNames.PageView, cancellationToken);
 
         return pages;
     }
@@ -136,13 +132,14 @@ public class PageService(
     public async Task<Page> GetByPath(Guid siteId, string path, CancellationToken cancellationToken = default)
     {
         var pages = (await pageRepository.GetAll(cancellationToken)).ToList();
-        var page = pages.Where(x => x.SiteId == siteId && x.Path.ToLowerInvariant() == path.ToLowerInvariant()).SingleOrDefault();
+
+        var page = pages.Where(x => x.SiteId == siteId && x.Path.ToLowerInvariant() == path.ToLowerInvariant()).SingleOrDefault() ??
+            throw new AppException(ExceptionCodes.PageNotFound);
 
         if (!await permissionManager.HasAccess(page, PermissionActionNames.PageView, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
 
-        return page ??
-            throw new AppException(ExceptionCodes.PageNotFound);
+        return page;
     }
 
     #region Private Methods

@@ -43,6 +43,18 @@ public class PermissionManager : IPermissionManager
         return false;
     }
 
+    public async Task<IEnumerable<TEntity>> HasAccess<TEntity>(IEnumerable<TEntity> entities, string action, CancellationToken cancellationToken = default) where TEntity : ISiteAssociatedEntity
+    {
+        var accessibleEntities = new List<TEntity>();
+
+        foreach (var entity in entities)
+            if (await HasAccess(entity, action, cancellationToken))
+                accessibleEntities.Add(entity);
+
+        return accessibleEntities;
+
+    }
+
     private async Task<bool> IsSuperAdmin(CancellationToken cancellationToken)
     {
         var globalSettings = await _globalSettingsRepository.Get(cancellationToken);
