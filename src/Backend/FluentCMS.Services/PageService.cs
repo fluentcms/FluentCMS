@@ -20,12 +20,12 @@ public class PageService(
 {
 
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
-    {        
+    {
         var site = (await siteRepository.GetById(page.SiteId, cancellationToken)) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
 
-        if (!await permissionManager.HasAccess(site, PermissionActionNames.SiteContributor, cancellationToken))
-            throw new AppException(ExceptionCodes.PermissionDenied);       
+        if (!await permissionManager.HasSiteAccess(site, PermissionActionNames.SiteContributor, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
 
         // If Parent Id is assigned
         if (page.ParentId != null)
@@ -52,7 +52,7 @@ public class PageService(
         var originalPage = await pageRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
 
-        if (!await permissionManager.HasAccess(originalPage, PermissionActionNames.PageContributor, cancellationToken))
+        if (!await permissionManager.HasPageAccess(originalPage, PermissionActionNames.PageContributor, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
 
         // fetch site
@@ -78,7 +78,7 @@ public class PageService(
         var page = await pageRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
 
-        if (!await permissionManager.HasAccess(page, PermissionActionNames.PageView, cancellationToken))
+        if (!await permissionManager.HasPageAccess(page, PermissionActionNames.PageView, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
 
         return page;
@@ -89,14 +89,14 @@ public class PageService(
         // fetch pages from db
         var sitePages = await pageRepository.GetAllForSite(siteId, cancellationToken);
 
-        var pages = await permissionManager.HasAccess(sitePages, PermissionActionNames.PageView, cancellationToken);
+        var pages = await permissionManager.HasPageAccess(sitePages, PermissionActionNames.PageView, cancellationToken);
 
         return pages;
     }
 
     public async Task<Page> Update(Page page, CancellationToken cancellationToken = default)
     {
-        if (!await permissionManager.HasAccess(page, PermissionActionNames.PageContributor, cancellationToken))
+        if (!await permissionManager.HasPageAccess(page, PermissionActionNames.PageContributor, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
 
         //fetch original page from db
@@ -136,7 +136,7 @@ public class PageService(
         var page = pages.Where(x => x.SiteId == siteId && x.Path.ToLowerInvariant() == path.ToLowerInvariant()).SingleOrDefault() ??
             throw new AppException(ExceptionCodes.PageNotFound);
 
-        if (!await permissionManager.HasAccess(page, PermissionActionNames.PageView, cancellationToken))
+        if (!await permissionManager.HasPageAccess(page, PermissionActionNames.PageView, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
 
         return page;

@@ -17,7 +17,72 @@ public class PermissionManager : IPermissionManager
         _globalSettingsRepository = globalSettingsRepository;
     }
 
-    public async Task<bool> HasAccess<TEntity>(TEntity entity, string action, CancellationToken cancellationToken = default) where TEntity : ISiteAssociatedEntity
+    #region Single Object Check
+
+    public async Task<bool> HasSiteAccess(Site site, string action, CancellationToken cancellationToken = default)
+    {
+        if (await HasSpecialPermission(cancellationToken))
+            return true;
+
+        return await CheckSiteAccess(site.Id, action, cancellationToken);
+    }
+
+    public async Task<bool> HasPageAccess(Page page, string action, CancellationToken cancellationToken = default)
+    {
+        if (await HasSpecialPermission(cancellationToken))
+            return true;
+
+        return await CheckPageAccess(page.Id, page.SiteId, action, cancellationToken);
+    }
+
+    public async Task<bool> HasPluginAccess(Plugin plugin, string action, CancellationToken cancellationToken = default)
+    {
+        if (await HasSpecialPermission(cancellationToken))
+            return true;
+
+        return await CheckPluginAccess(plugin.Id, plugin.PageId, plugin.SiteId, action, cancellationToken);
+    }
+
+    #endregion
+
+    #region List Objects Check
+
+    public async Task<IEnumerable<Site>> HasSiteAccess(IEnumerable<Site> sites, string action, CancellationToken cancellationToken = default)
+    {
+        var accessibleSites = new List<Site>();
+
+        foreach (var site in sites)
+            if (await HasSiteAccess(site, action, cancellationToken))
+                accessibleSites.Add(site);
+
+        return accessibleSites;
+    }
+
+    public async Task<IEnumerable<Page>> HasPageAccess(IEnumerable<Page> pages, string action, CancellationToken cancellationToken = default)
+    {
+        var accessiblePages = new List<Page>();
+
+        foreach (var page in pages)
+            if (await HasPageAccess(page, action, cancellationToken))
+                accessiblePages.Add(page);
+
+        return accessiblePages;
+    }
+
+    public async Task<IEnumerable<Plugin>> HasPluginAccess(IEnumerable<Plugin> plugins, string action, CancellationToken cancellationToken = default)
+    {
+        var accessiblePlugins = new List<Plugin>();
+
+        foreach (var plugin in plugins)
+            if (await HasPluginAccess(plugin, action, cancellationToken))
+                accessiblePlugins.Add(plugin);
+
+        return accessiblePlugins;
+    }
+
+    #endregion
+
+    private async Task<bool> HasSpecialPermission(CancellationToken cancellationToken = default)
     {
         if (await IsSuperAdmin(cancellationToken))
             return true;
@@ -26,33 +91,6 @@ public class PermissionManager : IPermissionManager
         //    return true;
 
         return true;
-
-        //TODO 
-        _userRoleIds = (await _userRoleRepository.GetUserRoles(_authContext.UserId, entity.SiteId, cancellationToken)).Select(x => x.RoleId);
-        _sitePermissions = await _permissionRepository.GetAllForSite(entity.SiteId, cancellationToken);
-
-        switch (entity.GetType().Name)
-        {
-            case nameof(Site): return CheckSiteAccess(entity.Id, action);
-            case nameof(Page): return CheckPageAccess(entity.Id, entity.SiteId, action);
-            case nameof(Plugin): return CheckPluginAccess(entity.Id, (entity as Plugin).PageId, entity.SiteId, action); ;
-
-            default: break;
-        }
-
-        return false;
-    }
-
-    public async Task<IEnumerable<TEntity>> HasAccess<TEntity>(IEnumerable<TEntity> entities, string action, CancellationToken cancellationToken = default) where TEntity : ISiteAssociatedEntity
-    {
-        var accessibleEntities = new List<TEntity>();
-
-        foreach (var entity in entities)
-            if (await HasAccess(entity, action, cancellationToken))
-                accessibleEntities.Add(entity);
-
-        return accessibleEntities;
-
     }
 
     private async Task<bool> IsSuperAdmin(CancellationToken cancellationToken)
@@ -64,14 +102,15 @@ public class PermissionManager : IPermissionManager
         return globalSettings.SuperAdmins.Contains(_authContext.Username);
     }
 
-    private bool CheckSiteAccess(Guid siteId, string action)
+    private async Task<bool> CheckSiteAccess(Guid siteId, string action, CancellationToken cancellationToken)
     {
-        var sitePermissions = _sitePermissions.Where(x => x.EntityId == siteId);
+        var sitePermissions = await GetSitePermissions(siteId, cancellationToken);
         var validActions = GetValidActions(nameof(Site), action);
+        var userRoleIds = await GetUserRoleIds(siteId, cancellationToken);
 
         foreach (var validAction in validActions)
         {
-            var hasAccess = sitePermissions.Any(x => x.Action == validAction && _userRoleIds.Contains(x.RoleId));
+            var hasAccess = sitePermissions.Any(x => x.Action == validAction && userRoleIds.Contains(x.RoleId));
             if (hasAccess)
                 return true;
         }
@@ -79,13 +118,14 @@ public class PermissionManager : IPermissionManager
         return false;
     }
 
-    private bool CheckPageAccess(Guid pageId, Guid siteId, string action)
+    private async Task<bool> CheckPageAccess(Guid pageId, Guid siteId, string action, CancellationToken cancellationToken)
     {
-        var hasSiteAccess = CheckSiteAccess(siteId, PermissionActionNames.SiteContributor);
+        var hasSiteAccess = await CheckSiteAccess(siteId, PermissionActionNames.SiteContributor, cancellationToken);
+
         if (hasSiteAccess)
             return true;
 
-        var pagePermissions = _sitePermissions.Where(x => x.EntityId == pageId);
+        var pagePermissions = (await GetSitePermissions(siteId, cancellationToken)).Where(x => x.EntityId == pageId);
         var validActions = GetValidActions(nameof(Page), action);
 
         foreach (var validAction in validActions)
@@ -98,18 +138,19 @@ public class PermissionManager : IPermissionManager
         return false;
     }
 
-    private bool CheckPluginAccess(Guid pluginId, Guid pageId, Guid siteId, string action)
+    private async Task<bool> CheckPluginAccess(Guid pluginId, Guid pageId, Guid siteId, string action, CancellationToken cancellationToken)
     {
-        var hasPageAccess = CheckPageAccess(pageId, siteId, PermissionActionNames.PageView);
+        var hasPageAccess = await CheckPageAccess(pageId, siteId, PermissionActionNames.PageView, cancellationToken);
         if (hasPageAccess)
             return true;
 
-        var pluginPermissions = _sitePermissions.Where(x => x.EntityId == pluginId);
+        var pluginPermissions = (await GetSitePermissions(siteId, cancellationToken)).Where(x => x.EntityId == pluginId);
         var validActions = GetValidActions(nameof(Plugin), action);
+        var userRoleIds = await GetUserRoleIds(siteId, cancellationToken);
 
         foreach (var validAction in validActions)
         {
-            var hasAccess = pluginPermissions.Any(x => x.Action == validAction && _userRoleIds.Contains(x.RoleId));
+            var hasAccess = pluginPermissions.Any(x => x.Action == validAction && userRoleIds.Contains(x.RoleId));
             if (hasAccess)
                 return true;
         }
@@ -178,4 +219,19 @@ public class PermissionManager : IPermissionManager
             yield return PermissionActionNames.PluginAdmin;
         }
     }
+
+    private async Task<IEnumerable<Permission>> GetSitePermissions(Guid siteId, CancellationToken cancellationToken)
+    {
+        _sitePermissions ??= await _permissionRepository.GetAllForSite(siteId, cancellationToken);
+
+        return _sitePermissions;
+    }
+
+    private async Task<IEnumerable<Guid>> GetUserRoleIds(Guid siteId, CancellationToken cancellationToken)
+    {
+        _userRoleIds ??= (await _userRoleRepository.GetUserRoles(_authContext.UserId, siteId, cancellationToken)).Select(x => x.RoleId);
+
+        return _userRoleIds;
+    }
 }
+
