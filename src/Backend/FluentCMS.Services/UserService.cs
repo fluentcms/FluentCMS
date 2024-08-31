@@ -28,7 +28,6 @@ public class UserService(
     IEmailProvider emailProvider,
     IConfiguration configuration,
     IAuthContext authContext,
-    IUserRoleRepository userRoleRepository,
     IMessagePublisher messagePublisher) : IUserService
 {
     public const string LOCAL_LOGIN_PROVIDER = "local";
@@ -41,7 +40,11 @@ public class UserService(
         var identityResult = await userManager.CreateAsync(user, password);
         identityResult.ThrowIfInvalid();
 
-        return await GetById(user.Id, cancellationToken);
+        var newUser = await GetById(user.Id, cancellationToken);
+
+        await messagePublisher.Publish(new Message<User>(ActionNames.UserCreated, newUser), cancellationToken);
+
+        return newUser;
     }
 
     public async Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default)
@@ -99,7 +102,11 @@ public class UserService(
         var result = await userManager.UpdateAsync(user);
         result.ThrowIfInvalid();
 
-        return await GetById(user.Id, cancellationToken);
+        var updated = await GetById(user.Id, cancellationToken);
+
+        await messagePublisher.Publish(new Message<User>(ActionNames.UserUpdated, updated), cancellationToken);
+
+        return updated;
     }
 
     public async Task<bool> Delete(Guid id, CancellationToken cancellationToken = default)
