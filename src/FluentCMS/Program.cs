@@ -2,6 +2,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 #region Services
 
+builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: false, reloadOnChange: true);
+
 var services = builder.Services;
 var configuration = builder.Configuration;
 
@@ -36,9 +38,13 @@ app.UseDeveloperExceptionPage();
 
 // this section is only for development purposes
 // this will delete all data and re-create the database
-using var scope = app.Services.CreateScope();
-var setup = scope.ServiceProvider.GetRequiredService<FluentCMS.Services.Setup.ISetupManager>();
-setup.Reset().ConfigureAwait(false).GetAwaiter().GetResult();
+var isInitialized = builder.Configuration.GetValue<bool>("AppConfig:IsInitialized");
+if (!isInitialized)
+{
+    using var scope = app.Services.CreateScope();
+    var setup = scope.ServiceProvider.GetRequiredService<FluentCMS.Services.Setup.ISetupManager>();
+    setup.Reset().ConfigureAwait(false).GetAwaiter().GetResult();
+}
 
 #endif
 
