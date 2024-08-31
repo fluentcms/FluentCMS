@@ -16,7 +16,13 @@
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.TextHTML\FluentCMS.Web.Plugins.Contents.TextHTML.csproj" />
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.Block\FluentCMS.Web.Plugins.Contents.Block.csproj" />
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.RichText\FluentCMS.Web.Plugins.Contents.RichText.csproj" />
+        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.ContentViewer\FluentCMS.Web.Plugins.Contents.ContentViewer.csproj" />
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin\FluentCMS.Web.Plugins.Admin.csproj" />
+        <ProjectReference Include="..\Providers\ApiTokenProviders\FluentCMS.Providers.ApiTokenProviders\FluentCMS.Providers.ApiTokenProviders.csproj" />
+        <ProjectReference Include="..\Providers\EmailProviders\FluentCMS.Providers.EmailProviders\FluentCMS.Providers.EmailProviders.csproj" />
+        <ProjectReference Include="..\Providers\FileStorageProviders\FluentCMS.Providers.FileStorageProviders\FluentCMS.Providers.FileStorageProviders.csproj" />
+        <ProjectReference Include="..\Providers\MessageBusProviders\FluentCMS.Providers.MessageBusProviders\FluentCMS.Providers.MessageBusProviders.csproj" />
+        <ProjectReference Include="..\Providers\TemplateRenderingProviders\FluentCMS.Providers.TemplateRenderingProviders\FluentCMS.Providers.TemplateRenderingProviders.csproj" />
     </ItemGroup>
 	<ItemGroup>
 		<None Include="wwwroot\**">

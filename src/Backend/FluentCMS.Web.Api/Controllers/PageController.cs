@@ -1,7 +1,8 @@
 ﻿using FluentCMS.Services.Permissions;
+using FluentCMS.Services.Setup;
 using FluentCMS.Web.Api.Filters;
-using FluentCMS.Web.Api.Setup;
 using Microsoft.AspNetCore.Authorization;
+using System.IO;
 
 namespace FluentCMS.Web.Api.Controllers;
 
@@ -24,6 +25,8 @@ public class PageController(
     public const string UPDATE = $"Update";
     public const string CREATE = "Create";
     public const string DELETE = $"Delete";
+
+    private const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Template";
 
     [HttpGet("{siteUrl}")]
     [DecodeQueryParam]
@@ -74,7 +77,7 @@ public class PageController(
 
         var initialized = await setupManager.IsInitialized();
         if (!initialized)
-            return Ok(await setupManager.GetSetupPage());
+            return Ok(GetSetupPage());
 
         return await GetPageResponse(domain, path, cancellationToken);
     }
@@ -223,6 +226,49 @@ public class PageController(
         }
 
         return Ok(pageResponse);
+    }
+
+    private PageFullDetailResponse GetSetupPage()
+    {
+        var page = new PageFullDetailResponse
+        {
+            Title = "Setup",
+            Locked = true,
+            Layout = new LayoutDetailResponse
+            {
+                Body = System.IO.File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.body.html")),
+                Head = System.IO.File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.head.html"))
+            },
+            Site = new(),
+            Sections = new Dictionary<string, List<PluginDetailResponse>>
+            {
+                ["Main"] =
+                  [
+                      new()
+                      {
+                          Locked = true,
+                          Section = "Main",
+                          Definition = new PluginDefinitionDetailResponse
+                          {
+                              Name = "Setup",
+                              Description = "Setup View Plugin",
+                              Assembly = "FluentCMS.Web.Plugins.Admin.dll",
+                              Locked = true,
+                              Types =
+                              [
+                                  new PluginDefinitionType
+                                  {
+                                      IsDefault = true,
+                                      Name = "Setup",
+                                      Type = "SetupViewPlugin"
+                                  }
+                              ]
+                          }
+                      }
+                  ]
+            }
+        };
+        return page;
     }
 
     #endregion

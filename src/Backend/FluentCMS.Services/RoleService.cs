@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Services;
+﻿using FluentCMS.Providers.MessageBusProviders;
+
+namespace FluentCMS.Services;
 
 public interface IRoleService : IAutoRegisterService
 {
@@ -24,7 +26,7 @@ public class RoleService(IRoleRepository roleRepository, IMessagePublisher messa
 
     public async Task<Role> Create(Role role, CancellationToken cancellationToken)
     {
-        var sameRole = await roleRepository.GetByNameAndSiteId(role.SiteId, role.Name, cancellationToken);
+        var sameRole = await roleRepository.GetByNameAndSiteId(role.SiteId, role.Name.Trim(), cancellationToken);
 
         if (sameRole != null)
             throw new AppException(ExceptionCodes.RoleNameIsDuplicated);
@@ -39,13 +41,15 @@ public class RoleService(IRoleRepository roleRepository, IMessagePublisher messa
 
     public async Task<Role> Update(Role role, CancellationToken cancellationToken)
     {
-        _ = await roleRepository.GetById(role.Id, cancellationToken) ??
-            throw new AppException(ExceptionCodes.RoleNotFound);
+        var existRole = await roleRepository.GetById(role.Id, cancellationToken) ??
+             throw new AppException(ExceptionCodes.RoleNotFound);
 
-        var sameRole = await roleRepository.GetByNameAndSiteId(role.SiteId, role.Name, cancellationToken);
+        var sameRole = await roleRepository.GetByNameAndSiteId(role.SiteId, role.Name.Trim(), cancellationToken);
 
-        if (sameRole != null)
+        if (sameRole != null && sameRole.Id != role.Id)
             throw new AppException(ExceptionCodes.RoleNameIsDuplicated);
+
+        role.Type = existRole.Type;
 
         var updatedRole = await roleRepository.Update(role, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleUnableToUpdate);

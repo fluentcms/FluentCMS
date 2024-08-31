@@ -1,4 +1,5 @@
-﻿using System.Data;
+﻿using FluentCMS.Providers.MessageBusProviders;
+using System.Data;
 
 namespace FluentCMS.Services;
 
@@ -26,7 +27,7 @@ public class UserRoleService(IUserRoleRepository userRoleRepository, IRoleReposi
     {
         // find and remove default roles, just accept user defined roles.
         var allRoles = await roleRepository.GetAllForSite(siteId, cancellationToken);
-        var validRoleIds = roleIds.Except(allRoles.Where(x => x.Type != RoleTypes.UserDefined).Select(x => x.Id));
+        var validRoleIds = roleIds.Intersect(allRoles.Where(x => x.Type == RoleTypes.UserDefined || x.Type == RoleTypes.Administrators).Select(x => x.Id));
 
         // delete all exist UserRoles. 
         var existUserRoles = await userRoleRepository.GetUserRoles(userId, siteId, cancellationToken);

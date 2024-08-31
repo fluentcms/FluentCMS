@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Web.Api;
+﻿using FluentCMS.Services.Setup.Models;
+
+namespace FluentCMS.Web.Api;
 
 public class MappingProfile : Profile
 {
@@ -103,6 +105,13 @@ public class MappingProfile : Profile
         #region PluginContent
 
         CreateMap<PluginContent, PluginContentDetailResponse>();
+
+        #endregion
+
+        #region Setup
+
+        CreateMap<SetupModel, SetupRequest>();
+        CreateMap<SetupRequest, SetupModel>();
 
         #endregion
 

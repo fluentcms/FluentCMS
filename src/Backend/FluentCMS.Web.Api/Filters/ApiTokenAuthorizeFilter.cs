@@ -1,4 +1,4 @@
-﻿using FluentCMS.Providers;
+﻿using FluentCMS.Providers.ApiTokenProviders;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
 

@@ -15,6 +15,13 @@ services.AddLiteDbRepositories("LiteDb");
 // Use MongoDB as database
 //services.AddMongoDbRepositories("MongoDb");
 
+// register providers
+services.AddJwtApiTokenProvider();
+services.AddSmtpEmailProvider();
+services.AddInMemoryMessageBusProvider();
+services.AddLocalFileStorageProvider();
+services.AddScribanTemplateRenderingProvider();
+
 services.AddApiServices();
 
 #endregion
@@ -30,7 +37,7 @@ app.UseDeveloperExceptionPage();
 // this section is only for development purposes
 // this will delete all data and re-create the database
 using var scope = app.Services.CreateScope();
-var setup = scope.ServiceProvider.GetRequiredService<FluentCMS.Web.Api.Setup.ISetupManager>();
+var setup = scope.ServiceProvider.GetRequiredService<FluentCMS.Services.Setup.ISetupManager>();
 setup.Reset().ConfigureAwait(false).GetAwaiter().GetResult();
 
 #endif
