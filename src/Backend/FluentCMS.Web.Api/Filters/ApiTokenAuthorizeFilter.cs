@@ -1,6 +1,8 @@
 ﻿using FluentCMS.Providers.ApiTokenProviders;
+using FluentCMS.Services.Models;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Web.Api.Filters;
 
@@ -34,7 +36,7 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
         }
     }
 
-    private static async Task<bool> CheckValidityToSetup(AuthorizationFilterContext context, IEnumerable<PolicyAttribute> actionPolicies)
+    private async static Task<bool> CheckValidityToSetup(AuthorizationFilterContext context, IEnumerable<PolicyAttribute> actionPolicies)
     {
         // the below Areas(Controllers+Actions) are necessary to start initial Setup Process.
         // so we have to let them to be executed, only in Uninitialized State.
@@ -47,11 +49,9 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
 
         if (actionPolicies.Any(x => validAreas.ContainsKey(x.Area) && validAreas[x.Area].Contains(x.Action)))
         {
-            var globalSettingsService = context.HttpContext.RequestServices.GetRequiredService<IGlobalSettingsService>();
-            var userService = context.HttpContext.RequestServices.GetRequiredService<IUserService>();
-            var isInitialized = globalSettingsService.Get() != null && (await userService.Any());
+            var serverSettings = context.HttpContext.RequestServices.GetRequiredService<IOptionsMonitor<ServerSettings>>();
 
-            return !isInitialized;
+            return !serverSettings.CurrentValue.IsInitialized;
         }
 
         return false;

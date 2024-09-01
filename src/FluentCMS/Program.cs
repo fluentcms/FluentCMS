@@ -2,8 +2,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 #region Services
 
-builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: false, reloadOnChange: true);
-
 var services = builder.Services;
 var configuration = builder.Configuration;
 
@@ -38,7 +36,7 @@ app.UseDeveloperExceptionPage();
 
 // this section is only for development purposes
 // this will delete all data and re-create the database
-var isInitialized = builder.Configuration.GetValue<bool>("AppConfig:IsInitialized");
+var isInitialized = builder.Configuration.GetValue<bool>("ServerSettings:IsInitialized");
 if (!isInitialized)
 {
     using var scope = app.Services.CreateScope();
