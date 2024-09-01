@@ -15,32 +15,13 @@
                         </a>
                     </li>
                     <li class="space-y-2 border-t border-gray-200 dark:border-gray-700"></li>
-                        <li>
-                            <a id="adminSidebarContentTypeLink" href="/admin/content-types" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700 @(CurrentPath == "/admin/content-types" ? ActiveItemClasses : "")">
-                                <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white @(CurrentPath == "/admin/content-types" ? ActiveIconClasses : "")" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M17.934 3.005L17.75 3H6.25l-.184.005A3.25 3.25 0 0 0 3 6.25v11.5l.005.184A3.25 3.25 0 0 0 6.25 21h5.772a6.5 6.5 0 0 1-.848-2H6.25l-.128-.006A1.25 1.25 0 0 1 5 17.75L5.001 8H19v3.174c.721.17 1.395.46 2.001.848V6.25l-.005-.184a3.25 3.25 0 0 0-3.062-3.06m-6.94 7.143a.75.75 0 0 0-.744-.648h-3.5l-.102.007A.75.75 0 0 0 6 10.25v7l.007.102A.75.75 0 0 0 6.75 18h3.5l.102-.007A.75.75 0 0 0 11 17.25v-7zM7.5 11h2v5.5h-2zm10.5-.75a.75.75 0 0 0-.75-.75h-4.496l-.101.007A.75.75 0 0 0 12.754 11h4.496l.102-.007A.75.75 0 0 0 18 10.25m-3.721 3.725a2 2 0 0 1-1.441 2.497l-.585.144a5.7 5.7 0 0 0 .007 1.807l.54.13a2 2 0 0 1 1.45 2.51l-.187.632c.439.386.94.699 1.484.921l.493-.518a2 2 0 0 1 2.9 0l.498.525a5.3 5.3 0 0 0 1.483-.913l-.198-.686a2 2 0 0 1 1.441-2.496l.584-.144a5.7 5.7 0 0 0-.007-1.808l-.539-.13a2 2 0 0 1-1.45-2.51l.187-.63a5.3 5.3 0 0 0-1.485-.923l-.493.519a2 2 0 0 1-2.899 0l-.499-.525a5.3 5.3 0 0 0-1.482.912zM17.5 19c-.8 0-1.45-.672-1.45-1.5c0-.829.65-1.5 1.45-1.5c.801 0 1.45.671 1.45 1.5c0 .828-.649 1.5-1.45 1.5"/></svg>
-                                <span class="flex-1 ml-3 whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Content-Type Builder</span>
-                            </a>
-                        </li>
                     <li>
-                        <button type="button" class="flex items-center w-full p-2 text-base text-gray-900 transition duration-75 rounded-lg group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700  @(CurrentPath == "/admin/content" ? ActiveItemClasses : "")" aria-controls="dropdown-example" data-collapse-toggle="dropdown-content-type" aria-expanded="true">
-                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white  @(CurrentPath == "/admin/content" ? ActiveIconClasses : "")" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                        <a id="adminSidebarContentTypeLink" href="/admin/content-types" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700 @(CurrentPath == "/admin/content-types" ? ActiveItemClasses : "")">
+                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white  @(CurrentPath == "/admin/content-type" ? ActiveIconClasses : "")" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                                 <path fill-rule="evenodd" d="M15.514 3.293a1 1 0 0 0-1.415 0L12.151 5.24a.93.93 0 0 1 .056.052l6.5 6.5a.97.97 0 0 1 .052.056L20.707 9.9a1 1 0 0 0 0-1.415l-5.193-5.193ZM7.004 8.27l3.892-1.46 6.293 6.293-1.46 3.893a1 1 0 0 1-.603.591l-9.494 3.355a1 1 0 0 1-.98-.18l6.452-6.453a1 1 0 0 0-1.414-1.414l-6.453 6.452a1 1 0 0 1-.18-.98l3.355-9.494a1 1 0 0 1 .591-.603Z" clip-rule="evenodd" />
                             </svg>
-                            <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap">Content Manager</span>
-                            <svg class="w-3 h-3 text-gray-900 dark:text-gray-100" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"></path>
-                            </svg>
-                        </button>
-                        
-                        <ul id="dropdown-content-type" class="py-2 space-y-2 @(CurrentPath == "/admin/content" ? "" : "hidden")">
-                            @foreach (var contentType in ContentTypes)
-                            {
-                                <li>
-                                    <a data-enhance-nav="disabled" href="/admin/content?slug=@contentType.Slug" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">@contentType.Title</a>
-                                </li>
-                            }
-
-                        </ul>
+                            <span class="flex-1 ml-3 whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Content-Type Builder</span>
+                        </a>
                     </li>
                     <li>
                         <a id="adminSidebarLayoutLink" href="/admin/layouts" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700  @(CurrentPath == "/admin/layouts" ? ActiveItemClasses : "")">
