@@ -5,9 +5,6 @@ public partial class PluginContainer
     [Parameter]
     public PluginViewState Plugin { get; set; } = default!;
 
-    [Parameter]
-    public string SectionName { get; set; } = default!;
-
     [Inject]
     private NavigationManager NavigationManager { get; set; } = default!;
 
@@ -23,7 +20,6 @@ public partial class PluginContainer
     {
         Parameters = new Dictionary<string, object>
         {
-            { "SectionName", SectionName },
             { "Plugin", Plugin }
         };
     }
