@@ -4,19 +4,9 @@ public partial class ContentListPlugin
 {
     private List<ContentDetailResponse>? Contents { get; set; }
 
-    [SupplyParameterFromQuery(Name = "slug")]
-    public string ContentTypeSlug { get; set; }
-
-    private ContentTypeDetailResponse ContentType { get; set; } = default!;
-
     protected override async Task OnInitializedAsync()
     {
-        var response = await ApiClient.ContentType.GetBySlugAsync(ContentTypeSlug);
-        if(response.Data != null)
-        {
-            ContentType = response.Data;
-        }
-
+        await base.OnInitializedAsync();
         await Load();
     }
 
