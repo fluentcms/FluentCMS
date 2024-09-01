@@ -2,9 +2,6 @@ namespace FluentCMS.Web.Plugins.Admin.PageManagement;
 
 public partial class PageListPlugin
 {
-    [CascadingParameter]
-    private ViewState ViewState { get; set; } = default!;
-
     private List<PageDetailResponse> Pages { get; set; } = [];
     private List<LayoutDetailResponse> Layouts { get; set; } = [];
 

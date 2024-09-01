@@ -6,9 +6,6 @@ public partial class UserUpdatePlugin
     public const string FORM_NAME_PASSWORD = "UserSetPasswordForm";
     public const string FORM_NAME_ASSIGN_ROLE = "AssignRoleToUser";
 
-    [CascadingParameter]
-    private ViewState ViewState { get; set; } = default!;
-
     [SupplyParameterFromQuery(Name = "id")]
     private Guid Id { get; set; }
 

@@ -124,10 +124,6 @@
                 {
                     "Name": "Update Api Token",
                     "Type": "ApiTokenUpdatePlugin"
-                },
-                {
-                    "Name": "Api Token Detail",
-                    "Type": "ApiTokenDetailPlugin"
                 }
             ]
         },
@@ -208,30 +204,6 @@
                     "Name": "Files List",
                     "Type": "FileListPlugin",
                     "IsDefault": true
-                },
-                {
-                    "Name": "Upload File",
-                    "Type": "FileCreatePlugin"
-                },
-                {
-                    "Name": "Update File",
-                    "Type": "FileUpdatePlugin"
-                },
-                {
-                    "Name": "File Detail",
-                    "Type": "FileDetailPlugin"
-                },
-                {
-                    "Name": "Create Folder",
-                    "Type": "FolderCreatePlugin"
-                },
-                {
-                    "Name": "Update Folder",
-                    "Type": "FolderUpdatePlugin"
-                },
-                {
-                    "Name": "Update File",
-                    "Type": "FileUpdatePlugin"
                 }
             ]
         },

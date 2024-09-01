@@ -1,8 +1,9 @@
+@inherits BasePlugin
 @namespace FluentCMS.Web.Plugins.Contents.RichText
 
-@if (Content?[0] != null)
+@if (Item != null)
 {
     <div class="f-rich-text-content">
-        @((MarkupString)Content[0].Content)
+        @((MarkupString)Item.Content)
     </div>
 }
