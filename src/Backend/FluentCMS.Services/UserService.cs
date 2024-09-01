@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Providers.EmailProviders;
+using FluentCMS.Providers.MessageBusProviders;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 
@@ -27,7 +28,7 @@ public class UserService(
     IEmailProvider emailProvider,
     IConfiguration configuration,
     IAuthContext authContext,
-    IUserRoleRepository userRoleRepository) : IUserService
+    IMessagePublisher messagePublisher) : IUserService
 {
     public const string LOCAL_LOGIN_PROVIDER = "local";
     public const string REFRESH_TOKEN_NAME = "refreshToken";
@@ -39,7 +40,11 @@ public class UserService(
         var identityResult = await userManager.CreateAsync(user, password);
         identityResult.ThrowIfInvalid();
 
-        return await GetById(user.Id, cancellationToken);
+        var newUser = await GetById(user.Id, cancellationToken);
+
+        await messagePublisher.Publish(new Message<User>(ActionNames.UserCreated, newUser), cancellationToken);
+
+        return newUser;
     }
 
     public async Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default)
@@ -97,7 +102,11 @@ public class UserService(
         var result = await userManager.UpdateAsync(user);
         result.ThrowIfInvalid();
 
-        return await GetById(user.Id, cancellationToken);
+        var updated = await GetById(user.Id, cancellationToken);
+
+        await messagePublisher.Publish(new Message<User>(ActionNames.UserUpdated, updated), cancellationToken);
+
+        return updated;
     }
 
     public async Task<bool> Delete(Guid id, CancellationToken cancellationToken = default)
@@ -107,10 +116,16 @@ public class UserService(
         var user = await userManager.FindByIdAsync(id.ToString())
             ?? throw new AppException(ExceptionCodes.UserNotFound);
 
+        var globalSettings = await globalSettingsRepository.Get(cancellationToken) ??
+            throw new AppException(ExceptionCodes.GlobalSettingsNotFound);
+
+        if (globalSettings.SuperAdmins.Contains(user.UserName))
+            throw new AppException(ExceptionCodes.UserSuperAdminCanNotBeDeleted);
+
         var userRemoveResult = await userManager.DeleteAsync(user);
         userRemoveResult.ThrowIfInvalid();
 
-        await DeleteUserAllRoles(user.Id);
+        await messagePublisher.Publish(new Message<User>(ActionNames.UserDeleted, user), cancellationToken);
 
         return true;
     }
@@ -191,12 +206,5 @@ public class UserService(
             property.SetValue(target, property.GetValue(source));
         }
         return target;
-    }
-
-    private async Task DeleteUserAllRoles(Guid userId, CancellationToken cancellationToken = default)
-    {
-        // delete all UserRoles for user. 
-        var existUserRoles = await userRoleRepository.GetByUserId(userId, cancellationToken);
-        await userRoleRepository.DeleteMany(existUserRoles.Select(x => x.Id), cancellationToken);
     }
 }

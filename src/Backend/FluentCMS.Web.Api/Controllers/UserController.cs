@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Web.Api.Controllers;
 
-public class UserController(IUserService userService, IMapper mapper) : BaseGlobalController
+public class UserController(IUserService userService, IGlobalSettingsService globalSettingsService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "User Management";
     public const string READ = "Read";
@@ -13,6 +13,10 @@ public class UserController(IUserService userService, IMapper mapper) : BaseGlob
     {
         var users = (await userService.GetAll(cancellationToken)).ToList();
         var usersResponse = mapper.Map<List<UserDetailResponse>>(users);
+
+        var globalSettings = await globalSettingsService.Get(cancellationToken);
+        if (globalSettings != null)
+            usersResponse.ForEach(user => user.IsSuperAdmin = globalSettings.SuperAdmins.Contains(user.Username));
 
         return OkPaged(usersResponse);
     }
