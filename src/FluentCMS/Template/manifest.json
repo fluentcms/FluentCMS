@@ -258,10 +258,20 @@
                 {
                     "Name": "View ContentType",
                     "Type": "ContentTypeDetailPlugin"
-                },
+                }
+            ]
+        },
+        {
+            "Name": "Content Management",
+            "Category": "Admin",
+            "Description": "Content Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
+            "Types": [
                 {
                     "Name": "Contents List",
-                    "Type": "ContentListPlugin"
+                    "Type": "ContentListPlugin",
+                    "IsDefault": true
                 },
                 {
                     "Name": "Create Content",
@@ -540,6 +550,20 @@
                     "Plugins": [
                         {
                             "Definition": "ContentType Management",
+                            "Section": "Main",
+                            "Locked": true
+                        }
+                    ]
+                },
+                {
+                    "Title": "Content List",
+                    "Path": "/content",
+                    "Layout": "AdminLayout",
+                    "EditLayout": "AdminLayout",
+                    "Locked": true,
+                    "Plugins": [
+                        {
+                            "Definition": "Content Management",
                             "Section": "Main",
                             "Locked": true
                         }

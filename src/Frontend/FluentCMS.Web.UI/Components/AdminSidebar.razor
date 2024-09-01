@@ -1,0 +1,121 @@
+@namespace FluentCMS.Web.UI
+<aside id="sidebar"
+        class="flex hidden fixed top-0 left-0 z-20 flex-col flex-shrink-0 pt-16 w-64 h-full duration-75 lg:flex transition-width"
+        aria-label="Sidebar">
+    <div class="flex relative flex-col flex-1 pt-0 min-h-0 bg-white border-r border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+        <div class="flex overflow-y-auto flex-col flex-1 pt-5 pb-4">
+            <div class="flex-1 px-3 space-y-1 bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+                <ul class="pb-2 space-y-2">
+                    <li>
+                        <a id="adminSidebarHomeLink" href="/admin" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700 @(CurrentPath == "/admin" ? ActiveItemClasses : "")">
+                            <svg class="w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white @(CurrentPath == "/admin" ? ActiveIconClasses : "")" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd" d="M11.293 3.293a1 1 0 0 1 1.414 0l6 6 2 2a1 1 0 0 1-1.414 1.414L19 12.414V19a2 2 0 0 1-2 2h-3a1 1 0 0 1-1-1v-3h-2v3a1 1 0 0 1-1 1H7a2 2 0 0 1-2-2v-6.586l-.293.293a1 1 0 0 1-1.414-1.414l2-2 6-6Z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Home</span>
+                        </a>
+                    </li>
+                    <li class="space-y-2 border-t border-gray-200 dark:border-gray-700"></li>
+                        <li>
+                            <a id="adminSidebarContentTypeLink" href="/admin/content-types" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700 @(CurrentPath == "/admin/content-types" ? ActiveItemClasses : "")">
+                                <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white @(CurrentPath == "/admin/content-types" ? ActiveIconClasses : "")" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M17.934 3.005L17.75 3H6.25l-.184.005A3.25 3.25 0 0 0 3 6.25v11.5l.005.184A3.25 3.25 0 0 0 6.25 21h5.772a6.5 6.5 0 0 1-.848-2H6.25l-.128-.006A1.25 1.25 0 0 1 5 17.75L5.001 8H19v3.174c.721.17 1.395.46 2.001.848V6.25l-.005-.184a3.25 3.25 0 0 0-3.062-3.06m-6.94 7.143a.75.75 0 0 0-.744-.648h-3.5l-.102.007A.75.75 0 0 0 6 10.25v7l.007.102A.75.75 0 0 0 6.75 18h3.5l.102-.007A.75.75 0 0 0 11 17.25v-7zM7.5 11h2v5.5h-2zm10.5-.75a.75.75 0 0 0-.75-.75h-4.496l-.101.007A.75.75 0 0 0 12.754 11h4.496l.102-.007A.75.75 0 0 0 18 10.25m-3.721 3.725a2 2 0 0 1-1.441 2.497l-.585.144a5.7 5.7 0 0 0 .007 1.807l.54.13a2 2 0 0 1 1.45 2.51l-.187.632c.439.386.94.699 1.484.921l.493-.518a2 2 0 0 1 2.9 0l.498.525a5.3 5.3 0 0 0 1.483-.913l-.198-.686a2 2 0 0 1 1.441-2.496l.584-.144a5.7 5.7 0 0 0-.007-1.808l-.539-.13a2 2 0 0 1-1.45-2.51l.187-.63a5.3 5.3 0 0 0-1.485-.923l-.493.519a2 2 0 0 1-2.899 0l-.499-.525a5.3 5.3 0 0 0-1.482.912zM17.5 19c-.8 0-1.45-.672-1.45-1.5c0-.829.65-1.5 1.45-1.5c.801 0 1.45.671 1.45 1.5c0 .828-.649 1.5-1.45 1.5"/></svg>
+                                <span class="flex-1 ml-3 whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Content-Type Builder</span>
+                            </a>
+                        </li>
+                    <li>
+                        <button type="button" class="flex items-center w-full p-2 text-base text-gray-900 transition duration-75 rounded-lg group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700  @(CurrentPath == "/admin/content" ? ActiveItemClasses : "")" aria-controls="dropdown-example" data-collapse-toggle="dropdown-content-type" aria-expanded="true">
+                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white  @(CurrentPath == "/admin/content" ? ActiveIconClasses : "")" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd" d="M15.514 3.293a1 1 0 0 0-1.415 0L12.151 5.24a.93.93 0 0 1 .056.052l6.5 6.5a.97.97 0 0 1 .052.056L20.707 9.9a1 1 0 0 0 0-1.415l-5.193-5.193ZM7.004 8.27l3.892-1.46 6.293 6.293-1.46 3.893a1 1 0 0 1-.603.591l-9.494 3.355a1 1 0 0 1-.98-.18l6.452-6.453a1 1 0 0 0-1.414-1.414l-6.453 6.452a1 1 0 0 1-.18-.98l3.355-9.494a1 1 0 0 1 .591-.603Z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap">Content Manager</span>
+                            <svg class="w-3 h-3 text-gray-900 dark:text-gray-100" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"></path>
+                            </svg>
+                        </button>
+                        
+                        <ul id="dropdown-content-type" class="py-2 space-y-2 @(CurrentPath == "/admin/content" ? "" : "hidden")">
+                            @foreach (var contentType in ContentTypes)
+                            {
+                                <li>
+                                    <a data-enhance-nav="disabled" href="/admin/content?slug=@contentType.Slug" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">@contentType.Title</a>
+                                </li>
+                            }
+
+                        </ul>
+                    </li>
+                    <li>
+                        <a id="adminSidebarLayoutLink" href="/admin/layouts" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700  @(CurrentPath == "/admin/layouts" ? ActiveItemClasses : "")">
+                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white  @(CurrentPath == "/admin/layouts" ? ActiveIconClasses : "")" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd" d="M4 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H4Zm0 8v6h7v-6H4Zm16 6h-7v-6h7v6Z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Layouts</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/sites" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700  @(CurrentPath == "/admin/sites" ? ActiveItemClasses : "")">
+                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white @(CurrentPath == "/admin/sites" ? ActiveIconClasses : "")" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.213 9.787a3.391 3.391 0 0 0-4.795 0l-3.425 3.426a3.39 3.39 0 0 0 4.795 4.794l.321-.304m-.321-4.49a3.39 3.39 0 0 0 4.795 0l3.424-3.426a3.39 3.39 0 0 0-4.794-4.795l-1.028.961" />
+                            </svg>
+                            <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Sites</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/pages" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700  @(CurrentPath == "/admin/pages" ? ActiveItemClasses : "")">
+                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white @(CurrentPath == "/admin/pages" ? ActiveIconClasses : "")" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M20 7h-3a2 2 0 0 1-2-2V2" /><path d="M9 18a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2Z" /><path d="M3 7.6v12.8A1.6 1.6 0 0 0 4.6 22h9.8" /></g></svg>
+                            <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Pages</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a id="adminSidebarFilesLink" href="/admin/files" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700 @(CurrentPath == "/admin/files" ? ActiveItemClasses : "")">
+                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white  @(CurrentPath == "/admin/files" ? ActiveIconClasses : "")" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd" d="M19.003 3A2 2 0 0 1 21 5v2h-2V5.414L17.414 7h-2.828l2-2h-2.172l-2 2H9.586l2-2H9.414l-2 2H3V5a2 2 0 0 1 2-2h14.003ZM3 9v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9H3Zm2-2.414L6.586 5H5v1.586Zm4.553 4.52a1 1 0 0 1 1.047.094l4 3a1 1 0 0 1 0 1.6l-4 3A1 1 0 0 1 9 18v-6a1 1 0 0 1 .553-.894Z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>File Management</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a id="adminSidebarUsersLink" href="/admin/users" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700  @(CurrentPath == "/admin/users" ? ActiveItemClasses : "")">
+                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white  @(CurrentPath == "/admin/users" ? ActiveIconClasses : "")" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd" d="M8 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2 9a4 4 0 0 0-4 4v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1a4 4 0 0 0-4-4H6Zm7.25-2.095c.478-.86.75-1.85.75-2.905a5.973 5.973 0 0 0-.75-2.906 4 4 0 1 1 0 5.811ZM15.466 20c.34-.588.535-1.271.535-2v-1a5.978 5.978 0 0 0-1.528-4H18a4 4 0 0 1 4 4v1a2 2 0 0 1-2 2h-4.535Z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Users</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a id="adminSidebarRolesLink" href="/admin/roles" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700  @(CurrentPath == "/admin/roles" ? ActiveItemClasses : "")">
+                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white  @(CurrentPath == "/admin/roles" ? ActiveIconClasses : "")" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M13.849 4.22c-.684-1.626-3.014-1.626-3.698 0L8.397 8.387l-4.552.361c-1.775.14-2.495 2.331-1.142 3.477l3.468 2.937-1.06 4.392c-.413 1.713 1.472 3.067 2.992 2.149L12 19.35l3.897 2.354c1.52.918 3.405-.436 2.992-2.15l-1.06-4.39 3.468-2.938c1.353-1.146.633-3.336-1.142-3.477l-4.552-.36-1.754-4.17Z" />
+                            </svg>
+                            <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Roles</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a id="adminSidebarApiTokensLink" href="/admin/api-tokens" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700  @(CurrentPath == "/admin/api-tokens" ? ActiveItemClasses : "")">
+                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white  @(CurrentPath == "/admin/api-tokens" ? ActiveIconClasses : "")" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd" d="M8 10V7a4 4 0 1 1 8 0v3h1a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h1Zm2-3a2 2 0 1 1 4 0v3h-4V7Zm2 6a1 1 0 0 1 1 1v3a1 1 0 1 1-2 0v-3a1 1 0 0 1 1-1Z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>API Tokens</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a id="adminSidebarApiTokensLink" href="/admin/globalsettings" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700  @(CurrentPath == "/admin/globalsettings" ? ActiveItemClasses : "")">
+                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white  @(CurrentPath == "/admin/settings" ? ActiveIconClasses : "")" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                <path stroke="currentColor" stroke-linecap="square" stroke-linejoin="round" stroke-width="2" d="M10 19H5a1 1 0 0 1-1-1v-1a3 3 0 0 1 3-3h2m10 1a3 3 0 0 1-3 3m3-3a3 3 0 0 0-3-3m3 3h1m-4 3a3 3 0 0 1-3-3m3 3v1m-3-4a3 3 0 0 1 3-3m-3 3h-1m4-3v-1m-2.121 1.879-.707-.707m5.656 5.656-.707-.707m-4.242 0-.707.707m5.656-5.656-.707.707M12 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                            </svg>
+
+                            <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Global Setting</span>
+                        </a>
+                    </li>
+                    <li class="space-y-2 border-t border-gray-200 dark:border-gray-700"></li>
+                    <li>
+                        <a id="adminSidebarDocsLink" href="/api/doc" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700">
+                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd" d="M8 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1h2a2 2 0 0 1 2 2v15a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h2Zm6 1h-4v2H9a1 1 0 0 0 0 2h6a1 1 0 1 0 0-2h-1V4Zm-3 8a1 1 0 0 1 1-1h3a1 1 0 1 1 0 2h-3a1 1 0 0 1-1-1Zm-2-1a1 1 0 1 0 0 2h.01a1 1 0 1 0 0-2H9Zm2 5a1 1 0 0 1 1-1h3a1 1 0 1 1 0 2h-3a1 1 0 0 1-1-1Zm-2-1a1 1 0 1 0 0 2h.01a1 1 0 1 0 0-2H9Z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Docs</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</aside>
