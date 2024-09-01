@@ -5,18 +5,26 @@ public class PermissionManager : IPermissionManager
     private readonly IAuthContext _authContext;
     private readonly IPermissionRepository _permissionRepository;
     private readonly IUserRoleRepository _userRoleRepository;
+    private readonly IGlobalSettingsRepository _globalSettingsRepository;
     private IEnumerable<Guid> _userRoleIds = [];
     private IEnumerable<Permission> _sitePermissions = [];
 
-    public PermissionManager(IAuthContext authContext, IPermissionRepository permissionRepository, IPageRepository pageRepository, IUserRoleRepository userRoleRepository)
+    public PermissionManager(IAuthContext authContext, IPermissionRepository permissionRepository, IUserRoleRepository userRoleRepository, IGlobalSettingsRepository globalSettingsRepository)
     {
         _authContext = authContext;
         _permissionRepository = permissionRepository;
         _userRoleRepository = userRoleRepository;
+        _globalSettingsRepository = globalSettingsRepository;
     }
 
     public async Task<bool> HasAccess<TEntity>(TEntity entity, string action, CancellationToken cancellationToken = default) where TEntity : ISiteAssociatedEntity
     {
+        if (await IsSuperAdmin(cancellationToken))
+            return true;
+
+        //if (!await _setupManager.IsInitialized())
+        //    return true;
+
         return true;
 
         //TODO 
@@ -33,6 +41,15 @@ public class PermissionManager : IPermissionManager
         }
 
         return false;
+    }
+
+    private async Task<bool> IsSuperAdmin(CancellationToken cancellationToken)
+    {
+        var globalSettings = await _globalSettingsRepository.Get(cancellationToken);
+        if (globalSettings == null)
+            return false;
+
+        return globalSettings.SuperAdmins.Contains(_authContext.Username);
     }
 
     private bool CheckSiteAccess(Guid siteId, string action)

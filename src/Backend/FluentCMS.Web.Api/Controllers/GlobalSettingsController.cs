@@ -8,22 +8,24 @@ public class GlobalSettingsController(IGlobalSettingsService service, IMapper ma
 
     [HttpGet]
     [Policy(AREA, READ)]
-    public async Task<IApiResult<GlobalSettings>> Get(CancellationToken cancellationToken = default)
+    public async Task<IApiResult<GlobalSettingsResponse>> Get(CancellationToken cancellationToken = default)
     {
-        var systemSettings = await service.Get(cancellationToken) ??
+        var settings = await service.Get(cancellationToken) ??
             throw new AppException(ExceptionCodes.GlobalSettingsNotFound);
 
-        return Ok(systemSettings);
+        var settingsResponse = mapper.Map<GlobalSettingsResponse>(settings);
+
+        return Ok(settingsResponse);
     }
 
     [HttpPost]
     [Policy(AREA, UPDATE)]
-    public async Task<IApiResult<GlobalSettings>> Update(GlobalSettingsUpdateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<GlobalSettingsResponse>> Update(GlobalSettingsUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var settings = mapper.Map<GlobalSettings>(request);
-
         var updated = await service.Update(settings, cancellationToken);
+        var settingsResponse = mapper.Map<GlobalSettingsResponse>(updated);
 
-        return Ok(updated);
+        return Ok(settingsResponse);
     }
 }
