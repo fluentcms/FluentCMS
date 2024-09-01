@@ -1,7 +1,7 @@
 import './sortable.js'
 
 import {actions} from './actions.js'
-import { createPlugin, updatePlugin, updatePluginCols, updatePluginOrders } from './api.js';
+import { createPlugin, updateBlockContent, updatePlugin, updatePluginCols, updatePluginOrders } from './api.js';
 import {Columns} from './columns.js'
 
 export function initColumns(frameDocument) {
@@ -85,6 +85,8 @@ export async function reload() {
         const node = template.content.querySelector('.f-page-editor').cloneNode(true)
         document.querySelector('.f-page-editor').innerHTML = node.innerHTML
 
+        initializeInlineEditables(document.querySelector('.f-page-editor-iframe').contentDocument)
+
         initializeSortable(document.querySelector('.f-page-editor-iframe').contentDocument)
         hydrate(document.querySelector('.f-page-editor'))
     })
@@ -108,10 +110,65 @@ export async function reloadIframe() {
             frameDocument.body.appendChild(child);
         });  
         
+        initializeInlineEditables(frameDocument)
         initializeSortable(frameDocument)
         initColumns(frameDocument)
         hydrate(frameDocument)
     })
+}
+
+export function debounce(cb, timeout = 300) {
+    let timer;
+    return (...args) => {
+        if(timer) clearTimeout(timer)
+        timer = setTimeout(() => {
+            cb(...args)
+        }, timeout)
+    }
+}
+export function initializeInlineEditables(doc) {
+    async function saveBlock(el) {
+        let plugin = findParentPlugin(el)
+        let block = findParentBlock(el)
+
+        await updateBlockContent({pluginId: plugin.id, id: block.dataset.id, content: block.innerHTML})
+    }
+
+    const saveBlockDebounced = debounce(saveBlock, 1000)
+
+    function findParentPlugin(el) {
+        if(el.classList.contains('f-plugin-container')) {
+            return el
+        }
+        return findParentBlock(el.parentElement)
+    }
+    function findParentBlock(el) {
+        if(el.classList.contains('f-block')) {
+            return el
+        }
+        return findParentBlock(el.parentElement)
+    }
+    
+
+    doc.querySelectorAll('[data-inline-editable]').forEach(el => {
+        el.setAttribute('contenteditable', '')
+        el.addEventListener('keyup', () => {
+            saveBlockDebounced(el)
+            console.log('changed')
+        })
+        el.addEventListener('click', (ev) => {
+            ev.preventDefault()
+            ev.stopPropagation()
+        })
+
+        if(el.tagName === 'A') {
+           
+            console.log('A')
+        } else {
+            console.log(el.tagName)
+        }
+    })
+
 }
 
 export async function request(handler, body) {

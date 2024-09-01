@@ -74,7 +74,7 @@ public partial class BlockEditPlugin
             Model = new BlockContent
             {
                 Id = content[0].Id,
-                Template = content[0].Template
+                Content = content[0].Content
             };
             IsEditMode = true;
         }

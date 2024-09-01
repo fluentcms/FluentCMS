@@ -2,7 +2,7 @@
 
 @if(Item != null)
 {
-    <div class="f-block">
-        @((MarkupString)Rendered)
+    <div data-id="@Item.Id" class="f-block">
+        @((MarkupString)Item.Content)
     </div>
 }

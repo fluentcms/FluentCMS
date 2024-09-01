@@ -13,7 +13,7 @@ export async function createPlugin({definitionId, sectionName, order, blockId}) 
             'CreateBlockModel.Plugin.ColsMd': 0,
             'CreateBlockModel.Plugin.ColsLg': 0,
             'CreateBlockModel.Plugin.Section': sectionName,
-            'CreateBlockModel.Template': block.Template,
+            'CreateBlockModel.Content': block.Template,
         }
 
         for(let key in block.Settings ?? {})
@@ -85,6 +85,15 @@ export async function updatePlugin(pluginContainerEl, sectionEl) {
     await request('UpdatePluginForm', result)
 }
 
+export async function updateBlockContent({id, content, pluginId}) {
+    let result = {
+        'UpdateBlockContentModel.PluginId': pluginId,
+        'UpdateBlockContentModel.Id': id,
+        'UpdateBlockContentModel.Content': content,
+    }
+
+    await request('UpdateBlockContentForm', result)
+}
 
 export async function updatePluginOrders() {
     setTimeout(async () => {

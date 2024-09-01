@@ -10,11 +10,12 @@
 
 .f-plugin-container-content {
     border: 1px dashed #00549038;
+    padding-top: 2.5rem;
     position: relative;
     overflow: hidden;
     min-height: 75px;
-    pointer-events: none;
-    user-select: none;
+    /* pointer-events: none; */
+    /* user-select: none; */
     transition: all 0.3s ease;
 }
 .f-plugin-container:hover .f-plugin-container-content {
@@ -56,23 +57,23 @@
     position: absolute;
     display: flex;
     align-items: center;
-    opacity: 0;
+    /* opacity: 0; */
     transition: all 0.2s ease;
     /* overflow: hidden; */
     justify-content: space-between;
     left: 0;
     right: 0;
+    /* bottom: 100%; */
 }
 
-.f-plugin-container::after {
-    content: '';
-    position: absolute;
+/* .f-plugin-container:first-child:hover .f-plugin-container-actions {
+    bottom: auto;
     top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: transparent;
-    pointer-events: none;
+} */
+
+[data-inline-editable] {
+    outline: none;
+    border: 1px solid black;
 }
 
 .f-plugin-container:hover .f-plugin-container-actions {

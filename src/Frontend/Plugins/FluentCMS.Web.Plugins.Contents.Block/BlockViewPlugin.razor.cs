@@ -68,17 +68,6 @@ public partial class BlockViewPlugin
             if (response?.Data != null && response.Data.ToContentList<BlockContent>().Any())
             {
                 Item = response.Data.ToContentList<BlockContent>().FirstOrDefault();
-
-                var scriptObject = new ScriptObject();
-                foreach (var keyValue in Plugin.Settings) {
-                    scriptObject.Add(keyValue.Key, keyValue.Value);
-                }
-
-                var context = new TemplateContext();
-                context.PushGlobal(scriptObject);
-
-                var template = Template.Parse(Item.Template);
-                Rendered = template.Render(context);
             }
         }
     }
