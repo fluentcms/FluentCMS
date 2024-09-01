@@ -6,7 +6,8 @@
         <Button Visible="Submit" Color="Color.Primary" Type="ButtonType.Submit">
             Submit
         </Button>
-        <Button Visible="Cancel" Href="@GetBackUrl()">
+        <!-- TODO: Only disable enhance nav for site builder -->
+        <Button data-enhance-nav="disabled" Visible="Cancel" Href="@GetBackUrl()">
             Cancel
         </Button>
     </Stack>

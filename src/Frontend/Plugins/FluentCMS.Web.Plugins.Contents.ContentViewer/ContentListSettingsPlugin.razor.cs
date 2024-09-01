@@ -8,9 +8,6 @@ public partial class ContentListSettingsPlugin
     protected NavigationManager NavigationManager { get; set; } = default!;
 
     [Parameter]
-    public string? SectionName { get; set; }
-
-    [Parameter]
     public PluginViewState? Plugin { get; set; } = default!;
 
     [Inject]

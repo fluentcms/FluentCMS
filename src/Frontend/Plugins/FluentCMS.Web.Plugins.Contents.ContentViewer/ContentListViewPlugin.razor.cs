@@ -11,9 +11,6 @@ public partial class ContentListViewPlugin
     protected NavigationManager NavigationManager { get; set; } = default!;
 
     [Parameter]
-    public string? SectionName { get; set; }
-
-    [Parameter]
     public PluginViewState? Plugin { get; set; } = default!;
 
     [Inject]
