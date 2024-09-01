@@ -12,23 +12,35 @@ public interface ISiteService : IAutoRegisterService
     Task<Site> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class SiteService(ISiteRepository siteRepository, IMessagePublisher messagePublisher) : ISiteService
+public class SiteService(ISiteRepository siteRepository, IMessagePublisher messagePublisher, IPermissionManager permissionManager) : ISiteService
 {
     public async Task<IEnumerable<Site>> GetAll(CancellationToken cancellationToken = default)
     {
-        return await siteRepository.GetAll(cancellationToken);
+        var sites = await siteRepository.GetAll(cancellationToken);
+
+        return await permissionManager.HasSiteAccess(sites, PermissionActionNames.SiteContributor, cancellationToken);
     }
 
     public async Task<Site> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        return await siteRepository.GetById(id, cancellationToken) ??
+        var site = await siteRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
+
+        if (!await permissionManager.HasSiteAccess(site, PermissionActionNames.SiteContributor, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
+        return site;
     }
 
     public async Task<Site> GetByUrl(string url, CancellationToken cancellationToken = default)
     {
-        return await siteRepository.GetByUrl(url, cancellationToken) ??
+        var site = await siteRepository.GetByUrl(url, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
+
+        if (!await permissionManager.HasSiteAccess(site, PermissionActionNames.SiteContributor, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
+        return site;
     }
 
     public async Task<Site> Create(Site site, CancellationToken cancellationToken = default)
@@ -51,6 +63,9 @@ public class SiteService(ISiteRepository siteRepository, IMessagePublisher messa
 
     public async Task<Site> Update(Site site, CancellationToken cancellationToken = default)
     {
+        if (!await permissionManager.HasSiteAccess(site, PermissionActionNames.SiteContributor, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
         PrepareSite(site);
 
         // check if site url is unique
@@ -68,6 +83,12 @@ public class SiteService(ISiteRepository siteRepository, IMessagePublisher messa
 
     public async Task<Site> Delete(Guid id, CancellationToken cancellationToken = default)
     {
+        var originalSite = await siteRepository.GetById(id, cancellationToken) ??
+            throw new AppException(ExceptionCodes.SiteNotFound);
+
+        if (!await permissionManager.HasSiteAccess(originalSite, PermissionActionNames.SiteContributor, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
         var deletedSite = await siteRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteUnableToDelete);
 
