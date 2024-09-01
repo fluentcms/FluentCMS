@@ -1,59 +1,36 @@
+
+@inherits BasePlugin
 @namespace FluentCMS.Web.Plugins.Contents.ContentViewer
 
 @rendermode InteractiveServer
 
-<div class="m-4">
-    <Typography Size="TextSize.H5">Edit Content List Content</Typography>            
-    <Spacer />
-    <Card>
-        <CardBody>
-            @if (Model != null)
-            {
-                <EditForm Model="@Model" OnSubmit="OnSubmit" FormName="@FORM_NAME" Enhance>
-                    <DataAnnotationsValidator />
-                    <Spacer />
-                    <Grid GutterX="GridGutter.Large">
-                        <FormSelect Data="ContentTypes" TextField="Title" ValueField="Slug" Placeholder="Choose Content Type" @bind-Value="Model.ContentTypeSlug" Label="Content Type" />
-                        @if (!string.IsNullOrEmpty(Model.ContentTypeSlug))
-                        {
-                            <GridItem Small="GridItemColumn.Twelve">
-                                <Stack Justify="StackJustify.Start" Items="StackItems.Start" Vertical>
-                                    @{
-                                        var contentType = ContentTypes.Where(x => x.Slug == Model.ContentTypeSlug).FirstOrDefault();
-                                    }
-                                    <Typography Size="TextSize.Large"></Typography>
-                                    <Typography Size="TextSize.Small"><code class="font-bold">Items</code> variable is available for template, which is list of "@contentType.Title", Each "@contentType.Title" has these fields:</Typography>
-                                    <Stack Wrap>
-                                        @foreach (var field in contentType.Fields)
-                                        {
-                                            <Badge Color="Color.Primary">@field.Name: @field.Type</Badge>   
-                                        }
-                                    </Stack>
-                                </Stack>
-                                <Spacer />                                
-                            </GridItem>
-                        }
-
-                        <FormTextarea Placeholder="Edit Template" @bind-Value="@Model.Template" Label="Template" />
-                        <GridItem Small="GridItemColumn.Twelve">
-                            <Alert Type="AlertType.Info">
-                                For templating Guide you can refer to <a style="font-weight: bold; text-decoration: underline;" href="https://github.com/scriban/scriban/blob/master/doc/language.md">Scriban's Documentation</a>
-                            </Alert>
-                            <Spacer/>
-                        </GridItem>
-                        <GridItem Small="GridItemColumn.Twelve">
-                            <Stack>
-                                <Button Color="Color.Primary" Type="ButtonType.Submit">
-                                    Submit
-                                </Button>
-                                <Button Href="@GetBackUrl()">
-                                    Cancel
-                                </Button>
-                            </Stack>
-                        </GridItem>
-                    </Grid>
-                </EditForm>
-            }
-        </CardBody>
-    </Card>
-</div>
+<PluginForm Title="Edit Content List Content" Model="@Model" OnSubmit="OnSubmit" Name="@FORM_NAME">
+    <FormSelect Data="ContentTypes" TextField="Title" ValueField="Slug" Placeholder="Choose Content Type" @bind-Value="Model.ContentTypeSlug" Label="Content Type" />
+    @if (!string.IsNullOrEmpty(Model.ContentTypeSlug))
+    {
+        <GridItem Small="GridItemColumn.Twelve">
+            <Stack Justify="StackJustify.Start" Items="StackItems.Start" Vertical>
+                @{
+                    var contentType = ContentTypes.Where(x => x.Slug == Model.ContentTypeSlug).FirstOrDefault();
+                }
+                <Typography Size="TextSize.Large"></Typography>
+                <Typography Size="TextSize.Small"><code class="font-bold">Items</code> variable is available for template, which is list of "@contentType.Title", Each "@contentType.Title" has these fields:</Typography>
+                <Stack Wrap>
+                    @foreach (var field in contentType.Fields)
+                    {
+                        <Badge Color="Color.Primary">@field.Name: @field.Type</Badge>   
+                    }
+                </Stack>
+            </Stack>
+            <Spacer />                                
+        </GridItem>
+    }
+    <FormTextarea Placeholder="Edit Template" @bind-Value="@Model.Template" Label="Template" />
+    <GridItem Small="GridItemColumn.Twelve">
+        <Alert Type="AlertType.Info">
+            For templating Guide you can refer to <a style="font-weight: bold; text-decoration: underline;" href="https://github.com/scriban/scriban/blob/master/doc/language.md">Scriban's Documentation</a>
+        </Alert>
+        <Spacer/>
+    </GridItem>
+    <FormActions Submit Cancel/>
+</PluginForm>
