@@ -12,7 +12,7 @@ public partial class ContentListPlugin
 
     private async Task Load()
     {
-        if (!string.IsNullOrEmpty(ContentTypeSlug) && ContentType != null)
+        if (!string.IsNullOrEmpty(ContentTypeSlug))
         {
             var contentsResponse = await ApiClient.Content.GetAllAsync(ContentTypeSlug);
             Contents = contentsResponse?.Data?.ToList() ?? [];

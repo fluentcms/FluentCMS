@@ -22,6 +22,8 @@ public static class ServiceExtensions
 
         RegisterServices(services);
 
+        services.AddSetupServices();
+
         return services;
     }
 

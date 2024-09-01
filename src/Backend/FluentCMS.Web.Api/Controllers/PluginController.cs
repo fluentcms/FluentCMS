@@ -52,6 +52,18 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
         var response = mapper.Map<PluginDetailResponse>(updated);
         return Ok(response);
     }
+    
+    [HttpPut]
+    [Policy(AREA, UPDATE)]
+    public async Task<IApiResult<PluginDetailResponse>> UpdateSettings([FromBody] PluginUpdateSettingsRequest request, CancellationToken cancellationToken = default)
+    {
+        var plugin = await pluginService.GetById(request.Id, cancellationToken);
+        plugin.Settings = request.Settings;
+
+        var updated = await pluginService.Update(plugin, cancellationToken);
+        var response = mapper.Map<PluginDetailResponse>(updated);
+        return Ok(response);
+    }
 
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]

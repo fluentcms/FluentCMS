@@ -8,8 +8,8 @@ public abstract class BasePlugin : ComponentBase
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = default!;
 
-    [Parameter]
-    public string? SectionName { get; set; }
+    [CascadingParameter]
+    protected ViewState ViewState { get; set; } = default!;
 
     [Parameter]
     public PluginViewState? Plugin { get; set; } = default!;
