@@ -1,0 +1,23 @@
+@inherits BasePlugin
+@rendermode InteractiveServer
+
+<PluginBody Title="Blocks">
+    <ActionsFragment>
+        <ActionButtonCreate Href="@GetUrl("Create Block")" Label="Add Block"/>
+    </ActionsFragment>
+    <ChildContent>
+        <DataTable Items="Blocks">
+            <DataTableItem Label="Name">@context.Name</DataTableItem>
+            <DataTableItem Label="Category">@context.Category</DataTableItem>
+            <DataTableItem Label="Description">@context.Description</DataTableItem>
+            <ActionButtons>
+                <ActionButtonEdit Href="@GetUrl("Update Block", new { id = @context.Id })"/>
+                <ActionButtonDelete @onclick="() => OnConfirm(context)"/>
+            </ActionButtons>
+        </DataTable>
+    </ChildContent>
+</PluginBody>
+
+<Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedBlock != null">
+    Are you sure to delete <b>"@SelectedBlock!.Name"</b> block?
+</Confirm>
