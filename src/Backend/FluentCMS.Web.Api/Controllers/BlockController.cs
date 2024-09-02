@@ -17,11 +17,11 @@ public class BlockController(IMapper mapper, IBlockService blockService) : BaseG
         return Ok(blockResponse);
     }
 
-    [HttpGet]
+    [HttpGet("siteId")]
     [Policy(AREA, READ)]
-    public async Task<IApiPagingResult<BlockDetailResponse>> GetAll(CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<BlockDetailResponse>> GetAll([FromRoute] Guid siteId, CancellationToken cancellationToken = default)
     {
-        var blocks = await blockService.GetAll(cancellationToken);
+        var blocks = await blockService.GetAllForSite(siteId, cancellationToken);
         var blockResponse = mapper.Map<List<BlockDetailResponse>>(blocks);
         return OkPaged(blockResponse);
     }

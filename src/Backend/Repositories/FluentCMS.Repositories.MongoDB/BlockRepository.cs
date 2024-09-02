@@ -1,8 +1,5 @@
 namespace FluentCMS.Repositories.MongoDB;
 
-public class BlockRepository : AuditableEntityRepository<Block>, IBlockRepository
+public class BlockRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : SiteAssociatedRepository<Block>(mongoDbContext, authContext), IBlockRepository
 {
-    public BlockRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
-    {
-    }
 }

@@ -3,6 +3,9 @@ namespace FluentCMS.Web.Api.Models;
 public class BlockCreateRequest
 {
     [Required]
+    public Guid SiteId { get; set; } = default!;
+
+    [Required]
     public string Name { get; set; } = default!;
 
     [Required]

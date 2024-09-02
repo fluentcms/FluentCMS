@@ -181,9 +181,6 @@ public static class ExceptionCodes
     public const string BlockUnableToCreate = "Block.UnableToCreate";
     public const string BlockUnableToUpdate = "Block.UnableToUpdate";
     public const string BlockUnableToDelete = "Block.UnableToDelete";
-    // public const string PermissionUnableToDelete = "Permission.UnableToDelete";
-    // public const string PermissionNotFound = "Permission.NotFound";
-    // public const string PermissionDenied = "Permission.Denied";
 
     #endregion
 }

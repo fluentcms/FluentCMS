@@ -1,21 +1,19 @@
-using FluentCMS.Providers.MessageBusProviders;
-
 namespace FluentCMS.Services;
 
 public interface IBlockService : IAutoRegisterService
 {
-    Task<IEnumerable<Block>> GetAll(CancellationToken cancellationToken = default);
+    Task<IEnumerable<Block>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default);
     Task<Block> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<Block> Create(Block Block, CancellationToken cancellationToken = default);
     Task<Block> Update(Block Block, CancellationToken cancellationToken = default);
     Task<Block> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class BlockService(IBlockRepository blockRepository, IMessagePublisher messagePublisher, IPermissionManager permissionManager) : IBlockService
+public class BlockService(IBlockRepository blockRepository) : IBlockService
 {
-    public async Task<IEnumerable<Block>> GetAll(CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Block>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {
-        return await blockRepository.GetAll(cancellationToken);
+        return await blockRepository.GetAllForSite(siteId, cancellationToken);
     }
 
     public async Task<Block> GetById(Guid id, CancellationToken cancellationToken = default)
@@ -45,12 +43,12 @@ public class BlockService(IBlockRepository blockRepository, IMessagePublisher me
             throw new AppException(ExceptionCodes.BlockUnableToUpdate);
     }
 
-    public async Task<Block> Delete(Guid blockId, CancellationToken cancellationToken = default)
+    public async Task<Block> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        var block = await blockRepository.GetById(blockId, cancellationToken) ??
+        _ = await blockRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.BlockNotFound);
 
-        return await blockRepository.Delete(blockId, cancellationToken) ??
+        return await blockRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.BlockUnableToDelete);
     }
 }

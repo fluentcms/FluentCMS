@@ -1,5 +1,5 @@
 ﻿namespace FluentCMS.Repositories.Abstractions;
 
-public interface IBlockRepository : IAuditableEntityRepository<Block>
+public interface IBlockRepository : ISiteAssociatedRepository<Block>
 {
 }

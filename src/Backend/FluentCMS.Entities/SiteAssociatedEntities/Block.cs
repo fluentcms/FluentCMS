@@ -1,6 +1,6 @@
 namespace FluentCMS.Entities;
 
-public class Block : AuditableEntity
+public class Block : SiteAssociatedEntity
 {
     public string Name { get; set; } = default!;
     public string Category { get; set; } = default!;

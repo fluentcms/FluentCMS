@@ -1,8 +1,5 @@
 ﻿namespace FluentCMS.Repositories.LiteDb;
 
-public class BlockRepository : AuditableEntityRepository<Block>, IBlockRepository
+public class BlockRepository(ILiteDBContext liteDbContext, IAuthContext authContext) : SiteAssociatedRepository<Block>(liteDbContext, authContext), IBlockRepository
 {
-    public BlockRepository(ILiteDBContext liteDbContext, IAuthContext authContext) : base(liteDbContext, authContext)
-    {
-    }
 }
