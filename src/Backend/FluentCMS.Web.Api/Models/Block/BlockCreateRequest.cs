@@ -10,9 +10,9 @@ public class BlockCreateRequest
 
     [Required]
     public string Category { get; set; } = default!;
-    
+
     public string? Description { get; set; } = default!;
-    
+
     [Required]
     public string Content { get; set; } = default!;
 }
