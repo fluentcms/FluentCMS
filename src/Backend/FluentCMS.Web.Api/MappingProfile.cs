@@ -122,5 +122,12 @@ public class MappingProfile : Profile
 
         #endregion
 
+        #region Block
+
+        CreateMap<BlockCreateRequest, Block>();
+        CreateMap<BlockUpdateRequest, Block>();
+        CreateMap<Block, BlockDetailResponse>();
+
+        #endregion
     }
 }
