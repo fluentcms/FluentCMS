@@ -3,6 +3,7 @@ import './sortable.js'
 import {actions} from './actions.js'
 import { createPlugin, updateBlockContent, updatePlugin, updatePluginCols, updatePluginOrders } from './api.js';
 import {Columns} from './columns.js'
+import { initializeInlineEditables } from './blocks.js';
 
 export function initColumns(frameDocument) {
     window.sections = []
@@ -117,70 +118,22 @@ export async function reloadIframe() {
     })
 }
 
-export function debounce(cb, timeout = 300) {
-    let timer;
-    return (...args) => {
-        if(timer) clearTimeout(timer)
-        timer = setTimeout(() => {
-            cb(...args)
-        }, timeout)
-    }
-}
-export function initializeInlineEditables(doc) {
-    async function saveBlock(el) {
-        let plugin = findParentPlugin(el)
-        let block = findParentBlock(el)
-
-        await updateBlockContent({pluginId: plugin.id, id: block.dataset.id, content: block.innerHTML})
-    }
-
-    const saveBlockDebounced = debounce(saveBlock, 1000)
-
-    function findParentPlugin(el) {
-        if(el.classList.contains('f-plugin-container')) {
-            return el
-        }
-        return findParentBlock(el.parentElement)
-    }
-    function findParentBlock(el) {
-        if(el.classList.contains('f-block')) {
-            return el
-        }
-        return findParentBlock(el.parentElement)
-    }
-    
-
-    doc.querySelectorAll('[data-inline-editable]').forEach(el => {
-        el.setAttribute('contenteditable', '')
-        el.addEventListener('keyup', () => {
-            saveBlockDebounced(el)
-            console.log('changed')
-        })
-        el.addEventListener('click', (ev) => {
-            ev.preventDefault()
-            ev.stopPropagation()
-        })
-
-        if(el.tagName === 'A') {
-           
-            console.log('A')
-        } else {
-            console.log(el.tagName)
-        }
-    })
-
-}
-
 export async function request(handler, body) {
     const token = document.querySelector('[name="__RequestVerificationToken"]').value
+    let formData;
 
-    const formData = new FormData()
+    if(body instanceof FormData) {
+        formData = body 
+    } else {
+        formData = new FormData()
+
+        for(let key in body) {
+            formData.set(key, body[key])
+        }
+    }
+
     formData.set('__RequestVerificationToken', token)
     formData.set('_handler', handler)
-
-    for(let key in body) {
-        formData.set(key, body[key])
-    }
 
     await fetch(window.location.href, {
         method: 'POST',

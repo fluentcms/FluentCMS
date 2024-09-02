@@ -1,5 +1,5 @@
-﻿import { initializeBlocks } from './blocks.js';
-import { hydrate, initializeSortable, initializeInlineEditables, initColumns } from './request.js'
+﻿import { initializeBlocks, initializeInlineEditables } from './blocks.js';
+import { hydrate, initializeSortable, initColumns } from './request.js'
 import { initializeResponsive } from './responsive.js'
 
 let iframeElement = document.querySelector('.f-page-editor-iframe')

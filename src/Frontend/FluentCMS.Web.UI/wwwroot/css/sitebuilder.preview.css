@@ -53,7 +53,7 @@
     color: black;
     z-index: 4;
     height: 40px;
-    border: 1px dashed #005590;
+    border: 1px dashed #00549038;
     position: absolute;
     display: flex;
     align-items: center;
@@ -66,17 +66,22 @@
     /* bottom: 100%; */
 }
 
-/* .f-plugin-container:first-child:hover .f-plugin-container-actions {
-    bottom: auto;
-    top: 0;
-} */
+.f-plugin-container-error {
+    padding-top: 2.5rem;
+}
 
 [data-inline-editable] {
     outline: none;
-    border: 1px solid black;
+    display: inline-block;
+    position: relative;
+}
+
+.f-plugin-container:hover [data-inline-editable] {
+    background-color: #0055f030;
 }
 
 .f-plugin-container:hover .f-plugin-container-actions {
+    border: 1px dashed #005590;
     opacity: 1;
 }
 

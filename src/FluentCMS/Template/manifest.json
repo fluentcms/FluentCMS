@@ -334,10 +334,6 @@
                 {
                     "Name": "Edit",
                     "Type": "BlockEditPlugin"
-                },
-                {
-                    "Name": "Settings",
-                    "Type": "BlockSettingsPlugin"
                 }
             ]
         },
