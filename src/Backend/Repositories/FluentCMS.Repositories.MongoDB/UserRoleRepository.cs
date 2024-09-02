@@ -2,7 +2,7 @@
 
 public class UserRoleRepository : SiteAssociatedRepository<UserRole>, IUserRoleRepository
 {
-    public UserRoleRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
+    public UserRoleRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : base(mongoDbContext, apiExecutionContext)
     {
     }
 

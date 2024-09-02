@@ -2,7 +2,7 @@
 
 public class LayoutRepository : AuditableEntityRepository<Layout>, ILayoutRepository
 {
-    public LayoutRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
+    public LayoutRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : base(mongoDbContext, apiExecutionContext)
     {
     }
 }

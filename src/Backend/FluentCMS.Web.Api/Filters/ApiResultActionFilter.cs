@@ -4,9 +4,9 @@ namespace FluentCMS.Web.Api.Filters;
 
 public class ApiResultActionFilter : IAsyncActionFilter
 {
-    private readonly ApiExecutionContext _apiExecutionContext;
+    private readonly IApiExecutionContext _apiExecutionContext;
 
-    public ApiResultActionFilter(ApiExecutionContext apiExecutionContext)
+    public ApiResultActionFilter(IApiExecutionContext apiExecutionContext)
     {
         _apiExecutionContext = apiExecutionContext;
     }

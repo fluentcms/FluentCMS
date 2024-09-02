@@ -58,7 +58,7 @@ public class MappingProfile : Profile
 
         #region UserRole
 
-        CreateMap<AuthContext, UserRoleDetailResponse>();
+        CreateMap<IApiExecutionContext, UserRoleDetailResponse>();
 
         #endregion
 

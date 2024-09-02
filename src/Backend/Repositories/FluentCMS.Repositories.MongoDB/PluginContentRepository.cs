@@ -2,7 +2,7 @@
 
 public class PluginContentRepository : SiteAssociatedRepository<PluginContent>, IPluginContentRepository
 {
-    public PluginContentRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
+    public PluginContentRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : base(mongoDbContext, apiExecutionContext)
     {
     }
 

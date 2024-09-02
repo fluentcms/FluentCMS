@@ -2,7 +2,7 @@
 
 public class FolderRepository : AuditableEntityRepository<Folder>, IFolderRepository
 {
-    public FolderRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
+    public FolderRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : base(mongoDbContext, apiExecutionContext)
     {
     }
 }

@@ -2,7 +2,7 @@
 
 public class PluginDefinitionRepository : AuditableEntityRepository<PluginDefinition>, IPluginDefinitionRepository
 {
-    public PluginDefinitionRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
+    public PluginDefinitionRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : base(mongoDbContext, apiExecutionContext)
     {
     }
 

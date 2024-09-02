@@ -1,10 +1,6 @@
 ﻿namespace FluentCMS.Repositories.LiteDb;
 
-public class ContentTypeRepository(
-    ILiteDBContext liteDbContext,
-    IAuthContext authContext) :
-    AuditableEntityRepository<ContentType>(liteDbContext, authContext),
-    IContentTypeRepository
+public class ContentTypeRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : AuditableEntityRepository<ContentType>(liteDbContext, apiExecutionContext), IContentTypeRepository
 {
     public async Task<ContentType?> GetBySlug(string contentTypeSlug, CancellationToken cancellationToken = default)
     {

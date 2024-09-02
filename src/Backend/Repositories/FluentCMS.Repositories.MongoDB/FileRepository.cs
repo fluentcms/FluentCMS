@@ -2,7 +2,7 @@
 
 public class FileRepository : AuditableEntityRepository<File>, IFileRepository
 {
-    public FileRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
+    public FileRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : base(mongoDbContext, apiExecutionContext)
     {
     }
 }

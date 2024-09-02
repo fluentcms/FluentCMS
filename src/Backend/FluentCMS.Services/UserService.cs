@@ -27,7 +27,7 @@ public class UserService(
     UserManager<User> userManager,
     IEmailProvider emailProvider,
     IConfiguration configuration,
-    IAuthContext authContext,
+    IApiExecutionContext apiExecutionContext,
     IMessagePublisher messagePublisher) : IUserService
 {
     public const string LOCAL_LOGIN_PROVIDER = "local";
@@ -156,7 +156,7 @@ public class UserService(
 
         // Update user properties related to password changing
         user.PasswordChangedAt = DateTime.Now;
-        user.PasswordChangedBy = authContext.Username;
+        user.PasswordChangedBy = apiExecutionContext.Username;
         await userManager.UpdateAsync(user);
 
         return user;
