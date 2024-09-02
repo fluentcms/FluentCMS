@@ -9,12 +9,12 @@ public interface IUserRoleService : IAutoRegisterService
     Task<bool> Update(Guid userId, Guid siteId, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);
 }
 
-public class UserRoleService(IUserRoleRepository userRoleRepository, IRoleRepository roleRepository, IAuthContext authContext) : IUserRoleService, IMessageHandler<Role>, IMessageHandler<User>
+public class UserRoleService(IUserRoleRepository userRoleRepository, IRoleRepository roleRepository, IApiExecutionContext apiExecutionContext) : IUserRoleService, IMessageHandler<Role>, IMessageHandler<User>
 {
     public async Task<IEnumerable<Guid>> GetUserRoleIds(Guid userId, Guid siteId, CancellationToken cancellationToken = default)
     {
         var allRoles = await roleRepository.GetAllForSite(siteId, cancellationToken);
-        if (!authContext.IsAuthenticated)
+        if (!apiExecutionContext.IsAuthenticated)
             return allRoles.Where(x => x.Type == RoleTypes.Guest || x.Type == RoleTypes.AllUsers).Select(x => x.Id);
 
         var userRoles = await userRoleRepository.GetUserRoles(userId, siteId, cancellationToken) ?? [];

@@ -3,11 +3,7 @@ using System.Security.Claims;
 
 namespace FluentCMS.Repositories.LiteDb;
 
-public class UserRepository(
-    ILiteDBContext liteDbContext,
-    IAuthContext authContext) :
-    AuditableEntityRepository<User>(liteDbContext, authContext),
-    IUserRepository
+public class UserRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : AuditableEntityRepository<User>(liteDbContext, apiExecutionContext), IUserRepository
 {
     public IQueryable<User> AsQueryable()
     {

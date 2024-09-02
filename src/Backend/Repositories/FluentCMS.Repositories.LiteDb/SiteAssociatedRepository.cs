@@ -3,7 +3,7 @@
 public abstract class SiteAssociatedRepository<TEntity> : AuditableEntityRepository<TEntity>, ISiteAssociatedRepository<TEntity>
     where TEntity : ISiteAssociatedEntity
 {
-    public SiteAssociatedRepository(ILiteDBContext liteDbContext, IAuthContext authContext) : base(liteDbContext, authContext)
+    public SiteAssociatedRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : base(liteDbContext, apiExecutionContext)
     {
     }
 

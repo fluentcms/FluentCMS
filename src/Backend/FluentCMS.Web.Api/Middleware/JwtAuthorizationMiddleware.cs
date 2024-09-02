@@ -49,4 +49,3 @@ public class JwtAuthorizationMiddleware
         await _next(context);
     }
 }
-

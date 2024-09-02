@@ -1,13 +1,12 @@
 ﻿namespace FluentCMS.Repositories.LiteDb;
 
-public class AuditableEntityRepository<TEntity> : EntityRepository<TEntity>, IAuditableEntityRepository<TEntity>
-    where TEntity : IAuditableEntity
+public class AuditableEntityRepository<TEntity> : EntityRepository<TEntity>, IAuditableEntityRepository<TEntity> where TEntity : IAuditableEntity
 {
-    protected readonly IAuthContext AuthContext;
+    protected readonly IApiExecutionContext ApiExecutionContext;
 
-    public AuditableEntityRepository(ILiteDBContext liteDbContext, IAuthContext authContext) : base(liteDbContext)
+    public AuditableEntityRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : base(liteDbContext)
     {
-        AuthContext = authContext;
+        ApiExecutionContext = apiExecutionContext;
     }
 
     public override async Task<TEntity?> Create(TEntity entity, CancellationToken cancellationToken = default)
@@ -36,12 +35,12 @@ public class AuditableEntityRepository<TEntity> : EntityRepository<TEntity>, IAu
     private void SetAuditableFieldsForCreate(TEntity entity)
     {
         entity.CreatedAt = DateTime.UtcNow;
-        entity.CreatedBy = AuthContext.Username;
+        entity.CreatedBy = ApiExecutionContext.Username;
     }
 
     private void SetAuditableFieldsForUpdate(TEntity entity)
     {
         entity.ModifiedAt = DateTime.UtcNow;
-        entity.ModifiedBy = AuthContext.Username;
+        entity.ModifiedBy = ApiExecutionContext.Username;
     }
 }
