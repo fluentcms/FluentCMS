@@ -4,7 +4,7 @@ public class GlobalSettingsHandler(IGlobalSettingsService globalSettingsService)
 {
     public override SetupSteps Step => SetupSteps.GlobalSettings;
 
-    public async override Task<SetupContext> Handle(SetupContext context)
+    public override async Task<SetupContext> Handle(SetupContext context)
     {
         context.GlobalSettings = await globalSettingsService.Init(context.GlobalSettings);
 

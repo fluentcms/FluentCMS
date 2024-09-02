@@ -4,7 +4,7 @@ public class SuperAdminHandler(IUserService userService) : BaseSetupHandler
 {
     public override SetupSteps Step => SetupSteps.SuperAdmin;
 
-    public async override Task<SetupContext> Handle(SetupContext context)
+    public override async Task<SetupContext> Handle(SetupContext context)
     {
         var superAdmin = new User
         {

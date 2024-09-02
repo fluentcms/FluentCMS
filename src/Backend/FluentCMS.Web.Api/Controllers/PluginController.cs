@@ -52,7 +52,7 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
         var response = mapper.Map<PluginDetailResponse>(updated);
         return Ok(response);
     }
-    
+
     [HttpPut]
     [Policy(AREA, UPDATE)]
     public async Task<IApiResult<PluginDetailResponse>> UpdateSettings([FromBody] PluginUpdateSettingsRequest request, CancellationToken cancellationToken = default)

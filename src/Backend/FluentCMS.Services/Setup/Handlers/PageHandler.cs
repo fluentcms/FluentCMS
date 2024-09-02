@@ -6,7 +6,7 @@ public class PageHandler(IPageService pageService, IPluginService pluginService,
 {
     public override SetupSteps Step => SetupSteps.Page;
 
-    public async override Task<SetupContext> Handle(SetupContext context)
+    public override async Task<SetupContext> Handle(SetupContext context)
     {
         var order = 0;
         foreach (var pageTemplate in context.AdminTemplate.Pages)

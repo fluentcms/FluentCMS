@@ -39,5 +39,5 @@ public partial class BlockListPlugin
         await Task.CompletedTask;
     }
     #endregion
-    
+
 }

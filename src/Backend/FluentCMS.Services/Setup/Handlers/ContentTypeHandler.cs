@@ -4,7 +4,7 @@ public class ContentTypeHandler(IContentTypeService contentTypeService, IContent
 {
     public override SetupSteps Step => SetupSteps.ContentType;
 
-    public async override Task<SetupContext> Handle(SetupContext context)
+    public override async Task<SetupContext> Handle(SetupContext context)
     {
         foreach (var contentTypeTemplate in context.AdminTemplate.ContentTypes)
         {
