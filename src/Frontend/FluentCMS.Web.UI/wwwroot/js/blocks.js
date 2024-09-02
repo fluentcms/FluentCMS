@@ -50,47 +50,17 @@ function findParentBlock(el) {
 
 export function initializeInlineEditables(doc) {   
     const saveBlockDebounced = debounce(saveBlock, 1000)
-
-    function getTextOnlyElements(el) {
-        const allElements = doc.querySelectorAll('*');
-        const textOnlyElements = [];
     
-        allElements.forEach(element => {
-            const hasOnlyText = [...element.childNodes].some(node => node.nodeType === Node.TEXT_NODE);
-            
-            if (hasOnlyText && element.childNodes.length > 0) {
-                textOnlyElements.push(element);
-            }
-        });
-    
-        return textOnlyElements;
-    }
+    doc.querySelectorAll('[data-inline-editable]').forEach(el => {
+        el.setAttribute('contenteditable', '')
 
-    doc.querySelectorAll('.f-block').forEach(blockEl => {
-        getTextOnlyElements(blockEl).forEach(el => {
-            el.setAttribute('contenteditable', '')
+        el.addEventListener('input', () => {
+            saveBlockDebounced(el)
+        })
 
-            el.addEventListener('input', () => {
-                saveBlockDebounced(el)
-            })
-
-            el.addEventListener('click', (ev) => {
-                ev.preventDefault()
-                ev.stopPropagation()
-            })
+        el.addEventListener('click', (ev) => {
+            ev.preventDefault()
+            ev.stopPropagation()
         })
     })
-    
-    // doc.querySelectorAll('[data-inline-editable]').forEach(el => {
-    //     el.setAttribute('contenteditable', '')
-
-    //     el.addEventListener('input', () => {
-    //         saveBlockDebounced(el)
-    //     })
-
-    //     el.addEventListener('click', (ev) => {
-    //         ev.preventDefault()
-    //         ev.stopPropagation()
-    //     })
-    // })
 }
