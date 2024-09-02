@@ -1223,5 +1223,82 @@
                 }
             ]
         }
+    ],
+    "Blocks": [
+        {
+            "Name": "Header",
+            "Category": "Headers",
+            "Description": "Simple Header Block"
+        },
+        {
+            "Name": "Default",
+            "Category": "Hero",
+            "Description": "Default Hero Block"
+        },
+        {
+            "Name": "Visual Image",
+            "Category": "Hero",
+            "Description": "Visual image with heading"
+        },
+        {
+            "Name": "Default",
+            "Description": "Default feature list",
+            "Category": "Feature"
+        },
+        {
+            "Name": "Default",
+            "Description": "Default CTA Block",
+            "Category": "CTA"
+        },
+        {
+            "Name": "With Image",
+            "Description": "CTA With Image",
+            "Category": "CTA"
+        },
+        {
+            "Name": "With Heading",
+            "Description": "CTA With Heading",
+            "Category": "CTA"
+        },
+        {
+            "Name": "Simple",
+            "Category": "Content",
+            "Description": "Content with Heading and description"
+        },
+        {
+            "Name": "With Image",
+            "Category": "Content",
+            "Description": "Content with Image"
+        },
+        {
+            "Name": "Card",
+            "Category": "Teams",
+            "Description": "Teams section with card"
+        },
+        {
+            "Name": "Clean",
+            "Category": "Teams",
+            "Description": "Grid layout clean without cards"
+        },
+        {
+            "Name": "Default",
+            "Category": "Pricing",
+            "Description": "Default pricing with cards"
+        },
+        {
+            "Name": "Default",
+            "Category": "Footer",
+            "Description": "Default footer"
+        },
+        {
+            "Name": "With Sitemap & Social",
+            "Category": "Footer",
+            "Description": "Footer with sitemap and social links"
+        },
+        {
+            "Name": "Default",
+            "Category": "Social Proof",
+            "Description": "Simple statistics"
+        }   
     ]
 }

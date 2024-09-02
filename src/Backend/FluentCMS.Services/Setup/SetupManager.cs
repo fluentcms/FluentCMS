@@ -71,6 +71,7 @@ public class SetupManager : ISetupManager
         var superAdminHandler = _setupHandlers.Single(x => x.Step == SetupSteps.SuperAdmin);
         var globalSettingsHandler = _setupHandlers.Single(x => x.Step == SetupSteps.GlobalSettings);
         var layoutHandler = _setupHandlers.Single(x => x.Step == SetupSteps.Layout);
+        var blockHandler = _setupHandlers.Single(x => x.Step == SetupSteps.Block);
         var pluginHandler = _setupHandlers.Single(x => x.Step == SetupSteps.Plugin);
         var siteHandler = _setupHandlers.Single(x => x.Step == SetupSteps.Site);
         var pageHandler = _setupHandlers.Single(x => x.Step == SetupSteps.Page);
@@ -81,6 +82,7 @@ public class SetupManager : ISetupManager
         .SetNext(superAdminHandler)
         .SetNext(globalSettingsHandler)
         .SetNext(layoutHandler)
+        .SetNext(blockHandler)
         .SetNext(pluginHandler)
         .SetNext(siteHandler)
         .SetNext(pageHandler)
