@@ -1601,12 +1601,12 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BlockDetailResponseIApiPagingResult> GetAllAsync();
+        System.Threading.Tasks.Task<BlockDetailResponseIApiPagingResult> GetAllForSiteAsync(System.Guid? siteId);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BlockDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<BlockDetailResponseIApiPagingResult> GetAllForSiteAsync(System.Guid? siteId, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -1756,15 +1756,15 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<BlockDetailResponseIApiPagingResult> GetAllAsync()
+        public virtual System.Threading.Tasks.Task<BlockDetailResponseIApiPagingResult> GetAllForSiteAsync(System.Guid? siteId)
         {
-            return GetAllAsync(System.Threading.CancellationToken.None);
+            return GetAllForSiteAsync(siteId, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BlockDetailResponseIApiPagingResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<BlockDetailResponseIApiPagingResult> GetAllForSiteAsync(System.Guid? siteId, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -1777,8 +1777,14 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
                 
-                    // Operation Path: "api/Block/GetAll"
-                    urlBuilder_.Append("api/Block/GetAll");
+                    // Operation Path: "api/Block/GetAllForSite"
+                    urlBuilder_.Append("api/Block/GetAllForSite");
+                    urlBuilder_.Append('?');
+                    if (siteId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("siteId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -11176,6 +11182,10 @@ namespace FluentCMS.Web.ApiClients
     public partial class BlockCreateRequest
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("siteId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SiteId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("name")]
         [System.ComponentModel.DataAnnotations.Required]
         public string Name { get; set; } = default!;
@@ -11211,6 +11221,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("modifiedAt")]
         public System.DateTime? ModifiedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("siteId")]
+        public System.Guid SiteId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("name")]
         public string? Name { get; set; } = default!;
@@ -11308,6 +11321,10 @@ namespace FluentCMS.Web.ApiClients
     public partial class BlockUpdateRequest
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("name")]
         [System.ComponentModel.DataAnnotations.Required]
         public string Name { get; set; } = default!;
@@ -11322,10 +11339,6 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("content")]
         [System.ComponentModel.DataAnnotations.Required]
         public string Content { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public System.Guid Id { get; set; } = default!;
 
     }
 

@@ -15,6 +15,7 @@ public partial class BlockCreatePlugin
 
     private async Task OnSubmit()
     {
+        Model.SiteId = ViewState.Site.Id;
         await ApiClient.Block.CreateAsync(Model);
         NavigateBack();
     }
