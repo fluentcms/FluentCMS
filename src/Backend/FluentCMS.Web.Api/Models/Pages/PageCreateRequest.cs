@@ -12,11 +12,11 @@ public class PageCreateRequest
     public int Order { get; set; }
 
     [Required]
-    public IEnumerable<Guid> ViewRoleIds { get; set; } = [];
+    public IEnumerable<Guid> ViewRoleIds { get; set; }
 
     [Required]
-    public IEnumerable<Guid> ContributorRoleIds { get; set; } = [];
+    public IEnumerable<Guid> ContributorRoleIds { get; set; }
 
     [Required]
-    public IEnumerable<Guid> AdminRoleIds { get; set; } = [];
+    public IEnumerable<Guid> AdminRoleIds { get; set; }
 }
