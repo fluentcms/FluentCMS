@@ -107,6 +107,8 @@ public static class ApiServiceExtensions
 
         app.UseAuthentication();
 
+        app.UseMiddleware<JwtAuthorizationMiddleware>();
+
         app.UseAuthorization();
 
         app.MapControllers();
