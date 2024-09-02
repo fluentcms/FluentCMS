@@ -26,7 +26,7 @@ public class PageController(
     public const string CREATE = "Create";
     public const string DELETE = $"Delete";
 
-    private const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Template";
+    public const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Template";
 
     [HttpGet("{siteUrl}")]
     [DecodeQueryParam]
