@@ -26,11 +26,6 @@ public partial class SiteBuilderForms
     [SupplyParameterFromForm(FormName = "UpdateBlockContentForm")]
     private UpdateBlockContentRequest UpdateBlockContentModel { get; set; } = new();
 
-    private async Task OnUpdatePluginSubmit()
-    {
-        await ApiClient.Plugin.UpdateAsync(UpdatePluginModel);
-    }
-
     private async Task OnCreateBlockSubmit()
     {
         var blockResponse = await ApiClient.Block.GetByIdAsync(CreateBlockModel.BlockId);
@@ -50,11 +45,6 @@ public partial class SiteBuilderForms
         }
     }
 
-    private async Task OnUpdatePluginOrdersSubmit()
-    {
-        await ApiClient.Page.UpdatePluginOrdersAsync(UpdatePluginOrdersModel);
-    }
-
     private async Task OnUpdateBlockContentSubmit()
     {
         var id = UpdateBlockContentModel.Id;
@@ -64,7 +54,16 @@ public partial class SiteBuilderForms
         var response = await ApiClient.PluginContent.UpdateAsync("BlockContent", pluginId, id, new Dictionary<string, object> {
             { "Content", content }
         });
-        
+    }
+
+    private async Task OnUpdatePluginSubmit()
+    {
+        await ApiClient.Plugin.UpdateAsync(UpdatePluginModel);
+    }
+
+    private async Task OnUpdatePluginOrdersSubmit()
+    {
+        await ApiClient.Page.UpdatePluginOrdersAsync(UpdatePluginOrdersModel);
     }
 
     private async Task OnCreatePluginSubmit()

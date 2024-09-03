@@ -12,9 +12,7 @@ public partial class PageEditorSidebar
     protected override async Task OnInitializedAsync()
     {
         var blockDefinition = PluginDefinitions.Where(x => x.Name == "Block Plugin").FirstOrDefault();
-        Console.WriteLine($"{PluginDefinitions.Count}");
 
-        Console.WriteLine($"Block Definition: {blockDefinition.Name} ={blockDefinition.Description} - {blockDefinition.Id}");
         if (blockDefinition?.Id != null)
         {
             BlockDefinitionId = blockDefinition.Id;
