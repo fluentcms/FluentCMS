@@ -6,6 +6,8 @@ public class GlobalSettingsHandler(IGlobalSettingsService globalSettingsService)
 
     public override async Task<SetupContext> Handle(SetupContext context)
     {
+        context.GlobalSettings.SuperAdmins = new List<string> { context.SuperAdmin.UserName! };
+
         context.GlobalSettings = await globalSettingsService.Init(context.GlobalSettings);
 
         return await base.Handle(context);
