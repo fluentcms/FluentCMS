@@ -1,7 +1,7 @@
 @namespace FluentCMS.Web.UI
 
 <div class="f-page-editor-sidebar">
-    <div class="f-plugin-definition-list" data-block-definition-id="@PluginDefinitions.Where(x => x.Name == "Block Plugin").FirstOrDefault()?.Id">
+    <div class="f-plugin-definition-list">
         @foreach (var pluginDef in PluginDefinitions.Where(x => !x.Locked))
         {
             <div data-id="@pluginDef.Id" class="f-plugin-definition-item">
@@ -26,6 +26,15 @@
                     <span class="f-name">@pluginDef.Name</span>
                     <span class="f-description">@pluginDef.Description</span>
                 </div>
+            </div>
+        }
+        @foreach (var block in Blocks)
+        {
+            <div data-id="@BlockDefinitionId" data-block-id="@block.Id" class="f-plugin-definition-item">
+                <div class="f-plugin-definition-item-content">
+                    <span class="f-name">@block.Category - @block.Name</span>
+                    <span class="f-description">@block.Description</span>
+                </div>   
             </div>
         }
     </div>

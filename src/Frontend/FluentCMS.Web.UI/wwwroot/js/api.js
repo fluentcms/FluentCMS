@@ -2,9 +2,6 @@ import { reloadIframe, request } from "./request.js";
 
 export async function createPlugin({definitionId, sectionName, order, blockId}) {
     if(blockId) {
-        const blocks = await fetch('/_content/FluentCMS.Web.UI/blocks.json').then(res => res.json())
-        const block = blocks.find(x => x.Id == blockId);
-
         const body = {
             'CreateBlockModel.Plugin.DefinitionId': definitionId,
             'CreateBlockModel.Plugin.PageId': '00000000-0000-0000-0000-000000000000',
@@ -13,14 +10,8 @@ export async function createPlugin({definitionId, sectionName, order, blockId}) 
             'CreateBlockModel.Plugin.ColsMd': 0,
             'CreateBlockModel.Plugin.ColsLg': 0,
             'CreateBlockModel.Plugin.Section': sectionName,
-            'CreateBlockModel.Content': block.Template,
+            'CreateBlockModel.BlockId': blockId,
         }
-
-        for(let key in block.Settings ?? {})
-        {
-            body[`CreateBlockModel.Settings[${key}]`] = block.Settings[key]
-        }
-        
         await request('CreateBlockForm', body).then(reloadIframe)
     } else {
         await request('CreatePluginForm', {
@@ -32,8 +23,7 @@ export async function createPlugin({definitionId, sectionName, order, blockId}) 
             'CreatePluginModel.ColsLg': 0,
             'CreatePluginModel.Section': sectionName,
         }).then(reloadIframe)
-}
-
+    }
     await updatePluginOrders()
 }
 
@@ -60,7 +50,6 @@ export async function updatePluginCols(pluginEl, section) {
     result[`UpdatePluginOrdersModel.Plugins[0].ColsLg`] = colsLg
     
     await request('UpdatePluginOrdersForm', result)
-
 }
 
 export async function updatePlugin(pluginContainerEl, sectionEl) {

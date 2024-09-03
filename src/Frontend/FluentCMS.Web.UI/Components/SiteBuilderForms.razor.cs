@@ -33,16 +33,21 @@ public partial class SiteBuilderForms
 
     private async Task OnCreateBlockSubmit()
     {
-        CreateBlockModel.Plugin.PageId = ViewState.Page.Id;
-        CreateBlockModel.Plugin.Settings = [];
+        var blockResponse = await ApiClient.Block.GetByIdAsync(CreateBlockModel.BlockId);
 
-        var pluginCreateResponse = await ApiClient.Plugin.CreateAsync(CreateBlockModel.Plugin);
-        var content = new Dictionary<string, object>
+        if(blockResponse?.Data != null)
         {
-            { "Content", CreateBlockModel.Content },
-        };
+            CreateBlockModel.Plugin.PageId = ViewState.Page.Id;
+            CreateBlockModel.Plugin.Settings = [];
+            var pluginCreateResponse = await ApiClient.Plugin.CreateAsync(CreateBlockModel.Plugin);
 
-        var response = await ApiClient.PluginContent.CreateAsync("BlockContent", pluginCreateResponse.Data.Id, content);
+            var content = new Dictionary<string, object>
+            {
+                { "Content", blockResponse.Data.Content },
+            };
+
+            var response = await ApiClient.PluginContent.CreateAsync("BlockContent", pluginCreateResponse.Data.Id, content);
+        }
     }
 
     private async Task OnUpdatePluginOrdersSubmit()
@@ -57,7 +62,6 @@ public partial class SiteBuilderForms
         var content = UpdateBlockContentModel.Content;
 
         var response = await ApiClient.PluginContent.UpdateAsync("BlockContent", pluginId, id, new Dictionary<string, object> {
-            { "Id", id },
             { "Content", content }
         });
         
@@ -82,7 +86,7 @@ public partial class SiteBuilderForms
 
     private class CreateBlockRequest {
         public PluginCreateRequest Plugin { get; set; }
-        public string Content { get; set; } = string.Empty;
+        public Guid BlockId { get; set; } = default!;
     }
     private class UpdateBlockContentRequest {
         public Guid PluginId { get; set; }

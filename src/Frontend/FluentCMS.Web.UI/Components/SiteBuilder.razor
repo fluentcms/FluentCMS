@@ -83,7 +83,10 @@
                 </div>
             </div>
         </div>
-        <PageEditorSidebar PluginDefinitions="@PluginDefinitions"/>
+        @if (PluginDefinitions.Count > 0)
+        {
+            <PageEditorSidebar Blocks="@Blocks" PluginDefinitions="@PluginDefinitions"/>
+        }
         <SiteBuilderForms />
     </div>
 

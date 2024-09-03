@@ -1,4 +1,4 @@
-﻿import { initializeBlocks, initializeInlineEditables } from './blocks.js';
+﻿import { initializeInlineEditables } from './blocks.js';
 import { hydrate, initializeSortable, initColumns } from './request.js'
 import { initializeResponsive } from './responsive.js'
 
@@ -18,7 +18,6 @@ async function onInit() {
     const frameDocument = await getFrameDocument()
 
     initializeResponsive()
-    initializeBlocks()
 
     hydrate(frameDocument)
     hydrate(document)

@@ -1,27 +1,5 @@
 import { debounce } from "../helpers.js"
 import { updateBlockContent } from "./api.js"
-import { reloadIframe } from "./request.js"
-
-export async function initializeBlocks() {
-    const blocks = await fetch('/_content/FluentCMS.Web.UI/blocks.json').then(res => res.json())
-    
-    let blockDefId = document.querySelector('.f-plugin-definition-list').dataset.blockDefinitionId
-
-    for(let block of blocks) {
-        const definitionEl = document.createElement('div')
-        definitionEl.classList.add('f-plugin-definition-item')
-        definitionEl.dataset.id = blockDefId
-        definitionEl.dataset.blockId = block.Id
-
-        definitionEl.innerHTML = `
-            <div class="f-plugin-definition-item-content">
-                <span class="f-name">${block.Category} - ${block.Name}</span>
-                <span class="f-description">${block.Description}</span>
-            </div>
-        `
-        document.querySelector('.f-plugin-definition-list').appendChild(definitionEl)
-    }
-}
 
 function getBlockContent(blockEl) {
     blockEl.querySelectorAll('[data-inline-editable]').forEach(el => el.removeAttribute('contenteditable'))
@@ -37,7 +15,6 @@ async function saveBlock(el) {
         id: block.dataset.id, 
         content: getBlockContent(block)
     })
-    await reloadIframe()
 }
 
 function findParentPlugin(el) {
@@ -49,6 +26,7 @@ function findParentBlock(el) {
 }
 
 export function initializeInlineEditables(doc) {   
+    console.log('initialize inline edit')
     const saveBlockDebounced = debounce(saveBlock, 1000)
     
     doc.querySelectorAll('[data-inline-editable]').forEach(el => {
