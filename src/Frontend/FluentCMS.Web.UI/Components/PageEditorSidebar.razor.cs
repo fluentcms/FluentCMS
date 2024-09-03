@@ -7,7 +7,7 @@ public partial class PageEditorSidebar
     [Parameter]
     public List<PluginDefinitionDetailResponse> PluginDefinitions { get; set; } = [];
 
-    private Guid BlockDefinitionId { get; set; } = Guid.Empty; 
+    private Guid BlockDefinitionId { get; set; } = Guid.Empty;
 
     protected override async Task OnInitializedAsync()
     {

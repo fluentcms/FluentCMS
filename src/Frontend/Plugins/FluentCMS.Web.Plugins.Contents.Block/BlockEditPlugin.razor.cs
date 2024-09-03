@@ -1,7 +1,4 @@
 namespace FluentCMS.Web.Plugins.Contents.Block;
-using Scriban;
-using Scriban.Runtime;
-
 public partial class BlockEditPlugin
 {
     public const string CONTENT_TYPE_NAME = nameof(BlockContent);
@@ -18,7 +15,7 @@ public partial class BlockEditPlugin
             var response = await ApiClient.PluginContent.GetAllAsync(CONTENT_TYPE_NAME, Plugin!.Id);
 
             var content = response.Data.ToContentList<BlockContent>();
-            if(content.Count == 0)
+            if (content.Count == 0)
                 throw new Exception("This plugin doesn't have any content");
 
             Model = new BlockContent
