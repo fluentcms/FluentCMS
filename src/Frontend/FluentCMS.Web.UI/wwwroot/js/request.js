@@ -56,7 +56,7 @@ export function initializeSortable(frameDocument) {
             if(event.from === event.to) return;
             const definitionId = event.clone.dataset.id
             const item = event.item
-            const order = event.newIndex - 1
+            const order = event.newIndex
             const sectionName = event.to.dataset.name
 
             createPlugin({ definitionId, order, sectionName, blockId: item.dataset.blockId })
