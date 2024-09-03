@@ -82,9 +82,9 @@ public class SetupManager : ISetupManager
         .SetNext(superAdminHandler)
         .SetNext(globalSettingsHandler)
         .SetNext(layoutHandler)
-        .SetNext(blockHandler)
         .SetNext(pluginHandler)
         .SetNext(siteHandler)
+        .SetNext(blockHandler)
         .SetNext(pageHandler)
         .SetNext(contentTypeHandler);
 

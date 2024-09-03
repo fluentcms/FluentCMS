@@ -14,6 +14,7 @@ public class BlockHandler(IBlockService blockService) : BaseSetupHandler
         {
             var block = new Block
             {
+                SiteId = context.Site.Id,
                 Name = blockTemplate.Name,
                 Category = blockTemplate.Category,
                 Description = blockTemplate.Description,
