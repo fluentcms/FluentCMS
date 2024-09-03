@@ -58,7 +58,7 @@ public class MappingProfile : Profile
 
         #region UserRole
 
-        CreateMap<AuthContext, UserRoleDetailResponse>();
+        CreateMap<IApiExecutionContext, UserRoleDetailResponse>();
 
         #endregion
 
@@ -122,5 +122,12 @@ public class MappingProfile : Profile
 
         #endregion
 
+        #region Block
+
+        CreateMap<BlockCreateRequest, Block>();
+        CreateMap<BlockUpdateRequest, Block>();
+        CreateMap<Block, BlockDetailResponse>();
+
+        #endregion
     }
 }

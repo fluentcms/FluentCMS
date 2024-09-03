@@ -174,4 +174,13 @@ public static class ExceptionCodes
     public const string PermissionDenied = "Permission.Denied";
 
     #endregion
+
+    #region Block
+
+    public const string BlockNotFound = "Block.BlockNotFound";
+    public const string BlockUnableToCreate = "Block.UnableToCreate";
+    public const string BlockUnableToUpdate = "Block.UnableToUpdate";
+    public const string BlockUnableToDelete = "Block.UnableToDelete";
+
+    #endregion
 }

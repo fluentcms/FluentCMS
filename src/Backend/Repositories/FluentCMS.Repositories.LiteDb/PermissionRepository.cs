@@ -2,7 +2,7 @@
 
 public class PermissionRepository : SiteAssociatedRepository<Permission>, IPermissionRepository
 {
-    public PermissionRepository(ILiteDBContext liteDbContext, IAuthContext authContext) : base(liteDbContext, authContext)
+    public PermissionRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : base(liteDbContext, apiExecutionContext)
     {
     }
 

@@ -1,7 +1,6 @@
 ﻿namespace FluentCMS.Repositories.LiteDb;
 
-public class GlobalSettingsRepository(ILiteDBContext liteDbContext, IAuthContext authContext)
-    : IGlobalSettingsRepository
+public class GlobalSettingsRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : IGlobalSettingsRepository
 {
     private readonly ILiteCollectionAsync<GlobalSettings> _collection = liteDbContext.Database.GetCollection<GlobalSettings>(nameof(GlobalSettings).ToLowerInvariant());
 
@@ -51,12 +50,12 @@ public class GlobalSettingsRepository(ILiteDBContext liteDbContext, IAuthContext
     {
         settings.Id = Guid.NewGuid();
         settings.CreatedAt = DateTime.UtcNow;
-        settings.CreatedBy = authContext.Username;
+        settings.CreatedBy = apiExecutionContext.Username;
     }
 
     private void SetAuditableFieldsForUpdate(GlobalSettings settings)
     {
         settings.ModifiedAt = DateTime.UtcNow;
-        settings.ModifiedBy = authContext.Username;
+        settings.ModifiedBy = apiExecutionContext.Username;
     }
 }

@@ -1,13 +1,12 @@
 ﻿namespace FluentCMS.Repositories.MongoDB;
 
-public abstract class AuditableEntityRepository<TEntity> : EntityRepository<TEntity>, IAuditableEntityRepository<TEntity>
-    where TEntity : IAuditableEntity
+public abstract class AuditableEntityRepository<TEntity> : EntityRepository<TEntity>, IAuditableEntityRepository<TEntity> where TEntity : IAuditableEntity
 {
-    protected readonly IAuthContext AuthContext;
+    protected readonly IApiExecutionContext ApiExecutionContext;
 
-    public AuditableEntityRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext)
+    public AuditableEntityRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : base(mongoDbContext)
     {
-        AuthContext = authContext;
+        ApiExecutionContext = apiExecutionContext;
     }
 
     public override async Task<TEntity?> Create(TEntity entity, CancellationToken cancellationToken = default)
@@ -41,7 +40,7 @@ public abstract class AuditableEntityRepository<TEntity> : EntityRepository<TEnt
     private void SetAuditableFieldsForCreate(TEntity entity)
     {
         entity.CreatedAt = DateTime.UtcNow;
-        entity.CreatedBy = AuthContext.Username;
+        entity.CreatedBy = ApiExecutionContext.Username;
     }
 
     private void SetAuditableFieldsForUpdate(TEntity entity, TEntity oldEntity)
@@ -49,6 +48,6 @@ public abstract class AuditableEntityRepository<TEntity> : EntityRepository<TEnt
         entity.CreatedAt = oldEntity.CreatedAt;
         entity.CreatedBy = oldEntity.CreatedBy;
         entity.ModifiedAt = DateTime.UtcNow;
-        entity.ModifiedBy = AuthContext.Username;
+        entity.ModifiedBy = ApiExecutionContext.Username;
     }
 }

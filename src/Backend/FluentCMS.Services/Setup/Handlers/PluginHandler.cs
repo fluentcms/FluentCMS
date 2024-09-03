@@ -4,7 +4,7 @@ public class PluginHandler(IPluginDefinitionService pluginDefinitionService) : B
 {
     public override SetupSteps Step => SetupSteps.Plugin;
 
-    public async override Task<SetupContext> Handle(SetupContext context)
+    public override async Task<SetupContext> Handle(SetupContext context)
     {
         foreach (var pluginDefTemplate in context.AdminTemplate.PluginDefinitions)
         {

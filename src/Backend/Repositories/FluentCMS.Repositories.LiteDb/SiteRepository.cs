@@ -2,7 +2,7 @@
 
 public class SiteRepository : AuditableEntityRepository<Site>, ISiteRepository
 {
-    public SiteRepository(ILiteDBContext liteDbContext, IAuthContext authContext) : base(liteDbContext, authContext)
+    public SiteRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : base(liteDbContext, apiExecutionContext)
     {
     }
 

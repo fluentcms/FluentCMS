@@ -2,7 +2,7 @@
 
 public class SiteRepository : AuditableEntityRepository<Site>, ISiteRepository
 {
-    public SiteRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
+    public SiteRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : base(mongoDbContext, apiExecutionContext)
     {
     }
     public async Task<Site?> GetByUrl(string url, CancellationToken cancellationToken = default)
