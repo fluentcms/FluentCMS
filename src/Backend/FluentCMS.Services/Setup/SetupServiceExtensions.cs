@@ -15,6 +15,7 @@ public static class SetupServiceExtensions
         services.AddScoped<BaseSetupHandler, PageHandler>();
         services.AddScoped<BaseSetupHandler, GlobalSettingsHandler>();
         services.AddScoped<BaseSetupHandler, ContentTypeHandler>();
+        services.AddScoped<BaseSetupHandler, SetInitializedHandler>();
 
         return services;
     }

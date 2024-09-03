@@ -10,4 +10,5 @@ public enum SetupSteps
     Site = 6,
     Page = 7,
     ContentType = 8,
+    SetInitialized = 9
 }

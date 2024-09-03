@@ -1,16 +1,17 @@
-﻿using System.IO;
+﻿using Microsoft.Extensions.Hosting;
+using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace FluentCMS.Services.Setup.Handlers;
 
-public class ApiTokenHandler(IApiTokenService apiTokenService) : BaseSetupHandler
+public class ApiTokenHandler(IApiTokenService apiTokenService, IHostEnvironment hostEnvironment) : BaseSetupHandler
 {
     public override SetupSteps Step => SetupSteps.ApiToken;
 
     public override async Task<SetupContext> Handle(SetupContext context)
     {
-        var appSettingsFilePath = Path.Combine("appsettings.json");
+        var appSettingsFilePath = Path.Combine($"appsettings.{hostEnvironment.EnvironmentName}.json");
         var text = System.IO.File.ReadAllText(appSettingsFilePath);
         var jsonNode = JsonNode.Parse(text)!;
 
