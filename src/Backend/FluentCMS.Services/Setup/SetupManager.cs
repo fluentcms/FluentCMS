@@ -1,53 +1,48 @@
-﻿using FluentCMS.Services.Setup.Models;
+﻿using FluentCMS.Services.Models;
+using FluentCMS.Services.Setup.Models;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace FluentCMS.Services.Setup;
 
 public class SetupManager : ISetupManager
 {
-    private static bool? _initialized;
-    private readonly IGlobalSettingsService _globalSettingsService;
-    private readonly IUserService _userService;
+    private readonly IHostEnvironment _hostEnvironment;
     private readonly IEnumerable<BaseSetupHandler> _setupHandlers;
+    private readonly ServerSettings _serverSettings;
+    private readonly IGlobalSettingsService _globalSettingsService;
 
     private const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Template";
 
     public SetupManager(
-        IGlobalSettingsService globalSettingsService,
-        IHostEnvironment env,
+        IHostEnvironment hostEnvironment,
         IEnumerable<BaseSetupHandler> setupHandlers,
-        IUserService userService)
+        IOptionsMonitor<ServerSettings> serverSettingsOptions,
+        IGlobalSettingsService globalSettingsService)
     {
-        if (env == null)
-            throw new AppException(ExceptionCodes.SetupSettingsHostingEnvironmentIsNull);
-
-        _globalSettingsService = globalSettingsService;
+        _hostEnvironment = hostEnvironment;
         _setupHandlers = setupHandlers;
-        _userService = userService;
+        _serverSettings = serverSettingsOptions.CurrentValue;
+
+        if (_hostEnvironment == null)
+            throw new AppException(ExceptionCodes.SetupSettingsHostingEnvironmentIsNull);
+        _globalSettingsService = globalSettingsService;
     }
 
     public async Task<bool> IsInitialized()
     {
         // Check initialization status only once, in the beginning
-        if (!_initialized.HasValue)
-            _initialized = await InitCondition();
-
-        return _initialized.Value;
+        return _serverSettings.IsInitialized;
     }
 
     public async Task<bool> Start(SetupModel request)
     {
         // Check if this is the first time setup or not
-        if (_initialized.HasValue && _initialized.Value)
+        if (_serverSettings.IsInitialized)
             throw new AppException(ExceptionCodes.SetupSettingsAlreadyInitialized);
-
-        if (await InitCondition())
-        {
-            _initialized = true;
-            throw new AppException(ExceptionCodes.SetupSettingsAlreadyInitialized);
-        }
 
         var manifestFile = Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "manifest.json");
 
@@ -76,7 +71,7 @@ public class SetupManager : ISetupManager
         var siteHandler = _setupHandlers.Single(x => x.Step == SetupSteps.Site);
         var pageHandler = _setupHandlers.Single(x => x.Step == SetupSteps.Page);
         var contentTypeHandler = _setupHandlers.Single(x => x.Step == SetupSteps.ContentType);
-
+        var setInitializedHandler = _setupHandlers.Single(x => x.Step == SetupSteps.SetInitialized);
 
         apiTokenHandler
         .SetNext(superAdminHandler)
@@ -86,11 +81,10 @@ public class SetupManager : ISetupManager
         .SetNext(siteHandler)
         .SetNext(blockHandler)
         .SetNext(pageHandler)
-        .SetNext(contentTypeHandler);
+        .SetNext(contentTypeHandler)
+        .SetNext(setInitializedHandler);
 
         await apiTokenHandler.Handle(setupContext);
-
-        _initialized = true;
 
         return true;
     }
@@ -98,13 +92,15 @@ public class SetupManager : ISetupManager
     public async Task Reset()
     {
         await _globalSettingsService.Reset();
-        _initialized = false;
-    }
 
-    private async Task<bool> InitCondition()
-    {
-        // Check if there is any user in the system.
-        // Also, check if the system is already initialized or not.
-        return await _globalSettingsService.Get() != null && await _userService.Any();
+        var appSettingsFilePath = Path.Combine($"appsettings.{_hostEnvironment.EnvironmentName}.json");
+        var text = await System.IO.File.ReadAllTextAsync(appSettingsFilePath);
+        var jsonNode = JsonNode.Parse(text)!;
+
+        // set api token to appsettings.json
+        jsonNode!["ServerSettings"]!["IsInitialized"] = false;
+
+        var output = JsonSerializer.Serialize(jsonNode, new JsonSerializerOptions() { WriteIndented = true });
+        System.IO.File.WriteAllText(appSettingsFilePath, output);
     }
 }
