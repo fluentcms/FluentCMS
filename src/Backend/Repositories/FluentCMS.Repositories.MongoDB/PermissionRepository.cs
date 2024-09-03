@@ -2,7 +2,7 @@
 
 public class PermissionRepository : SiteAssociatedRepository<Permission>, IPermissionRepository
 {
-    public PermissionRepository(IMongoDBContext mongoDbContext, IAuthContext authContext) : base(mongoDbContext, authContext)
+    public PermissionRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : base(mongoDbContext, apiExecutionContext)
     {
     }
 

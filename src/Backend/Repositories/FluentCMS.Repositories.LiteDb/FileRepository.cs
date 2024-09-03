@@ -2,7 +2,7 @@
 
 public class FileRepository : AuditableEntityRepository<File>, IFileRepository
 {
-    public FileRepository(ILiteDBContext liteDbContext, IAuthContext authContext) : base(liteDbContext, authContext)
+    public FileRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : base(liteDbContext, apiExecutionContext)
     {
     }
 }

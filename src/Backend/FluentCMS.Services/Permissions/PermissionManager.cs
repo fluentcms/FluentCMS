@@ -2,16 +2,16 @@
 
 public class PermissionManager : IPermissionManager
 {
-    private readonly IAuthContext _authContext;
+    private readonly IApiExecutionContext _apiExecutionContext;
     private readonly IPermissionRepository _permissionRepository;
     private readonly IUserRoleRepository _userRoleRepository;
     private readonly IGlobalSettingsRepository _globalSettingsRepository;
     private IEnumerable<Guid> _userRoleIds = [];
     private IEnumerable<Permission> _sitePermissions = [];
 
-    public PermissionManager(IAuthContext authContext, IPermissionRepository permissionRepository, IUserRoleRepository userRoleRepository, IGlobalSettingsRepository globalSettingsRepository)
+    public PermissionManager(IApiExecutionContext apiExecutionContext, IPermissionRepository permissionRepository, IUserRoleRepository userRoleRepository, IGlobalSettingsRepository globalSettingsRepository)
     {
-        _authContext = authContext;
+        _apiExecutionContext = apiExecutionContext;
         _permissionRepository = permissionRepository;
         _userRoleRepository = userRoleRepository;
         _globalSettingsRepository = globalSettingsRepository;
@@ -99,7 +99,7 @@ public class PermissionManager : IPermissionManager
         if (globalSettings == null)
             return false;
 
-        return globalSettings.SuperAdmins.Contains(_authContext.Username);
+        return globalSettings.SuperAdmins.Contains(_apiExecutionContext.Username);
     }
 
     private async Task<bool> CheckSiteAccess(Guid siteId, string action, CancellationToken cancellationToken)
@@ -229,7 +229,7 @@ public class PermissionManager : IPermissionManager
 
     private async Task<IEnumerable<Guid>> GetUserRoleIds(Guid siteId, CancellationToken cancellationToken)
     {
-        _userRoleIds ??= (await _userRoleRepository.GetUserRoles(_authContext.UserId, siteId, cancellationToken)).Select(x => x.RoleId);
+        _userRoleIds ??= (await _userRoleRepository.GetUserRoles(_apiExecutionContext.UserId, siteId, cancellationToken)).Select(x => x.RoleId);
 
         return _userRoleIds;
     }

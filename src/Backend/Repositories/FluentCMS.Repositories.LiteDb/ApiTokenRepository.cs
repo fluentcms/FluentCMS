@@ -1,9 +1,6 @@
 ﻿namespace FluentCMS.Repositories.LiteDb;
 
-public class ApiTokenRepository(
-    ILiteDBContext liteDbContext,
-    IAuthContext authContext) :
-    AuditableEntityRepository<ApiToken>(liteDbContext, authContext),
+public class ApiTokenRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : AuditableEntityRepository<ApiToken>(liteDbContext, apiExecutionContext),
     IApiTokenRepository
 {
     public async Task<ApiToken?> GetByKey(string apiKey, CancellationToken cancellationToken = default)

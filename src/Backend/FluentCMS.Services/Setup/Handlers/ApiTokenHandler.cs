@@ -8,7 +8,7 @@ public class ApiTokenHandler(IApiTokenService apiTokenService) : BaseSetupHandle
 {
     public override SetupSteps Step => SetupSteps.ApiToken;
 
-    public async override Task<SetupContext> Handle(SetupContext context)
+    public override async Task<SetupContext> Handle(SetupContext context)
     {
         var appSettingsFilePath = Path.Combine("appsettings.json");
         var text = System.IO.File.ReadAllText(appSettingsFilePath);

@@ -4,9 +4,9 @@ namespace FluentCMS.Web.Api.Filters;
 
 public class ApiResultExceptionFilter : IExceptionFilter
 {
-    private readonly ApiExecutionContext _apiExecutionContext;
+    private readonly IApiExecutionContext _apiExecutionContext;
 
-    public ApiResultExceptionFilter(ApiExecutionContext apiExecutionContext)
+    public ApiResultExceptionFilter(IApiExecutionContext apiExecutionContext)
     {
         _apiExecutionContext = apiExecutionContext;
     }

@@ -8,7 +8,7 @@ public interface IGlobalSettingsService : IAutoRegisterService
     Task<bool> Reset(CancellationToken cancellationToken = default);
 }
 
-public class GlobalSettingsService(IGlobalSettingsRepository repository, IAuthContext authContext) : IGlobalSettingsService
+public class GlobalSettingsService(IGlobalSettingsRepository repository, IApiExecutionContext apiExecutionContext) : IGlobalSettingsService
 {
     public async Task<GlobalSettings> Update(GlobalSettings settings, CancellationToken cancellationToken = default)
     {
@@ -22,7 +22,7 @@ public class GlobalSettingsService(IGlobalSettingsRepository repository, IAuthCo
              throw new AppException(ExceptionCodes.GlobalSettingsNotFound);
 
         // if the current user is a super admin and is trying to remove himself from the super admin list, throw an exception
-        if (existSetting.SuperAdmins.Contains(authContext.Username) && !settings.SuperAdmins.Contains(authContext.Username))
+        if (existSetting.SuperAdmins.Contains(apiExecutionContext.Username) && !settings.SuperAdmins.Contains(apiExecutionContext.Username))
             throw new AppException(ExceptionCodes.GlobalSettingsSuperAdminCanNotBeDeleted);
 
         existSetting.SuperAdmins = settings.SuperAdmins;

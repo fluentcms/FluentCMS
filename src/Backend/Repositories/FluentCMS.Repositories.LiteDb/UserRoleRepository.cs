@@ -2,7 +2,7 @@
 
 public class UserRoleRepository : SiteAssociatedRepository<UserRole>, IUserRoleRepository
 {
-    public UserRoleRepository(ILiteDBContext liteDbContext, IAuthContext authContext) : base(liteDbContext, authContext)
+    public UserRoleRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : base(liteDbContext, apiExecutionContext)
     {
     }
 

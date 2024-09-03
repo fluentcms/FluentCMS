@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class AccountController(IMapper mapper, IUserService userService, IAuthContext authContext) : BaseGlobalController
+public class AccountController(IMapper mapper, IUserService userService, IApiExecutionContext apiExecutionContext) : BaseGlobalController
 {
     public const string AREA = "Account Management";
     public const string READ = "Read";
@@ -41,7 +41,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     [Policy(AREA, UPDATE)]
     public async Task<IApiResult<bool>> ChangePassword([FromBody] AccountChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
-        await userService.ChangePassword(authContext.UserId, request.OldPassword, request.NewPassword, cancellationToken);
+        await userService.ChangePassword(apiExecutionContext.UserId, request.OldPassword, request.NewPassword, cancellationToken);
         return Ok(true);
     }
 
@@ -65,7 +65,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     [Policy(AREA, READ)]
     public async Task<IApiResult<UserDetailResponse>> GetCurrent(CancellationToken cancellationToken = default)
     {
-        var user = await userService.GetById(authContext.UserId, cancellationToken);
+        var user = await userService.GetById(apiExecutionContext.UserId, cancellationToken);
         return Ok(mapper.Map<UserDetailResponse>(user));
     }
 
@@ -73,7 +73,7 @@ public class AccountController(IMapper mapper, IUserService userService, IAuthCo
     [Policy(AREA, UPDATE)]
     public async Task<IApiResult<UserDetailResponse>> UpdateCurrent(AccountUpdateRequest userUpdateRequest)
     {
-        var user = await userService.GetById(authContext.UserId);
+        var user = await userService.GetById(apiExecutionContext.UserId);
         mapper.Map(userUpdateRequest, user);
         await userService.Update(user);
         return Ok(mapper.Map<UserDetailResponse>(user));
