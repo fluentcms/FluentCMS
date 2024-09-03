@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace FluentCMS.Services.Setup;
 
