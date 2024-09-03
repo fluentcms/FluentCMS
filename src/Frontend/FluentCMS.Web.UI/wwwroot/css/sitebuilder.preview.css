@@ -66,15 +66,15 @@
     padding-top: 2.5rem;
 }
 
-[data-inline-editable] {
+/* [data-inline-editable] {
     outline: none;
     display: inline-block;
     position: relative;
-}
+} */
 
-.f-plugin-container:hover [data-inline-editable] {
+/* .f-plugin-container:hover [data-inline-editable] {
     background-color: #0055f030;
-}
+} */
 
 .f-plugin-container:hover .f-plugin-container-actions {
     border: 1px dashed #005590;
