@@ -9,7 +9,7 @@ public class SetInitializedHandler(IHostEnvironment hostEnvironment) : BaseSetup
 {
     public override SetupSteps Step => SetupSteps.SetInitialized;
 
-    public async override Task<SetupContext> Handle(SetupContext context)
+    public override async Task<SetupContext> Handle(SetupContext context)
     {
         var appSettingsFilePath = Path.Combine($"appsettings.{hostEnvironment.EnvironmentName}.json");
         var text = await System.IO.File.ReadAllTextAsync(appSettingsFilePath);

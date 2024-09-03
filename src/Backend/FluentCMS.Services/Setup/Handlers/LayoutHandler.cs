@@ -8,7 +8,7 @@ public class LayoutHandler(ILayoutService layoutService) : BaseSetupHandler
 
     private const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Template";
 
-    public async override Task<SetupContext> Handle(SetupContext context)
+    public override async Task<SetupContext> Handle(SetupContext context)
     {
         foreach (var layoutTemplate in context.AdminTemplate.Layouts)
         {

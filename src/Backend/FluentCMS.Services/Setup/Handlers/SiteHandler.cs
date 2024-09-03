@@ -4,7 +4,7 @@ public class SiteHandler(ISiteService siteService) : BaseSetupHandler
 {
     public override SetupSteps Step => SetupSteps.Site;
 
-    public async override Task<SetupContext> Handle(SetupContext context)
+    public override async Task<SetupContext> Handle(SetupContext context)
     {
         Guid? layoutId = context.Layouts.Where(l => l.Name.Equals(context.AdminTemplate.Site.Layout?.ToLowerInvariant(), StringComparison.InvariantCultureIgnoreCase)).Select(l => l.Id).SingleOrDefault();
         Guid? editLayoutId = context.Layouts.Where(l => l.Name.Equals(context.AdminTemplate.Site.EditLayout?.ToLowerInvariant(), StringComparison.InvariantCultureIgnoreCase)).Select(l => l.Id).SingleOrDefault();

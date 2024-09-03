@@ -11,7 +11,7 @@ public abstract class BaseSetupHandler : ISetupHandler
         return handler;
     }
 
-    public async virtual Task<SetupContext> Handle(SetupContext context)
+    public virtual async Task<SetupContext> Handle(SetupContext context)
     {
         if (this._nextHandler != null)
             return await this._nextHandler.Handle(context);

@@ -36,7 +36,7 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
         }
     }
 
-    private async static Task<bool> CheckValidityToSetup(AuthorizationFilterContext context, IEnumerable<PolicyAttribute> actionPolicies)
+    private static async Task<bool> CheckValidityToSetup(AuthorizationFilterContext context, IEnumerable<PolicyAttribute> actionPolicies)
     {
         // the below Areas(Controllers+Actions) are necessary to start initial Setup Process.
         // so we have to let them to be executed, only in Uninitialized State.
