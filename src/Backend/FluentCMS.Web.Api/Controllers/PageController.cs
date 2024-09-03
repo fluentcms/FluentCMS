@@ -15,7 +15,7 @@ public class PageController(
     IRoleService roleService,
     IUserRoleService userRoleService,
     ISetupManager setupManager,
-    IAuthContext authContext,
+    IApiExecutionContext apiExecutionContext,
     IPermissionService permissionService,
     IMapper mapper) : BaseGlobalController
 {
@@ -26,7 +26,7 @@ public class PageController(
     public const string CREATE = "Create";
     public const string DELETE = $"Delete";
 
-    private const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Template";
+    public const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Template";
 
     [HttpGet("{siteUrl}")]
     [DecodeQueryParam]
@@ -211,8 +211,8 @@ public class PageController(
         pageResponse.Site.ContributorRoles = pageResponse.Site.AllRoles.Where(x => x.Type == RoleTypes.Administrators).ToList();
 
         // setting current user details and permissions
-        pageResponse.User = mapper.Map<UserRoleDetailResponse>(authContext);
-        var userRoleIds = await userRoleService.GetUserRoleIds(authContext.UserId, site.Id, cancellationToken);
+        pageResponse.User = mapper.Map<UserRoleDetailResponse>(apiExecutionContext);
+        var userRoleIds = await userRoleService.GetUserRoleIds(apiExecutionContext.UserId, site.Id, cancellationToken);
         pageResponse.User.Roles = pageResponse.Site.AllRoles.Where(x => userRoleIds.Contains(x.Id)).ToList();
 
         foreach (var plugin in plugins)

@@ -3,13 +3,13 @@
 public class GlobalSettingsRepository : IGlobalSettingsRepository
 {
     private readonly IMongoCollection<GlobalSettings> _collection;
-    private readonly IAuthContext _authContext;
+    private readonly IApiExecutionContext _apiExecutionContext;
     private readonly IMongoDBContext _mongoDbContext;
 
-    public GlobalSettingsRepository(IMongoDBContext mongoDbContext, IAuthContext authContext)
+    public GlobalSettingsRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext)
     {
         _collection = mongoDbContext.Database.GetCollection<GlobalSettings>(nameof(GlobalSettings).ToLowerInvariant());
-        _authContext = authContext;
+        _apiExecutionContext = apiExecutionContext;
         _mongoDbContext = mongoDbContext;
     }
 
@@ -59,12 +59,12 @@ public class GlobalSettingsRepository : IGlobalSettingsRepository
     {
         settings.Id = Guid.NewGuid();
         settings.CreatedAt = DateTime.UtcNow;
-        settings.CreatedBy = _authContext.Username;
+        settings.CreatedBy = _apiExecutionContext.Username;
     }
 
     private void SetAuditableFieldsForUpdate(GlobalSettings settings)
     {
         settings.ModifiedAt = DateTime.UtcNow;
-        settings.ModifiedBy = _authContext.Username;
+        settings.ModifiedBy = _apiExecutionContext.Username;
     }
 }

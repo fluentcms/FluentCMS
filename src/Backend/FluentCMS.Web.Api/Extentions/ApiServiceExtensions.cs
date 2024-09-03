@@ -4,6 +4,7 @@ using FluentCMS.Web.Api.Filters;
 using FluentCMS.Web.Api.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography;
@@ -33,7 +34,7 @@ public static class ApiServiceExtensions
             {
                 options.InvalidModelStateResponseFactory = (context) =>
                 {
-                    var apiExecutionContext = services.BuildServiceProvider().GetRequiredService<ApiExecutionContext>();
+                    var apiExecutionContext = services.BuildServiceProvider().GetRequiredService<IApiExecutionContext>();
                     var apiResult = new ApiResult<object>
                     {
                         Duration = (DateTime.UtcNow - apiExecutionContext.StartDate).TotalMilliseconds,
@@ -84,9 +85,7 @@ public static class ApiServiceExtensions
 
         services.AddHttpContextAccessor();
 
-        services.AddScoped<ApiExecutionContext>();
-
-        services.AddScoped<IAuthContext, AuthContext>();
+        services.AddScoped<IApiExecutionContext>(sp => new ApiExecutionContext(sp.GetRequiredService<IHttpContextAccessor>()));
 
         services.AddAutoMapper(typeof(ApiServiceExtensions));
 
@@ -99,13 +98,13 @@ public static class ApiServiceExtensions
     {
         app.UseApiDocumentation();
 
+        app.UseAuthentication();
+
         app.UseWhen(context => context.Request.Path.StartsWithSegments("/api"), app =>
         {
             // this will be executed only when the path starts with "/api"
-            app.UseMiddleware<ApplicationExecutionContextMiddleware>();
+            app.UseMiddleware<JwtAuthorizationMiddleware>();
         });
-
-        app.UseAuthentication();
 
         app.UseAuthorization();
 

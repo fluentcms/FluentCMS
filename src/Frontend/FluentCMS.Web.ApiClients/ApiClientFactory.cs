@@ -27,5 +27,6 @@ public class ApiClientFactory(IServiceProvider serviceProvider)
     public IGlobalSettingsClient GlobalSettings => Get<IGlobalSettingsClient>();
     public ISetupClient Setup => Get<ISetupClient>();
     public IUserRoleClient UserRole => Get<IUserRoleClient>();
+    public IBlockClient Block => Get<IBlockClient>();
 
 }

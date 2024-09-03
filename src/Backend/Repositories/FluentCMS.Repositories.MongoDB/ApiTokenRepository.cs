@@ -1,10 +1,6 @@
 ﻿namespace FluentCMS.Repositories.MongoDB;
 
-public class ApiTokenRepository(
-    IMongoDBContext mongoDbContext,
-    IAuthContext authContext) :
-    AuditableEntityRepository<ApiToken>(mongoDbContext, authContext),
-    IApiTokenRepository
+public class ApiTokenRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : AuditableEntityRepository<ApiToken>(mongoDbContext, apiExecutionContext), IApiTokenRepository
 {
     public async Task<ApiToken?> GetByKey(string apiKey, CancellationToken cancellationToken = default)
     {

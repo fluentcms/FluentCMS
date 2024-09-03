@@ -7,6 +7,12 @@ public class MappingProfile : Profile
 {
     public MappingProfile()
     {
+        #region Block
+
+        CreateMap<BlockDetailResponse, BlockUpdateRequest>();
+
+        #endregion
+
         #region Layout
 
         CreateMap<LayoutDetailResponse, LayoutUpdateRequest>();

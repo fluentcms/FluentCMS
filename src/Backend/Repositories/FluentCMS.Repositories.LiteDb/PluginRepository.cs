@@ -2,7 +2,7 @@
 
 public class PluginRepository : SiteAssociatedRepository<Plugin>, IPluginRepository
 {
-    public PluginRepository(ILiteDBContext liteDbContext, IAuthContext authContext) : base(liteDbContext, authContext)
+    public PluginRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : base(liteDbContext, apiExecutionContext)
     {
     }
 
