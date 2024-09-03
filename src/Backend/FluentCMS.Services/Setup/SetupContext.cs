@@ -13,5 +13,6 @@ public class SetupContext
     public IList<PluginDefinition> PluginDefinitions { get; set; } = [];
     public Site Site { get; set; }
     public IList<Page> Pages { get; set; } = [];
+    public IList<Block> Blocks { get; set; } = [];
 
 }

@@ -12,6 +12,7 @@ public static class SetupServiceExtensions
         services.AddScoped<BaseSetupHandler, SiteHandler>();
         services.AddScoped<BaseSetupHandler, PluginHandler>();
         services.AddScoped<BaseSetupHandler, LayoutHandler>();
+        services.AddScoped<BaseSetupHandler, BlockHandler>();
         services.AddScoped<BaseSetupHandler, PageHandler>();
         services.AddScoped<BaseSetupHandler, GlobalSettingsHandler>();
         services.AddScoped<BaseSetupHandler, ContentTypeHandler>();
