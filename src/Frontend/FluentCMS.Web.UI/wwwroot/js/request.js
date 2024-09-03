@@ -86,7 +86,7 @@ export async function reload() {
         const node = template.content.querySelector('.f-page-editor').cloneNode(true)
         document.querySelector('.f-page-editor').innerHTML = node.innerHTML
 
-        initializeInlineEditables(document.querySelector('.f-page-editor-iframe').contentDocument)
+        // initializeInlineEditables(document.querySelector('.f-page-editor-iframe').contentDocument)
 
         initializeSortable(document.querySelector('.f-page-editor-iframe').contentDocument)
         hydrate(document.querySelector('.f-page-editor'))
@@ -111,7 +111,7 @@ export async function reloadIframe() {
             frameDocument.body.appendChild(child);
         });  
         
-        initializeInlineEditables(frameDocument)
+        // initializeInlineEditables(frameDocument)
         initializeSortable(frameDocument)
         initColumns(frameDocument)
         hydrate(frameDocument)

@@ -22,7 +22,7 @@ async function onInit() {
     hydrate(frameDocument)
     hydrate(document)
     initializeSortable(frameDocument)
-    initializeInlineEditables(frameDocument)
+    // initializeInlineEditables(frameDocument)
     initColumns(frameDocument)
 }
 
