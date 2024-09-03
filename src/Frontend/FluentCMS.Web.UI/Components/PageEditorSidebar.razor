@@ -2,7 +2,8 @@
 
 <div class="f-page-editor-sidebar">
     <div class="f-plugin-definition-list">
-        @foreach (var pluginDef in PluginDefinitions.Where(x => !x.Locked))
+        <span class="f-sidebar-category-title">Plugins</span>
+        @foreach (var pluginDef in PluginDefinitions.Where(x => !x.Locked))    
         {
             <div data-id="@pluginDef.Id" class="f-plugin-definition-item">
                 <span class="f-plugin-definition-item-icon">
@@ -28,6 +29,8 @@
                 </div>
             </div>
         }
+
+        <span class="f-sidebar-category-title">Blocks</span>
         @foreach (var block in Blocks)
         {
             <div data-id="@BlockDefinitionId" data-block-id="@block.Id" class="f-plugin-definition-item">
