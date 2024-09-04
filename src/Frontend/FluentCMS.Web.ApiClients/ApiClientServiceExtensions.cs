@@ -14,7 +14,7 @@ public static class ApiClientServiceExtensions
 
     public static IServiceCollection AddApiClients(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<ApiSettings>(configuration.GetSection("ApiSettings"));
+        services.Configure<ClientSettings>(configuration.GetSection("ClientSettings"));
 
         // TODO: move this to plugins projects
         services.AddAutoMapper(typeof(MappingProfile));
@@ -28,9 +28,9 @@ public static class ApiClientServiceExtensions
         services.AddHttpClient(HTTP_CLIENT_API_NAME, (sp, client) =>
         {
             using var scope = sp.CreateScope();
-            var apiSettings = scope.ServiceProvider.GetService<IOptions<ApiSettings>>()?.Value;
+            var clientSettings = scope.ServiceProvider.GetService<IOptions<ClientSettings>>()?.Value;
 
-            var apiUrl = apiSettings?.Url;
+            var apiUrl = clientSettings?.Url;
             if (string.IsNullOrWhiteSpace(apiUrl))
                 throw new NullReferenceException("AppSettings.Url is null!");
 
@@ -56,8 +56,8 @@ public static class ApiClientServiceExtensions
                 {
                     var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient(HTTP_CLIENT_API_NAME);
 
-                    var apiSettings = sp.GetService<IOptionsMonitor<ApiSettings>>()?.CurrentValue;
-                    var apiKey = apiSettings?.Key ?? "";
+                    var clientSettings = sp.GetService<IOptionsMonitor<ClientSettings>>()?.CurrentValue;
+                    var apiKey = clientSettings?.Key ?? "";
                     httpClient.DefaultRequestHeaders.Add("X-API-AUTH", apiKey);
 
                     var userLogin = sp.GetRequiredService<UserLoginResponse>();

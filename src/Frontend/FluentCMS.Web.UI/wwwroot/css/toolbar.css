@@ -13,9 +13,12 @@
     justify-content: space-between;
 }
 
-.f-toolbar-start, .f-toolbar-center, .f-toolbar-end {
+.f-toolbar-start, .f-toolbar-end, .f-toolbar-center {
     display: flex;
     gap: 10px;
+}
+
+.f-toolbar-start, .f-toolbar-end {
     min-width: 200px;
 }
 
@@ -36,6 +39,7 @@
     cursor: pointer;
     padding-left: 1.5rem;
     padding-right: 1.5rem;
+    gap: 0.5rem;
     border: none;
 }
 
@@ -51,6 +55,10 @@
 .f-toolbar-button-secondary {
     color: white;
     background-color: #A1B7C9;
+}
+
+.f-toolbar-button-text {
+    white-space: nowrap;
 }
 
 .f-toolbar-button-outline:hover {
@@ -82,4 +90,15 @@
 
 .f-toolbar-responsive-button-active {
     color: #5C90BD;
+}
+
+@media (max-width: 640px) {
+    .f-toolbar-button-text {
+        display: none;
+    }
+
+    .f-toolbar-button {
+        padding: 0;
+        width: 36px;
+    }
 }

@@ -88,6 +88,21 @@ public partial class Default : IDisposable
         }
     };
 
+    private string GetPageAddUrl()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        var redirectTo = Uri.EscapeDataString(uri.PathAndQuery);
+        var queryParams = new Dictionary<string, string?>()
+        {
+            { "viewType", "Create" },
+            { "redirectTo", redirectTo }
+        };
+
+        var queryParamsString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
+
+        return $"/admin/pages?{queryParamsString}";
+    }
+
     private string GetPageEditUrl()
     {
 

@@ -47,13 +47,22 @@ else
         }            
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.css">
     </HeadContent>
-    @if (ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked)
+    @if (ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked && ViewState.User.Roles.Any(role => role.Type == RoleTypesViewState.Authenticated))
     {
         <PageToolbar>
             <Start>
                 <img src="/_content/FluentCMS.Web.UI/images/logo.svg" />
             </Start>
             <End>
+                <a href="@GetPageAddUrl()" class="f-toolbar-button f-toolbar-button-outline">
+                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7 7V5"/>
+                    </svg>
+                    <span class="f-toolbar-button-text">
+                        Add Page
+                    </span>
+                </a>
+
                 <button id="editButton" class="f-toolbar-button f-toolbar-button-outline f-toolbar-button-icon">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M15.7001 3.24175L12.7788 0.30041C12.5858 0.108008 12.3245 0 12.0522 0C11.7799 0 11.5187 0.108008 11.3256 0.30041L0.969226 10.6599L0.0236625 14.7479C-0.0089563 14.8973 -0.0078381 15.0522 0.0269353 15.2011C0.0617087 15.3501 0.129259 15.4894 0.224651 15.6088C0.320043 15.7283 0.440868 15.8249 0.578299 15.8915C0.715729 15.9582 0.866293 15.9933 1.01899 15.9942C1.09012 16.0019 1.16186 16.0019 1.23299 15.9942L5.35863 15.047L15.7001 4.69747C15.8922 4.50409 16 4.2424 16 3.96961C16 3.69682 15.8922 3.43513 15.7001 3.24175ZM4.86097 14.1497L0.99411 14.9623L1.87498 11.1634L9.62362 3.4312L12.6096 6.42239L4.86097 14.1497ZM13.2765 5.69952L10.2905 2.70832L12.0224 0.983399L14.9586 3.9746L13.2765 5.69952Z" fill="currentColor"/>

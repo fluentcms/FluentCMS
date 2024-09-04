@@ -19,7 +19,7 @@ public class ApiTokenHandler(IApiTokenService apiTokenService, IHostEnvironment 
         ApiToken apiToken = await CreateDefaultApiToken();
 
         // set api token to appsettings.json
-        jsonNode!["ApiSettings"]!["Key"] = apiToken.Key + ":" + apiToken.Secret;
+        jsonNode!["ClientSettings"]!["Key"] = apiToken.Key + ":" + apiToken.Secret;
 
         var output = JsonSerializer.Serialize(jsonNode, new JsonSerializerOptions() { WriteIndented = true });
         System.IO.File.WriteAllText(appSettingsFilePath, output);
