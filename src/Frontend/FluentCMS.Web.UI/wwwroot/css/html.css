@@ -16,7 +16,7 @@
     --code-block-border: #e0e0e0;
 }
 
-.text-white {
+.text-white, .dark {
     --font-color-h1: #ccc;
     --font-color-h2: #bbb;
     --font-color-h3: #aaa;
