@@ -47,7 +47,7 @@ else
         }            
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.css">
     </HeadContent>
-    @if (ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked)
+    @if (ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked && ViewState.User.Roles.Any(role => role.Type == RoleTypesViewState.Authenticated))
     {
         <PageToolbar>
             <Start>
