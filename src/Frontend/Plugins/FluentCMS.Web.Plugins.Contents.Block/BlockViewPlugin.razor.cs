@@ -1,7 +1,4 @@
 namespace FluentCMS.Web.Plugins.Contents.Block;
-using Scriban;
-using Scriban.Runtime;
-
 public partial class BlockViewPlugin
 {
     public const string CONTENT_TYPE_NAME = nameof(BlockContent);

@@ -8,7 +8,7 @@ public class BlockHandler(IBlockService blockService) : BaseSetupHandler
 
     private string BlocksFolder = Path.Combine("Template", "Blocks");
 
-    public async override Task<SetupContext> Handle(SetupContext context)
+    public override async Task<SetupContext> Handle(SetupContext context)
     {
         foreach (var blockTemplate in context.AdminTemplate.Blocks)
         {

@@ -30,7 +30,7 @@ public partial class SiteBuilderForms
     {
         var blockResponse = await ApiClient.Block.GetByIdAsync(CreateBlockModel.BlockId);
 
-        if(blockResponse?.Data != null)
+        if (blockResponse?.Data != null)
         {
             CreateBlockModel.Plugin.PageId = ViewState.Page.Id;
             CreateBlockModel.Plugin.Settings = [];
@@ -79,12 +79,14 @@ public partial class SiteBuilderForms
         await ApiClient.Plugin.DeleteAsync(DeletePluginModel);
     }
 
-    private class CreateBlockRequest {
+    private class CreateBlockRequest
+    {
         public PluginCreateRequest Plugin { get; set; }
         public Guid BlockId { get; set; } = default!;
     }
-    
-    private class UpdateBlockContentRequest {
+
+    private class UpdateBlockContentRequest
+    {
         public Guid PluginId { get; set; }
         public Guid Id { get; set; }
         public string Content { get; set; } = string.Empty;
