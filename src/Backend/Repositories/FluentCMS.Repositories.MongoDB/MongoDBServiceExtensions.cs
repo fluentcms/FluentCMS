@@ -11,8 +11,8 @@ public static class MongoDbServiceExtensions
     public static IServiceCollection AddMongoDbRepositories(this IServiceCollection services, string connectionString)
     {
         // register default GUID serializer for MongoDB
-        BsonDefaults.GuidRepresentationMode = GuidRepresentationMode.V3;
         BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
+        BsonDefaults.GuidRepresentation = GuidRepresentation.Standard;
 
         // Register MongoDB context and options
         services.AddSingleton(provider => CreateMongoDBOptions(provider, connectionString));
