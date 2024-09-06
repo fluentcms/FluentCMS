@@ -1,8 +1,6 @@
 ﻿using FluentCMS.Providers.ApiTokenProviders;
-using FluentCMS.Services.Models;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Web.Api.Filters;
 
@@ -14,18 +12,16 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
 
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
+        var setupService = context.HttpContext.RequestServices.GetRequiredService<ISetupService>();
+        if (!await setupService.IsInitialized())
+            return;
+
         // get all PolicyAttributes for the current method
         var actionPolicies = context.ActionDescriptor.EndpointMetadata.OfType<PolicyAttribute>();
 
         // if no policy attributes are found, return
         if (!actionPolicies.Any())
             return;
-
-        //if the access is denied, maybe it is for setup process access! Let,s do it. 
-        var isValidToSetup = await CheckValidityToSetup(context, actionPolicies);
-        if (isValidToSetup)
-            return;
-
 
         // Check API Token
         var isApiTokenValid = await ValidateApiToken(context, actionPolicies);
@@ -34,27 +30,6 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
             context.Result = new ForbidResult();
             return;
         }
-    }
-
-    private static async Task<bool> CheckValidityToSetup(AuthorizationFilterContext context, IEnumerable<PolicyAttribute> actionPolicies)
-    {
-        // the below Areas(Controllers+Actions) are necessary to start initial Setup Process.
-        // so we have to let them to be executed, only in Uninitialized State.
-        // this way, we wont have unsecured EndPoint in general. 
-        var validAreas = new Dictionary<string, string[]>
-        {
-            { "Setup Management", ["Read", "Create"] },
-            { "Page Management", ["Read"] },
-        };
-
-        if (actionPolicies.Any(x => validAreas.ContainsKey(x.Area) && validAreas[x.Area].Contains(x.Action)))
-        {
-            var serverSettings = context.HttpContext.RequestServices.GetRequiredService<IOptionsMonitor<ServerSettings>>();
-
-            return !serverSettings.CurrentValue.IsInitialized;
-        }
-
-        return false;
     }
 
     private static async Task<bool> ValidateApiToken(AuthorizationFilterContext context, IEnumerable<PolicyAttribute> actionPolicies)

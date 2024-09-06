@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Entities;
 
-public class Layout : AuditableEntity
+public class Layout : SiteAssociatedEntity
 {
     public string Name { get; set; } = default!;
     public string Body { get; set; } = default!;

@@ -1,6 +1,6 @@
-﻿namespace FluentCMS.Services.Setup.Models;
+﻿namespace FluentCMS.Services.Models.Setup;
 
-internal class LayoutTemplate
+public class LayoutTemplate
 {
     public string Name { get; set; } = default!;
     public string? Description { get; set; } = default!;

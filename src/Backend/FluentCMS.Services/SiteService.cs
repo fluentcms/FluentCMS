@@ -102,5 +102,4 @@ public class SiteService(ISiteRepository siteRepository, IMessagePublisher messa
         // normalizing the site URLs to lowercase
         site.Urls = site.Urls.Select(x => x.ToLower()).ToList();
     }
-
 }

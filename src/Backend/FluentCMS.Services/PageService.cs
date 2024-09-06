@@ -12,11 +12,7 @@ public interface IPageService : IAutoRegisterService
     Task<Page> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class PageService(
-    IPageRepository pageRepository,
-    ISiteRepository siteRepository,
-    IMessagePublisher messagePublisher,
-    IPermissionManager permissionManager) : IPageService
+public class PageService(IPageRepository pageRepository, ISiteRepository siteRepository, IMessagePublisher messagePublisher, IPermissionManager permissionManager) : IPageService
 {
 
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)

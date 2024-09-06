@@ -6,7 +6,7 @@ public partial class RoleListPlugin
 
     public async Task Load()
     {
-        var rolesResponse = await ApiClient.Role.GetAllForSiteAsync(ViewState.Site.Id);
+        var rolesResponse = await ApiClient.Role.GetAllAsync(ViewState.Site.Id);
         Roles = rolesResponse?.Data?.ToList() ?? [];
     }
 

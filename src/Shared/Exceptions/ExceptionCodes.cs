@@ -14,7 +14,6 @@ public static class ExceptionCodes
     #region GlobalSettings
 
     public const string GlobalSettingsUnableToUpdate = "GlobalSettings.UnableToUpdate";
-    public const string GlobalSettingsUnableToInit = "GlobalSettings.UnableToInit";
     public const string GlobalSettingsNotFound = "GlobalSettings.NotFound";
     public const string GlobalSettingsSuperAdminCanNotBeDeleted = "GlobalSettings.SuperAdminCanNotBeDeleted";
     public const string GlobalSettingsSuperAdminAtLeastOne = "GlobalSettings.SuperAdminAtLeastOne";

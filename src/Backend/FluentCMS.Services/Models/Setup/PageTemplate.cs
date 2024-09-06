@@ -1,7 +1,9 @@
-﻿namespace FluentCMS.Services.Setup.Models;
+﻿namespace FluentCMS.Services.Models.Setup;
 
-internal class PageTemplate
+public class PageTemplate
 {
+    public Guid Id { get; set; }
+    public Guid SiteId { get; set; }
     public string Path { get; set; } = default!;
     public string Title { get; set; } = default!;
     public string? Layout { get; set; } = default!;

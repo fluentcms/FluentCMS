@@ -13,6 +13,9 @@ public class SetupRequest
     public string Password { get; set; } = default!;
 
     [Required]
+    public string Template { get; set; } = default!;
+
+    [Required]
     [DomainName]
-    public string AdminDomain { get; set; } = default!;
+    public string Url { get; set; } = default!;
 }

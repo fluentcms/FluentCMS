@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Repositories.LiteDb;
 
-public class LayoutRepository : AuditableEntityRepository<Layout>, ILayoutRepository
+public class LayoutRepository : SiteAssociatedRepository<Layout>, ILayoutRepository
 {
     public LayoutRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : base(liteDbContext, apiExecutionContext)
     {

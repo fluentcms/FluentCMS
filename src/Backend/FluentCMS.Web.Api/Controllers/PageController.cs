@@ -1,7 +1,5 @@
 ﻿using FluentCMS.Services.Permissions;
-using FluentCMS.Services.Setup;
 using FluentCMS.Web.Api.Filters;
-using Microsoft.AspNetCore.Authorization;
 using System.IO;
 
 namespace FluentCMS.Web.Api.Controllers;
@@ -14,7 +12,7 @@ public class PageController(
     ILayoutService layoutService,
     IRoleService roleService,
     IUserRoleService userRoleService,
-    ISetupManager setupManager,
+    ISetupService setupService,
     IApiExecutionContext apiExecutionContext,
     IPermissionService permissionService,
     IMapper mapper) : BaseGlobalController
@@ -26,7 +24,7 @@ public class PageController(
     public const string CREATE = "Create";
     public const string DELETE = $"Delete";
 
-    public const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Template";
+    public const string DEFAULT_TEMPLATE_PATH = "Templates/Default";
 
     [HttpGet("{siteUrl}")]
     [DecodeQueryParam]
@@ -68,15 +66,13 @@ public class PageController(
     [HttpGet]
     [DecodeQueryParam]
     [Policy(AREA, READ)]
-    [AllowAnonymous]
     public async Task<IApiResult<PageFullDetailResponse>> GetByUrl([FromQuery] string url, CancellationToken cancellationToken = default)
     {
         var uri = new Uri(url);
         var domain = uri.Authority;
         var path = uri.AbsolutePath;
 
-        var initialized = await setupManager.IsInitialized();
-        if (!initialized)
+        if (!await setupService.IsInitialized(cancellationToken))
             return Ok(GetSetupPage());
 
         return await GetPageResponse(domain, path, cancellationToken);
@@ -236,8 +232,8 @@ public class PageController(
             Locked = true,
             Layout = new LayoutDetailResponse
             {
-                Body = System.IO.File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.body.html")),
-                Head = System.IO.File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.head.html"))
+                Body = System.IO.File.ReadAllText(Path.Combine(DEFAULT_TEMPLATE_PATH, "AuthLayout.body.html")),
+                Head = System.IO.File.ReadAllText(Path.Combine(DEFAULT_TEMPLATE_PATH, "AuthLayout.head.html"))
             },
             Site = new(),
             Sections = new Dictionary<string, List<PluginDetailResponse>>

@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Services.Setup.Models;
+﻿namespace FluentCMS.Services.Models.Setup;
 
 internal class PluginDefinitionTemplate
 {
