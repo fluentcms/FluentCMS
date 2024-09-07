@@ -34,13 +34,13 @@ public class GlobalSettingsRepository(ILiteDBContext liteDbContext, IApiExecutio
         return settings;
     }
 
-    public async Task<bool> Any(CancellationToken cancellationToken = default)
+    public async Task<bool> Initialized(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var collections = await liteDbContext.Database.GetCollectionNamesAsync();
+        var existing = await Get(cancellationToken);
 
-        return collections.Any();
+        return existing?.Initialized ?? false;
     }
 
     private void SetAuditableFieldsForCreate(GlobalSettings settings)

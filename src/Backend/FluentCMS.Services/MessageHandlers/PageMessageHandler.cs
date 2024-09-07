@@ -1,5 +1,4 @@
 ﻿using FluentCMS.Providers.MessageBusProviders;
-using FluentCMS.Services.Models.Setup;
 
 namespace FluentCMS.Services.MessageHandlers;
 
@@ -9,7 +8,7 @@ public class PageMessageHandler(IPageService pageService) : IMessageHandler<Site
     {
         switch (notification.Action)
         {
-            case ActionNames.SetupInitializePages:
+            case ActionNames.SiteCreated:
                 await CreatePageTemplates(null, notification.Payload.Pages, notification.Payload, cancellationToken);
                 break;
 

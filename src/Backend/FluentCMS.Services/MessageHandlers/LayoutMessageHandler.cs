@@ -1,5 +1,4 @@
 ﻿using FluentCMS.Providers.MessageBusProviders;
-using FluentCMS.Services.Models.Setup;
 
 namespace FluentCMS.Services.MessageHandlers;
 
@@ -9,7 +8,7 @@ public class LayoutMessageHandler(ILayoutService layoutService) : IMessageHandle
     {
         switch (notification.Action)
         {
-            case ActionNames.SetupInitializeLayouts:
+            case ActionNames.SiteCreated:
                 foreach (var layout in notification.Payload.Layouts)
                 {
                     layout.SiteId = notification.Payload.Id;

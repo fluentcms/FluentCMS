@@ -8,7 +8,7 @@ public static class ServiceExtensions
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        services.AddPermissions();
+        services.AddScoped<IPermissionManager, PermissionManager>();
 
         services.AddScoped<IUserTokenProvider, JwtUserTokenProvider>();
 

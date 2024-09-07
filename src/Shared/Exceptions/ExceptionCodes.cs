@@ -4,10 +4,7 @@ public static class ExceptionCodes
 {
     #region Setup
 
-    public const string SetupSettingsNotDefined = "SetupSettings.NotDefined";
-    public const string SetupSettingsNotInitialized = "SetupSettings.NotInitialized";
-    public const string SetupSettingsAlreadyInitialized = "SetupSettings.AlreadyInitialized";
-    public const string SetupSettingsHostingEnvironmentIsNull = "SetupSettings.HostingEnvironmentIsNull";
+    public const string SetupAlreadyInitialized = "Setup.AlreadyInitialized";
 
     #endregion
 

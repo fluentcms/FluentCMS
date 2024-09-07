@@ -13158,22 +13158,20 @@ namespace FluentCMS.Web.ApiClients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("name")]
-        public string? Name { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Name { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string? Description { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("urls")]
-        public System.Collections.Generic.ICollection<string>? Urls { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("template")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Template { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("layoutId")]
-        public System.Guid LayoutId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("detailLayoutId")]
-        public System.Guid DetailLayoutId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("editLayoutId")]
-        public System.Guid EditLayoutId { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("url")]
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])(:\d{1,5})?$")]
+        public string Url { get; set; } = default!;
 
     }
 
@@ -13310,26 +13308,32 @@ namespace FluentCMS.Web.ApiClients
     public partial class SiteUpdateRequest
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("name")]
-        public string? Name { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Name { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string? Description { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("urls")]
-        public System.Collections.Generic.ICollection<string>? Urls { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<string> Urls { get; set; } = new System.Collections.ObjectModel.Collection<string>();
 
         [System.Text.Json.Serialization.JsonPropertyName("layoutId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid LayoutId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("detailLayoutId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid DetailLayoutId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("editLayoutId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid EditLayoutId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-        public System.Guid Id { get; set; } = default!;
 
     }
 

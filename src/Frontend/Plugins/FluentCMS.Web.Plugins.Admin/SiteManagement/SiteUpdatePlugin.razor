@@ -7,7 +7,6 @@
     <FormSelect @bind-Value="Model!.LayoutId" Data="Layouts" ValueField="Id" TextField="Name" Cols="6" Label="Default Layout" Placeholder="Choose Layout" Visible="@(Layouts != null)" />
     <FormSelect @bind-Value="Model!.EditLayoutId" Data="Layouts" ValueField="Id" TextField="Name" Cols="6" Label="EditView Layout" Placeholder="Choose Layout" Visible="@(Layouts != null)" />
     <FormSelect @bind-Value="Model!.DetailLayoutId" Data="Layouts" ValueField="Id" TextField="Name" Cols="6" Label="SingleView Layout" Placeholder="Choose Layout" Visible="@(Layouts != null)" />
-    
     <FormTextarea @bind-Value="Model!.Description" Label="Description" Placeholder="Enter Description" />
     <FormActions Cancel Submit />
 </PluginForm>

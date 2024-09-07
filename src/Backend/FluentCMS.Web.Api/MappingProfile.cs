@@ -1,9 +1,17 @@
-﻿namespace FluentCMS.Web.Api;
+﻿using FluentCMS.Services.Models;
+
+namespace FluentCMS.Web.Api;
 
 public class MappingProfile : Profile
 {
     public MappingProfile()
     {
+        #region Setup
+
+        CreateMap<SetupRequest, SetupTemplate>();
+
+        #endregion
+
         #region Site
 
         CreateMap<SiteCreateRequest, Site>();

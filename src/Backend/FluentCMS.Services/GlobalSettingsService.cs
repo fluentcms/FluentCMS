@@ -6,6 +6,7 @@ public interface IGlobalSettingsService : IAutoRegisterService
 {
     Task<GlobalSettings> Update(GlobalSettings settings, CancellationToken cancellationToken = default);
     Task<GlobalSettings> Get(CancellationToken cancellationToken = default);
+    Task<bool> SetInitialized(CancellationToken cancellationToken = default);
 }
 
 public class GlobalSettingsService(IGlobalSettingsRepository repository, IApiExecutionContext apiExecutionContext, IMessagePublisher messagePublisher) : IGlobalSettingsService
@@ -38,5 +39,13 @@ public class GlobalSettingsService(IGlobalSettingsRepository repository, IApiExe
     {
         return await repository.Get(cancellationToken) ??
                 throw new AppException(ExceptionCodes.GlobalSettingsNotFound);
+    }
+
+    public async Task<bool> SetInitialized(CancellationToken cancellationToken = default)
+    {
+        var globalSettings = await repository.Get(cancellationToken) ?? new();
+        globalSettings.Initialized = true;
+        await repository.Update(globalSettings, cancellationToken);
+        return true;
     }
 }

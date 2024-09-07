@@ -11,7 +11,7 @@ public interface IRoleService : IAutoRegisterService
     Task<Role?> GetById(Guid roleId, CancellationToken cancellationToken = default);
 }
 
-public class RoleService(IRoleRepository roleRepository, IMessagePublisher messagePublisher) : IRoleService
+public class RoleService(IRoleRepository roleRepository, IMessagePublisher messagePublisher, IPermissionManager permissionManager, ISiteRepository siteRepository) : IRoleService
 {
     public async Task<IEnumerable<Role>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {
@@ -20,6 +20,12 @@ public class RoleService(IRoleRepository roleRepository, IMessagePublisher messa
 
     public async Task<Role> Create(Role role, CancellationToken cancellationToken)
     {
+        var site = await siteRepository.GetById(role.SiteId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.SiteNotFound);
+
+        //if (!await permissionManager.HasAccess(site, PermissionActionNames.SiteAdmin, cancellationToken))
+        //    throw new AppException(ExceptionCodes.PermissionDenied);
+
         var sameRole = await roleRepository.GetByNameAndSiteId(role.SiteId, role.Name.Trim(), cancellationToken);
 
         if (sameRole != null)
@@ -38,6 +44,9 @@ public class RoleService(IRoleRepository roleRepository, IMessagePublisher messa
         var existRole = await roleRepository.GetById(role.Id, cancellationToken) ??
              throw new AppException(ExceptionCodes.RoleNotFound);
 
+        //if (!await permissionManager.HasAccess(role, PermissionActionNames.SiteAdmin, cancellationToken))
+        //    throw new AppException(ExceptionCodes.PermissionDenied);
+
         var sameRole = await roleRepository.GetByNameAndSiteId(role.SiteId, role.Name.Trim(), cancellationToken);
 
         if (sameRole != null && sameRole.Id != role.Id)
@@ -55,12 +64,15 @@ public class RoleService(IRoleRepository roleRepository, IMessagePublisher messa
 
     public async Task<Role> Delete(Guid roleId, CancellationToken cancellationToken = default)
     {
-        var existRole = await roleRepository.GetById(roleId, cancellationToken) ??
+        var existingRole = await roleRepository.GetById(roleId, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleNotFound);
+
+        //if (!await permissionManager.HasAccess(existingRole, PermissionActionNames.SiteAdmin, cancellationToken))
+        //    throw new AppException(ExceptionCodes.PermissionDenied);
 
         // check for system roles, they cant be deleted.
         // we need them for system purposes. 
-        if (existRole.Type != RoleTypes.UserDefined)
+        if (existingRole.Type != RoleTypes.UserDefined)
             throw new AppException(ExceptionCodes.RoleCanNotBeDeleted);
 
         var deletedRole = await roleRepository.Delete(roleId, cancellationToken) ??

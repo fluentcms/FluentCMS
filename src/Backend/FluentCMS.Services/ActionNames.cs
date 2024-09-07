@@ -6,9 +6,8 @@ public static class ActionNames
 
     public const string SetupStarted = "SetupStarted";
     public const string SetupInitializeSite = "SetupInitializeSite";
-    public const string SetupInitializeLayouts = "SetupInitializeLayouts";
-    public const string SetupInitializePages = "SetupInitializePages";
     public const string SetupInitializePlugins = "SetupInitializePlugins";
+    public const string SetupCompleted = "SetupCompleted";
 
     #endregion
 

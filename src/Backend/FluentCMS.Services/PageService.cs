@@ -20,7 +20,7 @@ public class PageService(IPageRepository pageRepository, ISiteRepository siteRep
         var site = (await siteRepository.GetById(page.SiteId, cancellationToken)) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
 
-        if (!await permissionManager.HasSiteAccess(site, PermissionActionNames.SiteContributor, cancellationToken))
+        if (!await permissionManager.HasAccess(site.Id, SitePermissionAction.SiteContributor, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
 
         // If Parent Id is assigned
@@ -48,8 +48,8 @@ public class PageService(IPageRepository pageRepository, ISiteRepository siteRep
         var originalPage = await pageRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
 
-        if (!await permissionManager.HasPageAccess(originalPage, PermissionActionNames.PageContributor, cancellationToken))
-            throw new AppException(ExceptionCodes.PermissionDenied);
+        //if (!await permissionManager.HasAccess(originalPage.SiteId, originalPage.Id, PagePermissionAction.PageAdmin, cancellationToken))
+        //    throw new AppException(ExceptionCodes.PermissionDenied);
 
         // fetch site
         var site = (await siteRepository.GetById(originalPage.SiteId, cancellationToken)) ??
@@ -74,8 +74,8 @@ public class PageService(IPageRepository pageRepository, ISiteRepository siteRep
         var page = await pageRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
 
-        if (!await permissionManager.HasPageAccess(page, PermissionActionNames.PageView, cancellationToken))
-            throw new AppException(ExceptionCodes.PermissionDenied);
+        //if (!await permissionManager.HasAccess(page, PermissionActionNames.PageView, cancellationToken))
+        //    throw new AppException(ExceptionCodes.PermissionDenied);
 
         return page;
     }
@@ -85,19 +85,20 @@ public class PageService(IPageRepository pageRepository, ISiteRepository siteRep
         // fetch pages from db
         var sitePages = await pageRepository.GetAllForSite(siteId, cancellationToken);
 
-        var pages = await permissionManager.HasPageAccess(sitePages, PermissionActionNames.PageView, cancellationToken);
+        //var pages = await permissionManager.HasAccess(sitePages, PermissionActionNames.PageView, cancellationToken);
 
-        return pages;
+        return sitePages;
     }
 
     public async Task<Page> Update(Page page, CancellationToken cancellationToken = default)
     {
-        if (!await permissionManager.HasPageAccess(page, PermissionActionNames.PageContributor, cancellationToken))
-            throw new AppException(ExceptionCodes.PermissionDenied);
 
         //fetch original page from db
         var originalPage = await pageRepository.GetById(page.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
+
+        //if (!await permissionManager.HasAccess(originalPage.SiteId, originalPage.Id, PagePermissionAction.PageAdmin, cancellationToken))
+        //    throw new AppException(ExceptionCodes.PermissionDenied);
 
         // site id cannot be changed
         if (originalPage.SiteId != page.SiteId)
@@ -132,8 +133,8 @@ public class PageService(IPageRepository pageRepository, ISiteRepository siteRep
         var page = pages.Where(x => x.SiteId == siteId && x.Path.ToLowerInvariant() == path.ToLowerInvariant()).SingleOrDefault() ??
             throw new AppException(ExceptionCodes.PageNotFound);
 
-        if (!await permissionManager.HasPageAccess(page, PermissionActionNames.PageView, cancellationToken))
-            throw new AppException(ExceptionCodes.PermissionDenied);
+        //if (!await permissionManager.HasAccess(page, PermissionActionNames.PageView, cancellationToken))
+        //    throw new AppException(ExceptionCodes.PermissionDenied);
 
         return page;
     }

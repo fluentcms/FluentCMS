@@ -1,10 +1,8 @@
-﻿using FluentCMS.Services.Models.Setup;
-using System.IO;
-using System.Text.Json;
+﻿using FluentCMS.Services.Models;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class SetupController(ISetupService setupService) : BaseGlobalController
+public class SetupController(ISetupService setupService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "Setup Management";
     public const string READ = "Read";
@@ -21,24 +19,8 @@ public class SetupController(ISetupService setupService) : BaseGlobalController
     [Policy(AREA, CREATE)]
     public async Task<IApiResult<bool>> Start(SetupRequest request)
     {
-        var manifestFilePath = Path.Combine(SetupService.SetupTemplatesFolder, request.Template, SetupService.SetupManifestFile);
-
-        if (!System.IO.File.Exists(manifestFilePath))
-            throw new AppException($"{SetupService.SetupManifestFile} doesn't exist!");
-
-        var jsonSerializerOptions = new JsonSerializerOptions();
-        jsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
-
-        var setupTemplate = await JsonSerializer.DeserializeAsync<SetupTemplate>(System.IO.File.OpenRead(manifestFilePath), jsonSerializerOptions) ??
-               throw new AppException($"Failed to read/deserialize {SetupService.SetupManifestFile}");
-
-        setupTemplate.Url = request.Url;
-        setupTemplate.Email = request.Email;
-        setupTemplate.Password = request.Password;
-        setupTemplate.Username = request.Username;
-        setupTemplate.Site.Url = request.Url;
-        setupTemplate.Site.Template = request.Template;
-
+        var setupTemplate = mapper.Map<SetupTemplate>(request);
+        await setupTemplate.Load();
         return Ok(await setupService.Start(setupTemplate));
     }
 

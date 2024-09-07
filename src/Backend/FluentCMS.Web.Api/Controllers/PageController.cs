@@ -1,5 +1,4 @@
-﻿using FluentCMS.Services.Permissions;
-using FluentCMS.Web.Api.Filters;
+﻿using FluentCMS.Web.Api.Filters;
 using System.IO;
 
 namespace FluentCMS.Web.Api.Controllers;
@@ -56,9 +55,9 @@ public class PageController(
         var entity = await pageService.GetById(id, cancellationToken);
         var entityResponse = mapper.Map<PageDetailResponse>(entity);
 
-        entityResponse.ViewRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageView, cancellationToken)).Select(x => x.RoleId);
-        entityResponse.ContributorRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageContributor, cancellationToken)).Select(x => x.RoleId);
-        entityResponse.AdminRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageAdmin, cancellationToken)).Select(x => x.RoleId);
+        //entityResponse.ViewRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageView, cancellationToken)).Select(x => x.RoleId);
+        //entityResponse.ContributorRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageContributor, cancellationToken)).Select(x => x.RoleId);
+        //entityResponse.AdminRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageAdmin, cancellationToken)).Select(x => x.RoleId);
 
         return Ok(entityResponse);
     }
@@ -85,9 +84,9 @@ public class PageController(
         var entity = mapper.Map<Page>(request);
         var newEntity = await pageService.Create(entity, cancellationToken);
 
-        await permissionService.SetPermissions(newEntity, PermissionActionNames.PageView, request.ViewRoleIds, cancellationToken);
-        await permissionService.SetPermissions(newEntity, PermissionActionNames.PageContributor, request.ContributorRoleIds, cancellationToken);
-        await permissionService.SetPermissions(newEntity, PermissionActionNames.PageAdmin, request.AdminRoleIds, cancellationToken);
+        //await permissionService.SetPermissions(newEntity, PermissionActionNames.PageView, request.ViewRoleIds, cancellationToken);
+        //await permissionService.SetPermissions(newEntity, PermissionActionNames.PageContributor, request.ContributorRoleIds, cancellationToken);
+        //await permissionService.SetPermissions(newEntity, PermissionActionNames.PageAdmin, request.AdminRoleIds, cancellationToken);
 
         var pageResponse = mapper.Map<PageDetailResponse>(newEntity);
         return Ok(pageResponse);
@@ -100,9 +99,9 @@ public class PageController(
         var entity = mapper.Map<Page>(request);
         var updatedEntity = await pageService.Update(entity, cancellationToken);
 
-        await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageView, request.ViewRoleIds, cancellationToken);
-        await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageContributor, request.ContributorRoleIds, cancellationToken);
-        await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageAdmin, request.AdminRoleIds, cancellationToken);
+        //await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageView, request.ViewRoleIds, cancellationToken);
+        //await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageContributor, request.ContributorRoleIds, cancellationToken);
+        //await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageAdmin, request.AdminRoleIds, cancellationToken);
 
         var entityResponse = mapper.Map<PageDetailResponse>(updatedEntity);
         return Ok(entityResponse);

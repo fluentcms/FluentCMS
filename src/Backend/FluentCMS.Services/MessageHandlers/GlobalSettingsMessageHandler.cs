@@ -1,5 +1,4 @@
 ﻿using FluentCMS.Providers.MessageBusProviders;
-using FluentCMS.Services.Models.Setup;
 
 namespace FluentCMS.Services.MessageHandlers;
 
@@ -15,6 +14,10 @@ public class GlobalSettingsMessageHandler(IGlobalSettingsService globalSettingsS
                     SuperAdmins = [notification.Payload.Username]
                 };
                 await globalSettingsService.Update(globalSettings, cancellationToken);
+                break;
+
+            case ActionNames.SetupCompleted:
+                await globalSettingsService.SetInitialized(cancellationToken);
                 break;
 
             default:
