@@ -2,10 +2,15 @@
 
 public class SiteCreateRequest
 {
+    [Required]
     public string Name { get; set; } = default!;
+
     public string? Description { get; set; }
-    public List<string> Urls { get; set; } = [];
-    public Guid LayoutId { get; set; } = default!;
-    public Guid DetailLayoutId { get; set; } = default!;
-    public Guid EditLayoutId { get; set; } = default!;
+
+    [Required]
+    public string Template { get; set; } = default!;
+
+    [Required]
+    [DomainName]
+    public string Url { get; set; } = default!;
 }

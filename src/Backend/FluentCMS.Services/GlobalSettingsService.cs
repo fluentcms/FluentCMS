@@ -1,14 +1,15 @@
-﻿namespace FluentCMS.Services;
+﻿using FluentCMS.Providers.MessageBusProviders;
+
+namespace FluentCMS.Services;
 
 public interface IGlobalSettingsService : IAutoRegisterService
 {
     Task<GlobalSettings> Update(GlobalSettings settings, CancellationToken cancellationToken = default);
-    Task<GlobalSettings?> Get(CancellationToken cancellationToken = default);
-    Task<GlobalSettings> Init(GlobalSettings settings, CancellationToken cancellationToken = default);
-    Task<bool> Reset(CancellationToken cancellationToken = default);
+    Task<GlobalSettings> Get(CancellationToken cancellationToken = default);
+    Task<bool> SetInitialized(CancellationToken cancellationToken = default);
 }
 
-public class GlobalSettingsService(IGlobalSettingsRepository repository, IApiExecutionContext apiExecutionContext) : IGlobalSettingsService
+public class GlobalSettingsService(IGlobalSettingsRepository repository, IApiExecutionContext apiExecutionContext, IMessagePublisher messagePublisher) : IGlobalSettingsService
 {
     public async Task<GlobalSettings> Update(GlobalSettings settings, CancellationToken cancellationToken = default)
     {
@@ -18,8 +19,7 @@ public class GlobalSettingsService(IGlobalSettingsRepository repository, IApiExe
         if (!settings.SuperAdmins.Any())
             throw new AppException(ExceptionCodes.GlobalSettingsSuperAdminAtLeastOne);
 
-        var existSetting = await repository.Get(cancellationToken) ??
-             throw new AppException(ExceptionCodes.GlobalSettingsNotFound);
+        var existSetting = await repository.Get(cancellationToken) ?? new();
 
         // if the current user is a super admin and is trying to remove himself from the super admin list, throw an exception
         if (existSetting.SuperAdmins.Contains(apiExecutionContext.Username) && !settings.SuperAdmins.Contains(apiExecutionContext.Username))
@@ -27,24 +27,25 @@ public class GlobalSettingsService(IGlobalSettingsRepository repository, IApiExe
 
         existSetting.SuperAdmins = settings.SuperAdmins;
 
-        return await repository.Update(existSetting, cancellationToken)
+        var updated = await repository.Update(existSetting, cancellationToken)
             ?? throw new AppException(ExceptionCodes.GlobalSettingsUnableToUpdate);
+
+        await messagePublisher.Publish(new Message<GlobalSettings>(ActionNames.GlobalSettingsUpdated, updated), cancellationToken);
+
+        return updated;
     }
 
-    public async Task<GlobalSettings> Init(GlobalSettings settings, CancellationToken cancellationToken = default)
+    public async Task<GlobalSettings> Get(CancellationToken cancellationToken = default)
     {
-        return await repository.Update(settings, cancellationToken)
-             ?? throw new AppException(ExceptionCodes.GlobalSettingsUnableToUpdate);
+        return await repository.Get(cancellationToken) ??
+                throw new AppException(ExceptionCodes.GlobalSettingsNotFound);
     }
 
-    public async Task<GlobalSettings?> Get(CancellationToken cancellationToken = default)
+    public async Task<bool> SetInitialized(CancellationToken cancellationToken = default)
     {
-        return await repository.Get(cancellationToken);
+        var globalSettings = await repository.Get(cancellationToken) ?? new();
+        globalSettings.Initialized = true;
+        await repository.Update(globalSettings, cancellationToken);
+        return true;
     }
-
-    public async Task<bool> Reset(CancellationToken cancellationToken = default)
-    {
-        return await repository.Reset(cancellationToken);
-    }
-
 }

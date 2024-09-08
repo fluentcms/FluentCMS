@@ -35,16 +35,13 @@ public class GlobalSettingsRepository : IGlobalSettingsRepository
         return await _collection.FindOneAndReplaceAsync(idFilter, settings, null, cancellationToken);
     }
 
-    public async Task<bool> Reset(CancellationToken cancellationToken = default)
+    public async Task<bool> Initialized(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var collections = await _mongoDbContext.Database.ListCollectionNamesAsync(cancellationToken: cancellationToken);
+        var existing = await Get(cancellationToken);
 
-        foreach (var collectionName in collections.ToEnumerable(cancellationToken))
-            await _mongoDbContext.Database.DropCollectionAsync(collectionName, cancellationToken);
-
-        return true;
+        return existing?.Initialized ?? false;
     }
 
     private async Task<GlobalSettings?> Create(GlobalSettings settings, CancellationToken cancellationToken = default)

@@ -1,16 +1,23 @@
 ﻿using FluentCMS.Web.ApiClients.Services;
 using FluentCMS.Web.UI.DynamicRendering;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.AspNetCore.Http;
 
 namespace FluentCMS.Web.UI;
 
 public partial class Default : IDisposable
 {
     [Inject]
+    private AuthManager AuthManager { get; set; } = default!;
+
+    [Inject]
     private ILayoutProcessor LayoutProcessor { get; set; } = default!;
 
     [CascadingParameter]
     public ViewState ViewState { get; set; } = default!;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
 
     [Parameter]
     public string? Route { get; set; }
@@ -33,6 +40,9 @@ public partial class Default : IDisposable
         // if not it should be redirected to /setup route
         if (!await SetupManager.IsInitialized() && !NavigationManager.Uri.ToLower().EndsWith("/setup"))
         {
+            if (HttpContext != null)
+                await AuthManager.Logout(HttpContext);
+
             NavigationManager.NavigateTo("/setup", true);
             return;
         }

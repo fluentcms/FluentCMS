@@ -29,7 +29,7 @@
 		</None>
 	</ItemGroup>
 	<ItemGroup>
-		<None Include="Template\**">
+		<None Include="Templates\**">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
 	</ItemGroup>

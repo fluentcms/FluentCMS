@@ -10,9 +10,7 @@ public class GlobalSettingsController(IGlobalSettingsService service, IMapper ma
     [Policy(AREA, READ)]
     public async Task<IApiResult<GlobalSettingsResponse>> Get(CancellationToken cancellationToken = default)
     {
-        var settings = await service.Get(cancellationToken) ??
-            throw new AppException(ExceptionCodes.GlobalSettingsNotFound);
-
+        var settings = await service.Get(cancellationToken);
         var settingsResponse = mapper.Map<GlobalSettingsResponse>(settings);
 
         return Ok(settingsResponse);

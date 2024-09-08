@@ -4,17 +4,13 @@ public static class ExceptionCodes
 {
     #region Setup
 
-    public const string SetupSettingsNotDefined = "SetupSettings.NotDefined";
-    public const string SetupSettingsNotInitialized = "SetupSettings.NotInitialized";
-    public const string SetupSettingsAlreadyInitialized = "SetupSettings.AlreadyInitialized";
-    public const string SetupSettingsHostingEnvironmentIsNull = "SetupSettings.HostingEnvironmentIsNull";
+    public const string SetupAlreadyInitialized = "Setup.AlreadyInitialized";
 
     #endregion
 
     #region GlobalSettings
 
     public const string GlobalSettingsUnableToUpdate = "GlobalSettings.UnableToUpdate";
-    public const string GlobalSettingsUnableToInit = "GlobalSettings.UnableToInit";
     public const string GlobalSettingsNotFound = "GlobalSettings.NotFound";
     public const string GlobalSettingsSuperAdminCanNotBeDeleted = "GlobalSettings.SuperAdminCanNotBeDeleted";
     public const string GlobalSettingsSuperAdminAtLeastOne = "GlobalSettings.SuperAdminAtLeastOne";

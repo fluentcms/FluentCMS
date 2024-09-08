@@ -1,5 +1,5 @@
 ﻿namespace FluentCMS.Repositories.Abstractions;
 
-public interface ILayoutRepository : IAuditableEntityRepository<Layout>
+public interface ILayoutRepository : ISiteAssociatedRepository<Layout>
 {
 }

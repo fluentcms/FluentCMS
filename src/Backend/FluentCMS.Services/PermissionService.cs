@@ -1,40 +1,26 @@
-﻿using FluentCMS.Providers.MessageBusProviders;
-
-namespace FluentCMS.Services;
+﻿namespace FluentCMS.Services;
 
 public interface IPermissionService : IAutoRegisterService
 {
-    Task<IEnumerable<Permission>> SetPermissions<TEntity>(TEntity entity, string action, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default) where TEntity : ISiteAssociatedEntity;
-
-    Task<IEnumerable<Permission>> GetPermissions(Guid entityId, string action, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Permission>> Set(Guid siteId, SitePermissionAction action, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Permission>> Set(Guid siteId, Guid pageId, PagePermissionAction action, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Permission>> Set(Guid siteId, Guid pluginId, PluginPermissionAction action, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);
 }
 
-public class PermissionService(IPermissionRepository permissionRepository) : IPermissionService, IMessageHandler<Page>
+public class PermissionService(IPermissionRepository permissionRepository) : IPermissionService
 {
-    public async Task<IEnumerable<Permission>> SetPermissions<TEntity>(TEntity entity, string action, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default) where TEntity : ISiteAssociatedEntity
+    public async Task<IEnumerable<Permission>> Set(Guid siteId, SitePermissionAction action, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default)
     {
-        return await permissionRepository.SetPermissions(entity, action, roleIds, cancellationToken);
+        return await permissionRepository.Set(siteId, siteId, nameof(Site), action.ToString(), roleIds, cancellationToken);
     }
 
-    public async Task<IEnumerable<Permission>> GetPermissions(Guid entityId, string action, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Permission>> Set(Guid siteId, Guid pageId, PagePermissionAction action, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default)
     {
-        return await permissionRepository.GetByActionAndEntityId(action, entityId, cancellationToken);
+        return await permissionRepository.Set(siteId, pageId, nameof(Page), action.ToString(), roleIds, cancellationToken);
     }
 
-    public async Task Handle(Message<Page> message, CancellationToken cancellationToken)
+    public async Task<IEnumerable<Permission>> Set(Guid siteId, Guid pluginId, PluginPermissionAction action, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default)
     {
-        switch (message.Action)
-        {
-            case ActionNames.PageDeleted:
-                await DeletePermissions(message.Payload, cancellationToken);
-                break;
-        }
+        return await permissionRepository.Set(siteId, pluginId, nameof(Plugin), action.ToString(), roleIds, cancellationToken);
     }
-
-    private async Task DeletePermissions(Page page, CancellationToken cancellationToken)
-    {
-        var permissions = await permissionRepository.GetByEntityId(page.Id, cancellationToken);
-        await permissionRepository.DeleteMany(permissions.Select(x => x.Id), cancellationToken);
-    }
-
 }
