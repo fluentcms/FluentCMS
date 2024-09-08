@@ -48,25 +48,6 @@ public partial class PageCreatePlugin
         {
             var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Urls[0]);
             Pages = pagesResponse?.Data?.Where(x => !x.Locked).ToList();
-
-            PageOptions = [
-                new SelectOption
-                {
-                    Title = "(none)",
-                    Value = Guid.Empty
-                }
-            ];
-
-            foreach (var page in Pages)
-            {
-                PageOptions.Add(
-                    new SelectOption
-                    {
-                        Title = page.Title,
-                        Value = page.Id
-                    }
-                );
-            }
         }
 
         Model ??= new();

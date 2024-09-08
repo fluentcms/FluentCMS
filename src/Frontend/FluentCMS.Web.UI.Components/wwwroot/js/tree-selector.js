@@ -1,7 +1,22 @@
-export function TreeSelector(el, { cssPrefix = 'tree', options = [], onChange } = {}) {
+export function TreeSelector(el, { cssPrefix = 'tree', options = [], onChange, value } = {}) {
     const menu = document.createElement('div')
     const input = document.createElement('input')
+    input.setAttribute('placeholder', el.getAttribute('placeholder') ?? "Choose an item")
 
+    function getText(value, items = options) {
+        let result;
+        for(let item of items) {
+            if(item.key === value) {
+                return item.text;
+            }
+
+            if(item.items?.length) {
+                result = getText(value, item.items)
+                if(result) return result;
+            }
+        }
+        return result;
+    }
     function dispose() {
         console.log('Should dispose tree selector')
     }
@@ -23,8 +38,10 @@ export function TreeSelector(el, { cssPrefix = 'tree', options = [], onChange } 
         }
         el.querySelectorAll('.' + cssPrefix + '-option-active').forEach(el => el.classList.remove(cssPrefix + '-option-active'))
         if(!value) {
+            input.value = ''
             delete el.dataset.value;
         } else {
+            input.value = getText(value)
             el.dataset.value = value
             el.querySelector(`[data-value="${value}"]`).classList.add(cssPrefix + '-option-active')
         }
@@ -43,7 +60,7 @@ export function TreeSelector(el, { cssPrefix = 'tree', options = [], onChange } 
             optionEl.classList.add(cssPrefix + '-option')
             optionEl.innerHTML = `
             <div class="${cssPrefix}-option-header">
-                ${option.items  ? `
+                ${option.items?.length  ? `
                     <div class="${cssPrefix}-option-toggler">
                         <span class="${cssPrefix}-option-toggler-icon"></span>
                     </div>
@@ -59,7 +76,7 @@ export function TreeSelector(el, { cssPrefix = 'tree', options = [], onChange } 
                     </div>
                 </div>
                 </div>
-                ${option.items  ? `
+                ${option.items?.length  ? `
                     <div class="${cssPrefix}-menu-inner">
                 ` : ''}
             `
@@ -67,11 +84,11 @@ export function TreeSelector(el, { cssPrefix = 'tree', options = [], onChange } 
 
             
             setTimeout(() => {
-                if(option.items) {
+                if(option.items?.length) {
                     const menuEl = optionEl.querySelector('.' + cssPrefix + '-menu-inner')
                     setInnerOptions(option.items, menuEl)
                 }
-                if(option.items) {
+                if(option.items?.length) {
                     optionEl.querySelector(`.${cssPrefix}-option-toggler`).addEventListener('click', () => {
                         toggleCollapsible(optionEl)
                     })
@@ -119,6 +136,11 @@ export function TreeSelector(el, { cssPrefix = 'tree', options = [], onChange } 
     el.appendChild(menu)
 
     setOptions(options)
+    if(value) {
+        setTimeout(() => {
+            setValue(value)
+        })
+    }
     return {
         setOptions,
         setValue,

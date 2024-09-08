@@ -15,6 +15,9 @@ public partial class FormTreeSelector : IAsyncDisposable
     public int Cols { get; set; } = 12;
 
     [Parameter]
+    public EventCallback<string?> OnChange { get; set; }
+
+    [Parameter]
     public List<TreeSelectorItemType> Items { get; set; } = [];
 
     private string? _value;
@@ -24,6 +27,7 @@ public partial class FormTreeSelector : IAsyncDisposable
     {
         _value = value;
         await ValueChanged.InvokeAsync(value);
+        await OnChange.InvokeAsync(value);
     }
 
     protected override async Task OnParametersSetAsync()
@@ -46,7 +50,7 @@ public partial class FormTreeSelector : IAsyncDisposable
 
         module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Form/FormTreeSelector/FormTreeSelector.razor.js");
 
-        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { });
+        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { Items = Items, Value = Value });
     }
 
     protected override bool TryParseValueFromString(string? value, out string? result, [NotNullWhen(false)] out string? validationErrorMessage)
