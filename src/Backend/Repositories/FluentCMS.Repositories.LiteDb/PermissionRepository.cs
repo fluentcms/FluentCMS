@@ -1,39 +1,27 @@
 ﻿namespace FluentCMS.Repositories.LiteDb;
 
-public class PermissionRepository : SiteAssociatedRepository<Permission>, IPermissionRepository
+public class PermissionRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : SiteAssociatedRepository<Permission>(liteDbContext, apiExecutionContext), IPermissionRepository
 {
-    public PermissionRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : base(liteDbContext, apiExecutionContext)
-    {
-    }
-
-    public async Task<IEnumerable<Permission>> GetByEntityId(Guid entityId, CancellationToken cancellationToken)
+    public async Task<IEnumerable<Permission>> Set(Guid siteId, Guid entityId, string entityTypeName, string action, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return await Collection.Query().Where(x => x.EntityId == entityId).ToListAsync();
-    }
 
-    public async Task<IEnumerable<Permission>> GetByActionAndEntityId(string action, Guid entityId, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        return await Collection.Query().Where(x => x.Action == action && x.EntityId == entityId).ToListAsync();
-    }
+        var existPermissions = await Collection.Query().Where(x => x.EntityId == entityId && x.EntityType == entityTypeName && x.Action == action).ToListAsync();
 
-    public async Task<IEnumerable<Permission>> SetPermissions<TEntity>(TEntity entity, string action, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default) where TEntity : ISiteAssociatedEntity
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        var existPermissions = await Collection.Query().Where(x => x.EntityId == entity.Id).ToListAsync();
         await DeleteMany(existPermissions.Select(x => x.Id), cancellationToken);
 
         var permissions = roleIds.Select(x => new Permission
         {
-            EntityType = entity.GetType().Name,
+            EntityType = entityTypeName,
             Action = action,
-            EntityId = entity.Id,
+            EntityId = entityId,
             RoleId = x,
-            SiteId = entity.SiteId
+            SiteId = siteId
         });
+
+        if (!permissions.Any())
+            return [];
 
         return await CreateMany(permissions, cancellationToken);
     }
-
 }

@@ -10,12 +10,10 @@ public class SiteMessageHandler(ISiteService siteService) : IMessageHandler<Site
         {
             case ActionNames.SetupInitializeSite:
                 await siteService.Create(notification.Payload, cancellationToken);
-
                 break;
 
             default:
                 break;
         }
-
     }
 }

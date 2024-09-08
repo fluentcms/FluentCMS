@@ -12,13 +12,10 @@ public interface IPluginService : IAutoRegisterService
 }
 
 
-public class PluginService(IPluginRepository pluginRepository, IPageRepository pageRepository, IPermissionManager permissionManager, IMessagePublisher messagePublisher) : IPluginService
+public class PluginService(IPluginRepository pluginRepository, IPermissionManager permissionManager, IMessagePublisher messagePublisher) : IPluginService
 {
     public async Task<Plugin> Create(Plugin plugin, CancellationToken cancellationToken = default)
     {
-        var page = await pageRepository.GetById(plugin.PageId, cancellationToken) ??
-            throw new AppException(ExceptionCodes.PageNotFound);
-
         //if (!await permissionManager.HasAccess(page, PermissionActionNames.PageContributor, cancellationToken))
         //    throw new AppException(ExceptionCodes.PermissionDenied);
 

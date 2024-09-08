@@ -14,14 +14,13 @@ public interface IPageService : IAutoRegisterService
 
 public class PageService(IPageRepository pageRepository, ISiteRepository siteRepository, IMessagePublisher messagePublisher, IPermissionManager permissionManager) : IPageService
 {
-
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
     {
         var site = (await siteRepository.GetById(page.SiteId, cancellationToken)) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
 
-        if (!await permissionManager.HasAccess(site.Id, SitePermissionAction.SiteContributor, cancellationToken))
-            throw new AppException(ExceptionCodes.PermissionDenied);
+        //if (!await permissionManager.HasAccess(site.Id, SitePermissionAction.SiteContributor, cancellationToken))
+        //    throw new AppException(ExceptionCodes.PermissionDenied);
 
         // If Parent Id is assigned
         if (page.ParentId != null)

@@ -13,4 +13,7 @@ public class PluginTemplate
     public List<Dictionary<string, object?>> Content { get; set; } = default!;
     public Dictionary<string, string> Settings { get; set; } = [];
     public bool Locked { get; set; } = false;
+    public List<string> AdminRoles { get; set; } = [];
+    public List<string> ContributorRoles { get; set; } = [];
+    public List<string> ViewRoles { get; set; } = [];
 }

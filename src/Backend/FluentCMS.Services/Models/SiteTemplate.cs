@@ -12,4 +12,7 @@ public class SiteTemplate
     public string EditLayout { get; set; } = default!;
     public string DetailLayout { get; set; } = default!;
     public List<PageTemplate> Pages { get; set; } = [];
+    public List<string> AdminRoles { get; set; } = [];
+    public List<string> ContributorRoles { get; set; } = [];
+    public List<Role> Roles { get; set; } = [];
 }

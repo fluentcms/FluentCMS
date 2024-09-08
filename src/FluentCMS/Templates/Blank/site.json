@@ -4,6 +4,35 @@
     "Layout": "DefaultLayout",
     "EditLayout": "EditLayout",
     "DetailLayout": "SingleLayout",
+    "AdminRoles": [ "Administrators" ],
+    "ContributorRoles": [ "Contributors" ],
+    "Roles": [
+        {
+            "Name": "Administrators",
+            "Description": "Default administrators role with full access to the site",
+            "Type": 1
+        },
+        {
+            "Name": "Authenticated Users",
+            "Description": "Default authenticated users role",
+            "Type": 2
+        },
+        {
+            "Name": "Guests",
+            "Description": "Default unauthenticated users role (not logged in users)",
+            "Type": 3
+        },
+        {
+            "Name": "All Users",
+            "Description": "Default all users (authenticated or unauthenticated users)",
+            "Type": 4
+        },
+        {
+            "Name": "Contributors",
+            "Description": "Contributor users to manage pages, plugins, etc.",
+            "Type": 0
+        }
+    ],
     "Layouts": [
         {
             "Name": "DefaultLayout"
@@ -26,14 +55,15 @@
             "Title": "Home",
             "Path": "/",
             "EditLayout": "EditLayout",
-            "Plugins": [
-            ]
+            "ViewRoles": [ "All Users" ],
+            "Plugins": []
         },
         {
             "Title": "Admin",
             "Path": "/admin",
             "Layout": "AdminLayout",
             "EditLayout": "AdminLayout",
+            "AdminRoles": [ "Administrators" ],
             "Locked": true,
             "Plugins": [],
             "Children": [
@@ -42,6 +72,7 @@
                     "Path": "/content-types",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
+                    "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -56,6 +87,7 @@
                     "Path": "/users",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
+                    "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -70,6 +102,7 @@
                     "Path": "/files",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
+                    "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -84,6 +117,7 @@
                     "Path": "/api-tokens",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
+                    "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -98,6 +132,7 @@
                     "Path": "/roles",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
+                    "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -112,6 +147,7 @@
                     "Path": "/sites",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
+                    "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -126,6 +162,7 @@
                     "Path": "/pages",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
+                    "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -140,6 +177,7 @@
                     "Path": "/blocks",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
+                    "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -154,6 +192,7 @@
                     "Path": "/layouts",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
+                    "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -168,6 +207,7 @@
                     "Path": "/globalsettings",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
+                    "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -188,6 +228,7 @@
                     "Path": "/login",
                     "Locked": true,
                     "Layout": "AuthLayout",
+                    "ViewRoles": [ "All Users" ],
                     "Plugins": [
                         {
                             "Definition": "Login",
@@ -198,6 +239,7 @@
                 {
                     "Title": "Logout",
                     "Path": "/logout",
+                    "ViewRoles": [ "All Users" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -209,6 +251,7 @@
                 {
                     "Title": "Register",
                     "Path": "/register",
+                    "ViewRoles": [ "All Users" ],
                     "Locked": true,
                     "Layout": "AuthLayout",
                     "Plugins": [
@@ -221,6 +264,7 @@
                 {
                     "Title": "Reset Password",
                     "Path": "/reset-password",
+                    "ViewRoles": [ "All Users" ],
                     "Locked": true,
                     "Layout": "AuthLayout",
                     "Plugins": [
@@ -233,6 +277,7 @@
                 {
                     "Title": "Forgot Password",
                     "Path": "/forgot-password",
+                    "ViewRoles": [ "All Users" ],
                     "Locked": true,
                     "Layout": "AuthLayout",
                     "Plugins": [
@@ -245,6 +290,7 @@
                 {
                     "Title": "Profile",
                     "Path": "/profile",
+                    "ViewRoles": [ "Authenticated Users" ],
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "Locked": true,

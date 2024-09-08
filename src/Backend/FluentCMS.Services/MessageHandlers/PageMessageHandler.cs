@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Services.MessageHandlers;
 
-public class PageMessageHandler(IPageService pageService) : IMessageHandler<SiteTemplate>
+public class PageMessageHandler(IPageService pageService, IPermissionService permissionService) : IMessageHandler<SiteTemplate>
 {
     public async Task Handle(Message<SiteTemplate> notification, CancellationToken cancellationToken)
     {
@@ -29,9 +29,11 @@ public class PageMessageHandler(IPageService pageService) : IMessageHandler<Site
 
     private async Task CreatePageTemplate(Guid? parentPageId, int order, PageTemplate pageTemplate, SiteTemplate siteTemplate, CancellationToken cancellationToken = default)
     {
+        var roles = siteTemplate.Roles;
         var layouts = siteTemplate.Layouts;
         var page = new Page
         {
+            Id = pageTemplate.Id,
             SiteId = siteTemplate.Id,
             ParentId = parentPageId,
             Path = pageTemplate.Path,
@@ -43,7 +45,14 @@ public class PageMessageHandler(IPageService pageService) : IMessageHandler<Site
             Locked = pageTemplate.Locked,
         };
         await pageService.Create(page, cancellationToken);
-        pageTemplate.Id = page.Id;
+
+        var adminRoles = roles.Where(r => pageTemplate.AdminRoles.Contains(r.Name)).Select(r => r.Id).ToList();
+        var contributorRoles = roles.Where(r => pageTemplate.ContributorRoles.Contains(r.Name)).Select(r => r.Id).ToList();
+        var viewRoles = roles.Where(r => pageTemplate.ViewRoles.Contains(r.Name)).Select(r => r.Id).ToList();
+        await permissionService.Set(page.SiteId, page.Id, PagePermissionAction.PageAdmin, adminRoles, cancellationToken);
+        await permissionService.Set(page.SiteId, page.Id, PagePermissionAction.PageContributor, contributorRoles, cancellationToken);
+        await permissionService.Set(page.SiteId, page.Id, PagePermissionAction.PageView, viewRoles, cancellationToken);
+
         await CreatePageTemplates(page.Id, pageTemplate.Children, siteTemplate, cancellationToken);
     }
 }

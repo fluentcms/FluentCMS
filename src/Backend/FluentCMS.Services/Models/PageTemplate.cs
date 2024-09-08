@@ -12,4 +12,7 @@ public class PageTemplate
     public List<PageTemplate> Children { get; set; } = [];
     public List<PluginTemplate> Plugins { get; set; } = [];
     public bool Locked { get; set; } = false;
+    public List<string> AdminRoles { get; set; } = [];
+    public List<string> ContributorRoles { get; set; } = [];
+    public List<string> ViewRoles { get; set; } = [];
 }

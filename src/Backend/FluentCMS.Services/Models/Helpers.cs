@@ -50,6 +50,9 @@ public static class Helpers
         siteTemplate.DetailLayout = jsonSiteTemplate.DetailLayout;
         siteTemplate.Layouts = jsonSiteTemplate.Layouts;
         siteTemplate.Pages = jsonSiteTemplate.Pages;
+        siteTemplate.Roles = jsonSiteTemplate.Roles;
+        siteTemplate.AdminRoles = jsonSiteTemplate.AdminRoles;
+        siteTemplate.ContributorRoles = jsonSiteTemplate.ContributorRoles;
 
         // loading layout data from files
         foreach (var layout in siteTemplate.Layouts)
@@ -83,6 +86,12 @@ public static class Helpers
         {
             layout.Id = Guid.NewGuid();
             layout.SiteId = siteTemplate.Id;
+        }
+
+        foreach (var role in siteTemplate.Roles)
+        {
+            role.Id = Guid.NewGuid();
+            role.SiteId = siteTemplate.Id;
         }
 
         foreach (var page in siteTemplate.Pages)

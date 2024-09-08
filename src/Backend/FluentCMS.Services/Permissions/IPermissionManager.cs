@@ -19,16 +19,16 @@ public enum SitePermissionAction
     SiteAdmin
 }
 
-//public enum PagePermissionAction
-//{
-//    PageView,
-//    PageContributor,
-//    PageAdmin
-//}
+public enum PagePermissionAction
+{
+    PageView,
+    PageContributor,
+    PageAdmin
+}
 
-//public enum PluginPermissionAction
-//{
-//    PluginView,
-//    PluginContributor,
-//    PluginAdmin
-//}
+public enum PluginPermissionAction
+{
+    PluginView,
+    PluginContributor,
+    PluginAdmin
+}
