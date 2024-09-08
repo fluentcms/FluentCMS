@@ -12088,6 +12088,7 @@ namespace FluentCMS.Web.ApiClients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid SiteId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("parentId")]
@@ -12103,10 +12104,12 @@ namespace FluentCMS.Web.ApiClients
         public System.Guid? EditLayoutId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Title { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("path")]
-        public string? Path { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Path { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("order")]
         public int Order { get; set; } = default!;
@@ -12394,6 +12397,7 @@ namespace FluentCMS.Web.ApiClients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("siteId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid SiteId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("parentId")]
@@ -12409,10 +12413,12 @@ namespace FluentCMS.Web.ApiClients
         public System.Guid? EditLayoutId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("title")]
-        public string? Title { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Title { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("path")]
-        public string? Path { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Path { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("order")]
         public int Order { get; set; } = default!;
@@ -13788,4 +13794,5 @@ namespace FluentCMS.Web.ApiClients
 #pragma warning restore 3016
 #pragma warning restore 8603
 #pragma warning restore 8604
+#pragma warning restore 8625
 #pragma warning restore 8625
