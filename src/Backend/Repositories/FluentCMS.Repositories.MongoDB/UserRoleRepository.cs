@@ -1,21 +1,11 @@
 ﻿namespace FluentCMS.Repositories.MongoDB;
 
-public class UserRoleRepository : SiteAssociatedRepository<UserRole>, IUserRoleRepository
+public class UserRoleRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : SiteAssociatedRepository<UserRole>(mongoDbContext, apiExecutionContext), IUserRoleRepository
 {
-    public UserRoleRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : base(mongoDbContext, apiExecutionContext)
-    {
-    }
-
     public async Task<IEnumerable<UserRole>> GetUserRoles(Guid userId, Guid siteId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         return await Collection.Find(x => x.SiteId == siteId && x.UserId == userId).ToListAsync(cancellationToken);
-    }
-
-    public async Task<IEnumerable<UserRole>> GetByUserId(Guid userId, CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        return await Collection.Find(x => x.UserId == userId).ToListAsync(cancellationToken);
     }
 
     public async Task<IEnumerable<UserRole>> GetByRoleId(Guid roleId, CancellationToken cancellationToken = default)
