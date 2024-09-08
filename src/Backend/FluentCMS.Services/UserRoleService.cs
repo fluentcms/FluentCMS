@@ -9,7 +9,7 @@ public interface IUserRoleService : IAutoRegisterService
     Task<bool> Update(Guid userId, Guid siteId, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);
 }
 
-public class UserRoleService(IUserRoleRepository userRoleRepository, IRoleRepository roleRepository, IApiExecutionContext apiExecutionContext) : IUserRoleService, IMessageHandler<Role>, IMessageHandler<User>
+public class UserRoleService(IUserRoleRepository userRoleRepository, IRoleRepository roleRepository, IApiExecutionContext apiExecutionContext) : IUserRoleService
 {
     public async Task<IEnumerable<Guid>> GetUserRoleIds(Guid userId, Guid siteId, CancellationToken cancellationToken = default)
     {
@@ -43,37 +43,5 @@ public class UserRoleService(IUserRoleRepository userRoleRepository, IRoleReposi
         await userRoleRepository.CreateMany(userRoles, cancellationToken);
 
         return true;
-    }
-
-    public async Task Handle(Message<Role> notification, CancellationToken cancellationToken)
-    {
-        switch (notification.Action)
-        {
-            case ActionNames.RoleDeleted:
-                await DeleteRoleForUsers(notification.Payload.Id, cancellationToken);
-                break;
-        }
-    }
-
-    private async Task DeleteRoleForUsers(Guid roleId, CancellationToken cancellationToken)
-    {
-        var userRoles = await userRoleRepository.GetByRoleId(roleId, cancellationToken);
-        await userRoleRepository.DeleteMany(userRoles.Select(x => x.Id));
-    }
-
-    public async Task Handle(Message<User> notification, CancellationToken cancellationToken)
-    {
-        switch (notification.Action)
-        {
-            case ActionNames.UserDeleted:
-                await DeleteByUserId(notification.Payload.Id, cancellationToken);
-                break;
-        }
-    }
-
-    private async Task DeleteByUserId(Guid userId, CancellationToken cancellationToken)
-    {
-        var userRoles = await userRoleRepository.GetByUserId(userId, cancellationToken);
-        await userRoleRepository.DeleteMany(userRoles.Select(x => x.Id), cancellationToken);
     }
 }

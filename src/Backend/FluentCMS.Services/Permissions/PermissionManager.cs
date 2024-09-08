@@ -45,7 +45,7 @@ public class PermissionManager : IPermissionManager
         if (_isSuperAdmin)
             return true;
 
-        _userRoles ??= (await _userRoleRepository.GetByUserId(_apiExecutionContext.UserId, cancellationToken)).Where(ur => ur.SiteId == siteId).ToList();
+        _userRoles ??= (await _userRoleRepository.GetUserRoles(_apiExecutionContext.UserId, siteId, cancellationToken)).Where(ur => ur.SiteId == siteId).ToList();
         _roles ??= (await _roleRepository.GetAllForSite(siteId, cancellationToken)).ToList();
 
         var adminRoleIds = _roles.Where(r => r.Type == RoleTypes.Administrators).Select(r => r.Id);
