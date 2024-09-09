@@ -45,6 +45,7 @@ export function TreeSelector(el, { cssPrefix = 'tree', options = [], onChange, v
             el.dataset.value = value
             el.querySelector(`[data-value="${value}"]`).classList.add(cssPrefix + '-option-active')
         }
+        closeMenu()
     }
     
     function toggleCollapsible(optionEl) {
