@@ -1,3 +1,5 @@
+namespace FluentCMS.Web.UI.Components;
+
 public class TreeSelectorItemType
 {
     public string Text { get; set; } = string.Empty;

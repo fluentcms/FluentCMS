@@ -11,32 +11,32 @@ public partial class ParentPageSelector
     [Parameter]
     public List<PageDetailResponse> Pages { get; set; } = [];
 
-    private List<TreeSelectorItemType> PageOptions = []; 
+    private List<TreeSelectorItemType> PageOptions { get; set; } = [];
+
     private string ParentPageId { get; set; } = Guid.Empty.ToString();
 
-    async Task GetPageOptions()
+    private async Task GetPageOptions()
     {
-        PageOptions = new List<TreeSelectorItemType>
-        {
-            new TreeSelectorItemType
-            {
+        PageOptions =
+        [
+            new() {
                 // Icon = "📁",
                 Key = Guid.Empty.ToString(),
                 Text = "(none)",
-                Items = new List<TreeSelectorItemType>()
+                Items = []
             }
-        };
+        ];
 
         var pageDictionary = new Dictionary<Guid, TreeSelectorItemType>();
-        
+
         foreach (var page in Pages)
         {
             var pageItem = new TreeSelectorItemType
             {
                 // Icon = "📄",
                 Key = page.Id.ToString(),
-                Text = page.Title,
-                Items = new List<TreeSelectorItemType>()
+                Text = page.Title ?? string.Empty,
+                Items = []
             };
 
             pageDictionary[page.Id] = pageItem;
@@ -44,24 +44,26 @@ public partial class ParentPageSelector
 
         foreach (var page in Pages)
         {
-            Guid? parentId = page.ParentId == Guid.Empty ? (Guid?)null : page.ParentId;
+            Guid? parentId = page.ParentId == Guid.Empty ? null : page.ParentId;
 
             if (!parentId.HasValue)
             {
                 PageOptions.Add(pageDictionary[page.Id]);
             }
-            else if (pageDictionary.ContainsKey(parentId.Value))
+            else if (pageDictionary.TryGetValue(parentId.Value, out TreeSelectorItemType? value))
             {
-                pageDictionary[parentId.Value].Items.Add(pageDictionary[page.Id]);
+                value.Items.Add(pageDictionary[page.Id]);
             }
         }
+        await Task.CompletedTask;
     }
 
-    async Task OnChange()
+    private async Task OnChange()
     {
-        if(Guid.TryParse(ParentPageId, out var parentId)) {
+        if (Guid.TryParse(ParentPageId, out var parentId))
+        {
             Value = parentId;
-            ValueChanged.InvokeAsync(Value);
+            await ValueChanged.InvokeAsync(Value);
         }
     }
 
