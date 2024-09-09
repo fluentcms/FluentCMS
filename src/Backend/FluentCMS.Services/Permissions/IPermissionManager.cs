@@ -2,15 +2,33 @@
 
 public interface IPermissionManager
 {
-    Task<bool> HasSiteAccess(Site site, string action, CancellationToken cancellationToken = default);
+    Task<bool> HasAccess(GlobalPermissionAction action, CancellationToken cancellationToken = default);
+    Task<bool> HasAccess(Guid siteId, SitePermissionAction action, CancellationToken cancellationToken = default);
+    //Task<bool> HasAccess(Guid siteId, Guid PageId, PagePermissionAction action, CancellationToken cancellationToken = default);
+    //Task<bool> HasAccess(Guid siteId, Guid PageId, Guid pluginId, PluginPermissionAction action, CancellationToken cancellationToken = default);
+}
 
-    Task<bool> HasPageAccess(Page page, string action, CancellationToken cancellationToken = default);
+public enum GlobalPermissionAction
+{
+    SuperAdmin
+}
 
-    Task<bool> HasPluginAccess(Plugin plugin, string action, CancellationToken cancellationToken = default);
+public enum SitePermissionAction
+{
+    SiteContributor,
+    SiteAdmin
+}
 
-    Task<IEnumerable<Site>> HasSiteAccess(IEnumerable<Site> sites, string action, CancellationToken cancellationToken = default);
+public enum PagePermissionAction
+{
+    PageView,
+    PageContributor,
+    PageAdmin
+}
 
-    Task<IEnumerable<Page>> HasPageAccess(IEnumerable<Page> pages, string action, CancellationToken cancellationToken = default);
-
-    Task<IEnumerable<Plugin>> HasPluginAccess(IEnumerable<Plugin> plugins, string action, CancellationToken cancellationToken = default);
+public enum PluginPermissionAction
+{
+    PluginView,
+    PluginContributor,
+    PluginAdmin
 }

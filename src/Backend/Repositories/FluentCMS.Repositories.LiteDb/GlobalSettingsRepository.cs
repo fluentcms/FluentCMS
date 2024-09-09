@@ -26,24 +26,21 @@ public class GlobalSettingsRepository(ILiteDBContext liteDbContext, IApiExecutio
         return settings;
     }
 
-    public async Task<bool> Reset(CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var collections = await liteDbContext.Database.GetCollectionNamesAsync();
-
-        foreach (var collectionName in collections)
-            await liteDbContext.Database.DropCollectionAsync(collectionName);
-
-        return true;
-    }
-
     private async Task<GlobalSettings?> Create(GlobalSettings settings, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         SetAuditableFieldsForCreate(settings);
         await _collection.InsertAsync(settings);
         return settings;
+    }
+
+    public async Task<bool> Initialized(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var existing = await Get(cancellationToken);
+
+        return existing?.Initialized ?? false;
     }
 
     private void SetAuditableFieldsForCreate(GlobalSettings settings)

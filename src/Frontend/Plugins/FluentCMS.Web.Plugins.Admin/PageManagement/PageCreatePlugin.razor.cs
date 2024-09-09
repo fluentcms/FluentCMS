@@ -89,6 +89,12 @@ public partial class PageCreatePlugin
     private async Task OnSubmit()
     {
         Model.SiteId = ViewState.Site.Id;
+        if (Model.ParentId == Guid.Empty)
+            Model.ParentId = default!;
+        
+        if (Model.LayoutId == Guid.Empty)
+            Model.LayoutId = default!;
+        
         var response = await ApiClient.Page.CreateAsync(Model);
 
         if (OpenNewPage)

@@ -6,16 +6,14 @@ public partial class SiteCreatePlugin
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
     private SiteCreateRequest? Model { get; set; }
-
-    private string Urls { get; set; } = string.Empty;
-    private List<LayoutDetailResponse>? Layouts { get; set; }
+    private List<string>? Templates { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        if (Layouts is null)
+        if (Templates is null)
         {
-            var layoutsResponse = await ApiClient.Layout.GetAllAsync();
-            Layouts = layoutsResponse?.Data?.ToList() ?? [];
+            var templatesResponse = await ApiClient.Setup.GetTemplatesAsync();
+            Templates = templatesResponse?.Data?.ToList() ?? [];
         }
 
         Model ??= new();
@@ -23,7 +21,6 @@ public partial class SiteCreatePlugin
 
     private async Task OnSubmit()
     {
-        Model!.Urls = Urls.Split(",");
         await ApiClient.Site.CreateAsync(Model);
         NavigateBack();
     }

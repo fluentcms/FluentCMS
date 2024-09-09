@@ -1,0 +1,364 @@
+{
+    "GlobalSettings": {
+        "FileUpload": {
+            "MaxSize": 5242880,
+            "AllowedExtensions": "jpg,jpeg,png,gif,doc,docx,pdf,txt",
+            "MaxCount": 5
+        }
+    },
+    "PluginDefinitions": [
+        {
+            "Name": "Login",
+            "Category": "Auth",
+            "Description": "Login Plugin",
+            "Locked": true,
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Types": [
+                {
+                    "Name": "Login",
+                    "Type": "LoginViewPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
+            "Name": "Logout",
+            "Category": "Auth",
+            "Locked": true,
+            "Description": "Logout Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Types": [
+                {
+                    "Name": "Logout",
+                    "Type": "LogoutViewPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
+            "Name": "Register",
+            "Category": "Auth",
+            "Locked": true,
+            "Description": "Register Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Types": [
+                {
+                    "Name": "Regsiter",
+                    "Type": "RegisterViewPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
+            "Name": "Forgot Password",
+            "Category": "Auth",
+            "Locked": true,
+            "Description": "Forgot Password Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Types": [
+                {
+                    "Name": "Forgot Password",
+                    "Type": "ForgotPasswordViewPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
+            "Name": "Reset Password",
+            "Category": "Auth",
+            "Locked": true,
+            "Description": "Reset Password Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Types": [
+                {
+                    "Name": "Reset Password",
+                    "Type": "ResetPasswordViewPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
+            "Name": "Api Token Management",
+            "Category": "Admin",
+            "Description": "Api Token Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
+            "Types": [
+                {
+                    "Name": "Api Token List",
+                    "Type": "ApiTokenListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create Api Token",
+                    "Type": "ApiTokenCreatePlugin"
+                },
+                {
+                    "Name": "Update Api Token",
+                    "Type": "ApiTokenUpdatePlugin"
+                }
+            ]
+        },
+        {
+            "Name": "User Management",
+            "Category": "Admin",
+            "Description": "Users Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
+            "Types": [
+                {
+                    "Name": "Users List",
+                    "Type": "UserListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create User",
+                    "Type": "UserCreatePlugin"
+                },
+                {
+                    "Name": "Update User",
+                    "Type": "UserUpdatePlugin"
+                }
+            ]
+        },
+        {
+            "Name": "Block Management",
+            "Category": "Admin",
+            "Description": "Block Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
+            "Types": [
+                {
+                    "Name": "Blocks List",
+                    "Type": "BlockListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create Block",
+                    "Type": "BlockCreatePlugin"
+                },
+                {
+                    "Name": "Update Block",
+                    "Type": "BlockUpdatePlugin"
+                }
+            ]
+        },
+        {
+            "Name": "Site Management",
+            "Category": "Admin",
+            "Description": "Site Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
+            "Types": [
+                {
+                    "Name": "Sites List",
+                    "Type": "SiteListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create Site",
+                    "Type": "SiteCreatePlugin"
+                },
+                {
+                    "Name": "Update Site",
+                    "Type": "SiteUpdatePlugin"
+                }
+            ]
+        },
+        {
+            "Name": "Page Management",
+            "Category": "Admin",
+            "Description": "Page Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
+            "Types": [
+                {
+                    "Name": "Pages List",
+                    "Type": "PageListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create Page",
+                    "Type": "PageCreatePlugin"
+                },
+                {
+                    "Name": "Update Page",
+                    "Type": "PageUpdatePlugin"
+                }
+            ]
+        },
+        {
+            "Name": "File Management",
+            "Category": "Admin",
+            "Description": "File Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
+            "Types": [
+                {
+                    "Name": "Files List",
+                    "Type": "FileListPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
+            "Name": "ContentType Management",
+            "Category": "Admin",
+            "Description": "ContentTypes Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
+            "Types": [
+                {
+                    "Name": "ContentTypes List",
+                    "Type": "ContentTypeListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create ContentType",
+                    "Type": "ContentTypeCreatePlugin"
+                },
+                {
+                    "Name": "Update ContentType",
+                    "Type": "ContentTypeUpdatePlugin"
+                },
+                {
+                    "Name": "View ContentType",
+                    "Type": "ContentTypeDetailPlugin"
+                },
+                {
+                    "Name": "Contents List",
+                    "Type": "ContentListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create Content",
+                    "Type": "ContentCreatePlugin"
+                },
+                {
+                    "Name": "Update Content",
+                    "Type": "ContentUpdatePlugin"
+                }
+            ]
+        },
+        {
+            "Name": "Role Management",
+            "Category": "Admin",
+            "Description": "Role Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
+            "Types": [
+                {
+                    "Name": "Roles List",
+                    "Type": "RoleListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create Role",
+                    "Type": "RoleCreatePlugin"
+                },
+                {
+                    "Name": "Update Role",
+                    "Type": "RoleUpdatePlugin"
+                }
+            ]
+        },
+        {
+            "Name": "Profile",
+            "Category": "Auth",
+            "Description": "Profile Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
+            "Types": [
+                {
+                    "Name": "Update",
+                    "Type": "ProfileUpdatePlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
+            "Name": "Layout Management",
+            "Category": "Admin",
+            "Description": "Layout Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
+            "Types": [
+                {
+                    "Name": "Layouts List",
+                    "Type": "LayoutListPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Create Layout",
+                    "Type": "LayoutCreatePlugin"
+                },
+                {
+                    "Name": "Update Layout",
+                    "Type": "LayoutUpdatePlugin"
+                }
+            ]
+        },
+        {
+            "Name": "TextHTML Plugin",
+            "Description": "TextHTML Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Contents.TextHTML.dll",
+            "Types": [
+                {
+                    "Name": "View",
+                    "Type": "TextHTMLViewPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Edit",
+                    "Type": "TextHTMLEditPlugin"
+                }
+            ]
+        },
+        {
+            "Name": "RichText Plugin",
+            "Description": "RichText Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Contents.RichText.dll",
+            "Types": [
+                {
+                    "Name": "View",
+                    "Type": "RichTextViewPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Edit",
+                    "Type": "RichTextEditPlugin"
+                }
+            ]
+        },
+        {
+            "Name": "Global Settings Management",
+            "Category": "Admin",
+            "Description": "Global Settings Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
+            "Types": [
+                {
+                    "Name": "Globals Setting",
+                    "Type": "GlobalSettingsPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
+            "Name": "Content List",
+            "Description": "Content List Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Contents.ContentViewer.dll",
+            "Types": [
+                {
+                    "Name": "View",
+                    "Type": "ContentListViewPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Settings",
+                    "Type": "ContentListSettingsPlugin"
+                }
+            ]
+        }
+    ]
+}

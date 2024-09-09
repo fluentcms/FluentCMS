@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Services;
+﻿using FluentCMS.Providers.MessageBusProviders;
+
+namespace FluentCMS.Services;
 
 public interface IContentTypeService : IAutoRegisterService
 {
@@ -12,7 +14,7 @@ public interface IContentTypeService : IAutoRegisterService
     Task<ContentType> GetById(Guid id, CancellationToken cancellationToken);
 }
 
-public class ContentTypeService(IContentTypeRepository contentTypeRepository) : IContentTypeService
+public class ContentTypeService(IContentTypeRepository contentTypeRepository, IMessagePublisher messagePublisher) : IContentTypeService
 {
     public Task<IEnumerable<ContentType>> GetAll(CancellationToken cancellationToken = default)
     {
@@ -29,17 +31,22 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
     {
         await CheckDuplicateSlug(contentType);
 
-        return await contentTypeRepository.Create(contentType, cancellationToken) ??
+        var created = await contentTypeRepository.Create(contentType, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeUnableToCreate);
+
+        await messagePublisher.Publish(new Message<ContentType>(ActionNames.ContentTypeCreated, created), cancellationToken);
+
+        return created;
     }
 
     public async Task<ContentType> Delete(Guid contentTypeId, CancellationToken cancellationToken = default)
     {
-        var contentType = await contentTypeRepository.GetById(contentTypeId, cancellationToken) ??
-            throw new AppException(ExceptionCodes.ContentTypeNotFound);
-
-        return await contentTypeRepository.Delete(contentTypeId, cancellationToken) ??
+        var deleted = await contentTypeRepository.Delete(contentTypeId, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeUnableToDelete);
+
+        await messagePublisher.Publish(new Message<ContentType>(ActionNames.ContentTypeDeleted, deleted), cancellationToken);
+
+        return deleted;
     }
 
     public async Task<ContentType> Update(ContentType contentType, CancellationToken cancellationToken = default)
@@ -53,8 +60,12 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
         original.Title = contentType.Title;
         original.Description = contentType.Description;
 
-        return await contentTypeRepository.Update(original, cancellationToken) ??
+        var updated = await contentTypeRepository.Update(original, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);
+
+        await messagePublisher.Publish(new Message<ContentType>(ActionNames.ContentTypeUpdated, updated), cancellationToken);
+
+        return updated;
     }
 
     private async Task CheckDuplicateSlug(ContentType contentType)
@@ -84,8 +95,12 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
             originalField.Label = field.Label;
         }
 
-        return await contentTypeRepository.Update(contentType, cancellationToken) ??
+        var updated = await contentTypeRepository.Update(contentType, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);
+
+        await messagePublisher.Publish(new Message<ContentType>(ActionNames.ContentTypeUpdated, updated), cancellationToken);
+
+        return updated;
     }
 
     public async Task<ContentType> DeleteField(Guid contentTypeId, string name, CancellationToken cancellationToken = default)
@@ -102,8 +117,12 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
         contentType.Fields.Remove(original);
 
         //apply changes
-        return await contentTypeRepository.Update(contentType, cancellationToken) ??
+        var updated = await contentTypeRepository.Update(contentType, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeUnableToUpdate);
+
+        await messagePublisher.Publish(new Message<ContentType>(ActionNames.ContentTypeUpdated, updated), cancellationToken);
+
+        return updated;
     }
 
     public async Task<ContentType> GetById(Guid id, CancellationToken cancellationToken)
@@ -111,4 +130,5 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository) : 
         return await contentTypeRepository.GetById(id, cancellationToken) ??
                throw new AppException(ExceptionCodes.ContentTypeNotFound);
     }
+
 }

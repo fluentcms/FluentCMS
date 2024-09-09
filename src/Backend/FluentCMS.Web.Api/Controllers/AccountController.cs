@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
-
 namespace FluentCMS.Web.Api.Controllers;
 
 public class AccountController(IMapper mapper, IUserService userService, IApiExecutionContext apiExecutionContext) : BaseGlobalController
@@ -23,7 +21,6 @@ public class AccountController(IMapper mapper, IUserService userService, IApiExe
 
     [HttpPost]
     [Policy(AREA, AUTHENTICATE)]
-    [AllowAnonymous]
     public async Task<IApiResult<UserLoginResponse>> Authenticate([FromBody] UserLoginRequest request, CancellationToken cancellationToken = default)
     {
         var user = await userService.Authenticate(request.Username, request.Password, cancellationToken);

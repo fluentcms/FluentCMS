@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Services;
+﻿using FluentCMS.Providers.MessageBusProviders;
+
+namespace FluentCMS.Services;
 
 public interface IPluginDefinitionService : IAutoRegisterService
 {
@@ -10,18 +12,26 @@ public interface IPluginDefinitionService : IAutoRegisterService
 }
 
 
-public class PluginDefinitionService(IPluginDefinitionRepository pluginDefinitionRepository) : IPluginDefinitionService
+public class PluginDefinitionService(IPluginDefinitionRepository pluginDefinitionRepository, IMessagePublisher messagePublisher) : IPluginDefinitionService
 {
     public async Task<PluginDefinition> Create(PluginDefinition pluginDefinition, CancellationToken cancellationToken = default)
     {
-        return await pluginDefinitionRepository.Create(pluginDefinition, cancellationToken) ??
+        var created = await pluginDefinitionRepository.Create(pluginDefinition, cancellationToken) ??
             throw new AppException(ExceptionCodes.PluginDefinitionUnableToCreate);
+
+        await messagePublisher.Publish(new Message<PluginDefinition>(ActionNames.PluginDefinitionCreated, created), cancellationToken);
+
+        return created;
     }
 
     public async Task<PluginDefinition> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        return await pluginDefinitionRepository.Delete(id, cancellationToken) ??
+        var deleted = await pluginDefinitionRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PluginDefinitionUnableToDelete);
+
+        await messagePublisher.Publish(new Message<PluginDefinition>(ActionNames.PluginDefinitionDeleted, deleted), cancellationToken);
+
+        return deleted;
     }
 
     public async Task<PluginDefinition> GetById(Guid id, CancellationToken cancellationToken = default)
@@ -37,7 +47,11 @@ public class PluginDefinitionService(IPluginDefinitionRepository pluginDefinitio
 
     public async Task<PluginDefinition> Update(PluginDefinition pluginDefinition, CancellationToken cancellationToken = default)
     {
-        return await pluginDefinitionRepository.Update(pluginDefinition, cancellationToken) ??
+        var updated = await pluginDefinitionRepository.Update(pluginDefinition, cancellationToken) ??
             throw new AppException(ExceptionCodes.PluginDefinitionUnableToUpdate);
+
+        await messagePublisher.Publish(new Message<PluginDefinition>(ActionNames.PluginDefinitionUpdated, updated), cancellationToken);
+
+        return updated;
     }
 }
