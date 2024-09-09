@@ -1,5 +1,6 @@
 ﻿global using FluentCMS.Entities;
 global using FluentCMS.Repositories.Abstractions;
+global using FluentCMS.Services.Models;
 global using FluentCMS.Services.Permissions;
 global using System;
 global using System.Collections.Generic;

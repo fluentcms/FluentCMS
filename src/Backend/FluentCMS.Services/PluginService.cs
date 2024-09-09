@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Services;
+﻿using FluentCMS.Providers.MessageBusProviders;
+
+namespace FluentCMS.Services;
 
 public interface IPluginService : IAutoRegisterService
 {
@@ -10,18 +12,19 @@ public interface IPluginService : IAutoRegisterService
 }
 
 
-public class PluginService(IPluginRepository pluginRepository, IPageRepository pageRepository, IPermissionManager permissionManager) : IPluginService
+public class PluginService(IPluginRepository pluginRepository, IPermissionManager permissionManager, IMessagePublisher messagePublisher) : IPluginService
 {
     public async Task<Plugin> Create(Plugin plugin, CancellationToken cancellationToken = default)
     {
-        var page = await pageRepository.GetById(plugin.PageId, cancellationToken) ??
-            throw new AppException(ExceptionCodes.PageNotFound);
+        //if (!await permissionManager.HasAccess(page, PermissionActionNames.PageContributor, cancellationToken))
+        //    throw new AppException(ExceptionCodes.PermissionDenied);
 
-        if (!await permissionManager.HasPageAccess(page, PermissionActionNames.PageContributor, cancellationToken))
-            throw new AppException(ExceptionCodes.PermissionDenied);
-
-        return await pluginRepository.Create(plugin, cancellationToken) ??
+        var created = await pluginRepository.Create(plugin, cancellationToken) ??
             throw new AppException(ExceptionCodes.PluginUnableToCreate);
+
+        await messagePublisher.Publish(new Message<Plugin>(ActionNames.PluginCreated, created), cancellationToken);
+
+        return created;
     }
 
     public async Task<Plugin> Delete(Guid id, CancellationToken cancellationToken = default)
@@ -29,11 +32,13 @@ public class PluginService(IPluginRepository pluginRepository, IPageRepository p
         var plugin = await pluginRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PluginNotFound);
 
-        if (!await permissionManager.HasPluginAccess(plugin, PermissionActionNames.PluginContributor, cancellationToken))
-            throw new AppException(ExceptionCodes.PermissionDenied);
+        //if (!await permissionManager.HasAccess(plugin, PermissionActionNames.PluginContributor, cancellationToken))
+        //    throw new AppException(ExceptionCodes.PermissionDenied);
 
-        _ = await pluginRepository.Delete(id, cancellationToken) ??
+        var deleted = await pluginRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PluginUnableToDelete);
+
+        await messagePublisher.Publish(new Message<Plugin>(ActionNames.PluginDeleted, deleted), cancellationToken);
 
         return plugin;
     }
@@ -43,8 +48,8 @@ public class PluginService(IPluginRepository pluginRepository, IPageRepository p
         var plugin = await pluginRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PluginNotFound);
 
-        if (!await permissionManager.HasPluginAccess(plugin, PermissionActionNames.PluginView, cancellationToken))
-            throw new AppException(ExceptionCodes.PermissionDenied);
+        //if (!await permissionManager.HasAccess(plugin, PermissionActionNames.PluginView, cancellationToken))
+        //    throw new AppException(ExceptionCodes.PermissionDenied);
 
         return plugin;
     }
@@ -53,17 +58,21 @@ public class PluginService(IPluginRepository pluginRepository, IPageRepository p
     {
         var pagePlugins = await pluginRepository.GetByPageId(pageId, cancellationToken);
 
-        var plugins = await permissionManager.HasPluginAccess(pagePlugins, PermissionActionNames.PluginView, cancellationToken);
+        //var plugins = await permissionManager.HasAccess(pagePlugins, PermissionActionNames.PluginView, cancellationToken);
 
-        return plugins;
+        return pagePlugins;
     }
 
     public async Task<Plugin> Update(Plugin plugin, CancellationToken cancellationToken = default)
     {
-        if (!await permissionManager.HasPluginAccess(plugin, PermissionActionNames.PluginContributor, cancellationToken))
-            throw new AppException(ExceptionCodes.PermissionDenied);
+        //if (!await permissionManager.HasAccess(plugin, PermissionActionNames.PluginContributor, cancellationToken))
+        //    throw new AppException(ExceptionCodes.PermissionDenied);
 
-        return await pluginRepository.Update(plugin, cancellationToken) ??
+        var updated = await pluginRepository.Update(plugin, cancellationToken) ??
             throw new AppException(ExceptionCodes.PluginUnableToUpdate);
+
+        await messagePublisher.Publish(new Message<Plugin>(ActionNames.PluginUpdated, updated), cancellationToken);
+
+        return updated;
     }
 }

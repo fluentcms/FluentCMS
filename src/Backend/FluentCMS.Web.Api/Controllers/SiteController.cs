@@ -1,6 +1,8 @@
-﻿namespace FluentCMS.Web.Api.Controllers;
+﻿using FluentCMS.Services.Models;
 
-public class SiteController(ISiteService siteService, IPageService pageService, IMapper mapper) : BaseGlobalController
+namespace FluentCMS.Web.Api.Controllers;
+
+public class SiteController(ISiteService siteService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "Site Management";
     public const string READ = "Read";
@@ -39,22 +41,10 @@ public class SiteController(ISiteService siteService, IPageService pageService, 
     [Policy(AREA, CREATE)]
     public async Task<IApiResult<SiteDetailResponse>> Create([FromBody] SiteCreateRequest request, CancellationToken cancellationToken = default)
     {
-        // creating new site
-        var site = mapper.Map<Site>(request);
-        var newSite = await siteService.Create(site, cancellationToken);
-
-        // creating default page for the site
-        var page = new Page
-        {
-            Title = "Default Page",
-            Path = "/",
-            Order = 0,
-            SiteId = newSite.Id
-        };
-        await pageService.Create(page, cancellationToken);
-
+        var siteTemplate = mapper.Map<SiteTemplate>(request);
+        await siteTemplate.Load(cancellationToken);
+        var newSite = await siteService.Create(siteTemplate, cancellationToken);
         var response = mapper.Map<SiteDetailResponse>(newSite);
-
         return Ok(response);
     }
 

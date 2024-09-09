@@ -10,16 +10,7 @@ public class RoleController(IMapper mapper, IRoleService roleService) : BaseGlob
 
     [HttpGet]
     [Policy(AREA, READ)]
-    public async Task<IApiPagingResult<RoleDetailResponse>> GetAll(CancellationToken cancellationToken = default)
-    {
-        var roles = await roleService.GetAll(cancellationToken);
-        var roleResponses = mapper.Map<IEnumerable<RoleDetailResponse>>(roles);
-        return OkPaged(roleResponses);
-    }
-
-    [HttpGet]
-    [Policy(AREA, READ)]
-    public async Task<IApiPagingResult<RoleDetailResponse>> GetAllForSite([FromQuery] Guid siteId, CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<RoleDetailResponse>> GetAll([FromQuery] Guid siteId, CancellationToken cancellationToken = default)
     {
         var roles = await roleService.GetAllForSite(siteId, cancellationToken);
         var roleResponses = mapper.Map<IEnumerable<RoleDetailResponse>>(roles);

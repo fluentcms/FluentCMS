@@ -66,9 +66,10 @@ public partial class PageUpdatePlugin
     private async Task OnSubmit()
     {
         if (Model.ParentId == Guid.Empty)
-        {
             Model.ParentId = default!;
-        }
+        
+        if (Model.LayoutId == Guid.Empty)
+            Model.LayoutId = default!;
 
         await ApiClient.Page.UpdateAsync(Model);
         NavigateBack();

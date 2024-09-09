@@ -17,18 +17,26 @@ public partial class SetupViewPlugin
 
     [CascadingParameter]
     protected HttpContext HttpContext { get; set; } = default!;
+    private List<string>? Templates { get; set; }
 
     protected override async Task OnParametersSetAsync()
     {
         if (await SetupManager.IsInitialized())
             throw new InvalidOperationException("Setup is already complete.");
 
+        if (Templates is null)
+        {
+            var templatesResponse = await ApiClient.Setup.GetTemplatesAsync();
+            Templates = templatesResponse?.Data?.ToList() ?? [];
+        }
+
         Model ??= new SetupRequest
         {
             Username = "admin",
             Email = "admin@example.com",
             Password = "Passw0rd!",
-            AdminDomain = new Uri(NavigationManager.BaseUri).Authority
+            Url = new Uri(NavigationManager.BaseUri).Authority,
+            Template = "Default"
         };
     }
 
