@@ -10,9 +10,9 @@ public class LayoutController(IMapper mapper, ILayoutService layoutService) : Ba
 
     [HttpGet]
     [Policy(AREA, READ)]
-    public async Task<IApiPagingResult<LayoutDetailResponse>> GetAll(CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<LayoutDetailResponse>> GetAll([FromQuery] Guid siteId, CancellationToken cancellationToken = default)
     {
-        var layouts = await layoutService.GetAll(cancellationToken);
+        var layouts = await layoutService.GetAllForSite(siteId, cancellationToken);
         var LayoutsResponse = mapper.Map<IEnumerable<LayoutDetailResponse>>(layouts);
         return OkPaged(LayoutsResponse);
     }
