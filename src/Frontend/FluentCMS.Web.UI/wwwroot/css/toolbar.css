@@ -32,10 +32,11 @@
 
 .f-toolbar-button {
     height: 34px;
+    font-size: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 3px;
+    border-radius: 8px;
     cursor: pointer;
     padding-left: 1.5rem;
     padding-right: 1.5rem;
@@ -44,13 +45,13 @@
 }
 
 .f-toolbar-button-outline {
-    border: 1px solid #5C90BD;
-    color: #5C90BD;
+    border: 1px solid #154EF2;
+    color: #154EF2;
     background-color: white;
 }
 .f-toolbar-button-primary {
     color: white;
-    background-color: #5C90BD;
+    background-color: #154EF2;
 }
 .f-toolbar-button-secondary {
     color: white;
@@ -62,7 +63,7 @@
 }
 
 .f-toolbar-button-outline:hover {
-    background-color: #5C90BD;
+    background-color: #154EF2;
     color: white;
 }
 
@@ -85,11 +86,11 @@
 }
 
 .f-toolbar-responsive-button:hover {
-    color: #5C90BD;
+    color: #154EF2;
 }
 
 .f-toolbar-responsive-button-active {
-    color: #5C90BD;
+    color: #154EF2;
 }
 
 @media (max-width: 640px) {
