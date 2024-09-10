@@ -27,7 +27,7 @@ public class PluginMessageHandler(IPluginService pluginService, IPluginContentSe
 
     private async Task CreatePlugins(PageTemplate pageTemplate, CancellationToken cancellationToken)
     {
-        var order = 0;
+        var order = 1;
         foreach (var pluginTemplate in pageTemplate.Plugins)
         {
             var plugin = new Plugin
