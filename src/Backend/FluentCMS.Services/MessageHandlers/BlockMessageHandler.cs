@@ -1,5 +1,4 @@
 using FluentCMS.Providers.MessageBusProviders;
-using System.IO;
 
 namespace FluentCMS.Services.MessageHandlers;
 
