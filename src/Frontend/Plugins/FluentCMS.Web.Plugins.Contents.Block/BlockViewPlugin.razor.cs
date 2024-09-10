@@ -3,7 +3,6 @@ public partial class BlockViewPlugin
 {
     public const string CONTENT_TYPE_NAME = nameof(BlockContent);
 
-    private string Rendered { get; set; } = string.Empty;
     private BlockContent? Item { get; set; }
 
     protected override async Task OnInitializedAsync()
