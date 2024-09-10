@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Providers.ApiTokenProviders;
+using FluentCMS.Providers.MessageBusProviders;
 
 namespace FluentCMS.Services;
 
@@ -13,7 +14,7 @@ public interface IApiTokenService : IAutoRegisterService
     Task<ApiToken> Validate(string apiKey, string apiSecret, CancellationToken cancellationToken = default);
 }
 
-public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenProvider apiTokenProvider) : IApiTokenService
+public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenProvider apiTokenProvider, IMessagePublisher messagePublisher) : IApiTokenService
 {
     public async Task<IEnumerable<ApiToken>> GetAll(CancellationToken cancellationToken = default)
     {
@@ -37,6 +38,8 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
         apiToken = await apiTokenRepository.Create(apiToken, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenUnableToCreate);
 
+        await messagePublisher.Publish(new Message<ApiToken>(ActionNames.ApiTokenCreated, apiToken), cancellationToken);
+
         return apiToken;
     }
 
@@ -53,14 +56,22 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
         apiToken.Secret = existingApiToken.Secret;
         apiToken.Key = existingApiToken.Key;
 
-        return await apiTokenRepository.Update(apiToken, cancellationToken) ??
+        var updated = await apiTokenRepository.Update(apiToken, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenUnableToUpdate);
+
+        await messagePublisher.Publish(new Message<ApiToken>(ActionNames.ApiTokenUpdated, updated), cancellationToken);
+
+        return updated;
     }
 
     public async Task<ApiToken> Delete(Guid tokenId, CancellationToken cancellationToken = default)
     {
-        return await apiTokenRepository.Delete(tokenId, cancellationToken) ??
+        var deleted = await apiTokenRepository.Delete(tokenId, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenUnableToDelete);
+
+        await messagePublisher.Publish(new Message<ApiToken>(ActionNames.ApiTokenDeleted, deleted), cancellationToken);
+
+        return deleted;
     }
 
     public async Task<ApiToken> Validate(string apiKey, string apiSecret, CancellationToken cancellationToken = default)
@@ -90,7 +101,11 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
 
         apiToken.Secret = apiTokenProvider.GenerateSecret(apiToken.Key);
 
-        return await apiTokenRepository.Update(apiToken, cancellationToken) ??
+        var updated = await apiTokenRepository.Update(apiToken, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenUnableToUpdate);
+
+        await messagePublisher.Publish(new Message<ApiToken>(ActionNames.ApiTokenUpdated, updated), cancellationToken);
+
+        return updated;
     }
 }

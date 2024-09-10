@@ -14,7 +14,7 @@
                     @foreach (var field in GetVisibleFields())
                     {
                         <DataTableItem Label="@field.Name">
-                            <DynamicComponent Type=@GetDataTableComponent(field.Type,field.DataTableViewComponent) Parameters=@GetParameters(context, field) />
+                            <DynamicComponent Type=@GetDataTableComponent(field.Type,field.DataTableViewComponent,field.Name) Parameters=@GetParameters(context,field) />
                         </DataTableItem>
                     }
                     <ActionButtons>

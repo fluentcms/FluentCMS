@@ -185,6 +185,7 @@ public class UserService(
         return result;
     }
 
+    // TODO: remove this unused method
     public Task<bool> Any(CancellationToken cancellationToken = default)
     {
         return Task.Run(() => userManager.Users.Any(), cancellationToken);
@@ -207,4 +208,5 @@ public class UserService(
         }
         return target;
     }
+
 }

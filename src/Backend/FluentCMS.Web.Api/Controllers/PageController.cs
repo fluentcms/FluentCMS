@@ -1,7 +1,4 @@
-﻿using FluentCMS.Services.Permissions;
-using FluentCMS.Services.Setup;
-using FluentCMS.Web.Api.Filters;
-using Microsoft.AspNetCore.Authorization;
+﻿using FluentCMS.Web.Api.Filters;
 using System.IO;
 
 namespace FluentCMS.Web.Api.Controllers;
@@ -14,7 +11,7 @@ public class PageController(
     ILayoutService layoutService,
     IRoleService roleService,
     IUserRoleService userRoleService,
-    ISetupManager setupManager,
+    ISetupService setupService,
     IApiExecutionContext apiExecutionContext,
     IPermissionService permissionService,
     IMapper mapper) : BaseGlobalController
@@ -26,7 +23,7 @@ public class PageController(
     public const string CREATE = "Create";
     public const string DELETE = $"Delete";
 
-    public const string ADMIN_TEMPLATE_PHYSICAL_PATH = "Template";
+    public const string DEFAULT_TEMPLATE_PATH = "Templates/Default";
 
     [HttpGet("{siteUrl}")]
     [DecodeQueryParam]
@@ -58,9 +55,9 @@ public class PageController(
         var entity = await pageService.GetById(id, cancellationToken);
         var entityResponse = mapper.Map<PageDetailResponse>(entity);
 
-        entityResponse.ViewRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageView, cancellationToken)).Select(x => x.RoleId);
-        entityResponse.ContributorRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageContributor, cancellationToken)).Select(x => x.RoleId);
-        entityResponse.AdminRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageAdmin, cancellationToken)).Select(x => x.RoleId);
+        //entityResponse.ViewRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageView, cancellationToken)).Select(x => x.RoleId);
+        //entityResponse.ContributorRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageContributor, cancellationToken)).Select(x => x.RoleId);
+        //entityResponse.AdminRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageAdmin, cancellationToken)).Select(x => x.RoleId);
 
         return Ok(entityResponse);
     }
@@ -68,15 +65,13 @@ public class PageController(
     [HttpGet]
     [DecodeQueryParam]
     [Policy(AREA, READ)]
-    [AllowAnonymous]
     public async Task<IApiResult<PageFullDetailResponse>> GetByUrl([FromQuery] string url, CancellationToken cancellationToken = default)
     {
         var uri = new Uri(url);
         var domain = uri.Authority;
         var path = uri.AbsolutePath;
 
-        var initialized = await setupManager.IsInitialized();
-        if (!initialized)
+        if (!await setupService.IsInitialized(cancellationToken))
             return Ok(GetSetupPage());
 
         return await GetPageResponse(domain, path, cancellationToken);
@@ -89,9 +84,9 @@ public class PageController(
         var entity = mapper.Map<Page>(request);
         var newEntity = await pageService.Create(entity, cancellationToken);
 
-        await permissionService.SetPermissions(newEntity, PermissionActionNames.PageView, request.ViewRoleIds, cancellationToken);
-        await permissionService.SetPermissions(newEntity, PermissionActionNames.PageContributor, request.ContributorRoleIds, cancellationToken);
-        await permissionService.SetPermissions(newEntity, PermissionActionNames.PageAdmin, request.AdminRoleIds, cancellationToken);
+        //await permissionService.SetPermissions(newEntity, PermissionActionNames.PageView, request.ViewRoleIds, cancellationToken);
+        //await permissionService.SetPermissions(newEntity, PermissionActionNames.PageContributor, request.ContributorRoleIds, cancellationToken);
+        //await permissionService.SetPermissions(newEntity, PermissionActionNames.PageAdmin, request.AdminRoleIds, cancellationToken);
 
         var pageResponse = mapper.Map<PageDetailResponse>(newEntity);
         return Ok(pageResponse);
@@ -104,9 +99,9 @@ public class PageController(
         var entity = mapper.Map<Page>(request);
         var updatedEntity = await pageService.Update(entity, cancellationToken);
 
-        await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageView, request.ViewRoleIds, cancellationToken);
-        await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageContributor, request.ContributorRoleIds, cancellationToken);
-        await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageAdmin, request.AdminRoleIds, cancellationToken);
+        //await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageView, request.ViewRoleIds, cancellationToken);
+        //await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageContributor, request.ContributorRoleIds, cancellationToken);
+        //await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageAdmin, request.AdminRoleIds, cancellationToken);
 
         var entityResponse = mapper.Map<PageDetailResponse>(updatedEntity);
         return Ok(entityResponse);
@@ -236,8 +231,8 @@ public class PageController(
             Locked = true,
             Layout = new LayoutDetailResponse
             {
-                Body = System.IO.File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.body.html")),
-                Head = System.IO.File.ReadAllText(Path.Combine(ADMIN_TEMPLATE_PHYSICAL_PATH, "AuthLayout.head.html"))
+                Body = System.IO.File.ReadAllText(Path.Combine(DEFAULT_TEMPLATE_PATH, "AuthLayout.body.html")),
+                Head = System.IO.File.ReadAllText(Path.Combine(DEFAULT_TEMPLATE_PATH, "AuthLayout.head.html"))
             },
             Site = new(),
             Sections = new Dictionary<string, List<PluginDetailResponse>>

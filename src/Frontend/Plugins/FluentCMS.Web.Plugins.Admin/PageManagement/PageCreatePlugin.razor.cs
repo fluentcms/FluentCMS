@@ -21,7 +21,7 @@ public partial class PageCreatePlugin
     {
         if (Layouts is null)
         {
-            var layoutsResponse = await ApiClient.Layout.GetAllAsync();
+            var layoutsResponse = await ApiClient.Layout.GetAllAsync(ViewState.Site.Id);
             Layouts = layoutsResponse?.Data?.ToList() ?? [];
 
             LayoutOptions = [
@@ -48,25 +48,6 @@ public partial class PageCreatePlugin
         {
             var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Urls[0]);
             Pages = pagesResponse?.Data?.Where(x => !x.Locked).ToList();
-
-            PageOptions = [
-                new SelectOption
-                {
-                    Title = "(none)",
-                    Value = Guid.Empty
-                }
-            ];
-
-            foreach (var page in Pages)
-            {
-                PageOptions.Add(
-                    new SelectOption
-                    {
-                        Title = page.Title,
-                        Value = page.Id
-                    }
-                );
-            }
         }
 
         Model ??= new();
@@ -89,6 +70,12 @@ public partial class PageCreatePlugin
     private async Task OnSubmit()
     {
         Model.SiteId = ViewState.Site.Id;
+        if (Model.ParentId == Guid.Empty)
+            Model.ParentId = default!;
+        
+        if (Model.LayoutId == Guid.Empty)
+            Model.LayoutId = default!;
+        
         var response = await ApiClient.Page.CreateAsync(Model);
 
         if (OpenNewPage)

@@ -1,0 +1,4 @@
+@if (PageOptions.Count > 0)
+{
+    <FormTreeSelector Label="Parent Page" Cols="6" Items="PageOptions" @bind-Value="ParentPageId" OnChange="@OnChange" />
+}

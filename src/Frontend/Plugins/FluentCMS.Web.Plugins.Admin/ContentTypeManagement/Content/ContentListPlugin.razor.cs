@@ -29,10 +29,10 @@ public partial class ContentListPlugin
         return [.. fields.OrderBy(x => x.DataTableColumnOrder)];
     }
 
-    private static Type GetDataTableComponent(string fieldTypeName, string viewName)
+    private static Type GetDataTableComponent(string fieldTypeName, string viewName, string name)
     {
         return FieldTypes.All[fieldTypeName].DataTableComponents.FirstOrDefault(x => x.Name == viewName)?.Type ??
-               throw new NotSupportedException($"Field type '{fieldTypeName}' is not supported.");
+               throw new NotSupportedException($"Failed to Get DataTable Component '{viewName}' for Field '{name}'.");
     }
 
     private Dictionary<string, object> GetParameters(ContentDetailResponse content, IFieldModel fieldModel)

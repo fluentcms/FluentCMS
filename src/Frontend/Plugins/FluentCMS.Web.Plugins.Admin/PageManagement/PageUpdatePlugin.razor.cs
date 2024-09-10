@@ -14,45 +14,14 @@ public partial class PageUpdatePlugin
     private List<PageDetailResponse>? Pages { get; set; }
 
     private List<SelectOption>? LayoutOptions { get; set; }
-    private List<SelectOption>? PageOptions { get; set; }
 
     private PageDetailResponse? Page { get; set; }
-
-    async Task GetAvailableParentPages()
-    {
-        var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Urls[0]);
-        var pages = pagesResponse?.Data?.Where(x => !x.Locked);
-
-        pages = pages.Where(x => x.ParentId != Id);
-        pages = pages.Where(x => x.Id != Id);
-
-        Pages = pages.ToList();
-
-        PageOptions = [
-            new SelectOption
-            {
-                Title = "(none)",
-                Value = Guid.Empty
-            }
-        ];
-
-        foreach (var page in Pages)
-        {
-            PageOptions.Add(
-                new SelectOption
-                {
-                    Title = page.Title,
-                    Value = page.Id
-                }
-            );
-        }
-    }
 
     protected override async Task OnInitializedAsync()
     {
         if (Layouts is null)
         {
-            var layoutsResponse = await ApiClient.Layout.GetAllAsync();
+            var layoutsResponse = await ApiClient.Layout.GetAllAsync(ViewState.Site.Id);
             Layouts = layoutsResponse?.Data?.ToList() ?? [];
 
             LayoutOptions = [
@@ -77,7 +46,13 @@ public partial class PageUpdatePlugin
 
         if (Pages is null)
         {
-            await GetAvailableParentPages();
+            var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Urls[0]);
+            var pages = pagesResponse?.Data?.Where(x => !x.Locked);
+
+            pages = pages.Where(x => x.ParentId != Id);
+            pages = pages.Where(x => x.Id != Id);
+
+            Pages = pages.ToList();
         }
 
         if (Model is null)
@@ -91,9 +66,10 @@ public partial class PageUpdatePlugin
     private async Task OnSubmit()
     {
         if (Model.ParentId == Guid.Empty)
-        {
             Model.ParentId = default!;
-        }
+        
+        if (Model.LayoutId == Guid.Empty)
+            Model.LayoutId = default!;
 
         await ApiClient.Page.UpdateAsync(Model);
         NavigateBack();

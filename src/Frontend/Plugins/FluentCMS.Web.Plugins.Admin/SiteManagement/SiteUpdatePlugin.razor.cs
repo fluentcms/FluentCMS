@@ -19,7 +19,7 @@ public partial class SiteUpdatePlugin
     {
         if (Layouts is null)
         {
-            var layoutsResponse = await ApiClient.Layout.GetAllAsync();
+            var layoutsResponse = await ApiClient.Layout.GetAllAsync(ViewState.Site.Id);
             Layouts = layoutsResponse?.Data?.ToList() ?? [];
         }
 

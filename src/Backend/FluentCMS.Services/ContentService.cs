@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Services;
+﻿using FluentCMS.Providers.MessageBusProviders;
+
+namespace FluentCMS.Services;
 
 public interface IContentService : IAutoRegisterService
 {
@@ -9,7 +11,7 @@ public interface IContentService : IAutoRegisterService
     Task<Content> Update(Content content, CancellationToken cancellationToken = default);
 }
 
-public class ContentService(IContentRepository contentRepository) : IContentService
+public class ContentService(IContentRepository contentRepository, IMessagePublisher messagePublisher) : IContentService
 {
     public async Task<IEnumerable<Content>> GetAll(Guid contentTypeId, CancellationToken cancellationToken = default)
     {
@@ -21,21 +23,29 @@ public class ContentService(IContentRepository contentRepository) : IContentServ
         var newContent = await contentRepository.Create(content, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentUnableToCreate);
 
+        await messagePublisher.Publish(new Message<Content>(ActionNames.ContentCreated, newContent), cancellationToken);
+
         return newContent;
     }
 
     public async Task<Content> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        return await contentRepository.Delete(id, cancellationToken) ??
+        var deleted = await contentRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentUnableToDelete);
+
+        await messagePublisher.Publish(new Message<Content>(ActionNames.ContentDeleted, deleted), cancellationToken);
+
+        return deleted;
     }
 
     public async Task<Content> Update(Content content, CancellationToken cancellationToken = default)
     {
-        var updatedContent = await contentRepository.Update(content, cancellationToken) ??
+        var updated = await contentRepository.Update(content, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentUnableToUpdate);
 
-        return updatedContent;
+        await messagePublisher.Publish(new Message<Content>(ActionNames.ContentUpdated, updated), cancellationToken);
+
+        return updated;
     }
 
     public async Task<Content> GetById(Guid id, CancellationToken cancellationToken = default)
