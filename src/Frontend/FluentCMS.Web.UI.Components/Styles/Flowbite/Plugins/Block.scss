@@ -1,0 +1,68 @@
+$block: $prefix + 'block';
+
+.#{$block} {
+
+    &-modal {
+        &-body {
+            display: flex; 
+            height: calc(80vh - 3rem); 
+            overflow: hidden;
+        }
+
+        &-sidebar {
+            padding: 16px;
+            overflow: auto; 
+            width: min-content; 
+            flex-shrink: 0; 
+            cursor: pointer; 
+            padding-right: 2rem;
+
+            &-item {
+                padding-bottom: 4px;
+            }
+            &-item-active {
+                font-weight: bold;
+            }
+        }
+
+        &-previews {
+            display: flex;
+            flex-wrap: wrap;
+            width: 100%;
+            gap: 16px; 
+            overflow: auto;
+            padding: 1rem;
+        }
+
+        &-preview {
+            display: flex; 
+            flex-direction: column;
+            gap: 16px; 
+            width: calc(50% - 8px); 
+
+            &-item {
+                position: relative; 
+                cursor: pointer;
+            }
+
+            &-title {
+                font-weight: bold; 
+                padding: 8px 0;
+            }
+
+            &-content {
+                zoom: calc(100% / 3); 
+                overflow: hidden; 
+                user-select: none; 
+                pointer-events: none; 
+                border-radius: 6px; 
+                transition: all 0.3s ease;
+                border: 1px solid #dbdbdb;
+            }
+
+            &-item:hover &-content {
+                scale: 1.05;
+            }
+        }
+    }
+}

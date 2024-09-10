@@ -13,6 +13,7 @@ export async function createPlugin({definitionId, sectionName, order, blockId}) 
             'CreateBlockModel.BlockId': blockId,
         }
         await request('CreateBlockForm', body).then(reloadIframe)
+        await updatePluginOrders().then(location.reload)
     } else {
         await request('CreatePluginForm', {
             'CreatePluginModel.DefinitionId': definitionId,
@@ -23,8 +24,8 @@ export async function createPlugin({definitionId, sectionName, order, blockId}) 
             'CreatePluginModel.ColsLg': 0,
             'CreatePluginModel.Section': sectionName,
         }).then(reloadIframe)
+        await updatePluginOrders()
     }
-    await updatePluginOrders()
 }
 
 export async function deletePlugin(id) {
