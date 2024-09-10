@@ -2,7 +2,7 @@
 
 <div class="f-page-editor-sidebar">
     <div class="f-plugin-definition-list">
-        @foreach (var pluginDef in PluginDefinitions.Where(x => !x.Locked))    
+        @foreach (var pluginDef in PluginDefinitions.Where(x => !x.Locked))
         {
             <div data-id="@pluginDef.Id" class="f-plugin-definition-item">
                 <span class="f-plugin-definition-item-icon">

@@ -1,9 +1,8 @@
 import './sortable.js'
 
 import {actions} from './actions.js'
-import { createPlugin, updateBlockContent, updatePlugin, updatePluginCols, updatePluginOrders } from './api.js';
+import { createPlugin, updatePluginCols, updatePluginOrders } from './api.js';
 import {Columns} from './columns.js'
-import { initializeInlineEditables } from './blocks.js';
 
 export function initColumns(frameDocument) {
     window.sections = []
@@ -55,11 +54,10 @@ export function initializeSortable(frameDocument) {
         onEnd(event) {
             if(event.from === event.to) return;
             const definitionId = event.clone.dataset.id
-            const item = event.item
             const order = event.newIndex - 1
             const sectionName = event.to.dataset.name
 
-            createPlugin({ definitionId, order, sectionName, blockId: item.dataset.blockId })
+            createPlugin({ definitionId, order, sectionName })
         }
     });
 }

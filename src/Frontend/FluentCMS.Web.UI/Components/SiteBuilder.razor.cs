@@ -18,7 +18,6 @@ public partial class SiteBuilder
     public RenderFragment Head { get; set; } = default!;
 
     private List<PluginDefinitionDetailResponse> PluginDefinitions { get; set; } = [];
-    private List<BlockDetailResponse> Blocks { get; set; } = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -26,14 +25,10 @@ public partial class SiteBuilder
         {
             var response = await ApiClient.PluginDefinition.GetAllAsync();
             PluginDefinitions = response.Data.ToList();
-
-            var blocksResponse = await ApiClient.Block.GetAllForSiteAsync(ViewState.Site.Id);
-            Blocks = blocksResponse.Data.ToList();
         }
         catch (Exception)
         {
             PluginDefinitions = [];
         }
     }
-
 }

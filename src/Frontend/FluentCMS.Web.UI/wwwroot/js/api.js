@@ -1,31 +1,16 @@
 import { reloadIframe, request } from "./request.js";
 
-export async function createPlugin({definitionId, sectionName, order, blockId}) {
-    if(blockId) {
-        const body = {
-            'CreateBlockModel.Plugin.DefinitionId': definitionId,
-            'CreateBlockModel.Plugin.PageId': '00000000-0000-0000-0000-000000000000',
-            'CreateBlockModel.Plugin.Order': order,
-            'CreateBlockModel.Plugin.Cols': 12,
-            'CreateBlockModel.Plugin.ColsMd': 0,
-            'CreateBlockModel.Plugin.ColsLg': 0,
-            'CreateBlockModel.Plugin.Section': sectionName,
-            'CreateBlockModel.BlockId': blockId,
-        }
-        await request('CreateBlockForm', body).then(reloadIframe)
-        await updatePluginOrders().then(location.reload)
-    } else {
-        await request('CreatePluginForm', {
-            'CreatePluginModel.DefinitionId': definitionId,
-            'CreatePluginModel.PageId': '00000000-0000-0000-0000-000000000000',
-            'CreatePluginModel.Order': order,
-            'CreatePluginModel.Cols': 12,
-            'CreatePluginModel.ColsMd': 0,
-            'CreatePluginModel.ColsLg': 0,
-            'CreatePluginModel.Section': sectionName,
-        }).then(reloadIframe)
-        await updatePluginOrders()
-    }
+export async function createPlugin({definitionId, sectionName, order}) {
+    await request('CreatePluginForm', {
+        'CreatePluginModel.DefinitionId': definitionId,
+        'CreatePluginModel.PageId': '00000000-0000-0000-0000-000000000000',
+        'CreatePluginModel.Order': order,
+        'CreatePluginModel.Cols': 12,
+        'CreatePluginModel.ColsMd': 0,
+        'CreatePluginModel.ColsLg': 0,
+        'CreatePluginModel.Section': sectionName,
+    }).then(reloadIframe)
+    await updatePluginOrders().then(location.reload)
 }
 
 export async function deletePlugin(id) {
@@ -73,16 +58,6 @@ export async function updatePlugin(pluginContainerEl, sectionEl) {
     result[`UpdatePluginModel.ColsLg`] = colsLg
            
     await request('UpdatePluginForm', result)
-}
-
-export async function updateBlockContent({id, content, pluginId}) {
-    let result = {
-        'UpdateBlockContentModel.PluginId': pluginId,
-        'UpdateBlockContentModel.Id': id,
-        'UpdateBlockContentModel.Content': content,
-    }
-
-    await request('UpdateBlockContentForm', result)
 }
 
 export async function updatePluginOrders() {

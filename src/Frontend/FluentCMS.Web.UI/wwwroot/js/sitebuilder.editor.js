@@ -1,5 +1,4 @@
-﻿import { initializeInlineEditables } from './blocks.js';
-import { hydrate, initializeSortable, initColumns } from './request.js'
+﻿import { hydrate, initializeSortable, initColumns } from './request.js'
 import { initializeResponsive } from './responsive.js'
 
 let iframeElement = document.querySelector('.f-page-editor-iframe')
@@ -22,7 +21,6 @@ async function onInit() {
     hydrate(frameDocument)
     hydrate(document)
     initializeSortable(frameDocument)
-    // initializeInlineEditables(frameDocument)
     initColumns(frameDocument)
 }
 
