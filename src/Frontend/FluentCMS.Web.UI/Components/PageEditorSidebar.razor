@@ -2,7 +2,6 @@
 
 <div class="f-page-editor-sidebar">
     <div class="f-plugin-definition-list">
-        <span class="f-sidebar-category-title">Plugins</span>
         @foreach (var pluginDef in PluginDefinitions.Where(x => !x.Locked))    
         {
             <div data-id="@pluginDef.Id" class="f-plugin-definition-item">
@@ -22,22 +21,15 @@
                 {
                     <svg xmlns="http://www.w3.org/2000/svg" style="padding: 8px; color: #606060;" width="48" height="48" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M15.514 3.293a1 1 0 0 0-1.415 0L12.151 5.24l.056.052l6.5 6.5l.052.056L20.707 9.9a1 1 0 0 0 0-1.415l-5.193-5.193ZM7.004 8.27l3.892-1.46l6.293 6.293l-1.46 3.893a1 1 0 0 1-.603.591l-9.494 3.355a1 1 0 0 1-.98-.18l6.452-6.453a1 1 0 0 0-1.414-1.414l-6.453 6.452a1 1 0 0 1-.18-.98l3.355-9.494a1 1 0 0 1 .591-.603Z" clip-rule="evenodd"/></svg>
                 }
+                else if(pluginDef.Name == "Block Plugin")
+                {
+                    <svg xmlns="http://www.w3.org/2000/svg" style="padding: 8px; color: #606060;" width="48" height="48" viewBox="0 0 24 24"><path fill="currentColor" d="M4.825 12.025L8.7 15.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275l-4.6-4.6q-.15-.15-.213-.325T2.426 12t.063-.375t.212-.325l4.6-4.6q.3-.3.713-.3t.712.3t.3.713t-.3.712zm14.35-.05L15.3 8.1q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.6 4.6q.15.15.213.325t.062.375t-.062.375t-.213.325l-4.6 4.6q-.3.3-.7.288t-.7-.313t-.3-.712t.3-.713z"/></svg>
+                }
                 </span>
                 <div class="f-plugin-definition-item-content">
                     <span class="f-name">@pluginDef.Name</span>
                     <span class="f-description">@pluginDef.Description</span>
                 </div>
-            </div>
-        }
-
-        <span class="f-sidebar-category-title">Blocks</span>
-        @foreach (var block in Blocks)
-        {
-            <div data-id="@BlockDefinitionId" data-block-id="@block.Id" class="f-plugin-definition-item">
-                <div class="f-plugin-definition-item-content">
-                    <span class="f-name">@block.Category - @block.Name</span>
-                    <span class="f-description">@block.Description</span>
-                </div>   
             </div>
         }
     </div>

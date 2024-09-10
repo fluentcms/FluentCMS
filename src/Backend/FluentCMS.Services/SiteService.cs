@@ -68,8 +68,6 @@ public class SiteService(ISiteRepository siteRepository, IMessagePublisher messa
         var newSite = await siteRepository.Create(site, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteUnableToCreate);
 
-        siteTemplate.Id = newSite.Id;
-
         await messagePublisher.Publish(new Message<SiteTemplate>(ActionNames.SiteCreated, siteTemplate), cancellationToken);
         await messagePublisher.Publish(new Message<SiteTemplate>(ActionNames.SetupInitializePlugins, siteTemplate), cancellationToken);
 

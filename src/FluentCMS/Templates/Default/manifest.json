@@ -333,7 +333,6 @@
         {
             "Name": "Block Plugin",
             "Description": "Block Plugin",
-            "Locked": true,
             "Assembly": "FluentCMS.Web.Plugins.Contents.Block.dll",
             "Types": [
                 {
