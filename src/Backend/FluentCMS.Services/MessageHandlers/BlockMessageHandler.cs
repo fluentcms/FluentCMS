@@ -7,18 +7,6 @@ public class BlockMessageHandler(IBlockService blockService) : IMessageHandler<S
 {    
     public async Task Handle(Message<SiteTemplate> notification, CancellationToken cancellationToken)
     {
-        Console.WriteLine("HANDLE");
-        Console.WriteLine("HANDLE");
-        Console.WriteLine("HANDLE");
-        Console.WriteLine("HANDLE");
-        Console.WriteLine("HANDLE");
-        Console.WriteLine("HANDLE");
-        Console.WriteLine("HANDLE");
-        Console.WriteLine("HANDLE");
-        Console.WriteLine("HANDLE");
-        Console.WriteLine($"HANDLE {notification.Payload.Blocks.Count}");
-        var BlocksFolder = Path.Combine("Template", "Blocks");
-
         switch (notification.Action)
         {
             case ActionNames.SiteCreated:

@@ -101,7 +101,7 @@ export async function updatePluginOrders() {
                 result[`UpdatePluginOrdersModel.Plugins[${index}].Id`] = pluginId
                 result[`UpdatePluginOrdersModel.Plugins[${index}].Section`] = el.dataset.name
                 result[`UpdatePluginOrdersModel.Plugins[${index}].Cols`] = cols
-                result[`UpdatePluginOrdersModel.Plugins[${index}].Order`] = ++order
+                result[`UpdatePluginOrdersModel.Plugins[${index}].Order`] = order++
                 result[`UpdatePluginOrdersModel.Plugins[${index}].ColsMd`] = colsMd
                 result[`UpdatePluginOrdersModel.Plugins[${index}].ColsLg`] = colsLg
                 index++;
