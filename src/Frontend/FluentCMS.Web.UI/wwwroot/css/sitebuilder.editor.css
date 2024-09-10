@@ -134,12 +134,6 @@ body {
     height: 100vh;
 }
 
-.f-sidebar-category-title {
-    font-family: sans-serif;
-    font-size: 14px;
-    margin-top: 0.5rem;
-}
-
 .f-page-editor-iframe-wrapper {
     background-color: #EBEBEB;
     position: relative;

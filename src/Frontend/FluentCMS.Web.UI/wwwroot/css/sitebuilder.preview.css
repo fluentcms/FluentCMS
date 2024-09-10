@@ -10,13 +10,13 @@
 
 .f-plugin-container-content {
     border: 1px dashed #00549038;
-    padding-top: 2.5rem;
     position: relative;
     overflow: hidden;
     min-height: 75px;
+    pointer-events: none;
+    user-select: none;
     transition: all 0.3s ease;
 }
-
 .f-plugin-container:hover .f-plugin-container-content {
     border: 1px dashed #005590;
 }
@@ -52,32 +52,31 @@
     color: black;
     z-index: 4;
     height: 40px;
-    border: 1px dashed #00549038;
+    border: 1px dashed #005590;
     position: absolute;
     display: flex;
     align-items: center;
+    opacity: 0;
     transition: all 0.2s ease;
+    /* overflow: hidden; */
     justify-content: space-between;
     left: 0;
     right: 0;
 }
 
-.f-plugin-container-error {
-    padding-top: 2.5rem;
+.f-plugin-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: transparent;
+    pointer-events: none;
 }
 
-/* [data-inline-editable] {
-    outline: none;
-    display: inline-block;
-    position: relative;
-} */
-
-/* .f-plugin-container:hover [data-inline-editable] {
-    background-color: #0055f030;
-} */
-
 .f-plugin-container:hover .f-plugin-container-actions {
-    border: 1px dashed #005590;
+    opacity: 1;
 }
 
 .f-plugin-container-action-drag {
