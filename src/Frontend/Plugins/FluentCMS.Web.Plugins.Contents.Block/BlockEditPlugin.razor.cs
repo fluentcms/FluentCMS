@@ -6,8 +6,6 @@ public partial class BlockEditPlugin
     [SupplyParameterFromForm(FormName = CONTENT_TYPE_NAME)]
     private BlockContent? Model { get; set; } = default!;
 
-    private bool IsEditMode { get; set; } = false;
-
     protected override async Task OnInitializedAsync()
     {
         if (Model is null)
@@ -23,7 +21,6 @@ public partial class BlockEditPlugin
                 Id = content[0].Id,
                 Content = content[0].Content
             };
-            IsEditMode = true;
         }
     }
 

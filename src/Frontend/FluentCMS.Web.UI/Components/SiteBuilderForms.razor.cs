@@ -42,17 +42,4 @@ public partial class SiteBuilderForms
     {
         await ApiClient.Plugin.DeleteAsync(DeletePluginModel);
     }
-
-    private class CreateBlockRequest
-    {
-        public PluginCreateRequest Plugin { get; set; }
-        public Guid BlockId { get; set; } = default!;
-    }
-
-    private class UpdateBlockContentRequest
-    {
-        public Guid PluginId { get; set; }
-        public Guid Id { get; set; }
-        public string Content { get; set; } = string.Empty;
-    }
 }

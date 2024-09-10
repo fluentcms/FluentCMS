@@ -19,6 +19,7 @@ $block: $prefix + 'block';
 
             &-item {
                 padding-bottom: 4px;
+                white-space: nowrap;
             }
             &-item-active {
                 font-weight: bold;

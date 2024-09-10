@@ -10,6 +10,7 @@ export async function createPlugin({definitionId, sectionName, order}) {
         'CreatePluginModel.ColsLg': 0,
         'CreatePluginModel.Section': sectionName,
     }).then(reloadIframe)
+
     await updatePluginOrders().then(location.reload)
 }
 
