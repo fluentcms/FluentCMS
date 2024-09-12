@@ -70,43 +70,6 @@ For more information on how to use FluentCMS, please refer to our [documentation
 
 We welcome contributions! If you're interested in improving FluentCMS, please read our [CONTRIBUTING.md](./CONTRIBUTING.md) guide.
 
-## Roadmap
-
-- [ ] Administration Dashboard
-  - [x] User Management
-  - [x] Role Management
-  - [ ] Application Settings
-  - [x] Headless CMS Features
-    - [x] Media Management
-    - [x] Content Type Definition
-      - [x] Text Field
-      - [x] TextArea Field
-      - [x] Rich Text Field
-      - [x] Markdown Field
-      - [x] Number Field
-      - [x] Date Field
-      - [x] Time Field
-      - [x] DateTime Field
-      - [x] Boolean Field
-      - [x] Select Field
-      - [x] MultiSelect Field
-      - [x] Radio Field
-      - [x] Checkbox Field
-      - [x] File Field
-    - [x] Content Management
-    - [x] API Tokens Management
-  - CMS Features
-    - [x] Site Management
-    - [x] Page Management
-    - [ ] Plugin Definition Management
-    - [ ] Plugin Management
-    - [x] Layout Management
-- [x] Users
-  - [x] User Registration
-  - [x] User Login / Logout
-  - [x] User Profile
-  - [x] User Forgot Password / Reset Password
-
 ![Alt](https://repobeats.axiom.co/api/embed/908c321e4de115a715f2a3ed981c6e00bfbcea62.svg "Repobeats analytics image")
 
 ## License
