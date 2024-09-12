@@ -4,6 +4,7 @@
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/y/FluentCMS/fluentcms)
 ![GitHub License](https://img.shields.io/github/license/FluentCMS/fluentcms)
 ![GitHub contributors](https://img.shields.io/github/contributors/FluentCMS/fluentcms)
+![Discord](https://img.shields.io/discord/1165300406902067280)
 
 FluentCMS is a modern Content Management System (CMS) built on the powerful ASP.NET Core and the innovative Blazor technology. FluentCMS assists content writers in crafting content more efficiently. Designed to be fast, flexible, and user-friendly, it not only serves as a traditional content-based CMS but also excels as a headless CMS, making it perfect for a diverse range of digital applications.
 
