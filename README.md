@@ -107,6 +107,8 @@ We welcome contributions! If you're interested in improving FluentCMS, please re
   - [x] User Profile
   - [x] User Forgot Password / Reset Password
 
+![Alt](https://repobeats.axiom.co/api/embed/908c321e4de115a715f2a3ed981c6e00bfbcea62.svg "Repobeats analytics image")
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
