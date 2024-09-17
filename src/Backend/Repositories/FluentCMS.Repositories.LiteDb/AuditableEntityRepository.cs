@@ -28,18 +28,26 @@ public class AuditableEntityRepository<TEntity> : EntityRepository<TEntity>, IAu
     public override async Task<TEntity?> Update(TEntity entity, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        SetAuditableFieldsForUpdate(entity);
+
+        var existing = await GetById(entity.Id, cancellationToken);
+        if (existing is null)
+            return default;
+
+        SetAuditableFieldsForUpdate(entity, existing);
+
         return await base.Update(entity, cancellationToken);
     }
 
-    private void SetAuditableFieldsForCreate(TEntity entity)
+    protected void SetAuditableFieldsForCreate(TEntity entity)
     {
         entity.CreatedAt = DateTime.UtcNow;
         entity.CreatedBy = ApiExecutionContext.Username;
     }
 
-    private void SetAuditableFieldsForUpdate(TEntity entity)
+    protected void SetAuditableFieldsForUpdate(TEntity entity, TEntity oldEntity)
     {
+        entity.CreatedAt = oldEntity.CreatedAt;
+        entity.CreatedBy = oldEntity.CreatedBy;
         entity.ModifiedAt = DateTime.UtcNow;
         entity.ModifiedBy = ApiExecutionContext.Username;
     }

@@ -34,16 +34,17 @@ public abstract class AuditableEntityRepository<TEntity> : EntityRepository<TEnt
             return default;
 
         SetAuditableFieldsForUpdate(entity, existing);
+
         return await base.Update(entity, cancellationToken);
     }
 
-    private void SetAuditableFieldsForCreate(TEntity entity)
+    protected void SetAuditableFieldsForCreate(TEntity entity)
     {
         entity.CreatedAt = DateTime.UtcNow;
         entity.CreatedBy = ApiExecutionContext.Username;
     }
 
-    private void SetAuditableFieldsForUpdate(TEntity entity, TEntity oldEntity)
+    protected void SetAuditableFieldsForUpdate(TEntity entity, TEntity oldEntity)
     {
         entity.CreatedAt = oldEntity.CreatedAt;
         entity.CreatedBy = oldEntity.CreatedBy;
