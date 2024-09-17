@@ -38,15 +38,8 @@ public class LayoutService(ILayoutRepository layoutRepository, IMessagePublisher
 
     public async Task<Layout> Update(Layout layout, CancellationToken cancellationToken)
     {
-        var original = await layoutRepository.GetById(layout.Id, cancellationToken) ??
-            throw new AppException(ExceptionCodes.LayoutNotFound);
-
-        original.Body = layout.Body;
-        original.Head = layout.Head;
-        original.Name = layout.Name;
-
-        var updated = await layoutRepository.Update(original, cancellationToken) ??
-            throw new AppException(ExceptionCodes.LayoutNotFound);
+        var updated = await layoutRepository.Update(layout, cancellationToken) ??
+            throw new AppException(ExceptionCodes.LayoutUnableToUpdate);
 
         await messagePublisher.Publish(new Message<Layout>(ActionNames.LayoutUpdated, updated), cancellationToken);
 
