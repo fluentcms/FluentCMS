@@ -62,6 +62,7 @@ public static class ActionNames
 
     public const string ApiTokenCreated = "ApiTokenCreated";
     public const string ApiTokenUpdated = "ApiTokenUpdated";
+    public const string ApiTokenSecretRegenerated = "ApiTokenSecretRegenerated";
     public const string ApiTokenDeleted = "ApiTokenDeleted";
 
     #endregion

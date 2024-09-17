@@ -3,7 +3,7 @@
 
 <PluginBody Title="API Tokens">
     <ActionsFragment>
-        <ActionButtonCreate Href="@GetUrl("Create Api Token")" Label="Add API Token"/>
+        <ActionButtonCreate Href="@GetUrl("Create Api Token")" Label="Add API Token" />
     </ActionsFragment>
     <ChildContent>
         <DataTable Items="ApiTokens">
@@ -12,7 +12,7 @@
             <DataTableItem Label="Enabled">
                 <Indicator Color="Color.Success" Visible="@context.Enabled">YES</Indicator>
                 <Indicator Color="Color.Danger" Visible="@(!context.Enabled)">NO</Indicator>
-            </DataTableItem>            
+            </DataTableItem>
             <DataTableItem Label="Expire At">@context.ExpireAt</DataTableItem>
             <DataTableItem Label="Token">
                 @if (ViewApiTokenId == context.Id)
@@ -21,31 +21,25 @@
                 }
                 else
                 {
-                    <span class="f-font-monospace">@MaskString($"{context.Key}")</span>
+                    <span class="f-font-monospace">***********************************</span>
                 }
             </DataTableItem>
             <ActionButtons>
-                @if (ViewApiTokenId == context.Id)
-                {
-                    <ActionButton IconName="IconName.EyeSlash" @onclick="() => ViewToken(context.Id)" />
-                }
-                else
-                {
-                    <ActionButton IconName="IconName.Eye" @onclick="() => ViewToken(context.Id)" />
-                }
+                <ActionButton Visible="ViewApiTokenId != context.Id" IconName="IconName.Eye" @onclick="() => ToggleTokenKey(context.Id)" />
+                <ActionButton Visible="ViewApiTokenId == context.Id" IconName="IconName.EyeSlash" @onclick="() => ToggleTokenKey(context.Id)" />
                 <ActionButton IconName="IconName.Refresh" Color="Color.Success" Label="Re-Generate" @onclick="() => OnRegenerateConfirm(context)" />
                 <ActionButtonEdit Href="@GetUrl("Update Api Token", new { id = @context.Id })" />
-                <ActionButtonDelete @onclick="() => OnConfirm(context)" />
+                <ActionButtonDelete @onclick="() => OnDeleteConfirm(context)" />
             </ActionButtons>
         </DataTable>
     </ChildContent>
 </PluginBody>
 
-<Confirm OnConfirm="OnDelete" OnCancel="OnConfirmCancel" Visible="@(SelectedApiToken != null && Mode == "Delete")">
+<Confirm OnConfirm="OnDelete" OnCancel="OnConfirmComplete" Visible="ShowDeleteModal ">
     Are you sure to delete <b>"@SelectedApiToken!.Name"</b> token?
 </Confirm>
 
-<Confirm OnConfirm="OnRegenerate" OnCancel="OnRegenerateCancel" Visible="@(SelectedApiToken != null && Mode == "Regenerate")">
+<Confirm OnConfirm="OnRegenerate" OnCancel="OnConfirmComplete" Visible="ShowRegenerateModal">
     After regenerate, previous token will be invalidated and no longer works. Are you sure to re-generate token?
 </Confirm>
 
