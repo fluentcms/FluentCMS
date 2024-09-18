@@ -1,5 +1,3 @@
-using FluentCMS.Web.UI.Components;
-
 namespace FluentCMS.Web.Plugins.Admin.FileManagement;
 
 public class FolderBreadcrumbItemType
