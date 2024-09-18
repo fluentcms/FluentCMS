@@ -14,6 +14,7 @@ public class UserController(IUserService userService, IGlobalSettingsService glo
         var users = (await userService.GetAll(cancellationToken)).ToList();
         var usersResponse = mapper.Map<List<UserDetailResponse>>(users);
 
+        // setting super admin flag
         var globalSettings = await globalSettingsService.Get(cancellationToken);
         if (globalSettings != null)
             usersResponse.ForEach(user => user.IsSuperAdmin = globalSettings.SuperAdmins.Contains(user.Username));
