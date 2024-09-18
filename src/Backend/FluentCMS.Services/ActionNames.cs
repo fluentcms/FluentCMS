@@ -99,4 +99,11 @@ public static class ActionNames
     public const string UserDeleted = "UserDeleted";
 
     #endregion
+
+    #region UserRole
+
+    public const string UserRoleCreated = "UserRoleCreated";
+    public const string UserRoleDeleted = "UserRoleDeleted";
+
+    #endregion
 }

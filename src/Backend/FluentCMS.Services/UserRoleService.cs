@@ -5,11 +5,20 @@ namespace FluentCMS.Services;
 public interface IUserRoleService : IAutoRegisterService
 {
     Task<IEnumerable<Guid>> GetUserRoleIds(Guid userId, Guid siteId, CancellationToken cancellationToken = default);
-    Task<bool> Update(Guid userId, Guid siteId, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);
+    Task<IEnumerable<UserRole>> Update(Guid userId, Guid siteId, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);
+    Task<IEnumerable<UserRole>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default);
 }
 
-public class UserRoleService(IUserRoleRepository userRoleRepository, IRoleRepository roleRepository, IApiExecutionContext apiExecutionContext) : IUserRoleService
+public class UserRoleService(IUserRoleRepository userRoleRepository, IRoleRepository roleRepository, IApiExecutionContext apiExecutionContext, IMessagePublisher messagePublisher, IPermissionManager permissionManager) : IUserRoleService
 {
+    public async Task<IEnumerable<UserRole>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
+    {
+        if (!await permissionManager.HasAccess(siteId, SitePermissionAction.SiteAdmin, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
+        return await userRoleRepository.GetAllForSite(siteId, cancellationToken);
+    }
+
     public async Task<IEnumerable<Guid>> GetUserRoleIds(Guid userId, Guid siteId, CancellationToken cancellationToken = default)
     {
         var allRoles = await roleRepository.GetAllForSite(siteId, cancellationToken);
@@ -22,7 +31,7 @@ public class UserRoleService(IUserRoleRepository userRoleRepository, IRoleReposi
         return userRoles.Select(x => x.RoleId).Concat(defaultRoles.Select(x => x.Id)).ToList();
     }
 
-    public async Task<bool> Update(Guid userId, Guid siteId, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<UserRole>> Update(Guid userId, Guid siteId, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default)
     {
         // find and remove default roles, just accept user defined roles.
         var allRoles = await roleRepository.GetAllForSite(siteId, cancellationToken);
@@ -32,6 +41,8 @@ public class UserRoleService(IUserRoleRepository userRoleRepository, IRoleReposi
         var existUserRoles = await userRoleRepository.GetUserRoles(userId, siteId, cancellationToken);
         await userRoleRepository.DeleteMany(existUserRoles.Select(x => x.Id), cancellationToken);
 
+        await messagePublisher.Publish(new Message<IEnumerable<UserRole>>(ActionNames.UserRoleDeleted, existUserRoles), cancellationToken);
+
         // add all new UserRoles
         var userRoles = validRoleIds.Select(x => new UserRole
         {
@@ -39,8 +50,10 @@ public class UserRoleService(IUserRoleRepository userRoleRepository, IRoleReposi
             RoleId = x,
             UserId = userId,
         });
-        await userRoleRepository.CreateMany(userRoles, cancellationToken);
+        var newUserRoles = await userRoleRepository.CreateMany(userRoles, cancellationToken);
 
-        return true;
+        await messagePublisher.Publish(new Message<IEnumerable<UserRole>>(ActionNames.UserRoleCreated, newUserRoles), cancellationToken);
+
+        return newUserRoles;
     }
 }

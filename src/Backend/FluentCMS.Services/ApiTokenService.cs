@@ -1,5 +1,4 @@
 ﻿using FluentCMS.Providers.ApiTokenProviders;
-using FluentCMS.Providers.MessageBusProviders;
 
 namespace FluentCMS.Services;
 

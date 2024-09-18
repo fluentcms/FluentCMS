@@ -9,6 +9,7 @@
         <DataTable Items="Roles">
             <DataTableItem Label="Name">@context.Name</DataTableItem>
             <DataTableItem Label="Description">@context.Description</DataTableItem>
+            <DataTableItem Label="Users Count">@context.UsersCount</DataTableItem>
             <ActionButtons>
                 <ActionButtonDelete @onclick="() => OnConfirm(context)" Visible="@(context.Type == RoleTypes.UserDefined)" />
                 <ActionButtonEdit Href="@GetUrl("Update Role", new { id = @context.Id })" />

@@ -1,6 +1,4 @@
-﻿using FluentCMS.Providers.MessageBusProviders;
-
-namespace FluentCMS.Services.MessageHandlers;
+﻿namespace FluentCMS.Services.MessageHandlers;
 
 public class ContentMessageHandler(IContentService contentService) : IMessageHandler<SetupTemplate>
 {
