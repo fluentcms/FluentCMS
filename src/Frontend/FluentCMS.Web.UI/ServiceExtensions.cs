@@ -34,19 +34,19 @@ public static class ServiceExtensions
 
         services.AddApiClients(configuration);
 
-        // add global cascade parameter for Page (PageFullDetailResponse)
+        services.AddViewState();
+
+        // add global cascade parameter for ViewState
         // if we use cascading value in the component, it will be null in component which are rendered as InteractiveMode
         // because the page is SSR and the cascading value is not available in the component
         // so we set the cascading value globally in the service
         // https://github.com/dotnet/aspnetcore/issues/53482
         services.AddCascadingValue(sp =>
         {
-            var viewState = new ViewState();
-            viewState.Load(sp);
+            var viewState = sp.GetRequiredService<ViewState>();
+            viewState.Reload();
             return viewState;
         });
-
-        return services;
     }
 
     public static IApplicationBuilder UseCmsServices(this WebApplication app)
@@ -57,6 +57,65 @@ public static class ServiceExtensions
             .AddInteractiveServerRenderMode();
 
         return app;
+    }
+
+    private static IServiceCollection AddViewState(this IServiceCollection services)
+    {
+        services.AddScoped(sp =>
+        {
+            var viewState = new ViewState();
+            viewState.ReloadAction = () =>
+            {
+                var navigationManager = sp.GetRequiredService<NavigationManager>();
+                var apiClient = sp.GetRequiredService<ApiClientFactory>();
+                var mapper = sp.GetRequiredService<IMapper>();
+
+                var pageResponse = apiClient.Page.GetByUrlAsync(navigationManager.Uri).GetAwaiter().GetResult();
+
+                if (pageResponse?.Data == null)
+                    throw new Exception("Error while loading ViewState");
+
+                viewState.Page = mapper.Map<PageViewState>(pageResponse.Data);
+                viewState.Layout = mapper.Map<LayoutViewState>(pageResponse.Data.Layout);
+                viewState.DetailLayout = mapper.Map<LayoutViewState>(pageResponse.Data.DetailLayout);
+                viewState.EditLayout = mapper.Map<LayoutViewState>(pageResponse.Data.EditLayout);
+                viewState.Site = mapper.Map<SiteViewState>(pageResponse.Data.Site);
+                viewState.Plugins = pageResponse.Data.Sections!.Values.SelectMany(x => x).Select(p => mapper.Map<PluginViewState>(p)).ToList();
+                viewState.User = mapper.Map<UserViewState>(pageResponse.Data.User);
+
+                // check if the page is in edit mode
+                // it should have pluginId and pluginViewName query strings
+                var uriBuilder = new UriBuilder(navigationManager.Uri);
+                var queryParams = HttpUtility.ParseQueryString(uriBuilder.Query);
+                if (queryParams["pluginId"] != null && queryParams["viewName"] != null)
+                {
+                    // check if the pluginId is valid
+                    if (Guid.TryParse(queryParams["pluginId"], out var pluginId))
+                    {
+                        // TODO: Decide when show edit and when show detail view
+                        if (queryParams["viewMode"] == "detail")
+                        {
+                            viewState.Type = ViewStateType.PluginDetail;
+                        }
+                        else
+                        {
+                            viewState.Type = ViewStateType.PluginEdit;
+                        }
+                        viewState.Plugin = viewState.Plugins.Single(x => x.Id == pluginId);
+                        viewState.PluginViewName = queryParams["viewName"];
+                    }
+                }
+
+                if (queryParams["pageEdit"] != null)
+                    viewState.Type = ViewStateType.PageEdit;
+
+                if (queryParams["pagePreview"] != null)
+                    viewState.Type = ViewStateType.PagePreview;
+            };
+            return viewState;
+        });
+
+        return services;
     }
 }
 
