@@ -1,5 +1,5 @@
-import '/_content/FluentCMS.Web.UI.Components/js/quill.min.js'
-import '/_content/FluentCMS.Web.UI.Components/js/quill-image-resize.min.js'
+import '/_content/FluentCMS.Web.Plugins/js/quill.min.js'
+import '/_content/FluentCMS.Web.Plugins/js/quill-image-resize.min.js'
 import { debounce } from '/_content/FluentCMS.Web.UI.Components/js/helpers.js'
 
 const toolbarTypes = {
