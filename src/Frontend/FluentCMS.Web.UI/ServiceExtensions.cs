@@ -103,7 +103,14 @@ public static class ServiceExtensions
                     viewState.Type = ViewStateType.PagePreview;
             };
             
+            return viewState;
+        });
+
+        services.AddCascadingValue(sp => {
+            var viewState = sp.GetRequiredService<ViewState>();
+
             viewState.Reload();
+
             return viewState;
         });
 

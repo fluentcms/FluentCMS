@@ -11,7 +11,7 @@ public partial class PluginContainer: IDisposable
     [Inject]
     private PluginLoader PluginLoader { get; set; } = default!;
 
-    [Inject]
+    [CascadingParameter]
     private ViewState ViewState { get; set; } = default!;
 
     private IDictionary<string, object> Parameters { get; set; } = new Dictionary<string, object>();
