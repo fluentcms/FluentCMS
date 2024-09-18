@@ -1,16 +1,52 @@
-﻿using System.Data;
-
-namespace FluentCMS.Services;
+﻿namespace FluentCMS.Services;
 
 public interface IUserRoleService : IAutoRegisterService
 {
     Task<IEnumerable<Guid>> GetUserRoleIds(Guid userId, Guid siteId, CancellationToken cancellationToken = default);
     Task<IEnumerable<UserRole>> Update(Guid userId, Guid siteId, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);
     Task<IEnumerable<UserRole>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<UserRole>> DeleteByRoleId(Guid roleId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<UserRole>> DeleteByUserId(Guid userId, CancellationToken cancellationToken = default);
 }
 
 public class UserRoleService(IUserRoleRepository userRoleRepository, IRoleRepository roleRepository, IApiExecutionContext apiExecutionContext, IMessagePublisher messagePublisher, IPermissionManager permissionManager) : IUserRoleService
 {
+    public async Task<IEnumerable<UserRole>> DeleteByRoleId(Guid roleId, CancellationToken cancellationToken = default)
+    {
+        var role = await roleRepository.GetById(roleId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.RoleNotFound);
+
+        if (!await permissionManager.HasAccess(role.SiteId, SitePermissionAction.SiteAdmin, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
+        var userRoles = await userRoleRepository.GetByRoleId(roleId, cancellationToken);
+
+        var deleted = await userRoleRepository.DeleteMany(userRoles.Select(x => x.Id), cancellationToken);
+
+        // creating tasks for the message publisher and await them all to finish
+        var tasks = deleted?.Select(item => messagePublisher.Publish(new Message<UserRole>(ActionNames.UserRoleDeleted, item!), cancellationToken)).ToList() ?? [];
+        await Task.WhenAll(tasks);
+
+        return userRoles;
+    }
+
+    public async Task<IEnumerable<UserRole>> DeleteByUserId(Guid userId, CancellationToken cancellationToken = default)
+    {
+        if (!await permissionManager.HasAccess(GlobalPermissionAction.SuperAdmin, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
+        var userRoles = await userRoleRepository.GetByUserId(userId, cancellationToken);
+
+        var deleted = await userRoleRepository.DeleteMany(userRoles.Select(x => x.Id), cancellationToken);
+
+        // creating tasks for the message publisher and await them all to finish
+        var tasks = deleted?.Select(item => messagePublisher.Publish(new Message<UserRole>(ActionNames.UserRoleDeleted, item!), cancellationToken)).ToList() ?? [];
+
+        await Task.WhenAll(tasks);
+
+        return userRoles;
+    }
+
     public async Task<IEnumerable<UserRole>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {
         if (!await permissionManager.HasAccess(siteId, SitePermissionAction.SiteAdmin, cancellationToken))
@@ -21,6 +57,10 @@ public class UserRoleService(IUserRoleRepository userRoleRepository, IRoleReposi
 
     public async Task<IEnumerable<Guid>> GetUserRoleIds(Guid userId, Guid siteId, CancellationToken cancellationToken = default)
     {
+        // check if the user is the same as the one in the token or site admin
+        if (!await permissionManager.HasAccess(siteId, SitePermissionAction.SiteAdmin, cancellationToken) && apiExecutionContext.UserId != userId)
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
         var allRoles = await roleRepository.GetAllForSite(siteId, cancellationToken);
         if (!apiExecutionContext.IsAuthenticated)
             return allRoles.Where(x => x.Type == RoleTypes.Guest || x.Type == RoleTypes.AllUsers).Select(x => x.Id);
@@ -33,6 +73,9 @@ public class UserRoleService(IUserRoleRepository userRoleRepository, IRoleReposi
 
     public async Task<IEnumerable<UserRole>> Update(Guid userId, Guid siteId, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default)
     {
+        if (!await permissionManager.HasAccess(siteId, SitePermissionAction.SiteAdmin, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
         // find and remove default roles, just accept user defined roles.
         var allRoles = await roleRepository.GetAllForSite(siteId, cancellationToken);
         var validRoleIds = roleIds.Intersect(allRoles.Where(x => x.Type == RoleTypes.UserDefined || x.Type == RoleTypes.Administrators).Select(x => x.Id));

@@ -35,8 +35,8 @@
                 <Indicator Color="Color.Danger" Visible="@context.Locked">YES</Indicator>
             </DataTableItem>
             <ActionButtons>
-                <ActionButtonEdit Href="@GetUrl("Update User", new { id = @context.Id })" />
                 <ActionButtonDelete @onclick="() => OnConfirm(context)" Visible="@(!context.IsSuperAdmin)" />
+                <ActionButtonEdit Href="@GetUrl("Update User", new { id = @context.Id })" />
             </ActionButtons>
         </DataTable>
     </ChildContent>
