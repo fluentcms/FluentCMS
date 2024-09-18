@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj" />
+    <ProjectReference Include="..\..\FluentCMS.Web.UI\FluentCMS.Web.UI.csproj" />
     <ProjectReference Include="..\..\FluentCMS.Web.UI.Components\FluentCMS.Web.UI.Components.csproj" />
   </ItemGroup>
 

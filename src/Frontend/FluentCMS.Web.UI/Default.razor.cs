@@ -2,6 +2,7 @@
 using FluentCMS.Web.UI.DynamicRendering;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Web.UI;
 
@@ -21,6 +22,9 @@ public partial class Default : IDisposable
 
     [Parameter]
     public string? Route { get; set; }
+
+    [Inject]
+    private IServiceProvider ServiceProvider { get; set; } = default!;
 
     [Inject]
     public NavigationManager NavigationManager { set; get; } = default!;
@@ -50,6 +54,7 @@ public partial class Default : IDisposable
 
     void LocationChanged(object? sender, LocationChangedEventArgs e)
     {
+        ViewState.Load(ServiceProvider);
         StateHasChanged();
     }
 

@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Web.Plugins;
 
-public abstract class BasePlugin : ComponentBase
+public abstract class BasePlugin : ComponentBase, IDisposable
 {
     [Inject]
     protected IMapper Mapper { get; set; } = default!;
@@ -90,4 +90,24 @@ public abstract class BasePlugin : ComponentBase
 
         return QueryHelpers.AddQueryString(pagePathWithoutQueryString, newQueryParams);
     }
+
+    // TODO: This shows usage of ViewStateChanged feature, feel free to remove it whenever you want.
+    // #region ViewStateChanged
+    private void OnViewStateChanged(object? sender, EventArgs args)
+    {
+        Console.WriteLine($"ViewState changed {sender}");
+    }
+
+    protected override Task OnInitializedAsync()
+    {
+        ViewState.OnStateChanged += OnViewStateChanged;
+        return base.OnInitializedAsync();
+    }
+
+    void IDisposable.Dispose()
+    {
+        ViewState.OnStateChanged -= OnViewStateChanged;
+    }
+
+    // #endregion
 }

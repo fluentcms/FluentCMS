@@ -12,6 +12,12 @@ public class ViewState
     public UserViewState User { get; set; } = default!;
     public PluginViewState? Plugin { get; set; }
     public string? PluginViewName { get; set; }
+    public event EventHandler? OnStateChanged;
+
+    public void StateChanged()
+    {
+        OnStateChanged?.Invoke(this, EventArgs.Empty);
+    }
 }
 
 public enum ViewStateType
