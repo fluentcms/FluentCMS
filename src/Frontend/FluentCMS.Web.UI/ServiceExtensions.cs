@@ -36,17 +36,7 @@ public static class ServiceExtensions
 
         services.AddViewState();
 
-        // add global cascade parameter for ViewState
-        // if we use cascading value in the component, it will be null in component which are rendered as InteractiveMode
-        // because the page is SSR and the cascading value is not available in the component
-        // so we set the cascading value globally in the service
-        // https://github.com/dotnet/aspnetcore/issues/53482
-        services.AddCascadingValue(sp =>
-        {
-            var viewState = sp.GetRequiredService<ViewState>();
-            viewState.Reload();
-            return viewState;
-        });
+        return services;
     }
 
     public static IApplicationBuilder UseCmsServices(this WebApplication app)
@@ -112,6 +102,8 @@ public static class ServiceExtensions
                 if (queryParams["pagePreview"] != null)
                     viewState.Type = ViewStateType.PagePreview;
             };
+            
+            viewState.Reload();
             return viewState;
         });
 

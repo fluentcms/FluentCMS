@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Web.UI;
 
-public partial class PluginContainer
+public partial class PluginContainer: IDisposable
 {
     [Parameter]
     public PluginViewState Plugin { get; set; } = default!;
@@ -11,17 +11,27 @@ public partial class PluginContainer
     [Inject]
     private PluginLoader PluginLoader { get; set; } = default!;
 
-    [CascadingParameter]
+    [Inject]
     private ViewState ViewState { get; set; } = default!;
 
     private IDictionary<string, object> Parameters { get; set; } = new Dictionary<string, object>();
 
+    private void ViewStateChanged(object? sender, EventArgs e)
+    {
+        StateHasChanged();
+    }
+
     protected override void OnInitialized()
     {
+        ViewState.OnStateChanged += ViewStateChanged;
         Parameters = new Dictionary<string, object>
         {
             { "Plugin", Plugin }
         };
+    }
+    void IDisposable.Dispose()
+    {
+        ViewState.OnStateChanged -= ViewStateChanged;
     }
 
     private Type? GetPluginType()

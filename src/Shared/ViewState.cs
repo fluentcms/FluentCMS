@@ -16,9 +16,11 @@ public class ViewState
     public event EventHandler? OnStateChanged;
 
     public Action ReloadAction { get; set; } = default!;
+    public int Count { get; set; } = 0;
 
     public void Reload()
     {
+        Count++;
         ReloadAction?.Invoke();
         StateChanged();
     }

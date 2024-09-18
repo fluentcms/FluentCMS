@@ -8,7 +8,7 @@ public partial class SiteBuilder
     [Inject]
     private ApiClientFactory ApiClient { get; set; } = default!;
 
-    [CascadingParameter]
+    [Inject]
     public ViewState ViewState { get; set; } = default!;
 
     [Parameter]

@@ -8,7 +8,7 @@ public abstract class BasePlugin : ComponentBase, IDisposable
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = default!;
 
-    [CascadingParameter]
+    [Inject]
     protected ViewState ViewState { get; set; } = default!;
 
     [Parameter]
