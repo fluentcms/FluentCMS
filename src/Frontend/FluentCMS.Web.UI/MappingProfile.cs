@@ -14,7 +14,6 @@ public class MappingProfile : Profile
         CreateMap<PluginDetailResponse, PluginViewState>();
         CreateMap<PluginDefinitionDetailResponse, PluginDefinitionViewState>();
         CreateMap<PluginDefinitionType, PluginDefinitionTypeViewState>();
-        CreateMap<UserLoginResponse, UserViewState>();
         CreateMap<RoleDetailResponse, RoleViewState>();
         CreateMap<UserRoleDetailResponse, UserViewState>();
 

@@ -1,10 +1,12 @@
 ﻿using FluentCMS.Web.ApiClients;
 using FluentCMS.Web.ApiClients.Services;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Security.Claims;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -60,10 +62,10 @@ public static class ApiClientServiceExtensions
                     var apiKey = clientSettings?.Key ?? "";
                     httpClient.DefaultRequestHeaders.Add("X-API-AUTH", apiKey);
 
-                    var userLogin = sp.GetRequiredService<UserLoginResponse>();
+                    var userToken = GetUserJwt(sp);
 
-                    if (!string.IsNullOrEmpty(userLogin?.Token))
-                        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", userLogin.Token);
+                    if (!string.IsNullOrEmpty(userToken))
+                        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", userToken);
 
                     var ctor = implementationType.GetConstructor([typeof(HttpClient)]) ??
                                throw new InvalidOperationException($"Could not find constructor for {implementationType.Name}");
@@ -72,5 +74,17 @@ public static class ApiClientServiceExtensions
                 });
         }
         return services;
+    }
+
+    private static string? GetUserJwt(IServiceProvider sp)
+    {
+        var authStateProvider = sp.GetRequiredService<AuthenticationStateProvider>();
+        var authStateTask = authStateProvider.GetAuthenticationStateAsync();
+        var authState = authStateTask.GetAwaiter().GetResult();
+
+        if (authState?.User?.Identity == null || !authState.User.Identity.IsAuthenticated)
+            return default;
+
+        return authState.User.FindFirstValue("jwt") ?? default;
     }
 }
