@@ -67,7 +67,7 @@ public partial class PageUpdatePlugin
     {
         if (Model.ParentId == Guid.Empty)
             Model.ParentId = default!;
-        
+
         if (Model.LayoutId == Guid.Empty)
             Model.LayoutId = default!;
 
