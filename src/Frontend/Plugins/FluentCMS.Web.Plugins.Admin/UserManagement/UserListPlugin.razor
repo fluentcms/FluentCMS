@@ -1,4 +1,5 @@
 @inherits BasePlugin
+@rendermode InteractiveServer
 
 <PluginBody Title="Users List">
     <ActionsFragment>
@@ -35,8 +36,12 @@
             </DataTableItem>
             <ActionButtons>
                 <ActionButtonEdit Href="@GetUrl("Update User", new { id = @context.Id })" />
+                <ActionButtonDelete @onclick="() => OnConfirm(context)" Visible="@(!context.IsSuperAdmin)" />
             </ActionButtons>
         </DataTable>
     </ChildContent>
 </PluginBody>
 
+<Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedUser != null">
+    Are you sure to delete <b>"@SelectedUser!.Username"</b> role?
+</Confirm>
