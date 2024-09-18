@@ -4,9 +4,7 @@ using FluentCMS.Web.UI;
 using FluentCMS.Web.UI.DynamicRendering;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
-using System.Security.Claims;
 using System.Web;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -35,25 +33,6 @@ public static class ServiceExtensions
         }).AddCookie();
 
         services.AddApiClients(configuration);
-
-        // add UserLoginResponse as scoped to be supported in SSR and InteractiveMode
-        services.AddScoped(sp =>
-        {
-            var authStateProvider = sp.GetRequiredService<AuthenticationStateProvider>();
-            var authStateTask = authStateProvider.GetAuthenticationStateAsync();
-            var authState = authStateTask.GetAwaiter().GetResult();
-
-            if (authState?.User?.Identity == null || !authState.User.Identity.IsAuthenticated)
-                return new UserLoginResponse();
-
-            return new UserLoginResponse
-            {
-                UserId = Guid.Parse(authState.User.FindFirstValue(ClaimTypes.Sid) ?? Guid.Empty.ToString()),
-                Email = authState.User.FindFirstValue(ClaimTypes.Email),
-                UserName = authState.User.FindFirstValue(ClaimTypes.NameIdentifier),
-                Token = authState.User.FindFirstValue("jwt"),
-            };
-        });
 
         // add global cascade parameter for Page (PageFullDetailResponse)
         // if we use cascading value in the component, it will be null in component which are rendered as InteractiveMode

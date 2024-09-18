@@ -22,7 +22,7 @@ public static class ModelHelpers
                 return new FieldValue<Guid?> { Name = fieldModel.Name, Value = valuesDict.TryGetValue(fieldModel.Name, out object? guidValue) ? (Guid?)guidValue : default! };
 
             case FieldTypes.BOOLEAN:
-                return new FieldValue<bool> { Name = fieldModel.Name, Value = valuesDict.TryGetValue(fieldModel.Name, out object? boolValue) ? (bool)boolValue : false };
+                return new FieldValue<bool> { Name = fieldModel.Name, Value = valuesDict.TryGetValue(fieldModel.Name, out object? boolValue) && (bool)boolValue };
 
             case FieldTypes.DATE_TIME:
                 // try parse the value as a DateTime

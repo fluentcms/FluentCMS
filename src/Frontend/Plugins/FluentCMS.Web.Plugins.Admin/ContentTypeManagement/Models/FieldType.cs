@@ -1,6 +1,4 @@
-﻿using FluentCMS.Web.UI.Components;
-
-namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
+﻿namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement;
 public class FieldType
 {
     public string Title { get; set; } = default!;
