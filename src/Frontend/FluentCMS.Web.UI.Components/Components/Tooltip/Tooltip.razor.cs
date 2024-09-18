@@ -7,7 +7,7 @@ public partial class Tooltip : IAsyncDisposable
 
     public ElementReference element;
 
-    private IJSObjectReference module = default!;
+    private IJSObjectReference Module { get; set; } = default!;
 
     [Parameter]
     public TooltipPlacement? Placement { get; set; }
@@ -17,16 +17,16 @@ public partial class Tooltip : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
+        await Module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
 
-        module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Tooltip/Tooltip.razor.js");
+        Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Tooltip/Tooltip.razor.js");
 
         // TODO: handle run time changing properties
-        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { Placement = Placement?.ToString().FromPascalCaseToKebabCase() });
+        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { Placement = Placement?.ToString().FromPascalCaseToKebabCase() });
     }
 }

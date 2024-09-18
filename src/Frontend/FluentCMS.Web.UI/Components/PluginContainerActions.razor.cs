@@ -8,10 +8,11 @@ public partial class PluginContainerActions
     [CascadingParameter]
     public ViewState ViewState { get; set; } = default!;
 
-    private bool IsDesignMode = false;
+    private bool IsDesignMode { get; set; } = false;
 
     protected override async Task OnInitializedAsync()
     {
         IsDesignMode = ViewState.Type == ViewStateType.PagePreview;
+        await base.OnInitializedAsync();
     }
 }

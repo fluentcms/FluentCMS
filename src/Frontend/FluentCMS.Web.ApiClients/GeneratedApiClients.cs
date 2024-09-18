@@ -83,12 +83,12 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateCurrentAsync(AccountUpdateRequest? body);
+        System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateAsync(AccountUpdateRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateCurrentAsync(AccountUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateAsync(AccountUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
 
     }
 
@@ -617,15 +617,15 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateCurrentAsync(AccountUpdateRequest? body)
+        public virtual System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateAsync(AccountUpdateRequest? body)
         {
-            return UpdateCurrentAsync(body, System.Threading.CancellationToken.None);
+            return UpdateAsync(body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateCurrentAsync(AccountUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<UserDetailResponseIApiResult> UpdateAsync(AccountUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -642,8 +642,8 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/Account/UpdateCurrent"
-                    urlBuilder_.Append("api/Account/UpdateCurrent");
+                    // Operation Path: "api/Account/Update"
+                    urlBuilder_.Append("api/Account/Update");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
