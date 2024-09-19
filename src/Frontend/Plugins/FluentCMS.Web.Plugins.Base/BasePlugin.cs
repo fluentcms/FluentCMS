@@ -8,7 +8,7 @@ public abstract class BasePlugin : ComponentBase
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = default!;
 
-    [CascadingParameter]
+    [Inject]
     protected ViewState ViewState { get; set; } = default!;
 
     [Parameter]
@@ -90,4 +90,5 @@ public abstract class BasePlugin : ComponentBase
 
         return QueryHelpers.AddQueryString(pagePathWithoutQueryString, newQueryParams);
     }
+
 }

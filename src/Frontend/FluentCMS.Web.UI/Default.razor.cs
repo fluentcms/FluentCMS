@@ -13,7 +13,7 @@ public partial class Default : IDisposable
     [Inject]
     private ILayoutProcessor LayoutProcessor { get; set; } = default!;
 
-    [CascadingParameter]
+    [Inject]
     public ViewState ViewState { get; set; } = default!;
 
     [CascadingParameter]
@@ -50,6 +50,7 @@ public partial class Default : IDisposable
 
     void LocationChanged(object? sender, LocationChangedEventArgs e)
     {
+        ViewState.Reload();
         StateHasChanged();
     }
 

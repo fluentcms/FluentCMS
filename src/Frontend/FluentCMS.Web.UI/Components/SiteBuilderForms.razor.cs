@@ -5,7 +5,7 @@ public partial class SiteBuilderForms
     [Inject]
     private ApiClientFactory ApiClient { get; set; } = default!;
 
-    [CascadingParameter]
+    [Inject]
     private ViewState ViewState { get; set; } = default!;
 
     [SupplyParameterFromForm(FormName = "DeletePluginForm")]
