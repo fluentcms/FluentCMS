@@ -71,4 +71,23 @@ public class PermissionManager : IPermissionManager
 
         return false;
     }
+
+    public async Task<IEnumerable<Site>> GetAccessible(IEnumerable<Site> sites, SitePermissionAction action, CancellationToken cancellationToken = default)
+    {
+        // Create a list to store sites where the user has access
+        var accessibleSites = new List<Site>();
+
+        // Iterate through each site and check if the user has access
+        foreach (var site in sites)
+        {
+            // Check if the user has access to the site for the given action
+            if (await HasAccess(site.Id, action, cancellationToken))
+            {
+                accessibleSites.Add(site); // If access is granted, add the site to the accessible list
+            }
+        }
+
+        // Return the filtered list of accessible sites
+        return accessibleSites;
+    }
 }

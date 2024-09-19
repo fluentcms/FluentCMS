@@ -2,7 +2,7 @@
 
 <PluginForm Model="@Model" Name="@FORM_NAME" Title="Create New Site" OnSubmit="OnSubmit">
     <FormInput @bind-Value="Model!.Name" Label="Name" Placeholder="Enter Name" Required />
-    <FormInput @bind-Value="Model!.Url" Cols="6" Label="Urls" Placeholder="Enter comma separated url" />
+    <FormInput @bind-Value="Model!.Url" Cols="6" Label="Urls" Placeholder="www.example.com" />
     <FormSelect @bind-Value="Model!.Template" Cols="6" Data="Templates" Label="Template" />
     <FormTextarea @bind-Value="Model.Description" Label="Description" Placeholder="Enter Description" />
     <FormActions Cancel Submit />

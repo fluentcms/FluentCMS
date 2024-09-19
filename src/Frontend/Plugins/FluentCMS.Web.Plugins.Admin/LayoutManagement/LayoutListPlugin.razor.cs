@@ -6,7 +6,7 @@ public partial class LayoutListPlugin
 
     private async Task Load()
     {
-        var response = await ApiClient.Layout.GetAllAsync(ViewState.Site.Id);
+        var response = await ApiClient.Layout.GetBySiteIdAsync(ViewState.Site.Id);
         Layouts = response?.Data?.ToList() ?? [];
     }
 

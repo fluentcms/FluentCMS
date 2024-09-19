@@ -1,6 +1,6 @@
 {
     "Name": "FluentCMS Administration",
-    "Description": "FluentCMS Administration Panel",
+    "Description": "FluentCMS default site template",
     "Layout": "DefaultLayout",
     "EditLayout": "EditLayout",
     "DetailLayout": "SingleLayout",

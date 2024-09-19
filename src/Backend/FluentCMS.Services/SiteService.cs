@@ -15,7 +15,7 @@ public class SiteService(ISiteRepository siteRepository, IMessagePublisher messa
     public async Task<IEnumerable<Site>> GetAll(CancellationToken cancellationToken = default)
     {
         var sites = await siteRepository.GetAll(cancellationToken);
-        return sites;
+        return await permissionManager.GetAccessible(sites, SitePermissionAction.SiteAdmin, cancellationToken);
     }
 
     public async Task<Site> GetById(Guid id, CancellationToken cancellationToken = default)
@@ -93,9 +93,6 @@ public class SiteService(ISiteRepository siteRepository, IMessagePublisher messa
     {
         if (!await permissionManager.HasAccess(GlobalPermissionAction.SuperAdmin, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
-
-        var originalSite = await siteRepository.GetById(id, cancellationToken) ??
-            throw new AppException(ExceptionCodes.SiteNotFound);
 
         var deletedSite = await siteRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteUnableToDelete);
