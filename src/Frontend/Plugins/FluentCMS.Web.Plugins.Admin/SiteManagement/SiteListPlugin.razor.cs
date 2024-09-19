@@ -13,7 +13,7 @@ public partial class SiteListPlugin
 
     protected override async Task OnInitializedAsync()
     {
-        var layoutsResponse = await ApiClient.Layout.GetAllAsync(ViewState.Site.Id);
+        var layoutsResponse = await ApiClient.Layout.GetAllAsync();
         Layouts = layoutsResponse?.Data?.ToList() ?? [];
         await Load();
     }

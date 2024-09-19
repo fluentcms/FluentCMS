@@ -15,26 +15,23 @@ public class SiteService(ISiteRepository siteRepository, IMessagePublisher messa
     public async Task<IEnumerable<Site>> GetAll(CancellationToken cancellationToken = default)
     {
         var sites = await siteRepository.GetAll(cancellationToken);
-        return sites;
+        return await permissionManager.GetAccessible(sites, SitePermissionAction.SiteAdmin, cancellationToken);
     }
 
     public async Task<Site> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var site = await siteRepository.GetById(id, cancellationToken) ??
+        if (!await permissionManager.HasAccess(id, SitePermissionAction.SiteAdmin, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
+        return await siteRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
-
-        //if (!await permissionManager.HasAccess(site, PermissionActionNames.SiteAdmin, cancellationToken))
-        //    throw new AppException(ExceptionCodes.PermissionDenied);
-
-        return site;
     }
 
     public async Task<Site> GetByUrl(string url, CancellationToken cancellationToken = default)
     {
-        var site = await siteRepository.GetByUrl(url, cancellationToken) ??
+        // no need to check permissions
+        return await siteRepository.GetByUrl(url, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
-
-        return site;
     }
 
     public async Task<Site> Create(SiteTemplate siteTemplate, CancellationToken cancellationToken = default)
@@ -74,8 +71,8 @@ public class SiteService(ISiteRepository siteRepository, IMessagePublisher messa
 
     public async Task<Site> Update(Site site, CancellationToken cancellationToken = default)
     {
-        //if (!await permissionManager.HasAccess(site, PermissionActionNames.SiteAdmin, cancellationToken))
-        //    throw new AppException(ExceptionCodes.PermissionDenied);
+        if (!await permissionManager.HasAccess(site.Id, SitePermissionAction.SiteAdmin, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
 
         PrepareSite(site);
 
@@ -94,11 +91,8 @@ public class SiteService(ISiteRepository siteRepository, IMessagePublisher messa
 
     public async Task<Site> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        if (!await permissionManager.HasAccess(GlobalPermissionAction.SuperAdmin))
+        if (!await permissionManager.HasAccess(GlobalPermissionAction.SuperAdmin, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
-
-        var originalSite = await siteRepository.GetById(id, cancellationToken) ??
-            throw new AppException(ExceptionCodes.SiteNotFound);
 
         var deletedSite = await siteRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteUnableToDelete);
