@@ -102,13 +102,6 @@ public static class ServiceExtensions
                 if (queryParams["pagePreview"] != null)
                     viewState.Type = ViewStateType.PagePreview;
             };
-            
-            return viewState;
-        });
-
-        services.AddCascadingValue(sp => {
-            var viewState = sp.GetRequiredService<ViewState>();
-
             viewState.Reload();
 
             return viewState;
