@@ -6,7 +6,6 @@ public partial class TextHTMLViewPlugin
 
     protected override async Task OnInitializedAsync()
     {
-        await base.OnInitializedAsync();
         if (Plugin is not null)
         {
             var response = await ApiClient.PluginContent.GetAllAsync(nameof(TextHTMLContent), Plugin.Id);
