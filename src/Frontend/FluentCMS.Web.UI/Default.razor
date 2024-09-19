@@ -1,15 +1,19 @@
 ﻿@page "/{**Route:nonfile}"
 
-@if (ViewState.Type == ViewStateType.PageEdit || ViewState.Type == ViewStateType.PagePreview)
+@if (ViewState.Type == ViewStateType.PageEdit)
 {
-    <SiteBuilder>
+    <SiteBuilder />
+}
+else if (ViewState.Type == ViewStateType.PagePreview)
+{
+    <SiteBuilderPreview>
         <Head>
             @RenderDynamicContent(ViewState.Layout?.Head ?? string.Empty)
         </Head>
         <Body>
             @RenderDynamicContent(ViewState.Layout?.Body ?? string.Empty)
         </Body>
-    </SiteBuilder>
+    </SiteBuilderPreview>
 }
 else if (ViewState.Type == ViewStateType.PluginEdit)
 {
@@ -19,14 +23,6 @@ else if (ViewState.Type == ViewStateType.PluginEdit)
         @RenderDynamicContent(ViewState.EditLayout?.Head ?? string.Empty)
     </HeadContent>
 
-    @if (!ViewState.Plugin!.Locked)
-    {
-        <PageToolbar>
-            <Start>
-                <img src="/_content/FluentCMS.Web.UI/images/logo.svg" />
-            </Start>
-        </PageToolbar>
-    }
     @RenderDynamicContent(ViewState.EditLayout?.Body ?? string.Empty)
 }
 else if (ViewState.Type == ViewStateType.PluginDetail)

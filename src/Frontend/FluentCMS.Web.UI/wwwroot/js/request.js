@@ -23,6 +23,10 @@ export function initColumns(frameDocument) {
     })
 }
 
+export function closePluginsSidebar() {
+    
+    document.querySelector('.f-page-editor-sidebar').classList.remove('f-page-editor-sidebar-open')
+}
 
 export function initializeSortable(frameDocument) {
     const sectionElements = frameDocument.querySelectorAll('.f-section');
@@ -42,7 +46,7 @@ export function initializeSortable(frameDocument) {
         });
     });
 
-    new Sortable(document.querySelector('.f-plugin-definition-list'), {
+    new Sortable(frameDocument.querySelector('.f-plugin-definition-list'), {
         animation: 150,
         group: {
             name: 'shared',
@@ -58,7 +62,7 @@ export function initializeSortable(frameDocument) {
             const order = event.newIndex - 1
             const sectionName = event.to.dataset.name
 
-            createPlugin({ definitionId, item, order, sectionName })
+            createPlugin({ definitionId, order, sectionName })
         }
     });
 }
@@ -85,7 +89,7 @@ export async function reload() {
         const node = template.content.querySelector('.f-page-editor').cloneNode(true)
         document.querySelector('.f-page-editor').innerHTML = node.innerHTML
 
-        initializeSortable(document.querySelector('.f-page-editor-iframe').contentDocument)
+        // initializeSortable(document.querySelector('.f-page-editor-iframe').contentDocument)
         hydrate(document.querySelector('.f-page-editor'))
     })
 }
@@ -115,7 +119,7 @@ export async function reloadIframe() {
 }
 
 export async function request(handler, body) {
-    const token = document.querySelector('[name="__RequestVerificationToken"]').value
+    const token = document.querySelector('iframe').contentDocument.querySelector('[name="__RequestVerificationToken"]').value
 
     const formData = new FormData()
     formData.set('__RequestVerificationToken', token)

@@ -6,20 +6,17 @@ let responsiveMode = null
 
 
 export function updateResponsive(mode, silent) {
-    if(responsiveMode == mode) {
-        if(silent) return;
-        responsiveMode = null;
-        document.querySelector(`[data-action="responsive-${mode}"]`).classList.remove('f-toolbar-responsive-button-active');
+    document.querySelector(`.f-toolbar-responsive-button-active`).classList.remove('f-toolbar-responsive-button-active')
+
+    responsiveMode = mode;
+    document.querySelector(`[data-action="responsive-${mode}"]`).classList.add('f-toolbar-responsive-button-active');
+
+    if(responsiveMode === 'default') {
+        iframeElement.style.width = '100%';
+        delete pageEditorElement.dataset['responsiveMode']
+
     }
     else {
-        if(responsiveMode)
-            document.querySelector(`[data-action="responsive-${responsiveMode}"]`).classList.remove('f-toolbar-responsive-button-active')
-
-        responsiveMode = mode;
-        document.querySelector(`[data-action="responsive-${mode}"]`).classList.add('f-toolbar-responsive-button-active');
-    }
-
-    if(responsiveMode) {
         pageEditorElement.dataset.responsiveMode = responsiveMode
         if(!silent) {
             if(responsiveMode == 'tablet') {
@@ -33,19 +30,14 @@ export function updateResponsive(mode, silent) {
             }
             updateResizerPosition()
         }
-
-    } else {
-        delete pageEditorElement.dataset['responsiveMode']
-        iframeElement.style.width = '100%';
-
     }
 }
 export function updateResizerPosition() {
     resizerElement.style.left = (iframeElement.getBoundingClientRect().right + 2) + 'px'
 
-    for(let key of Object.keys(window.sections)) {
-        window.sections[key].updateSize()
-    }
+    // for(let key of Object.keys(window.sections)) {
+    //     window.sections[key].updateSize()
+    // }
 }
 
 export function initializeResponsive() {

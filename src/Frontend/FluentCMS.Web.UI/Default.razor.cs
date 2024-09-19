@@ -1,7 +1,10 @@
-﻿using FluentCMS.Web.ApiClients.Services;
+﻿using AutoMapper;
+using FluentCMS.Web.ApiClients.Services;
 using FluentCMS.Web.UI.DynamicRendering;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Web.UI;
 
@@ -24,6 +27,12 @@ public partial class Default : IDisposable
 
     [Inject]
     public NavigationManager NavigationManager { set; get; } = default!;
+
+    [Inject]
+    public ApiClientFactory ApiClients { set; get; } = default!;
+
+    [Inject]
+    public IMapper Mapper { set; get; } = default!;
 
     [Inject]
     public SetupManager SetupManager { set; get; } = default!;
@@ -92,6 +101,8 @@ public partial class Default : IDisposable
                     builder.AddComponentParameter(attributeIndex, attribute.Key, attribute.Value);
                     attributeIndex++;
                 }
+                builder.AddComponentRenderMode(PluginRenderMode());
+
 
                 builder.CloseComponent();
             }
@@ -99,6 +110,7 @@ public partial class Default : IDisposable
         }
     };
 
+            
     private string GetPageAddUrl()
     {
         var uri = new Uri(NavigationManager.Uri);
@@ -114,6 +126,15 @@ public partial class Default : IDisposable
         return $"/admin/pages?{queryParamsString}";
     }
 
+    private IComponentRenderMode? PluginRenderMode()
+    {
+        if (ViewState.Type == ViewStateType.PagePreview || ViewState.Type == ViewStateType.PageEdit)
+        {
+            return RenderMode.InteractiveServer;
+        }
+                    
+        return null;
+    }
     private string GetPageEditUrl()
     {
 

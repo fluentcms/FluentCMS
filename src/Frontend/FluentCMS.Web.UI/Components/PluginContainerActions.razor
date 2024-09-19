@@ -1,3 +1,4 @@
+@rendermode RenderMode.InteractiveServer
 @namespace FluentCMS.Web.UI
 
 @if (IsDesignMode)
@@ -26,7 +27,7 @@
                     </svg>
                 </button>
             }
-            <button data-action="plugin-container-action-delete" class="f-plugin-toolbar-action">
+            <button @onclick="HandleDelete" class="f-plugin-toolbar-action">
                 <svg width="14" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M2.616 15.77C2.168 15.77 1.78667 15.6127 1.472 15.298C1.15733 14.9833 1 14.6023 1 14.155V1.77H0V0.77H4V0H10V0.77H14V1.77H13V14.155C13 14.615 12.846 14.9993 12.538 15.308C12.23 15.6167 11.8453 15.7707 11.384 15.77H2.616ZM12 1.77H2V14.155C2 14.3343 2.05767 14.4817 2.173 14.597C2.28833 14.7123 2.436 14.77 2.616 14.77H11.385C11.5383 14.77 11.6793 14.706 11.808 14.578C11.9367 14.45 12.0007 14.3087 12 14.154V1.77ZM4.808 12.77H5.808V3.77H4.808V12.77ZM8.192 12.77H9.192V3.77H8.192V12.77Z" fill="currentColor"/>
                 </svg>

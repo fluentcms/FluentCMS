@@ -1,10 +1,12 @@
-import { deletePlugin } from "./api.js"
 import { updateResizerPosition, updateResponsive } from "./responsive.js"
 
 export const actions = {
     'done'() {
         actions["hide-sidebar"]()
         window.location.href = window.location.href.replace('?pageEdit=true', '')
+    },
+    'responsive-default'() {
+        updateResponsive('default')
     },
     'responsive-mobile'() {
         updateResponsive('mobile')
@@ -14,45 +16,6 @@ export const actions = {
     },
     'responsive-desktop'() {
         updateResponsive('desktop')
-    },
-    async 'plugin-container-action-delete'(el) {
-        const id = el.parentElement.parentElement.parentElement.dataset.id
-        // Confirm delete
-
-        document.querySelector('.f-page-editor-delete-plugin-confirm').classList.add('open')
-        document.querySelector('.f-page-editor-delete-plugin-confirm-id').value = id
-        
-        // await deletePlugin(id)
-    },
-    async 'plugin-delete-confirm-no'(el) {
-        document.querySelector('.f-page-editor-delete-plugin-confirm').classList.remove('open')
-
-    },
-    async 'plugin-delete-confirm-yes'(el) {
-        const id = document.querySelector('.f-page-editor-delete-plugin-confirm-id').value
-        document.querySelector('.f-page-editor-delete-plugin-confirm').classList.remove('open')
-
-        await deletePlugin(id)
-
-        // Confirm delete
-    },
-    'show-sidebar'() {
-        let pageEditorElement = document.querySelector('.f-page-editor')
-
-        pageEditorElement.classList.remove('f-page-editor-sidebar-close')
-        pageEditorElement.classList.add('f-page-editor-sidebar-open')
-        setTimeout(() => {
-            updateResizerPosition()
-        }, 300)
-    },
-    'hide-sidebar'() {
-        let pageEditorElement = document.querySelector('.f-page-editor')
-
-        pageEditorElement.classList.add('f-page-editor-sidebar-close')
-        pageEditorElement.classList.remove('f-page-editor-sidebar-open')
-        setTimeout(() => {
-            updateResizerPosition()
-        }, 300)
     },
     'open-plugin-view'(el) {
         const viewName = el.dataset.viewName
@@ -64,9 +27,15 @@ export const actions = {
         if(pluginId) url += '?pluginId=' + pluginId;
         if(viewName) url += '&viewName=' + viewName;
         if(id) url += '&id=' + id;
-        url += '&redirectTo=' + encodeURIComponent(window.location.pathname + '?pageEdit=true');
+        url += '&redirectTo=' + encodeURIComponent(window.location.href);
 
+        console.log({url})
         window.location.href = url
+    },
+    'add-plugin'(el) {
+        updateResponsive('default')
+        const sidebar = document.querySelector('.f-page-editor-iframe').contentDocument.querySelector('.f-page-editor-sidebar')
+        sidebar.classList.toggle('f-page-editor-sidebar-open')
     }
 }
 
