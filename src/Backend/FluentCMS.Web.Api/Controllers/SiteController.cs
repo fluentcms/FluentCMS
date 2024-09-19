@@ -10,15 +10,6 @@ public class SiteController(ISiteService siteService, IMapper mapper) : BaseGlob
     public const string CREATE = "Create";
     public const string DELETE = $"Delete/{READ}";
 
-    [HttpGet("{siteUrl}")]
-    [Policy(AREA, READ)]
-    public async Task<IApiResult<SiteDetailResponse>> GetByUrl([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
-    {
-        var site = await siteService.GetByUrl(siteUrl, cancellationToken);
-        var siteResponse = mapper.Map<SiteDetailResponse>(site);
-        return Ok(siteResponse);
-    }
-
     [HttpGet]
     [Policy(AREA, READ)]
     public async Task<IApiPagingResult<SiteDetailResponse>> GetAll(CancellationToken cancellationToken = default)
