@@ -13,9 +13,7 @@ public class RoleService(IRoleRepository roleRepository, IMessagePublisher messa
 {
     public async Task<IEnumerable<Role>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {
-        if (!await permissionManager.HasAccess(siteId, SitePermissionAction.SiteAdmin, cancellationToken))
-            throw new AppException(ExceptionCodes.PermissionDenied);
-
+        // no need to check for permission 
         return await roleRepository.GetAllForSite(siteId, cancellationToken);
     }
 
@@ -87,13 +85,8 @@ public class RoleService(IRoleRepository roleRepository, IMessagePublisher messa
 
     public async Task<Role> GetById(Guid roleId, CancellationToken cancellationToken = default)
     {
-        var existingRole = await roleRepository.GetById(roleId, cancellationToken) ??
+        // no need to check for permission
+        return await roleRepository.GetById(roleId, cancellationToken) ??
             throw new AppException(ExceptionCodes.RoleNotFound);
-
-        if (!await permissionManager.HasAccess(existingRole.SiteId, SitePermissionAction.SiteAdmin, cancellationToken))
-            throw new AppException(ExceptionCodes.PermissionDenied);
-
-        return existingRole;
-
     }
 }
