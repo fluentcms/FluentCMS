@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI;
 
-public partial class PluginContainerActions : IDisposable
+public partial class PluginContainerActions
 {
     [Parameter]
     public PluginViewState Plugin { get; set; } = default!;
@@ -8,21 +8,11 @@ public partial class PluginContainerActions : IDisposable
     [Inject]
     public ViewState ViewState { get; set; } = default!;
 
-    private bool IsDesignMode = false;
+    private bool IsDesignMode { get; set; } = false;
 
     protected override async Task OnInitializedAsync()
     {
         IsDesignMode = ViewState.Type == ViewStateType.PagePreview;
-        ViewState.OnStateChanged += ViewStateChanged;
+        await Task.CompletedTask;
     }
-
-    private void ViewStateChanged(object? sender, EventArgs e)
-    {
-        StateHasChanged();
-    }
-    void IDisposable.Dispose()
-    {
-        ViewState.OnStateChanged -= ViewStateChanged;
-    }
-
 }
