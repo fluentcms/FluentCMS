@@ -9,10 +9,6 @@ public partial class RoleUpdatePlugin
 
     private RoleUpdateRequest? Model { get; set; }
 
-    private List<Policy>? Policies { get; set; }
-
-    private RoleDetailResponse? Role { get; set; }
-
     protected override async Task OnInitializedAsync()
     {
         if (Model is null)

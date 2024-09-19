@@ -15,7 +15,7 @@ public partial class RichTextEditPlugin
         {
             var response = await ApiClient.PluginContent.GetAllAsync(CONTENT_TYPE_NAME, Plugin!.Id);
 
-            var content = response.Data.ToContentList<RichTextContent>();
+            var content = response.Data?.ToContentList<RichTextContent>() ?? [];
 
             if (content.Count > 0)
             {

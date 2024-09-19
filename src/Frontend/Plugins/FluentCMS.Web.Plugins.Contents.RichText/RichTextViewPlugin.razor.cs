@@ -2,7 +2,7 @@ namespace FluentCMS.Web.Plugins.Contents.RichText;
 
 public partial class RichTextViewPlugin
 {
-    private RichTextContent Item { get; set; }
+    private RichTextContent? Item { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
