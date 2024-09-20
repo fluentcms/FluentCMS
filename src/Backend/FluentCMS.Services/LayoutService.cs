@@ -94,7 +94,7 @@ public class LayoutService(ILayoutRepository layoutRepository, ISiteRepository s
         var deleted = await layoutRepository.DeleteMany(layouts.Select(x => x.Id), cancellationToken);
 
         // creating tasks for the message publisher and await them all to finish
-        var tasks = deleted?.Select(item => messagePublisher.Publish(new Message<Layout>(ActionNames.LayoutDeleted, item!), cancellationToken)).ToList() ?? [];
+        var tasks = deleted?.Select(item => messagePublisher.Publish(new Message<Layout>(ActionNames.LayoutDeleted, item), cancellationToken)).ToList() ?? [];
 
         await Task.WhenAll(tasks);
 

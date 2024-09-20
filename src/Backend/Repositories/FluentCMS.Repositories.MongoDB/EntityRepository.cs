@@ -13,12 +13,16 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
     public EntityRepository(IMongoDBContext mongoDbContext)
     {
         MongoDatabase = mongoDbContext.Database;
-        Collection = mongoDbContext.Database.GetCollection<TEntity>(GetCollectionName());
-        BsonCollection = mongoDbContext.Database.GetCollection<BsonDocument>(GetCollectionName());
+        Collection = mongoDbContext.Database.GetCollection<TEntity>(EntityRepository<TEntity>.GetCollectionName());
+        BsonCollection = mongoDbContext.Database.GetCollection<BsonDocument>(EntityRepository<TEntity>.GetCollectionName());
         MongoDbContext = mongoDbContext;
+
+        // Ensure index on Id field
+        var indexKeysDefinition = Builders<TEntity>.IndexKeys.Ascending(x => x.Id);
+        Collection.Indexes.CreateOne(new CreateIndexModel<TEntity>(indexKeysDefinition));
     }
 
-    private string GetCollectionName()
+    private static string GetCollectionName()
     {
         var entityTypeName = typeof(TEntity).Name;
         return entityTypeName.Pluralize().ToLowerInvariant();
@@ -51,14 +55,16 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
     public virtual async Task<TEntity?> Create(TEntity entity, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        await Collection.InsertOneAsync(entity, null, cancellationToken);
+        var options = new InsertOneOptions { BypassDocumentValidation = false };
+        await Collection.InsertOneAsync(entity, options, cancellationToken);
         return entity;
     }
 
     public virtual async Task<IEnumerable<TEntity>> CreateMany(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        await Collection.InsertManyAsync(entities, null, cancellationToken);
+        var options = new InsertManyOptions { BypassDocumentValidation = false };
+        await Collection.InsertManyAsync(entities, options, cancellationToken);
         return entities;
     }
 
@@ -66,8 +72,9 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
     {
         cancellationToken.ThrowIfCancellationRequested();
         var idFilter = Builders<TEntity>.Filter.Eq(x => x.Id, entity.Id);
-        await Collection.FindOneAndReplaceAsync(idFilter, entity, null, cancellationToken);
+        await Collection.ReplaceOneAsync(idFilter, entity, cancellationToken: cancellationToken);
         return entity;
+
     }
 
     public virtual async Task<TEntity?> Delete(Guid id, CancellationToken cancellationToken = default)
@@ -78,7 +85,7 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
         return entity;
     }
 
-    public virtual async Task<IEnumerable<TEntity?>> DeleteMany(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TEntity>> DeleteMany(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var entities = await GetByIds(ids, cancellationToken);

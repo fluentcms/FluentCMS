@@ -13,12 +13,12 @@ public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntit
     public EntityRepository(ILiteDBContext liteDbContext)
     {
         LiteDatabase = liteDbContext.Database;
-        Collection = liteDbContext.Database.GetCollection<TEntity>(GetCollectionName());
-        BsonCollection = liteDbContext.Database.GetCollection<BsonDocument>(GetCollectionName());
+        Collection = liteDbContext.Database.GetCollection<TEntity>(EntityRepository<TEntity>.GetCollectionName());
+        BsonCollection = liteDbContext.Database.GetCollection<BsonDocument>(EntityRepository<TEntity>.GetCollectionName());
         LiteDbContext = liteDbContext;
     }
 
-    private string GetCollectionName()
+    private static string GetCollectionName()
     {
         var entityTypeName = typeof(TEntity).Name;
         return entityTypeName.Pluralize().ToLowerInvariant();
@@ -28,7 +28,7 @@ public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntit
     {
         cancellationToken.ThrowIfCancellationRequested();
         var findResult = await Collection.Query().ToListAsync();
-        return findResult.ToList();
+        return [.. findResult];
     }
 
     public virtual async Task<TEntity?> GetById(Guid id, CancellationToken cancellationToken = default)
@@ -41,7 +41,7 @@ public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntit
     {
         cancellationToken.ThrowIfCancellationRequested();
         var findResult = await Collection.Query().Where(x => ids.Contains(x.Id)).ToListAsync();
-        return findResult.ToList();
+        return [.. findResult];
     }
 
     public virtual async Task<TEntity?> Create(TEntity entity, CancellationToken cancellationToken = default)
@@ -74,7 +74,7 @@ public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntit
         return entity;
     }
 
-    public virtual async Task<IEnumerable<TEntity?>> DeleteMany(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TEntity>> DeleteMany(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var entities = await GetByIds(ids, cancellationToken);
