@@ -6,19 +6,20 @@ namespace FluentCMS.Repositories.LiteDb;
 public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntity : IEntity
 {
     protected readonly ILiteCollectionAsync<TEntity> Collection;
-    protected readonly ILiteCollectionAsync<BsonDocument> BsonCollection;
     protected readonly ILiteDatabaseAsync LiteDatabase;
     protected readonly ILiteDBContext LiteDbContext;
 
     public EntityRepository(ILiteDBContext liteDbContext)
     {
         LiteDatabase = liteDbContext.Database;
-        Collection = liteDbContext.Database.GetCollection<TEntity>(GetCollectionName());
-        BsonCollection = liteDbContext.Database.GetCollection<BsonDocument>(GetCollectionName());
+        Collection = liteDbContext.Database.GetCollection<TEntity>(EntityRepository<TEntity>.GetCollectionName());
         LiteDbContext = liteDbContext;
+
+        // Ensure index on Id field
+        Collection.EnsureIndexAsync(x => x.Id);
     }
 
-    private string GetCollectionName()
+    private static string GetCollectionName()
     {
         var entityTypeName = typeof(TEntity).Name;
         return entityTypeName.Pluralize().ToLowerInvariant();
@@ -27,8 +28,8 @@ public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntit
     public virtual async Task<IEnumerable<TEntity>> GetAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var findResult = await Collection.Query().ToListAsync();
-        return findResult.ToList();
+        var findResult = await Collection.Query().ToListAsync() ?? [];
+        return findResult;
     }
 
     public virtual async Task<TEntity?> GetById(Guid id, CancellationToken cancellationToken = default)
@@ -40,8 +41,8 @@ public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntit
     public virtual async Task<IEnumerable<TEntity>> GetByIds(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var findResult = await Collection.Query().Where(x => ids.Contains(x.Id)).ToListAsync();
-        return findResult.ToList();
+        var findResult = await Collection.Query().Where(x => ids.Contains(x.Id)).ToListAsync() ?? [];
+        return findResult;
     }
 
     public virtual async Task<TEntity?> Create(TEntity entity, CancellationToken cancellationToken = default)
@@ -74,7 +75,7 @@ public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntit
         return entity;
     }
 
-    public virtual async Task<IEnumerable<TEntity?>> DeleteMany(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TEntity>> DeleteMany(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var entities = await GetByIds(ids, cancellationToken);
