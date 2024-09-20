@@ -6,7 +6,6 @@ namespace FluentCMS.Repositories.MongoDB;
 public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntity : IEntity
 {
     protected readonly IMongoCollection<TEntity> Collection;
-    protected readonly IMongoCollection<BsonDocument> BsonCollection;
     protected readonly IMongoDatabase MongoDatabase;
     protected readonly IMongoDBContext MongoDbContext;
 
@@ -14,7 +13,6 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
     {
         MongoDatabase = mongoDbContext.Database;
         Collection = mongoDbContext.Database.GetCollection<TEntity>(EntityRepository<TEntity>.GetCollectionName());
-        BsonCollection = mongoDbContext.Database.GetCollection<BsonDocument>(EntityRepository<TEntity>.GetCollectionName());
         MongoDbContext = mongoDbContext;
 
         // Ensure index on Id field
