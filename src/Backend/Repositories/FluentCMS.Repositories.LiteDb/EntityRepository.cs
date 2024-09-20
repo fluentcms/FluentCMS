@@ -14,6 +14,9 @@ public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntit
         LiteDatabase = liteDbContext.Database;
         Collection = liteDbContext.Database.GetCollection<TEntity>(EntityRepository<TEntity>.GetCollectionName());
         LiteDbContext = liteDbContext;
+
+        // Ensure index on Id field
+        Collection.EnsureIndexAsync(x => x.Id);
     }
 
     private static string GetCollectionName()
@@ -25,8 +28,8 @@ public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntit
     public virtual async Task<IEnumerable<TEntity>> GetAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var findResult = await Collection.Query().ToListAsync();
-        return [.. findResult];
+        var findResult = await Collection.Query().ToListAsync() ?? [];
+        return findResult;
     }
 
     public virtual async Task<TEntity?> GetById(Guid id, CancellationToken cancellationToken = default)
@@ -38,8 +41,8 @@ public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntit
     public virtual async Task<IEnumerable<TEntity>> GetByIds(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var findResult = await Collection.Query().Where(x => ids.Contains(x.Id)).ToListAsync();
-        return [.. findResult];
+        var findResult = await Collection.Query().Where(x => ids.Contains(x.Id)).ToListAsync() ?? [];
+        return findResult;
     }
 
     public virtual async Task<TEntity?> Create(TEntity entity, CancellationToken cancellationToken = default)
