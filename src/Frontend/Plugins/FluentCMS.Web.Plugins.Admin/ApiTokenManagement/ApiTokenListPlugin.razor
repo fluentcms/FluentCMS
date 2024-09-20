@@ -29,7 +29,7 @@
                 <ActionButton Visible="ViewApiTokenId == context.Id" IconName="IconName.EyeSlash" @onclick="() => ToggleTokenKey(context.Id)" />
                 <ActionButton IconName="IconName.Refresh" Color="Color.Success" Label="Re-Generate" @onclick="() => OnRegenerateConfirm(context)" />
                 <ActionButtonEdit Href="@GetUrl("Update Api Token", new { id = @context.Id })" />
-                <ActionButtonDelete @onclick="() => OnDeleteConfirm(context)" />
+                <ActionButtonDelete Visible="@(ClientSettingsOptions.Value?.Key != $"{context.Key}:{@context.Secret}")" @onclick="() => OnDeleteConfirm(context)" />
             </ActionButtons>
         </DataTable>
     </ChildContent>
