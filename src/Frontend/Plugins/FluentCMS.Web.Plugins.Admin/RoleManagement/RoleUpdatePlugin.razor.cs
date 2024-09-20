@@ -7,6 +7,7 @@ public partial class RoleUpdatePlugin
     [SupplyParameterFromQuery(Name = "id")]
     private Guid Id { get; set; }
 
+    [SupplyParameterFromForm(FormName = FORM_NAME)]
     private RoleUpdateRequest? Model { get; set; }
 
     protected override async Task OnInitializedAsync()

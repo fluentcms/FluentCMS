@@ -1,7 +1,12 @@
+using Microsoft.Extensions.Options;
+
 namespace FluentCMS.Web.Plugins.Admin.ApiTokenManagement;
 
 public partial class ApiTokenListPlugin
 {
+    [Inject]
+    private IOptions<ClientSettings>? ClientSettingsOptions { get; set; }
+
     private List<ApiTokenDetailResponse> ApiTokens { get; set; } = [];
     private ApiTokenDetailResponse? SelectedApiToken { get; set; } = default!;
     private Guid? ViewApiTokenId { get; set; } = default!;
