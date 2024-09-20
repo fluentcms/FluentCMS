@@ -21,7 +21,7 @@ public partial class PageUpdatePlugin
     {
         if (Layouts is null)
         {
-            var layoutsResponse = await ApiClient.Layout.GetAllAsync(ViewState.Site.Id);
+            var layoutsResponse = await ApiClient.Layout.GetBySiteIdAsync(ViewState.Site.Id);
             Layouts = layoutsResponse?.Data?.ToList() ?? [];
 
             LayoutOptions = [

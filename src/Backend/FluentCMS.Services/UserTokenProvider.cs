@@ -7,6 +7,7 @@ using System.Text;
 
 namespace FluentCMS.Services;
 
+// TODO: think about this implementation, it may need a full refactor!
 public interface IUserTokenProvider
 {
     Task<UserToken> Generate(User user);

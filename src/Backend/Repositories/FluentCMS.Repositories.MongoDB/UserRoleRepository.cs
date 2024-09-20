@@ -13,4 +13,10 @@ public class UserRoleRepository(IMongoDBContext mongoDbContext, IApiExecutionCon
         cancellationToken.ThrowIfCancellationRequested();
         return await Collection.Find(x => x.RoleId == roleId).ToListAsync(cancellationToken);
     }
+
+    public async Task<IEnumerable<UserRole>> GetByUserId(Guid userId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return await Collection.Find(x => x.UserId == userId).ToListAsync(cancellationToken);
+    }
 }

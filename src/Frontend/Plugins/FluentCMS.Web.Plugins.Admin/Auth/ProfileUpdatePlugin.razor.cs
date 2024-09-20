@@ -24,7 +24,7 @@ public partial class ProfileUpdatePlugin
 
     private async Task OnProfileSubmit()
     {
-        await ApiClient.Account.UpdateCurrentAsync(ProfileModel);
+        await ApiClient.Account.UpdateAsync(ProfileModel);
         NavigateTo("/admin");
     }
 

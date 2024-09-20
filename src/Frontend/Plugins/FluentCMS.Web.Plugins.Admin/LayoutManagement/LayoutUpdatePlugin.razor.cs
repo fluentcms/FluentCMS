@@ -22,6 +22,7 @@ public partial class LayoutUpdatePlugin
 
     private async Task OnSubmit()
     {
+        Model!.Id = Id;
         await ApiClient.Layout.UpdateAsync(Model);
         NavigateBack();
     }

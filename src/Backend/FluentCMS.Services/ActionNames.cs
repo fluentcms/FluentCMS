@@ -95,8 +95,27 @@ public static class ActionNames
     #region User
 
     public const string UserCreated = "UserCreated";
+    public const string UserPasswordChanged = "UserPasswordChanged";
     public const string UserUpdated = "UserUpdated";
     public const string UserDeleted = "UserDeleted";
+
+    #endregion
+
+    #region Account
+
+    public const string AccountRegister = "AccountRegister";
+    public const string AccountAuthenticate = "AccountAuthenticate";
+    public const string AccountChangePassword = "AccountChangePassword";
+    public const string AccountPasswordSent = "AccountPasswordSent";
+    public const string AccountPasswordChangeByToken = "AccountPasswordChangeByToken";
+    public const string AccountUpdated = "AccountUpdated";
+
+    #endregion
+
+    #region UserRole
+
+    public const string UserRoleCreated = "UserRoleCreated";
+    public const string UserRoleDeleted = "UserRoleDeleted";
 
     #endregion
 }

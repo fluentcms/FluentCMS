@@ -9,6 +9,14 @@
         <DataTable Items="Roles">
             <DataTableItem Label="Name">@context.Name</DataTableItem>
             <DataTableItem Label="Description">@context.Description</DataTableItem>
+            <DataTableItem Label="Type">
+                <Indicator Color="Color.Success" Visible="@(context.Type== RoleTypes.AllUsers)">All Users</Indicator>
+                <Indicator Color="Color.Secondary" Visible="@(context.Type== RoleTypes.Authenticated)">Authenticated Users</Indicator>
+                <Indicator Color="Color.Info" Visible="@(context.Type== RoleTypes.Guest)">Guests</Indicator>
+                <Indicator Color="Color.Warning" Visible="@(context.Type== RoleTypes.UserDefined)">Custom Role</Indicator>
+                <Indicator Color="Color.Danger" Visible="@(context.Type== RoleTypes.Administrators)">Administrators</Indicator>
+            </DataTableItem>
+            <DataTableItem Label="Users Count">@context.UsersCount</DataTableItem>
             <ActionButtons>
                 <ActionButtonDelete @onclick="() => OnConfirm(context)" Visible="@(context.Type == RoleTypes.UserDefined)" />
                 <ActionButtonEdit Href="@GetUrl("Update Role", new { id = @context.Id })" />

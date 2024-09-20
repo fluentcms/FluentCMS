@@ -15,7 +15,7 @@ public partial class LayoutCreatePlugin
 
     private async Task OnSubmit()
     {
-        Model.SiteId = ViewState.Site.Id;
+        Model!.SiteId = ViewState.Site.Id;
         await ApiClient.Layout.CreateAsync(Model);
         NavigateBack();
     }

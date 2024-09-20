@@ -10,6 +10,7 @@ public partial class UserCreatePlugin
     protected override async Task OnInitializedAsync()
     {
         Model ??= new();
+        await base.OnInitializedAsync();
     }
 
     private async Task OnSubmit()

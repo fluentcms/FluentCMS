@@ -13,7 +13,6 @@ public class PageController(
     IUserRoleService userRoleService,
     ISetupService setupService,
     IApiExecutionContext apiExecutionContext,
-    IPermissionService permissionService,
     IMapper mapper) : BaseGlobalController
 {
 

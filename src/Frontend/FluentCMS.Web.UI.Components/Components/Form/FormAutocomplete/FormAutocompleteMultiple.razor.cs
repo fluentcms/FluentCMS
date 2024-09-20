@@ -23,11 +23,11 @@ public partial class FormAutocompleteMultiple<TItem, TValue> : IAsyncDisposable
     public EventCallback<ICollection<TValue>> OnChange { get; set; }
 
     [Parameter]
-    public RenderFragment ChildContent { get; set; }
+    public RenderFragment ChildContent { get; set; } = default!;
 
     public ElementReference Element;
 
-    private IJSObjectReference Module = default!;
+    private IJSObjectReference Module { get; set; } = default!;
 
     private bool IsSelected(TItem item)
     {
@@ -55,8 +55,7 @@ public partial class FormAutocompleteMultiple<TItem, TValue> : IAsyncDisposable
     [JSInvokable]
     public async Task UpdateValue(ICollection<TValue> value)
     {
-        if (Value is null)
-            Value = [];
+        Value ??= [];
 
         Value = value;
         // if (Value.Contains(value))
@@ -71,7 +70,7 @@ public partial class FormAutocompleteMultiple<TItem, TValue> : IAsyncDisposable
     protected override async Task OnParametersSetAsync()
     {
         if (Module != null)
-            Module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), Element, new { Value });
+            await Module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), Element, new { Value });
     }
 
     public async ValueTask DisposeAsync()

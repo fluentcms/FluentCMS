@@ -1,5 +1,4 @@
-﻿using FluentCMS.Providers.MessageBusProviders;
-namespace FluentCMS.Services.MessageHandlers;
+﻿namespace FluentCMS.Services.MessageHandlers;
 
 public class RoleMessageHandler(IRoleService roleService) : IMessageHandler<SiteTemplate>
 {

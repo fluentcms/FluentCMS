@@ -6,6 +6,7 @@ public class UserController(IUserService userService, IGlobalSettingsService glo
     public const string READ = "Read";
     public const string UPDATE = $"Update/{READ}";
     public const string CREATE = "Create";
+    public const string DELETE = $"Delete/{READ}";
 
     [HttpGet]
     [Policy(AREA, READ)]
@@ -14,6 +15,7 @@ public class UserController(IUserService userService, IGlobalSettingsService glo
         var users = (await userService.GetAll(cancellationToken)).ToList();
         var usersResponse = mapper.Map<List<UserDetailResponse>>(users);
 
+        // setting super admin flag
         var globalSettings = await globalSettingsService.Get(cancellationToken);
         if (globalSettings != null)
             usersResponse.ForEach(user => user.IsSuperAdmin = globalSettings.SuperAdmins.Contains(user.Username));
@@ -60,5 +62,13 @@ public class UserController(IUserService userService, IGlobalSettingsService glo
         var userResponse = mapper.Map<UserDetailResponse>(created);
 
         return Ok(userResponse);
+    }
+
+    [HttpDelete("{id}")]
+    [Policy(AREA, DELETE)]
+    public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    {
+        await userService.Delete(id, cancellationToken);
+        return Ok(true);
     }
 }
