@@ -4,7 +4,6 @@ using FluentCMS.Web.UI.DynamicRendering;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Web.UI;
 

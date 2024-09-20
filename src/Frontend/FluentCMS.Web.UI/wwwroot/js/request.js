@@ -5,6 +5,7 @@ import { createPlugin, updatePlugin, updatePluginCols, updatePluginOrders } from
 import {Columns} from './columns.js'
 
 export function initColumns(frameDocument) {
+    console.log('initColumns')
     window.sections = []
     frameDocument.querySelectorAll('.f-section').forEach(section => {
         const column = new Columns(section, {
@@ -28,8 +29,9 @@ export function closePluginsSidebar() {
     document.querySelector('.f-page-editor-sidebar').classList.remove('f-page-editor-sidebar-open')
 }
 
-export function initializeSortable(frameDocument) {
-    const sectionElements = frameDocument.querySelectorAll('.f-section');
+export function initializeSortable() {
+    console.log('initSortable')
+    const sectionElements = document.querySelectorAll('.f-section');
 
     sectionElements.forEach(section => {
         new Sortable(section, {
@@ -46,7 +48,7 @@ export function initializeSortable(frameDocument) {
         });
     });
 
-    new Sortable(frameDocument.querySelector('.f-plugin-definition-list'), {
+    new Sortable(document.querySelector('.f-plugin-definition-list'), {
         animation: 150,
         group: {
             name: 'shared',
@@ -68,6 +70,7 @@ export function initializeSortable(frameDocument) {
 }
 
 export async function hydrate(element) {
+    console.log('hydrate')
     element.querySelectorAll('[data-action]').forEach(action => {
         if(action.dataset.trigger === 'load') {
             actions[action.dataset.action](action)

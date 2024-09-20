@@ -1,10 +1,8 @@
-import { closePluginsSidebar, reloadIframe, request } from "./request.js";
+import { closePluginsSidebar } from "./request.js";
 
 export async function createPlugin({definitionId, sectionName, order}) {
     closePluginsSidebar()
-    console.log(window.dotnet, definitionId, sectionName, order)
     await window.dotnet.invokeMethodAsync("CreatePlugin", definitionId, sectionName, order)
-
     await updatePluginOrders()
 }
 

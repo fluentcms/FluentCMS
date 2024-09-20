@@ -20,13 +20,11 @@ public partial class SiteBuilderPreviewScript
     [Inject]
     public ViewState ViewState { get; set; } = default!;
 
-    public ElementReference element;
-
-    private IJSObjectReference module = default!;
+    private IJSObjectReference Module { get; set; } = default!;
 
     async Task Reload() {
         ViewState.Reload();
-        await Task.CompletedTask;
+        await Module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), new {});
     }
 
     [JSInvokable]
@@ -75,9 +73,9 @@ public partial class SiteBuilderPreviewScript
         if (!firstRender)
             return;
 
-        module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI/Components/SiteBuilderPreviewScript.razor.js");
+        Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI/Components/SiteBuilderPreviewScript.razor.js");
 
-        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), new {});
+        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), new {});
     }
 
 }
