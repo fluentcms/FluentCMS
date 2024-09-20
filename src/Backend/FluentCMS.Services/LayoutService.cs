@@ -11,7 +11,7 @@ public interface ILayoutService : IAutoRegisterService
     Task<Layout> Update(Layout layout, CancellationToken cancellationToken);
 }
 
-public class LayoutService(ILayoutRepository layoutRepository, IMessagePublisher messagePublisher, IPermissionManager permissionManager) : ILayoutService
+public class LayoutService(ILayoutRepository layoutRepository, ISiteRepository siteRepository, IMessagePublisher messagePublisher, IPermissionManager permissionManager) : ILayoutService
 {
     public async Task<Layout> GetById(Guid id, CancellationToken cancellationToken = default)
     {
@@ -59,8 +59,17 @@ public class LayoutService(ILayoutRepository layoutRepository, IMessagePublisher
         var existing = await layoutRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.LayoutNotFound);
 
-        if (!await permissionManager.HasAccess(existing.SiteId, SitePermissionAction.SiteAdmin, cancellationToken))
+        var siteId = existing.SiteId;
+
+        if (!await permissionManager.HasAccess(siteId, SitePermissionAction.SiteAdmin, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
+
+        // check if the layout is one of site's default layout, if so, throw an exception
+        var site = await siteRepository.GetById(siteId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.SiteNotFound);
+
+        if (site.LayoutId == id || site.EditLayoutId == id || site.DetailLayoutId == id)
+            throw new AppException(ExceptionCodes.LayoutUnableToDeleteDefaultLayout);
 
         var deleted = await layoutRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.LayoutUnableToDelete);
