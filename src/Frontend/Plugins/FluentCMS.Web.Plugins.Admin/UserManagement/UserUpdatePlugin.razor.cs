@@ -58,6 +58,7 @@ public partial class UserUpdatePlugin
 
     private async Task OnRoleUpdate()
     {
+        UserRolesModel!.RoleIds ??= [];
         await ApiClient.UserRole.UpdateAsync(UserRolesModel);
         NavigateBack();
     }
