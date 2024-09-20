@@ -41,6 +41,16 @@ public partial class SiteBuilderPreviewScript
 
         await ApiClients.Plugin.CreateAsync(createPluginRequest);
 
+        var pluginsResponse = await ApiClients.Plugin.GetByPageIdAsync(ViewState.Page.Id);
+        var plugins = pluginsResponse.Data!.OrderBy(p => p.Order).ToList();
+
+        var pluginorder = 0;
+        foreach (var plugin in plugins)
+        {
+            plugin.Order = pluginorder++;
+            await ApiClients.Plugin.UpdateAsync(Mapper.Map<PluginUpdateRequest>(plugin));
+        }
+
         await Reload();
     }
 

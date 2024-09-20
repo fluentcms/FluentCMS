@@ -27,7 +27,7 @@ public partial class PluginContainerActions
         await Task.CompletedTask;
     }
 
-    private string OpenPluginView(string viewName = "Settings") {
+    private void OpenPluginView(string viewName = "Settings") {
         var baseUrl = new Uri(NavigationManager.Uri).LocalPath;
 
         var queryParams = new List<string>
@@ -44,6 +44,6 @@ public partial class PluginContainerActions
         var url = baseUrl;
 
         url += "?" + string.Join("&", queryParams);
-        return url;
+        NavigationManager.NavigateTo(url, true);
     } 
 }

@@ -24,5 +24,6 @@ public partial class PluginsSection : IDisposable
     protected override async Task OnInitializedAsync()
     {
         ViewState.OnStateChanged += ViewStateChanged;
+        await Task.CompletedTask;
     }
 }

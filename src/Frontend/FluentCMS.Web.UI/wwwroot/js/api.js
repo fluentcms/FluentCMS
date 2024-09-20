@@ -3,7 +3,6 @@ import { closePluginsSidebar } from "./request.js";
 export async function createPlugin({definitionId, sectionName, order}) {
     closePluginsSidebar()
     await window.dotnet.invokeMethodAsync("CreatePlugin", definitionId, sectionName, order)
-    await updatePluginOrders()
 }
 
 export async function updatePluginCols(pluginEl, section) {
