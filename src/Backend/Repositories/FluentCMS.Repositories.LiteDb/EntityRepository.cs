@@ -6,7 +6,6 @@ namespace FluentCMS.Repositories.LiteDb;
 public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntity : IEntity
 {
     protected readonly ILiteCollectionAsync<TEntity> Collection;
-    protected readonly ILiteCollectionAsync<BsonDocument> BsonCollection;
     protected readonly ILiteDatabaseAsync LiteDatabase;
     protected readonly ILiteDBContext LiteDbContext;
 
@@ -14,7 +13,6 @@ public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntit
     {
         LiteDatabase = liteDbContext.Database;
         Collection = liteDbContext.Database.GetCollection<TEntity>(EntityRepository<TEntity>.GetCollectionName());
-        BsonCollection = liteDbContext.Database.GetCollection<BsonDocument>(EntityRepository<TEntity>.GetCollectionName());
         LiteDbContext = liteDbContext;
     }
 
