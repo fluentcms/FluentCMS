@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Repositories.LiteDb;
 
-public class AuditableEntityRepository<TEntity> : EntityRepository<TEntity>, IAuditableEntityRepository<TEntity> where TEntity : IAuditableEntity
+public abstract class AuditableEntityRepository<TEntity> : EntityRepository<TEntity>, IAuditableEntityRepository<TEntity> where TEntity : IAuditableEntity
 {
     protected readonly IApiExecutionContext ApiExecutionContext;
 

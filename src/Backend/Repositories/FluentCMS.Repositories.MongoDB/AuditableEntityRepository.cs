@@ -1,13 +1,8 @@
 ﻿namespace FluentCMS.Repositories.MongoDB;
 
-public abstract class AuditableEntityRepository<TEntity> : EntityRepository<TEntity>, IAuditableEntityRepository<TEntity> where TEntity : IAuditableEntity
+public abstract class AuditableEntityRepository<TEntity>(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : EntityRepository<TEntity>(mongoDbContext), IAuditableEntityRepository<TEntity> where TEntity : IAuditableEntity
 {
-    protected readonly IApiExecutionContext ApiExecutionContext;
-
-    public AuditableEntityRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : base(mongoDbContext)
-    {
-        ApiExecutionContext = apiExecutionContext;
-    }
+    protected readonly IApiExecutionContext ApiExecutionContext = apiExecutionContext;
 
     public override async Task<TEntity?> Create(TEntity entity, CancellationToken cancellationToken = default)
     {
