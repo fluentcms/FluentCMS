@@ -9,15 +9,12 @@ export function Columns(element, {
     let windowWidth = doc.body.clientWidth;
     let oneColWidth = element.clientWidth / 12;
 
-    function initColumn(el) {
+    function initColumn(selector) {
+        let el;
         let resizer;
         let dragging = false
         let resized = 0;
         let x = 0;
-
-        if(isNaN(el.dataset.cols) || el.dataset.cols == 0) {
-            el.dataset.cols = 12
-        }
 
         function onMouseDown(event) {
             x = event.x;
@@ -39,15 +36,11 @@ export function Columns(element, {
                 const diffLength = event.x - x
                 
                 if(diffLength < -oneColWidth/2 || diffLength > oneColWidth / 2) {
-                    console.log(el.dataset[field], field)
                     if(el.dataset[field] == 0) {
-                        console.log(el.dataset['colsLg'], el.dataset['colsMd'], el.dataset['cols'])
-
                         if(field == 'colsLg' && el.dataset['colsMd']) {
                             el.dataset[field] = el.dataset['colsMd']
                         } 
                         el.dataset[field] = el.dataset['cols']
-                        console.log(el.dataset[field])
                     }
                     if(diffLength < -oneColWidth / 2) {
                         el.dataset[field] = +(el.dataset[field]) - 1
@@ -69,6 +62,7 @@ export function Columns(element, {
 
             if(resized !== 0) {
                 onResize(el)
+                resized = 0;
             }
 
             element.classList.remove('dragging')
@@ -76,9 +70,15 @@ export function Columns(element, {
         }
 
         function init() {
+            el = document.querySelector(selector)
+            
             resizer = doc.createElement('div')
             resizer.classList.add('resizer-handle')
             el.appendChild(resizer)
+
+            if(isNaN(el.dataset.cols) || el.dataset.cols == 0) {
+                el.dataset.cols = 12
+            }
 
             resizer.addEventListener('mousedown', onMouseDown)
             doc.addEventListener('mousemove', onMouseMove)
@@ -124,7 +124,7 @@ export function Columns(element, {
         element.classList.add('active')
 
         element.querySelectorAll('.' + colClass).forEach(el => {
-            columns.push(initColumn(el))
+            columns.push(initColumn('[data-id="' + el.dataset.id + '"]'))
         })  
         window.addEventListener('resize', updateSize)
     }
@@ -141,7 +141,7 @@ export function Columns(element, {
 
     function append(el) {
         setTimeout(() => {
-            columns.push(initColumn(el))
+            columns.push(initColumn('[data-id="' + el.dataset.id + '"]'))
         })
     }
 

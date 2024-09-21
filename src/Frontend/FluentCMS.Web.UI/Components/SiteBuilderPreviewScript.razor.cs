@@ -3,7 +3,7 @@ using Microsoft.JSInterop;
 
 namespace FluentCMS.Web.UI;
 
-public partial class SiteBuilderPreviewScript
+public partial class SiteBuilderPreviewScript : IDisposable
 {
     [Inject]
     public IJSRuntime JS { get; set; } = default!;
@@ -22,11 +22,6 @@ public partial class SiteBuilderPreviewScript
 
     private IJSObjectReference Module { get; set; } = default!;
 
-    async Task Reload() {
-        ViewState.Reload();
-        await Module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), new {});
-    }
-
     [JSInvokable]
     public async Task CreatePlugin(Guid definitionId, string section, int order)
     {
@@ -42,23 +37,24 @@ public partial class SiteBuilderPreviewScript
         await ApiClients.Plugin.CreateAsync(createPluginRequest);
 
         var pluginsResponse = await ApiClients.Plugin.GetByPageIdAsync(ViewState.Page.Id);
-        var plugins = pluginsResponse.Data!.OrderBy(p => p.Order).ToList();
+        var plugins = pluginsResponse.Data!.Where(x => x.Section == section).OrderBy(p => p.Order).ToList();
 
-        var pluginorder = 0;
+        var pluginOrder = 0;
         foreach (var plugin in plugins)
         {
-            plugin.Order = pluginorder++;
-            await ApiClients.Plugin.UpdateAsync(Mapper.Map<PluginUpdateRequest>(plugin));
+            plugin.Order = pluginOrder++;
+            var pluginUpdateRequest = Mapper.Map<PluginUpdateRequest>(plugin);
+            await ApiClients.Plugin.UpdateAsync(pluginUpdateRequest);
         }
 
-        await Reload();
+        ViewState.Reload();
     }
 
     [JSInvokable]
     public async Task UpdatePlugin(PluginUpdateRequest request)
     {
         await ApiClients.Plugin.UpdateAsync(request);
-        await Reload();
+        ViewState.Reload();
     }
 
     [JSInvokable]
@@ -69,13 +65,24 @@ public partial class SiteBuilderPreviewScript
             Plugins = plugins
         };
         await ApiClients.Page.UpdatePluginOrdersAsync(request);
+    }
 
-        await Reload();
+    void ViewStateChanged()
+    {
+        if (Module is null) return;
+
+        Module.InvokeVoidAsync("update", DotNetObjectReference.Create(this));
     }
 
     protected override async Task OnInitializedAsync()
     {
-        // 
+        ViewState.ReloadAction += ViewStateChanged;
+
+        await Task.CompletedTask;
+    }
+    void IDisposable.Dispose()
+    {
+        ViewState.ReloadAction -= ViewStateChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) 

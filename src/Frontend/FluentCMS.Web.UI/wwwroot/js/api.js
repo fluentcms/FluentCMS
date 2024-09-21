@@ -45,7 +45,6 @@ export async function updatePlugin(pluginContainerEl, sectionEl) {
     await dotnet.invokeMethodAsync('UpdatePlugin', result);
 }
 
-
 export async function updatePluginOrders() {
     setTimeout(async () => {
         const sections = document.querySelectorAll('.f-section')

@@ -36,6 +36,8 @@ public partial class Default : IDisposable
     [Inject]
     public SetupManager SetupManager { set; get; } = default!;
 
+    private bool Authenticated { get; set; } = false;
+
     protected override async Task OnInitializedAsync()
     {
         NavigationManager.LocationChanged += LocationChanged;
@@ -44,6 +46,8 @@ public partial class Default : IDisposable
 
     protected override async Task OnParametersSetAsync()
     {
+        Authenticated = ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked && ViewState.User.Roles.Any(role => role.Type == RoleTypesViewState.Authenticated);
+
         // check if setup is not done
         // if not it should be redirected to /setup route
         if (!await SetupManager.IsInitialized() && !NavigationManager.Uri.ToLower().EndsWith("/setup"))
@@ -102,30 +106,13 @@ public partial class Default : IDisposable
                 }
                 builder.AddComponentRenderMode(PluginRenderMode());
 
-
                 builder.CloseComponent();
             }
             index++;
         }
     };
 
-            
-    private string GetPageAddUrl()
-    {
-        var uri = new Uri(NavigationManager.Uri);
-        var redirectTo = Uri.EscapeDataString(uri.PathAndQuery);
-        var queryParams = new Dictionary<string, string?>()
-        {
-            { "viewType", "Create" },
-            { "redirectTo", redirectTo }
-        };
-
-        var queryParamsString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
-
-        return $"/admin/pages?{queryParamsString}";
-    }
-
-    private IComponentRenderMode? PluginRenderMode()
+    private InteractiveServerRenderMode? PluginRenderMode()
     {
         if (ViewState.Type == ViewStateType.PagePreview || ViewState.Type == ViewStateType.PageEdit)
         {
@@ -133,21 +120,5 @@ public partial class Default : IDisposable
         }
                     
         return null;
-    }
-    private string GetPageEditUrl()
-    {
-
-        var uri = new Uri(NavigationManager.Uri);
-        var redirectTo = Uri.EscapeDataString(uri.PathAndQuery);
-
-        var queryParams = new Dictionary<string, string?>()
-        {
-            { "Id", ViewState.Page.Id.ToString() },
-            { "redirectTo", redirectTo }
-        };
-
-        var queryParamsString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
-
-        return $"/admin/pages?{queryParamsString}";
     }
 }

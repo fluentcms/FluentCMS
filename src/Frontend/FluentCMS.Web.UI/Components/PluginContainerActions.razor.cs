@@ -23,7 +23,8 @@ public partial class PluginContainerActions
 
     protected override async Task OnInitializedAsync()
     {
-        IsDesignMode = ViewState.Type == ViewStateType.PagePreview;
+        var authenticated = ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked && ViewState.User.Roles.Any(role => role.Type == RoleTypesViewState.Authenticated);
+        IsDesignMode = authenticated || ViewState.Type == ViewStateType.PagePreview;
         await Task.CompletedTask;
     }
 
@@ -38,7 +39,7 @@ public partial class PluginContainerActions
         if (!string.IsNullOrEmpty(viewName))
             queryParams.Add($"viewName={viewName}");
 
-        var redirectTo = Uri.EscapeDataString(baseUrl + "?pagePreview=true");
+        var redirectTo = Uri.EscapeDataString(baseUrl);
         queryParams.Add($"redirectTo={redirectTo}");
 
         var url = baseUrl;

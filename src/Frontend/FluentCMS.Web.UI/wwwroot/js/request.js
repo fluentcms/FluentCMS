@@ -1,15 +1,18 @@
 import './sortable.js'
 
 import {actions} from './actions.js'
-import { createPlugin, updatePlugin, updatePluginCols, updatePluginOrders } from './api.js';
+import { createPlugin, updatePluginCols, updatePluginOrders } from './api.js';
 import {Columns} from './columns.js'
 
-export function initColumns(frameDocument) {
-    console.log('initColumns')
-    window.sections = []
-    frameDocument.querySelectorAll('.f-section').forEach(section => {
+export function initColumns() {
+    for(let section in window.sections ?? {}) {
+        window.sections[section].destroy()
+    }
+    window.sections = {}
+    
+    document.querySelectorAll('.f-section').forEach(section => {
         const column = new Columns(section, {
-            doc: frameDocument,
+            doc: document,
             gridLines: true,
             colClass: 'f-plugin-container',
             breakpointLg: 992,
@@ -19,7 +22,9 @@ export function initColumns(frameDocument) {
             }
         })
         
-        column.init()
+        setTimeout(() => {
+            column.init()
+        }, 100)
         window.sections[section.dataset.name] = column
     })
 }
@@ -30,7 +35,6 @@ export function closePluginsSidebar() {
 }
 
 export function initializeSortable() {
-    console.log('initSortable')
     const sectionElements = document.querySelectorAll('.f-section');
 
     sectionElements.forEach(section => {
@@ -64,13 +68,13 @@ export function initializeSortable() {
             const order = event.newIndex - 1
             const sectionName = event.to.dataset.name
 
+            item.remove()
             createPlugin({ definitionId, order, sectionName })
         }
     });
 }
 
 export async function hydrate(element) {
-    console.log('hydrate')
     element.querySelectorAll('[data-action]').forEach(action => {
         if(action.dataset.trigger === 'load') {
             actions[action.dataset.action](action)

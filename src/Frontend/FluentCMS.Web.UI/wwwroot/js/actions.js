@@ -29,13 +29,15 @@ export const actions = {
         if(id) url += '&id=' + id;
         url += '&redirectTo=' + encodeURIComponent(window.location.href);
 
-        console.log({url})
         window.location.href = url
     },
     'add-plugin'(el) {
         updateResponsive('default')
         const sidebar = document.querySelector('.f-page-editor-iframe').contentDocument.querySelector('.f-page-editor-sidebar')
         sidebar.classList.toggle('f-page-editor-sidebar-open')
+    },
+    'exit-design'(el) {
+        window.location.href = window.location.href.replace('?pageEdit=true', "")
     }
 }
 

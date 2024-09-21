@@ -8,8 +8,6 @@ export async function onInitPreview(dotnet) {
 }
 
 export async function onUpdatePreview(dotnet) {
-    // TODO: Only run once
-
     window.dotnet = dotnet
     initializeSortable(document)
     initColumns(document)   
