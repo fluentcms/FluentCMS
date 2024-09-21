@@ -16,10 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj" />
-  </ItemGroup>
-    
-  <ItemGroup>
     <EmbeddedResource Update="Components\Icon\IconResource.resx">
       <SubType>Designer</SubType>
     </EmbeddedResource>
