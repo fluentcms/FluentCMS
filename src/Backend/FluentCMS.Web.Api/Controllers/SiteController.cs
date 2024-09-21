@@ -2,22 +2,13 @@
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class SiteController(ISiteService siteService, IMapper mapper) : BaseGlobalController
+public class SiteController(ISiteService siteService, IMapper mapper, IPluginDefinitionService pluginDefinitionService) : BaseGlobalController
 {
     public const string AREA = "Site Management";
     public const string READ = "Read";
     public const string UPDATE = $"Update/{READ}";
     public const string CREATE = "Create";
     public const string DELETE = $"Delete/{READ}";
-
-    [HttpGet("{siteUrl}")]
-    [Policy(AREA, READ)]
-    public async Task<IApiResult<SiteDetailResponse>> GetByUrl([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
-    {
-        var site = await siteService.GetByUrl(siteUrl, cancellationToken);
-        var siteResponse = mapper.Map<SiteDetailResponse>(site);
-        return Ok(siteResponse);
-    }
 
     [HttpGet]
     [Policy(AREA, READ)]
@@ -42,7 +33,8 @@ public class SiteController(ISiteService siteService, IMapper mapper) : BaseGlob
     public async Task<IApiResult<SiteDetailResponse>> Create([FromBody] SiteCreateRequest request, CancellationToken cancellationToken = default)
     {
         var siteTemplate = mapper.Map<SiteTemplate>(request);
-        await siteTemplate.Load(cancellationToken);
+        var pluginDefinitions = await pluginDefinitionService.GetAll(cancellationToken);
+        await siteTemplate.Load(pluginDefinitions, cancellationToken);
         var newSite = await siteService.Create(siteTemplate, cancellationToken);
         var response = mapper.Map<SiteDetailResponse>(newSite);
         return Ok(response);

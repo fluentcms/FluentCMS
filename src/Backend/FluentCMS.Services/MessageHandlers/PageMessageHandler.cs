@@ -1,9 +1,40 @@
-﻿using FluentCMS.Providers.MessageBusProviders;
+﻿namespace FluentCMS.Services.MessageHandlers;
 
-namespace FluentCMS.Services.MessageHandlers;
-
-public class PageMessageHandler(IPageService pageService, IPermissionService permissionService) : IMessageHandler<SiteTemplate>
+public class PageMessageHandler(IPageService pageService, IPermissionService permissionService) : IMessageHandler<SiteTemplate>, IMessageHandler<Layout>
 {
+    public async Task Handle(Message<Layout> notification, CancellationToken cancellationToken)
+    {
+        switch (notification.Action)
+        {
+            case ActionNames.LayoutDeleted:
+                var siteId = notification.Payload.SiteId;
+                var layoutId = notification.Payload.Id;
+                var allPages = await pageService.GetBySiteId(siteId, cancellationToken);
+                foreach (var page in allPages)
+                {
+                    if (page.LayoutId == layoutId)
+                    {
+                        page.LayoutId = null;
+                        await pageService.Update(page, cancellationToken);
+                    }
+                    if (page.DetailLayoutId == layoutId)
+                    {
+                        page.DetailLayoutId = null;
+                        await pageService.Update(page, cancellationToken);
+                    }
+                    if (page.EditLayoutId == layoutId)
+                    {
+                        page.EditLayoutId = null;
+                        await pageService.Update(page, cancellationToken);
+                    }
+                }
+                break;
+
+            default:
+                break;
+        }
+    }
+
     public async Task Handle(Message<SiteTemplate> notification, CancellationToken cancellationToken)
     {
         switch (notification.Action)
@@ -55,4 +86,5 @@ public class PageMessageHandler(IPageService pageService, IPermissionService per
 
         await CreatePageTemplates(page.Id, pageTemplate.Children, siteTemplate, cancellationToken);
     }
+
 }

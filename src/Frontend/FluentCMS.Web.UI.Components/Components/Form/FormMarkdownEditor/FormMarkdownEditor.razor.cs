@@ -9,7 +9,7 @@ public partial class FormMarkdownEditor : IAsyncDisposable
 
     public ElementReference element;
 
-    private IJSObjectReference module = default!;
+    private IJSObjectReference Module { get; set; } = default!;
 
     [Parameter]
     public int Cols { get; set; } = 12;
@@ -28,22 +28,22 @@ public partial class FormMarkdownEditor : IAsyncDisposable
         if (Value == _value) return;
 
         _value = Value;
-        module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), element, new { Value });
+        await Module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), element, new { Value });
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (module != null)
-            await module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
+        if (Module != null)
+            await Module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
 
-        module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Form/FormMarkdownEditor/FormMarkdownEditor.razor.js");
+        Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Form/FormMarkdownEditor/FormMarkdownEditor.razor.js");
 
-        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { });
+        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { });
     }
 
     protected override bool TryParseValueFromString(string? value, out string? result, [NotNullWhen(false)] out string? validationErrorMessage)

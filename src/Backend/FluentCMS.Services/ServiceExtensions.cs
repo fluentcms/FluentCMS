@@ -27,7 +27,7 @@ public static class ServiceExtensions
             .AddUserStore<UserStore>()
             .AddUserManager<UserManager<User>>()
             .AddDefaultTokenProviders()
-            .AddTokenProvider<DataProtectorTokenProvider<User>>(UserService.PASSWORD_RESET_TOKEN_PROVIDER);
+            .AddTokenProvider<DataProtectorTokenProvider<User>>(ServiceConstants.PASSWORD_RESET_TOKEN_PROVIDER);
 
         return builder;
     }

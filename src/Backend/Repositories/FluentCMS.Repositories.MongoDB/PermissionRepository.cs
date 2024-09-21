@@ -6,7 +6,7 @@ public class PermissionRepository(IMongoDBContext mongoDbContext, IApiExecutionC
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var existPermissions = await Collection.Find(x => x.EntityId == entityId && x.EntityType == entityTypeName && x.Action == action).ToListAsync();
+        var existPermissions = await Collection.Find(x => x.EntityId == entityId && x.EntityType == entityTypeName && x.Action == action).ToListAsync(cancellationToken: cancellationToken);
 
         await DeleteMany(existPermissions.Select(x => x.Id), cancellationToken);
 

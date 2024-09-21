@@ -30,7 +30,7 @@ public partial class PageListPlugin
 
     protected override async Task OnInitializedAsync()
     {
-        var layoutsResponse = await ApiClient.Layout.GetAllAsync(ViewState.Site.Id);
+        var layoutsResponse = await ApiClient.Layout.GetBySiteIdAsync(ViewState.Site.Id);
         Layouts = layoutsResponse?.Data?.ToList() ?? [];
         await Load();
     }

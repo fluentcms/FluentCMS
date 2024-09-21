@@ -6,6 +6,6 @@ public partial class PluginsSection
     // this will be set while dynamically rendering the template
     public string Name { get; set; } = default!;
 
-    [CascadingParameter]
+    [Inject]
     private ViewState ViewState { get; set; } = default!;
 }

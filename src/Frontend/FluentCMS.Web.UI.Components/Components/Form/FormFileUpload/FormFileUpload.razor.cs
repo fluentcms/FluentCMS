@@ -57,7 +57,7 @@ public partial class FormFileUpload : IAsyncDisposable
 
     async Task HandleChange(InputFileChangeEventArgs evt)
     {
-        OnChange.InvokeAsync(evt);
+        await OnChange.InvokeAsync(evt);
     }
 
     public async ValueTask DisposeAsync()

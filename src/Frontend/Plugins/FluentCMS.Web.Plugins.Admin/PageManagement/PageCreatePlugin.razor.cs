@@ -21,7 +21,7 @@ public partial class PageCreatePlugin
     {
         if (Layouts is null)
         {
-            var layoutsResponse = await ApiClient.Layout.GetAllAsync(ViewState.Site.Id);
+            var layoutsResponse = await ApiClient.Layout.GetBySiteIdAsync(ViewState.Site.Id);
             Layouts = layoutsResponse?.Data?.ToList() ?? [];
 
             LayoutOptions = [
@@ -72,10 +72,10 @@ public partial class PageCreatePlugin
         Model.SiteId = ViewState.Site.Id;
         if (Model.ParentId == Guid.Empty)
             Model.ParentId = default!;
-        
+
         if (Model.LayoutId == Guid.Empty)
             Model.LayoutId = default!;
-        
+
         var response = await ApiClient.Page.CreateAsync(Model);
 
         if (OpenNewPage)

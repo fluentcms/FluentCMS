@@ -13,4 +13,10 @@ public class UserRoleRepository(ILiteDBContext liteDbContext, IApiExecutionConte
         cancellationToken.ThrowIfCancellationRequested();
         return await Collection.Query().Where(x => x.RoleId == roleId).ToListAsync();
     }
+
+    public async Task<IEnumerable<UserRole>> GetByUserId(Guid userId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return await Collection.Query().Where(x => x.UserId == userId).ToListAsync();
+    }
 }

@@ -7,7 +7,7 @@ public abstract class SiteAssociatedRepository<TEntity> : AuditableEntityReposit
     {
     }
 
-    public async override Task<TEntity?> Update(TEntity entity, CancellationToken cancellationToken = default)
+    public override async Task<TEntity?> Update(TEntity entity, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

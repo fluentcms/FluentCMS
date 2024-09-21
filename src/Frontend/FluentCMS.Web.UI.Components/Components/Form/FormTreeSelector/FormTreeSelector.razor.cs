@@ -35,7 +35,7 @@ public partial class FormTreeSelector : IAsyncDisposable
         if (Value == _value) return;
 
         _value = Value;
-        
+
         if (_module != null)
             await _module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), element, new { Value });
     }

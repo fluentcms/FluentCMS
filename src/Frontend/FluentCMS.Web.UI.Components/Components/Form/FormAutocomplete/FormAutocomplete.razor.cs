@@ -63,7 +63,7 @@ public partial class FormAutocomplete<TItem, TValue> : IAsyncDisposable
     protected override async Task OnParametersSetAsync()
     {
         if (Module != null)
-            Module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), Element, new { Value });
+            await Module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), Element, new { Value });
     }
 
     public async ValueTask DisposeAsync()

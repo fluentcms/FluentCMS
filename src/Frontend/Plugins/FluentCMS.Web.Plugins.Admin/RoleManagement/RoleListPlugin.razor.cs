@@ -2,7 +2,7 @@ namespace FluentCMS.Web.Plugins.Admin.RoleManagement;
 
 public partial class RoleListPlugin
 {
-    private List<RoleDetailResponse> Roles { get; set; } = [];
+    private List<RoleDetailResponse> Roles { get; set; } = default!;
 
     public async Task Load()
     {

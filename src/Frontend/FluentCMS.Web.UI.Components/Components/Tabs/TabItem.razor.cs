@@ -16,6 +16,7 @@ public partial class TabItem
 
     private async Task OnClicked()
     {
-        Parent?.Activate(Name);
+        if (Parent != null)
+            await Parent.Activate(Name);
     }
 }

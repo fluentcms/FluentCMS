@@ -11,7 +11,7 @@ public partial class PluginContainer
     [Inject]
     private PluginLoader PluginLoader { get; set; } = default!;
 
-    [CascadingParameter]
+    [Inject]
     private ViewState ViewState { get; set; } = default!;
 
     private IDictionary<string, object> Parameters { get; set; } = new Dictionary<string, object>();
