@@ -15,6 +15,4 @@ public class UserUpdateRequest
 
     [Required]
     public bool Enabled { get; set; }
-
-    public bool Locked { get; set; }
 }

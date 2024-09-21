@@ -43,14 +43,16 @@ public class RoleService(IRoleRepository roleRepository, IMessagePublisher messa
         // role type can't be changed after creation
         role.Type = existingRole.Type;
 
-        if (!await permissionManager.HasAccess(existingRole.SiteId, SitePermissionAction.SiteAdmin, cancellationToken))
+        var siteId = existingRole.SiteId;
+
+        if (!await permissionManager.HasAccess(siteId, SitePermissionAction.SiteAdmin, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
 
         // Check if role name is changed
         if (!existingRole.Name.Equals(role.Name, StringComparison.CurrentCultureIgnoreCase))
         {
             // Check for duplicated role name 
-            var allRoles = await roleRepository.GetAllForSite(role.SiteId, cancellationToken);
+            var allRoles = await roleRepository.GetAllForSite(siteId, cancellationToken);
             if (allRoles.Where(r => r.Name.Equals(role.Name, StringComparison.CurrentCultureIgnoreCase)).Any())
                 throw new AppException(ExceptionCodes.RoleNameShouldBeUnique);
         }

@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-
-namespace FluentCMS.Web.UI.Components;
+namespace FluentCMS.Web.Plugins;
 
 public partial class FormRichTextEditor
 {
@@ -324,10 +323,10 @@ public partial class FormRichTextEditor
     {
         if (!firstRender) return;
 
-        module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Form/FormRichTextEditor/FormRichTextEditor.razor.js");
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.Plugins.Base/Components/FormRichTextEditor/FormRichTextEditor.razor.js");
 
         // TODO: type should be property
-        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { Value = Value, Readonly = Readonly, Placeholder = Placeholder, Type = "advanced" });
+        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { Value, Readonly, Placeholder, Type = "advanced" });
     }
     protected override bool TryParseValueFromString(string? value, out string? result, [NotNullWhen(false)] out string? validationErrorMessage)
     {
