@@ -6,6 +6,7 @@
     <ErrorBoundary>
         <ChildContent>
             <div class="f-plugin-container-content">
+            @Plugin.Order
                 <DynamicComponent Type=@GetPluginType() Parameters=@Parameters />
             </div>
         </ChildContent>

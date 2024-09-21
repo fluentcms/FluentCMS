@@ -65,7 +65,7 @@ export function initializeSortable() {
             if(event.from === event.to) return;
             const definitionId = event.clone.dataset.id
             const item = event.item
-            const order = event.newIndex - 1
+            const order = (event.newIndex * 2) + 1
             const sectionName = event.to.dataset.name
 
             item.remove()

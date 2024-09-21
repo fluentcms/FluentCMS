@@ -42,7 +42,8 @@ public partial class SiteBuilderPreviewScript : IDisposable
         var pluginOrder = 0;
         foreach (var plugin in plugins)
         {
-            plugin.Order = pluginOrder++;
+            pluginOrder += 2;
+            plugin.Order = pluginOrder;
             var pluginUpdateRequest = Mapper.Map<PluginUpdateRequest>(plugin);
             await ApiClients.Plugin.UpdateAsync(pluginUpdateRequest);
         }

@@ -59,11 +59,12 @@ export async function updatePluginOrders() {
                 const colsMd = +plugin.dataset.colsMd
                 const colsLg = +plugin.dataset.colsLg
 
+                order += 2;
                 var plugin = {
                     Id: pluginId,
                     Section: el.dataset.name,
                     Cols: cols,
-                    Order: ++order,
+                    Order: order,
                     ColsMd: colsMd,
                     ColsLg: colsLg
                 }
