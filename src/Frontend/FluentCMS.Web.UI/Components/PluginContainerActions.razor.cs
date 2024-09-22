@@ -18,7 +18,7 @@ public partial class PluginContainerActions
 
     private async Task HandleDelete()
     {
-        await OnDelete.InvokeAsync();   
+        await OnDelete.InvokeAsync();
     }
 
     protected override async Task OnInitializedAsync()
@@ -28,14 +28,15 @@ public partial class PluginContainerActions
         await Task.CompletedTask;
     }
 
-    private void OpenPluginView(string viewName = "Settings") {
+    private void OpenPluginView(string viewName = "Settings")
+    {
         var baseUrl = new Uri(NavigationManager.Uri).LocalPath;
 
         var queryParams = new List<string>
         {
             $"pluginId={Plugin.Id}"
         };
-        
+
         if (!string.IsNullOrEmpty(viewName))
             queryParams.Add($"viewName={viewName}");
 
@@ -46,5 +47,5 @@ public partial class PluginContainerActions
 
         url += "?" + string.Join("&", queryParams);
         NavigationManager.NavigateTo(url, true);
-    } 
+    }
 }

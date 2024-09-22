@@ -13,7 +13,7 @@ public partial class PluginContainer
 
     [Inject]
     private ApiClientFactory ApiClients { get; set; } = default!;
-    
+
     [Inject]
     private ViewState ViewState { get; set; } = default!;
 

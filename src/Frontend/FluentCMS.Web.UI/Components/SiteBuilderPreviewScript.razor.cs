@@ -28,7 +28,7 @@ public partial class SiteBuilderPreviewScript : IDisposable
         var createPluginRequest = new PluginCreateRequest()
         {
             PageId = ViewState.Page.Id,
-            Settings = new Dictionary<string, string>(), // Initialize as an empty dictionary
+            Settings = [], // Initialize as an empty dictionary
             DefinitionId = definitionId,
             Section = section,
             Order = order
@@ -61,7 +61,7 @@ public partial class SiteBuilderPreviewScript : IDisposable
     [JSInvokable]
     public async Task UpdatePluginsOrder(List<PagePluginDetail> plugins)
     {
-        var request = new PageUpdatePluginOrdersRequest() 
+        var request = new PageUpdatePluginOrdersRequest()
         {
             Plugins = plugins
         };
@@ -86,14 +86,14 @@ public partial class SiteBuilderPreviewScript : IDisposable
         ViewState.ReloadAction -= ViewStateChanged;
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender) 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender)
             return;
 
         Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI/Components/SiteBuilderPreviewScript.razor.js");
 
-        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), new {});
+        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), new { });
     }
 
 }

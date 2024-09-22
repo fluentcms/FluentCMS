@@ -4,5 +4,5 @@ global using Microsoft.AspNetCore.Components;
 global using Microsoft.AspNetCore.Components.Forms;
 global using Microsoft.AspNetCore.Http;
 global using Microsoft.AspNetCore.WebUtilities;
-global using System.Web;
 global using Microsoft.JSInterop;
+global using System.Web;

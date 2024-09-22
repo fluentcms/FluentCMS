@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Repositories.Caching;
 
-public class ApiTokenRepository(IApiTokenRepository repository, ICacheProvider cacheProvider) : AuditableEntityRepository<ApiToken>(repository,cacheProvider ), IApiTokenRepository
+public class ApiTokenRepository(IApiTokenRepository repository, ICacheProvider cacheProvider) : AuditableEntityRepository<ApiToken>(repository, cacheProvider), IApiTokenRepository
 {
     public async Task<ApiToken?> GetByKey(string apiKey, CancellationToken cancellationToken)
     {

@@ -20,13 +20,13 @@ public partial class SiteBuilder
     [Inject]
     public ViewState ViewState { get; set; } = default!;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender) 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender)
             return;
 
         module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI/Components/SiteBuilder.razor.js");
 
-        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), new {});
+        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), new { });
     }
 }
