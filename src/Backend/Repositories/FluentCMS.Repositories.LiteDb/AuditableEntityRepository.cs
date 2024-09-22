@@ -1,13 +1,8 @@
 ﻿namespace FluentCMS.Repositories.LiteDb;
 
-public class AuditableEntityRepository<TEntity> : EntityRepository<TEntity>, IAuditableEntityRepository<TEntity> where TEntity : IAuditableEntity
+public abstract class AuditableEntityRepository<TEntity>(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : EntityRepository<TEntity>(liteDbContext), IAuditableEntityRepository<TEntity> where TEntity : IAuditableEntity
 {
-    protected readonly IApiExecutionContext ApiExecutionContext;
-
-    public AuditableEntityRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : base(liteDbContext)
-    {
-        ApiExecutionContext = apiExecutionContext;
-    }
+    protected readonly IApiExecutionContext ApiExecutionContext = apiExecutionContext;
 
     public override async Task<TEntity?> Create(TEntity entity, CancellationToken cancellationToken = default)
     {

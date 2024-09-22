@@ -1,4 +1,3 @@
-using FluentCMS.Web.UI.Components;
 using Microsoft.JSInterop;
 
 namespace FluentCMS.Web.UI;
@@ -16,7 +15,7 @@ public partial class SiteBuilderFloatingButtons
 
     private ElementReference TogglerRef { get; set; } = default!;
     private ElementReference ButtonsRef { get; set; } = default!;
-    
+
     private string GetPageAddUrl()
     {
         var uri = new Uri(NavigationManager.Uri);
@@ -48,7 +47,7 @@ public partial class SiteBuilderFloatingButtons
         return $"/admin/pages?{queryParamsString}";
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender) 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender)
             return;

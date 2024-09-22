@@ -118,7 +118,7 @@ public partial class Default : IDisposable
         {
             return RenderMode.InteractiveServer;
         }
-                    
+
         return null;
     }
 }

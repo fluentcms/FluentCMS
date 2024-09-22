@@ -1,11 +1,7 @@
 ﻿namespace FluentCMS.Repositories.MongoDB;
 
-public abstract class SiteAssociatedRepository<TEntity> : AuditableEntityRepository<TEntity>, ISiteAssociatedRepository<TEntity> where TEntity : ISiteAssociatedEntity
+public abstract class SiteAssociatedRepository<TEntity>(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : AuditableEntityRepository<TEntity>(mongoDbContext, apiExecutionContext), ISiteAssociatedRepository<TEntity> where TEntity : ISiteAssociatedEntity
 {
-    public SiteAssociatedRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : base(mongoDbContext, apiExecutionContext)
-    {
-    }
-
     public override async Task<TEntity?> Update(TEntity entity, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

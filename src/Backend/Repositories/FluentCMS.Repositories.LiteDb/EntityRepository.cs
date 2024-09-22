@@ -3,7 +3,7 @@ using LiteDB;
 
 namespace FluentCMS.Repositories.LiteDb;
 
-public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntity : IEntity
+public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntity : IEntity
 {
     protected readonly ILiteCollectionAsync<TEntity> Collection;
     protected readonly ILiteDatabaseAsync LiteDatabase;
