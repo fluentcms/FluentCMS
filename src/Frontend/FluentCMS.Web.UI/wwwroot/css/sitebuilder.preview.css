@@ -1,82 +1,12 @@
 @import './columns.editor.css';
+@import './sidebar.css';
 @import './columns.css';
 @import './html.css';
+@import './plugin-container.css';
 
-
-.f-plugin-container {
-    position: relative;
-    transition: all 0.3s ease;
-}
-
-.f-plugin-container-content {
-    border: 1px dashed #00549038;
-    position: relative;
-    overflow: hidden;
-    min-height: 75px;
-    pointer-events: none;
-    user-select: none;
-    transition: all 0.3s ease;
-}
-.f-plugin-container:hover .f-plugin-container-content {
-    border: 1px dashed #005590;
-}
-
-.f-plugin-toolbar-actions-title {
-    padding-left: 1rem;
-}
-
-.f-plugin-toolbar-actions {
-    display: flex;
-    padding-left: 1rem;
-    padding-right: 1rem;
-    gap: 12px;
-    align-items: center;
-    justify-content: end;
-}
-
-.f-plugin-toolbar-action {
-    border: none;
-    background-color: transparent;
-    color: black;
-}
-.f-plugin-toolbar-action:hover {
-    color: #005590;
-}
 
 .f-page-editor-forms {
     display: none;
-}
-
-.f-plugin-container-actions {
-    background-color: white;
-    color: black;
-    z-index: 4;
-    height: 40px;
-    border: 1px dashed #005590;
-    position: absolute;
-    display: flex;
-    align-items: center;
-    opacity: 0;
-    transition: all 0.2s ease;
-    /* overflow: hidden; */
-    justify-content: space-between;
-    left: 0;
-    right: 0;
-}
-
-.f-plugin-container::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: transparent;
-    pointer-events: none;
-}
-
-.f-plugin-container:hover .f-plugin-container-actions {
-    opacity: 1;
 }
 
 .f-plugin-container-action-drag {
@@ -97,37 +27,16 @@
 }
 
 .f-plugin-definition-item {
-    background-color: #005490a8;
-    color: transparent;
-    width: 100%;
-    min-height: 40px;
+    /* background-color: #005490a8; */
+    /* color: transparent; */
+    /* width: 100%; */
+    /* min-height: 40px; */
 }
 
 a[disabled] {
     pointer-events: none;
     cursor: default;
 }
-
-.f-plugin-container-content-new {
-    width: 100%;
-    min-height: 120px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 0.25rem;
-    background-color: white;
-}
-.f-plugin-container-content-new .f-name {
-    font-weight: bold;
-    font-size: 16px;
-}
-
-.f-plugin-container-content-new .f-description {
-    opacity: 0.7;
-    font-size: 12px;
-}
-
 
 .f-hidden {
     display: none;

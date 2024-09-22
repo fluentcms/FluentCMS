@@ -1,7 +1,16 @@
+using Microsoft.JSInterop;
+
 namespace FluentCMS.Web.UI;
 
 public partial class SiteBuilder
 {
+    [Inject]
+    public IJSRuntime JS { get; set; } = default!;
+
+    public ElementReference element;
+
+    private IJSObjectReference module = default!;
+
     [Inject]
     public NavigationManager NavigationManager { get; set; } = default!;
 
@@ -11,25 +20,13 @@ public partial class SiteBuilder
     [Inject]
     public ViewState ViewState { get; set; } = default!;
 
-    [Parameter]
-    public RenderFragment Body { get; set; } = default!;
-
-    [Parameter]
-    public RenderFragment Head { get; set; } = default!;
-
-    private List<PluginDefinitionDetailResponse> PluginDefinitions { get; set; } = [];
-
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender) 
     {
-        try
-        {
-            var response = await ApiClient.PluginDefinition.GetAllAsync();
-            PluginDefinitions = response.Data.ToList();
-        }
-        catch (Exception)
-        {
-            PluginDefinitions = [];
-        }
-    }
+        if (!firstRender)
+            return;
 
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI/Components/SiteBuilder.razor.js");
+
+        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), new {});
+    }
 }
