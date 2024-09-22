@@ -23,7 +23,7 @@ public abstract class BasePlugin : ComponentBase
     protected virtual void NavigateBack()
     {
         var uri = new Uri(NavigationManager.Uri);
-        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var query = HttpUtility.ParseQueryString(uri.Query);
 
         var redirectTo = query["redirectTo"];
 
@@ -46,7 +46,7 @@ public abstract class BasePlugin : ComponentBase
         if (HttpContextAccessor?.HttpContext != null && !HttpContextAccessor.HttpContext.Response.HasStarted)
             HttpContextAccessor.HttpContext.Response.Redirect(path);
         else
-            NavigationManager.NavigateTo(path);
+            NavigationManager.NavigateTo(path, true);
     }
 
     protected virtual string GetUrl(string viewName, object? parameters = null, bool redirectToCurrentPage = true)
@@ -90,5 +90,4 @@ public abstract class BasePlugin : ComponentBase
 
         return QueryHelpers.AddQueryString(pagePathWithoutQueryString, newQueryParams);
     }
-
 }

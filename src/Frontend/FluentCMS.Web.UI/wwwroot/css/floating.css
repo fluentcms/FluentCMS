@@ -1,0 +1,106 @@
+/* Floating Buttons CSS */
+
+/* Floating Button Toggler */
+.f-floating-button-toggler {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    cursor: pointer;
+    background-color: #007bff; /* Primary color */
+    color: #fff;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100; /* Ensures it's above other elements */
+}
+
+.f-floating-button-toggler svg {
+    width: 28px;
+    height: 28px;
+    transition: opacity 0.3s ease;
+}
+
+/* Toggler State - Closed */
+.f-floating-button-toggler .f-floating-button-toggler-opened {
+    display: none;
+}
+
+/* Toggler Open State */
+.f-floating-button-toggler-open .f-floating-button-toggler-opened {
+    display: block;
+}
+
+.f-floating-button-toggler-open .f-floating-button-toggler-closed {
+    display: none;
+}
+
+/* Floating Buttons */
+.f-floating-buttons {
+    position: fixed;
+    bottom: 92px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 15px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s 0.3s;
+    z-index: 99;
+}
+
+.f-floating-buttons.f-floating-buttons-open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Individual Floating Buttons */
+.f-floating-button {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: #007bff; /* Primary color */
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    position: relative;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.f-floating-button:hover {
+    background-color: #0056b3;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+.f-floating-button:hover .f-floating-button-text {
+    display: flex;
+    position: absolute;
+    right: calc(100% + 1rem);
+    white-space: nowrap;
+    color: #007bff;
+}
+
+.f-floating-button-outline {
+    background-color: white;
+    color: #007bff;
+    border: 2px solid #007bff;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.f-floating-button-outline:hover {
+    background-color: #007bff;
+    color: white;
+}
+
+.f-floating-button-text {
+    display: none;
+}
