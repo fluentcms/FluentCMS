@@ -10,8 +10,8 @@ public partial class TextHTMLViewPlugin
         {
             var response = await ApiClient.PluginContent.GetAllAsync(nameof(TextHTMLContent), Plugin.Id);
 
-            if (response?.Data != null && response.Data.ToContentList<TextHTMLContent>().Any())
-                Item = response.Data.ToContentList<TextHTMLContent>().FirstOrDefault();
+            if (response?.Data != null && response.Data.ToContentList<TextHTMLContent>().Count != 0)
+                Item = response.Data.ToContentList<TextHTMLContent>().FirstOrDefault() ?? default!;
         }
     }
 }

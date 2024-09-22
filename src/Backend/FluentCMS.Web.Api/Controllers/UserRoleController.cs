@@ -21,8 +21,8 @@ public class UserRoleController(IUserRoleService userRoleService, IRoleService r
     [Policy(AREA, UPDATE)]
     public async Task<IApiResult<bool>> Update([FromBody] UserRoleUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        var result = await userRoleService.Update(request.UserId, request.SiteId, request.RoleIds, cancellationToken);
+        await userRoleService.Update(request.UserId, request.SiteId, request.RoleIds, cancellationToken);
 
-        return Ok(result);
+        return Ok(true);
     }
 }

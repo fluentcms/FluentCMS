@@ -1,4 +1,4 @@
-﻿namespace Microsoft.Extensions.DependencyInjection;
+﻿namespace FluentCMS.Web.ApiClients;
 
 public class ClientSettings
 {

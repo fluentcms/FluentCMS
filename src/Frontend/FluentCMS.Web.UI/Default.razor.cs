@@ -1,6 +1,8 @@
-﻿using FluentCMS.Web.ApiClients.Services;
+﻿using AutoMapper;
+using FluentCMS.Web.ApiClients.Services;
 using FluentCMS.Web.UI.DynamicRendering;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Http;
 
 namespace FluentCMS.Web.UI;
@@ -13,7 +15,7 @@ public partial class Default : IDisposable
     [Inject]
     private ILayoutProcessor LayoutProcessor { get; set; } = default!;
 
-    [CascadingParameter]
+    [Inject]
     public ViewState ViewState { get; set; } = default!;
 
     [CascadingParameter]
@@ -26,7 +28,15 @@ public partial class Default : IDisposable
     public NavigationManager NavigationManager { set; get; } = default!;
 
     [Inject]
+    public ApiClientFactory ApiClients { set; get; } = default!;
+
+    [Inject]
+    public IMapper Mapper { set; get; } = default!;
+
+    [Inject]
     public SetupManager SetupManager { set; get; } = default!;
+
+    private bool Authenticated { get; set; } = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -36,6 +46,8 @@ public partial class Default : IDisposable
 
     protected override async Task OnParametersSetAsync()
     {
+        Authenticated = ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked && ViewState.User.Roles.Any(role => role.Type == RoleTypesViewState.Authenticated);
+
         // check if setup is not done
         // if not it should be redirected to /setup route
         if (!await SetupManager.IsInitialized() && !NavigationManager.Uri.ToLower().EndsWith("/setup"))
@@ -50,6 +62,7 @@ public partial class Default : IDisposable
 
     void LocationChanged(object? sender, LocationChangedEventArgs e)
     {
+        ViewState.Reload();
         StateHasChanged();
     }
 
@@ -91,6 +104,7 @@ public partial class Default : IDisposable
                     builder.AddComponentParameter(attributeIndex, attribute.Key, attribute.Value);
                     attributeIndex++;
                 }
+                builder.AddComponentRenderMode(PluginRenderMode());
 
                 builder.CloseComponent();
             }
@@ -98,35 +112,13 @@ public partial class Default : IDisposable
         }
     };
 
-    private string GetPageAddUrl()
+    private InteractiveServerRenderMode? PluginRenderMode()
     {
-        var uri = new Uri(NavigationManager.Uri);
-        var redirectTo = Uri.EscapeDataString(uri.PathAndQuery);
-        var queryParams = new Dictionary<string, string?>()
+        if (ViewState.Type == ViewStateType.PagePreview || ViewState.Type == ViewStateType.PageEdit)
         {
-            { "viewType", "Create" },
-            { "redirectTo", redirectTo }
-        };
-
-        var queryParamsString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
-
-        return $"/admin/pages?{queryParamsString}";
-    }
-
-    private string GetPageEditUrl()
-    {
-
-        var uri = new Uri(NavigationManager.Uri);
-        var redirectTo = Uri.EscapeDataString(uri.PathAndQuery);
-
-        var queryParams = new Dictionary<string, string?>()
-        {
-            { "Id", ViewState.Page.Id.ToString() },
-            { "redirectTo", redirectTo }
-        };
-
-        var queryParamsString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
-
-        return $"/admin/pages?{queryParamsString}";
+            return RenderMode.InteractiveServer;
+        }
+                    
+        return null;
     }
 }

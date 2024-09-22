@@ -1,5 +1,4 @@
 ﻿using FluentCMS.Providers.ApiTokenProviders;
-using FluentCMS.Providers.MessageBusProviders;
 
 namespace FluentCMS.Services;
 
@@ -8,26 +7,36 @@ public interface IApiTokenService : IAutoRegisterService
     Task<ApiToken> Create(ApiToken apiToken, CancellationToken cancellationToken = default);
     Task<ApiToken> Delete(Guid tokenId, CancellationToken cancellationToken = default);
     Task<IEnumerable<ApiToken>> GetAll(CancellationToken cancellationToken = default);
-    Task<ApiToken?> GetById(Guid tokenId, CancellationToken cancellationToken = default);
+    Task<ApiToken> GetById(Guid tokenId, CancellationToken cancellationToken = default);
     Task<ApiToken> Update(ApiToken apiToken, CancellationToken cancellationToken = default);
     Task<ApiToken> RegenerateSecret(Guid id, CancellationToken cancellationToken = default);
     Task<ApiToken> Validate(string apiKey, string apiSecret, CancellationToken cancellationToken = default);
 }
 
-public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenProvider apiTokenProvider, IMessagePublisher messagePublisher) : IApiTokenService
+public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenProvider apiTokenProvider, IMessagePublisher messagePublisher, IPermissionManager permissionManager) : IApiTokenService
 {
     public async Task<IEnumerable<ApiToken>> GetAll(CancellationToken cancellationToken = default)
     {
+        if (!await permissionManager.HasAccess(GlobalPermissionAction.SuperAdmin, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
         return await apiTokenRepository.GetAll(cancellationToken);
     }
 
-    public async Task<ApiToken?> GetById(Guid tokenId, CancellationToken cancellationToken = default)
+    public async Task<ApiToken> GetById(Guid tokenId, CancellationToken cancellationToken = default)
     {
-        return await apiTokenRepository.GetById(tokenId, cancellationToken);
+        if (!await permissionManager.HasAccess(GlobalPermissionAction.SuperAdmin, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
+        return await apiTokenRepository.GetById(tokenId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.ApiTokenNotFound);
     }
 
     public async Task<ApiToken> Create(ApiToken apiToken, CancellationToken cancellationToken = default)
     {
+        if (!await permissionManager.HasAccess(GlobalPermissionAction.SuperAdmin, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
         var existingApiToken = await apiTokenRepository.GetByName(apiToken.Name, cancellationToken);
         if (existingApiToken != null)
             throw new AppException(ExceptionCodes.ApiTokenNameIsDuplicated);
@@ -45,6 +54,9 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
 
     public async Task<ApiToken> Update(ApiToken apiToken, CancellationToken cancellationToken = default)
     {
+        if (!await permissionManager.HasAccess(GlobalPermissionAction.SuperAdmin, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
         var existingApiToken = await apiTokenRepository.GetById(apiToken.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenNotFound);
 
@@ -66,6 +78,9 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
 
     public async Task<ApiToken> Delete(Guid tokenId, CancellationToken cancellationToken = default)
     {
+        if (!await permissionManager.HasAccess(GlobalPermissionAction.SuperAdmin, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
         var deleted = await apiTokenRepository.Delete(tokenId, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenUnableToDelete);
 
@@ -76,6 +91,8 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
 
     public async Task<ApiToken> Validate(string apiKey, string apiSecret, CancellationToken cancellationToken = default)
     {
+        // there is not need to check permissions here
+        // as this method is used for API authentication
         var apiToken = await apiTokenRepository.GetByKey(apiKey, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenNotFound);
 
@@ -96,6 +113,9 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
 
     public async Task<ApiToken> RegenerateSecret(Guid id, CancellationToken cancellationToken = default)
     {
+        if (!await permissionManager.HasAccess(GlobalPermissionAction.SuperAdmin, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
         var apiToken = await apiTokenRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenNotFound);
 
@@ -104,7 +124,7 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
         var updated = await apiTokenRepository.Update(apiToken, cancellationToken) ??
             throw new AppException(ExceptionCodes.ApiTokenUnableToUpdate);
 
-        await messagePublisher.Publish(new Message<ApiToken>(ActionNames.ApiTokenUpdated, updated), cancellationToken);
+        await messagePublisher.Publish(new Message<ApiToken>(ActionNames.ApiTokenSecretRegenerated, updated), cancellationToken);
 
         return updated;
     }

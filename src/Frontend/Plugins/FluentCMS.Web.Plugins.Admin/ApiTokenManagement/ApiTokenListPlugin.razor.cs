@@ -1,12 +1,18 @@
+using Microsoft.Extensions.Options;
+
 namespace FluentCMS.Web.Plugins.Admin.ApiTokenManagement;
 
 public partial class ApiTokenListPlugin
 {
+    [Inject]
+    private IOptions<ClientSettings>? ClientSettingsOptions { get; set; }
+
     private List<ApiTokenDetailResponse> ApiTokens { get; set; } = [];
     private ApiTokenDetailResponse? SelectedApiToken { get; set; } = default!;
     private Guid? ViewApiTokenId { get; set; } = default!;
 
-    private string Mode { get; set; } = "Delete";
+    private bool ShowDeleteModal { get; set; } = false;
+    private bool ShowRegenerateModal { get; set; } = false;
 
     private async Task Load()
     {
@@ -19,58 +25,45 @@ public partial class ApiTokenListPlugin
         await Load();
     }
 
-    private string MaskString(string input)
+    private async Task ToggleTokenKey(Guid id)
     {
-        return new string('*', input.Length);
+        ViewApiTokenId = (ViewApiTokenId == id) ? default! : id;
+        await Task.CompletedTask;
+    }
+
+    private async Task OnDeleteConfirm(ApiTokenDetailResponse token)
+    {
+        SelectedApiToken = token;
+        ShowDeleteModal = true;
+        await Task.CompletedTask;
+    }
+    private async Task OnDelete()
+    {
+        await ApiClient.ApiToken.DeleteAsync(SelectedApiToken!.Id);
+        await OnConfirmComplete();
+        await Load();
     }
 
     private async Task OnRegenerateConfirm(ApiTokenDetailResponse token)
     {
         SelectedApiToken = token;
-        Mode = "Regenerate";
-        // 
-    }
-    // OnRegenerateConfirm
-
-    private async Task ViewToken(Guid id)
-    {
-        if (ViewApiTokenId == id)
-        {
-            ViewApiTokenId = default!;
-        }
-        else
-        {
-            ViewApiTokenId = id;
-        }
-    }
-
-    private async Task OnConfirm(ApiTokenDetailResponse token)
-    {
-        SelectedApiToken = token;
-        Mode = "Delete";
+        ShowRegenerateModal = true;
+        await Task.CompletedTask;
     }
 
     private async Task OnRegenerate()
     {
-        await ApiClient.ApiToken.RegenerateSecretAsync(SelectedApiToken.Id);
-        SelectedApiToken = default!;
+        await ApiClient.ApiToken.RegenerateSecretAsync(SelectedApiToken!.Id);
+        await OnConfirmComplete();
         await Load();
     }
 
-    private async Task OnDelete()
-    {
-        await ApiClient.ApiToken.DeleteAsync(SelectedApiToken.Id);
-        SelectedApiToken = default!;
-        await Load();
-    }
 
-    private async Task OnConfirmCancel()
+    private async Task OnConfirmComplete()
     {
         SelectedApiToken = default!;
-    }
-
-    private async Task OnRegenerateCancel()
-    {
-        SelectedApiToken = default!;
+        ShowRegenerateModal = false;
+        ShowDeleteModal = false;
+        await Task.CompletedTask;
     }
 }

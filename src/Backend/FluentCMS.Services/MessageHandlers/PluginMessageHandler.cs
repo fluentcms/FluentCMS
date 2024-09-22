@@ -1,6 +1,4 @@
-﻿using FluentCMS.Providers.MessageBusProviders;
-
-namespace FluentCMS.Services.MessageHandlers;
+﻿namespace FluentCMS.Services.MessageHandlers;
 
 public class PluginMessageHandler(IPluginService pluginService, IPluginContentService pluginContentService) : IMessageHandler<SiteTemplate>
 {
@@ -30,6 +28,8 @@ public class PluginMessageHandler(IPluginService pluginService, IPluginContentSe
         var order = 0;
         foreach (var pluginTemplate in pageTemplate.Plugins)
         {
+            order += 2;
+
             var plugin = new Plugin
             {
                 Id = pluginTemplate.Id,
@@ -44,7 +44,6 @@ public class PluginMessageHandler(IPluginService pluginService, IPluginContentSe
                 ColsLg = pluginTemplate.ColsLg,
                 Settings = pluginTemplate.Settings
             };
-            order++;
 
             await pluginService.Create(plugin, cancellationToken);
 
@@ -63,7 +62,6 @@ public class PluginMessageHandler(IPluginService pluginService, IPluginContentSe
                     await pluginContentService.Create(pluginContent, cancellationToken);
                 }
             }
-
         }
 
         foreach (var childPage in pageTemplate.Children)

@@ -26,11 +26,10 @@ public static class Helpers
             Template = setupTemplate.Template
         };
         SetIds(setupTemplate);
-        await setupTemplate.Site.Load(cancellationToken);
-        SetIds(setupTemplate.Site, setupTemplate.PluginDefinitions);
+        await setupTemplate.Site.Load(setupTemplate.PluginDefinitions, cancellationToken);
     }
 
-    public static async Task Load(this SiteTemplate siteTemplate, CancellationToken cancellationToken = default)
+    public static async Task Load(this SiteTemplate siteTemplate, IEnumerable<PluginDefinition> pluginDefinitions, CancellationToken cancellationToken = default)
     {
         var siteFilePath = Path.Combine(ServiceConstants.SetupTemplatesFolder, siteTemplate.Template, ServiceConstants.SetupSiteTemplateFile);
 
@@ -69,6 +68,7 @@ public static class Helpers
             var blockContentFilePath = Path.Combine(ServiceConstants.SetupTemplatesFolder, siteTemplate.Template, "Blocks", block.Category, $"{block.Name}.html");
             block.Content = await System.IO.File.ReadAllTextAsync(blockContentFilePath, cancellationToken);
         }
+        SetIds(siteTemplate, pluginDefinitions);
     }
 
     private static void SetIds(SetupTemplate setupTemplate)
