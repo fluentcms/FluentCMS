@@ -12,14 +12,17 @@ public partial class BlockEditPlugin
         {
             var response = await ApiClient.PluginContent.GetAllAsync(CONTENT_TYPE_NAME, Plugin!.Id);
 
-            var content = response.Data.ToContentList<BlockContent>();
-            if (content.Count == 0)
+            var content = response.Data!.ToContentList<BlockContent>();
+            if (content is null) 
+                return;
+                
+            if (content!.Count == 0)
                 throw new Exception("This plugin doesn't have any content");
 
             Model = new BlockContent
             {
-                Id = content[0].Id,
-                Content = content[0].Content
+                Id = content![0].Id,
+                Content = content![0].Content
             };
         }
     }
