@@ -9,10 +9,9 @@
     position: relative;
     overflow: hidden;
     min-height: 75px;
-    pointer-events: none;
-    user-select: none;
     transition: all 0.3s ease;
 }
+
 .f-plugin-container:hover .f-plugin-container-content {
     border: 1px dashed #005590;
 }
