@@ -36,7 +36,12 @@ public partial class BlockEmptyView
         }
         await Task.CompletedTask;
     }
-   
+
+    private void ReloadPage()
+    {
+        NavigationManager.NavigateTo(NavigationManager.Uri, true);
+    }
+    
     private async Task ChooseBlockType(BlockDetailResponse block) 
     {
         await ApiClient.PluginContent.CreateAsync(nameof(BlockContent), PluginId, new Dictionary<string, object>
@@ -45,13 +50,13 @@ public partial class BlockEmptyView
         });
 
         BlockModalOpen = false;
-        ViewState.Reload();
+        ReloadPage();
     }
 
     private async Task Load()
     {
         var response = await ApiClient.Block.GetAllForSiteAsync(ViewState.Site.Id);
-        if(response?.Data != null)
+        if (response?.Data != null)
         {
             Blocks = response.Data.ToList();
             Categories = Blocks.Select(block => block.Category)
