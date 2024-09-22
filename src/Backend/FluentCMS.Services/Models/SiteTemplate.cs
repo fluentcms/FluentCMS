@@ -8,6 +8,7 @@ public class SiteTemplate
     public string Name { get; set; } = default!;
     public string Description { get; set; } = default!;
     public List<Layout> Layouts { get; set; } = [];
+    public List<Block> Blocks { get; set; } = [];
     public string Layout { get; set; } = default!;
     public string EditLayout { get; set; } = default!;
     public string DetailLayout { get; set; } = default!;

@@ -48,6 +48,7 @@ public static class Helpers
         siteTemplate.EditLayout = jsonSiteTemplate.EditLayout;
         siteTemplate.DetailLayout = jsonSiteTemplate.DetailLayout;
         siteTemplate.Layouts = jsonSiteTemplate.Layouts;
+        siteTemplate.Blocks = jsonSiteTemplate.Blocks;
         siteTemplate.Pages = jsonSiteTemplate.Pages;
         siteTemplate.Roles = jsonSiteTemplate.Roles;
         siteTemplate.AdminRoles = jsonSiteTemplate.AdminRoles;
@@ -62,6 +63,11 @@ public static class Helpers
             layout.Head = await System.IO.File.ReadAllTextAsync(headLayoutFilePath, cancellationToken);
         }
 
+        foreach (var block in siteTemplate.Blocks)
+        {
+            var blockContentFilePath = Path.Combine(ServiceConstants.SetupTemplatesFolder, siteTemplate.Template, "Blocks", block.Category, $"{block.Name}.html");
+            block.Content = await System.IO.File.ReadAllTextAsync(blockContentFilePath, cancellationToken);
+        }
         SetIds(siteTemplate, pluginDefinitions);
     }
 
