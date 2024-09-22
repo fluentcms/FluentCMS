@@ -1,12 +1,7 @@
 ﻿namespace FluentCMS.Repositories.LiteDb;
 
-public abstract class SiteAssociatedRepository<TEntity> : AuditableEntityRepository<TEntity>, ISiteAssociatedRepository<TEntity>
-    where TEntity : ISiteAssociatedEntity
+public abstract class SiteAssociatedRepository<TEntity>(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : AuditableEntityRepository<TEntity>(liteDbContext, apiExecutionContext), ISiteAssociatedRepository<TEntity> where TEntity : ISiteAssociatedEntity
 {
-    public SiteAssociatedRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : base(liteDbContext, apiExecutionContext)
-    {
-    }
-
     public override async Task<TEntity?> Update(TEntity entity, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

@@ -1,8 +1,6 @@
-﻿using Microsoft.Extensions.Caching.Memory;
+﻿namespace FluentCMS.Repositories.Caching;
 
-namespace FluentCMS.Repositories.Caching;
-
-public abstract class SiteAssociatedRepository<TEntity>(ISiteAssociatedRepository<TEntity> siteAssociatedRepository, IMemoryCache memoryCache) : AuditableEntityRepository<TEntity>(siteAssociatedRepository, memoryCache), ISiteAssociatedRepository<TEntity> where TEntity : ISiteAssociatedEntity
+public abstract class SiteAssociatedRepository<TEntity>(ISiteAssociatedRepository<TEntity> siteAssociatedRepository, ICacheProvider cacheProvider) : AuditableEntityRepository<TEntity>(siteAssociatedRepository, cacheProvider), ISiteAssociatedRepository<TEntity> where TEntity : ISiteAssociatedEntity
 {
     public async Task<IEnumerable<TEntity>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {

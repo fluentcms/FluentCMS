@@ -11,8 +11,24 @@ public static class LiteDbServiceExtensions
         services.AddSingleton(provider => CreateLiteDBOptions(provider, connectionString));
         services.AddSingleton<ILiteDBContext, LiteDBContext>();
 
-        // Register all repositories using reflection
-        RegisterRepositories(services);
+        // Register repositories
+        services.AddScoped<IApiTokenRepository, ApiTokenRepository>();
+        services.AddScoped<IBlockRepository, BlockRepository>();
+        services.AddScoped<IContentRepository, ContentRepository>();
+        services.AddScoped<IContentTypeRepository, ContentTypeRepository>();
+        services.AddScoped<IFileRepository, FileRepository>();
+        services.AddScoped<IFolderRepository, FolderRepository>();
+        services.AddScoped<IGlobalSettingsRepository, GlobalSettingsRepository>();
+        services.AddScoped<ILayoutRepository, LayoutRepository>();
+        services.AddScoped<IPageRepository, PageRepository>();
+        services.AddScoped<IPermissionRepository, PermissionRepository>();
+        services.AddScoped<IPluginContentRepository, PluginContentRepository>();
+        services.AddScoped<IPluginDefinitionRepository, PluginDefinitionRepository>();
+        services.AddScoped<IPluginRepository, PluginRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<ISiteRepository, SiteRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserRoleRepository, UserRoleRepository>();
 
         return services;
     }
@@ -24,20 +40,5 @@ public static class LiteDbServiceExtensions
         return connString is not null
             ? new LiteDBOptions<LiteDBContext>(connString)
             : throw new InvalidOperationException($"Connection string '{connectionString}' not found.");
-    }
-
-    private static void RegisterRepositories(IServiceCollection services)
-    {
-        var repositoryTypes = typeof(LiteDbServiceExtensions).Assembly.GetTypes()
-            .Where(t => t.IsClass && !t.IsAbstract && t.Name.EndsWith("Repository"))
-            .ToList();
-
-        foreach (var repositoryType in repositoryTypes)
-        {
-            var interfaceType = repositoryType.GetInterfaces().FirstOrDefault(i => i.Name.EndsWith(repositoryType.Name))
-                ?? throw new InvalidOperationException($"Interface for repository '{repositoryType.Name}' not found.");
-
-            services.AddScoped(interfaceType, repositoryType);
-        }
     }
 }

@@ -1,11 +1,7 @@
 ﻿namespace FluentCMS.Repositories.LiteDb;
 
-public class PluginRepository : SiteAssociatedRepository<Plugin>, IPluginRepository
+public class PluginRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : SiteAssociatedRepository<Plugin>(liteDbContext, apiExecutionContext), IPluginRepository
 {
-    public PluginRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : base(liteDbContext, apiExecutionContext)
-    {
-    }
-
     public async Task<IEnumerable<Plugin>> GetByPageId(Guid pageId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

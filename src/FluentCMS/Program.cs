@@ -15,6 +15,9 @@ services.AddLiteDbRepositories("LiteDb");
 // Use MongoDB as database
 //services.AddMongoDbRepositories("MongoDb");
 
+// Enable caching for repository layer
+services.AddCachedRepositories();
+
 #endregion
 
 #region Providers
@@ -25,6 +28,7 @@ services.AddSmtpEmailProvider();
 services.AddInMemoryMessageBusProvider();
 services.AddLocalFileStorageProvider();
 services.AddScribanTemplateRenderingProvider();
+services.AddInMemoryCacheProvider();
 
 #endregion
 

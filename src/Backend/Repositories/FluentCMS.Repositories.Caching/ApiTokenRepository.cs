@@ -1,8 +1,6 @@
-﻿using Microsoft.Extensions.Caching.Memory;
+﻿namespace FluentCMS.Repositories.Caching;
 
-namespace FluentCMS.Repositories.Caching;
-
-public class ApiTokenRepository(IAuditableEntityRepository<ApiToken> repository, IMemoryCache memoryCache) : AuditableEntityRepository<ApiToken>(repository, memoryCache), IApiTokenRepository
+public class ApiTokenRepository(IApiTokenRepository repository, ICacheProvider cacheProvider) : AuditableEntityRepository<ApiToken>(repository,cacheProvider ), IApiTokenRepository
 {
     public async Task<ApiToken?> GetByKey(string apiKey, CancellationToken cancellationToken)
     {
