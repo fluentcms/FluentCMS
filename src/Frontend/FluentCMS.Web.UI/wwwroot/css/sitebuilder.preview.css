@@ -4,6 +4,10 @@
 @import './html.css';
 @import './plugin-container.css';
 
+.f-plugin-container-content {
+    pointer-events: none;
+    user-select: none;
+}
 
 .f-page-editor-forms {
     display: none;

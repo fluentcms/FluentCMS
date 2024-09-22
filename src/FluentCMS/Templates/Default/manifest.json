@@ -331,6 +331,22 @@
             ]
         },
         {
+            "Name": "Block Plugin",
+            "Description": "Block Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Contents.Block.dll",
+            "Types": [
+                {
+                    "Name": "View",
+                    "Type": "BlockViewPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Edit",
+                    "Type": "BlockEditPlugin"
+                }
+            ]
+        },
+        {
             "Name": "Global Settings Management",
             "Category": "Admin",
             "Description": "Global Settings Management Plugin",
