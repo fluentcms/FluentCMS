@@ -4,7 +4,6 @@ let pageEditorElement = document.querySelector('.f-page-editor')
 
 let responsiveMode = null
 
-
 export function updateResponsive(mode, silent) {
     document.querySelector(`.f-toolbar-responsive-button-active`).classList.remove('f-toolbar-responsive-button-active')
 

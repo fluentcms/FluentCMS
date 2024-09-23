@@ -46,7 +46,7 @@ public abstract class BasePlugin : ComponentBase
         if (HttpContextAccessor?.HttpContext != null && !HttpContextAccessor.HttpContext.Response.HasStarted)
             HttpContextAccessor.HttpContext.Response.Redirect(path);
         else
-            NavigationManager.NavigateTo(path, true);
+            NavigationManager.NavigateTo(path);
     }
 
     protected virtual string GetUrl(string viewName, object? parameters = null, bool redirectToCurrentPage = true)

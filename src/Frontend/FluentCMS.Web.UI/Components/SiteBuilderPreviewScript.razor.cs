@@ -3,7 +3,7 @@ using Microsoft.JSInterop;
 
 namespace FluentCMS.Web.UI;
 
-public partial class SiteBuilderPreviewScript : IDisposable
+public partial class SiteBuilderPreviewScript : IAsyncDisposable
 {
     [Inject]
     public IJSRuntime JS { get; set; } = default!;
@@ -21,6 +21,7 @@ public partial class SiteBuilderPreviewScript : IDisposable
     public ViewState ViewState { get; set; } = default!;
 
     private IJSObjectReference Module { get; set; } = default!;
+    private DotNetObjectReference<SiteBuilderPreviewScript> DotNetRef { get; set; } = default!;
 
     [JSInvokable]
     public async Task CreatePlugin(Guid definitionId, string section, int order)
@@ -81,9 +82,10 @@ public partial class SiteBuilderPreviewScript : IDisposable
 
         await Task.CompletedTask;
     }
-    void IDisposable.Dispose()
+    public async ValueTask DisposeAsync()
     {
         ViewState.ReloadAction -= ViewStateChanged;
+        await Task.CompletedTask;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -91,9 +93,10 @@ public partial class SiteBuilderPreviewScript : IDisposable
         if (!firstRender)
             return;
 
+        DotNetRef = DotNetObjectReference.Create(this);
         Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI/Components/SiteBuilderPreviewScript.razor.js");
 
-        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), new { });
+        await Module.InvokeVoidAsync("initialize", DotNetRef, new { });
     }
 
 }

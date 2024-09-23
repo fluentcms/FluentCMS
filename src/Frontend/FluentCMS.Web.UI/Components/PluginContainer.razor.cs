@@ -46,7 +46,6 @@ public partial class PluginContainer
         ViewState.Reload();
     }
 
-
     private Type? GetPluginType()
     {
         PluginDefinitionTypeViewState? pluginDefType;

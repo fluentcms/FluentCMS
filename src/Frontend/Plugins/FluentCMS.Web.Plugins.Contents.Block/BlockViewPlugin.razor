@@ -7,7 +7,7 @@
         @((MarkupString)Item.Content)
     </div>
 }
-else if(ViewState.Type == ViewStateType.Default)
+else if(ViewState.Type == ViewStateType.PagePreview || ViewState.Type == ViewStateType.Default)
 {
     <BlockEmptyView PluginId="@Plugin.Id"/>
 }

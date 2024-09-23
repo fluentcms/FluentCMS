@@ -2,14 +2,16 @@ using Microsoft.JSInterop;
 
 namespace FluentCMS.Web.UI;
 
-public partial class SiteBuilder
+public partial class SiteBuilder : IAsyncDisposable
 {
     [Inject]
     public IJSRuntime JS { get; set; } = default!;
 
     public ElementReference element;
 
-    private IJSObjectReference module = default!;
+    private IJSObjectReference Module { get; set; } = default!;
+
+    private DotNetObjectReference<SiteBuilder> DotNetRef { get; set; } = default!;
 
     [Inject]
     public NavigationManager NavigationManager { get; set; } = default!;
@@ -25,8 +27,18 @@ public partial class SiteBuilder
         if (!firstRender)
             return;
 
-        module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI/Components/SiteBuilder.razor.js");
+        Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI/Components/SiteBuilder.razor.js");
 
-        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), new { });
+        DotNetRef = DotNetObjectReference.Create(this);
+        await Module.InvokeVoidAsync("initialize", DotNetRef, new { });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Module is not null)
+        {
+            await Module.DisposeAsync();
+        }
+        DotNetRef.Dispose();
     }
 }

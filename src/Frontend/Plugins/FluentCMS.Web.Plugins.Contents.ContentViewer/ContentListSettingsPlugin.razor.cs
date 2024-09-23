@@ -22,8 +22,8 @@ public partial class ContentListSettingsPlugin
 
             Model = new()
             {
-                Template = template,
-                ContentTypeSlug = slug,
+                Template = template ?? string.Empty,
+                ContentTypeSlug = slug ?? string.Empty,
             };
         }
     }

@@ -14,9 +14,9 @@
                     var contentType = ContentTypes.Where(x => x.Slug == Model.ContentTypeSlug).FirstOrDefault();
                 }
                 <Typography Size="TextSize.Large"></Typography>
-                <Typography Size="TextSize.Small"><code class="font-bold">Items</code> variable is available for template, which is list of "@contentType.Title", Each "@contentType.Title" has these fields:</Typography>
+                <Typography Size="TextSize.Small"><code class="font-bold">Items</code> variable is available for template, which is list of "@contentType!.Title", Each "@contentType.Title" has these fields:</Typography>
                 <Stack Wrap>
-                    @foreach (var field in contentType.Fields)
+                    @foreach (var field in contentType?.Fields ?? [])
                     {
                         <Badge Color="Color.Primary">@field.Name: @field.Type</Badge>   
                     }

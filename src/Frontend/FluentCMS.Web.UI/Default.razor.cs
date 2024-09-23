@@ -85,7 +85,7 @@ public partial class Default : IDisposable
         };
 
         var segments = LayoutProcessor.ProcessSegments(content, parameters);
-        var index = 0;
+
         foreach (var segment in segments)
         {
             if (segment.GetType() == typeof(HtmlSegment))
@@ -98,17 +98,14 @@ public partial class Default : IDisposable
                 var componentSegment = segment as ComponentSegment;
                 builder.OpenComponent(1, componentSegment!.Type);
 
-                var attributeIndex = 0;
                 foreach (var attribute in componentSegment.Attributes)
                 {
                     builder.AddComponentParameter(2, attribute.Key, attribute.Value);
-                    attributeIndex++;
                 }
                 builder.AddComponentRenderMode(PluginRenderMode());
 
                 builder.CloseComponent();
             }
-            index++;
         }
     };
 

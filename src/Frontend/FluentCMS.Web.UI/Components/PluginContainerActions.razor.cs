@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI;
 
-public partial class PluginContainerActions
+public partial class PluginContainerActions: IDisposable
 {
     [Parameter]
     public PluginViewState Plugin { get; set; } = default!;
@@ -21,10 +21,17 @@ public partial class PluginContainerActions
         await OnDelete.InvokeAsync();
     }
 
-    protected override async Task OnInitializedAsync()
+    private void OnViewStateChanged(object? sender, EventArgs a)
     {
         var authenticated = ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked && ViewState.User.Roles.Any(role => role.Type == RoleTypesViewState.Authenticated);
-        IsDesignMode = authenticated || ViewState.Type == ViewStateType.PagePreview;
+        IsDesignMode = authenticated || ViewState.Type == ViewStateType.PagePreview;   
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ViewState.OnStateChanged += OnViewStateChanged;
+
+        OnViewStateChanged(null, EventArgs.Empty);
         await Task.CompletedTask;
     }
 
@@ -47,5 +54,10 @@ public partial class PluginContainerActions
 
         url += "?" + string.Join("&", queryParams);
         NavigationManager.NavigateTo(url, true);
+    }
+
+    public void Dispose()
+    {
+        ViewState.OnStateChanged -= OnViewStateChanged;
     }
 }

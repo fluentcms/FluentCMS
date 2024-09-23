@@ -2,7 +2,7 @@ using Microsoft.JSInterop;
 
 namespace FluentCMS.Web.UI;
 
-public partial class SiteBuilderFloatingButtons
+public partial class SiteBuilderFloatingButtons : IAsyncDisposable
 {
     [Inject]
     private NavigationManager NavigationManager { get; set; } = default!;
@@ -15,6 +15,8 @@ public partial class SiteBuilderFloatingButtons
 
     private ElementReference TogglerRef { get; set; } = default!;
     private ElementReference ButtonsRef { get; set; } = default!;
+    private DotNetObjectReference<SiteBuilderFloatingButtons> DotNetRef { get; set; } = default!;
+    private IJSObjectReference Module { get; set; } = default!;
 
     private string GetPageAddUrl()
     {
@@ -57,9 +59,19 @@ public partial class SiteBuilderFloatingButtons
             throw new InvalidOperationException("JS runtime has not been initialized.");
         }
 
-        var Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI/Components/SiteBuilderFloatingButtons.razor.js");
+        DotNetRef = DotNetObjectReference.Create(this);
 
-        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), TogglerRef, ButtonsRef);
+        Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI/Components/SiteBuilderFloatingButtons.razor.js");
+
+        await Module.InvokeVoidAsync("initialize", DotNetRef, TogglerRef, ButtonsRef);
     }
 
+    public async ValueTask DisposeAsync()
+    {
+        if (Module is not null)
+        {
+            await Module.DisposeAsync();
+        }
+        DotNetRef.Dispose();
+    }
 }
