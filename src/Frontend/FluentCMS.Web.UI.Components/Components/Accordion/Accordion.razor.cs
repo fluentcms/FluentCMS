@@ -12,11 +12,11 @@ public partial class Accordion : IAsyncDisposable
     [Parameter]
     public string Summary { get; set; } = string.Empty;
 
-    private bool IsOpen { get; set;}
+    private bool IsOpen { get; set; }
     private DotNetObjectReference<Accordion> DotNetRef { get; set; } = default!;
 
     [Parameter]
-    public bool Open { get; set;}
+    public bool Open { get; set; }
 
     [Parameter]
     public EventCallback<bool> OpenChanged { get; set; }
@@ -37,7 +37,7 @@ public partial class Accordion : IAsyncDisposable
 
         if (Module is null)
             return;
-            
+
         await Module.InvokeVoidAsync(Open ? "open" : "close", DotNetRef, Element);
         await OpenChanged.InvokeAsync(Open);
     }

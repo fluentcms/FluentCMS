@@ -1,23 +1,23 @@
 namespace FluentCMS.Web.Plugins.Contents.Block;
 
 public partial class BlockEmptyView
-{    
+{
     [Parameter]
     public Guid PluginId { get; set; } = Guid.Empty;
-    
+
     private List<BlockDetailResponse> Blocks { get; set; } = [];
     private List<BlockDetailResponse> FilteredBlocks { get; set; } = [];
     private List<string?> Categories { get; set; } = [];
     private string CurrentCategory { get; set; } = string.Empty;
     private bool BlockModalOpen { get; set; } = false;
 
-    private async Task OpenBlockModal() 
+    private async Task OpenBlockModal()
     {
         BlockModalOpen = true;
         await Task.CompletedTask;
     }
 
-    private async Task CloseBlockModal() 
+    private async Task CloseBlockModal()
     {
         BlockModalOpen = false;
         await Task.CompletedTask;
@@ -42,8 +42,8 @@ public partial class BlockEmptyView
         // NavigationManager.NavigateTo(NavigationManager.Uri, true);
         ViewState.Reload();
     }
-    
-    private async Task ChooseBlockType(BlockDetailResponse block) 
+
+    private async Task ChooseBlockType(BlockDetailResponse block)
     {
         await ApiClient.PluginContent.CreateAsync(nameof(BlockContent), PluginId, new Dictionary<string, object>
         {
@@ -62,7 +62,7 @@ public partial class BlockEmptyView
             Blocks = response.Data.ToList();
             Categories = Blocks.Select(block => block.Category)
                 .Distinct()
-                .ToList();    
+                .ToList();
 
             FilteredBlocks = Blocks;
         }

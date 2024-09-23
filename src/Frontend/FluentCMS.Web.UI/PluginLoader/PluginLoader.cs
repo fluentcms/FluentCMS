@@ -9,8 +9,8 @@ public class PluginLoader
 
     private Assembly Load(string relativePath)
     {
-        if (_loadedAssemblies.ContainsKey(relativePath))
-            return _loadedAssemblies[relativePath];
+        if (_loadedAssemblies.TryGetValue(relativePath, out Assembly? value))
+            return value;
 
         var entryAssembly = Assembly.GetEntryAssembly() ??
             throw new InvalidOperationException("Entry assembly not found");
