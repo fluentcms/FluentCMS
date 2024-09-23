@@ -1,4 +1,5 @@
 ﻿using FluentCMS;
+using FluentCMS.Services.Models;
 using FluentCMS.Web.Api;
 using FluentCMS.Web.Api.Filters;
 using FluentCMS.Web.Api.Middleware;

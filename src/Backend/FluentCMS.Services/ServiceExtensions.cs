@@ -21,6 +21,9 @@ public static class ServiceExtensions
 
     private static IdentityBuilder AddIdentity(IServiceCollection services)
     {
+        services.AddOptions<JwtOptions>()
+            .BindConfiguration("JwtOptions");
+
         var builder = services.AddIdentityCore<User>();
 
         builder
