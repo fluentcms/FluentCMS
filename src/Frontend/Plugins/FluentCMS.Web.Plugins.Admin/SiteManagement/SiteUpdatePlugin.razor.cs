@@ -10,6 +10,7 @@ public partial class SiteUpdatePlugin
     [SupplyParameterFromForm(FormName = FORM_NAME)]
     private SiteUpdateRequest? Model { get; set; }
 
+    [SupplyParameterFromForm(FormName = FORM_NAME)]
     private string Urls { get; set; } = string.Empty;
     private List<LayoutDetailResponse>? Layouts { get; set; }
 
@@ -35,6 +36,7 @@ public partial class SiteUpdatePlugin
 
     private async Task OnSubmit()
     {
+        Model!.Id = Id;
         Model!.Urls = Urls.Split(",");
         await ApiClient.Site.UpdateAsync(Model);
         NavigateBack();
