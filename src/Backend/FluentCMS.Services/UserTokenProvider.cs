@@ -15,21 +15,16 @@ public interface IUserTokenProvider
     Task<Guid> ValidateExpiredToken(string accessToken);
 }
 
-public class JwtUserTokenProvider : IUserTokenProvider
+public class JwtUserTokenProvider(IOptions<JwtOptions> options) : IUserTokenProvider
 {
-    private readonly JwtOptions _options;
-
-    public JwtUserTokenProvider(IOptions<JwtOptions> options)
-    {
-        _options = options.Value;
-    }
+    private readonly JwtOptions _options = options.Value;
 
     public virtual async Task<UserToken> Generate(User user)
     {
         return await Task.Run(() =>
         {
             var token = GenerateToken(user);
-            var refreshToken = GenerateRefreshToken(user);
+            var refreshToken = GenerateRefreshToken();
             return new UserToken
             {
                 AccessToken = token.AccessToken,
@@ -39,7 +34,7 @@ public class JwtUserTokenProvider : IUserTokenProvider
         });
     }
 
-    private string GenerateRefreshToken(User user)
+    private static string GenerateRefreshToken()
     {
         var randomNumber = new byte[32];
         using var rng = RandomNumberGenerator.Create();
@@ -151,18 +146,3 @@ public class JwtUserTokenProvider : IUserTokenProvider
     }
 }
 
-public class UserToken
-{
-    public required string AccessToken { get; set; }
-    public string? RefreshToken { get; set; }
-    public DateTime Expiry { get; set; }
-}
-
-public class JwtOptions
-{
-    public string Issuer { get; set; } = "FluentCMS";
-    public string Audience { get; set; } = "FluentCMS";
-    public double TokenExpiry { get; set; } = -1; // second, -1 means never expire
-    public double RefreshTokenExpiry { get; set; } = -1; // second, -1 means never expire
-    public string Secret { get; set; } = "SuperSecretPasswordForDevelopment";
-}
