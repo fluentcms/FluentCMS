@@ -13,12 +13,6 @@ public class UserRoleService(IUserRoleRepository userRoleRepository, IRoleReposi
 {
     public async Task<IEnumerable<UserRole>> DeleteByRoleId(Guid roleId, CancellationToken cancellationToken = default)
     {
-        var role = await roleRepository.GetById(roleId, cancellationToken) ??
-            throw new AppException(ExceptionCodes.RoleNotFound);
-
-        if (!await permissionManager.HasAccess(role.SiteId, SitePermissionAction.SiteAdmin, cancellationToken))
-            throw new AppException(ExceptionCodes.PermissionDenied);
-
         var userRoles = await userRoleRepository.GetByRoleId(roleId, cancellationToken);
 
         var deleted = await userRoleRepository.DeleteMany(userRoles.Select(x => x.Id), cancellationToken);
