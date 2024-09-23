@@ -19,7 +19,7 @@ public partial class FormTreeSelector : IAsyncDisposable
     public ElementReference Element { get; set; }
 
     private IJSObjectReference Module { get; set; } = default!;
-    
+
     private DotNetObjectReference<FormTreeSelector> DotNetRef { get; set; } = default!;
 
     private string? _value;

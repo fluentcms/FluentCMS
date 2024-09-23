@@ -42,7 +42,7 @@ public partial class Dropdown : IAsyncDisposable
 
         if (Module is null)
             return;
-            
+
         await Module.InvokeVoidAsync("update", DotNetRef, Element, new { Open });
         if (OpenChanged.HasDelegate)
         {

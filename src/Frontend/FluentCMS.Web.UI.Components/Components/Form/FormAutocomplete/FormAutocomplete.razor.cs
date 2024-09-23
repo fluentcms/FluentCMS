@@ -76,7 +76,7 @@ public partial class FormAutocomplete<TItem, TValue> : IAsyncDisposable
         }
         DotNetRef.Dispose();
     }
-    
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;

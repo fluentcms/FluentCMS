@@ -51,7 +51,7 @@ public partial class FormMarkdownEditor : IAsyncDisposable
         {
             throw new InvalidOperationException("JS runtime has not been initialized.");
         }
-        
+
         DotNetRef = DotNetObjectReference.Create(this);
         Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Form/FormMarkdownEditor/FormMarkdownEditor.razor.js");
 
