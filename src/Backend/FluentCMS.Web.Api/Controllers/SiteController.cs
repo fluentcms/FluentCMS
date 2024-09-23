@@ -35,6 +35,8 @@ public class SiteController(ISiteService siteService, IMapper mapper, IPluginDef
         var siteTemplate = mapper.Map<SiteTemplate>(request);
         var pluginDefinitions = await pluginDefinitionService.GetAll(cancellationToken);
         await siteTemplate.Load(pluginDefinitions, cancellationToken);
+        siteTemplate.Description = request.Description ?? string.Empty;
+        siteTemplate.Name = request.Name;
         var newSite = await siteService.Create(siteTemplate, cancellationToken);
         var response = mapper.Map<SiteDetailResponse>(newSite);
         return Ok(response);
