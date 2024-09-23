@@ -20,7 +20,7 @@ public partial class FormFileUpload : IAsyncDisposable
     public string? Label { get; set; }
 
     [Parameter]
-    public RenderFragment? LabelFragment { get; set; }
+    public RenderFragment LabelFragment { get; set; } = default!;
 
     [Parameter]
     public string? Name { get; set; }
@@ -34,7 +34,7 @@ public partial class FormFileUpload : IAsyncDisposable
     #endregion
 
     [Inject]
-    public IJSRuntime JS { get; set; } = default!;
+    public IJSRuntime? JS { get; set; } = default!;
 
     [Parameter]
     public int Cols { get; set; } = 12;
@@ -54,6 +54,7 @@ public partial class FormFileUpload : IAsyncDisposable
     public ElementReference Element;
 
     public IJSObjectReference Module = default!;
+    private DotNetObjectReference<FormFileUpload> DotNetRef { get; set; } = default!;
 
     async Task HandleChange(InputFileChangeEventArgs evt)
     {
@@ -62,18 +63,25 @@ public partial class FormFileUpload : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (Module != null)
+        if (Module is not null)
         {
-            await Module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), Element);
+            await Module.InvokeVoidAsync("dispose", DotNetRef, Element);
+            await Module.DisposeAsync();
         }
+        DotNetRef.Dispose();
     }
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
 
+        if (JS is null)
+        {
+            throw new InvalidOperationException("JS runtime has not been initialized.");
+        }
+
+        DotNetRef = DotNetObjectReference.Create(this);
         Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Form/FormFileUpload/FormFileUpload.razor.js");
 
-        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), Element);
+        await Module.InvokeVoidAsync("initialize", DotNetRef, Element);
     }
 }

@@ -54,10 +54,9 @@ public partial class FormCheckboxGroup<TItem, TValue>
         throw new NotSupportedException();
     }
 
-    public Task HandleChange(ChangeEventArgs args, TValue value)
+    public Task HandleChange(ChangeEventArgs args, TValue? value)
     {
-        if (Value is null)
-            Value = [];
+        Value ??= [];
 
         if (Value.Contains(value))
             Value.Remove(value);

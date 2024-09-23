@@ -43,7 +43,7 @@ public class PluginLoader
         if (!_loadedTypes.ContainsKey(assemblyPath))
             _loadedTypes.Add(assemblyPath, []);
 
-        if (!_loadedTypes[assemblyPath].ContainsKey(typeName))
+        if (!_loadedTypes[assemblyPath].ContainsKey(typeName) && type is not null)
             _loadedTypes[assemblyPath].Add(typeName, type);
 
         return type;

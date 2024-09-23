@@ -48,7 +48,7 @@ public partial class ContentUpdatePlugin
         {
             { "Field", fieldModel },
             { "FieldValue", fieldValue },
-            { nameof(ContentTypeField), ContentType.Fields.Where(x => x.Name == fieldModel.Name).SingleOrDefault() }
+            { nameof(ContentTypeField), ContentType?.Fields?.Where(x => x.Name == fieldModel.Name).SingleOrDefault() }
         };
 
         return parameters;
@@ -56,7 +56,7 @@ public partial class ContentUpdatePlugin
 
     private async Task OnSubmit()
     {
-        var data = FieldValues.ToDictionary(x => x.Name, x => x.GetValue());
+        var data = FieldValues.ToDictionary(x => x.Name, x => x.GetValue() ?? default!);
         await ApiClient.Content.UpdateAsync(ContentTypeSlug!, Id, data);
 
         NavigateBack();

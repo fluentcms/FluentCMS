@@ -43,7 +43,7 @@ public abstract class BaseInput<T> : InputBase<T>, IBaseComponent
     public string? Hint { get; set; }
 
     [Parameter]
-    public RenderFragment? LabelFragment { get; set; }
+    public RenderFragment LabelFragment { get; set; } = default!;
 
     [Parameter]
     public string? Name { get; set; }

@@ -8,9 +8,9 @@ public class PermissionManager : IPermissionManager
     private readonly IGlobalSettingsRepository _globalSettingsRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly bool _isSuperAdmin = false;
-    private List<UserRole> _userRoles;
-    private List<Role> _roles;
-    private List<Permission> _permissions;
+    private List<UserRole> _userRoles = [];
+    private List<Role> _roles = [];
+    private List<Permission> _permissions = [];
 
     public PermissionManager(IApiExecutionContext apiExecutionContext, IPermissionRepository permissionRepository, IUserRoleRepository userRoleRepository, IGlobalSettingsRepository globalSettingsRepository, IRoleRepository roleRepository)
     {

@@ -13,16 +13,16 @@ public static class ModelHelpers
         {
             case FieldTypes.STRING:
             case FieldTypes.SINGLE_SELECT:
-                return new FieldValue<string?> { Name = fieldModel.Name, Value = valuesDict.TryGetValue(fieldModel.Name, out object? strValue) ? (string)strValue : default! };
+                return new FieldValue<string?> { Name = fieldModel.Name, Value = valuesDict.TryGetValue(fieldModel.Name, out object? strValue) ? (string?)strValue : default! };
 
             case FieldTypes.NUMBER:
-                return new FieldValue<double?> { Name = fieldModel.Name, Value = valuesDict.TryGetValue(fieldModel.Name, out object? doubleValue) ? (double)doubleValue : default! };
+                return new FieldValue<double?> { Name = fieldModel.Name, Value = valuesDict.TryGetValue(fieldModel.Name, out object? doubleValue) ? (double?)doubleValue : default! };
 
             case FieldTypes.SINGLE_FILE:
                 return new FieldValue<Guid?> { Name = fieldModel.Name, Value = valuesDict.TryGetValue(fieldModel.Name, out object? guidValue) ? (Guid?)guidValue : default! };
 
             case FieldTypes.BOOLEAN:
-                return new FieldValue<bool> { Name = fieldModel.Name, Value = valuesDict.TryGetValue(fieldModel.Name, out object? boolValue) && (bool)boolValue };
+                return new FieldValue<bool> { Name = fieldModel.Name, Value = valuesDict.TryGetValue(fieldModel.Name, out object? boolValue) ? (bool?)boolValue ?? false : default! };
 
             case FieldTypes.DATE_TIME:
                 // try parse the value as a DateTime

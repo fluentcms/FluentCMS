@@ -8,7 +8,7 @@ public class PluginLoadContext : AssemblyLoadContext
     public PluginLoadContext() : base(isCollectible: true)
     {
     }
-    protected override Assembly Load(AssemblyName assemblyName)
+    protected override Assembly? Load(AssemblyName assemblyName)
     {
         return null; // Return null to use the default load context for dependencies
     }

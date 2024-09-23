@@ -15,7 +15,7 @@ public class ViewState
 
     public event EventHandler? OnStateChanged;
 
-    public Action ReloadAction { get; set; } = default!;
+    public Action ReloadAction { get; set; } = () => { };
 
     public void Reload()
     {

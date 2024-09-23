@@ -91,17 +91,17 @@ public partial class Default : IDisposable
             if (segment.GetType() == typeof(HtmlSegment))
             {
                 var htmlSegment = segment as HtmlSegment;
-                builder.AddContent(index, (MarkupString)htmlSegment!.Content);
+                builder.AddContent(0, (MarkupString)htmlSegment!.Content);
             }
             else if (segment.GetType() == typeof(ComponentSegment))
             {
                 var componentSegment = segment as ComponentSegment;
-                builder.OpenComponent(index, componentSegment!.Type);
+                builder.OpenComponent(1, componentSegment!.Type);
 
                 var attributeIndex = 0;
                 foreach (var attribute in componentSegment.Attributes)
                 {
-                    builder.AddComponentParameter(attributeIndex, attribute.Key, attribute.Value);
+                    builder.AddComponentParameter(2, attribute.Key, attribute.Value);
                     attributeIndex++;
                 }
                 builder.AddComponentRenderMode(PluginRenderMode());

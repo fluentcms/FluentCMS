@@ -21,15 +21,16 @@ public partial class FormAutocomplete<TItem, TValue> : IAsyncDisposable
     public string? ValueField { get; set; }
 
     [Parameter]
-    public RenderFragment ChildContent { get; set; }
+    public RenderFragment? ChildContent { get; set; }
 
     public ElementReference Element;
 
-    private IJSObjectReference Module = default!;
+    private IJSObjectReference Module { get; set; } = default!;
+    private DotNetObjectReference<FormAutocomplete<TItem, TValue>> DotNetRef { get; set; } = default!;
 
     private bool IsSelected(TItem item)
     {
-        return (Value?.ToString() ?? String.Empty) == GetValue(item).ToString();
+        return Value?.ToString() == GetValue(item)?.ToString();
     }
 
     private string? GetText(TItem item)
@@ -63,23 +64,32 @@ public partial class FormAutocomplete<TItem, TValue> : IAsyncDisposable
     protected override async Task OnParametersSetAsync()
     {
         if (Module != null)
-            await Module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), Element, new { Value });
+            await Module.InvokeVoidAsync("update", DotNetRef, Element, new { Value });
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (Module is null) return;
-
-        await Module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), Element);
+        if (Module is not null)
+        {
+            await Module.InvokeVoidAsync("dispose", DotNetRef, Element);
+            await Module.DisposeAsync();
+        }
+        DotNetRef.Dispose();
     }
-
+    
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
 
+        if (JS is null)
+        {
+            throw new InvalidOperationException("JS runtime has not been initialized.");
+        }
+
+        DotNetRef = DotNetObjectReference.Create(this);
         Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Form/FormAutocomplete/FormAutocomplete.razor.js");
 
-        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), Element, new { Multiple = false });
+        await Module.InvokeVoidAsync("initialize", DotNetRef, Element, new { Multiple = false });
     }
 
     protected override bool TryParseValueFromString(string? value, [MaybeNullWhen(false)] out TValue result, [NotNullWhen(false)] out string? validationErrorMessage)

@@ -2,7 +2,7 @@ namespace FluentCMS.Web.Plugins.Contents.TextHTML;
 
 public partial class TextHTMLViewPlugin
 {
-    private TextHTMLContent Item { get; set; }
+    private TextHTMLContent? Item { get; set; }
 
     protected override async Task OnInitializedAsync()
     {

@@ -41,7 +41,7 @@ public partial class PageListPlugin
         var currentPage = page;
         while (currentPage != null)
         {
-            result.Add(currentPage.Path);
+            result.Add(currentPage.Path ?? string.Empty);
             if (currentPage.ParentId.HasValue)
             {
                 currentPage = Pages.Where(x => x.Id == currentPage.ParentId.Value).FirstOrDefault();

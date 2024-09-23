@@ -12,7 +12,7 @@ public abstract class BasePlugin : ComponentBase
     protected ViewState ViewState { get; set; } = default!;
 
     [Parameter]
-    public PluginViewState? Plugin { get; set; } = default!;
+    public PluginViewState Plugin { get; set; } = default!;
 
     [Inject]
     protected ApiClientFactory ApiClient { get; set; } = default!;
@@ -67,7 +67,7 @@ public abstract class BasePlugin : ComponentBase
         {
             oldQueryParams.Remove("redirectTo");
 
-            var updatedQuery = string.Join("&", oldQueryParams.AllKeys.Select(key => $"{key}={Uri.EscapeDataString(oldQueryParams[key])}"));
+            var updatedQuery = string.Join("&", oldQueryParams.AllKeys.Select(key => $"{key}={Uri.EscapeDataString(oldQueryParams[key] ?? string.Empty)}"));
 
             var newPathAndQuery = $"{uri.LocalPath}{(string.IsNullOrEmpty(updatedQuery) ? string.Empty : "?" + updatedQuery)}";
 

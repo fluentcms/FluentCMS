@@ -8,7 +8,7 @@ public partial class SiteBuilderFloatingButtons
     private NavigationManager NavigationManager { get; set; } = default!;
 
     [Inject]
-    private IJSRuntime JS { get; set; } = default!;
+    private IJSRuntime? JS { get; set; }
 
     [Inject]
     private ViewState ViewState { get; set; } = default!;
@@ -26,7 +26,7 @@ public partial class SiteBuilderFloatingButtons
             { "redirectTo", redirectTo }
         };
 
-        var queryParamsString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
+        var queryParamsString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value ?? string.Empty)}"));
 
         return $"/admin/pages?{queryParamsString}";
     }
@@ -42,7 +42,7 @@ public partial class SiteBuilderFloatingButtons
             { "redirectTo", redirectTo }
         };
 
-        var queryParamsString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
+        var queryParamsString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value ?? string.Empty)}"));
 
         return $"/admin/pages?{queryParamsString}";
     }
@@ -51,6 +51,11 @@ public partial class SiteBuilderFloatingButtons
     {
         if (!firstRender)
             return;
+
+        if (JS is null)
+        {
+            throw new InvalidOperationException("JS runtime has not been initialized.");
+        }
 
         var Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI/Components/SiteBuilderFloatingButtons.razor.js");
 

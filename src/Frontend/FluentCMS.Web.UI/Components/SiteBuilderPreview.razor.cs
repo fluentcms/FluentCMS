@@ -24,7 +24,7 @@ public partial class SiteBuilderPreview
         try
         {
             var response = await ApiClient.PluginDefinition.GetAllAsync();
-            PluginDefinitions = response.Data.ToList();
+            PluginDefinitions = response.Data?.ToList() ?? [];
         }
         catch (Exception)
         {
