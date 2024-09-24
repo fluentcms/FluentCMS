@@ -43,7 +43,7 @@ else
     </HeadContent>
     @RenderDynamicContent(ViewState.Layout?.Body ?? string.Empty)
 
-    @if (Authenticated)
+    @if (ViewState.HasPageAdminAccess())
     {
         <SiteBuilderFloatingButtons />
     }

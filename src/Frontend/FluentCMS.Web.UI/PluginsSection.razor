@@ -8,14 +8,7 @@
     </div>
 }
 
-@if (ViewState.Type == ViewStateType.PluginEdit && Name.ToLower() == "main")
-{
-    <div class="f-section" data-name="@Name">
-        <PluginContainer Plugin=@ViewState.Plugin />
-    </div>
-}
-
-@if (ViewState.Type == ViewStateType.PluginDetail && Name.ToLower() == "main")
+@if (ViewState.Plugin != null && (ViewState.Type == ViewStateType.PluginEdit || ViewState.Type == ViewStateType.PluginDetail) && Name.ToLower() == "main")
 {
     <div class="f-section" data-name="@Name">
         <PluginContainer Plugin=@ViewState.Plugin />

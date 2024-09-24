@@ -1,10 +1,7 @@
 @namespace FluentCMS.Web.UI
 
 <div class="f-plugin-container" data-id="@Plugin.Id" data-order="@Plugin.Order" data-cols="@Plugin.Cols" data-cols-md="@Plugin.ColsMd" data-cols-lg="@Plugin.ColsLg">
-    @if (IsDesignMode())
-    {
-        <PluginContainerActions Plugin="@Plugin" />
-    }
+    <PluginContainerActions Plugin="@Plugin" />
     <ErrorBoundary>
         <ChildContent>
             <div class="f-plugin-container-content">
