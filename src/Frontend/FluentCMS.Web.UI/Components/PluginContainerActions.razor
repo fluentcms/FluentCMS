@@ -1,6 +1,6 @@
 @namespace FluentCMS.Web.UI
 
-@if (ViewState.HasPageContributorAccess())
+@if (ViewState.HasPageContributorAccess() && (ViewState.Type == ViewStateType.Default || ViewState.Type == ViewStateType.PagePreview) && !ViewState.Page.Locked)
 {
     <div class="f-plugin-container-actions">
         <div class="f-plugin-toolbar-actions-title">
