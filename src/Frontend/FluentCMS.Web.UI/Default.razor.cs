@@ -28,12 +28,6 @@ public partial class Default : IDisposable
     public NavigationManager NavigationManager { set; get; } = default!;
 
     [Inject]
-    public ApiClientFactory ApiClients { set; get; } = default!;
-
-    [Inject]
-    public IMapper Mapper { set; get; } = default!;
-
-    [Inject]
     public SetupManager SetupManager { set; get; } = default!;
 
     private bool Authenticated { get; set; } = false;
@@ -114,10 +108,14 @@ public partial class Default : IDisposable
 
     private InteractiveServerRenderMode? PluginRenderMode()
     {
+        if (ViewState.Page.Locked)
+            return null;
+
         if (ViewState.Type == ViewStateType.PagePreview || ViewState.Type == ViewStateType.PageEdit)
-        {
             return RenderMode.InteractiveServer;
-        }
+
+        if (ViewState.Type == ViewStateType.Default && ViewState.User.Roles.Any(x => x.Type == RoleTypesViewState.Authenticated))
+            return RenderMode.InteractiveServer;
 
         return null;
     }

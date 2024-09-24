@@ -5,28 +5,14 @@ public partial class PluginContainerActions
     [Parameter]
     public PluginViewState Plugin { get; set; } = default!;
 
-    [Parameter]
-    public EventCallback OnDelete { get; set; } = default!;
-
     [Inject]
     public ViewState ViewState { get; set; } = default!;
 
     [Inject]
     public NavigationManager NavigationManager { get; set; } = default!;
 
-    private bool IsDesignMode { get; set; } = false;
-
-    private async Task HandleDelete()
-    {
-        await OnDelete.InvokeAsync();
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        var authenticated = ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked && ViewState.User.Roles.Any(role => role.Type == RoleTypesViewState.Authenticated);
-        IsDesignMode = authenticated || ViewState.Type == ViewStateType.PagePreview;
-        await Task.CompletedTask;
-    }
+    [Inject]
+    private ApiClientFactory ApiClients { get; set; } = default!;
 
     private void OpenPluginView(string viewName = "Settings")
     {
@@ -48,4 +34,29 @@ public partial class PluginContainerActions
         url += "?" + string.Join("&", queryParams);
         NavigationManager.NavigateTo(url, true);
     }
+
+    #region Delete Plugin
+
+    private bool DeleteConfirmModalOpen { get; set; } = false;
+
+    private async Task OpenDeleteConfirm()
+    {
+        DeleteConfirmModalOpen = true;
+        await Task.CompletedTask;
+    }
+
+    private async Task OnConfirmClose()
+    {
+        DeleteConfirmModalOpen = false;
+        await Task.CompletedTask;
+    }
+
+    private async Task OnDeleteConfirm()
+    {
+        DeleteConfirmModalOpen = false;
+        await ApiClients.Plugin.DeleteAsync(Plugin.Id);
+        ViewState.PluginRemoved(Plugin.Id);
+    }
+
+    #endregion
 }
