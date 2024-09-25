@@ -1,4 +1,4 @@
-import { updateResizerPosition, updateResponsive } from "./responsive.js"
+import { updateResponsive } from "./responsive.js"
 
 export const actions = {
     'done'() {
@@ -31,7 +31,7 @@ export const actions = {
 
         window.location.href = url
     },
-    'add-plugin'(el) {
+    'toggle-add-plugin'(el) {
         updateResponsive('default')
         const sidebar = document.querySelector('.f-page-editor-iframe').contentDocument.querySelector('.f-page-editor-sidebar')
         sidebar.classList.toggle('f-page-editor-sidebar-open')
@@ -41,3 +41,10 @@ export const actions = {
     }
 }
 
+export async function initializeClickEvents(element) {
+    element.querySelectorAll('[data-action]').forEach(action => {
+        action.addEventListener('click', () => {
+            actions[action.dataset.action](action)
+        })
+    })
+}

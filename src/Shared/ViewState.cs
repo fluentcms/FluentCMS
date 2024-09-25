@@ -9,11 +9,23 @@ public class ViewState
     public LayoutViewState DetailLayout { get; set; } = default!;
     public LayoutViewState EditLayout { get; set; } = default!;
     public List<PluginViewState> Plugins { get; set; } = default!;
+    public List<PluginDefinitionViewState> PluginDefinitions { get; set; } = default!;
     public UserViewState User { get; set; } = default!;
     public PluginViewState? Plugin { get; set; }
     public string? PluginViewName { get; set; }
 
     public event EventHandler? OnStateChanged;
+
+    public void PluginCreated(PluginViewState plugin)
+    {
+        Plugins.Add(plugin);
+    }
+
+    public void UpdatePluginsOrder(List<PluginViewState> plugins)
+    {
+        Plugins = plugins;
+        StateChanged();
+    }
 
     public void PluginRemoved(Guid pluginId)
     {

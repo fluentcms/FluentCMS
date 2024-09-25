@@ -1,9 +1,11 @@
-﻿@if (ViewState.Type == ViewStateType.Default || ViewState.Type == ViewStateType.PagePreview)
+﻿@namespace FluentCMS.Web.UI
+
+@if (ViewState.Type == ViewStateType.Default || ViewState.Type == ViewStateType.PagePreview)
 {
     <div class="f-section f-section-row" data-name="@Name">
         @foreach (var Plugin in ViewState.Plugins.Where(x => x.Section.ToLower() == Name.ToLower()).OrderBy(p => p.Order))
         {
-            <PluginContainer @key="@Plugin" Plugin=@Plugin />
+            <PluginContainer @key="@Plugin" Plugin="@Plugin" />
         }
     </div>
 }
@@ -11,6 +13,6 @@
 @if (ViewState.Plugin != null && (ViewState.Type == ViewStateType.PluginEdit || ViewState.Type == ViewStateType.PluginDetail) && Name.ToLower() == "main")
 {
     <div class="f-section" data-name="@Name">
-        <PluginContainer Plugin=@ViewState.Plugin />
+        <PluginContainer Plugin="@ViewState.Plugin" />
     </div>
 }

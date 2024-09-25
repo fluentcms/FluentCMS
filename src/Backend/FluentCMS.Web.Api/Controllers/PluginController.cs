@@ -36,17 +36,45 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
         return Ok(response);
     }
 
+    // TODO: Remove update plugin
     [HttpPut]
     [Policy(AREA, UPDATE)]
     public async Task<IApiResult<PluginDetailResponse>> Update([FromBody] PluginUpdateRequest request, CancellationToken cancellationToken = default)
     {
         var plugin = await pluginService.GetById(request.Id, cancellationToken);
-        plugin.Order = request.Order;
+        // plugin.Section = request.Section;
+
+        var updated = await pluginService.Update(plugin, cancellationToken);
+        var response = mapper.Map<PluginDetailResponse>(updated);
+        return Ok(response);
+    }
+
+    [HttpPut]
+    [Policy(AREA, UPDATE)]
+    public async Task<IApiResult<bool>> UpdateOrders(PluginUpdateOrdersRequest request, CancellationToken cancellationToken = default)
+    {
+        var order = 0;
+        foreach (var detail in request.Plugins)
+        {
+            var plugin = await pluginService.GetById(detail.Id, cancellationToken);
+
+            plugin.Order = order++;
+            if (detail.Section != null)
+                plugin.Section = detail.Section;
+
+            await pluginService.Update(plugin, cancellationToken);
+        }
+        return Ok(true);
+    }
+
+    [HttpPut]
+    [Policy(AREA, UPDATE)]
+    public async Task<IApiResult<PluginDetailResponse>> UpdateCols([FromBody] PluginUpdateColsRequest request, CancellationToken cancellationToken = default)
+    {
+        var plugin = await pluginService.GetById(request.Id, cancellationToken);
         plugin.Cols = request.Cols;
         plugin.ColsMd = request.ColsMd;
         plugin.ColsLg = request.ColsLg;
-        plugin.Section = request.Section;
-        plugin.Settings = request.Settings;
 
         var updated = await pluginService.Update(plugin, cancellationToken);
         var response = mapper.Map<PluginDetailResponse>(updated);

@@ -106,33 +106,6 @@ public class PageController(
         return Ok(entityResponse);
     }
 
-    [HttpPut]
-    [Policy(AREA, UPDATE)]
-    public async Task<IApiResult<bool>> UpdatePluginOrders(PageUpdatePluginOrdersRequest request, CancellationToken cancellationToken = default)
-    {
-        foreach (var detail in request.Plugins)
-        {
-            var plugin = await pluginService.GetById(detail.Id, cancellationToken);
-            if (detail.Order != null)
-                plugin.Order = detail.Order.Value;
-
-            if (detail.Section != null)
-                plugin.Section = detail.Section;
-
-            if (detail.Cols != null)
-                plugin.Cols = detail.Cols.Value;
-
-            if (detail.ColsMd != null)
-                plugin.ColsMd = detail.ColsMd.Value;
-
-            if (detail.ColsLg != null)
-                plugin.ColsLg = detail.ColsLg.Value;
-
-            await pluginService.Update(plugin);
-        }
-        return Ok(true);
-    }
-
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)

@@ -34,10 +34,6 @@ export function updateResponsive(mode, silent) {
 }
 export function updateResizerPosition() {
     resizerElement.style.left = (iframeElement.getBoundingClientRect().right + 2) + 'px'
-
-    // for(let key of Object.keys(window.sections)) {
-    //     window.sections[key].updateSize()
-    // }
 }
 
 export function initializeResponsive() {

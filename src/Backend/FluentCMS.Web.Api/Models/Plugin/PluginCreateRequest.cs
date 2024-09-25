@@ -2,12 +2,14 @@
 
 public class PluginCreateRequest
 {
+    [Required]
+    public Guid SiteId { get; set; }
+
+    [Required]
     public Guid DefinitionId { get; set; }
+
+    [Required]
     public Guid PageId { get; set; }
-    public int Order { get; set; } = 0;
-    public int Cols { get; set; } = 0;
-    public int ColsMd { get; set; } = 0;
-    public int ColsLg { get; set; } = 0;
-    public string Section { get; set; } = default!;
-    public Dictionary<string, string> Settings { get; set; } = [];
+
+    public string? Section { get; set; }
 }

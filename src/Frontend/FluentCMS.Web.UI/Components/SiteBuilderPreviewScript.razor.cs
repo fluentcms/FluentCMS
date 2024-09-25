@@ -3,7 +3,7 @@ using Microsoft.JSInterop;
 
 namespace FluentCMS.Web.UI;
 
-public partial class SiteBuilderPreviewScript : IDisposable
+public partial class SiteBuilderPreviewScript : IAsyncDisposable
 {
     [Inject]
     public IJSRuntime JS { get; set; } = default!;
@@ -22,33 +22,28 @@ public partial class SiteBuilderPreviewScript : IDisposable
 
     private IJSObjectReference Module { get; set; } = default!;
 
+    private DotNetObjectReference<SiteBuilderPreviewScript>? DotNetRef { get; set; }
+
     [JSInvokable]
-    public async Task CreatePlugin(Guid definitionId, string section, int order)
+    public async Task<Guid?> CreatePlugin(Guid definitionId, string section)
     {
         var createPluginRequest = new PluginCreateRequest()
         {
+            SiteId = ViewState.Site.Id,
             PageId = ViewState.Page.Id,
-            Settings = [], // Initialize as an empty dictionary
             DefinitionId = definitionId,
             Section = section,
-            Order = order
         };
 
-        await ApiClients.Plugin.CreateAsync(createPluginRequest);
-
-        var pluginsResponse = await ApiClients.Plugin.GetByPageIdAsync(ViewState.Page.Id);
-        var plugins = pluginsResponse.Data!.Where(x => x.Section == section).OrderBy(p => p.Order).ToList();
-
-        var pluginOrder = 0;
-        foreach (var plugin in plugins)
+        var createPluginResponse = await ApiClients.Plugin.CreateAsync(createPluginRequest);
+        if (createPluginRequest != null)
         {
-            pluginOrder += 2;
-            plugin.Order = pluginOrder;
-            var pluginUpdateRequest = Mapper.Map<PluginUpdateRequest>(plugin);
-            await ApiClients.Plugin.UpdateAsync(pluginUpdateRequest);
+            var plugin = Mapper.Map<PluginViewState>(createPluginResponse.Data);
+            plugin.Definition = ViewState.PluginDefinitions.Where(x => x.Id == definitionId).FirstOrDefault() ?? throw new Exception("Plugin definition not found!");
+            ViewState.PluginCreated(plugin);
         }
 
-        ViewState.Reload();
+        return createPluginResponse?.Data.Id;
     }
 
     [JSInvokable]
@@ -59,16 +54,35 @@ public partial class SiteBuilderPreviewScript : IDisposable
     }
 
     [JSInvokable]
-    public async Task UpdatePluginsOrder(List<PagePluginDetail> plugins)
+    public async Task UpdatePluginCols(PluginUpdateColsRequest request)
     {
-        var request = new PageUpdatePluginOrdersRequest()
+        await ApiClients.Plugin.UpdateColsAsync(request);
+        ViewState.Reload();
+    }
+
+    [JSInvokable]
+    public async Task UpdatePluginsOrder(List<PluginOrder> plugins)
+    {
+        var request = new PluginUpdateOrdersRequest()
         {
             Plugins = plugins
         };
-        await ApiClients.Page.UpdatePluginOrdersAsync(request);
+        await ApiClients.Plugin.UpdateOrdersAsync(request);
+
+        var pluginsResponse = await ApiClients.Plugin.GetByPageIdAsync(ViewState.Page.Id);
+        List<PluginViewState> result = [];
+        foreach(var plugin in pluginsResponse.Data ?? [])
+        {
+            var definition = ViewState.PluginDefinitions.Where(definition => definition.Id == plugin.DefinitionId).FirstOrDefault() ?? throw new Exception("Plugin Definition not found!");
+            var mappedPlugin = Mapper.Map<PluginViewState>(plugin);
+            mappedPlugin.Definition = definition;
+            result.Add(mappedPlugin);
+        }
+
+        ViewState.UpdatePluginsOrder(result);
     }
 
-    void ViewStateChanged()
+    void ViewStateChanged(object? sender, EventArgs e)
     {
         if (Module is null) return;
 
@@ -77,13 +91,20 @@ public partial class SiteBuilderPreviewScript : IDisposable
 
     protected override async Task OnInitializedAsync()
     {
-        ViewState.ReloadAction += ViewStateChanged;
+        ViewState.OnStateChanged += ViewStateChanged;
 
         await Task.CompletedTask;
     }
-    void IDisposable.Dispose()
+    async ValueTask IAsyncDisposable.DisposeAsync()
     {
-        ViewState.ReloadAction -= ViewStateChanged;
+        ViewState.OnStateChanged -= ViewStateChanged;
+
+        if(Module is not null)
+        {
+            await Module.DisposeAsync();
+        }
+
+        DotNetRef?.Dispose();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -91,9 +112,9 @@ public partial class SiteBuilderPreviewScript : IDisposable
         if (!firstRender)
             return;
 
+        DotNetRef = DotNetObjectReference.Create(this);
         Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI/Components/SiteBuilderPreviewScript.razor.js");
 
-        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), new { });
+        await Module.InvokeVoidAsync("initialize", DotNetRef);
     }
-
 }
