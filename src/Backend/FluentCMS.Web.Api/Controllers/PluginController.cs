@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Web.Api.Controllers;
 
-public class PluginController(IPluginService pluginService, IMapper mapper) : BaseGlobalController
+public class PluginController(IPluginService pluginService, IPluginDefinitionService pluginDefinitionService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "Plugin Management";
     public const string READ = "Read";
@@ -28,43 +28,27 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
 
     [HttpPost]
     [Policy(AREA, CREATE)]
-    public async Task<IApiResult<PluginDetailResponse>> Create([FromBody] PluginCreateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<PluginDetailResponse>> InitialCreate([FromBody] PluginInitialCreateRequest request, CancellationToken cancellationToken = default)
     {
-        var plugin = mapper.Map<Plugin>(request);
-        var newPlugin = await pluginService.Create(plugin, cancellationToken);
+        var newPlugin = await pluginService.InitialCreate(request.PageId, request.DefinitionId, request.Section, cancellationToken);
         var response = mapper.Map<PluginDetailResponse>(newPlugin);
-        return Ok(response);
-    }
-
-    // TODO: Remove update plugin
-    [HttpPut]
-    [Policy(AREA, UPDATE)]
-    public async Task<IApiResult<PluginDetailResponse>> Update([FromBody] PluginUpdateRequest request, CancellationToken cancellationToken = default)
-    {
-        var plugin = await pluginService.GetById(request.Id, cancellationToken);
-        // plugin.Section = request.Section;
-
-        var updated = await pluginService.Update(plugin, cancellationToken);
-        var response = mapper.Map<PluginDetailResponse>(updated);
+        var pluginDefinition = await pluginDefinitionService.GetById(request.DefinitionId, cancellationToken);
+        response.Definition = mapper.Map<PluginDefinitionDetailResponse>(pluginDefinition);
         return Ok(response);
     }
 
     [HttpPut]
     [Policy(AREA, UPDATE)]
-    public async Task<IApiResult<bool>> UpdateOrders(PluginUpdateOrdersRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<PluginDetailResponse>> UpdateOrders(PluginUpdateOrdersRequest request, CancellationToken cancellationToken = default)
     {
-        var order = 0;
-        foreach (var detail in request.Plugins)
+        var plugins = await pluginService.UpdateOrders(request.PluginOrders, cancellationToken);
+        var results = mapper.Map<List<PluginDetailResponse>>(plugins);
+        var pluginDefinitions = await pluginDefinitionService.GetAll(cancellationToken);
+        foreach (var pluginResponse in results)
         {
-            var plugin = await pluginService.GetById(detail.Id, cancellationToken);
-
-            plugin.Order = order++;
-            if (detail.Section != null)
-                plugin.Section = detail.Section;
-
-            await pluginService.Update(plugin, cancellationToken);
+            pluginResponse.Definition = mapper.Map<PluginDefinitionDetailResponse>(pluginDefinitions.Single(x => x.Id == pluginResponse.DefinitionId));
         }
-        return Ok(true);
+        return OkPaged(results);
     }
 
     [HttpPut]

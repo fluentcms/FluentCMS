@@ -27,65 +27,43 @@ public partial class SiteBuilderPreviewScript : IAsyncDisposable
     [JSInvokable]
     public async Task<Guid?> CreatePlugin(Guid definitionId, string section)
     {
-        var createPluginRequest = new PluginCreateRequest()
+        var createPluginRequest = new PluginInitialCreateRequest()
         {
-            SiteId = ViewState.Site.Id,
             PageId = ViewState.Page.Id,
             DefinitionId = definitionId,
-            Section = section,
+            Section = section
         };
-
-        var createPluginResponse = await ApiClients.Plugin.CreateAsync(createPluginRequest);
-        if (createPluginRequest != null)
-        {
-            var plugin = Mapper.Map<PluginViewState>(createPluginResponse.Data);
-            plugin.Definition = ViewState.PluginDefinitions.Where(x => x.Id == definitionId).FirstOrDefault() ?? throw new Exception("Plugin definition not found!");
-            ViewState.PluginCreated(plugin);
-        }
-
+        var createPluginResponse = await ApiClients.Plugin.InitialCreateAsync(createPluginRequest);
+        ViewState.Plugins.Add(Mapper.Map<PluginViewState>(createPluginResponse?.Data));
         return createPluginResponse?.Data.Id;
-    }
-
-    [JSInvokable]
-    public async Task UpdatePlugin(PluginUpdateRequest request)
-    {
-        await ApiClients.Plugin.UpdateAsync(request);
-        ViewState.Reload();
     }
 
     [JSInvokable]
     public async Task UpdatePluginCols(PluginUpdateColsRequest request)
     {
         await ApiClients.Plugin.UpdateColsAsync(request);
-        ViewState.Reload();
     }
 
     [JSInvokable]
-    public async Task UpdatePluginsOrder(List<PluginOrder> plugins)
+    public async Task UpdatePluginsOrder(List<PluginOrder> pluginOrders)
     {
-        var request = new PluginUpdateOrdersRequest()
+        var pluginsResponse = await ApiClients.Plugin.UpdateOrdersAsync(new PluginUpdateOrdersRequest { PluginOrders = pluginOrders });
+        var plugins = pluginsResponse?.Data ?? [];
+        ViewState.Plugins.ForEach(p =>
         {
-            Plugins = plugins
-        };
-        await ApiClients.Plugin.UpdateOrdersAsync(request);
-
-        var pluginsResponse = await ApiClients.Plugin.GetByPageIdAsync(ViewState.Page.Id);
-        List<PluginViewState> result = [];
-        foreach(var plugin in pluginsResponse.Data ?? [])
-        {
-            var definition = ViewState.PluginDefinitions.Where(definition => definition.Id == plugin.DefinitionId).FirstOrDefault() ?? throw new Exception("Plugin Definition not found!");
-            var mappedPlugin = Mapper.Map<PluginViewState>(plugin);
-            mappedPlugin.Definition = definition;
-            result.Add(mappedPlugin);
-        }
-
-        ViewState.UpdatePluginsOrder(result);
+            var plugin = plugins.FirstOrDefault(x => x.Id == p.Id);
+            if (plugin is not null)
+            {
+                p.Order = plugin.Order;
+                p.Section = plugin.Section!;
+            }
+        });
+        ViewState.StateChanged();
     }
 
     void ViewStateChanged(object? sender, EventArgs e)
     {
         if (Module is null) return;
-
         Module.InvokeVoidAsync("update", DotNetObjectReference.Create(this));
     }
 
@@ -99,7 +77,7 @@ public partial class SiteBuilderPreviewScript : IAsyncDisposable
     {
         ViewState.OnStateChanged -= ViewStateChanged;
 
-        if(Module is not null)
+        if (Module is not null)
         {
             await Module.DisposeAsync();
         }

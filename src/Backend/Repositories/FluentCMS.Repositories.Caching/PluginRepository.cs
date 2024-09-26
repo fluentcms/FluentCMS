@@ -7,4 +7,11 @@ public class PluginRepository(IPluginRepository repository, ICacheProvider cache
         var entities = await GetAll(cancellationToken);
         return entities.Where(x => x.PageId == pageId);
     }
+
+    public async Task<Plugin> UpdateOrder(Guid pluginId, string section, int order, CancellationToken cancellationToken = default)
+    {
+        var plugin = await repository.UpdateOrder(pluginId, section, order, cancellationToken);
+        InvalidateCache();
+        return plugin;
+    }
 }

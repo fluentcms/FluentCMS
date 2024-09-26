@@ -1,15 +1,13 @@
 ﻿namespace FluentCMS.Web.Api.Models;
 
-public class PluginCreateRequest
+public class PluginInitialCreateRequest
 {
-    [Required]
-    public Guid SiteId { get; set; }
-
     [Required]
     public Guid DefinitionId { get; set; }
 
     [Required]
     public Guid PageId { get; set; }
 
-    public string? Section { get; set; }
+    [Required]
+    public string Section { get; set; } = default!;
 }

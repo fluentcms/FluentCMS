@@ -1,12 +1,9 @@
+using FluentCMS.Services.Models;
+
 namespace FluentCMS.Web.Api.Models;
 
 public class PluginUpdateOrdersRequest
 {
-    public List<PluginOrder> Plugins { get; set; } = [];
-}
-
-public class PluginOrder
-{
-    public Guid Id { get; set; }
-    public string? Section { get; set; }
+    [Required]
+    public List<PluginOrder> PluginOrders { get; set; } = [];
 }
