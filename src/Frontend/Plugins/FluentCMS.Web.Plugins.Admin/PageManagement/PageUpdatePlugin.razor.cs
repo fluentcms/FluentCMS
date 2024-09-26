@@ -37,7 +37,7 @@ public partial class PageUpdatePlugin
                 LayoutOptions.Add(
                     new SelectOption
                     {
-                        Title = layout.Name ?? string.Empty,
+                        Title = layout.Name!,
                         Value = layout.Id
                     }
                 );
