@@ -4,8 +4,9 @@ let pageEditorElement = document.querySelector('.f-page-editor')
 
 let responsiveMode = null
 
-
 export function updateResponsive(mode, silent) {
+    let frameDocument = document.querySelector('.f-page-editor-iframe').contentDocument
+
     document.querySelector(`.f-toolbar-responsive-button-active`).classList.remove('f-toolbar-responsive-button-active')
 
     responsiveMode = mode;
@@ -14,10 +15,11 @@ export function updateResponsive(mode, silent) {
     if(responsiveMode === 'default') {
         iframeElement.style.width = '100%';
         delete pageEditorElement.dataset['responsiveMode']
-
+        delete frameDocument.querySelector('body').dataset.responsiveMode
     }
     else {
         pageEditorElement.dataset.responsiveMode = responsiveMode
+        frameDocument.querySelector('body').dataset.responsiveMode = mode
         if(!silent) {
             if(responsiveMode == 'tablet') {
                 iframeElement.style.width = '768px';
@@ -59,10 +61,6 @@ export function initializeResponsive() {
             iframeElement.style.width = (iframeWidth + 2 * delta) + 'px'
 
             updateResizerPosition()
-
-            if(document.querySelector('.f-page-editor-sidebar').getBoundingClientRect().x < e.x) {
-                dragging = false;
-            }
         }
     }
 

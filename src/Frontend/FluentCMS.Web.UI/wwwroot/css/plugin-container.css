@@ -70,9 +70,6 @@
     opacity: 1;
 }
 
-[data-responsive-mode] .f-plugin-container {
-    border: none;
-}
 [data-responsive-mode] .f-plugin-container-actions {
     display: none;
 }
