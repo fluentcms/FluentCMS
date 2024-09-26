@@ -5,28 +5,41 @@ public partial class Tooltip : IAsyncDisposable
     [Inject]
     public IJSRuntime? JS { get; set; }
 
-    public ElementReference element;
+    public ElementReference? Element { get; set; }
 
-    private IJSObjectReference Module { get; set; } = default!;
+    private IJSObjectReference? Module { get; set; }
+
+    private DotNetObjectReference<Tooltip>? DotNetRef { get; set; }
 
     [Parameter]
     public TooltipPlacement? Placement { get; set; }
 
     [Parameter]
-    public RenderFragment ChildContent { get; set; } = default!;
+    public RenderFragment? ChildContent { get; set; }
 
     public async ValueTask DisposeAsync()
     {
-        await Module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
+        if (Module is not null)
+        {
+            await Module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), Element);
+            await Module.DisposeAsync();
+        }
+        DotNetRef?.Dispose();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
 
+        if (JS is null)
+        {
+            throw new InvalidOperationException("JS runtime has not been initialized.");
+        }
+
+        DotNetRef = DotNetObjectReference.Create(this);
         Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Tooltip/Tooltip.razor.js");
 
         // TODO: handle run time changing properties
-        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { Placement = Placement?.ToString().FromPascalCaseToKebabCase() });
+        await Module.InvokeVoidAsync("initialize", DotNetRef, Element, new { Placement = Placement?.ToString().FromPascalCaseToKebabCase() });
     }
 }

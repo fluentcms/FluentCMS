@@ -18,11 +18,11 @@ public partial class FormSelect<TItem, TValue>
     public string? ValueField { get; set; }
 
     [Parameter]
-    public RenderFragment ChildContent { get; set; }
+    public RenderFragment? ChildContent { get; set; }
 
     private bool IsSelected(TItem item)
     {
-        return (Value?.ToString() ?? String.Empty) == GetValue(item).ToString();
+        return Value?.ToString() == GetValue(item)?.ToString();
     }
 
     private string? GetText(TItem item)
