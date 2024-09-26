@@ -37,7 +37,7 @@ public partial class PageUpdatePlugin
                 LayoutOptions.Add(
                     new SelectOption
                     {
-                        Title = layout.Name,
+                        Title = layout.Name!,
                         Value = layout.Id
                     }
                 );
@@ -47,7 +47,7 @@ public partial class PageUpdatePlugin
         if (Pages is null)
         {
             var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Urls[0]);
-            var pages = pagesResponse?.Data?.Where(x => !x.Locked);
+            var pages = pagesResponse?.Data?.Where(x => !x.Locked) ?? [];
 
             pages = pages.Where(x => x.ParentId != Id);
             pages = pages.Where(x => x.Id != Id);
@@ -65,7 +65,7 @@ public partial class PageUpdatePlugin
 
     private async Task OnSubmit()
     {
-        if (Model.ParentId == Guid.Empty)
+        if (Model!.ParentId == Guid.Empty)
             Model.ParentId = default!;
 
         if (Model.LayoutId == Guid.Empty)

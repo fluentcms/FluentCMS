@@ -40,8 +40,8 @@ public partial class ContentListPlugin
         return new Dictionary<string, object>
         {
             { "Field", fieldModel },
-            { "FieldValue", fieldModel.GetFieldValue(content?.Data)},
-            { nameof(ContentTypeField), ContentType.Fields.Where(x => x.Name == fieldModel.Name).SingleOrDefault() }
+            { "FieldValue", fieldModel.GetFieldValue(content?.Data ?? default!)},
+            { nameof(ContentTypeField), ContentType?.Fields?.Where(x => x.Name == fieldModel.Name).SingleOrDefault() }
         };
     }
 

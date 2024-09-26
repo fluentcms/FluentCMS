@@ -18,7 +18,7 @@ public partial class PageListPlugin
     {
         if (Id != null)
         {
-            NavigateTo(GetUrl("Update Page", new { Id = Id, redirectTo = RedirectTo }, false));
+            NavigateTo(GetUrl("Update Page", new { Id, redirectTo = RedirectTo }, false));
         }
         if (ViewType == "Create")
         {
@@ -41,7 +41,7 @@ public partial class PageListPlugin
         var currentPage = page;
         while (currentPage != null)
         {
-            result.Add(currentPage.Path);
+            result.Add(currentPage.Path!);
             if (currentPage.ParentId.HasValue)
             {
                 currentPage = Pages.Where(x => x.Id == currentPage.ParentId.Value).FirstOrDefault();
