@@ -30,7 +30,6 @@ public class MappingProfile : Profile
 
         #region Plugin
 
-        CreateMap<PluginCreateRequest, Plugin>();
         CreateMap<PluginUpdateRequest, Plugin>();
         CreateMap<Plugin, PluginDetailResponse>();
 

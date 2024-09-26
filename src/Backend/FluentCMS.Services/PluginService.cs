@@ -5,12 +5,16 @@ public interface IPluginService : IAutoRegisterService
     Task<IEnumerable<Plugin>> GetByPageId(Guid pageId, CancellationToken cancellationToken = default);
     Task<Plugin> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<Plugin> Create(Plugin plugin, CancellationToken cancellationToken = default);
+    Task<Plugin> InitialCreate(Guid pageId, Guid pluginDefinitionId, string section, CancellationToken cancellationToken = default);
     Task<Plugin> Update(Plugin plugin, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Plugin>> UpdateOrders(IEnumerable<PluginOrder> pluginOrders, CancellationToken cancellationToken = default);
+    Task<Plugin> UpdateCols(Guid pluginId, int cols, int colsMd, int colsLg, CancellationToken cancellationToken = default);
+    Task<Plugin> UpdateSettings(Guid pluginId, Dictionary<string, string> settings, CancellationToken cancellationToken = default);
     Task<Plugin> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
 
-public class PluginService(IPluginRepository pluginRepository, IPermissionManager permissionManager, IMessagePublisher messagePublisher) : IPluginService
+public class PluginService(IPluginRepository pluginRepository, IPageRepository pageRepository, IPermissionManager permissionManager, IMessagePublisher messagePublisher) : IPluginService
 {
     public async Task<Plugin> Create(Plugin plugin, CancellationToken cancellationToken = default)
     {
@@ -23,6 +27,24 @@ public class PluginService(IPluginRepository pluginRepository, IPermissionManage
         await messagePublisher.Publish(new Message<Plugin>(ActionNames.PluginCreated, created), cancellationToken);
 
         return created;
+    }
+
+    public async Task<Plugin> InitialCreate(Guid pageId, Guid pluginDefinitionId, string section, CancellationToken cancellationToken = default)
+    {
+        var page = await pageRepository.GetById(pageId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.PageNotFound);
+
+        var plugin = new Plugin
+        {
+            PageId = pageId,
+            DefinitionId = pluginDefinitionId,
+            SiteId = page.SiteId,
+            Section = string.IsNullOrWhiteSpace(section) ? "main" : section,
+            Cols = 12,
+            Settings = [],
+        };
+
+        return await Create(plugin, cancellationToken);
     }
 
     public async Task<Plugin> Delete(Guid id, CancellationToken cancellationToken = default)
@@ -72,5 +94,33 @@ public class PluginService(IPluginRepository pluginRepository, IPermissionManage
         await messagePublisher.Publish(new Message<Plugin>(ActionNames.PluginUpdated, updated), cancellationToken);
 
         return updated;
+    }
+
+    public async Task<IEnumerable<Plugin>> UpdateOrders(IEnumerable<PluginOrder> pluginOrders, CancellationToken cancellationToken = default)
+    {
+        var order = 0;
+        var plugins = new List<Plugin>();
+        foreach (var pluginOrder in pluginOrders)
+        {
+            var plugin = await pluginRepository.UpdateOrder(pluginOrder.Id, pluginOrder.Section, order, cancellationToken);
+            if (plugin != null)
+            {
+                plugins.Add(plugin);
+                order++;
+            }
+        }
+        return plugins;
+    }
+
+    public async Task<Plugin> UpdateCols(Guid pluginId, int cols, int colsMd, int colsLg, CancellationToken cancellationToken = default)
+    {
+        return await pluginRepository.UpdateCols(pluginId, cols, colsMd, colsLg, cancellationToken) ??
+            throw new AppException(ExceptionCodes.PluginUnableToUpdateCols);
+    }
+
+    public async Task<Plugin> UpdateSettings(Guid pluginId, Dictionary<string, string> settings, CancellationToken cancellationToken = default)
+    {
+        return await pluginRepository.UpdateSettings(pluginId, settings, cancellationToken) ??
+            throw new AppException(ExceptionCodes.PluginUnableToUpdateSettings);
     }
 }

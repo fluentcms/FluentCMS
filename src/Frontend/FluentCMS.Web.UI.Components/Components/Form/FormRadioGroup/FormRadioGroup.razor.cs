@@ -29,7 +29,7 @@ public partial class FormRadioGroup<TItem, TValue>
 
     private bool IsChecked(TItem item)
     {
-        return (Value?.ToString() ?? string.Empty) == GetValue(item).ToString();
+        return Value?.ToString() == GetValue(item)?.ToString();
     }
 
     private string? GetText(TItem item)

@@ -21,12 +21,6 @@ public partial class PluginContainer
         };
     }
 
-    private bool IsDesignMode()
-    {
-        var authenticated = ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked && ViewState.User.Roles.Any(role => role.Type == RoleTypesViewState.Authenticated);
-        return authenticated || ViewState.Type == ViewStateType.PagePreview;
-    }
-
     private Type? GetPluginType()
     {
         PluginDefinitionTypeViewState? pluginDefType;

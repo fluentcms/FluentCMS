@@ -9,7 +9,7 @@ public partial class FormField
     public bool Dense { get; set; }
 
     [Parameter]
-    public string Id { get; set; }
+    public string Id { get; set; } = Guid.Empty.ToString();
 
     [Parameter]
     public string? Hint { get; set; }

@@ -21,7 +21,7 @@ public partial class FormCheckboxGroup<TItem, TValue>
     public bool Vertical { get; set; }
 
     [Parameter]
-    public RenderFragment ChildContent { get; set; } = default!;
+    public RenderFragment? ChildContent { get; set; }
 
     [Parameter]
     public EventCallback<ICollection<TValue>> OnChange { get; set; }
@@ -54,10 +54,9 @@ public partial class FormCheckboxGroup<TItem, TValue>
         throw new NotSupportedException();
     }
 
-    public Task HandleChange(ChangeEventArgs args, TValue value)
+    public Task HandleChange(ChangeEventArgs args, TValue? value)
     {
-        if (Value is null)
-            Value = [];
+        Value ??= [];
 
         if (Value.Contains(value))
             Value.Remove(value);

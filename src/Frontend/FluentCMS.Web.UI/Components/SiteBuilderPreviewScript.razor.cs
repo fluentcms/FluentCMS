@@ -3,7 +3,7 @@ using Microsoft.JSInterop;
 
 namespace FluentCMS.Web.UI;
 
-public partial class SiteBuilderPreviewScript : IDisposable
+public partial class SiteBuilderPreviewScript : IAsyncDisposable
 {
     [Inject]
     public IJSRuntime JS { get; set; } = default!;
@@ -22,68 +22,67 @@ public partial class SiteBuilderPreviewScript : IDisposable
 
     private IJSObjectReference Module { get; set; } = default!;
 
+    private DotNetObjectReference<SiteBuilderPreviewScript>? DotNetRef { get; set; }
+
     [JSInvokable]
-    public async Task CreatePlugin(Guid definitionId, string section, int order)
+    public async Task<Guid?> CreatePlugin(Guid definitionId, string section)
     {
-        var createPluginRequest = new PluginCreateRequest()
+        var createPluginRequest = new PluginInitialCreateRequest()
         {
             PageId = ViewState.Page.Id,
-            Settings = [], // Initialize as an empty dictionary
             DefinitionId = definitionId,
-            Section = section,
-            Order = order
+            Section = section
         };
-
-        await ApiClients.Plugin.CreateAsync(createPluginRequest);
-
-        var pluginsResponse = await ApiClients.Plugin.GetByPageIdAsync(ViewState.Page.Id);
-        var plugins = pluginsResponse.Data!.Where(x => x.Section == section).OrderBy(p => p.Order).ToList();
-
-        var pluginOrder = 0;
-        foreach (var plugin in plugins)
-        {
-            pluginOrder += 2;
-            plugin.Order = pluginOrder;
-            var pluginUpdateRequest = Mapper.Map<PluginUpdateRequest>(plugin);
-            await ApiClients.Plugin.UpdateAsync(pluginUpdateRequest);
-        }
-
-        ViewState.Reload();
+        var createPluginResponse = await ApiClients.Plugin.InitialCreateAsync(createPluginRequest);
+        ViewState.Plugins.Add(Mapper.Map<PluginViewState>(createPluginResponse?.Data));
+        return createPluginResponse?.Data.Id;
     }
 
     [JSInvokable]
-    public async Task UpdatePlugin(PluginUpdateRequest request)
+    public async Task UpdatePluginCols(PluginUpdateColsRequest request)
     {
-        await ApiClients.Plugin.UpdateAsync(request);
-        ViewState.Reload();
+        await ApiClients.Plugin.UpdateColsAsync(request);
     }
 
     [JSInvokable]
-    public async Task UpdatePluginsOrder(List<PagePluginDetail> plugins)
+    public async Task UpdatePluginsOrder(List<PluginOrder> pluginOrders)
     {
-        var request = new PageUpdatePluginOrdersRequest()
+        var pluginsResponse = await ApiClients.Plugin.UpdateOrdersAsync(new PluginUpdateOrdersRequest { PluginOrders = pluginOrders });
+        var plugins = pluginsResponse?.Data ?? [];
+        ViewState.Plugins.ForEach(p =>
         {
-            Plugins = plugins
-        };
-        await ApiClients.Page.UpdatePluginOrdersAsync(request);
+            var plugin = plugins.FirstOrDefault(x => x.Id == p.Id);
+            if (plugin is not null)
+            {
+                p.Order = plugin.Order;
+                p.Section = plugin.Section!;
+            }
+        });
+        ViewState.StateChanged();
     }
 
-    void ViewStateChanged()
+    void ViewStateChanged(object? sender, EventArgs e)
     {
         if (Module is null) return;
-
         Module.InvokeVoidAsync("update", DotNetObjectReference.Create(this));
     }
 
     protected override async Task OnInitializedAsync()
     {
-        ViewState.ReloadAction += ViewStateChanged;
+        ViewState.OnStateChanged += ViewStateChanged;
 
         await Task.CompletedTask;
     }
-    void IDisposable.Dispose()
+    async ValueTask IAsyncDisposable.DisposeAsync()
     {
-        ViewState.ReloadAction -= ViewStateChanged;
+        ViewState.OnStateChanged -= ViewStateChanged;
+
+        if (Module is not null)
+        {
+            await Module.DisposeAsync();
+        }
+
+        DotNetRef?.Dispose();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -91,9 +90,9 @@ public partial class SiteBuilderPreviewScript : IDisposable
         if (!firstRender)
             return;
 
+        DotNetRef = DotNetObjectReference.Create(this);
         Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI/Components/SiteBuilderPreviewScript.razor.js");
 
-        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), new { });
+        await Module.InvokeVoidAsync("initialize", DotNetRef);
     }
-
 }
