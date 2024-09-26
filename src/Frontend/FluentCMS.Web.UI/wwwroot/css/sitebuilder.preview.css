@@ -4,9 +4,14 @@
 @import './html.css';
 @import './plugin-container.css';
 
-.f-plugin-container-content {
+a[href] {
     pointer-events: none;
     user-select: none;
+}
+
+.f-plugin-container-actions a {
+    pointer-events: unset;
+    user-select: unset;
 }
 
 .f-page-editor-forms {

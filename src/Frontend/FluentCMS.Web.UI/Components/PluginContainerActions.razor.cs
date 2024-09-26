@@ -55,7 +55,8 @@ public partial class PluginContainerActions
     {
         DeleteConfirmModalOpen = false;
         await ApiClients.Plugin.DeleteAsync(Plugin.Id);
-        ViewState.PluginRemoved(Plugin.Id);
+        ViewState.Plugins.RemoveAll(x => x.Id == Plugin.Id);
+        ViewState.StateChanged();
     }
 
     #endregion

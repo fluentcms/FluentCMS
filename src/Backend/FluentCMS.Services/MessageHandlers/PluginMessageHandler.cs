@@ -28,12 +28,10 @@ public class PluginMessageHandler(IPluginService pluginService, IPluginContentSe
         var order = 0;
         foreach (var pluginTemplate in pageTemplate.Plugins)
         {
-            order += 2;
-
             var plugin = new Plugin
             {
                 Id = pluginTemplate.Id,
-                Order = order,
+                Order = order++,
                 Section = pluginTemplate.Section,
                 DefinitionId = pluginTemplate.DefinitionId,
                 PageId = pageTemplate.Id,

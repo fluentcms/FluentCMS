@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Web.Api.Controllers;
 
-public class PluginController(IPluginService pluginService, IMapper mapper) : BaseGlobalController
+public class PluginController(IPluginService pluginService, IPluginDefinitionService pluginDefinitionService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "Plugin Management";
     public const string READ = "Read";
@@ -28,28 +28,35 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
 
     [HttpPost]
     [Policy(AREA, CREATE)]
-    public async Task<IApiResult<PluginDetailResponse>> Create([FromBody] PluginCreateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<PluginDetailResponse>> InitialCreate([FromBody] PluginInitialCreateRequest request, CancellationToken cancellationToken = default)
     {
-        var plugin = mapper.Map<Plugin>(request);
-        var newPlugin = await pluginService.Create(plugin, cancellationToken);
+        var newPlugin = await pluginService.InitialCreate(request.PageId, request.DefinitionId, request.Section, cancellationToken);
         var response = mapper.Map<PluginDetailResponse>(newPlugin);
+        var pluginDefinition = await pluginDefinitionService.GetById(request.DefinitionId, cancellationToken);
+        response.Definition = mapper.Map<PluginDefinitionDetailResponse>(pluginDefinition);
         return Ok(response);
     }
 
     [HttpPut]
     [Policy(AREA, UPDATE)]
-    public async Task<IApiResult<PluginDetailResponse>> Update([FromBody] PluginUpdateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<PluginDetailResponse>> UpdateOrders(PluginUpdateOrdersRequest request, CancellationToken cancellationToken = default)
     {
-        var plugin = await pluginService.GetById(request.Id, cancellationToken);
-        plugin.Order = request.Order;
-        plugin.Cols = request.Cols;
-        plugin.ColsMd = request.ColsMd;
-        plugin.ColsLg = request.ColsLg;
-        plugin.Section = request.Section;
-        plugin.Settings = request.Settings;
+        var plugins = await pluginService.UpdateOrders(request.PluginOrders, cancellationToken);
+        var results = mapper.Map<List<PluginDetailResponse>>(plugins);
+        var pluginDefinitions = await pluginDefinitionService.GetAll(cancellationToken);
+        foreach (var pluginResponse in results)
+        {
+            pluginResponse.Definition = mapper.Map<PluginDefinitionDetailResponse>(pluginDefinitions.Single(x => x.Id == pluginResponse.DefinitionId));
+        }
+        return OkPaged(results);
+    }
 
-        var updated = await pluginService.Update(plugin, cancellationToken);
-        var response = mapper.Map<PluginDetailResponse>(updated);
+    [HttpPut]
+    [Policy(AREA, UPDATE)]
+    public async Task<IApiResult<PluginDetailResponse>> UpdateCols([FromBody] PluginUpdateColsRequest request, CancellationToken cancellationToken = default)
+    {
+        var plugin = await pluginService.UpdateCols(request.Id, request.Cols, request.ColsMd, request.ColsLg, cancellationToken);
+        var response = mapper.Map<PluginDetailResponse>(plugin);
         return Ok(response);
     }
 
@@ -57,11 +64,8 @@ public class PluginController(IPluginService pluginService, IMapper mapper) : Ba
     [Policy(AREA, UPDATE)]
     public async Task<IApiResult<PluginDetailResponse>> UpdateSettings([FromBody] PluginUpdateSettingsRequest request, CancellationToken cancellationToken = default)
     {
-        var plugin = await pluginService.GetById(request.Id, cancellationToken);
-        plugin.Settings = request.Settings;
-
-        var updated = await pluginService.Update(plugin, cancellationToken);
-        var response = mapper.Map<PluginDetailResponse>(updated);
+        var plugin = await pluginService.UpdateSettings(request.Id, request.Settings, cancellationToken);
+        var response = mapper.Map<PluginDetailResponse>(plugin);
         return Ok(response);
     }
 
