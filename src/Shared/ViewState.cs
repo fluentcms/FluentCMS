@@ -15,7 +15,13 @@ public class ViewState
 
     public event EventHandler? OnStateChanged;
 
-    public Action ReloadAction { get; set; } = () => { };
+    public void PluginRemoved(Guid pluginId)
+    {
+        Plugins.RemoveAll(x => x.Id == pluginId);
+        StateChanged();
+    }
+
+    public Action ReloadAction { get; set; } = default!;
 
     public void Reload()
     {

@@ -5,35 +5,14 @@ public partial class PluginContainerActions: IDisposable
     [Parameter]
     public PluginViewState Plugin { get; set; } = default!;
 
-    [Parameter]
-    public EventCallback OnDelete { get; set; } = default!;
-
     [Inject]
     public ViewState ViewState { get; set; } = default!;
 
     [Inject]
     public NavigationManager NavigationManager { get; set; } = default!;
 
-    private bool IsDesignMode { get; set; } = false;
-
-    private async Task HandleDelete()
-    {
-        await OnDelete.InvokeAsync();
-    }
-
-    private void OnViewStateChanged(object? sender, EventArgs a)
-    {
-        var authenticated = ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked && ViewState.User.Roles.Any(role => role.Type == RoleTypesViewState.Authenticated);
-        IsDesignMode = authenticated || ViewState.Type == ViewStateType.PagePreview;   
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        ViewState.OnStateChanged += OnViewStateChanged;
-
-        OnViewStateChanged(null, EventArgs.Empty);
-        await Task.CompletedTask;
-    }
+    [Inject]
+    private ApiClientFactory ApiClients { get; set; } = default!;
 
     private void OpenPluginView(string viewName = "Settings")
     {
@@ -56,8 +35,28 @@ public partial class PluginContainerActions: IDisposable
         NavigationManager.NavigateTo(url, true);
     }
 
-    public void Dispose()
+    #region Delete Plugin
+
+    private bool DeleteConfirmModalOpen { get; set; } = false;
+
+    private async Task OpenDeleteConfirm()
     {
-        ViewState.OnStateChanged -= OnViewStateChanged;
+        DeleteConfirmModalOpen = true;
+        await Task.CompletedTask;
     }
+
+    private async Task OnConfirmClose()
+    {
+        DeleteConfirmModalOpen = false;
+        await Task.CompletedTask;
+    }
+
+    private async Task OnDeleteConfirm()
+    {
+        DeleteConfirmModalOpen = false;
+        await ApiClients.Plugin.DeleteAsync(Plugin.Id);
+        ViewState.PluginRemoved(Plugin.Id);
+    }
+
+    #endregion
 }
