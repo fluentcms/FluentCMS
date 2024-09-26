@@ -103,21 +103,24 @@ public class PluginService(IPluginRepository pluginRepository, IPageRepository p
         foreach (var pluginOrder in pluginOrders)
         {
             var plugin = await pluginRepository.UpdateOrder(pluginOrder.Id, pluginOrder.Section, order, cancellationToken);
-            plugins.Add(plugin);
-            order++;
+            if (plugin != null)
+            {
+                plugins.Add(plugin);
+                order++;
+            }
         }
         return plugins;
     }
 
     public async Task<Plugin> UpdateCols(Guid pluginId, int cols, int colsMd, int colsLg, CancellationToken cancellationToken = default)
     {
-        var plugin = await pluginRepository.UpdateCols(pluginId, cols, colsMd, colsLg, cancellationToken);
-        return plugin;
+        return await pluginRepository.UpdateCols(pluginId, cols, colsMd, colsLg, cancellationToken) ??
+            throw new AppException(ExceptionCodes.PluginUnableToUpdateCols);
     }
-    
+
     public async Task<Plugin> UpdateSettings(Guid pluginId, Dictionary<string, string> settings, CancellationToken cancellationToken = default)
     {
-        var plugin = await pluginRepository.UpdateSettings(pluginId, settings, cancellationToken);
-        return plugin;
+        return await pluginRepository.UpdateSettings(pluginId, settings, cancellationToken) ??
+            throw new AppException(ExceptionCodes.PluginUnableToUpdateSettings);
     }
 }

@@ -9,39 +9,49 @@ public class PluginRepository(ILiteDBContext liteDbContext, IApiExecutionContext
         return await Collection.Query().Where(x => x.PageId == pageId).ToListAsync();
     }
 
-    public async Task<Plugin> UpdateOrder(Guid pluginId, string section, int order, CancellationToken cancellationToken = default)
+    public async Task<Plugin?> UpdateOrder(Guid pluginId, string section, int order, CancellationToken cancellationToken = default)
     {
-        var plugin = await GetById(pluginId, cancellationToken) ??
-            throw new AppException(ExceptionCodes.PluginNotFound);
+        cancellationToken.ThrowIfCancellationRequested();
 
-        plugin.Order = order;
-        plugin.Section = section;
+        var plugin = await GetById(pluginId, cancellationToken);
 
-        return await Update(plugin, cancellationToken) ??
-            throw new AppException(ExceptionCodes.PluginUnableToUpdate);
+        if (plugin != null)
+        {
+            plugin.Order = order;
+            plugin.Section = section;
+
+            return await Update(plugin, cancellationToken);
+        }
+        return default;
     }
     
-    public async Task<Plugin> UpdateCols(Guid pluginId, int cols, int colsMd, int colsLg, CancellationToken cancellationToken = default)
+    public async Task<Plugin?> UpdateCols(Guid pluginId, int cols, int colsMd, int colsLg, CancellationToken cancellationToken = default)
     {
-        var plugin = await GetById(pluginId, cancellationToken) ??
-            throw new AppException(ExceptionCodes.PluginNotFound);
+        cancellationToken.ThrowIfCancellationRequested();
 
-        plugin.Cols = cols;
-        plugin.ColsMd = colsMd;
-        plugin.ColsLg = colsLg;
+        var plugin = await GetById(pluginId, cancellationToken);
 
-        return await Update(plugin, cancellationToken) ??
-            throw new AppException(ExceptionCodes.PluginUnableToUpdate);
+        if (plugin != null)
+        {
+            plugin.Cols = cols;
+            plugin.ColsMd = colsMd;
+            plugin.ColsLg = colsLg;
+            return await Update(plugin, cancellationToken);
+        }
+        return default;
     }
 
-    public async Task<Plugin> UpdateSettings(Guid pluginId, Dictionary<string, string> settings, CancellationToken cancellationToken = default)
+    public async Task<Plugin?> UpdateSettings(Guid pluginId, Dictionary<string, string> settings, CancellationToken cancellationToken = default)
     {
-        var plugin = await GetById(pluginId, cancellationToken) ??
-            throw new AppException(ExceptionCodes.PluginNotFound);
+        cancellationToken.ThrowIfCancellationRequested();
 
-        plugin.Settings = settings;
+        var plugin = await GetById(pluginId, cancellationToken);
 
-        return await Update(plugin, cancellationToken) ??
-            throw new AppException(ExceptionCodes.PluginUnableToUpdate);
+        if (plugin != null)
+        {
+            plugin.Settings = settings;
+            return await Update(plugin, cancellationToken);
+        }
+        return default;
     }
 }
