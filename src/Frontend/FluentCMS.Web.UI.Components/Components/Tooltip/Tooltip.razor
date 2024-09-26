@@ -4,9 +4,10 @@
 
 @if(Visible)
 {
-    <div @attributes="AdditionalAttributes"
-         @ref="element"
-         class="@this.GetClasses()">
-        @ChildContent
+    <div @attributes="AdditionalAttributes" @ref="Element" class="@this.GetClasses()">
+        @if (ChildContent != null)
+        {
+            @ChildContent
+        }
     </div>
 }
