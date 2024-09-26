@@ -4,7 +4,7 @@
 
 @if (Visible)
 {
-    <div @attributes="AdditionalAttributes" class="@this.GetClasses()" tabindex="-1" data-modal-backdrop="static" aria-hidden="true">
+    <div @attributes="AdditionalAttributes" class="@this.GetClasses()" tabindex="-1" data-modal-backdrop="static">
         <div class="@this.ClassName("ConfirmWrapper")">
             <div class="@this.ClassName("ConfirmContent")">
                 <CloseButton @onclick="CancelClicked" />
