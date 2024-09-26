@@ -55,13 +55,8 @@ public class PluginController(IPluginService pluginService, IPluginDefinitionSer
     [Policy(AREA, UPDATE)]
     public async Task<IApiResult<PluginDetailResponse>> UpdateCols([FromBody] PluginUpdateColsRequest request, CancellationToken cancellationToken = default)
     {
-        var plugin = await pluginService.GetById(request.Id, cancellationToken);
-        plugin.Cols = request.Cols;
-        plugin.ColsMd = request.ColsMd;
-        plugin.ColsLg = request.ColsLg;
-
-        var updated = await pluginService.Update(plugin, cancellationToken);
-        var response = mapper.Map<PluginDetailResponse>(updated);
+        var plugin = await pluginService.UpdateCols(request.Id, request.Cols, request.ColsMd, request.ColsLg, cancellationToken);
+        var response = mapper.Map<PluginDetailResponse>(plugin);
         return Ok(response);
     }
 
@@ -69,11 +64,8 @@ public class PluginController(IPluginService pluginService, IPluginDefinitionSer
     [Policy(AREA, UPDATE)]
     public async Task<IApiResult<PluginDetailResponse>> UpdateSettings([FromBody] PluginUpdateSettingsRequest request, CancellationToken cancellationToken = default)
     {
-        var plugin = await pluginService.GetById(request.Id, cancellationToken);
-        plugin.Settings = request.Settings;
-
-        var updated = await pluginService.Update(plugin, cancellationToken);
-        var response = mapper.Map<PluginDetailResponse>(updated);
+        var plugin = await pluginService.UpdateSettings(request.Id, request.Settings, cancellationToken);
+        var response = mapper.Map<PluginDetailResponse>(plugin);
         return Ok(response);
     }
 

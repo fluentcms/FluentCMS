@@ -20,4 +20,28 @@ public class PluginRepository(ILiteDBContext liteDbContext, IApiExecutionContext
         return await Update(plugin, cancellationToken) ??
             throw new AppException(ExceptionCodes.PluginUnableToUpdate);
     }
+    
+    public async Task<Plugin> UpdateCols(Guid pluginId, int cols, int colsMd, int colsLg, CancellationToken cancellationToken = default)
+    {
+        var plugin = await GetById(pluginId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.PluginNotFound);
+
+        plugin.Cols = cols;
+        plugin.ColsMd = colsMd;
+        plugin.ColsLg = colsLg;
+
+        return await Update(plugin, cancellationToken) ??
+            throw new AppException(ExceptionCodes.PluginUnableToUpdate);
+    }
+
+    public async Task<Plugin> UpdateSettings(Guid pluginId, Dictionary<string, string> settings, CancellationToken cancellationToken = default)
+    {
+        var plugin = await GetById(pluginId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.PluginNotFound);
+
+        plugin.Settings = settings;
+
+        return await Update(plugin, cancellationToken) ??
+            throw new AppException(ExceptionCodes.PluginUnableToUpdate);
+    }
 }

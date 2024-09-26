@@ -14,4 +14,16 @@ public class PluginRepository(IPluginRepository repository, ICacheProvider cache
         InvalidateCache();
         return plugin;
     }
+    public async Task<Plugin> UpdateCols(Guid pluginId, int cols, int colsMd, int colsLg, CancellationToken cancellationToken = default)
+    {
+        var plugin = await repository.UpdateCols(pluginId, cols, colsMd, colsLg, cancellationToken);
+        InvalidateCache();
+        return plugin;
+    }
+    public async Task<Plugin> UpdateSettings(Guid pluginId, Dictionary<string, string> settings, CancellationToken cancellationToken = default)
+    {
+        var plugin = await repository.UpdateSettings(pluginId, settings, cancellationToken);
+        InvalidateCache();
+        return plugin;
+    }
 }

@@ -8,6 +8,8 @@ public interface IPluginService : IAutoRegisterService
     Task<Plugin> InitialCreate(Guid pageId, Guid pluginDefinitionId, string section, CancellationToken cancellationToken = default);
     Task<Plugin> Update(Plugin plugin, CancellationToken cancellationToken = default);
     Task<IEnumerable<Plugin>> UpdateOrders(IEnumerable<PluginOrder> pluginOrders, CancellationToken cancellationToken = default);
+    Task<Plugin> UpdateCols(Guid pluginId, int cols, int colsMd, int colsLg, CancellationToken cancellationToken = default);
+    Task<Plugin> UpdateSettings(Guid pluginId, Dictionary<string, string> settings, CancellationToken cancellationToken = default);
     Task<Plugin> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
@@ -105,5 +107,17 @@ public class PluginService(IPluginRepository pluginRepository, IPageRepository p
             order++;
         }
         return plugins;
+    }
+
+    public async Task<Plugin> UpdateCols(Guid pluginId, int cols, int colsMd, int colsLg, CancellationToken cancellationToken = default)
+    {
+        var plugin = await pluginRepository.UpdateCols(pluginId, cols, colsMd, colsLg, cancellationToken);
+        return plugin;
+    }
+    
+    public async Task<Plugin> UpdateSettings(Guid pluginId, Dictionary<string, string> settings, CancellationToken cancellationToken = default)
+    {
+        var plugin = await pluginRepository.UpdateSettings(pluginId, settings, cancellationToken);
+        return plugin;
     }
 }
