@@ -77,6 +77,8 @@ public static class ExceptionCodes
     public const string PluginUnableToUpdate = "Plugin.UnableToUpdate";
     public const string PluginUnableToDelete = "Plugin.UnableToDelete";
     public const string PluginNotFound = "Plugin.NotFound";
+    public const string PluginUnableToUpdateCols = "Plugin.UnableToUpdateCols";
+    public const string PluginUnableToUpdateSettings = "Plugin.UnableToUpdateSettings";
 
     #endregion
 

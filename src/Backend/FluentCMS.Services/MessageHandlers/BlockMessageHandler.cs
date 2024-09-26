@@ -1,9 +1,7 @@
-using FluentCMS.Providers.MessageBusProviders;
-
 namespace FluentCMS.Services.MessageHandlers;
 
 public class BlockMessageHandler(IBlockService blockService) : IMessageHandler<SiteTemplate>
-{    
+{
     public async Task Handle(Message<SiteTemplate> notification, CancellationToken cancellationToken)
     {
         switch (notification.Action)

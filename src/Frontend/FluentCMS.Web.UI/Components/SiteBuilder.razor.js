@@ -1,6 +1,8 @@
-import { onInitEditor } from "/_content/FluentCMS.Web.UI/js/sitebuilder.editor.js";
+import { initializeResponsive } from '/_content/FluentCMS.Web.UI/js/responsive.js'
+import { initializeClickEvents } from '/_content/FluentCMS.Web.UI/js/actions.js'
 
-// SiteBuilderScript
 export async function initialize(dotnet) {
-    onInitEditor(dotnet)
+    window.dotnet = dotnet
+    initializeResponsive()
+    initializeClickEvents(document)
 }
