@@ -6,6 +6,9 @@ public partial class PluginForm
     public string? Title { get; set; }
 
     [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
     [Parameter]
