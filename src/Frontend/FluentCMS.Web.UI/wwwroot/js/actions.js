@@ -1,10 +1,6 @@
 import { updateResponsive } from "./responsive.js"
 
 export const actions = {
-    'done'() {
-        actions["hide-sidebar"]()
-        window.location.href = window.location.href.replace('?pageEdit=true', '')
-    },
     'responsive-default'() {
         updateResponsive('default')
     },
@@ -16,20 +12,6 @@ export const actions = {
     },
     'responsive-desktop'() {
         updateResponsive('desktop')
-    },
-    'open-plugin-view'(el) {
-        const viewName = el.dataset.viewName
-        const pluginId = el.dataset.pluginId
-        const id = el.dataset.id
-
-        let url = window.location.pathname
-
-        if(pluginId) url += '?pluginId=' + pluginId;
-        if(viewName) url += '&viewName=' + viewName;
-        if(id) url += '&id=' + id;
-        url += '&redirectTo=' + encodeURIComponent(window.location.href);
-
-        window.location.href = url
     },
     'toggle-add-plugin'(el) {
         updateResponsive('default')
