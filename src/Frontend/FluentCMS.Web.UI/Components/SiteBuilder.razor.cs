@@ -17,7 +17,7 @@ public partial class SiteBuilder : IAsyncDisposable
     public ViewState ViewState { get; set; } = default!;
 
     private IJSObjectReference? Module { get; set; }
-    
+
     private DotNetObjectReference<SiteBuilder>? DotNetRef { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -33,7 +33,7 @@ public partial class SiteBuilder : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if(Module is not null)
+        if (Module is not null)
         {
             await Module.DisposeAsync();
         }

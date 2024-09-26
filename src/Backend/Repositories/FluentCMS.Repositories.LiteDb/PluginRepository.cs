@@ -24,7 +24,7 @@ public class PluginRepository(ILiteDBContext liteDbContext, IApiExecutionContext
         }
         return default;
     }
-    
+
     public async Task<Plugin?> UpdateCols(Guid pluginId, int cols, int colsMd, int colsLg, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

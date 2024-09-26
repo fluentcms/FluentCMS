@@ -13,9 +13,9 @@ public partial class BlockEditPlugin
             var response = await ApiClient.PluginContent.GetAllAsync(CONTENT_TYPE_NAME, Plugin!.Id);
 
             var content = response.Data!.ToContentList<BlockContent>();
-            if (content is null) 
+            if (content is null)
                 return;
-                
+
             if (content!.Count == 0)
                 throw new Exception("This plugin doesn't have any content");
 
