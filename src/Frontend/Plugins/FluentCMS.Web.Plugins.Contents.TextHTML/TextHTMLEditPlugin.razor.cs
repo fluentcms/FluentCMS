@@ -15,7 +15,7 @@ public partial class TextHTMLEditPlugin
         {
             var response = await ApiClient.PluginContent.GetAllAsync(CONTENT_TYPE_NAME, Plugin!.Id);
 
-            var content = response.Data.ToContentList<TextHTMLContent>();
+            var content = response.Data?.ToContentList<TextHTMLContent>() ?? [];
 
             if (content.Count > 0)
             {

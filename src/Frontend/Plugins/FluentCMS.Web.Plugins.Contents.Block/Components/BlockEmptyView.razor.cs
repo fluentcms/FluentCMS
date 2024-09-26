@@ -39,7 +39,7 @@ public partial class BlockEmptyView
 
     private void ReloadPage()
     {
-        NavigationManager.NavigateTo(NavigationManager.Uri, true);
+        ViewState.Reload();
     }
 
     private async Task ChooseBlockType(BlockDetailResponse block)

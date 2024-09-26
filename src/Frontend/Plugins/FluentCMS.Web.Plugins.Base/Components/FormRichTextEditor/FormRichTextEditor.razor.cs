@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 namespace FluentCMS.Web.Plugins;
 
-public partial class FormRichTextEditor
+public partial class FormRichTextEditor : IAsyncDisposable
 {
     [Inject]
     public IJSRuntime JS { get; set; } = default!;
@@ -9,16 +9,17 @@ public partial class FormRichTextEditor
     [Inject]
     private ApiClientFactory ApiClient { get; set; } = default!;
 
-    public ElementReference element;
+    public ElementReference? Element { get; set; }
 
-    private IJSObjectReference module = default!;
+    private IJSObjectReference? Module { get; set; }
+    private DotNetObjectReference<FormRichTextEditor>? DotNetRef { get; set; }
 
     private List<AssetDetail> Assets { get; set; } = [];
     private List<PageDetailResponse> Pages { get; set; } = [];
     private bool ShowClearButton { get; set; } = true;
     private bool LinkModalOpen { get; set; } = false;
     private bool ImageModalOpen { get; set; } = false;
-    private string ImageMode = "Library";
+    private string ImageMode { get; set; } = "Library";
     private string? ImageUrl { get; set; }
     private Guid? ImageId { get; set; }
     private Guid? FolderId { get; set; }
@@ -96,8 +97,8 @@ public partial class FormRichTextEditor
     {
         LinkModalOpen = false;
 
-        if (module != null)
-            await module.InvokeVoidAsync("setLink", DotNetObjectReference.Create(this), element, new { Mode = "Clear" });
+        if (Module != null)
+            await Module.InvokeVoidAsync("setLink", DotNetRef, Element, new { Mode = "Clear" });
 
     }
 
@@ -112,8 +113,8 @@ public partial class FormRichTextEditor
 
         LinkModalOpen = false;
 
-        if (module != null)
-            await module.InvokeVoidAsync("setLink", DotNetObjectReference.Create(this), element, new { Href = Href, Text = Text, Mode = "External" });
+        if (Module != null)
+            await Module.InvokeVoidAsync("setLink", DotNetRef, Element, new { Href, Text, Mode = "External" });
 
     }
 
@@ -124,8 +125,8 @@ public partial class FormRichTextEditor
 
         LinkModalOpen = false;
 
-        if (module != null)
-            await module.InvokeVoidAsync("setLink", DotNetObjectReference.Create(this), element, new { Href = Href, Text = Text, Mode = "File" });
+        if (Module != null)
+            await Module.InvokeVoidAsync("setLink", DotNetRef, Element, new { Href = Href, Text = Text, Mode = "File" });
 
     }
 
@@ -154,8 +155,8 @@ public partial class FormRichTextEditor
 
         LinkModalOpen = false;
 
-        if (module != null)
-            await module.InvokeVoidAsync("setLink", DotNetObjectReference.Create(this), element, new { Href = Href, Text = Text, Mode = "Page" });
+        if (Module != null)
+            await Module.InvokeVoidAsync("setLink", DotNetRef, Element, new { Href = Href, Text = Text, Mode = "Page" });
 
     }
 
@@ -184,14 +185,8 @@ public partial class FormRichTextEditor
 
         _value = Value;
 
-        if (module != null)
-            await module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), element, new { Value });
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (module != null)
-            await module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
+        if (Module != null)
+            await Module.InvokeVoidAsync("update", DotNetRef, Element, new { Value });
     }
 
     FolderDetailResponse? FindFolderById(ICollection<FolderDetailResponse> folders, Guid folderId)
@@ -201,7 +196,7 @@ public partial class FormRichTextEditor
             if (folder.Id == folderId)
                 return folder;
 
-            if (folder.Folders != null && folder.Folders.Any())
+            if (folder.Folders != null && folder.Folders.Count > 0)
             {
                 var foundFolder = FindFolderById(folder.Folders, folderId);
                 if (foundFolder != null)
@@ -214,7 +209,7 @@ public partial class FormRichTextEditor
     private async Task OnNavigateFolder(Guid? folderId)
     {
         FolderId = folderId;
-        FolderDetailResponse? folderDetail = default!;
+        FolderDetailResponse? folderDetail;
 
         var folderDetailResponse = await ApiClient.Folder.GetAllAsync();
 
@@ -242,11 +237,11 @@ public partial class FormRichTextEditor
                 });
             }
 
-            foreach (var item in folderDetail.Folders)
+            foreach (var item in folderDetail.Folders ?? [])
             {
                 Assets.Add(new AssetDetail
                 {
-                    Name = item.Name,
+                    Name = item.Name ?? string.Empty,
                     IsFolder = true,
                     Id = item.Id,
                     FolderId = item.FolderId,
@@ -254,16 +249,16 @@ public partial class FormRichTextEditor
                 });
             }
 
-            foreach (var item in folderDetail.Files)
+            foreach (var item in folderDetail.Files ?? [])
             {
                 Assets.Add(new AssetDetail
                 {
-                    Name = item.Name,
+                    Name = item.Name ?? string.Empty,
                     IsFolder = false,
                     FolderId = item.FolderId,
                     Id = item.Id,
                     Size = item.Size,
-                    ContentType = item.ContentType
+                    ContentType = item.ContentType ?? string.Empty
                 });
             }
         }
@@ -277,15 +272,15 @@ public partial class FormRichTextEditor
         ImageUrl = "/API/File/Download/" + image.Id;
         ImageAlt = "(TODO) Image ALT";
 
-        if (module != null)
-            await module.InvokeVoidAsync("setImage", DotNetObjectReference.Create(this), element, new { Alt = ImageAlt, Url = ImageUrl });
+        if (Module != null)
+            await Module.InvokeVoidAsync("setImage", DotNetRef, Element, new { Alt = ImageAlt, Url = ImageUrl });
 
     }
 
     public async Task OnUpload()
     {
-        if (module != null)
-            await module.InvokeVoidAsync("openFileUpload", DotNetObjectReference.Create(this), element, new { Id = "upload-" + Id });
+        if (Module != null)
+            await Module.InvokeVoidAsync("openFileUpload", DotNetRef, Element, new { Id = "upload-" + Id });
     }
 
 
@@ -314,19 +309,35 @@ public partial class FormRichTextEditor
     {
         ImageModalOpen = false;
 
-        if (module != null)
-            await module.InvokeVoidAsync("setImage", DotNetObjectReference.Create(this), element, new { Alt = ImageAlt, Url = ImageUrl });
+        if (Module != null)
+            await Module.InvokeVoidAsync("setImage", DotNetRef, Element, new { Alt = ImageAlt, Url = ImageUrl });
 
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Module is not null)
+        {
+            await Module.InvokeVoidAsync("dispose", DotNetRef, Element);
+            await Module.DisposeAsync();
+        }
+        DotNetRef?.Dispose();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
 
-        module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.Plugins.Base/Components/FormRichTextEditor/FormRichTextEditor.razor.js");
+        if (JS is null)
+        {
+            throw new InvalidOperationException("JS runtime has not been initialized.");
+        }
+
+        DotNetRef = DotNetObjectReference.Create(this);
+        Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.Plugins.Base/Components/FormRichTextEditor/FormRichTextEditor.razor.js");
 
         // TODO: type should be property
-        await module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { Value, Readonly, Placeholder, Type = "advanced" });
+        await Module.InvokeVoidAsync("initialize", DotNetRef, Element, new { Value, Readonly, Placeholder, Type = "advanced" });
     }
     protected override bool TryParseValueFromString(string? value, out string? result, [NotNullWhen(false)] out string? validationErrorMessage)
     {
