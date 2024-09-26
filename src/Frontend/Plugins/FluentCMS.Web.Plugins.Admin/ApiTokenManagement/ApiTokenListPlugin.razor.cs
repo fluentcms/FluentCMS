@@ -5,7 +5,7 @@ namespace FluentCMS.Web.Plugins.Admin.ApiTokenManagement;
 public partial class ApiTokenListPlugin
 {
     [Inject]
-    private IOptions<ClientSettings>? ClientSettingsOptions { get; set; }
+    private IOptions<ClientSettings> ClientSettingsOptions { get; set; } = default!;
 
     private List<ApiTokenDetailResponse> ApiTokens { get; set; } = [];
     private ApiTokenDetailResponse? SelectedApiToken { get; set; } = default!;

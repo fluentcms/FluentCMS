@@ -37,7 +37,7 @@ public partial class PageCreatePlugin
                 LayoutOptions.Add(
                     new SelectOption
                     {
-                        Title = layout.Name,
+                        Title = layout.Name ?? string.Empty,
                         Value = layout.Id
                     }
                 );
@@ -59,7 +59,7 @@ public partial class PageCreatePlugin
         var currentPage = page;
         while (currentPage != null)
         {
-            result.Add(currentPage.Path);
+            result.Add(currentPage.Path ?? string.Empty);
             currentPage = currentPage.ParentId.HasValue ? allPages[currentPage.ParentId.Value] : default!;
         }
         result.Reverse();
@@ -69,7 +69,7 @@ public partial class PageCreatePlugin
 
     private async Task OnSubmit()
     {
-        Model.SiteId = ViewState.Site.Id;
+        Model!.SiteId = ViewState.Site.Id;
         if (Model.ParentId == Guid.Empty)
             Model.ParentId = default!;
 
