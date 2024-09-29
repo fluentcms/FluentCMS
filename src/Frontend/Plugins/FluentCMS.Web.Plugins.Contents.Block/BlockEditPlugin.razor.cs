@@ -33,6 +33,6 @@ public partial class BlockEditPlugin
             return;
 
         await ApiClient.PluginContent.UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.Id, Model.ToDictionary());
-        NavigateBack();
+        NavigateBack(true);
     }
 }

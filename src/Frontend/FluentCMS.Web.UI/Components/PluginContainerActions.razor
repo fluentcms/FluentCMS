@@ -7,7 +7,7 @@
             @Plugin.Definition.Name
         </div>
         <div class="f-plugin-toolbar-actions">
-            @if (ViewState.Type == ViewStateType.Default && Plugin.Definition.Types.Where(x => x.Name == "Settings").FirstOrDefault() != null)
+            @if (Plugin.Definition.Types.Where(x => x.Name == "Settings").FirstOrDefault() != null)
             {
                 <button @onclick='() => OpenPluginView("Settings")'>
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -16,7 +16,7 @@
                     </svg>
                 </button>
             }
-            @if (ViewState.Type == ViewStateType.Default && Plugin.Definition.Types.Where(x => x.Name == "Edit").FirstOrDefault() != null)
+            @if (Plugin.Definition.Types.Where(x => x.Name == "Edit").FirstOrDefault() != null)
             {
                 <button @onclick='() => OpenPluginView("Edit")'>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -43,7 +43,7 @@
             }
         </div>
     </div>
-    <Confirm Visible="DeleteConfirmModalOpen" OnClose="OnConfirmClose" OnConfirm="OnDeleteConfirm">
+    <Confirm Visible="DeleteConfirmModalOpen" OnCancel="OnConfirmClose" OnConfirm="@OnDeleteConfirm">
         Are you sure to remove this plugin from page?
     </Confirm>
 }

@@ -27,6 +27,11 @@ public partial class PluginContainerActions
             queryParams.Add($"viewName={viewName}");
 
         var redirectTo = Uri.EscapeDataString(baseUrl);
+        if(ViewState.Type == ViewStateType.PagePreview)
+        {
+            redirectTo += Uri.EscapeDataString("?pagePreview=true");
+        }
+
         queryParams.Add($"redirectTo={redirectTo}");
 
         var url = baseUrl;

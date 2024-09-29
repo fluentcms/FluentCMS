@@ -100,7 +100,8 @@ export function initializeSortable() {
             const newPluginId = await window.dotnet.invokeMethodAsync("CreatePlugin", definitionId, sectionName)
             
             item.dataset.id = newPluginId
-            
+            item.classList.add('f-plugin-container')
+
             updatePluginOrders()
             document.querySelectorAll('.f-section > .f-plugin-definition-item').forEach(item => item.remove())
         }

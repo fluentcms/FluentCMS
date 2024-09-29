@@ -5,7 +5,7 @@
 
 <PluginBody Title="Content Type Fields" Visible="@(ContentType?.Fields != null)">
     <ActionsFragment>
-        <ActionButtonBack @onclick="NavigateBack" />
+        <ActionButtonBack @onclick="() => NavigateBack()" />
         <ActionButtonCreate @onclick=OnCreateFieldClick Label="New Field" />
     </ActionsFragment>
     <ChildContent>
