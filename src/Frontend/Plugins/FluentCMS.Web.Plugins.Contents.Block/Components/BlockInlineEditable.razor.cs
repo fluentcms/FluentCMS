@@ -34,7 +34,7 @@ public partial class BlockInlineEditable : IAsyncDisposable
             await Module.InvokeVoidAsync("dispose", DotNetRef, Element);
             await Module.DisposeAsync();
         }
-        DotNetRef.Dispose();
+        DotNetRef?.Dispose();
     }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
