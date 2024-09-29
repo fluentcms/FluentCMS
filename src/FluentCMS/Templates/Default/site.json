@@ -156,6 +156,7 @@
         {
             "Title": "Blogs",
             "Path": "/blogs",
+            "Layout": "SingleLayout",
             "EditLayout": "EditLayout",
             "ViewRoles": [ "All Users" ],
             "Plugins": [

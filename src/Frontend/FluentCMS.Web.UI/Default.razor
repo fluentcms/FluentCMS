@@ -35,7 +35,7 @@ else
     <PageTitle>@ViewState.Page?.Title</PageTitle>
     <HeadContent>
         @RenderDynamicContent(ViewState.Layout?.Head ?? string.Empty)
-        @if (ViewState.HasPageAdminAccess())
+        @if (!ViewState.Page.Locked && ViewState.HasPageAdminAccess())
         {
             <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.default.css">
         }            
@@ -44,7 +44,7 @@ else
     </HeadContent>
     @RenderDynamicContent(ViewState.Layout?.Body ?? string.Empty)
 
-    @if (ViewState.HasPageAdminAccess())
+    @if (!ViewState.Page.Locked && ViewState.HasPageAdminAccess())
     {
         <SiteBuilderFloatingButtons />
     }
