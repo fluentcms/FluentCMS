@@ -3,7 +3,7 @@ export function debounce(cb, timeout = 300) {
     return (...args) => {
         if(timer) clearTimeout(timer)
         timer = setTimeout(() => {
-            cb(args)
+            cb(...args)
         }, timeout)
     }
 }

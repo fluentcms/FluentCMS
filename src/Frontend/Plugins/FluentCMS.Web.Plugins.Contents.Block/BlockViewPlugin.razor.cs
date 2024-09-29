@@ -5,8 +5,13 @@ public partial class BlockViewPlugin
 
     private BlockContent? Item { get; set; }
 
+    private bool AuthenticatedDefault { get; set; } = false;
+
     protected override async Task OnInitializedAsync()
     {
+        var authenticated = ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked && ViewState.User.Roles.Any(role => role.Type == RoleTypesViewState.Authenticated);
+        AuthenticatedDefault = authenticated && ViewState.Type == ViewStateType.Default;
+        
         if (Plugin is not null)
         {
             var response = await ApiClient.PluginContent.GetAllAsync(nameof(BlockContent), Plugin.Id);
