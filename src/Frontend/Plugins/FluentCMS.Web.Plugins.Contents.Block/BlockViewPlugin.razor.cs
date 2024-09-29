@@ -11,7 +11,7 @@ public partial class BlockViewPlugin
     {
         var authenticated = ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked && ViewState.User.Roles.Any(role => role.Type == RoleTypesViewState.Authenticated);
         AuthenticatedDefault = authenticated && ViewState.Type == ViewStateType.Default;
-        
+
         if (Plugin is not null)
         {
             var response = await ApiClient.PluginContent.GetAllAsync(nameof(BlockContent), Plugin.Id);
