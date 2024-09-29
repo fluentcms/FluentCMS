@@ -13,7 +13,7 @@
                 <span>@(context.Layout?.Name ?? "(default)")</span>
             </DataTableItem>
             <ActionButtons>
-                <ActionButton data-enhance-nav="disabled" IconName="IconName.Eye" Color="Color.Success" Label="Open" Href="@GetPageUrl(context)" />
+                <ActionButton data-enhance-nav="disabled" target="_blank" IconName="IconName.Eye" Color="Color.Success" Label="Open" Href="@GetPageUrl(context)" />
                 <ActionButtonEdit Href="@GetUrl("Update Page", new { id = @context.Id })"/>
                 <ActionButtonDelete @onclick="() => OnConfirm(context)"/>
             </ActionButtons>
