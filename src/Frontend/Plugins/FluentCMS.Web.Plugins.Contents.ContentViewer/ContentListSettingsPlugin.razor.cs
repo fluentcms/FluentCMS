@@ -44,7 +44,7 @@ public partial class ContentListSettingsPlugin
 
         await ApiClient.Plugin.UpdateSettingsAsync(request);
 
-        NavigateBack();
+        NavigateBack(true);
     }
 
     class SettingsModel
