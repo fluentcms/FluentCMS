@@ -22,19 +22,12 @@ public partial class PluginsSection : IDisposable
     void IDisposable.Dispose()
     {
         ViewState.OnStateChanged -= ViewStateChanged;
-        NavigationManager.LocationChanged -= LocationChanged;
     }
 
     protected override async Task OnInitializedAsync()
     {
-        NavigationManager.LocationChanged += LocationChanged;
         ViewState.OnStateChanged += ViewStateChanged;
         await Task.CompletedTask;
     }
 
-    void LocationChanged(object? sender, LocationChangedEventArgs e)
-    {
-        ViewState.Reload();
-        StateHasChanged();
-    }
 }
