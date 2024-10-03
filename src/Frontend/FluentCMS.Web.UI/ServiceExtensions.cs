@@ -70,7 +70,7 @@ public static class ServiceExtensions
 
             viewState.DisposeAction = () =>
             {
-                navigationManager.LocationChanged += OnLocationChanged;
+                navigationManager.LocationChanged -= OnLocationChanged;
             };
 
             viewState.ReloadAction = () =>
