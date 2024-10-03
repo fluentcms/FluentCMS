@@ -1,22 +1,12 @@
-using Microsoft.JSInterop;
-
 namespace FluentCMS.Web.UI;
 
-public partial class SiteBuilderFloatingButtons : IAsyncDisposable
+public partial class SiteBuilderDefaultToolbar
 {
     [Inject]
     private NavigationManager NavigationManager { get; set; } = default!;
 
     [Inject]
-    private IJSRuntime JS { get; set; } = default!;
-
-    [Inject]
     private ViewState ViewState { get; set; } = default!;
-
-    private IJSObjectReference? Module { get; set; }
-    private DotNetObjectReference<SiteBuilderFloatingButtons>? DotNetRef { get; set; }
-    private ElementReference TogglerRef { get; set; } = default!;
-    private ElementReference ButtonsRef { get; set; } = default!;
 
     private string GetPageAddUrl()
     {
@@ -47,25 +37,5 @@ public partial class SiteBuilderFloatingButtons : IAsyncDisposable
         var queryParamsString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
 
         return $"/admin/pages?{queryParamsString}";
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender)
-            return;
-
-        DotNetRef = DotNetObjectReference.Create(this);
-        Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI/Components/SiteBuilderFloatingButtons.razor.js");
-
-        await Module.InvokeVoidAsync("initialize", DotNetRef, TogglerRef, ButtonsRef);
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (Module is not null)
-        {
-            await Module.DisposeAsync();
-        }
-        DotNetRef?.Dispose();
     }
 }
