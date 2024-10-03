@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS;
 
-public class ViewState
+public class ViewState : IDisposable
 {
     public ViewStateType Type { get; set; } = ViewStateType.Default;
     public SiteViewState Site { get; set; } = default!;
@@ -16,6 +16,7 @@ public class ViewState
     public event EventHandler? OnStateChanged;
 
     public Action ReloadAction { get; set; } = default!;
+    public Action DisposeAction { get; set; } = default!;
 
     public void Reload()
     {
@@ -26,6 +27,11 @@ public class ViewState
     public void StateChanged()
     {
         OnStateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void Dispose()
+    {
+        DisposeAction?.Invoke();
     }
 }
 

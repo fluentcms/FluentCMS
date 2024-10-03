@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Components.Routing;
-
-namespace FluentCMS.Web.UI;
+﻿namespace FluentCMS.Web.UI;
 
 public partial class PluginsSection : IDisposable
 {
@@ -11,8 +9,11 @@ public partial class PluginsSection : IDisposable
     [Inject]
     private ViewState ViewState { get; set; } = default!;
 
-    [Inject]
-    public NavigationManager NavigationManager { set; get; } = default!;
+    protected override async Task OnInitializedAsync()
+    {
+        ViewState.OnStateChanged += ViewStateChanged;
+        await Task.CompletedTask;
+    }
 
     private void ViewStateChanged(object? sender, EventArgs e)
     {
@@ -23,11 +24,4 @@ public partial class PluginsSection : IDisposable
     {
         ViewState.OnStateChanged -= ViewStateChanged;
     }
-
-    protected override async Task OnInitializedAsync()
-    {
-        ViewState.OnStateChanged += ViewStateChanged;
-        await Task.CompletedTask;
-    }
-
 }

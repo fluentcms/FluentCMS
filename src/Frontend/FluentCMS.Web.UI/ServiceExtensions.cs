@@ -54,17 +54,24 @@ public static class ServiceExtensions
     {
         services.AddScoped(sp =>
         {
-            var viewState = new ViewState();
-
-            var OnLocationChanged = new EventHandler<LocationChangedEventArgs>((object? sender, LocationChangedEventArgs args) => {
-               viewState.Reload(); 
-            });
-            
             var navigationManager = sp.GetRequiredService<NavigationManager>();
             var apiClient = sp.GetRequiredService<ApiClientFactory>();
             var mapper = sp.GetRequiredService<IMapper>();
 
+            var viewState = new ViewState();
+
+            var OnLocationChanged = new EventHandler<LocationChangedEventArgs>((object? sender, LocationChangedEventArgs args) =>
+            {
+                viewState.Reload();
+            });
+
+
             navigationManager.LocationChanged += OnLocationChanged;
+
+            viewState.DisposeAction = () =>
+            {
+                navigationManager.LocationChanged += OnLocationChanged;
+            };
 
             viewState.ReloadAction = () =>
             {
