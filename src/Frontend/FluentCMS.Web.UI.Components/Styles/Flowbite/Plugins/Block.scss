@@ -9,20 +9,29 @@ $block: $prefix + 'block';
             overflow: hidden;
         }
 
+        &-close-button {
+            position: absolute;
+            top: 1rem;
+            right: 2rem;
+        }
+        
         &-sidebar {
-            padding: 16px;
+            padding: 24px;
             overflow: auto; 
-            width: min-content; 
+            width: 260px; 
             flex-shrink: 0; 
             cursor: pointer; 
-            padding-right: 2rem;
+            border-right: 1px solid #E5E7EB;
 
+            &-title {
+                @apply text-2xl font-bold text-gray-900 pb-4;
+            }
             &-item {
-                padding-bottom: 4px;
+                @apply py-2.5 px-3 border-b border-gray-300;
                 white-space: nowrap;
             }
             &-item-active {
-                font-weight: bold;
+                @apply bg-gray-50 font-bold; 
             }
         }
 
@@ -33,6 +42,7 @@ $block: $prefix + 'block';
             gap: 16px; 
             overflow: auto;
             padding: 1rem;
+            padding-top: 4rem;
         }
 
         &-preview {
@@ -47,7 +57,6 @@ $block: $prefix + 'block';
             }
 
             &-title {
-                font-weight: bold; 
                 padding: 8px 0;
             }
 
@@ -56,13 +65,13 @@ $block: $prefix + 'block';
                 overflow: hidden; 
                 user-select: none; 
                 pointer-events: none; 
-                border-radius: 6px; 
+                border-radius: 16px; 
                 transition: all 0.3s ease;
                 border: 1px solid #dbdbdb;
             }
 
             &-item:hover &-content {
-                scale: 1.05;
+                border-color: #3F83F8;
             }
         }
     }
