@@ -91,7 +91,7 @@ public partial class Default
         if (ViewState.Type == ViewStateType.PagePreview || ViewState.Type == ViewStateType.PageEdit)
             return RenderMode.InteractiveServer;
 
-        if (ViewState.Type == ViewStateType.Default && ViewState.User.Roles.Any(x => x.Type == RoleTypesViewState.Authenticated))
+        if (ViewState.Type == ViewStateType.Default && ViewState.HasPageContributorAccess())
             return RenderMode.InteractiveServer;
 
         return null;
