@@ -1,32 +1,35 @@
-﻿using System.Reflection;
+﻿using System.Collections.Concurrent;
+using System.Reflection;
 
 namespace FluentCMS.Web.UI;
 
 public class PluginLoader
 {
-    private readonly Dictionary<string, Assembly> _loadedAssemblies = [];
-    private readonly Dictionary<string, Dictionary<string, Type>> _loadedTypes = [];
+    private readonly ConcurrentDictionary<string, Assembly> _loadedAssemblies = new();
+    private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, Type>> _loadedTypes = new();
 
     private Assembly Load(string relativePath)
     {
-        if (_loadedAssemblies.ContainsKey(relativePath))
-            return _loadedAssemblies[relativePath];
+        if (_loadedAssemblies.TryGetValue(relativePath, out Assembly? value))
+            return value;
 
         var entryAssembly = Assembly.GetEntryAssembly() ??
             throw new InvalidOperationException("Entry assembly not found");
 
-        var binFolder = Path.GetDirectoryName(entryAssembly.Location);
+        var binFolder = Path.GetDirectoryName(entryAssembly.Location) ??
+            throw new InvalidOperationException("Unable to determine bin folder path");
 
-        string assemblyPath = Path.Combine(binFolder!, relativePath);
+        string assemblyPath = Path.Combine(binFolder, relativePath);
 
-        if (!Path.GetFullPath(assemblyPath).StartsWith(binFolder!))
-            throw new Exception("Attempted to load assembly from illegal location");
+        if (!Path.GetFullPath(assemblyPath).StartsWith(binFolder))
+            throw new UnauthorizedAccessException("Attempted to load assembly from an illegal location");
 
         var customLoadContext = new PluginLoadContext();
 
         var assembly = customLoadContext.LoadFromAssemblyPath(assemblyPath);
 
-        _loadedAssemblies.Add(relativePath, assembly);
+        // Add to _loadedAssemblies using thread-safe method
+        _loadedAssemblies.TryAdd(relativePath, assembly);
 
         return assembly;
     }
@@ -35,16 +38,18 @@ public class PluginLoader
     {
         var assembly = Load(assemblyPath);
 
-        if (_loadedTypes.ContainsKey(assemblyPath) && _loadedTypes[assemblyPath].ContainsKey(typeName))
-            return _loadedTypes[assemblyPath][typeName];
+        // Thread-safe check if the type already exists in the dictionary
+        if (_loadedTypes.TryGetValue(assemblyPath, out var typeDict) && typeDict.TryGetValue(typeName, out Type? value))
+            return value;
 
-        var type = assembly.DefinedTypes.FirstOrDefault(x => x.Name == typeName);
+        var type = assembly.DefinedTypes.FirstOrDefault(x => x.Name == typeName) ??
+            throw new TypeLoadException($"Type '{typeName}' not found in assembly '{assemblyPath}'");
 
-        if (!_loadedTypes.ContainsKey(assemblyPath))
-            _loadedTypes.Add(assemblyPath, []);
+        // Ensure that a type dictionary exists for this assembly
+        var assemblyTypes = _loadedTypes.GetOrAdd(assemblyPath, _ => new ConcurrentDictionary<string, Type>());
 
-        if (!_loadedTypes[assemblyPath].ContainsKey(typeName))
-            _loadedTypes[assemblyPath].Add(typeName, type);
+        // Add the type to the dictionary in a thread-safe manner
+        assemblyTypes.TryAdd(typeName, type);
 
         return type;
     }
