@@ -76,5 +76,14 @@
 [data-responsive-mode] .f-page-editor-sidebar {
     display: none;
 }
+[data-inline-editable] {
+    transition: all 0.3s ease;
+}
+.f-block [data-inline-editable]:focus {
+    outline: none;
+    box-shadow: 0 0 0 1px #00559050;
+}
 
-
+.f-plugin-container:hover .f-block [data-inline-editable] {
+    background-color: #36abff36;
+}
