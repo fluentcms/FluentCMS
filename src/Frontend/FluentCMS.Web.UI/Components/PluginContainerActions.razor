@@ -5,7 +5,7 @@
     <div class="f-plugin-container-actions">
         <div class="f-plugin-toolbar-dropdown">
             <div class="f-plugin-toolbar-dropdown-toggler f-plugin-toolbar-action">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 17h14M5 12h14M5 7h14"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 17h14M5 12h14M5 7h14" /></svg>
             </div>
             <div class="f-plugin-toolbar-dropdown-menu">
                 @if (Plugin.Definition.Types.Where(x => x.Name == "Settings").FirstOrDefault() != null)
@@ -37,7 +37,7 @@
                         Delete
                     </button>
                 }
-               
+
             </div>
         </div>
         @if (ViewState.Type == ViewStateType.PagePreview && ViewState.HasPageAdminAccess())
