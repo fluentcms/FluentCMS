@@ -5,7 +5,7 @@
 {
     @if (ViewState.HasPageContributorAccess())
     {
-        <InlineEditor InitialValue="@Item.Content" OnSave="@UpdateContent" />
+        <InlineEditor InitialValue="@Item.Content" OnCancel="@OnCancel" OnSave="@UpdateContent" />
     }
     else
     {

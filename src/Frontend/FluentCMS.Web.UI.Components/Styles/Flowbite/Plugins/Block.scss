@@ -1,6 +1,12 @@
 $block: $prefix + 'block';
 
 .#{$block} {
+    &-empty-button {
+        padding: 4rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 
     &-modal {
         &-body {

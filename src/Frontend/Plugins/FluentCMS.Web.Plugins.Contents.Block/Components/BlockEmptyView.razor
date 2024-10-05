@@ -2,7 +2,9 @@
 @rendermode InteractiveServer
 @namespace FluentCMS.Web.Plugins.Contents.Block
 
-<Button @onclick="OpenBlockModal" Color="Color.Primary">Select</Button>
+<div class="f-block-empty-button">
+    <Button @onclick="OpenBlockModal" Color="Color.Primary">Select</Button>
+</div>
 
 <Modal Size="ModalSize.Large" Visible="BlockModalOpen" OnClose="CloseBlockModal">
     <CloseButton class="f-block-modal-close-button" @onclick="CloseBlockModal" />

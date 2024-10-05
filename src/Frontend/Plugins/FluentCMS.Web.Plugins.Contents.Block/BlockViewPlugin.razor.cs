@@ -11,6 +11,11 @@ public partial class BlockViewPlugin
         await Load();
     }
 
+    private async Task OnCancel() {
+        await Load();
+        StateHasChanged();
+    }
+
     private async Task UpdateContent(string content)
     {
         if (Item is null)
