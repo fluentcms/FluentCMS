@@ -1,0 +1,102 @@
+$prefix: 'f-';
+
+@import './Parts/Toolbar';
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    padding: 0;
+    margin: 0;
+}
+
+.f-page-editor {
+    width: 100%;
+    overflow: hidden;
+    height: 100vh;
+}
+
+.f-page-editor-iframe-wrapper {
+    background-color: #EBEBEB;
+    position: relative;
+    height: calc(100% - 40px);
+    transition: all 0.3s ease;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.f-page-editor-iframe {
+    position: absolute;
+    /* transition: all 0.1s ease; */
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.f-page-editor-iframe-resizer {
+    border-radius: 2px;
+    box-shadow: 0 0 8px -4px rgb(129, 129, 129);
+    display: none;
+    background-color: #cfcfcf;
+    height: 64px;
+    width: 12px;
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    bottom: 50%;
+    cursor: grab;
+}
+.f-page-editor-iframe-resizer:hover {
+    background-color: #d4d4d4;
+    height: 64px;
+    width: 12px;
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    bottom: 50%;
+    cursor: grab;
+}
+
+.f-page-editor-iframe-resizer::before, .f-page-editor-iframe-resizer::after {
+    content: '';
+    background-color: #aaaaaa;
+    position: absolute;
+    height: 48px;
+    width: 2px;
+    top: 8px;
+    bottom: 8px;
+}
+
+.f-page-editor-iframe-resizer:hover::after, .f-page-editor-iframe-resizer:hover::before {
+    background-color: #c0c0c0;
+}
+
+.f-page-editor-iframe-resizer::before {
+    left: 3px;
+}
+
+.f-page-editor-iframe-resizer::after {
+    right: 3px;
+}
+
+[data-responsive-mode] .f-page-editor-iframe {
+    left: auto;
+    right: auto;
+    top: 1rem;
+    bottom: 1rem;
+
+    height: calc(100% - 2rem);
+    max-width: calc(100% - 2rem);
+}
+
+[data-responsive-mode] .f-page-editor-iframe-resizer {
+    display: flex;
+}

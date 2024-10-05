@@ -1,0 +1,9 @@
+a[href] {
+    pointer-events: none;
+    user-select: none;
+}
+
+.#{$prefix}plugin-container-actions a {
+    pointer-events: unset;
+    user-select: unset;
+}

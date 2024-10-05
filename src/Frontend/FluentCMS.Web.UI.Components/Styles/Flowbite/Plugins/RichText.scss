@@ -1,0 +1,204 @@
+$rich-text: $prefix + 'rich-text-content';
+
+:root {
+    --font-color-h1: #333;
+    --font-color-h2: #444;
+    --font-color-h3: #555;
+    --font-color-h4-h6: #666;
+    --font-color-p: #222;
+    --link-color: #007bff;
+    --blockquote-border: #ccc;
+    --blockquote-bg: #f9f9f9;
+    --blockquote-color: #666;
+    --code-bg: #f8f8f8;
+    --code-color: #d63384;
+    --pre-bg: #f8f8f8;
+    --pre-color: #d63384;
+    --code-block-bg: #f5f5f5;
+    --code-block-border: #e0e0e0;
+}
+
+.text-white, .dark {
+    --font-color-h1: #ccc;
+    --font-color-h2: #bbb;
+    --font-color-h3: #aaa;
+    --font-color-h4-h6: #999;
+    --font-color-p: #ddd;
+    --link-color: #66bfff;
+    --blockquote-border: #888;
+    --blockquote-bg: #333;
+    --blockquote-color: #ccc;
+    --code-bg: #444;
+    --code-color: #ff6fcf;
+    --pre-bg: #444;
+    --pre-color: #ff6fcf;
+    --code-block-bg: #3b3b3b;
+    --code-block-border: #555;
+}
+
+.#{$rich-text} {
+    h1 {
+        font-size: 2em;
+        font-weight: bold;
+        color: var(--font-color-h1);
+    }
+
+    h2 {
+        font-size: 1.75em;
+        font-weight: bold;
+        color: var(--font-color-h2);
+    }
+
+    h3 {
+        font-size: 1.5em;
+        font-weight: bold;
+        color: var(--font-color-h3);
+    }
+
+    h4,
+    h5,
+    h6 {
+        font-size: 1.25em;
+        font-weight: bold;
+        color: var(--font-color-h4-h6);
+    }
+
+    p {
+        line-height: 1.6;
+        color: var(--font-color-p);
+    }
+
+    a {
+        color: var(--link-color);
+        text-decoration: none;
+    }
+
+    a:hover {
+        text-decoration: underline;
+    }
+
+    ul {
+        padding-left: 40px;
+        list-style-type: disc;
+    }
+
+    ol {
+        padding-left: 40px;
+        list-style-type: decimal;
+    }
+
+    li {}
+
+    blockquote {
+        padding: 0.5em 10px;
+        border-left: 5px solid var(--blockquote-border);
+        background: var(--blockquote-bg);
+        color: var(--blockquote-color);
+    }
+
+    code {
+        font-family: monospace;
+        background: var(--code-bg);
+        padding: 2px 4px;
+        border-radius: 4px;
+        color: var(--code-color);
+    }
+
+    pre {
+        font-family: monospace;
+        background: var(--pre-bg);
+        padding: 10px;
+        border-radius: 4px;
+        overflow: auto;
+        color: var(--pre-color);
+    }
+
+    .ql-align-left {
+        text-align: left;
+    }
+
+    .ql-align-center {
+        text-align: center;
+    }
+
+    .ql-align-right {
+        text-align: right;
+    }
+
+    .ql-align-justify {
+        text-align: justify;
+    }
+
+    .ql-indent-1 {
+        padding-left: 3em;
+    }
+
+    .ql-indent-2 {
+        padding-left: 6em;
+    }
+
+    .ql-indent-3 {
+        padding-left: 9em;
+    }
+
+    .ql-direction-ltr {
+        direction: ltr;
+    }
+
+    .ql-direction-rtl {
+        direction: rtl;
+    }
+
+    .ql-font-serif {
+        font-family: serif;
+    }
+
+    .ql-font-sans {
+        font-family: sans-serif;
+    }
+
+    .ql-font-monospace {
+        font-family: monospace;
+    }
+
+    .ql-bold {
+        font-weight: bold;
+    }
+
+    .ql-italic {
+        font-style: italic;
+    }
+
+    .ql-underline {
+        text-decoration: underline;
+    }
+
+    .ql-strike {
+        text-decoration: line-through;
+    }
+
+    .ql-list-ordered {
+        list-style-type: decimal;
+    }
+
+    .ql-list-bullet {
+        list-style-type: disc;
+    }
+
+    .ql-code-block {
+        background-color: var(--code-block-bg);
+        border-left: 4px solid var(--code-block-border);
+        padding: 0.5em;
+        font-family: monospace;
+    }
+
+    .ql-script-sub {
+        vertical-align: sub;
+        font-size: smaller;
+    }
+
+    .ql-script-super {
+        vertical-align: super;
+        font-size: smaller;
+    }
+}

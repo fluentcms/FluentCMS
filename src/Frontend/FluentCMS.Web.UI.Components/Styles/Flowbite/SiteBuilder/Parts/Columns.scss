@@ -1,0 +1,33 @@
+$section: $prefix + 'section';
+$row: $prefix + 'section-row';
+
+.#{$section} {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.#{$section} > .f-plugin-container {
+    width: 100%;
+}
+
+@for $i from 1 to 12 {
+    .#{$row} > [data-cols="#{$i}"] {
+        width: calc(#{$i} * 100% / 12);
+    }    
+}
+
+@media (min-width: 480px) {
+    @for $i from 1 to 12 {
+        .#{$row} > [data-cols-md="#{$i}"] {
+            width: calc(#{$i} * 100% / 12);
+        }
+    }
+}
+
+@media (min-width: 992px) {
+    @for $i from 1 to 12 {
+        .#{$row} > [data-cols-lg="#{$i}"] {
+            width: calc(#{$i} * 100% / 12);
+        }
+    }
+}

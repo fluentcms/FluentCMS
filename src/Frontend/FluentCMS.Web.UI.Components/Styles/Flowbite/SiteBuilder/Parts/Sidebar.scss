@@ -1,5 +1,6 @@
+$sidebar: $prefix + 'page-editor-sidebar';
 
-.f-page-editor-sidebar .f-plugin-definition-list {
+.#{$sidebar} .f-plugin-definition-list {
     overflow: scroll;
     height: 100%;
     display: flex;
@@ -11,12 +12,12 @@
     width: 100%;
 }
 
-.f-page-editor-sidebar .f-plugin-definition-list-title {
+.#{$sidebar} .f-plugin-definition-list-title {
     font-size: 12px;
     font-family: sans-serif;
 }
 
-.f-page-editor-sidebar .f-plugin-definition-item {
+.#{$sidebar} .f-plugin-definition-item {
     padding: 0.75rem;
     display: flex;
     font-family: sans-serif;
@@ -27,7 +28,7 @@
     border-radius: 3px;
 }
 
-.f-page-editor-sidebar .f-plugin-definition-item:hover {
+.#{$sidebar} .f-plugin-definition-item:hover {
     background-color: white;
     border-color: #C1C1C1;
     cursor: grab;
@@ -44,21 +45,21 @@
     gap: 0.25rem;
 }
 
-.f-page-editor-sidebar .f-plugin-definition-item .f-name {
+.#{$sidebar} .f-plugin-definition-item .f-name {
     /* font-weight: bold; */
     font-size: 14px;
     line-height: 150%;
     color: #222222;
 }
 
-.f-page-editor-sidebar .f-plugin-definition-item .f-description {
+.#{$sidebar} .f-plugin-definition-item .f-description {
     font-size: 12px;
     line-height: 150%;
     color: #333333;
 
 }
 
-.f-page-editor-sidebar {
+.#{$sidebar} {
     width: 240px;
     background-color: #ffffff;
     border-left: 1px solid #dfdfdf;
@@ -71,16 +72,6 @@
     z-index: 5;
 }
 
-.f-page-editor-sidebar.f-page-editor-sidebar-open {
+.#{$sidebar}.f-page-editor-sidebar-open {
     right: 0;
-}
-
-.f-section .f-plugin-definition-item {
-    background-color: #444444;
-    color: #444444;
-    width: 100%;
-}
-
-.f-section .f-plugin-definition-item-icon {
-    display: none;
 }
