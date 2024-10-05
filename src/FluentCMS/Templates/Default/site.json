@@ -1,6 +1,9 @@
 {
-    "Name": "FluentCMS Administration",
-    "Description": "FluentCMS default site template",
+    "Name": "FluentCMS",
+    "Description": "FluentCMS default site template including some samples",
+    "MetaTitle": "FluentCMS - AI-Driven Blazor CMS",
+    "MetaDescription": "FluentCMS is an AI-powered, open-source Blazor CMS designed to streamline content management, offering flexibility and scalability for modern websites.",
+    "MetaKeywords": "FluentCMS, Blazor CMS, AI-powered CMS, open-source CMS, content management system, headless CMS, ASP.NET Core, Blazor, AI-driven CMS",
     "Layout": "DefaultLayout",
     "EditLayout": "EditLayout",
     "DetailLayout": "SingleLayout",
@@ -502,6 +505,6 @@
             "Name": "Default",
             "Category": "Social Proof",
             "Description": "Simple statistics"
-        }   
+        }
     ]
 }

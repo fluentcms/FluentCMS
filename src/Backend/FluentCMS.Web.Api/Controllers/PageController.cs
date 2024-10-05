@@ -22,8 +22,6 @@ public class PageController(
     public const string CREATE = "Create";
     public const string DELETE = $"Delete";
 
-    public const string DEFAULT_TEMPLATE_PATH = "Templates/Default";
-
     [HttpGet("{siteUrl}")]
     [DecodeQueryParam]
     [Policy(AREA, READ)]
@@ -191,8 +189,8 @@ public class PageController(
             Locked = true,
             Layout = new LayoutDetailResponse
             {
-                Body = System.IO.File.ReadAllText(Path.Combine(DEFAULT_TEMPLATE_PATH, "AuthLayout.body.html")),
-                Head = System.IO.File.ReadAllText(Path.Combine(DEFAULT_TEMPLATE_PATH, "AuthLayout.head.html"))
+                Body = System.IO.File.ReadAllText(Path.Combine(ServiceConstants.DefaultTemplateFolder, "AuthLayout.body.html")),
+                Head = System.IO.File.ReadAllText(Path.Combine(ServiceConstants.DefaultTemplateFolder, "AuthLayout.head.html"))
             },
             Site = new(),
             Sections = new Dictionary<string, List<PluginDetailResponse>>

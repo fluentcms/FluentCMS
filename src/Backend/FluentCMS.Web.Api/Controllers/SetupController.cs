@@ -20,7 +20,6 @@ public class SetupController(ISetupService setupService, IMapper mapper) : BaseG
     public async Task<IApiResult<bool>> Start(SetupRequest request)
     {
         var setupTemplate = mapper.Map<SetupTemplate>(request);
-        await setupTemplate.Load();
         return Ok(await setupService.Start(setupTemplate));
     }
 

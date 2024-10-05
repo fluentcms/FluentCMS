@@ -13229,7 +13229,6 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("url")]
         [System.ComponentModel.DataAnnotations.Required]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])(:\d{1,5})?$")]
         public string Url { get; set; } = default!;
 
     }
@@ -13251,8 +13250,19 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("url")]
         [System.ComponentModel.DataAnnotations.Required]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])(:\d{1,5})?$")]
         public string Url { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("metaTitle")]
+        public string? MetaTitle { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("metaDescription")]
+        public string? MetaDescription { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("metaKeywords")]
+        public string? MetaKeywords { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("faviconUrl")]
+        public string? FaviconUrl { get; set; } = default!;
 
     }
 
@@ -13304,6 +13314,18 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("allRoles")]
         public System.Collections.Generic.ICollection<RoleDetailResponse>? AllRoles { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("metaTitle")]
+        public string? MetaTitle { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("metaDescription")]
+        public string? MetaDescription { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("metaKeywords")]
+        public string? MetaKeywords { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("faviconUrl")]
+        public string? FaviconUrl { get; set; } = default!;
 
     }
 
@@ -13415,6 +13437,18 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("editLayoutId")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid EditLayoutId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("metaTitle")]
+        public string? MetaTitle { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("metaDescription")]
+        public string? MetaDescription { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("metaKeywords")]
+        public string? MetaKeywords { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("faviconUrl")]
+        public string? FaviconUrl { get; set; } = default!;
 
     }
 

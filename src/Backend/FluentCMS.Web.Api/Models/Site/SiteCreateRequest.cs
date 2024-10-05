@@ -11,6 +11,9 @@ public class SiteCreateRequest
     public string Template { get; set; } = default!;
 
     [Required]
-    [DomainName]
     public string Url { get; set; } = default!;
+    public string? MetaTitle { get; set; }
+    public string? MetaDescription { get; set; }
+    public string? MetaKeywords { get; set; }
+    public string? FaviconUrl { get; set; }
 }

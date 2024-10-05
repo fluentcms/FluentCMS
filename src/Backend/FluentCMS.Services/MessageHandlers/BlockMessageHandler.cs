@@ -10,7 +10,7 @@ public class BlockMessageHandler(IBlockService blockService) : IMessageHandler<S
                 foreach (var block in notification.Payload.Blocks)
                 {
                     block.SiteId = notification.Payload.Id;
-                    await blockService.Create(block);
+                    await blockService.Create(block, cancellationToken);
                 }
                 break;
 

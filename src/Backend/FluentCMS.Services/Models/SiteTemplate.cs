@@ -16,4 +16,9 @@ public class SiteTemplate
     public List<string> AdminRoles { get; set; } = [];
     public List<string> ContributorRoles { get; set; } = [];
     public List<Role> Roles { get; set; } = [];
+
+    public string? MetaTitle { get; set; }
+    public string? MetaDescription { get; set; }
+    public string? MetaKeywords { get; set; }
+    public string? FaviconUrl { get; set; }
 }
