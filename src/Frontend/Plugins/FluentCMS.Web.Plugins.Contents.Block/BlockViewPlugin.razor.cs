@@ -11,6 +11,15 @@ public partial class BlockViewPlugin
         await Load();
     }
 
+    private async Task UpdateContent(string content)
+    {
+        if (Item is null)
+            return;
+
+        Item.Content = content;
+        await ApiClient.PluginContent.UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Item.Id, Item.ToDictionary());
+    }
+
     private async Task SaveBlockContent(BlockDetailResponse selectedBlock)
     {
         var block = new BlockContent

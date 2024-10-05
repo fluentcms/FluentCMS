@@ -5,7 +5,7 @@
 {
     @if (ViewState.HasPageContributorAccess())
     {
-        <BlockInlineEditable Plugin="@Plugin" Item="@Item"/>
+        <InlineEditor InitialValue="@Item.Content" OnSave="@UpdateContent" />
     }
     else
     {

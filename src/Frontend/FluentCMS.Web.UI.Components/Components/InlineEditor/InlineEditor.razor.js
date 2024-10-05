@@ -14,11 +14,6 @@ function onInput(ev) {
     updateContentDebounced(ev.target.dotnet, element.innerHTML)
 }
 
-//export async function done(dotnet, element, content) {
-//    element.parentElement.classList.remove('f-block-edited')
-
-//}
-
 export function reinitialize(dotnet, element) {
     dispose(dotnet, element)
     initialize(dotnet, element)
