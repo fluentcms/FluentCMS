@@ -1,25 +1,30 @@
 namespace FluentCMS.Web.Plugins.Contents.Block;
+
 public partial class BlockViewPlugin
 {
     public const string CONTENT_TYPE_NAME = nameof(BlockContent);
 
     private BlockContent? Item { get; set; }
 
-    private bool AuthenticatedDefault { get; set; } = false;
-
     protected override async Task OnInitializedAsync()
     {
-        var authenticated = ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked && ViewState.User.Roles.Any(role => role.Type == RoleTypesViewState.Authenticated);
-        AuthenticatedDefault = authenticated && ViewState.Type == ViewStateType.Default;
+        await Load();
+    }
 
-        if (Plugin is not null)
+    private async Task SaveBlockContent(BlockDetailResponse selectedBlock)
+    {
+        var block = new BlockContent
         {
-            var response = await ApiClient.PluginContent.GetAllAsync(nameof(BlockContent), Plugin.Id);
+            Content = selectedBlock.Content ?? string.Empty
+        };
 
-            if (response?.Data != null && response.Data.ToContentList<BlockContent>().Any())
-            {
-                Item = response.Data.ToContentList<BlockContent>().FirstOrDefault();
-            }
-        }
+        await ApiClient.PluginContent.CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, block.ToDictionary());
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        var response = await ApiClient.PluginContent.GetAllAsync(CONTENT_TYPE_NAME, Plugin.Id);
+        Item = response?.Data?.ToContentList<BlockContent>().FirstOrDefault();
     }
 }

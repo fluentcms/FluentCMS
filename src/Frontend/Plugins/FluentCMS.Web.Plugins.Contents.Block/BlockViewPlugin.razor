@@ -3,18 +3,18 @@
 
 @if(Item != null)
 {
-    @if (ViewState.Type == ViewStateType.PagePreview || AuthenticatedDefault)
+    @if (ViewState.HasPageContributorAccess())
     {
-        <BlockInlineEditable Plugin="@Plugin" Value="@Item"/>
+        <BlockInlineEditable Plugin="@Plugin" Item="@Item"/>
     }
     else
     {
-        <div data-id="@Item.Id" class="f-block">
+        <div class="f-block">
             @((MarkupString)Item.Content)
         </div>
     }
 }
-else if(ViewState.Type == ViewStateType.Default || ViewState.Type == ViewStateType.PagePreview)
+else if(ViewState.HasPageContributorAccess())
 {
-    <BlockEmptyView PluginId="@Plugin.Id"/>
+    <BlockEmptyView OnBlockSelected="@SaveBlockContent" />
 }

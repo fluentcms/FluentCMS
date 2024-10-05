@@ -11,7 +11,7 @@ public partial class BlockInlineEditable : IAsyncDisposable
     private IJSRuntime? JS { get; set; }
 
     [Parameter]
-    public BlockContent Value { get; set; } = default!;
+    public BlockContent Item { get; set; } = default!;
 
     [Parameter]
     public PluginViewState Plugin { get; set; } = default!;
@@ -21,24 +21,34 @@ public partial class BlockInlineEditable : IAsyncDisposable
     private IJSObjectReference Module { get; set; } = default!;
 
     private string Content { get; set; } = string.Empty;
+    private bool IsEditing { get; set; } = false;
 
     [JSInvokable]
-    public async Task UpdateContent(string content)
+    public void UpdateContent(string content)
     {
         Content = content;
+        IsEditing = true;
+        StateHasChanged();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Content = Item.Content;
+        await Task.CompletedTask;
     }
 
     private async Task OnSave()
     {
-        Value.Content = Content;
-        await ApiClients.PluginContent.UpdateAsync(nameof(BlockContent), Plugin.Id, Value.Id, Value.ToDictionary());
-        await Module.InvokeVoidAsync("done", DotNetRef, Element);
+        Item.Content = Content;
+        await ApiClients.PluginContent.UpdateAsync(nameof(BlockContent), Plugin.Id, Item.Id, Item.ToDictionary());
+        IsEditing = false;
     }
-    
+
     private async Task OnCancel()
     {
-        Content = Value.Content;
-        await Module.InvokeVoidAsync("done", DotNetRef, Element);
+        Content = Item.Content;
+        IsEditing = false;
+        await Task.CompletedTask;
     }
 
     public async ValueTask DisposeAsync()
@@ -50,13 +60,6 @@ public partial class BlockInlineEditable : IAsyncDisposable
         }
         DotNetRef?.Dispose();
     }
-
-    protected override async Task OnInitializedAsync()
-    {
-        Content = Value.Content;
-        await Task.CompletedTask;
-    }
-
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

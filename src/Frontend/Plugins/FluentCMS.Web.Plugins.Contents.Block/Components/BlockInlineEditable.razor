@@ -1,10 +1,13 @@
 @namespace FluentCMS.Web.Plugins.Contents.Block
 
-<div data-id="@Value.Id" @ref="Element" class="f-block">
+<div @ref="Element" class="f-block">
     @((MarkupString)Content)
 </div>
 
-<div class="f-block-actions">
-    <Button Size="ButtonSize.Small" @onclick="OnCancel">Cancel</Button>
-    <Button Size="ButtonSize.Small" @onclick="OnSave" Color="Color.Primary">Save</Button>
-</div>
+@if (IsEditing)
+{
+    <div class="f-block-actions">
+        <Button Size="ButtonSize.Small" @onclick="OnCancel">Cancel</Button>
+        <Button Size="ButtonSize.Small" @onclick="OnSave" Color="Color.Primary">Save</Button>
+    </div>
+}
