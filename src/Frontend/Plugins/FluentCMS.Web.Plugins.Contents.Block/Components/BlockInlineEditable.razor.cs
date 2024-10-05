@@ -34,10 +34,11 @@ public partial class BlockInlineEditable : IAsyncDisposable
         await ApiClients.PluginContent.UpdateAsync(nameof(BlockContent), Plugin.Id, Value.Id, Value.ToDictionary());
         await Module.InvokeVoidAsync("done", DotNetRef, Element);
     }
+    
     private async Task OnCancel()
     {
         Content = Value.Content;
-        await Module.InvokeVoidAsync("done", DotNetRef, Element, Content);
+        await Module.InvokeVoidAsync("done", DotNetRef, Element);
     }
 
     public async ValueTask DisposeAsync()

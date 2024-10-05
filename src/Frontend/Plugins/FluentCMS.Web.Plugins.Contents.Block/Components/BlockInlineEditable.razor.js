@@ -14,13 +14,13 @@ const updateContentDebounced = debounce(updateContent, 1000)
 export async function done(dotnet, element, content) {
     element.parentElement.classList.remove('f-block-edited')
 
-    if(content) {
-        element.innerHTML = content;
-    }
+    // if(content) {
+    //     element.innerHTML = content;
+    // }
 
-    setTimeout(() => {
-        initialize(dotnet, element)
-    })
+    // setTimeout(() => {
+    //     initialize(dotnet, element)
+    // })
 
 }
 
