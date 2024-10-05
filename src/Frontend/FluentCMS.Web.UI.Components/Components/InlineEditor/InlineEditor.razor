@@ -1,0 +1,16 @@
+﻿@inherits BaseComponent
+@namespace FluentCMS.Web.UI.Components
+
+<div class="@this.GetClasses()">
+    <div class="@this.ClassName("InlineEditorContent")" @ref="Element">
+        @((MarkupString)Value)
+    </div>
+
+    @* @if (IsEditing)
+    { *@
+        <div class="@this.ClassName("InlineEditorActions")">
+            <Button Size="ButtonSize.Small" @onclick="HandleCancel">Cancel</Button>
+            <Button Size="ButtonSize.Small" @onclick="HandleSave" Color="Color.Primary">Save</Button>
+        </div>
+    @* } *@
+</div>

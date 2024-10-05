@@ -10,23 +10,19 @@ function updateContent(dotnet, content) {
 
 function onInput(ev) {
     console.log('onInput', ev)
-    const element = ev.target.closest('[data-inline-editable]')
-    element.parentElement.classList.add('f-block-edited')
+    const element = ev.target.closest('.f-inline-editor-content')
     updateContentDebounced(ev.target.dotnet, element.innerHTML)
 }
 
 //export async function done(dotnet, element, content) {
 //    element.parentElement.classList.remove('f-block-edited')
 
-//    // if(content) {
-//    //     element.innerHTML = content;
-//    // }
-
-//    // setTimeout(() => {
-//    //     initialize(dotnet, element)
-//    // })
-
 //}
+
+export function reinitialize(dotnet, element) {
+    dispose(dotnet, element)
+    initialize(dotnet, element)
+} 
 
 export async function initialize(dotnet, element) {
     console.log('initialize', element)

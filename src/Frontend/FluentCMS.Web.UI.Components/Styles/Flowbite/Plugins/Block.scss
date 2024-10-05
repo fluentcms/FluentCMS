@@ -76,22 +76,3 @@ $block: $prefix + 'block';
         }
     }
 }
-
-.#{$block} a {
-    pointer-events: none;
-}
-
-
-.#{$block}-edited .#{$block}-actions {
-    opacity: 1;
-    pointer-events: all;
-}
-
-.#{$block}-actions {
-    display: flex;
-    gap: 4px;
-    position: absolute;
-    top: 2rem;
-    right: 1rem;
-    pointer-events: none;
-}
