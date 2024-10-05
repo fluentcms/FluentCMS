@@ -7,7 +7,7 @@ public partial class BlockListPlugin
     public async Task Load()
     {
         var blocksResponse = await ApiClient.Block.GetAllForSiteAsync(ViewState.Site.Id);
-        Blocks = blocksResponse?.Data.ToList() ?? [];
+        Blocks = blocksResponse?.Data?.ToList() ?? [];
     }
 
     protected override async Task OnInitializedAsync()

@@ -10,12 +10,9 @@ public partial class PageCreatePlugin
     [SupplyParameterFromQuery(Name = "openNewPage")]
     private bool OpenNewPage { get; set; } = false;
 
-    private string Urls { get; set; } = string.Empty;
     private List<LayoutDetailResponse>? Layouts { get; set; }
     private List<PageDetailResponse>? Pages { get; set; }
-
     private List<SelectOption>? LayoutOptions { get; set; }
-    private List<SelectOption>? PageOptions { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -37,7 +34,7 @@ public partial class PageCreatePlugin
                 LayoutOptions.Add(
                     new SelectOption
                     {
-                        Title = layout.Name,
+                        Title = layout.Name!,
                         Value = layout.Id
                     }
                 );
@@ -59,7 +56,7 @@ public partial class PageCreatePlugin
         var currentPage = page;
         while (currentPage != null)
         {
-            result.Add(currentPage.Path);
+            result.Add(currentPage.Path!);
             currentPage = currentPage.ParentId.HasValue ? allPages[currentPage.ParentId.Value] : default!;
         }
         result.Reverse();
@@ -69,7 +66,7 @@ public partial class PageCreatePlugin
 
     private async Task OnSubmit()
     {
-        Model.SiteId = ViewState.Site.Id;
+        Model!.SiteId = ViewState.Site.Id;
         if (Model.ParentId == Guid.Empty)
             Model.ParentId = default!;
 

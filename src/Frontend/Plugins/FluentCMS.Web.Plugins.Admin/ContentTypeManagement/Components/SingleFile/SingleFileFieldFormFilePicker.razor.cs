@@ -10,9 +10,9 @@ public partial class SingleFileFieldFormFilePicker
     private async Task OnFilesChanged(InputFileChangeEventArgs e)
     {
         Files = [];
-        foreach (var file in e.GetMultipleFiles(FileUploadConfig.MaxCount))
+        foreach (var file in e.GetMultipleFiles(FileUploadConfig!.MaxCount))
         {
-            var Data = file.OpenReadStream(FileUploadConfig.MaxSize);
+            var Data = file.OpenReadStream(FileUploadConfig!.MaxSize);
             Files.Add(new FileParameter(Data, file.Name, file.ContentType));
         }
 
@@ -46,7 +46,7 @@ public partial class SingleFileFieldFormFilePicker
             var fileResponse = await ApiClient.File.GetByIdAsync(FieldValue.Value.Value);
 
             if (fileResponse.Data != null)
-                FileName = fileResponse?.Data.Name;
+                FileName = fileResponse?.Data.Name ?? string.Empty;
         }
     }
 }

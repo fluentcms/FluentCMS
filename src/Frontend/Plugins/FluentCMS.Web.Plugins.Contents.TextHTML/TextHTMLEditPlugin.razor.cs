@@ -15,7 +15,7 @@ public partial class TextHTMLEditPlugin
         {
             var response = await ApiClient.PluginContent.GetAllAsync(CONTENT_TYPE_NAME, Plugin!.Id);
 
-            var content = response.Data.ToContentList<TextHTMLContent>();
+            var content = response.Data?.ToContentList<TextHTMLContent>() ?? [];
 
             if (content.Count > 0)
             {
@@ -46,6 +46,6 @@ public partial class TextHTMLEditPlugin
         else
             await ApiClient.PluginContent.CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.ToDictionary());
 
-        NavigateBack();
+        NavigateBack(true);
     }
 }

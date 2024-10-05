@@ -9,10 +9,10 @@ public partial class FileUpdateModal
     public EventCallback OnCancel { get; set; }
 
     [Parameter, EditorRequired]
-    public FileUpdateRequest Model { get; set; }
+    public FileUpdateRequest Model { get; set; } = default!;
 
     [Parameter, EditorRequired]
-    public FolderDetailResponse RootFolder { get; set; }
+    public FolderDetailResponse RootFolder { get; set; } = default!;
 
     private List<FolderSelectOption> FolderOptions { get; set; } = [];
 
@@ -45,7 +45,7 @@ public partial class FileUpdateModal
                 new FolderSelectOption
                 {
                     Id = RootFolder.Id,
-                    Name = RootFolder.Name,
+                    Name = RootFolder.Name ?? string.Empty,
                 }
             ];
             await AddFolders(RootFolder.Folders, RootFolder.Name);

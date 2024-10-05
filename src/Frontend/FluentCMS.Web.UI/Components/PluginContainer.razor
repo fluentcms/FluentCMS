@@ -1,8 +1,7 @@
 @namespace FluentCMS.Web.UI
 
 <div class="f-plugin-container" data-id="@Plugin.Id" data-order="@Plugin.Order" data-cols="@Plugin.Cols" data-cols-md="@Plugin.ColsMd" data-cols-lg="@Plugin.ColsLg">
-    <PluginContainerActions Plugin="@Plugin" OnDelete="OpenDeleteConfirm"/>
-    
+    <PluginContainerActions Plugin="@Plugin" />
     <ErrorBoundary>
         <ChildContent>
             <div class="f-plugin-container-content">
@@ -16,7 +15,3 @@
         </ErrorContent>
     </ErrorBoundary>
 </div>
-
-<Confirm Visible="DeleteConfirmModalOpen" OnClose="OnConfirmClose" OnConfirm="OnDeleteConfirm">
-    Are you sure to remove this plugin from page?
-</Confirm>

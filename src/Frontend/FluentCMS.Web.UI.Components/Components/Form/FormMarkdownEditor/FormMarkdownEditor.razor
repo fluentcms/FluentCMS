@@ -6,7 +6,7 @@
 {
     <FormField Cols="Cols" Dense="@Dense" Id="@Id" Hint="@Hint" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
         <div class="@this.GetClasses()">
-            <textarea @attributes="AdditionalAttributes" @ref="element" placeholder="@Placeholder" readonly="@Readonly">
+            <textarea @attributes="AdditionalAttributes" @ref="Element" placeholder="@Placeholder" readonly="@Readonly">
                 @Value
             </textarea>
         </div>

@@ -6,19 +6,12 @@ public partial class PluginContainer
     public PluginViewState Plugin { get; set; } = default!;
 
     [Inject]
-    private NavigationManager NavigationManager { get; set; } = default!;
-
-    [Inject]
     private PluginLoader PluginLoader { get; set; } = default!;
-
-    [Inject]
-    private ApiClientFactory ApiClients { get; set; } = default!;
 
     [Inject]
     private ViewState ViewState { get; set; } = default!;
 
     private IDictionary<string, object> Parameters { get; set; } = new Dictionary<string, object>();
-    private bool DeleteConfirmModalOpen { get; set; } = false;
 
     protected override void OnInitialized()
     {
@@ -27,25 +20,6 @@ public partial class PluginContainer
             { "Plugin", Plugin }
         };
     }
-
-    private async Task OpenDeleteConfirm()
-    {
-        DeleteConfirmModalOpen = true;
-        await Task.CompletedTask;
-    }
-
-    private async Task OnConfirmClose()
-    {
-        DeleteConfirmModalOpen = false;
-        await Task.CompletedTask;
-    }
-    private async Task OnDeleteConfirm()
-    {
-        DeleteConfirmModalOpen = false;
-        await ApiClients.Plugin.DeleteAsync(Plugin.Id);
-        ViewState.Reload();
-    }
-
 
     private Type? GetPluginType()
     {

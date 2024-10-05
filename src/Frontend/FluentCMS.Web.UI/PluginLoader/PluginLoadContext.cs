@@ -8,8 +8,18 @@ public class PluginLoadContext : AssemblyLoadContext
     public PluginLoadContext() : base(isCollectible: true)
     {
     }
-    protected override Assembly Load(AssemblyName assemblyName)
+
+    // Override the Load method to handle loading of assemblies
+    protected override Assembly? Load(AssemblyName assemblyName)
     {
-        return null; // Return null to use the default load context for dependencies
+        // We return null here to allow dependencies to be loaded by the default context
+        return null;
+    }
+
+    // Optionally, you can override Unload to handle any custom cleanup (if needed)
+    public new void Unload()
+    {
+        base.Unload();
+        // Add custom cleanup logic if necessary
     }
 }

@@ -13,9 +13,9 @@ public partial class BlockEditPlugin
             var response = await ApiClient.PluginContent.GetAllAsync(CONTENT_TYPE_NAME, Plugin!.Id);
 
             var content = response.Data!.ToContentList<BlockContent>();
-            if (content is null) 
+            if (content is null)
                 return;
-                
+
             if (content!.Count == 0)
                 throw new Exception("This plugin doesn't have any content");
 
@@ -33,6 +33,6 @@ public partial class BlockEditPlugin
             return;
 
         await ApiClient.PluginContent.UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.Id, Model.ToDictionary());
-        NavigateBack();
+        NavigateBack(true);
     }
 }

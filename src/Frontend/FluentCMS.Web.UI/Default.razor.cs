@@ -1,13 +1,11 @@
-﻿using AutoMapper;
-using FluentCMS.Web.ApiClients.Services;
+﻿using FluentCMS.Web.ApiClients.Services;
 using FluentCMS.Web.UI.DynamicRendering;
-using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Http;
 
 namespace FluentCMS.Web.UI;
 
-public partial class Default : IDisposable
+public partial class Default
 {
     [Inject]
     private AuthManager AuthManager { get; set; } = default!;
@@ -28,26 +26,10 @@ public partial class Default : IDisposable
     public NavigationManager NavigationManager { set; get; } = default!;
 
     [Inject]
-    public ApiClientFactory ApiClients { set; get; } = default!;
-
-    [Inject]
-    public IMapper Mapper { set; get; } = default!;
-
-    [Inject]
     public SetupManager SetupManager { set; get; } = default!;
-
-    private bool Authenticated { get; set; } = false;
 
     protected override async Task OnInitializedAsync()
     {
-        NavigationManager.LocationChanged += LocationChanged;
-        await Task.CompletedTask;
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        Authenticated = ViewState.Type == ViewStateType.Default && !ViewState.Page.Locked && ViewState.User.Roles.Any(role => role.Type == RoleTypesViewState.Authenticated);
-
         // check if setup is not done
         // if not it should be redirected to /setup route
         if (!await SetupManager.IsInitialized() && !NavigationManager.Uri.ToLower().EndsWith("/setup"))
@@ -58,17 +40,6 @@ public partial class Default : IDisposable
             NavigationManager.NavigateTo("/setup", true);
             return;
         }
-    }
-
-    void LocationChanged(object? sender, LocationChangedEventArgs e)
-    {
-        ViewState.Reload();
-        StateHasChanged();
-    }
-
-    void IDisposable.Dispose()
-    {
-        NavigationManager.LocationChanged -= LocationChanged;
     }
 
     protected RenderFragment RenderDynamicContent(string content) => builder =>
@@ -114,10 +85,14 @@ public partial class Default : IDisposable
 
     private InteractiveServerRenderMode? PluginRenderMode()
     {
+        if (ViewState.Page.Locked)
+            return null;
+
         if (ViewState.Type == ViewStateType.PagePreview || ViewState.Type == ViewStateType.PageEdit)
-        {
             return RenderMode.InteractiveServer;
-        }
+
+        if (ViewState.Type == ViewStateType.Default && ViewState.HasPageContributorAccess())
+            return RenderMode.InteractiveServer;
 
         return null;
     }

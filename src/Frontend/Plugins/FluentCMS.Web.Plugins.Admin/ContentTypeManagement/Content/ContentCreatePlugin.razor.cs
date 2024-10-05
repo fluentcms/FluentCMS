@@ -41,7 +41,7 @@ public partial class ContentCreatePlugin
 
     private async Task OnSubmit()
     {
-        await ApiClient.Content.CreateAsync(ContentTypeSlug!, FieldValues.ToDictionary(x => x.Name, x => x.GetValue()));
+        await ApiClient.Content.CreateAsync(ContentTypeSlug!, FieldValues.ToDictionary(x => x.Name, x => x.GetValue() ?? default!));
 
         NavigateBack();
     }

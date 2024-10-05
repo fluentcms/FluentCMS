@@ -4,6 +4,7 @@ using FluentCMS.Web.UI;
 using FluentCMS.Web.UI.DynamicRendering;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.Configuration;
 using System.Web;
 
@@ -53,13 +54,27 @@ public static class ServiceExtensions
     {
         services.AddScoped(sp =>
         {
+            var navigationManager = sp.GetRequiredService<NavigationManager>();
+            var apiClient = sp.GetRequiredService<ApiClientFactory>();
+            var mapper = sp.GetRequiredService<IMapper>();
+
             var viewState = new ViewState();
+
+            var OnLocationChanged = new EventHandler<LocationChangedEventArgs>((object? sender, LocationChangedEventArgs args) =>
+            {
+                viewState.Reload();
+            });
+
+
+            navigationManager.LocationChanged += OnLocationChanged;
+
+            viewState.DisposeAction = () =>
+            {
+                navigationManager.LocationChanged -= OnLocationChanged;
+            };
+
             viewState.ReloadAction = () =>
             {
-                var navigationManager = sp.GetRequiredService<NavigationManager>();
-                var apiClient = sp.GetRequiredService<ApiClientFactory>();
-                var mapper = sp.GetRequiredService<IMapper>();
-
                 var pageResponse = apiClient.Page.GetByUrlAsync(navigationManager.Uri).GetAwaiter().GetResult();
 
                 if (pageResponse?.Data == null)

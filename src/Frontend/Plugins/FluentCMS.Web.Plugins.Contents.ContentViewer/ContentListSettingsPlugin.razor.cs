@@ -22,8 +22,8 @@ public partial class ContentListSettingsPlugin
 
             Model = new()
             {
-                Template = template,
-                ContentTypeSlug = slug,
+                Template = template ?? string.Empty,
+                ContentTypeSlug = slug ?? string.Empty,
             };
         }
     }
@@ -44,7 +44,7 @@ public partial class ContentListSettingsPlugin
 
         await ApiClient.Plugin.UpdateSettingsAsync(request);
 
-        NavigateBack();
+        NavigateBack(true);
     }
 
     class SettingsModel

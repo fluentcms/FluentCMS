@@ -12,7 +12,7 @@ public abstract class BasePlugin : ComponentBase
     protected ViewState ViewState { get; set; } = default!;
 
     [Parameter]
-    public PluginViewState? Plugin { get; set; } = default!;
+    public PluginViewState Plugin { get; set; } = default!;
 
     [Inject]
     protected ApiClientFactory ApiClient { get; set; } = default!;
@@ -20,7 +20,7 @@ public abstract class BasePlugin : ComponentBase
     [Inject]
     protected IHttpContextAccessor? HttpContextAccessor { get; set; }
 
-    protected virtual void NavigateBack()
+    protected virtual void NavigateBack(bool forceLoad = false)
     {
         var uri = new Uri(NavigationManager.Uri);
         var query = HttpUtility.ParseQueryString(uri.Query);
@@ -29,24 +29,24 @@ public abstract class BasePlugin : ComponentBase
 
         if (!string.IsNullOrEmpty(redirectTo))
         {
-            NavigateTo(Uri.UnescapeDataString(redirectTo));
+            NavigateTo(Uri.UnescapeDataString(redirectTo), forceLoad);
         }
         else
         {
             var url = uri.LocalPath;
-            NavigateTo(url);
+            NavigateTo(url, forceLoad);
         }
     }
 
     // due to open issue in NavigationManager
     // https://github.com/dotnet/aspnetcore/issues/55685
     // https://github.com/dotnet/aspnetcore/issues/53996
-    protected virtual void NavigateTo(string path)
+    protected virtual void NavigateTo(string path, bool forceLoad = false)
     {
         if (HttpContextAccessor?.HttpContext != null && !HttpContextAccessor.HttpContext.Response.HasStarted)
             HttpContextAccessor.HttpContext.Response.Redirect(path);
         else
-            NavigationManager.NavigateTo(path, true);
+            NavigationManager.NavigateTo(path, forceLoad);
     }
 
     protected virtual string GetUrl(string viewName, object? parameters = null, bool redirectToCurrentPage = true)
@@ -67,7 +67,7 @@ public abstract class BasePlugin : ComponentBase
         {
             oldQueryParams.Remove("redirectTo");
 
-            var updatedQuery = string.Join("&", oldQueryParams.AllKeys.Select(key => $"{key}={Uri.EscapeDataString(oldQueryParams[key])}"));
+            var updatedQuery = string.Join("&", oldQueryParams.AllKeys.Select(key => $"{key}={Uri.EscapeDataString(oldQueryParams[key] ?? string.Empty)}"));
 
             var newPathAndQuery = $"{uri.LocalPath}{(string.IsNullOrEmpty(updatedQuery) ? string.Empty : "?" + updatedQuery)}";
 

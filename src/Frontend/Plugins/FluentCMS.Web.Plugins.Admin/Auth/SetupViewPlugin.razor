@@ -1,6 +1,6 @@
 ﻿@inherits BasePlugin
 
-<AuthPluginForm Model="@Model" Name="@FORM_NAME" Title="Setup Admin Account" OnSubmit="@OnSubmit">
+<PluginForm Model="@Model" Name="@FORM_NAME" Title="Setup Admin Account" OnSubmit="@OnSubmit">
     <FormInput @bind-Value="Model!.Username" Label="Username" Placeholder="Enter your username" Required />
     <FormHiddenInput @bind-Value="Model!.Url" />
     <FormInput @bind-Value="Model!.Email" Label="Email" Placeholder="Enter your email" Required />
@@ -11,4 +11,4 @@
             Setup
         </Button>
     </FormActions>
-</AuthPluginForm>        
+</PluginForm>        

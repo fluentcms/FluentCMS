@@ -46,6 +46,6 @@ public partial class RichTextEditPlugin
         else
             await ApiClient.PluginContent.CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.ToDictionary());
 
-        NavigateBack();
+        NavigateBack(true);
     }
 }

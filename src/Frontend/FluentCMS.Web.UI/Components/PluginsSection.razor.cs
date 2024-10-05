@@ -9,6 +9,12 @@ public partial class PluginsSection : IDisposable
     [Inject]
     private ViewState ViewState { get; set; } = default!;
 
+    protected override async Task OnInitializedAsync()
+    {
+        ViewState.OnStateChanged += ViewStateChanged;
+        await Task.CompletedTask;
+    }
+
     private void ViewStateChanged(object? sender, EventArgs e)
     {
         StateHasChanged();
@@ -17,11 +23,5 @@ public partial class PluginsSection : IDisposable
     void IDisposable.Dispose()
     {
         ViewState.OnStateChanged -= ViewStateChanged;
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        ViewState.OnStateChanged += ViewStateChanged;
-        await Task.CompletedTask;
     }
 }

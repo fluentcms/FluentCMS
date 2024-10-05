@@ -7,14 +7,14 @@ public partial class FormMarkdownEditor : IAsyncDisposable
     [Inject]
     public IJSRuntime? JS { get; set; }
 
-    public ElementReference element;
-
-    private IJSObjectReference Module { get; set; } = default!;
-
     [Parameter]
     public int Cols { get; set; } = 12;
 
     private string? _value;
+
+    public ElementReference? Element { get; set; }
+    private IJSObjectReference? Module { get; set; }
+    private DotNetObjectReference<FormMarkdownEditor>? DotNetRef { get; set; }
 
     [JSInvokable]
     public async Task UpdateValue(string value)
@@ -28,22 +28,32 @@ public partial class FormMarkdownEditor : IAsyncDisposable
         if (Value == _value) return;
 
         _value = Value;
-        await Module.InvokeVoidAsync("update", DotNetObjectReference.Create(this), element, new { Value });
+        await Module.InvokeVoidAsync("update", DotNetRef, Element, new { Value });
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (Module != null)
-            await Module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), element);
+        if (Module is not null)
+        {
+            await Module.InvokeVoidAsync("dispose", DotNetRef, Element);
+            await Module.DisposeAsync();
+        }
+        DotNetRef?.Dispose();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
 
+        if (JS is null)
+        {
+            throw new InvalidOperationException("JS runtime has not been initialized.");
+        }
+
+        DotNetRef = DotNetObjectReference.Create(this);
         Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Form/FormMarkdownEditor/FormMarkdownEditor.razor.js");
 
-        await Module.InvokeVoidAsync("initialize", DotNetObjectReference.Create(this), element, new { });
+        await Module.InvokeVoidAsync("initialize", DotNetRef, Element, new { });
     }
 
     protected override bool TryParseValueFromString(string? value, out string? result, [NotNullWhen(false)] out string? validationErrorMessage)
