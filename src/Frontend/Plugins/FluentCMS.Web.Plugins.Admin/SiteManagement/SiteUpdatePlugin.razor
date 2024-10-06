@@ -7,5 +7,8 @@
     <FormSelect @bind-Value="Model!.EditLayoutId" Data="Layouts" ValueField="Id" TextField="Name" Cols="6" Label="EditView Layout" Placeholder="Choose Layout" Visible="@(Layouts != null)" />
     <FormSelect @bind-Value="Model!.DetailLayoutId" Data="Layouts" ValueField="Id" TextField="Name" Cols="6" Label="SingleView Layout" Placeholder="Choose Layout" Visible="@(Layouts != null)" />
     <FormTextarea @bind-Value="Model!.Description" Label="Description" Placeholder="Enter Description" />
+    @* <FormInput @bind-Value="Model!.MetaTitle" Cols="12" Label="Meta Title" Placeholder="Enter Meta Title" />
+    <FormInput @bind-Value="Model!.MetaKeywords" Cols="12" Label="Meta Keywords" Placeholder="Enter Meta Keywords" />
+    <FormTextarea @bind-Value="Model.MetaDescription" Label="Meta Description" Placeholder="Enter Meta Description" /> *@
     <FormActions Cancel Submit />
 </PluginForm>

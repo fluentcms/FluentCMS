@@ -11,5 +11,4 @@ public class PluginDetailResponse : BaseSiteAssociatedResponse
     public string Section { get; set; } = default!;
     public PluginDefinitionDetailResponse Definition { get; set; } = default!;
     public bool Locked { get; set; } = false;
-    public Dictionary<string, string> Settings { get; set; } = [];
 }

@@ -9,7 +9,6 @@ public interface IPluginService : IAutoRegisterService
     Task<Plugin> Update(Plugin plugin, CancellationToken cancellationToken = default);
     Task<IEnumerable<Plugin>> UpdateOrders(IEnumerable<PluginOrder> pluginOrders, CancellationToken cancellationToken = default);
     Task<Plugin> UpdateCols(Guid pluginId, int cols, int colsMd, int colsLg, CancellationToken cancellationToken = default);
-    Task<Plugin> UpdateSettings(Guid pluginId, Dictionary<string, string> settings, CancellationToken cancellationToken = default);
     Task<Plugin> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
@@ -40,8 +39,7 @@ public class PluginService(IPluginRepository pluginRepository, IPageRepository p
             DefinitionId = pluginDefinitionId,
             SiteId = page.SiteId,
             Section = string.IsNullOrWhiteSpace(section) ? "main" : section,
-            Cols = 12,
-            Settings = [],
+            Cols = 12
         };
 
         return await Create(plugin, cancellationToken);
@@ -118,9 +116,4 @@ public class PluginService(IPluginRepository pluginRepository, IPageRepository p
             throw new AppException(ExceptionCodes.PluginUnableToUpdateCols);
     }
 
-    public async Task<Plugin> UpdateSettings(Guid pluginId, Dictionary<string, string> settings, CancellationToken cancellationToken = default)
-    {
-        return await pluginRepository.UpdateSettings(pluginId, settings, cancellationToken) ??
-            throw new AppException(ExceptionCodes.PluginUnableToUpdateSettings);
-    }
 }

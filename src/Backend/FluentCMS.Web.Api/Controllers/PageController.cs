@@ -12,6 +12,7 @@ public class PageController(
     IRoleService roleService,
     IUserRoleService userRoleService,
     ISetupService setupService,
+    ISettingsService settingsService,
     IApiExecutionContext apiExecutionContext,
     IMapper mapper) : BaseGlobalController
 {
@@ -168,12 +169,19 @@ public class PageController(
         var userRoleIds = await userRoleService.GetUserRoleIds(apiExecutionContext.UserId, site.Id, cancellationToken);
         pageResponse.User.Roles = pageResponse.Site.AllRoles.Where(x => userRoleIds.Contains(x.Id)).ToList();
 
+        // setting the plugin details
+        var pluginSettingsDict = (await settingsService.GetByIds(plugins.Select(x => x.Id), cancellationToken)).ToDictionary(x => x.Id, x => x.Values);
         foreach (var plugin in plugins)
         {
             if (!pageResponse.Sections.ContainsKey(plugin.Section))
                 pageResponse.Sections.Add(plugin.Section, []);
 
             var pluginResponse = mapper.Map<PluginDetailResponse>(plugin);
+
+            // set settings for the plugin if exists in the settings dictionary
+            if (pluginSettingsDict.TryGetValue(plugin.Id, out Dictionary<string, string>? value))
+                pluginResponse.Settings = value;
+
             pluginResponse.Definition = mapper.Map<PluginDefinitionDetailResponse>(pluginDefinitions[plugin.DefinitionId]);
             pageResponse.Sections[plugin.Section].Add(pluginResponse);
         }

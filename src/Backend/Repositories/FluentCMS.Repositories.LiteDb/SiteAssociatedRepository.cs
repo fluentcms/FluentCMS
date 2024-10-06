@@ -22,10 +22,4 @@ public abstract class SiteAssociatedRepository<TEntity>(ILiteDBContext liteDbCon
         cancellationToken.ThrowIfCancellationRequested();
         return await Collection.Query().Where(x => x.SiteId == siteId).ToListAsync();
     }
-
-    public async Task<TEntity?> GetByIdForSite(Guid id, Guid siteId, CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        return await Collection.Query().Where(x => x.Id == id && x.SiteId == siteId).SingleOrDefaultAsync();
-    }
 }

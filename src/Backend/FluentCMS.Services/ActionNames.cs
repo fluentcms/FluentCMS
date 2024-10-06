@@ -11,6 +11,12 @@ public static class ActionNames
 
     #endregion
 
+    #region Settings
+
+    public const string SettingsUpdated = "SettingsUpdated";
+
+    #endregion
+
     #region GlobalSettings
 
     public const string GlobalSettingsUpdated = "GlobalSettingsUpdated";
@@ -49,7 +55,6 @@ public static class ActionNames
 
     #endregion
 
-
     #region Plugin
 
     public const string PluginCreated = "PluginCreated";
@@ -66,7 +71,6 @@ public static class ActionNames
     public const string ApiTokenDeleted = "ApiTokenDeleted";
 
     #endregion
-
 
     #region ContentType
 

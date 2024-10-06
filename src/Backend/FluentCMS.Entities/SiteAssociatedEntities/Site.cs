@@ -8,10 +8,4 @@ public class Site : AuditableEntity
     public Guid LayoutId { get; set; }
     public Guid DetailLayoutId { get; set; }
     public Guid EditLayoutId { get; set; }
-
-    // SEO and Metadata
-    public string? MetaTitle { get; set; }
-    public string? MetaDescription { get; set; }
-    public string? MetaKeywords { get; set; }
-    public string? FaviconUrl { get; set; }
 }

@@ -20,10 +20,4 @@ public class PluginRepository(IPluginRepository repository, ICacheProvider cache
         InvalidateCache();
         return plugin;
     }
-    public async Task<Plugin?> UpdateSettings(Guid pluginId, Dictionary<string, string> settings, CancellationToken cancellationToken = default)
-    {
-        var plugin = await repository.UpdateSettings(pluginId, settings, cancellationToken);
-        InvalidateCache();
-        return plugin;
-    }
 }

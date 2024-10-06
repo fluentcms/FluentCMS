@@ -33,7 +33,7 @@ public partial class ContentListSettingsPlugin
         if (Plugin is null)
             return;
 
-        var request = new PluginUpdateSettingsRequest
+        var request = new SettingsUpdateRequest
         {
             Id = Plugin.Id,
             Settings = new Dictionary<string, string> {
@@ -42,7 +42,7 @@ public partial class ContentListSettingsPlugin
             }
         };
 
-        await ApiClient.Plugin.UpdateSettingsAsync(request);
+        await ApiClient.Settings.UpdateAsync(request);
 
         NavigateBack(true);
     }
