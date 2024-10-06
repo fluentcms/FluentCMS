@@ -61,6 +61,12 @@ public class SiteService(ISiteRepository siteRepository, IPluginDefinitionReposi
         jsonSiteTemplate.Url = siteTemplate.Url;
         jsonSiteTemplate.Template = siteTemplate.Template;
 
+        if (!string.IsNullOrEmpty(siteTemplate.Name))
+            jsonSiteTemplate.Name = siteTemplate.Name;
+
+        if (!string.IsNullOrEmpty(siteTemplate.Description))
+            jsonSiteTemplate.Description = siteTemplate.Description;
+
         mapper.Map(jsonSiteTemplate, siteTemplate);
 
         // loading layout data from files

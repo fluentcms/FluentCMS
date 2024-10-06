@@ -146,6 +146,8 @@ public class PageController(
 
         var pageResponse = mapper.Map<PageFullDetailResponse>(page);
         pageResponse.Site = mapper.Map<SiteDetailResponse>(site);
+        // set the site settings
+        pageResponse.Site.Settings = (await settingsService.GetById(site.Id, cancellationToken)).Values;
         pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
         pageResponse.EditLayout = mapper.Map<LayoutDetailResponse>(editLayout);
         pageResponse.DetailLayout = mapper.Map<LayoutDetailResponse>(detailLayout);

@@ -23,35 +23,10 @@ public partial class SiteCreatePlugin
     {
         if (Model != null)
         {
-            var sireCreateRequest = new SiteCreateRequest
-            {
-                Name = Model.Name,
-                Description = Model.Description,
-                Template = Model.Template,
-                Url = Model.Url,
-                Settings = new Dictionary<string, string>
-                {
-                    ["MetaTitle"] = Model.MetaTitle,
-                    ["MetaDescription"] = Model.MetaDescription,
-                    ["MetaKeywords"] = Model.MetaKeywords,
-                    ["FaviconUrl"] = Model.FaviconUrl
-                }
-            };
-            await ApiClient.Site.CreateAsync(sireCreateRequest);
+            var siteCreateRequest = Model.ToRequest();
+            var response = await ApiClient.Site.CreateAsync(siteCreateRequest);
+            await ApiClient.Settings.UpdateAsync(Model.ToSettings(response.Data.Id));
         }
         NavigateBack();
     }
-}
-
-public class SiteCreateModel
-{
-    public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string Template { get; set; } = string.Empty;
-    public string Url { get; set; } = string.Empty;
-
-    public string MetaTitle { get; set; } = string.Empty;
-    public string MetaDescription { get; set; } = string.Empty;
-    public string MetaKeywords { get; set; } = string.Empty;
-    public string FaviconUrl { get; set; } = string.Empty;
 }

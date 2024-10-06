@@ -44,12 +44,6 @@ public class MappingProfile : Profile
 
         #endregion
 
-        #region Site
-
-        CreateMap<SiteDetailResponse, SiteUpdateRequest>();
-
-        #endregion
-
         #region Page
 
         CreateMap<PageDetailResponse, PageUpdateRequest>();

@@ -8,7 +8,7 @@ public partial class SiteUpdatePlugin
     private Guid Id { get; set; }
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
-    private SiteUpdateRequest? Model { get; set; }
+    private SiteUpdateModel? Model { get; set; }
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
     private string Urls { get; set; } = string.Empty;
@@ -28,7 +28,7 @@ public partial class SiteUpdatePlugin
         {
             var siteResponse = await ApiClient.Site.GetByIdAsync(Id);
             Site = siteResponse.Data;
-            Model = Mapper.Map<SiteUpdateRequest>(Site);
+            Model = new SiteUpdateModel(Site);
             Urls = string.Join(",", Model.Urls ?? []);
         }
 
@@ -37,8 +37,9 @@ public partial class SiteUpdatePlugin
     private async Task OnSubmit()
     {
         Model!.Id = Id;
-        Model!.Urls = Urls.Split(",");
-        await ApiClient.Site.UpdateAsync(Model);
+        Model!.Urls = [.. Urls.Split(",")];
+        await ApiClient.Site.UpdateAsync(Model.GetRequest());
+        await ApiClient.Settings.UpdateAsync(Model.GetSettingsRequest());
         NavigateBack();
     }
 }
