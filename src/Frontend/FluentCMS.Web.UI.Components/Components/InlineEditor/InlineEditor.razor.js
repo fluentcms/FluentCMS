@@ -1,7 +1,3 @@
-import { debounce } from '/_content/FluentCMS.Web.UI.Components/js/helpers.js'
-
-const updateContentDebounced = debounce(updateContent, 1000)
-
 function updateContent(dotnet, content) {
     console.log('updateContent')
     content = content.replace(/ contenteditable=""/g, '')
@@ -11,7 +7,7 @@ function updateContent(dotnet, content) {
 function onInput(ev) {
     console.log('onInput', ev)
     const element = ev.target.closest('.f-inline-editor-content')
-    updateContentDebounced(ev.target.dotnet, element.innerHTML)
+    updateContent(ev.target.dotnet, element.innerHTML)
 }
 
 export function reinitialize(dotnet, element) {

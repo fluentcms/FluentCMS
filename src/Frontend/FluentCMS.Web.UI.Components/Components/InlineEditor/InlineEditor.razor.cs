@@ -18,27 +18,37 @@ public partial class InlineEditor : IAsyncDisposable
     private DotNetObjectReference<InlineEditor> DotNetRef { get; set; } = default!;
     private IJSObjectReference Module { get; set; } = default!;
 
-    private string Value { get; set; } = string.Empty;
+    private MarkupString Value { get; set; } = new();
 
     private bool IsEditing { get; set; } = false;
 
     [JSInvokable]
     public void UpdateContent(string content)
     {
-        Value = content;
-        IsEditing = true;
+        UpdateContent2(content);
+
         // StateHasChanged();
+    }
+
+    public void UpdateContent2(string content)        
+    {
+        IsEditing = true; 
+        Value = (MarkupString)content;
+    }
+    private void ToggleIsEditing()
+    {
+        IsEditing = true;
     }
 
     protected override async Task OnInitializedAsync()
     {
-        Value = InitialValue;
+        Value = (MarkupString)InitialValue;
         await Task.CompletedTask;
     }
  
     private async Task HandleSave()
     {
-        await OnSave.InvokeAsync(Value);
+        await OnSave.InvokeAsync(Value.ToString());
         IsEditing = false;
         StateHasChanged();
         await Module.InvokeVoidAsync("reinitialize", DotNetRef, Element);
@@ -46,7 +56,7 @@ public partial class InlineEditor : IAsyncDisposable
 
     private async Task HandleCancel()
     {
-        Value = InitialValue;
+        Value = (MarkupString)InitialValue;
         IsEditing = false;
         await OnCancel.InvokeAsync();
         StateHasChanged();
