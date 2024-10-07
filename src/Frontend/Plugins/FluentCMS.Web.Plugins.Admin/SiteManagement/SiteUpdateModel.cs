@@ -11,7 +11,7 @@ public class SiteUpdateModel
     public string MetaTitle { get; set; } = default!;
     public string MetaDescription { get; set; } = default!;
     public string MetaKeywords { get; set; } = default!;
-    public List<string> Urls { get; set; } = [];
+    public string RawUrls { get; set; } = default!;
 
     public SiteUpdateModel(SiteDetailResponse siteDetailResponse)
     {
@@ -26,7 +26,7 @@ public class SiteUpdateModel
         MetaTitle = settings!["MetaTitle"] ?? string.Empty;
         MetaDescription = settings["MetaDescription"] ?? string.Empty;
         MetaKeywords = settings["MetaKeywords"] ?? string.Empty;
-        Urls = [.. siteDetailResponse.Urls];
+        RawUrls = string.Join(",", siteDetailResponse.Urls ?? []);
     }
 
     public SiteUpdateRequest GetRequest()
@@ -39,7 +39,7 @@ public class SiteUpdateModel
             LayoutId = LayoutId,
             DetailLayoutId = DetailLayoutId,
             EditLayoutId = EditLayoutId,
-            Urls = [.. Urls]
+            Urls = [.. RawUrls.Split(",")]
         };
     }
 
