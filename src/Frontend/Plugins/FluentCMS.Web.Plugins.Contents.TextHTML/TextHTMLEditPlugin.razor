@@ -3,6 +3,6 @@
 @rendermode InteractiveServer
 
 <PluginForm Title="Edit TextHTML Content" Model="@Model" OnSubmit="OnSubmit" Name="@CONTENT_TYPE_NAME">
-    <FormTextarea Placeholder="Enter HTML Content" Rows="20" @bind-Value="@Model!.Content" Label="Content" />
+    <FormTextarea  Hint="Use data-inline-editable attribute for text elements to enable Inline edit!" Placeholder="Enter HTML Content" Rows="20" @bind-Value="@Model!.Content" Label="Content" />
     <FormActions Submit Cancel />
 </PluginForm>
