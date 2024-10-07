@@ -11,6 +11,5 @@ public class SiteCreateRequest
     public string Template { get; set; } = default!;
 
     [Required]
-    [DomainName]
     public string Url { get; set; } = default!;
 }

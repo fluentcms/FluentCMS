@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Services.MessageHandlers;
 
-public class PluginMessageHandler(IPluginService pluginService, IPluginContentService pluginContentService) : IMessageHandler<SiteTemplate>
+public class PluginMessageHandler(IPluginService pluginService, IPluginContentService pluginContentService, ISettingsService settingsService) : IMessageHandler<SiteTemplate>
 {
     public async Task Handle(Message<SiteTemplate> notification, CancellationToken cancellationToken)
     {
@@ -40,10 +40,12 @@ public class PluginMessageHandler(IPluginService pluginService, IPluginContentSe
                 Cols = pluginTemplate.Cols,
                 ColsMd = pluginTemplate.ColsMd,
                 ColsLg = pluginTemplate.ColsLg,
-                Settings = pluginTemplate.Settings
             };
 
             await pluginService.Create(plugin, cancellationToken);
+
+            if (pluginTemplate.Settings != null && pluginTemplate.Settings.Count != 0)
+                await settingsService.Update(plugin.Id, pluginTemplate.Settings, cancellationToken);
 
             if (pluginTemplate.Content != null)
             {

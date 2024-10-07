@@ -5,7 +5,7 @@ public partial class SiteCreatePlugin
     public const string FORM_NAME = "SiteCreateForm";
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
-    private SiteCreateRequest? Model { get; set; }
+    private SiteCreateModel? Model { get; set; }
     private List<string>? Templates { get; set; }
 
     protected override async Task OnInitializedAsync()
@@ -21,7 +21,37 @@ public partial class SiteCreatePlugin
 
     private async Task OnSubmit()
     {
-        await ApiClient.Site.CreateAsync(Model);
+        if (Model != null)
+        {
+            var siteCreateRequest = GetSiteCreateRequest();
+            var response = await ApiClient.Site.CreateAsync(siteCreateRequest);
+            await ApiClient.Settings.UpdateAsync(ToSettingsRequest(response.Data.Id));
+        }
         NavigateBack();
+    }
+
+    private SiteCreateRequest GetSiteCreateRequest()
+    {
+        return new SiteCreateRequest
+        {
+            Name = Model!.Name,
+            Description = Model.Description,
+            Template = Model.Template,
+            Url = Model.Url
+        };
+    }
+
+    private SettingsUpdateRequest ToSettingsRequest(Guid siteId)
+    {
+        return new SettingsUpdateRequest
+        {
+            Id = siteId,
+            Settings = new Dictionary<string, string>
+            {
+                ["MetaTitle"] = Model!.MetaTitle,
+                ["MetaDescription"] = Model.MetaDescription,
+                ["MetaKeywords"] = Model.MetaKeywords
+            }
+        };
     }
 }

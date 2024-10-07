@@ -8,6 +8,8 @@ public static class ServiceExtensions
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        services.AddAutoMapper(typeof(MappingProfile));
+
         services.AddScoped<IPermissionManager, PermissionManager>();
 
         services.AddScoped<IUserTokenProvider, JwtUserTokenProvider>();

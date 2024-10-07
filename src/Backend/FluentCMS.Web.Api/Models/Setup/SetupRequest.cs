@@ -16,6 +16,5 @@ public class SetupRequest
     public string Template { get; set; } = default!;
 
     [Required]
-    [DomainName]
     public string Url { get; set; } = default!;
 }

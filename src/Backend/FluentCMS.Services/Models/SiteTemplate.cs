@@ -16,4 +16,5 @@ public class SiteTemplate
     public List<string> AdminRoles { get; set; } = [];
     public List<string> ContributorRoles { get; set; } = [];
     public List<Role> Roles { get; set; } = [];
+    public Dictionary<string, string> Settings { get; set; } = [];
 }

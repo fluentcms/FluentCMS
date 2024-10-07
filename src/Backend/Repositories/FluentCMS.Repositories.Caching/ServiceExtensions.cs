@@ -6,7 +6,6 @@ public static class ServiceExtensions
 {
     public static IServiceCollection AddCachedRepositories(this IServiceCollection services)
     {
-        services.AddAutoMapper(typeof(ServiceExtensions));
 
         // Register repositories
         services.Decorate<IApiTokenRepository, ApiTokenRepository>();
@@ -18,6 +17,7 @@ public static class ServiceExtensions
         services.Decorate<IPluginDefinitionRepository, PluginDefinitionRepository>();
         services.Decorate<IPluginRepository, PluginRepository>();
         services.Decorate<IRoleRepository, RoleRepository>();
+        services.Decorate<ISettingsRepository, SettingsRepository>();
         services.Decorate<ISiteRepository, SiteRepository>();
         services.Decorate<IUserRoleRepository, UserRoleRepository>();
 

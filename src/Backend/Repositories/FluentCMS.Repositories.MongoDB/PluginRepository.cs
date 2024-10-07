@@ -42,18 +42,4 @@ public class PluginRepository(IMongoDBContext mongoDbContext, IApiExecutionConte
         }
         return default;
     }
-
-    public async Task<Plugin?> UpdateSettings(Guid pluginId, Dictionary<string, string> settings, CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var plugin = await GetById(pluginId, cancellationToken);
-
-        if (plugin != null)
-        {
-            plugin.Settings = settings;
-            return await Update(plugin, cancellationToken);
-        }
-        return default;
-    }
 }

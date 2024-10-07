@@ -7,10 +7,4 @@ public abstract class SiteAssociatedRepository<TEntity>(ISiteAssociatedRepositor
         var entities = await siteAssociatedRepository.GetAll(cancellationToken);
         return entities.Where(e => e.SiteId == siteId);
     }
-
-    public async Task<TEntity?> GetByIdForSite(Guid id, Guid siteId, CancellationToken cancellationToken = default)
-    {
-        var entity = await siteAssociatedRepository.GetById(id, cancellationToken);
-        return entity?.SiteId == siteId ? entity : default;
-    }
 }
