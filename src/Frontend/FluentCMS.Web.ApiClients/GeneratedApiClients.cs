@@ -13372,9 +13372,6 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("settings")]
         public System.Collections.Generic.Dictionary<string, string>? Settings { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("siteId")]
-        public System.Guid SiteId { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("name")]
         public string? Name { get; set; } = default!;
 
