@@ -6,7 +6,7 @@ $row: $prefix + 'section-row';
     flex-wrap: wrap;
 }
 
-.#{$section} > .f-plugin-container {
+.#{$section} > [data-cols] {
     width: 100%;
 }
 

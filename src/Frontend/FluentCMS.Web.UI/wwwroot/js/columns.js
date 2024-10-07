@@ -73,7 +73,7 @@ export function Columns(element, {
             el = document.querySelector(selector)
             
             resizer = doc.createElement('div')
-            resizer.classList.add('resizer-handle')
+            resizer.classList.add('f-resizer-handle')
             el.appendChild(resizer)
 
             if(isNaN(el.dataset.cols) || el.dataset.cols == 0) {

@@ -1,3 +1,12 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  padding: 0;
+  margin: 0;
+}
+
 .f-toolbar {
   padding-top: 6px;
   padding-bottom: 6px;
@@ -5,31 +14,25 @@
   box-shadow: inset 0 -1px 4px rgba(0, 0, 0, 0.2509803922);
   height: 46px;
 }
-
 .f-toolbar-container {
   padding-left: 1rem;
   padding-right: 1rem;
   display: flex;
   justify-content: space-between;
 }
-
-.f-toolbar-start, .f-toolbar-end, .f-toolbar-center {
+.f-toolbar-start, .f-toolbar-center, .f-toolbar-end {
   display: flex;
   gap: 10px;
 }
-
 .f-toolbar-start, .f-toolbar-end {
   min-width: 200px;
 }
-
 .f-toolbar-center {
   justify-content: center;
 }
-
 .f-toolbar-end {
   justify-content: end;
 }
-
 .f-toolbar-button {
   height: 34px;
   font-size: 12px;
@@ -43,55 +46,38 @@
   gap: 0.5rem;
   border: none;
 }
-
 .f-toolbar-button-outline {
   border: 1px solid #154EF2;
   color: #154EF2;
   background-color: white;
 }
-
 .f-toolbar-button-primary {
   color: white;
   background-color: #154EF2;
 }
-
-.f-toolbar-button-secondary {
-  color: white;
-  background-color: #A1B7C9;
-}
-
 .f-toolbar-button-text {
   white-space: nowrap;
 }
-
 .f-toolbar-button-outline:hover {
   background-color: #154EF2;
   color: white;
 }
-
 .f-toolbar-button-icon {
   width: 34px;
   padding: 0;
 }
-
 .f-toolbar-responsive-buttons {
   display: flex;
   align-items: center;
   gap: 4px;
 }
-
 .f-toolbar-responsive-button {
   width: 34px;
   border: none;
   cursor: pointer;
   background-color: transparent;
 }
-
-.f-toolbar-responsive-button:hover {
-  color: #154EF2;
-}
-
-.f-toolbar-responsive-button-active {
+.f-toolbar-responsive-button:hover, .f-toolbar-responsive-button-active {
   color: #154EF2;
 }
 
@@ -104,36 +90,14 @@
     width: 36px;
   }
 }
-* {
-  box-sizing: border-box;
-}
-
-body {
-  padding: 0;
-  margin: 0;
-}
-
 .f-page-editor {
   width: 100%;
   overflow: hidden;
   height: 100vh;
 }
 
-.f-page-editor-iframe-wrapper {
-  background-color: #EBEBEB;
-  position: relative;
-  height: calc(100% - 40px);
-  transition: all 0.3s ease;
-  width: 100%;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .f-page-editor-iframe {
   position: absolute;
-  /* transition: all 0.1s ease; */
   top: 0;
   bottom: 0;
   left: 0;
@@ -142,7 +106,17 @@ body {
   height: 100%;
   border: none;
 }
-
+.f-page-editor-iframe-wrapper {
+  background-color: #EBEBEB;
+  position: relative;
+  height: calc(100% - 46px);
+  transition: all 0.3s ease;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .f-page-editor-iframe-resizer {
   border-radius: 2px;
   box-shadow: 0 0 8px -4px rgb(129, 129, 129);
@@ -156,7 +130,6 @@ body {
   bottom: 50%;
   cursor: grab;
 }
-
 .f-page-editor-iframe-resizer:hover {
   background-color: #d4d4d4;
   height: 64px;
@@ -167,7 +140,6 @@ body {
   bottom: 50%;
   cursor: grab;
 }
-
 .f-page-editor-iframe-resizer::before, .f-page-editor-iframe-resizer::after {
   content: "";
   background-color: #aaaaaa;
@@ -177,19 +149,15 @@ body {
   top: 8px;
   bottom: 8px;
 }
-
 .f-page-editor-iframe-resizer:hover::after, .f-page-editor-iframe-resizer:hover::before {
   background-color: #c0c0c0;
 }
-
 .f-page-editor-iframe-resizer::before {
   left: 3px;
 }
-
 .f-page-editor-iframe-resizer::after {
   right: 3px;
 }
-
 [data-responsive-mode] .f-page-editor-iframe {
   left: auto;
   right: auto;
@@ -198,7 +166,6 @@ body {
   height: calc(100% - 2rem);
   max-width: calc(100% - 2rem);
 }
-
 [data-responsive-mode] .f-page-editor-iframe-resizer {
   display: flex;
 }

@@ -1,26 +1,29 @@
-.f-section {
+$section: $prefix + 'section';
+$plugin-definition-item: $prefix + 'plugin-definition-item';
+
+.#{$section} {
     min-height: 100px;
 }
 
-.f-section .f-plugin-definition-item {
+.#{$section} .#{$plugin-definition-item} {
     background-color: #444444;
     color: #444444;
     width: 100%;
 }
 
-.f-section .f-plugin-definition-item-icon {
+.#{$section} .#{$plugin-definition-item}-icon {
     display: none;
 }
 
-.f-plugin-container-action-drag {
+.#{$prefix}plugin-container-action-drag {
     cursor: grab;
 }
 
-.f-plugin-container-moving {
+.#{$prefix}plugin-container-moving {
     opacity: 0.5;
 }
 
-.f-section:has(.f-plugin-definition-item) {
+.#{$section}:has(.#{$plugin-definition-item}) {
     box-shadow: inset 0 0 32px #2032ff;
     border: 1px solid rgb(0, 81, 255);
 }

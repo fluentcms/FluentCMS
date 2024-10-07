@@ -1,15 +1,16 @@
 $section: $prefix + 'section';
+$resizer-handle: $prefix + 'resizer-handle';
 
-.#{section} {
+.#{$section} {
     position: relative;
     overflow-x: hidden;
 }
 
-.#{section}.dragging * {
+.#{$section}.dragging * {
     user-select: none;
 }
 
-.#{section}.active .line {
+.#{$section}.active .line {
     position: absolute;
     top: 0;
     height: 100%;
@@ -19,16 +20,15 @@ $section: $prefix + 'section';
     pointer-events: none;
 }
 
-.#{section}.dragging .line {
+.#{$section}.dragging .line {
     opacity: 1;
 }
-.#{section}.active [data-cols] {
+.#{$section}.active [data-cols] {
     transition: all 0.3s ease;
     position: relative;
-    /* box-shadow: 0 0 0 1px rgba(161, 161, 161, 0.459); */
 }  
 
-.#{section}.active .resizer-handle {
+.#{$section}.active .#{$resizer-handle} {
     position: absolute;
     z-index: 1;
     top: 0;
@@ -38,7 +38,7 @@ $section: $prefix + 'section';
     cursor:col-resize;
 }
 
-.#{section}.active .resizer-handle::before {
+.#{$section}.active .#{$resizer-handle}::before {
     content: '';
     position:absolute;
     transition: all 0.3s ease;
@@ -53,7 +53,7 @@ $section: $prefix + 'section';
     cursor: col-resize;
 }
 
-.#{section}.active .resizer-handle::after {
+.#{$section}.active .#{$resizer-handle}::after {
     content: '';
     position:absolute;
     transition: all 0.3s ease;
@@ -69,13 +69,13 @@ $section: $prefix + 'section';
     cursor: col-resize;
 }
 
-.#{section}.active .dragging {
+.#{$section}.active .dragging {
     cursor: col-resize;
 }
 
-.#{section}.active .resizer-handle.dragging::before, 
-.#{section}.active .resizer-handle.dragging::after,
-.#{section}.active .resizer-handle:hover::before, 
-.#{section}.active .resizer-handle:hover::after {
+.#{$section}.active .#{$resizer-handle}.dragging::before, 
+.#{$section}.active .#{$resizer-handle}.dragging::after,
+.#{$section}.active .#{$resizer-handle}:hover::before, 
+.#{$section}.active .#{$resizer-handle}:hover::after {
     opacity: 1;
 }

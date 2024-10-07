@@ -5,31 +5,25 @@
   box-shadow: inset 0 -1px 4px rgba(0, 0, 0, 0.2509803922);
   height: 46px;
 }
-
 .f-toolbar-container {
   padding-left: 1rem;
   padding-right: 1rem;
   display: flex;
   justify-content: space-between;
 }
-
-.f-toolbar-start, .f-toolbar-end, .f-toolbar-center {
+.f-toolbar-start, .f-toolbar-center, .f-toolbar-end {
   display: flex;
   gap: 10px;
 }
-
 .f-toolbar-start, .f-toolbar-end {
   min-width: 200px;
 }
-
 .f-toolbar-center {
   justify-content: center;
 }
-
 .f-toolbar-end {
   justify-content: end;
 }
-
 .f-toolbar-button {
   height: 34px;
   font-size: 12px;
@@ -43,55 +37,38 @@
   gap: 0.5rem;
   border: none;
 }
-
 .f-toolbar-button-outline {
   border: 1px solid #154EF2;
   color: #154EF2;
   background-color: white;
 }
-
 .f-toolbar-button-primary {
   color: white;
   background-color: #154EF2;
 }
-
-.f-toolbar-button-secondary {
-  color: white;
-  background-color: #A1B7C9;
-}
-
 .f-toolbar-button-text {
   white-space: nowrap;
 }
-
 .f-toolbar-button-outline:hover {
   background-color: #154EF2;
   color: white;
 }
-
 .f-toolbar-button-icon {
   width: 34px;
   padding: 0;
 }
-
 .f-toolbar-responsive-buttons {
   display: flex;
   align-items: center;
   gap: 4px;
 }
-
 .f-toolbar-responsive-button {
   width: 34px;
   border: none;
   cursor: pointer;
   background-color: transparent;
 }
-
-.f-toolbar-responsive-button:hover {
-  color: #154EF2;
-}
-
-.f-toolbar-responsive-button-active {
+.f-toolbar-responsive-button:hover, .f-toolbar-responsive-button-active {
   color: #154EF2;
 }
 
@@ -109,7 +86,7 @@
   flex-wrap: wrap;
 }
 
-.f-section > .f-plugin-container {
+.f-section > [data-cols] {
   width: 100%;
 }
 

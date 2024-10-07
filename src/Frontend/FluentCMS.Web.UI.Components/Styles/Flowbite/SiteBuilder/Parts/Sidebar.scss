@@ -1,63 +1,66 @@
 $sidebar: $prefix + 'page-editor-sidebar';
+$plugin-definition: $prefix + 'plugin-definition';
+$sidebar-open: $prefix + 'page-editor-sidebar-open';
 
-.#{$sidebar} .f-plugin-definition-list {
-    overflow: scroll;
-    height: 100%;
-    display: flex;
-    padding: 0.5rem;
-    box-sizing: border-box;
-    flex-direction: column;
-    gap: 6px;
-    overflow: auto;
-    width: 100%;
+.#{$plugin-definition} {
+    &-list {
+        overflow: scroll;
+        height: 100%;
+        display: flex;
+        padding: 0.5rem;
+        box-sizing: border-box;
+        flex-direction: column;
+        gap: 6px;
+        overflow: auto;
+        width: 100%;
+
+        &-title {
+            font-size: 12px;
+            font-family: sans-serif;
+        }
+    }
+
+    &-item {
+        padding: 0.75rem;
+        display: flex;
+        font-family: sans-serif;
+        height: 72px;
+        gap: 10px;
+        border: 1px solid #C1C1C1;
+        background-color: white;
+        border-radius: 3px;
+
+        :hover {
+            background-color: white;
+            border-color: #C1C1C1;
+            cursor: grab;
+        }
+
+        &-icon {
+            width: 48px;
+            height: 48px;
+        }
+
+        &-content {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .#{$prefix}name {
+            font-size: 14px;
+            line-height: 150%;
+            color: #222222;
+        }
+
+        .#{$prefix}description {
+            font-size: 12px;
+            line-height: 150%;
+            color: #333333;
+        }
+    }
 }
 
-.#{$sidebar} .f-plugin-definition-list-title {
-    font-size: 12px;
-    font-family: sans-serif;
-}
-
-.#{$sidebar} .f-plugin-definition-item {
-    padding: 0.75rem;
-    display: flex;
-    font-family: sans-serif;
-    height: 72px;
-    gap: 10px;
-    border: 1px solid #C1C1C1;
-    background-color: white;
-    border-radius: 3px;
-}
-
-.#{$sidebar} .f-plugin-definition-item:hover {
-    background-color: white;
-    border-color: #C1C1C1;
-    cursor: grab;
-}
-
-.f-plugin-definition-item-icon {
-    width: 48px;
-    height: 48px;
-}
-
-.f-plugin-definition-item-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.#{$sidebar} .f-plugin-definition-item .f-name {
-    /* font-weight: bold; */
-    font-size: 14px;
-    line-height: 150%;
-    color: #222222;
-}
-
-.#{$sidebar} .f-plugin-definition-item .f-description {
-    font-size: 12px;
-    line-height: 150%;
-    color: #333333;
-
-}
 
 .#{$sidebar} {
     width: 240px;
@@ -70,8 +73,12 @@ $sidebar: $prefix + 'page-editor-sidebar';
     position: fixed;
     top: 0;
     z-index: 5;
-}
 
-.#{$sidebar}.f-page-editor-sidebar-open {
-    right: 0;
+    &.#{$sidebar-open} {
+        right: 0;
+    }
+
+    [data-responsive-mode] & {
+        display: none;
+    }
 }
