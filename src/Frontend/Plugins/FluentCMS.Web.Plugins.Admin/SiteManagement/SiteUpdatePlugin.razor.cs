@@ -18,11 +18,6 @@ public partial class SiteUpdatePlugin
 
     protected override async Task OnInitializedAsync()
     {
-        if (Layouts is null)
-        {
-            var layoutsResponse = await ApiClient.Layout.GetBySiteIdAsync(ViewState.Site.Id);
-            Layouts = layoutsResponse?.Data?.ToList() ?? [];
-        }
 
         if (Model is null)
         {
@@ -30,6 +25,12 @@ public partial class SiteUpdatePlugin
             Site = siteResponse.Data;
             Model = new SiteUpdateModel(Site);
             Urls = string.Join(",", Model.Urls ?? []);
+        }
+
+        if (Layouts is null)
+        {
+            var layoutsResponse = await ApiClient.Layout.GetBySiteIdAsync(Site!.Id);
+            Layouts = layoutsResponse?.Data?.ToList() ?? [];
         }
 
     }
