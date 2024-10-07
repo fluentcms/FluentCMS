@@ -9,29 +9,4 @@ public class SiteCreateModel
     public string MetaTitle { get; set; } = string.Empty;
     public string MetaDescription { get; set; } = string.Empty;
     public string MetaKeywords { get; set; } = string.Empty;
-
-    public SiteCreateRequest ToRequest()
-    {
-        return new SiteCreateRequest
-        {
-            Name = Name,
-            Description = Description,
-            Template = Template,
-            Url = Url
-        };
-    }
-
-    public SettingsUpdateRequest ToSettings(Guid siteId)
-    {
-        return new SettingsUpdateRequest
-        {
-            Id = siteId,
-            Settings = new Dictionary<string, string>
-            {
-                ["MetaTitle"] = MetaTitle,
-                ["MetaDescription"] = MetaDescription,
-                ["MetaKeywords"] = MetaKeywords
-            }
-        };
-    }
 }

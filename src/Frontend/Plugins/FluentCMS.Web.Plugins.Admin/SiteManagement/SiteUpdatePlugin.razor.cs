@@ -20,8 +20,7 @@ public partial class SiteUpdatePlugin
         {
             var siteResponse = await ApiClient.Site.GetByIdAsync(Id);
             Site = siteResponse.Data;
-            Model = new SiteUpdateModel();
-            Model.Fill(Site);
+            Model = GetSiteUpdateModel(Site);
         }
 
         if (Layouts is null)
@@ -34,9 +33,56 @@ public partial class SiteUpdatePlugin
 
     private async Task OnSubmit()
     {
-        Model!.Id = Id;
-        await ApiClient.Site.UpdateAsync(Model.GetRequest());
-        await ApiClient.Settings.UpdateAsync(Model.GetSettingsRequest());
+        await ApiClient.Site.UpdateAsync(GetSiteUpdateRequest());
+        await ApiClient.Settings.UpdateAsync(GetSettingsRequest());
         NavigateBack();
+    }
+
+    private SiteUpdateModel GetSiteUpdateModel(SiteDetailResponse siteDetailResponse)
+    {
+        var settings = siteDetailResponse.Settings ?? [];
+
+        var model = new SiteUpdateModel
+        {
+            Id = Id,
+            Name = siteDetailResponse.Name ?? string.Empty,
+            Description = siteDetailResponse.Description ?? string.Empty,
+            LayoutId = siteDetailResponse.LayoutId,
+            DetailLayoutId = siteDetailResponse.DetailLayoutId,
+            EditLayoutId = siteDetailResponse.EditLayoutId,
+            MetaTitle = settings["MetaTitle"] ?? string.Empty,
+            MetaDescription = settings["MetaDescription"] ?? string.Empty,
+            MetaKeywords = settings["MetaKeywords"] ?? string.Empty,
+            Urls = string.Join(",", siteDetailResponse.Urls ?? []),
+        };
+        return model;
+    }
+
+    private SiteUpdateRequest GetSiteUpdateRequest()
+    {
+        return new SiteUpdateRequest
+        {
+            Id = Id,
+            Name = Model!.Name,
+            Description = Model.Description,
+            LayoutId = Model.LayoutId,
+            DetailLayoutId = Model.DetailLayoutId,
+            EditLayoutId = Model.EditLayoutId,
+            Urls = [.. Model.Urls.Split(",")]
+        };
+    }
+
+    private SettingsUpdateRequest GetSettingsRequest()
+    {
+        return new SettingsUpdateRequest
+        {
+            Id = Id,
+            Settings = new Dictionary<string, string>
+            {
+                ["MetaTitle"] = Model!.MetaTitle,
+                ["MetaDescription"] = Model.MetaDescription,
+                ["MetaKeywords"] = Model.MetaKeywords
+            }
+        };
     }
 }

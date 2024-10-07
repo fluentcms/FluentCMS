@@ -23,10 +23,35 @@ public partial class SiteCreatePlugin
     {
         if (Model != null)
         {
-            var siteCreateRequest = Model.ToRequest();
+            var siteCreateRequest = GetSiteCreateRequest();
             var response = await ApiClient.Site.CreateAsync(siteCreateRequest);
-            await ApiClient.Settings.UpdateAsync(Model.ToSettings(response.Data.Id));
+            await ApiClient.Settings.UpdateAsync(ToSettingsRequest(response.Data.Id));
         }
         NavigateBack();
+    }
+
+    private SiteCreateRequest GetSiteCreateRequest()
+    {
+        return new SiteCreateRequest
+        {
+            Name = Model!.Name,
+            Description = Model.Description,
+            Template = Model.Template,
+            Url = Model.Url
+        };
+    }
+
+    private SettingsUpdateRequest ToSettingsRequest(Guid siteId)
+    {
+        return new SettingsUpdateRequest
+        {
+            Id = siteId,
+            Settings = new Dictionary<string, string>
+            {
+                ["MetaTitle"] = Model!.MetaTitle,
+                ["MetaDescription"] = Model.MetaDescription,
+                ["MetaKeywords"] = Model.MetaKeywords
+            }
+        };
     }
 }

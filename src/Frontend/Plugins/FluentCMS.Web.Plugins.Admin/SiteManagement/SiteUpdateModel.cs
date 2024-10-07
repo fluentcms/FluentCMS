@@ -12,48 +12,4 @@ public class SiteUpdateModel
     public string MetaDescription { get; set; } = default!;
     public string MetaKeywords { get; set; } = default!;
     public string Urls { get; set; } = default!; // comma separated list
-
-    public void Fill(SiteDetailResponse siteDetailResponse)
-    {
-        var settings = siteDetailResponse.Settings ?? [];
-
-        Id = siteDetailResponse.Id;
-        Name = siteDetailResponse.Name ?? string.Empty;
-        Description = siteDetailResponse.Description ?? string.Empty;
-        LayoutId = siteDetailResponse.LayoutId;
-        DetailLayoutId = siteDetailResponse.DetailLayoutId;
-        EditLayoutId = siteDetailResponse.EditLayoutId;
-        MetaTitle = settings!["MetaTitle"] ?? string.Empty;
-        MetaDescription = settings["MetaDescription"] ?? string.Empty;
-        MetaKeywords = settings["MetaKeywords"] ?? string.Empty;
-        Urls = string.Join(",", siteDetailResponse.Urls ?? []);
-    }
-
-    public SiteUpdateRequest GetRequest()
-    {
-        return new SiteUpdateRequest
-        {
-            Id = Id,
-            Name = Name,
-            Description = Description,
-            LayoutId = LayoutId,
-            DetailLayoutId = DetailLayoutId,
-            EditLayoutId = EditLayoutId,
-            Urls = [.. Urls.Split(",")]
-        };
-    }
-
-    public SettingsUpdateRequest GetSettingsRequest()
-    {
-        return new SettingsUpdateRequest
-        {
-            Id = Id,
-            Settings = new Dictionary<string, string>
-            {
-                ["MetaTitle"] = MetaTitle,
-                ["MetaDescription"] = MetaDescription,
-                ["MetaKeywords"] = MetaKeywords
-            }
-        };
-    }
 }
