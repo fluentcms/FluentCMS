@@ -10,10 +10,7 @@ public partial class SiteUpdatePlugin
     [SupplyParameterFromForm(FormName = FORM_NAME)]
     private SiteUpdateModel? Model { get; set; }
 
-    [SupplyParameterFromForm(FormName = FORM_NAME)]
-    private string Urls { get; set; } = string.Empty;
     private List<LayoutDetailResponse>? Layouts { get; set; }
-
     private SiteDetailResponse? Site { get; set; }
 
     protected override async Task OnInitializedAsync()
@@ -23,13 +20,13 @@ public partial class SiteUpdatePlugin
         {
             var siteResponse = await ApiClient.Site.GetByIdAsync(Id);
             Site = siteResponse.Data;
-            Model = new SiteUpdateModel(Site);
-            Urls = string.Join(",", Model.Urls ?? []);
+            Model = new SiteUpdateModel();
+            Model.Fill(Site);
         }
 
         if (Layouts is null)
         {
-            var layoutsResponse = await ApiClient.Layout.GetBySiteIdAsync(Site!.Id);
+            var layoutsResponse = await ApiClient.Layout.GetBySiteIdAsync(Id);
             Layouts = layoutsResponse?.Data?.ToList() ?? [];
         }
 
@@ -38,7 +35,6 @@ public partial class SiteUpdatePlugin
     private async Task OnSubmit()
     {
         Model!.Id = Id;
-        Model!.Urls = [.. Urls.Split(",")];
         await ApiClient.Site.UpdateAsync(Model.GetRequest());
         await ApiClient.Settings.UpdateAsync(Model.GetSettingsRequest());
         NavigateBack();

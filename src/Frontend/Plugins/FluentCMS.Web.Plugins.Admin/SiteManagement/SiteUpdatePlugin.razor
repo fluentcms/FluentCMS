@@ -1,9 +1,8 @@
 ﻿@inherits BasePlugin
-@rendermode InteractiveServer
 
 <PluginForm Model="@Model" Name="@FORM_NAME" Title="Update Site" OnSubmit="OnSubmit">
     <FormInput @bind-Value="Model!.Name" Label="Name" Placeholder="Enter Name" Required />
-    <FormInput @bind-Value="Urls" Cols="6" Label="Urls" Placeholder="Enter each url in new line" />
+    <FormInput @bind-Value="Model!.Urls" Cols="6" Label="Urls" Placeholder="Enter each url in new line" />
     <FormSelect @bind-Value="Model!.LayoutId" Data="Layouts" ValueField="Id" TextField="Name" Cols="6" Label="Default Layout" Placeholder="Choose Layout" Visible="@(Layouts != null)" />
     <FormSelect @bind-Value="Model!.EditLayoutId" Data="Layouts" ValueField="Id" TextField="Name" Cols="6" Label="EditView Layout" Placeholder="Choose Layout" Visible="@(Layouts != null)" />
     <FormSelect @bind-Value="Model!.DetailLayoutId" Data="Layouts" ValueField="Id" TextField="Name" Cols="6" Label="SingleView Layout" Placeholder="Choose Layout" Visible="@(Layouts != null)" />
