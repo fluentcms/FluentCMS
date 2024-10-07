@@ -1,0 +1,115 @@
+$plugin-container: #{$prefix} + 'plugin-container';
+$plugin-toolbar-dropdown: #{$prefix} + 'plugin-toolbar-dropdown';
+$plugin-toolbar-action: #{$prefix} + 'plugin-toolbar-action';
+$primary-color: #0055f0;
+$border-color: #00549038;
+$hover-border-color: #005590;
+$bg-hover-color: #f1f1f1;
+$text-color: #333;
+
+.#{$plugin-container} {
+    position: relative;
+    transition: all 0.3s ease;
+
+    &-content {
+        border: 1px dashed $border-color;
+        position: relative;
+        overflow: hidden;
+        min-height: 75px;
+        transition: all 0.3s ease;
+    }
+
+    &-actions {
+        z-index: 4;
+        position: absolute;
+        display: flex;
+        align-items: center;
+        opacity: 0;
+        right: 0;
+    }
+
+    &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: transparent;
+        pointer-events: none;
+    }
+
+    &:hover {
+        .#{$plugin-container}-actions {
+            opacity: 1;
+        }
+
+        .#{$plugin-container}-content {
+            border-color: $hover-border-color;
+        }
+    }
+}
+
+.#{$plugin-toolbar-dropdown} {
+    position: relative;
+    display: inline-block;
+
+    &:hover .#{$plugin-toolbar-dropdown}-menu,
+    &:has(.#{$plugin-toolbar-dropdown}-toggler:hover) .#{$plugin-toolbar-dropdown}-menu {
+        display: block;
+    }
+
+    &:hover &-toggler {
+        margin-left: 4rem;
+    }
+
+    &-menu {
+        display: none;
+        position: absolute;
+        right: 0;
+        background-color: #fff;
+        border: 1px solid #ccc;
+        padding: 4px;
+        min-width: 160px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        z-index: 1;
+    }
+
+    &-item {
+        padding: 4px 8px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        color: $text-color;
+        width: 100%;
+
+        &:hover {
+            background-color: $bg-hover-color;
+        }
+    }
+}
+
+.#{$plugin-toolbar-action} {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    color: white;
+    background-color: $primary-color;
+    border: 1px solid $primary-color;
+
+    &:hover {
+        background-color: $hover-border-color;
+    }
+
+}
+
+[data-responsive-mode] {
+    .#{$plugin-container}-actions {
+        display: none;
+    }
+}

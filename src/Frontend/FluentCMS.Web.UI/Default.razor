@@ -35,12 +35,11 @@ else
     <PageTitle>@ViewState.Page?.Title</PageTitle>
     <HeadContent>
         @RenderDynamicContent(ViewState.Layout?.Head ?? string.Empty)
+        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI.Components/css/default.css">
         @if (ViewState.HasPageAdminAccess())
         {
-            <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.default.css">
+            <link rel="stylesheet" href="/_content/FluentCMS.Web.UI.Components/css/default-admin.css">
         }
-        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/html.css">
-        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.css">
     </HeadContent>
     @if (ViewState.HasPageAdminAccess())
     {
