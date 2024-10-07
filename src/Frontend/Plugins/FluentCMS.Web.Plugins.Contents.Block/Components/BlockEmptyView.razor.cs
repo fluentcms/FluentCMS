@@ -3,13 +3,24 @@ namespace FluentCMS.Web.Plugins.Contents.Block;
 public partial class BlockEmptyView
 {
     [Parameter]
-    public Guid PluginId { get; set; } = Guid.Empty;
+    public EventCallback<BlockDetailResponse> OnBlockSelected { get; set; }
 
     private List<BlockDetailResponse> Blocks { get; set; } = [];
     private List<BlockDetailResponse> FilteredBlocks { get; set; } = [];
-    private List<string?> Categories { get; set; } = [];
+    private List<string> Categories { get; set; } = [];
     private string CurrentCategory { get; set; } = string.Empty;
     private bool BlockModalOpen { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await ApiClient.Block.GetAllForSiteAsync(ViewState.Site.Id);
+        if (response?.Data != null)
+        {
+            Blocks = [.. response.Data];
+            Categories = Blocks.Select(block => block.Category ?? string.Empty).Distinct().ToList();
+            FilteredBlocks = Blocks;
+        }
+    }
 
     private async Task OpenBlockModal()
     {
@@ -23,9 +34,9 @@ public partial class BlockEmptyView
         await Task.CompletedTask;
     }
 
-    private async Task ChooseCategory(string? category)
+    private async Task ChooseCategory(string category)
     {
-        CurrentCategory = category ?? string.Empty;
+        CurrentCategory = category;
         if (string.IsNullOrEmpty(category))
         {
             FilteredBlocks = Blocks;
@@ -37,38 +48,9 @@ public partial class BlockEmptyView
         await Task.CompletedTask;
     }
 
-    private void ReloadPage()
+    private async Task ChooseBlockType(BlockDetailResponse selectedBlock)
     {
-        ViewState.Reload();
-    }
-
-    private async Task ChooseBlockType(BlockDetailResponse block)
-    {
-        await ApiClient.PluginContent.CreateAsync(nameof(BlockContent), PluginId, new Dictionary<string, object>
-        {
-            { "Content", block.Content! }
-        });
-
         BlockModalOpen = false;
-        ReloadPage();
-    }
-
-    private async Task Load()
-    {
-        var response = await ApiClient.Block.GetAllForSiteAsync(ViewState.Site.Id);
-        if (response?.Data != null)
-        {
-            Blocks = response.Data.ToList();
-            Categories = Blocks.Select(block => block.Category)
-                .Distinct()
-                .ToList();
-
-            FilteredBlocks = Blocks;
-        }
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        await Load();
+        await OnBlockSelected.InvokeAsync(selectedBlock);
     }
 }

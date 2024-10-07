@@ -3,11 +3,18 @@
 
 @if(Item != null)
 {
-    <div data-id="@Item.Id" class="f-block">
-        @((MarkupString)Item.Content)
-    </div>
+    @if (ViewState.HasPageContributorAccess())
+    {
+        <InlineEditor Value="@Item.Content" OnCancel="@OnCancel" OnSave="@UpdateContent" />
+    }
+    else
+    {
+        <div class="f-block">
+            @((MarkupString)Item.Content)
+        </div>
+    }
 }
-else if(ViewState.Type == ViewStateType.Default || ViewState.Type == ViewStateType.PagePreview)
+else if(ViewState.HasPageContributorAccess())
 {
-    <BlockEmptyView PluginId="@Plugin.Id"/>
+    <BlockEmptyView OnBlockSelected="@SaveBlockContent" />
 }

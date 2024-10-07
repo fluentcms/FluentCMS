@@ -106,31 +106,3 @@
 [data-responsive-mode] .f-page-editor-sidebar {
     display: none;
 }
-
-[data-inline-editable] {
-    transition: all 0.3s ease;
-}
-
-.f-block [data-inline-editable]:focus {
-    outline: none;
-    box-shadow: 0 0 0 1px #00559050;
-}
-
-.f-block-edited .f-block::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    background-color: #00000020;
-    opacity: 1;
-}
-
-.f-plugin-container:hover .f-block-edited .f-block::after {
-    opacity: 0;
-}
-
-.f-plugin-container:hover .f-block [data-inline-editable] {
-    background-color: #36abff36;
-}

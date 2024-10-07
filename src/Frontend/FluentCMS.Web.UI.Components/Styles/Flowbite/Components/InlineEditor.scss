@@ -1,0 +1,55 @@
+$inline-editor: $prefix + 'inline-editor';
+
+.#{$inline-editor} {
+    a {
+        pointer-events: none;
+    }
+
+    [data-inline-editable] {
+        transition: all 0.3s ease;
+    }
+
+    [data-inline-editable]:hover {
+        box-shadow: 0 0 0 1px #36abff36;
+    }
+    
+    [data-inline-editable]:focus {
+        outline: none;
+        box-shadow: 0 0 0 1px #00559050;
+    }
+
+    // Styles of backdrop
+    .#{$inline-editor}-dirty &-content::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        background-color: #00000020;
+        transition: all 0.3s ease;
+
+        opacity: 1;
+        pointer-events: none;
+    }
+
+    &-actions {
+        display: flex;
+        gap: 4px;
+        position: absolute;
+        top: 2rem;
+        right: 1rem;
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.3s ease;
+    }        
+}
+
+.#{$inline-editor}-content:hover::after {
+    opacity: 0;
+}
+
+.#{$inline-editor}-dirty .#{$inline-editor}-actions {
+    opacity: 1;
+    pointer-events: all;
+}

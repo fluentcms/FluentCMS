@@ -65,7 +65,6 @@ public static class ServiceExtensions
                 viewState.Reload();
             });
 
-
             navigationManager.LocationChanged += OnLocationChanged;
 
             viewState.DisposeAction = () =>
