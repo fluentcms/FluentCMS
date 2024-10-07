@@ -8,31 +8,30 @@ $inline-editor: $prefix + 'inline-editor';
     [data-inline-editable] {
         transition: all 0.3s ease;
     }
+
+    [data-inline-editable]:hover {
+        box-shadow: 0 0 0 1px #36abff36;
+    }
     
     [data-inline-editable]:focus {
         outline: none;
         box-shadow: 0 0 0 1px #00559050;
     }
 
-    [data-inline-editable]:hover {
-        box-shadow: 0 0 0 1px #36abff36;
-    }
-
     // Styles of backdrop
-    // &::after {
-    //     content: '';
-    //     position: absolute;
-    //     top: 0;
-    //     right: 0;
-    //     bottom: 0;
-    //     left: 0;
-    //     background-color: #00000020;
-    //     opacity: 1;
-    // }
+    .#{$inline-editor}-dirty &-content::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        background-color: #00000020;
+        transition: all 0.3s ease;
 
-    // .f-plugin-container:hover .f-block-edited .f-block::after {
-    //     opacity: 0;
-    // }
+        opacity: 1;
+        pointer-events: none;
+    }
 
     &-actions {
         display: flex;
@@ -40,6 +39,17 @@ $inline-editor: $prefix + 'inline-editor';
         position: absolute;
         top: 2rem;
         right: 1rem;
-        // pointer-events: none;
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.3s ease;
     }        
+}
+
+.#{$inline-editor}-content:hover::after {
+    opacity: 0;
+}
+
+.#{$inline-editor}-dirty .#{$inline-editor}-actions {
+    opacity: 1;
+    pointer-events: all;
 }

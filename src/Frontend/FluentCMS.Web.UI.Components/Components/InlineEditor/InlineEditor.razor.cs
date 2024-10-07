@@ -6,7 +6,7 @@ public partial class InlineEditor : IAsyncDisposable
     private IJSRuntime? JS { get; set; }
 
     [Parameter]
-    public string InitialValue { get; set; } = default!;
+    public string Value { get; set; } = default!;
 
     [Parameter]
     public EventCallback<string> OnSave { get; set; }
@@ -18,49 +18,19 @@ public partial class InlineEditor : IAsyncDisposable
     private DotNetObjectReference<InlineEditor> DotNetRef { get; set; } = default!;
     private IJSObjectReference Module { get; set; } = default!;
 
-    private MarkupString Value { get; set; } = new();
-
-    private bool IsEditing { get; set; } = false;
+    [JSInvokable]
+    public async Task Save(string content)
+    {
+        Value = content;
+        await OnSave.InvokeAsync(Value.ToString());
+        await Module.InvokeVoidAsync("reinitialize", DotNetRef, Element, Value);
+    }
 
     [JSInvokable]
-    public void UpdateContent(string content)
+    public async Task Cancel()
     {
-        UpdateContent2(content);
-
-        // StateHasChanged();
-    }
-
-    public void UpdateContent2(string content)        
-    {
-        IsEditing = true; 
-        Value = (MarkupString)content;
-    }
-    private void ToggleIsEditing()
-    {
-        IsEditing = true;
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        Value = (MarkupString)InitialValue;
-        await Task.CompletedTask;
-    }
- 
-    private async Task HandleSave()
-    {
-        await OnSave.InvokeAsync(Value.ToString());
-        IsEditing = false;
-        StateHasChanged();
-        await Module.InvokeVoidAsync("reinitialize", DotNetRef, Element);
-    }
-
-    private async Task HandleCancel()
-    {
-        Value = (MarkupString)InitialValue;
-        IsEditing = false;
         await OnCancel.InvokeAsync();
-        StateHasChanged();
-        await Module.InvokeVoidAsync("reinitialize", DotNetRef, Element);
+        await Module.InvokeVoidAsync("reinitialize", DotNetRef, Element, Value);
     }
 
     public async ValueTask DisposeAsync()
@@ -86,6 +56,6 @@ public partial class InlineEditor : IAsyncDisposable
         DotNetRef = DotNetObjectReference.Create(this);
         Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/InlineEditor/InlineEditor.razor.js");
 
-        await Module.InvokeVoidAsync("initialize", DotNetRef, Element);
+        await Module.InvokeVoidAsync("initialize", DotNetRef, Element, Value);
     }
 }

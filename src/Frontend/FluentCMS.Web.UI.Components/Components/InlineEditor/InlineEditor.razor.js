@@ -1,36 +1,67 @@
-function updateContent(dotnet, content) {
-    console.log('updateContent')
+async function onSave(ev) {
+    const dotnet = ev.target.closest('.f-inline-editor').dotnet
+    let content = ev.target.closest('.f-inline-editor').querySelector('.f-inline-editor-content').innerHTML   
+
+    // Remove dynamically added contenteditable attributes.
     content = content.replace(/ contenteditable=""/g, '')
-    dotnet.invokeMethodAsync('UpdateContent', content)
+
+    // remove ="" of simple attributes. disabled="" readonly=""...
+    content = content.replace(/=""/g, '')
+    
+    // These comments are added by blazor in runtime.
+    content = content.replace(/<!--!-->/g, '')
+
+    await dotnet.invokeMethodAsync('Save', content)
+}
+
+async function onCancel(ev) {
+    const dotnet = ev.target.closest('.f-inline-editor').dotnet
+
+    await dotnet.invokeMethodAsync('Cancel')
 }
 
 function onInput(ev) {
-    console.log('onInput', ev)
-    const element = ev.target.closest('.f-inline-editor-content')
-    updateContent(ev.target.dotnet, element.innerHTML)
+    const element = ev.target.closest('.f-inline-editor')
+    element.classList.add('f-inline-editor-dirty')
 }
 
-export function reinitialize(dotnet, element) {
+export function reinitialize(dotnet, element, content) {
+    element.classList.remove('f-inline-editor-dirty')
+
     dispose(dotnet, element)
-    initialize(dotnet, element)
+    initialize(dotnet, element, content)
 } 
 
-export async function initialize(dotnet, element) {
-    console.log('initialize', element)
-    const inlineElements = element.querySelectorAll('[data-inline-editable]')
-        
-    for(let el of inlineElements) {
-        el.dotnet = dotnet
-        el.setAttribute('contenteditable', '')        
-        el.addEventListener('input', onInput)
-    }
+export async function initialize(dotnet, element, content) {
+    element.dotnet = dotnet
+
+    const saveButton = element.querySelector('.f-inline-editor-action-save')
+    const cancelButton = element.querySelector('.f-inline-editor-action-cancel')
+
+    saveButton.addEventListener('click', onSave)
+    cancelButton.addEventListener('click', onCancel)
+    
+    element.querySelector('.f-inline-editor-content').innerHTML = content
+    
+    setTimeout(() => {
+        const inlineElements = element.querySelectorAll('[data-inline-editable]')
+        for(let el of inlineElements) {
+            el.setAttribute('contenteditable', '')        
+            el.addEventListener('input', onInput)
+        }
+    })
 }
 
 export async function dispose(dotnet, element) {
-    console.log('dispose', element)
+    const saveButton = element.querySelector('.f-inline-editor-action-save')
+    const cancelButton = element.querySelector('.f-inline-editor-action-cancel')
+    
+    saveButton.removeEventListener('click', onSave)
+    cancelButton.removeEventListener('click', onCancel)
+
     const inlineElements = element.querySelectorAll('[data-inline-editable]')
     for (let el of inlineElements) {
-        element.removeEventListener('input', onInput)
+        el.removeEventListener('input', onInput)
         el.removeAttribute('contenteditable')
     }
 }

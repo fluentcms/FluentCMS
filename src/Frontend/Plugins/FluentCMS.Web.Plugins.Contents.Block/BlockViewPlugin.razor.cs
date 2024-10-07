@@ -12,8 +12,8 @@ public partial class BlockViewPlugin
     }
 
     private async Task OnCancel() {
-        await Load();
         StateHasChanged();
+        await Task.CompletedTask;
     }
 
     private async Task UpdateContent(string content)
