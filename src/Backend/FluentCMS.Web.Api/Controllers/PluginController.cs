@@ -15,6 +15,7 @@ public class PluginController(IPluginService pluginService, IPluginDefinitionSer
         var plugin = await pluginService.GetById(id, cancellationToken);
         var response = mapper.Map<PluginDetailResponse>(plugin);
         await SetPluginDefinition(response, cancellationToken);
+        await SetPluginSettings(response, cancellationToken);
         return Ok(response);
     }
 

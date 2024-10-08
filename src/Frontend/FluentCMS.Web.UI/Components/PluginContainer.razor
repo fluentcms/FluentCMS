@@ -4,9 +4,18 @@
     <PluginContainerActions Plugin="@Plugin" />
     <ErrorBoundary>
         <ChildContent>
-            <div class="f-plugin-container-content">
-                <DynamicComponent Type=@GetPluginType() Parameters=@Parameters />
-            </div>
+            @if (ViewState.Type == ViewStateType.Default || ViewState.Type == ViewStateType.PagePreview)
+            {
+                <div class="f-plugin-container-content @Settings.Class" style="@Settings.Style">
+                    <DynamicComponent Type=@GetPluginType() Parameters=@Parameters />
+                </div>
+            }
+            else
+            {
+                <div class="f-plugin-container-content">
+                    <DynamicComponent Type=@GetPluginType() Parameters=@Parameters />
+                </div>
+            }
         </ChildContent>
         <ErrorContent>
             <div class="f-plugin-container-error">
