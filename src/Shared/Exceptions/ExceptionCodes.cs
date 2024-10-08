@@ -118,7 +118,6 @@ public static class ExceptionCodes
 
     #region Settings
 
-    public const string SettingsNotFound = "Settings.NotFound";
     public const string SettingsUnableToUpdate = "Settings.UnableToUpdate";
 
     #endregion
