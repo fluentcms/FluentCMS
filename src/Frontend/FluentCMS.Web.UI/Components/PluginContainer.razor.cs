@@ -12,24 +12,10 @@ public partial class PluginContainer : IAsyncDisposable
     private ViewState ViewState { get; set; } = default!;
 
     private IDictionary<string, object> Parameters { get; set; } = new Dictionary<string, object>();
-    private PluginSettingsModel Settings { get; set; } = new();
-
-    private void Load()
-    {
-        Plugin.Settings.TryGetValue("Class", out var Class);
-        Plugin.Settings.TryGetValue("Style", out var Style);
-
-        Settings = new PluginSettingsModel {
-            Class = Class ?? "",
-            Style = Style ?? "",
-        };
-
-        StateHasChanged();
-    }
-
+    
     private void OnStateChanged(object? sender, EventArgs args)
     {
-        Load();
+        StateHasChanged();
     }
 
     protected override void OnInitialized()
@@ -39,13 +25,18 @@ public partial class PluginContainer : IAsyncDisposable
             { "Plugin", Plugin }
         };
         ViewState.OnStateChanged += OnStateChanged;
-        Load();
     }
 
     public async ValueTask DisposeAsync()
     {
         ViewState.OnStateChanged -= OnStateChanged;
         await Task.CompletedTask;
+    }
+
+    private string GetSetting(string settingKey)
+    {
+        Plugin.Settings.TryGetValue(settingKey, out var value);
+        return value ?? string.Empty;
     }
 
     private Type? GetPluginType()

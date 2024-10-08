@@ -6,8 +6,10 @@
         <ChildContent>
             @if (ViewState.Type == ViewStateType.Default || ViewState.Type == ViewStateType.PagePreview)
             {
-                <div class="f-plugin-container-content @Settings.Class" style="@Settings.Style">
-                    <DynamicComponent Type=@GetPluginType() Parameters=@Parameters />
+                <div class="f-plugin-container-content">
+                    <div class="f-plugin-container-content-wrapper @GetSetting("Class")" style="@GetSetting("Style")" @key="Plugin.Settings">
+                        <DynamicComponent Type=@GetPluginType() Parameters=@Parameters />
+                    </div>
                 </div>
             }
             else

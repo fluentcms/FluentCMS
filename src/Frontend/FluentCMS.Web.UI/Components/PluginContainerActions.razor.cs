@@ -1,5 +1,3 @@
-using AutoMapper;
-
 namespace FluentCMS.Web.UI;
 
 public partial class PluginContainerActions
@@ -9,9 +7,6 @@ public partial class PluginContainerActions
 
     [Inject]
     public ViewState ViewState { get; set; } = default!;
-
-    [Inject]
-    public IMapper Mapper { get; set; } = default!;
 
     [Inject]
     public NavigationManager NavigationManager { get; set; } = default!;
@@ -81,15 +76,12 @@ public partial class PluginContainerActions
                 {"Style", SettingsModel.Style},
             }
         };
-        await ApiClients.Settings.UpdateAsync(request);
-        SettingsModalOpen = false;
 
-        var pluginResponse = await ApiClients.Plugin.GetByIdAsync(Plugin.Id);
-        if (pluginResponse.Data != null)
-        {
-            Plugin.Settings = pluginResponse.Data?.Settings ?? [];
-            ViewState.StateChanged();        
-        }
+        await ApiClients.Settings.UpdateAsync(request);
+
+        Plugin.Settings = request.Settings;
+        SettingsModalOpen = false;
+        ViewState.StateChanged();
     }
 
     #endregion
