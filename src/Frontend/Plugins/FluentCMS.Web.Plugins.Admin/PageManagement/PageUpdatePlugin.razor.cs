@@ -72,6 +72,6 @@ public partial class PageUpdatePlugin
             Model.LayoutId = default!;
 
         await ApiClient.Page.UpdateAsync(Model);
-        NavigateBack();
+        NavigateBack(true);
     }
 }
