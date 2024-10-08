@@ -53,7 +53,7 @@
     <EditForm Model="@SettingsModel" Name="PluginSettings" OnValidSubmit="OnSettingsSubmit">
         <DataAnnotationsValidator />
 
-        <Modal Visible="SettingsModalOpen" OnClose="OnSettingsClose">
+        <Modal Size="ModalSize.Large" Visible="SettingsModalOpen" OnClose="OnSettingsClose">
             <ModalHeader>Plugin Settings</ModalHeader>
             <ModalBody>
                 <Grid GutterX="GridGutter.Large">
