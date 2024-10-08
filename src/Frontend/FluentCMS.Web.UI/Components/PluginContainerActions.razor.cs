@@ -40,6 +40,52 @@ public partial class PluginContainerActions
         NavigationManager.NavigateTo(url, true);
     }
 
+    #region Plugin Settings
+    private bool SettingsModalOpen { get; set; } = false;
+    private PluginSettingsModel SettingsModel { get; set; } = new();
+
+    private async Task OpenSettingsModal()
+    {
+        Plugin.Settings.TryGetValue("Class", out var Class);
+        Plugin.Settings.TryGetValue("Style", out var Style);
+
+        SettingsModel = new()
+        {
+            Class = Class ?? "",
+            Style = Style ?? "",
+        };
+
+        SettingsModalOpen = true;
+        await Task.CompletedTask;
+    }
+
+    private async Task OnSettingsClose()
+    {
+        SettingsModalOpen = false;
+        await Task.CompletedTask;
+    }
+
+    private async Task OnSettingsSubmit()
+    {
+        var request = new SettingsUpdateRequest
+        {
+            Id = Plugin.Id,
+            Settings = new Dictionary<string, string>
+            {
+                {"Class", SettingsModel.Class},
+                {"Style", SettingsModel.Style},
+            }
+        };
+
+        await ApiClients.Settings.UpdateAsync(request);
+
+        Plugin.Settings = request.Settings;
+        SettingsModalOpen = false;
+        ViewState.StateChanged();
+    }
+
+    #endregion
+
     #region Delete Plugin
 
     private bool DeleteConfirmModalOpen { get; set; } = false;

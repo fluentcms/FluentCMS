@@ -371,8 +371,8 @@
                     "IsDefault": true
                 },
                 {
-                    "Name": "Settings",
-                    "Type": "ContentListSettingsPlugin"
+                    "Name": "Edit",
+                    "Type": "ContentListEditPlugin"
                 }
             ]
         }

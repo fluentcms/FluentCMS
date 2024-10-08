@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Web.UI;
 
-public partial class PluginContainer
+public partial class PluginContainer : IAsyncDisposable
 {
     [Parameter]
     public PluginViewState Plugin { get; set; } = default!;
@@ -12,6 +12,11 @@ public partial class PluginContainer
     private ViewState ViewState { get; set; } = default!;
 
     private IDictionary<string, object> Parameters { get; set; } = new Dictionary<string, object>();
+    
+    private void OnStateChanged(object? sender, EventArgs args)
+    {
+        StateHasChanged();
+    }
 
     protected override void OnInitialized()
     {
@@ -19,6 +24,19 @@ public partial class PluginContainer
         {
             { "Plugin", Plugin }
         };
+        ViewState.OnStateChanged += OnStateChanged;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        ViewState.OnStateChanged -= OnStateChanged;
+        await Task.CompletedTask;
+    }
+
+    private string GetSetting(string settingKey)
+    {
+        Plugin.Settings.TryGetValue(settingKey, out var value);
+        return value ?? string.Empty;
     }
 
     private Type? GetPluginType()
