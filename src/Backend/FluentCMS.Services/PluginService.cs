@@ -13,7 +13,7 @@ public interface IPluginService : IAutoRegisterService
 }
 
 
-public class PluginService(IPluginRepository pluginRepository, IPageRepository pageRepository, IPermissionManager permissionManager, IMessagePublisher messagePublisher) : IPluginService
+public class PluginService(IPluginRepository pluginRepository, IPageRepository pageRepository, ISettingsRepository settingsRepository, IPermissionManager permissionManager, IMessagePublisher messagePublisher) : IPluginService
 {
     public async Task<Plugin> Create(Plugin plugin, CancellationToken cancellationToken = default)
     {
@@ -22,6 +22,9 @@ public class PluginService(IPluginRepository pluginRepository, IPageRepository p
 
         var created = await pluginRepository.Create(plugin, cancellationToken) ??
             throw new AppException(ExceptionCodes.PluginUnableToCreate);
+
+        var settings = new Dictionary<string, string> {};
+        await settingsRepository.Update(created.Id, settings, cancellationToken);
 
         await messagePublisher.Publish(new Message<Plugin>(ActionNames.PluginCreated, created), cancellationToken);
 
