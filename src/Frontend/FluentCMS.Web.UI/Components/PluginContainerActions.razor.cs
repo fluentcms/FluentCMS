@@ -6,39 +6,69 @@ public partial class PluginContainerActions
     public PluginViewState Plugin { get; set; } = default!;
 
     [Inject]
-    public ViewState ViewState { get; set; } = default!;
+    private PluginLoader PluginLoader { get; set; } = default!;
 
     [Inject]
-    public NavigationManager NavigationManager { get; set; } = default!;
+    public ViewState ViewState { get; set; } = default!;
 
     [Inject]
     private ApiClientFactory ApiClients { get; set; } = default!;
 
-    private void OpenPluginView(string viewName = "Settings")
-    {
-        var baseUrl = new Uri(NavigationManager.Uri).LocalPath;
+    #region Plugin Edit
+    private bool EditModalOpen { get; set; } = false;
 
-        var queryParams = new List<string>
+    private Type? GetPluginType(string typeName)
+    {
+        PluginDefinitionTypeViewState? pluginDefType;
+
+        pluginDefType = Plugin.Definition?.Types?.Where(p => p!.Name!.Equals(typeName, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+
+        if (pluginDefType is null)
+            throw new InvalidOperationException("Plugin definition type not found!");
+
+        var assemblyName = Plugin?.Definition?.Assembly;
+        if (string.IsNullOrEmpty(assemblyName))
+            throw new InvalidOperationException("Plugin assembly name not found!");
+
+        var type = PluginLoader.GetType(assemblyName, pluginDefType!.Type!) ??
+            throw new InvalidOperationException("Plugin type not found!");
+
+        return type;
+    }
+
+    private async Task OpenEditModal()
+    {
+        EditModalOpen = true;
+        await Task.CompletedTask;
+    }
+
+    private async Task OnEditCancel()
+    {
+        EditModalOpen = false;
+        await Task.CompletedTask;
+    }
+
+    private async Task OnEditSubmit()
+    {
+        EditModalOpen = false;
+        ViewState.StateChanged();
+        await Task.CompletedTask;
+    }
+
+    private Dictionary<string, object> GetEditParameters()
+    {
+        Dictionary<string, object> result = new() 
         {
-            $"pluginId={Plugin.Id}"
+            { "Open", EditModalOpen },
+            { "Plugin", Plugin },
+            { "OnSubmit", EventCallback.Factory.Create(this, OnEditSubmit) },
+            { "OnCancel", EventCallback.Factory.Create(this, OnEditCancel) },
         };
 
-        if (!string.IsNullOrEmpty(viewName))
-            queryParams.Add($"viewName={viewName}");
-
-        var redirectTo = Uri.EscapeDataString(baseUrl);
-        if (ViewState.Type == ViewStateType.PagePreview)
-        {
-            redirectTo += Uri.EscapeDataString("?pagePreview=true");
-        }
-
-        queryParams.Add($"redirectTo={redirectTo}");
-
-        var url = baseUrl;
-
-        url += "?" + string.Join("&", queryParams);
-        NavigationManager.NavigateTo(url, true);
+        return result;
     }
+
+    #endregion
 
     #region Plugin Settings
     private bool SettingsModalOpen { get; set; } = false;
