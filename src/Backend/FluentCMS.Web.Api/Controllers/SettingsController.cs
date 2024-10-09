@@ -8,9 +8,15 @@ public class SettingsController(ISettingsService settingsService) : BaseGlobalCo
 
     [HttpPut]
     [Policy(AREA, UPDATE)]
-    public async Task<IApiResult<bool>> Update([FromBody] SettingsUpdateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<SettingsDetailResponse>> Update([FromBody] SettingsUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        await settingsService.Update(request.Id, request.Settings, cancellationToken);
-        return Ok(true);
+        var settings = await settingsService.Update(request.Id, request.Settings, cancellationToken);
+        var response = new SettingsDetailResponse
+        {
+            Id = settings.Id,
+            Settings = settings.Values            
+        };
+
+        return Ok(response);
     }
 }

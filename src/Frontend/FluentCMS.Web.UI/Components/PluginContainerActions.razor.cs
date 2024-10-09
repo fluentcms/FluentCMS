@@ -77,9 +77,9 @@ public partial class PluginContainerActions
             }
         };
 
-        await ApiClients.Settings.UpdateAsync(request);
+        var settingsResponse = await ApiClients.Settings.UpdateAsync(request);
 
-        Plugin.Settings = request.Settings;
+        Plugin.Settings = settingsResponse.Data?.Settings ?? [];
         SettingsModalOpen = false;
         ViewState.StateChanged();
     }
