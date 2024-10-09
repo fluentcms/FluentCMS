@@ -13971,12 +13971,12 @@ namespace FluentCMS.Web.ApiClients
     public partial class FileParameter
     {
         public FileParameter(System.IO.Stream data)
-            : this (data, null, null)
+            : this(data, null, null)
         {
         }
 
         public FileParameter(System.IO.Stream data, string? fileName)
-            : this (data, fileName, null)
+            : this(data, fileName, null)
         {
         }
 
