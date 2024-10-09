@@ -28,7 +28,7 @@ public partial class ContentListEditPlugin
         }
     }
 
-    private async Task OnSubmit()
+    private async Task HandleSubmit()
     {
         if (Plugin is null)
             return;
@@ -44,7 +44,7 @@ public partial class ContentListEditPlugin
 
         await ApiClient.Settings.UpdateAsync(request);
 
-        NavigateBack(true);
+        await OnSubmit.InvokeAsync();
     }
 
     class SettingsModel
