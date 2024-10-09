@@ -13,7 +13,7 @@ public partial class PluginContainer : IAsyncDisposable
 
     private IDictionary<string, object> Parameters { get; set; } = new Dictionary<string, object>();
     
-    private void OnStateChanged(object? sender, EventArgs args)
+    private void HandleUpdate()
     {
         StateHasChanged();
     }
@@ -24,12 +24,10 @@ public partial class PluginContainer : IAsyncDisposable
         {
             { "Plugin", Plugin }
         };
-        ViewState.OnStateChanged += OnStateChanged;
     }
 
     public async ValueTask DisposeAsync()
     {
-        ViewState.OnStateChanged -= OnStateChanged;
         await Task.CompletedTask;
     }
 

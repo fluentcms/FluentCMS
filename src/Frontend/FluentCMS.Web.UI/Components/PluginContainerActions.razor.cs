@@ -5,6 +5,9 @@ public partial class PluginContainerActions
     [Parameter]
     public PluginViewState Plugin { get; set; } = default!;
 
+    [Parameter]
+    public EventCallback OnUpdate { get; set; } = default!;
+
     [Inject]
     private PluginLoader PluginLoader { get; set; } = default!;
 
@@ -51,8 +54,10 @@ public partial class PluginContainerActions
     private async Task OnEditSubmit()
     {
         EditModalOpen = false;
-        ViewState.StateChanged();
-        await Task.CompletedTask;
+
+        // Should change settings to re render plugins (OnInitalized will be called again)
+        Plugin.Settings = new(Plugin.Settings);
+        await OnUpdate.InvokeAsync();
     }
 
     private Dictionary<string, object> GetEditParameters()
@@ -111,7 +116,7 @@ public partial class PluginContainerActions
 
         Plugin.Settings = request.Settings;
         SettingsModalOpen = false;
-        ViewState.StateChanged();
+        await OnUpdate.InvokeAsync();
     }
 
     #endregion
