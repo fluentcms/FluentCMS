@@ -54,9 +54,6 @@ public partial class PluginContainerActions
     private async Task OnEditSubmit()
     {
         EditModalOpen = false;
-
-        // Should change settings to re render plugins (OnInitalized will be called again)
-        Plugin.Settings = new(Plugin.Settings);
         await OnUpdate.InvokeAsync();
     }
 
@@ -114,7 +111,6 @@ public partial class PluginContainerActions
 
         await ApiClients.Settings.UpdateAsync(request);
 
-        Plugin.Settings = request.Settings;
         SettingsModalOpen = false;
         await OnUpdate.InvokeAsync();
     }

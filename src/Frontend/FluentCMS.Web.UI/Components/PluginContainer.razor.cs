@@ -1,6 +1,8 @@
-﻿namespace FluentCMS.Web.UI;
+﻿using AutoMapper;
 
-public partial class PluginContainer : IAsyncDisposable
+namespace FluentCMS.Web.UI;
+
+public partial class PluginContainer
 {
     [Parameter]
     public PluginViewState Plugin { get; set; } = default!;
@@ -11,11 +13,25 @@ public partial class PluginContainer : IAsyncDisposable
     [Inject]
     private ViewState ViewState { get; set; } = default!;
 
+    [Inject]
+    private IMapper Mapper { get; set; } = default!;
+
+    [Inject]
+    private ApiClientFactory ApiClient { get; set; } = default!;
+
     private IDictionary<string, object> Parameters { get; set; } = new Dictionary<string, object>();
     
-    private void HandleUpdate()
+    private async Task ReloadPlugin()
     {
-        StateHasChanged();
+        var pluginResponse = await ApiClient.Plugin.GetByIdAsync(Plugin.Id);
+        if(pluginResponse.Data != null)
+        {
+            Plugin = Mapper.Map<PluginViewState>(pluginResponse.Data);
+            Parameters = new Dictionary<string, object>
+            {
+                { "Plugin", Plugin }
+            };
+        }
     }
 
     protected override void OnInitialized()
@@ -24,11 +40,6 @@ public partial class PluginContainer : IAsyncDisposable
         {
             { "Plugin", Plugin }
         };
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        await Task.CompletedTask;
     }
 
     private string GetSetting(string settingKey)
