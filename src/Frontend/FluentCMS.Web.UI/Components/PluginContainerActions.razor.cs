@@ -108,9 +108,8 @@ public partial class PluginContainerActions
                 {"Style", SettingsModel.Style},
             }
         };
-
+      
         await ApiClients.Settings.UpdateAsync(request);
-
         SettingsModalOpen = false;
         await OnUpdate.InvokeAsync();
     }
