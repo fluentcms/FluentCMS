@@ -27,12 +27,12 @@ public partial class BlockEditPlugin
         }
     }
 
-    private async Task OnSubmit()
+    private async Task HandleSubmit()
     {
         if (Model is null || Plugin is null)
             return;
 
         await ApiClient.PluginContent.UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.Id, Model.ToDictionary());
-        NavigateBack(true);
+        await OnSubmit.InvokeAsync();
     }
 }

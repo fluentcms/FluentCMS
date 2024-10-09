@@ -1,8 +1,6 @@
-@inherits BasePlugin
+@inherits BaseEditPlugin
 @namespace FluentCMS.Web.Plugins.Contents.RichText
-@rendermode InteractiveServer
 
-<PluginForm Title="Edit RichText Content" Model="@Model" OnSubmit="OnSubmit" Name="@CONTENT_TYPE_NAME">
+<PluginModalForm Open="Open" Title="Edit RichText Content" Model="@Model" OnCancel="OnCancel" OnSubmit="HandleSubmit" Name="@CONTENT_TYPE_NAME">
     <FormRichTextEditor Placeholder="Write Content" @bind-Value="@Model!.Content" Label="Content" />
-    <FormActions Submit Cancel />
-</PluginForm>
+</PluginModalForm>
