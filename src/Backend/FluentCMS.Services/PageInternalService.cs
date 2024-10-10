@@ -8,7 +8,7 @@ public interface IPageInternalService : IAutoRegisterService
     Task<IEnumerable<PageModel>> GetHierarchyBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     Task<Dictionary<Guid, PageModel>> GetAllBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     Task<PageModel?> GetByFullPath(Guid siteId, string fullPath, CancellationToken cancellationToken = default);
-    Task<PageModel?> GetById(Guid pageId, CancellationToken cancellationToken = default);
+    Task<PageModel?> GetById(Guid siteId, Guid pageId, CancellationToken cancellationToken = default);
     void Invalidate(Guid siteId);
 }
 
@@ -71,7 +71,7 @@ public class PageInternalService(IPageRepository pageRepository, IMapper mapper,
         var pageDictionary = await GetAllBySiteId(siteId, cancellationToken);
 
         // only return the root pages
-        var pageModels = pageDictionary.Values.Where(p => !p.ParentId.HasValue).OrderBy(x => x.Order);
+        var pageModels = pageDictionary.Values.OrderBy(x => x.Order).Where(p => !p.ParentId.HasValue);
 
         // Cache the result
         cacheProvider.Set(cacheKey, pageModels);
@@ -80,9 +80,9 @@ public class PageInternalService(IPageRepository pageRepository, IMapper mapper,
 
     }
 
-    public async Task<PageModel?> GetById(Guid pageId, CancellationToken cancellationToken = default)
+    public async Task<PageModel?> GetById(Guid siteId, Guid pageId, CancellationToken cancellationToken = default)
     {
-        var pages = await GetAllBySiteId(pageId, cancellationToken);
+        var pages = await GetAllBySiteId(siteId, cancellationToken);
 
         if (pages.TryGetValue(pageId, out PageModel? page))
             return page;

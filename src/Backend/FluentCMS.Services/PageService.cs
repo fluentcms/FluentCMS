@@ -12,19 +12,18 @@ public interface IPageService : IAutoRegisterService
     Task<Page> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class PageService(IPageRepository pageRepository, ISiteRepository siteRepository, IPageInternalService internalService, IMessagePublisher messagePublisher, IPermissionManager permissionManager) : IPageService
+public class PageService(IPageRepository pageRepository, IPageInternalService internalService, IMessagePublisher messagePublisher, IPermissionManager permissionManager) : IPageService
 {
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
     {
-        var site = (await siteRepository.GetById(page.SiteId, cancellationToken)) ??
-            throw new AppException(ExceptionCodes.SiteNotFound);
-
-        if (!await permissionManager.HasAccess(site.Id, SitePermissionAction.SiteContributor, cancellationToken))
+        if (!await permissionManager.HasAccess(page.SiteId, SitePermissionAction.SiteContributor, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
 
         ValidateAndNormalize(page);
 
         await ValidateParentPage(page, cancellationToken);
+
+        await ValidateDuplicatePath(page, cancellationToken);
 
         var newPage = await pageRepository.Create(page, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageUnableToCreate);
@@ -43,21 +42,19 @@ public class PageService(IPageRepository pageRepository, ISiteRepository siteRep
         var originalPage = await pageRepository.GetById(page.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
 
-        var site = (await siteRepository.GetById(originalPage.SiteId, cancellationToken)) ??
-            throw new AppException(ExceptionCodes.SiteNotFound);
-
-        //if (!await permissionManager.HasAccess(site.Id, page.Id, PagePermissionAction.PageAdmin, cancellationToken))
-        //    throw new AppException(ExceptionCodes.PermissionDenied);
-
         // site id cannot be changed
         page.SiteId = originalPage.SiteId;
 
+        if (!await permissionManager.HasAccess(page.SiteId, SitePermissionAction.SiteContributor, cancellationToken))
+            throw new AppException(ExceptionCodes.PermissionDenied);
+
         ValidateAndNormalize(page);
+
         await ValidateParentPage(page, cancellationToken);
 
-        //// Only validate url if user wants to change path
-        //if (page.Path != originalPage.Path)
-        //    ValidateUrl(page, pages);
+        // Only validate url if user wants to change path
+        if (page.Path != originalPage.Path)
+            await ValidateDuplicatePath(page, cancellationToken);
 
         var updatedPage = await pageRepository.Update(page, cancellationToken)
              ?? throw new AppException(ExceptionCodes.PageUnableToUpdate);
@@ -72,18 +69,17 @@ public class PageService(IPageRepository pageRepository, ISiteRepository siteRep
 
     public async Task<Page> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        var originalPage = await internalService.GetById(id, cancellationToken) ??
+        var originalPage = await pageRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
 
         //if (!await permissionManager.HasAccess(originalPage.SiteId, originalPage.Id, PagePermissionAction.PageAdmin, cancellationToken))
         //    throw new AppException(ExceptionCodes.PermissionDenied);
 
-        // fetch site
-        var site = (await siteRepository.GetById(originalPage.SiteId, cancellationToken)) ??
-            throw new AppException(ExceptionCodes.SiteNotFound);
+        var pageModel = await internalService.GetById(originalPage.SiteId, id, cancellationToken) ??
+            throw new AppException(ExceptionCodes.PageNotFound);
 
         // check that it does not have any children
-        if (originalPage.Children.Count != 0)
+        if (pageModel.Children.Count != 0)
             throw new AppException(ExceptionCodes.PageHasChildren);
 
         var deletedPage = await pageRepository.Delete(id, cancellationToken) ??
@@ -100,7 +96,7 @@ public class PageService(IPageRepository pageRepository, ISiteRepository siteRep
     public async Task<Page> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         //fetch page from db
-        var page = await internalService.GetById(id, cancellationToken) ??
+        var page = await pageRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
 
         //if (!await permissionManager.HasAccess(page, PermissionActionNames.PageView, cancellationToken))
@@ -162,12 +158,36 @@ public class PageService(IPageRepository pageRepository, ISiteRepository siteRep
         if (page.ParentId != null)
         {
             // Fetch pages beforehand to avoid multiple db calls
-            var parentPage = await pageRepository.GetById(page.ParentId.Value, cancellationToken) ??
+            var parentPage = await internalService.GetById(page.SiteId, page.ParentId.Value, cancellationToken) ??
                 throw new AppException(ExceptionCodes.PageParentPageNotFound);
 
             // If parent id is not on the same site
             if (parentPage.SiteId != page.SiteId)
                 throw new AppException(ExceptionCodes.PageParentMustBeOnTheSameSite);
+        }
+    }
+
+    private async Task ValidateDuplicatePath(Page page, CancellationToken cancellationToken = default)
+    {
+        if (page.ParentId.HasValue)
+        {
+            // Check if the page with the same path already exists
+            var parentPage = await internalService.GetById(page.SiteId, page.ParentId.Value, cancellationToken) ??
+                throw new AppException(ExceptionCodes.PageParentPageNotFound);
+
+            if (parentPage.Children.Count != 0)
+            {
+                // check if any child has the same path throw exception
+                if (parentPage.Children.Any(x => x.Path == page.Path))
+                    throw new AppException(ExceptionCodes.PagePathMustBeUnique);
+            }
+        }
+        else
+        {
+            var rootPages = await internalService.GetHierarchyBySiteId(page.SiteId, cancellationToken);
+            // check if any root page has the same path throw exception
+            if (rootPages.Any(x => x.Path == page.Path))
+                throw new AppException(ExceptionCodes.PagePathMustBeUnique);
         }
     }
 
