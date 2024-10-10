@@ -1,10 +1,10 @@
-@inherits BasePlugin
+@inherits BaseEditPlugin
 
 @namespace FluentCMS.Web.Plugins.Contents.ContentViewer
 
 @rendermode InteractiveServer
 
-<PluginForm Title="Edit Content List Content" Model="@Model" OnSubmit="OnSubmit" Name="@FORM_NAME">
+<PluginModalForm Open="Open" Title="Edit Content List Content" Model="@Model" OnSubmit="HandleSubmit" OnCancel="OnCancel" Name="@FORM_NAME">
     <FormSelect Data="ContentTypes" TextField="Title" ValueField="Slug" Placeholder="Choose Content Type" @bind-Value="Model.ContentTypeSlug" Label="Content Type" />
     @if (!string.IsNullOrEmpty(Model.ContentTypeSlug))
     {
@@ -25,12 +25,11 @@
             <Spacer />                                
         </GridItem>
     }
-    <FormTextarea Placeholder="Edit Template" @bind-Value="@Model.Template" Label="Template" />
+    <FormTextarea Rows="15" Placeholder="Edit Template" @bind-Value="@Model.Template" Label="Template" />
     <GridItem Small="GridItemColumn.Twelve">
         <Alert Type="AlertType.Info">
             For templating Guide you can refer to <a style="font-weight: bold; text-decoration: underline;" href="https://github.com/scriban/scriban/blob/master/doc/language.md">Scriban's Documentation</a>
         </Alert>
         <Spacer/>
     </GridItem>
-    <FormActions Submit Cancel/>
-</PluginForm>
+</PluginModalForm>

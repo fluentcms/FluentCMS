@@ -8,5 +8,5 @@ public class SiteCreateModel
     public string Url { get; set; } = string.Empty;
     public string MetaTitle { get; set; } = string.Empty;
     public string MetaDescription { get; set; } = string.Empty;
-    public string MetaKeywords { get; set; } = string.Empty;
+    public string Head { get; set; } = string.Empty;
 }

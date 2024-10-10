@@ -50,7 +50,10 @@ public partial class SiteCreatePlugin
             {
                 ["MetaTitle"] = Model!.MetaTitle,
                 ["MetaDescription"] = Model.MetaDescription,
-                ["MetaKeywords"] = Model.MetaKeywords
+                ["Head"] = Model.Head,
+                ["Robots"] = "index,follow",
+                ["OgType"] = "website",
+                ["GoogleTagsId"] = string.Empty
             }
         };
     }

@@ -10,6 +10,11 @@ public class SiteUpdateModel
     public Guid EditLayoutId { get; set; }
     public string MetaTitle { get; set; } = default!;
     public string MetaDescription { get; set; } = default!;
-    public string MetaKeywords { get; set; } = default!;
+    public string Robots { get; set; } = default!;
+    public string OgType { get; set; } = default!;
+    public string GoogleTagsId { get; set; } = default!;
+    public string Head { get; set; } = default!;
+    // public Guid Favicon { get; set; } = default!;
+    // public Guid SocialImage { get; set; } = default!;
     public string Urls { get; set; } = default!; // comma separated list
 }

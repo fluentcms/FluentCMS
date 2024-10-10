@@ -13,6 +13,54 @@ public partial class SiteUpdatePlugin
     private List<LayoutDetailResponse>? Layouts { get; set; }
     private SiteDetailResponse? Site { get; set; }
 
+    private List<SelectOption> RobotsOptions =
+    [
+        new SelectOption
+        {
+            Title = "Index & Follow",
+            Key = "index,follow"
+        },
+        new SelectOption
+        {
+            Title = "Index & No Follow",
+            Key = "index,nofollow"
+        },
+        new SelectOption
+        {
+            Title = "No Index & Follow",
+            Key = "noindex,follow"
+        },
+        new SelectOption
+        {
+            Title = "No Index & No Follow",
+            Key = "noindex,nofollow"
+        }
+    ];
+
+    private List<SelectOption> OgTypeOptions =
+    [
+        new SelectOption
+        {
+            Title = "Website",
+            Key = "website"
+        },
+        new SelectOption
+        {
+            Title = "Article",
+            Key = "article"
+        },
+        new SelectOption
+        {
+            Title = "Product",
+            Key = "product"
+        },
+        new SelectOption
+        {
+            Title = "Video",
+            Key = "video"
+        }
+    ];
+
     protected override async Task OnInitializedAsync()
     {
 
@@ -52,7 +100,10 @@ public partial class SiteUpdatePlugin
             EditLayoutId = siteDetailResponse.EditLayoutId,
             MetaTitle = settings["MetaTitle"] ?? string.Empty,
             MetaDescription = settings["MetaDescription"] ?? string.Empty,
-            MetaKeywords = settings["MetaKeywords"] ?? string.Empty,
+            GoogleTagsId = settings["GoogleTagsId"] ?? string.Empty,
+            Robots = settings["Robots"] ?? string.Empty,
+            OgType = settings["OgType"] ?? string.Empty,
+            Head = settings["Head"] ?? string.Empty,
             Urls = string.Join(",", siteDetailResponse.Urls ?? []),
         };
         return model;
@@ -81,8 +132,16 @@ public partial class SiteUpdatePlugin
             {
                 ["MetaTitle"] = Model!.MetaTitle,
                 ["MetaDescription"] = Model.MetaDescription,
-                ["MetaKeywords"] = Model.MetaKeywords
+                ["GoogleTagsId"] = Model.GoogleTagsId,
+                ["Robots"] = Model.Robots,
+                ["OgType"] = Model.OgType,
+                ["Head"] = Model.Head
             }
         };
+    }
+
+    public class SelectOption {
+        public string Title { get; set; } = string.Empty;
+        public string Key { get; set; } = string.Empty;
     }
 }
