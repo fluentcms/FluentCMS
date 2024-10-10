@@ -11,7 +11,7 @@ public interface ISetupService : IAutoRegisterService
     Task<bool> IsInitialized(CancellationToken cancellationToken = default);
 }
 
-public class SetupService(IMessagePublisher messagePublisher, IGlobalSettingsRepository globalSettingsRepository, IPermissionManager permissionManager, IMapper mapper) : ISetupService
+public class SetupService(IMessagePublisher messagePublisher, IGlobalSettingsRepository globalSettingsRepository, IPermissionManager permissionManager) : ISetupService
 {
     public Task<IEnumerable<string>> GetTemplates(CancellationToken cancellationToken = default)
     {

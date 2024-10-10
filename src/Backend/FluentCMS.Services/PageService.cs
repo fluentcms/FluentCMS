@@ -4,15 +4,15 @@ namespace FluentCMS.Services;
 
 public interface IPageService : IAutoRegisterService
 {
-    Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<PageModel>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     Task<Page> GetById(Guid id, CancellationToken cancellationToken = default);
-    Task<Page> GetByPath(Guid siteId, string path, CancellationToken cancellationToken = default);
+    Task<PageModel> GetByFullPath(Guid siteId, string fullPath, CancellationToken cancellationToken = default);
     Task<Page> Create(Page page, CancellationToken cancellationToken = default);
     Task<Page> Update(Page page, CancellationToken cancellationToken = default);
     Task<Page> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class PageService(IPageRepository pageRepository, ISiteRepository siteRepository, IMessagePublisher messagePublisher, IPermissionManager permissionManager) : IPageService
+public class PageService(IPageRepository pageRepository, ISiteRepository siteRepository, IPageInternalService internalService, IMessagePublisher messagePublisher, IPermissionManager permissionManager) : IPageService
 {
     public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
     {
@@ -23,10 +23,14 @@ public class PageService(IPageRepository pageRepository, ISiteRepository siteRep
             throw new AppException(ExceptionCodes.PermissionDenied);
 
         ValidateAndNormalize(page);
+
         await ValidateParentPage(page, cancellationToken);
 
         var newPage = await pageRepository.Create(page, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageUnableToCreate);
+
+        // Invalidate cache for the site after creating a page
+        internalService.Invalidate(page.SiteId);
 
         await messagePublisher.Publish(new Message<Page>(ActionNames.PageCreated, newPage), cancellationToken);
 
@@ -42,8 +46,8 @@ public class PageService(IPageRepository pageRepository, ISiteRepository siteRep
         var site = (await siteRepository.GetById(originalPage.SiteId, cancellationToken)) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
 
-        if (!await permissionManager.HasAccess(site.Id, page.Id, PagePermissionAction.PageAdmin, cancellationToken))
-            throw new AppException(ExceptionCodes.PermissionDenied);
+        //if (!await permissionManager.HasAccess(site.Id, page.Id, PagePermissionAction.PageAdmin, cancellationToken))
+        //    throw new AppException(ExceptionCodes.PermissionDenied);
 
         // site id cannot be changed
         page.SiteId = originalPage.SiteId;
@@ -58,6 +62,9 @@ public class PageService(IPageRepository pageRepository, ISiteRepository siteRep
         var updatedPage = await pageRepository.Update(page, cancellationToken)
              ?? throw new AppException(ExceptionCodes.PageUnableToUpdate);
 
+        // Invalidate cache for the site after updating a page
+        internalService.Invalidate(page.SiteId);
+
         await messagePublisher.Publish(new Message<Page>(ActionNames.PageUpdated, updatedPage), cancellationToken);
 
         return updatedPage;
@@ -65,24 +72,25 @@ public class PageService(IPageRepository pageRepository, ISiteRepository siteRep
 
     public async Task<Page> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        //fetch original page from db
-        var originalPage = await pageRepository.GetById(id, cancellationToken) ??
+        var originalPage = await internalService.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
 
-        if (!await permissionManager.HasAccess(originalPage.SiteId, originalPage.Id, PagePermissionAction.PageAdmin, cancellationToken))
-            throw new AppException(ExceptionCodes.PermissionDenied);
+        //if (!await permissionManager.HasAccess(originalPage.SiteId, originalPage.Id, PagePermissionAction.PageAdmin, cancellationToken))
+        //    throw new AppException(ExceptionCodes.PermissionDenied);
 
         // fetch site
         var site = (await siteRepository.GetById(originalPage.SiteId, cancellationToken)) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
 
         // check that it does not have any children
-        var pages = (await pageRepository.GetAll(cancellationToken)).ToList();
-        if (pages.Any(x => x.ParentId == id && x.SiteId == originalPage.SiteId))
+        if (originalPage.Children.Count != 0)
             throw new AppException(ExceptionCodes.PageHasChildren);
 
         var deletedPage = await pageRepository.Delete(id, cancellationToken) ??
              throw new AppException(ExceptionCodes.PageUnableToDelete);
+
+        // Invalidate cache for the site after deleting a page
+        internalService.Invalidate(originalPage.SiteId);
 
         await messagePublisher.Publish(new Message<Page>(ActionNames.PageDeleted, deletedPage), cancellationToken);
 
@@ -92,7 +100,7 @@ public class PageService(IPageRepository pageRepository, ISiteRepository siteRep
     public async Task<Page> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         //fetch page from db
-        var page = await pageRepository.GetById(id, cancellationToken) ??
+        var page = await internalService.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
 
         //if (!await permissionManager.HasAccess(page, PermissionActionNames.PageView, cancellationToken))
@@ -101,45 +109,49 @@ public class PageService(IPageRepository pageRepository, ISiteRepository siteRep
         return page;
     }
 
-    public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<PageModel>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
     {
-        // fetch pages from db
-        var sitePages = await pageRepository.GetAllForSite(siteId, cancellationToken);
-
-        //var pages = await permissionManager.HasAccess(sitePages, PermissionActionNames.PageView, cancellationToken);
-
-        return sitePages;
+        var pagesDict = await internalService.GetAllBySiteId(siteId, cancellationToken);
+        return pagesDict.Values.ToList();
     }
 
-    public async Task<Page> GetByPath(Guid siteId, string path, CancellationToken cancellationToken = default)
+    public async Task<PageModel> GetByFullPath(Guid siteId, string fullPath, CancellationToken cancellationToken = default)
     {
-        var pages = (await pageRepository.GetAll(cancellationToken)).ToList();
-
-        var page = pages.Where(x => x.SiteId == siteId && x.Path.ToLowerInvariant() == path.ToLowerInvariant()).SingleOrDefault() ??
+        var page = await internalService.GetByFullPath(siteId, fullPath, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageNotFound);
-
-        //if (!await permissionManager.HasAccess(page, PermissionActionNames.PageView, cancellationToken))
-        //    throw new AppException(ExceptionCodes.PermissionDenied);
 
         return page;
     }
 
     #region Private Methods
 
-    private static void ValidateAndNormalize(Page page)
+    // Private helper method to normalize the path
+    private static string NormalizeFullPath(string path)
     {
         // Normalize the page path
-        page.Path = page.Path.ToLowerInvariant();
+        path = path.ToLowerInvariant().Trim();
 
-        // If the path starts with forward slash (/), remove it
-        if (page.Path.StartsWith("/"))
-            page.Path = page.Path[1..];
+        // If the path has at the end forward slash (/), remove it
+        path = path.TrimEnd('/');
+
+        // check if path does not start with forward slash (/), add it
+        if (!path.StartsWith("/"))
+            path = "/" + path;
+
+        return path;
+    }
+
+    // Helper to validate site and permission
+    private static void ValidateAndNormalize(Page page)
+    {
+        page.Path = NormalizeFullPath(page.Path);
 
         // Check if path is valid 
         // Only one segment without forward slash (/) is allowed
+        // that should starts with forward slash (/)
         // Alphanumeric characters (only lowercase) : a-z, 0-9
         // Special characters: -, _, ., ~
-        if (!Regex.IsMatch(page.Path, @"^[a-z0-9-_~]+$"))
+        if (!Regex.IsMatch(page.Path, @"^\/[a-z0-9-_~]+$") && page.Path != "/")
             throw new AppException(ExceptionCodes.PagePathInvalidCharacter);
 
     }
@@ -157,43 +169,6 @@ public class PageService(IPageRepository pageRepository, ISiteRepository siteRep
             if (parentPage.SiteId != page.SiteId)
                 throw new AppException(ExceptionCodes.PageParentMustBeOnTheSameSite);
         }
-    }
-
-    private static void ValidateUrl(Page page, List<Page> pages)
-    {
-        //urls can be cached in a dictionary to avoid multiple list traversal
-        var cachedUrls = new Dictionary<Guid, string>();
-
-        // Build Url based on parent
-        var fullUrl = BuildFullPath(page, pages, cachedUrls);
-        var fullPaths = pages.Select(x => BuildFullPath(x, pages, cachedUrls));
-        // Check if url is unique
-        if (fullPaths.Any(x => x.Equals(fullUrl)))
-            throw new AppException(ExceptionCodes.PagePathMustBeUnique);
-
-    }
-
-    private static string BuildFullPath(Page page, IEnumerable<Page> pages, Dictionary<Guid, string> cachedUrls)
-    {
-        //Traverse the pages to root (ParentId == null) and keep them in an array
-        var parents = new List<string> { page.Path };
-        var parentId = page.ParentId;
-
-        while (parentId != null)
-        {
-            if (cachedUrls.ContainsKey(parentId.Value))
-            {
-                parents.Add(cachedUrls[parentId.Value]);
-                parentId = null;
-                continue;
-            }
-            var parent = pages.Single(x => x.Id == parentId);
-            parents.Add(parent.Path);
-            cachedUrls[parent.Id] = parent.Path;
-            parentId = parent.ParentId;
-        }
-        //Build Path string from List of Parents
-        return string.Join("/", parents.Reverse<string>());
     }
 
     #endregion

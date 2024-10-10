@@ -3,18 +3,7 @@ using System.IO;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class PageController(
-    ISiteService siteService,
-    IPageService pageService,
-    IPluginDefinitionService pluginDefinitionService,
-    IPluginService pluginService,
-    ILayoutService layoutService,
-    IRoleService roleService,
-    IUserRoleService userRoleService,
-    ISetupService setupService,
-    ISettingsService settingsService,
-    IApiExecutionContext apiExecutionContext,
-    IMapper mapper) : BaseGlobalController
+public class PageController(ISiteService siteService, IPageService pageService, IPluginDefinitionService pluginDefinitionService, IPluginService pluginService, ILayoutService layoutService, IRoleService roleService, IUserRoleService userRoleService, ISetupService setupService, ISettingsService settingsService, IApiExecutionContext apiExecutionContext, IMapper mapper) : BaseGlobalController
 {
 
     public const string AREA = "Page Management";
@@ -23,37 +12,22 @@ public class PageController(
     public const string CREATE = "Create";
     public const string DELETE = $"Delete";
 
-    [HttpGet("{siteUrl}")]
-    [DecodeQueryParam]
+    [HttpGet("{siteId}")]
     [Policy(AREA, READ)]
-    public async Task<IApiPagingResult<PageDetailResponse>> GetAll([FromRoute] string siteUrl, CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<PageDetailResponse>> GetAll([FromRoute] Guid siteId, CancellationToken cancellationToken = default)
     {
-        var site = await siteService.GetByUrl(siteUrl, cancellationToken);
-        var entities = await pageService.GetBySiteId(site.Id, cancellationToken);
-        var layouts = await layoutService.GetAll(cancellationToken);
-
-        List<PageDetailResponse> entitiesResponse = [];
-
-        foreach (var entity in entities)
-        {
-            var layout = layouts.Where(x => x.Id == entity.LayoutId).FirstOrDefault();
-
-            var mappedEntity = mapper.Map<PageDetailResponse>(entity);
-            mappedEntity.Layout = mapper.Map<LayoutDetailResponse>(layout);
-            entitiesResponse.Add(mappedEntity);
-        }
-
-        return OkPaged(entitiesResponse);
+        var pages = await pageService.GetBySiteId(siteId, cancellationToken);
+        var pagesResponse = mapper.Map<List<PageDetailResponse>>(pages.ToList());
+        return OkPaged(pagesResponse);
     }
 
     [HttpGet("{id}")]
     [Policy(AREA, READ)]
     public async Task<IApiResult<PageDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await pageService.GetById(id, cancellationToken);
-        var entityResponse = mapper.Map<PageDetailResponse>(entity);
-
-        return Ok(entityResponse);
+        var page = await pageService.GetById(id, cancellationToken);
+        var pageResponse = mapper.Map<PageDetailResponse>(page);
+        return Ok(pageResponse);
     }
 
     [HttpGet]
@@ -75,10 +49,10 @@ public class PageController(
     [Policy(AREA, CREATE)]
     public async Task<IApiResult<PageDetailResponse>> Create(PageCreateRequest request, CancellationToken cancellationToken = default)
     {
-        var entity = mapper.Map<Page>(request);
-        var newEntity = await pageService.Create(entity, cancellationToken);
+        var page = mapper.Map<Page>(request);
+        var newPage = await pageService.Create(page, cancellationToken);
 
-        var pageResponse = mapper.Map<PageDetailResponse>(newEntity);
+        var pageResponse = mapper.Map<PageDetailResponse>(newPage);
         return Ok(pageResponse);
     }
 
@@ -86,10 +60,10 @@ public class PageController(
     [Policy(AREA, UPDATE)]
     public async Task<IApiResult<PageDetailResponse>> Update(PageUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        var entity = mapper.Map<Page>(request);
-        var updatedEntity = await pageService.Update(entity, cancellationToken);
+        var page = mapper.Map<Page>(request);
+        var updatedPage = await pageService.Update(page, cancellationToken);
 
-        var entityResponse = mapper.Map<PageDetailResponse>(updatedEntity);
+        var entityResponse = mapper.Map<PageDetailResponse>(updatedPage);
         return Ok(entityResponse);
     }
 
@@ -121,42 +95,25 @@ public class PageController(
     private async Task<IApiResult<PageFullDetailResponse>> GetPageResponse(string domain, string path, CancellationToken cancellationToken = default)
     {
         var site = await siteService.GetByUrl(domain, cancellationToken);
-        var pages = (await pageService.GetBySiteId(site.Id, cancellationToken)).ToDictionary(x => x.Id, x => x);
+        var page = await pageService.GetByFullPath(site.Id, path, cancellationToken);
         var pluginDefinitions = (await pluginDefinitionService.GetAll(cancellationToken)).ToDictionary(x => x.Id);
-
-        var pagesByPath = new Dictionary<string, Page>();
-
-        foreach (var _page in pages.Values)
-        {
-            pagesByPath.Add(GetFullPath(pages, _page), _page);
-        }
-
-        if (!pagesByPath.TryGetValue(path, out Page? page))
-            throw new AppException(ExceptionCodes.PageNotFound);
+        var layoutsDict = (await layoutService.GetAll(cancellationToken)).ToDictionary(x => x.Id);
+        var plugins = await pluginService.GetByPageId(page.Id, cancellationToken);
+        var pageSettings = await settingsService.GetById(site.Id, cancellationToken);
+        var roles = await roleService.GetAllForSite(site.Id, cancellationToken) ?? [];
 
         var layoutId = page.LayoutId ?? site.LayoutId;
         var editLayoutId = page.EditLayoutId ?? site.EditLayoutId;
         var detailLayoutId = page.DetailLayoutId ?? site.DetailLayoutId;
 
-        var layout = await layoutService.GetById(layoutId, cancellationToken);
-        var editLayout = await layoutService.GetById(editLayoutId, cancellationToken);
-        var detailLayout = await layoutService.GetById(detailLayoutId, cancellationToken);
-
-        var plugins = await pluginService.GetByPageId(page.Id, cancellationToken);
-
         var pageResponse = mapper.Map<PageFullDetailResponse>(page);
         pageResponse.Site = mapper.Map<SiteDetailResponse>(site);
-        // set the site settings
-        pageResponse.Site.Settings = (await settingsService.GetById(site.Id, cancellationToken)).Values;
-        pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
-        pageResponse.EditLayout = mapper.Map<LayoutDetailResponse>(editLayout);
-        pageResponse.DetailLayout = mapper.Map<LayoutDetailResponse>(detailLayout);
-        pageResponse.FullPath = path;
+        pageResponse.Site.AllRoles = mapper.Map<List<RoleDetailResponse>>(roles);
+        pageResponse.Site.Settings = pageSettings.Values;
+        pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layoutsDict[layoutId]);
+        pageResponse.EditLayout = mapper.Map<LayoutDetailResponse>(layoutsDict[editLayoutId]);
+        pageResponse.DetailLayout = mapper.Map<LayoutDetailResponse>(layoutsDict[detailLayoutId]);
         pageResponse.Sections = [];
-
-        // set all available roles in the site
-        var allRoles = await roleService.GetAllForSite(site.Id, cancellationToken) ?? [];
-        pageResponse.Site.AllRoles = mapper.Map<List<RoleDetailResponse>>(allRoles);
 
         // set admin roles property for the site
         // TODO: read from IPermissionService

@@ -24,7 +24,7 @@ public partial class PageListPlugin
         {
             NavigateTo(GetUrl("Create Page", new { redirectTo = RedirectTo, openNewPage = true }, false));
         }
-        var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Urls[0]);
+        var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Id);
         Pages = pagesResponse?.Data?.Where(x => !x.Locked).ToList() ?? [];
     }
 

@@ -46,7 +46,7 @@ public partial class PageUpdatePlugin
 
         if (Pages is null)
         {
-            var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Urls[0]);
+            var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Id);
             var pages = pagesResponse?.Data?.Where(x => !x.Locked) ?? [];
 
             pages = pages.Where(x => x.ParentId != Id);
