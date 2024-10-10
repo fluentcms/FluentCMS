@@ -53,6 +53,7 @@ export async function initialize(dotnet, element, content) {
 }
 
 export async function dispose(dotnet, element) {
+    if(!element) return;
     const saveButton = element.querySelector('.f-inline-editor-action-save')
     const cancelButton = element.querySelector('.f-inline-editor-action-cancel')
     
