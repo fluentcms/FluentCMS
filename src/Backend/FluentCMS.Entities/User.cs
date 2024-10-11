@@ -4,6 +4,7 @@ namespace FluentCMS.Entities;
 
 public class User : IdentityUser<Guid>, IAuditableEntity
 {
+    public string RavenId { get; set; }
     public DateTime? LoginAt { get; set; }
     public int LoginCount { get; set; }
     public DateTime? PasswordChangedAt { get; set; }

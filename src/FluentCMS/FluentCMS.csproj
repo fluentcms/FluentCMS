@@ -25,6 +25,7 @@
         <ProjectReference Include="..\Providers\FileStorageProviders\FluentCMS.Providers.FileStorageProviders\FluentCMS.Providers.FileStorageProviders.csproj" />
         <ProjectReference Include="..\Providers\MessageBusProviders\FluentCMS.Providers.MessageBusProviders\FluentCMS.Providers.MessageBusProviders.csproj" />
         <ProjectReference Include="..\Providers\TemplateRenderingProviders\FluentCMS.Providers.TemplateRenderingProviders\FluentCMS.Providers.TemplateRenderingProviders.csproj" />
+        <ProjectReference Include="..\Backend\Repositories\FluentCMS.Repositories.RavenDB\FluentCMS.Repositories.RavenDB.csproj" />
     </ItemGroup>
 	<ItemGroup>
 		<None Include="wwwroot\**">

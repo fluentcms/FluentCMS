@@ -10,10 +10,13 @@ services.AddUIComponents();
 services.AddCmsServices(configuration);
 
 // Use LiteDB as database
-services.AddLiteDbRepositories("LiteDb");
+//services.AddLiteDbRepositories("LiteDb");
 
 // Use MongoDB as database
 //services.AddMongoDbRepositories("MongoDb");
+
+// Use RavenDB as database
+services.AddRavenDbRepositories("RavenDB");
 
 // Enable caching for repository layer
 services.AddCachedRepositories();
