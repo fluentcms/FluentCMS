@@ -26,7 +26,8 @@ public abstract class AuditableEntityRepository<TEntity>(IRavenDBContext dbConte
 
         using (var session = Store.OpenAsyncSession())
         {
-            var dbEntity = await session.Query<TEntity>().SingleOrDefaultAsync(x => x.Id == entity.Id, cancellationToken);
+            var id = entity.Id;
+            var dbEntity = await session.Query<TEntity>().SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
             if (dbEntity == null)
             {
                 SetAuditableFieldsForCreate(entity);
@@ -38,24 +39,34 @@ public abstract class AuditableEntityRepository<TEntity>(IRavenDBContext dbConte
             else
             {
                 entity.CopyProperties(dbEntity);
-        
+
                 SetAuditableFieldsForUpdate(entity, dbEntity);
             }
 
             await session.SaveChangesAsync(cancellationToken);
-        
+
             return dbEntity;
         }
     }
 
     protected void SetAuditableFieldsForCreate(TEntity entity)
     {
+        if (entity.Id == Guid.Empty)
+        {
+            entity.Id = Guid.NewGuid();
+        }
+
         entity.CreatedAt = DateTime.UtcNow;
         entity.CreatedBy = ApiExecutionContext.Username;
     }
 
     protected void SetAuditableFieldsForUpdate(TEntity entity, TEntity oldEntity)
     {
+        if (entity.Id == Guid.Empty)
+        {
+            entity.Id = Guid.NewGuid();
+        }
+
         entity.CreatedAt = oldEntity.CreatedAt;
         entity.CreatedBy = oldEntity.CreatedBy;
         entity.ModifiedAt = DateTime.UtcNow;

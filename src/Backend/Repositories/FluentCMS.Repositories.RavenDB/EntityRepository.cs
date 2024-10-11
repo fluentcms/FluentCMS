@@ -4,29 +4,16 @@ namespace FluentCMS.Repositories.RavenDB;
 
 public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntity : IEntity
 {
-    //protected readonly IRavenCollection<TEntity> Collection;
-    //protected readonly IRavenDatabase RavenDatabase;
     protected readonly IDocumentStore Store;
 
     public EntityRepository(IRavenDBContext RavenDbContext)
     {
-        //RavenDatabase = RavenDbContext.Database;
-        //Collection = RavenDbContext.Database.GetCollection<TEntity>(EntityRepository<TEntity>.GetCollectionName());
-
         Store = RavenDbContext.Store;
 
         // Ensure index on Id field
-        
-
         // var indexKeysDefinition = Builders<TEntity>.IndexKeys.Ascending(x => x.Id);
         // Collection.Indexes.CreateOne(new CreateIndexModel<TEntity>(indexKeysDefinition));
     }
-
-    // private static string GetCollectionName()
-    // {
-    //     var entityTypeName = typeof(TEntity).Name;
-    //     return entityTypeName.Pluralize().ToLowerInvariant();
-    // }
 
     public virtual async Task<IEnumerable<TEntity>> GetAll(CancellationToken cancellationToken = default)
     {
@@ -66,6 +53,11 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
 
         using (var session = Store.OpenAsyncSession())
         {
+            if (entity.Id == Guid.Empty)
+            {
+                entity.Id = Guid.NewGuid();
+            }
+
             await session.StoreAsync(entity);
 
             await session.SaveChangesAsync(cancellationToken);
@@ -84,6 +76,11 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
+                if (entity.Id == Guid.Empty)
+                {
+                    entity.Id = Guid.NewGuid();
+                }
+
                 await session.StoreAsync(entity);
             }
 
@@ -99,9 +96,15 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
 
         using (var session = Store.OpenAsyncSession())
         {
-            var dbEntity = await session.Query<TEntity>().SingleOrDefaultAsync(x => x.Id == entity.Id, cancellationToken);
+            var id = entity.Id;
+            var dbEntity = await session.Query<TEntity>().SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
             if (dbEntity == null)
             {
+                if (entity.Id == Guid.Empty)
+                {
+                    entity.Id = Guid.NewGuid();
+                }
+
                 await session.StoreAsync(entity);
 
                 dbEntity = entity;
