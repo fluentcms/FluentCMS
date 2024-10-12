@@ -53,6 +53,7 @@ public class SiteViewState
     public List<RoleViewState> AdminRoles { get; set; } = [];
     public List<RoleViewState> ContributorRoles { get; set; } = [];
     public List<RoleViewState> AllRoles { get; set; } = [];
+    public Dictionary<string, string> Settings { get; set; } = [];
 }
 
 public class RoleViewState
@@ -89,6 +90,7 @@ public class PageViewState
     public string Path { get; set; } = string.Empty;
     public string FullPath { get; set; } = string.Empty;
     public bool Locked { get; set; } = false;
+    public Dictionary<string, string> Settings { get; set; } = [];
 }
 
 public class PluginViewState
