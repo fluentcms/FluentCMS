@@ -1,4 +1,9 @@
-﻿namespace FluentCMS.Services;
+﻿using AutoMapper;
+using System.IO;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+
+namespace FluentCMS.Services;
 
 public interface ISiteService : IAutoRegisterService
 {
@@ -10,7 +15,7 @@ public interface ISiteService : IAutoRegisterService
     Task<Site> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class SiteService(ISiteRepository siteRepository, IMessagePublisher messagePublisher, IPermissionManager permissionManager) : ISiteService
+public class SiteService(ISiteRepository siteRepository, IPluginDefinitionRepository pluginDefinitionRepository, IMessagePublisher messagePublisher, IPermissionManager permissionManager, IMapper mapper) : ISiteService
 {
     public async Task<IEnumerable<Site>> GetAll(CancellationToken cancellationToken = default)
     {
@@ -29,6 +34,7 @@ public class SiteService(ISiteRepository siteRepository, IMessagePublisher messa
 
     public async Task<Site> GetByUrl(string url, CancellationToken cancellationToken = default)
     {
+        url = ValidateAndFormatUrl(url);
         // no need to check permissions
         return await siteRepository.GetByUrl(url, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
@@ -41,18 +47,54 @@ public class SiteService(ISiteRepository siteRepository, IMessagePublisher messa
 
         var layouts = siteTemplate.Layouts;
 
-        var site = new Site
-        {
-            Id = siteTemplate.Id,
-            Name = siteTemplate.Name,
-            Description = siteTemplate.Description,
-            Urls = [siteTemplate.Url],
-            LayoutId = layouts.Where(x => x.Name == siteTemplate.Layout).Single().Id,
-            EditLayoutId = layouts.Where(x => x.Name == siteTemplate.EditLayout).Single().Id,
-            DetailLayoutId = layouts.Where(x => x.Name == siteTemplate.DetailLayout).Single().Id
-        };
+        var siteFilePath = Path.Combine(ServiceConstants.SetupTemplatesFolder, siteTemplate.Template, ServiceConstants.SetupSiteTemplateFile);
 
-        PrepareSite(site);
+        if (!System.IO.File.Exists(siteFilePath))
+            throw new AppException($"{ServiceConstants.SetupSiteTemplateFile} doesn't exist!");
+
+        var jsonSerializerOptions = new JsonSerializerOptions();
+        jsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
+
+        var jsonSiteTemplate = await JsonSerializer.DeserializeAsync<SiteTemplate>(System.IO.File.OpenRead(siteFilePath), jsonSerializerOptions, cancellationToken) ??
+               throw new AppException($"Failed to read/deserialize {ServiceConstants.SetupSiteTemplateFile}");
+
+        jsonSiteTemplate.Url = siteTemplate.Url;
+        jsonSiteTemplate.Template = siteTemplate.Template;
+
+        if (!string.IsNullOrEmpty(siteTemplate.Name))
+            jsonSiteTemplate.Name = siteTemplate.Name;
+
+        if (!string.IsNullOrEmpty(siteTemplate.Description))
+            jsonSiteTemplate.Description = siteTemplate.Description;
+
+        mapper.Map(jsonSiteTemplate, siteTemplate);
+
+        // loading layout data from files
+        foreach (var layout in siteTemplate.Layouts)
+        {
+            var bodyLayoutFilePath = Path.Combine(ServiceConstants.SetupTemplatesFolder, siteTemplate.Template, $"{layout.Name}.body.html");
+            var headLayoutFilePath = Path.Combine(ServiceConstants.SetupTemplatesFolder, siteTemplate.Template, $"{layout.Name}.head.html");
+            layout.Body = await System.IO.File.ReadAllTextAsync(bodyLayoutFilePath, cancellationToken);
+            layout.Head = await System.IO.File.ReadAllTextAsync(headLayoutFilePath, cancellationToken);
+        }
+
+        foreach (var block in siteTemplate.Blocks)
+        {
+            var blockContentFilePath = Path.Combine(ServiceConstants.SetupTemplatesFolder, siteTemplate.Template, "Blocks", block.Category, $"{block.Name}.html");
+            block.Content = await System.IO.File.ReadAllTextAsync(blockContentFilePath, cancellationToken);
+        }
+
+        var pluginDefinitions = await pluginDefinitionRepository.GetAll(cancellationToken);
+        SetIds(siteTemplate, pluginDefinitions);
+
+        var site = mapper.Map<Site>(siteTemplate);
+
+        site.Urls = [ValidateAndFormatUrl(siteTemplate.Url)];
+        site.LayoutId = layouts.Where(x => x.Name == siteTemplate.Layout).Single().Id;
+        site.EditLayoutId = layouts.Where(x => x.Name == siteTemplate.EditLayout).Single().Id;
+        site.DetailLayoutId = layouts.Where(x => x.Name == siteTemplate.DetailLayout).Single().Id;
+
+        ValidateAndFormatUrls(site);
 
         // check if site url are unique
         var allSites = await siteRepository.GetAll(cancellationToken);
@@ -74,7 +116,7 @@ public class SiteService(ISiteRepository siteRepository, IMessagePublisher messa
         if (!await permissionManager.HasAccess(site.Id, SitePermissionAction.SiteAdmin, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
 
-        PrepareSite(site);
+        ValidateAndFormatUrls(site);
 
         // check if site url is unique
         var allSites = await siteRepository.GetAll(cancellationToken);
@@ -102,9 +144,73 @@ public class SiteService(ISiteRepository siteRepository, IMessagePublisher messa
         return deletedSite;
     }
 
-    private static void PrepareSite(Site site)
+    private static void ValidateAndFormatUrls(Site site)
     {
-        // normalizing the site URLs to lowercase
-        site.Urls = site.Urls.Select(x => x.ToLower()).ToList();
+        site.Urls = site.Urls.Select(ValidateAndFormatUrl).ToList();
     }
+
+    public const string VALID_DOMAIN_NAME_REGEX = @"^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])(:\d{1,5})?$";
+
+    private static string ValidateAndFormatUrl(string url)
+    {
+        // Trim spaces
+        url = url.Trim();
+
+        // Check if URL is empty
+        if (string.IsNullOrEmpty(url))
+            throw new AppException(ExceptionCodes.SiteUrlIsEmpty);
+
+        // Convert to lowercase
+        url = url.ToLowerInvariant();
+
+        // if the url ends with a slash, remove it
+        if (url.EndsWith('/'))
+            url = url[..^1];
+
+        // Validate URL format using regex
+        if (!Regex.IsMatch(url, VALID_DOMAIN_NAME_REGEX))
+            throw new AppException(ExceptionCodes.SiteUrlIsInvalid);
+
+        // Return the formatted URL if valid
+        return url;
+    }
+
+    private static void SetIds(SiteTemplate siteTemplate, IEnumerable<PluginDefinition> pluginDefinitions)
+    {
+        // set site, page, layout, etc. ids
+        siteTemplate.Id = Guid.NewGuid();
+
+        foreach (var layout in siteTemplate.Layouts)
+        {
+            layout.Id = Guid.NewGuid();
+            layout.SiteId = siteTemplate.Id;
+        }
+
+        foreach (var role in siteTemplate.Roles)
+        {
+            role.Id = Guid.NewGuid();
+            role.SiteId = siteTemplate.Id;
+        }
+
+        foreach (var page in siteTemplate.Pages)
+        {
+            SetIds(siteTemplate, page, pluginDefinitions);
+        }
+    }
+
+    private static void SetIds(SiteTemplate siteTemplate, PageTemplate page, IEnumerable<PluginDefinition> pluginDefinitions)
+    {
+        page.Id = Guid.NewGuid();
+        page.SiteId = siteTemplate.Id;
+        foreach (var plugin in page.Plugins)
+        {
+            plugin.Id = Guid.NewGuid();
+            plugin.DefinitionId = pluginDefinitions.Where(p => p.Name.Equals(plugin.Definition, StringComparison.InvariantCultureIgnoreCase)).Single().Id;
+        }
+        foreach (var childPage in page.Children)
+        {
+            SetIds(siteTemplate, childPage, pluginDefinitions);
+        }
+    }
+
 }

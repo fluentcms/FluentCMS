@@ -12,6 +12,7 @@ public class PageController(
     IRoleService roleService,
     IUserRoleService userRoleService,
     ISetupService setupService,
+    ISettingsService settingsService,
     IApiExecutionContext apiExecutionContext,
     IMapper mapper) : BaseGlobalController
 {
@@ -21,8 +22,6 @@ public class PageController(
     public const string UPDATE = $"Update";
     public const string CREATE = "Create";
     public const string DELETE = $"Delete";
-
-    public const string DEFAULT_TEMPLATE_PATH = "Templates/Default";
 
     [HttpGet("{siteUrl}")]
     [DecodeQueryParam]
@@ -54,10 +53,6 @@ public class PageController(
         var entity = await pageService.GetById(id, cancellationToken);
         var entityResponse = mapper.Map<PageDetailResponse>(entity);
 
-        //entityResponse.ViewRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageView, cancellationToken)).Select(x => x.RoleId);
-        //entityResponse.ContributorRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageContributor, cancellationToken)).Select(x => x.RoleId);
-        //entityResponse.AdminRoleIds = (await permissionService.GetPermissions(id, PermissionActionNames.PageAdmin, cancellationToken)).Select(x => x.RoleId);
-
         return Ok(entityResponse);
     }
 
@@ -83,10 +78,6 @@ public class PageController(
         var entity = mapper.Map<Page>(request);
         var newEntity = await pageService.Create(entity, cancellationToken);
 
-        //await permissionService.SetPermissions(newEntity, PermissionActionNames.PageView, request.ViewRoleIds, cancellationToken);
-        //await permissionService.SetPermissions(newEntity, PermissionActionNames.PageContributor, request.ContributorRoleIds, cancellationToken);
-        //await permissionService.SetPermissions(newEntity, PermissionActionNames.PageAdmin, request.AdminRoleIds, cancellationToken);
-
         var pageResponse = mapper.Map<PageDetailResponse>(newEntity);
         return Ok(pageResponse);
     }
@@ -97,10 +88,6 @@ public class PageController(
     {
         var entity = mapper.Map<Page>(request);
         var updatedEntity = await pageService.Update(entity, cancellationToken);
-
-        //await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageView, request.ViewRoleIds, cancellationToken);
-        //await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageContributor, request.ContributorRoleIds, cancellationToken);
-        //await permissionService.SetPermissions(updatedEntity, PermissionActionNames.PageAdmin, request.AdminRoleIds, cancellationToken);
 
         var entityResponse = mapper.Map<PageDetailResponse>(updatedEntity);
         return Ok(entityResponse);
@@ -159,6 +146,8 @@ public class PageController(
 
         var pageResponse = mapper.Map<PageFullDetailResponse>(page);
         pageResponse.Site = mapper.Map<SiteDetailResponse>(site);
+        // set the site settings
+        pageResponse.Site.Settings = (await settingsService.GetById(site.Id, cancellationToken)).Values;
         pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layout);
         pageResponse.EditLayout = mapper.Map<LayoutDetailResponse>(editLayout);
         pageResponse.DetailLayout = mapper.Map<LayoutDetailResponse>(detailLayout);
@@ -182,12 +171,19 @@ public class PageController(
         var userRoleIds = await userRoleService.GetUserRoleIds(apiExecutionContext.UserId, site.Id, cancellationToken);
         pageResponse.User.Roles = pageResponse.Site.AllRoles.Where(x => userRoleIds.Contains(x.Id)).ToList();
 
+        // setting the plugin details
+        var pluginSettingsDict = (await settingsService.GetByIds(plugins.Select(x => x.Id), cancellationToken)).ToDictionary(x => x.Id, x => x.Values);
         foreach (var plugin in plugins)
         {
             if (!pageResponse.Sections.ContainsKey(plugin.Section))
                 pageResponse.Sections.Add(plugin.Section, []);
 
             var pluginResponse = mapper.Map<PluginDetailResponse>(plugin);
+
+            // set settings for the plugin if exists in the settings dictionary
+            if (pluginSettingsDict.TryGetValue(plugin.Id, out Dictionary<string, string>? value))
+                pluginResponse.Settings = value;
+
             pluginResponse.Definition = mapper.Map<PluginDefinitionDetailResponse>(pluginDefinitions[plugin.DefinitionId]);
             pageResponse.Sections[plugin.Section].Add(pluginResponse);
         }
@@ -195,7 +191,7 @@ public class PageController(
         return Ok(pageResponse);
     }
 
-    private PageFullDetailResponse GetSetupPage()
+    private static PageFullDetailResponse GetSetupPage()
     {
         var page = new PageFullDetailResponse
         {
@@ -203,8 +199,8 @@ public class PageController(
             Locked = true,
             Layout = new LayoutDetailResponse
             {
-                Body = System.IO.File.ReadAllText(Path.Combine(DEFAULT_TEMPLATE_PATH, "AuthLayout.body.html")),
-                Head = System.IO.File.ReadAllText(Path.Combine(DEFAULT_TEMPLATE_PATH, "AuthLayout.head.html"))
+                Body = System.IO.File.ReadAllText(Path.Combine(ServiceConstants.DefaultTemplateFolder, "AuthLayout.body.html")),
+                Head = System.IO.File.ReadAllText(Path.Combine(ServiceConstants.DefaultTemplateFolder, "AuthLayout.head.html"))
             },
             Site = new(),
             Sections = new Dictionary<string, List<PluginDetailResponse>>

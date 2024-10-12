@@ -9,4 +9,3 @@ public abstract class SiteAssociatedEntity : AuditableEntity, ISiteAssociatedEnt
 {
     public Guid SiteId { get; set; }
 }
-

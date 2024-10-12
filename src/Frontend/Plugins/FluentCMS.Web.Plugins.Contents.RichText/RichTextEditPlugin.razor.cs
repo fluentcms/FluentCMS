@@ -36,7 +36,7 @@ public partial class RichTextEditPlugin
         }
     }
 
-    private async Task OnSubmit()
+    private async Task HandleSubmit()
     {
         if (Model is null || Plugin is null)
             return;
@@ -46,6 +46,6 @@ public partial class RichTextEditPlugin
         else
             await ApiClient.PluginContent.CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.ToDictionary());
 
-        NavigateBack(true);
+        await OnSubmit.InvokeAsync();
     }
 }

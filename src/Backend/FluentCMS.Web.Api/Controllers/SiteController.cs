@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class SiteController(ISiteService siteService, IMapper mapper, IPluginDefinitionService pluginDefinitionService) : BaseGlobalController
+public class SiteController(ISiteService siteService, ISettingsService settingsService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "Site Management";
     public const string READ = "Read";
@@ -25,6 +25,7 @@ public class SiteController(ISiteService siteService, IMapper mapper, IPluginDef
     {
         var site = await siteService.GetById(id, cancellationToken);
         var siteResponse = mapper.Map<SiteDetailResponse>(site);
+        siteResponse.Settings = (await settingsService.GetById(site.Id, cancellationToken)).Values;
         return Ok(siteResponse);
     }
 
@@ -33,10 +34,6 @@ public class SiteController(ISiteService siteService, IMapper mapper, IPluginDef
     public async Task<IApiResult<SiteDetailResponse>> Create([FromBody] SiteCreateRequest request, CancellationToken cancellationToken = default)
     {
         var siteTemplate = mapper.Map<SiteTemplate>(request);
-        var pluginDefinitions = await pluginDefinitionService.GetAll(cancellationToken);
-        await siteTemplate.Load(pluginDefinitions, cancellationToken);
-        siteTemplate.Description = request.Description ?? string.Empty;
-        siteTemplate.Name = request.Name;
         var newSite = await siteService.Create(siteTemplate, cancellationToken);
         var response = mapper.Map<SiteDetailResponse>(newSite);
         return Ok(response);
@@ -48,8 +45,9 @@ public class SiteController(ISiteService siteService, IMapper mapper, IPluginDef
     {
         var entity = mapper.Map<Site>(request);
         var updated = await siteService.Update(entity, cancellationToken);
-        var entityResponse = mapper.Map<SiteDetailResponse>(updated);
-        return Ok(entityResponse);
+        var siteResponse = mapper.Map<SiteDetailResponse>(updated);
+        siteResponse.Settings = (await settingsService.GetById(request.Id, cancellationToken)).Values;
+        return Ok(siteResponse);
     }
 
     [HttpDelete("{siteId}")]

@@ -1,8 +1,6 @@
-@inherits BasePlugin
+@inherits BaseEditPlugin
 @namespace FluentCMS.Web.Plugins.Contents.Block
-@rendermode InteractiveServer
             
-<PluginForm Title="Edit Block Content" Model="@Model" OnSubmit="OnSubmit" Name="@CONTENT_TYPE_NAME">
-    <FormTextarea Placeholder="Enter Content" Rows="20" @bind-Value="@Model!.Content" Label="Content" />
-    <FormActions Submit Cancel />
-</PluginForm>
+<PluginModalForm Open="Open" Title="Edit Block Content" Model="@Model" OnCancel="OnCancel" OnSubmit="HandleSubmit" Name="@CONTENT_TYPE_NAME">
+    <FormTextarea Hint="Use data-inline-editable attribute for text elements to enable Inline edit!" Placeholder="Enter Content" Rows="20" @bind-Value="@Model!.Content" Label="Content" />
+</PluginModalForm>

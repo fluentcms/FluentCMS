@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Web.UI;
+﻿using AutoMapper;
+
+namespace FluentCMS.Web.UI;
 
 public partial class PluginContainer
 {
@@ -11,7 +13,26 @@ public partial class PluginContainer
     [Inject]
     private ViewState ViewState { get; set; } = default!;
 
+    [Inject]
+    private IMapper Mapper { get; set; } = default!;
+
+    [Inject]
+    private ApiClientFactory ApiClient { get; set; } = default!;
+
     private IDictionary<string, object> Parameters { get; set; } = new Dictionary<string, object>();
+    
+    private async Task ReloadPlugin()
+    {
+        var pluginResponse = await ApiClient.Plugin.GetByIdAsync(Plugin.Id);
+        if(pluginResponse.Data != null)
+        {
+            Plugin = Mapper.Map<PluginViewState>(pluginResponse.Data);
+            Parameters = new Dictionary<string, object>
+            {
+                { "Plugin", Plugin }
+            };
+        }
+    }
 
     protected override void OnInitialized()
     {
@@ -19,6 +40,12 @@ public partial class PluginContainer
         {
             { "Plugin", Plugin }
         };
+    }
+
+    private string GetSetting(string settingKey)
+    {
+        Plugin.Settings.TryGetValue(settingKey, out var value);
+        return value ?? string.Empty;
     }
 
     private Type? GetPluginType()

@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.Plugins.Contents.ContentViewer;
 
-public partial class ContentListSettingsPlugin
+public partial class ContentListEditPlugin
 {
     public const string FORM_NAME = "CONTENT_LIST_EDIT_FORM";
 
@@ -28,12 +28,12 @@ public partial class ContentListSettingsPlugin
         }
     }
 
-    private async Task OnSubmit()
+    private async Task HandleSubmit()
     {
         if (Plugin is null)
             return;
 
-        var request = new PluginUpdateSettingsRequest
+        var request = new SettingsUpdateRequest
         {
             Id = Plugin.Id,
             Settings = new Dictionary<string, string> {
@@ -42,9 +42,9 @@ public partial class ContentListSettingsPlugin
             }
         };
 
-        await ApiClient.Plugin.UpdateSettingsAsync(request);
+        await ApiClient.Settings.UpdateAsync(request);
 
-        NavigateBack(true);
+        await OnSubmit.InvokeAsync();
     }
 
     class SettingsModel

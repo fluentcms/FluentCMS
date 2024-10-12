@@ -7,6 +7,7 @@ public abstract class BaseAuditableResponse
     public DateTime CreatedAt { get; set; }
     public string? ModifiedBy { get; set; }
     public DateTime? ModifiedAt { get; set; }
+    public Dictionary<string, string> Settings { get; set; } = [];
 }
 
 public abstract class BaseSiteAssociatedResponse : BaseAuditableResponse
