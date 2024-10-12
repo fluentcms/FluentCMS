@@ -1,10 +1,10 @@
-﻿using AutoMapper;
-using Microsoft.Extensions.Caching.Memory;
+﻿using Microsoft.Extensions.Caching.Memory;
 
 namespace FluentCMS.Providers.CacheProviders;
 
-public class InMemoryCacheProvider(IMemoryCache memoryCache, IMapper mapper) : ICacheProvider
+public class InMemoryCacheProvider(IMemoryCache memoryCache) : ICacheProvider
 {
+    // Remove an item from the cache by key
     public void Remove(string key)
     {
         memoryCache.Remove(key);
@@ -12,27 +12,26 @@ public class InMemoryCacheProvider(IMemoryCache memoryCache, IMapper mapper) : I
 
     public void Set<T>(string key, T value)
     {
-        var cachedValue = mapper.Map<T>(value);
-        memoryCache.Set(key, cachedValue);
+        memoryCache.Set(key, value);
     }
 
-    public bool TryGetValue<T>(object key, out T? value)
+    public bool TryGetValue<T>(string key, out T? value)
     {
-        if (memoryCache.TryGetValue(key, out object? result))
+        // Try to get the cached item by key
+        if (memoryCache.TryGetValue(key, out T? result))
         {
-            if (result == null)
+            // If the cached value is explicitly null
+            if (result is null)
             {
-                value = default;
-                return true;
+                value = default; // Return default value for type T
+                return true; // Indicates that a null value was found in cache
             }
 
-            if (result is T item)
-            {
-                value = mapper.Map<T>(item);
-                return true;
-            }
+            value = result; // Return the cached value
+            return true;
         }
 
+        // If the item was not found in the cache
         value = default;
         return false;
     }
