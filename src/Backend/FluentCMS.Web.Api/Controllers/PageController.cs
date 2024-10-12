@@ -67,6 +67,17 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         return Ok(entityResponse);
     }
 
+    [HttpGet]
+    [Policy(AREA, UPDATE)]
+    public async Task<IApiResult<List<PageDetailResponse>>> GetHierarchyBySiteId(Guid SiteId, CancellationToken cancellationToken = default)
+    {
+        var pages = await pageService.GetHierarchyBySiteId(SiteId, cancellationToken);
+
+        var response = mapper.Map<List<PageDetailResponse>>(pages);
+        return Ok(response);
+    }
+    
+
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)

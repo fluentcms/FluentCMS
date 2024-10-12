@@ -5,6 +5,7 @@ namespace FluentCMS.Services;
 public interface IPageService : IAutoRegisterService
 {
     Task<IEnumerable<PageModel>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<PageModel>> GetHierarchyBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     Task<Page> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<PageModel> GetByFullPath(Guid siteId, string fullPath, CancellationToken cancellationToken = default);
     Task<Page> Create(Page page, CancellationToken cancellationToken = default);
@@ -35,6 +36,18 @@ public class PageService(IPageRepository pageRepository, IPageInternalService in
 
         return newPage;
     }
+    // 
+    
+    public async Task<IEnumerable<PageModel>> GetHierarchyBySiteId(Guid siteId, CancellationToken cancellationToken = default)
+    {
+        var pages = await internalService.GetHierarchyBySiteId(siteId, cancellationToken) ?? [];
+
+        //if (!await permissionManager.HasAccess(page, PermissionActionNames.PageView, cancellationToken))
+        //    throw new AppException(ExceptionCodes.PermissionDenied);
+
+        return pages;
+    }
+
 
     public async Task<Page> Update(Page page, CancellationToken cancellationToken = default)
     {
