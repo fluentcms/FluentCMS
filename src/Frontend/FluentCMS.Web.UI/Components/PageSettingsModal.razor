@@ -12,10 +12,10 @@
                 <Grid GutterX="GridGutter.Large">
                     <FormInput @bind-Value="Model!.Title" Cols="6" Label="Title" Placeholder="Enter Title" Required />
                     <FormInput Hint="Url slug of the page, should not be nested." @bind-Value="Model!.Path" Cols="6" Label="Path" Placeholder="Enter url path" />
-                    <FormSelect @bind-Value="Model!.ParentId" Cols="6" Data="PageOptions" TextField="Title" ValueField="Value" Label="Parent Page" Visible="@(Layouts != null)"/>
-                    <FormSelect @bind-Value="Model!.LayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Layout" Placeholder="Choose Layout" Visible="@(Layouts != null)" />
-                    <FormSelect @bind-Value="Model!.EditLayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Edit Layout" Placeholder="Choose Edit Layout" Visible="@(Layouts != null)" />
-                    <FormSelect @bind-Value="Model!.DetailLayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Detail Layout" Placeholder="Choose Detail Layout" Visible="@(Layouts != null)" />                    
+                    <FormSelect @bind-Value="Model!.ParentId" Cols="6" Data="PageOptions" TextField="Title" ValueField="Value" Label="Parent Page" />
+                    <FormSelect @bind-Value="Model!.LayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Layout" Placeholder="Choose Layout" />
+                    <FormSelect @bind-Value="Model!.EditLayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Edit Layout" Placeholder="Choose Edit Layout" />
+                    <FormSelect @bind-Value="Model!.DetailLayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Detail Layout" Placeholder="Choose Detail Layout" />
                     <FormNumberInput @bind-Value="Model!.Order" Cols="6" Label="Order" Placeholder="Enter page order" />
                     <FormCheckboxGroup Hint="Roles which can view the page." @bind-Value="Model!.ViewRoleIds" Data="ViewState.Site.AllRoles" Label="ViewRoles" TextField="Name" ValueField="Id" />
                     <FormCheckboxGroup Hint="Roles which are able to manage plugins." @bind-Value="Model!.ContributorRoleIds" Data="ViewState.Site.AllRoles" Label="ContributorRoles" TextField="Name" ValueField="Id" />
