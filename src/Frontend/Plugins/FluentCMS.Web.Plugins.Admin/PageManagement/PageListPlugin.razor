@@ -9,9 +9,6 @@
         <DataTable Items="Pages">
             <DataTableItem Label="Title">@context.Title</DataTableItem>
             <DataTableItem Label="Path">@context.Path</DataTableItem>
-            <DataTableItem Label="Layout">
-                <span>@(context.Layout?.Name ?? "(default)")</span>
-            </DataTableItem>
             <ActionButtons>
                 <ActionButton IconName="IconName.Eye" Color="Color.Success" Label="Open" Href="@GetPageUrl(context)" />
                 <ActionButtonEdit Href="@GetUrl("Update Page", new { id = @context.Id })"/>

@@ -1,3 +1,5 @@
+using AutoMapper;
+
 namespace FluentCMS.Web.UI;
 
 public partial class SiteBuilderDefaultToolbar
@@ -6,36 +8,80 @@ public partial class SiteBuilderDefaultToolbar
     private NavigationManager NavigationManager { get; set; } = default!;
 
     [Inject]
+    private IMapper Mapper { get; set; } = default!;
+
+    [Inject]
     private ViewState ViewState { get; set; } = default!;
 
-    private string GetPageAddUrl()
+    [Inject]
+    private ApiClientFactory ApiClients { get; set; } = default!;
+
+    private PageSettingsModel? PageSettings { get; set; }
+    private bool AddPageModalOpen { get; set; } = false;
+    private bool PageSettingsModalOpen { get; set; } = false;
+
+
+    private async Task CloseAddPage()
     {
-        var uri = new Uri(NavigationManager.Uri);
-        var redirectTo = Uri.EscapeDataString(uri.PathAndQuery);
-        var queryParams = new Dictionary<string, string?>()
-        {
-            { "viewType", "Create" },
-            { "redirectTo", redirectTo }
-        };
-
-        var queryParamsString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
-
-        return $"/admin/pages?{queryParamsString}";
+        AddPageModalOpen = false;
+        await Task.CompletedTask;
+    }
+    
+    private async Task ClosePageSettings()
+    {
+        PageSettingsModalOpen = false;
+        await Task.CompletedTask;
     }
 
-    private string GetPageEditUrl()
+    private async Task AddPageSubmit(PageSettingsModel model)
     {
-        var uri = new Uri(NavigationManager.Uri);
-        var redirectTo = Uri.EscapeDataString(uri.PathAndQuery);
+        var request = Mapper.Map<PageCreateRequest>(model);
+        request.SiteId = ViewState.Site.Id;
+        
+        var pageResponse = await ApiClients.Page.CreateAsync(request);
+        // if (pageResponse.Data?.FullPath != null)
+        // {
+            AddPageModalOpen = false;
+        //     NavigationManager.NavigateTo(pageResponse.Data.FullPath, true);
+        // }
+    }
 
-        var queryParams = new Dictionary<string, string?>()
+    private async Task PageSettingsSubmit(PageSettingsModel model)
+    {
+        var request = Mapper.Map<PageUpdateRequest>(model);
+        request.Id = ViewState.Page.Id;
+        request.SiteId = ViewState.Site.Id;
+
+        var pageResponse = await ApiClients.Page.UpdateAsync(request);
+        
+        // if (pageResponse.Data?.FullPath != null)
+        // {
+            PageSettingsModalOpen = false;
+        //     NavigationManager.NavigateTo(pageResponse.Data.FullPath!, true);
+        // }
+    }
+    
+    private async Task OpenAddPage()
+    {
+        AddPageModalOpen = true;
+        PageSettings = new();
+        StateHasChanged();
+        await Task.CompletedTask;
+    }
+
+    private async Task OpenPageSettings()
+    {
+        var pageResponse = await ApiClients.Page.GetByIdAsync(ViewState.Page.Id);
+
+        if(pageResponse.Data != null)
         {
-            { "Id", ViewState.Page.Id.ToString() },
-            { "redirectTo", redirectTo }
-        };
-
-        var queryParamsString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
-
-        return $"/admin/pages?{queryParamsString}";
+            PageSettings = Mapper.Map<PageSettingsModel>(pageResponse.Data);
+        }
+        PageSettingsModalOpen = true;
+        await Task.CompletedTask;
+    }
+    protected override async Task OnInitializedAsync()
+    { 
+    
     }
 }

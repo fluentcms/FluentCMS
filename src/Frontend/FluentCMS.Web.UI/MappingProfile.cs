@@ -19,5 +19,13 @@ public class MappingProfile : Profile
 
         #endregion
 
+        #region Page settings
+
+        CreateMap<PageDetailResponse, PageSettingsModel>();
+        CreateMap<PageSettingsModel, PageCreateRequest>();
+        CreateMap<PageSettingsModel, PageUpdateRequest>();
+        
+        #endregion
+
     }
 }
