@@ -18,6 +18,7 @@ public class PageController(ISiteService siteService, IPageService pageService, 
     {
         var pages = await pageService.GetBySiteId(siteId, cancellationToken);
         var pagesResponse = mapper.Map<List<PageDetailResponse>>(pages.ToList());
+        // TODO: Add settings to pagesResponse (Currently I don't use settings here)
         return OkPaged(pagesResponse);
     }
 
@@ -27,6 +28,7 @@ public class PageController(ISiteService siteService, IPageService pageService, 
     {
         var page = await pageService.GetById(id, cancellationToken);
         var pageResponse = mapper.Map<PageDetailResponse>(page);
+        pageResponse.Settings = (await settingsService.GetById(id, cancellationToken)).Values;
         return Ok(pageResponse);
     }
 
@@ -53,6 +55,7 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         var newPage = await pageService.Create(page, cancellationToken);
 
         var pageResponse = mapper.Map<PageDetailResponse>(newPage);
+        pageResponse.Settings = (await settingsService.GetById(pageResponse.Id, cancellationToken)).Values;
         return Ok(pageResponse);
     }
 
@@ -64,6 +67,7 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         var updatedPage = await pageService.Update(page, cancellationToken);
 
         var entityResponse = mapper.Map<PageDetailResponse>(updatedPage);
+        entityResponse.Settings = (await settingsService.GetById(page.Id, cancellationToken)).Values;
         return Ok(entityResponse);
     }    
 
@@ -99,7 +103,8 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         var pluginDefinitions = (await pluginDefinitionService.GetAll(cancellationToken)).ToDictionary(x => x.Id);
         var layoutsDict = (await layoutService.GetAll(cancellationToken)).ToDictionary(x => x.Id);
         var plugins = await pluginService.GetByPageId(page.Id, cancellationToken);
-        var pageSettings = await settingsService.GetById(site.Id, cancellationToken);
+        var siteSettings = await settingsService.GetById(site.Id, cancellationToken);
+        var pageSettings = await settingsService.GetById(page.Id, cancellationToken);
         var roles = await roleService.GetAllForSite(site.Id, cancellationToken) ?? [];
 
         var layoutId = page.LayoutId ?? site.LayoutId;
@@ -109,11 +114,12 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         var pageResponse = mapper.Map<PageFullDetailResponse>(page);
         pageResponse.Site = mapper.Map<SiteDetailResponse>(site);
         pageResponse.Site.AllRoles = mapper.Map<List<RoleDetailResponse>>(roles);
-        pageResponse.Site.Settings = pageSettings.Values;
+        pageResponse.Site.Settings = siteSettings.Values;
         pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layoutsDict[layoutId]);
         pageResponse.EditLayout = mapper.Map<LayoutDetailResponse>(layoutsDict[editLayoutId]);
         pageResponse.DetailLayout = mapper.Map<LayoutDetailResponse>(layoutsDict[detailLayoutId]);
         pageResponse.Sections = [];
+        pageResponse.Settings = pageSettings.Values;
 
         // set admin roles property for the site
         // TODO: read from IPermissionService

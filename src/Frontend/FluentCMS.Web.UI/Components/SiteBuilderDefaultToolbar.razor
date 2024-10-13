@@ -40,11 +40,5 @@
     </div>
 </div>
 
-@if (PageSettingsModalOpen)
-{
-    <PageSettingsModal Open="@PageSettingsModalOpen" Model="PageSettings" OnCancel="ClosePageSettings" OnSubmit="PageSettingsSubmit" />
-}
-@if (AddPageModalOpen)
-{
-    <PageSettingsModal Open="@AddPageModalOpen" Title="Add Page" Model="PageSettings" OnCancel="CloseAddPage" OnSubmit="AddPageSubmit" />
-}
+<PageSettingsModal Open="@PageSettingsModalOpen" Id="@ViewState.Page.Id" OnCancel="ClosePageSettings" OnSubmit="PageSettingsSubmit" />
+<PageSettingsModal Open="@AddPageModalOpen" Title="Add Page" OnCancel="CloseAddPage" OnSubmit="AddPageSubmit" />
