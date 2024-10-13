@@ -28,6 +28,7 @@ public static class RavenDBServiceExtension
         services.AddScoped<IPluginRepository, PluginRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<ISiteRepository, SiteRepository>();
+        services.AddScoped<ISettingsRepository, SettingsRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserRoleRepository, UserRoleRepository>();
 
