@@ -510,6 +510,51 @@
             "Name": "Default",
             "Category": "Social Proof",
             "Description": "Simple statistics"
+        },
+        {
+            "Name": "Card Statistics",
+            "Category": "Social Proof",
+            "Description": "Statistics using cards"
+        },
+        {
+            "Name": "Icon Statistics",
+            "Category": "Social Proof",
+            "Description": "Statistics with icons"
+        },
+        {
+            "Name": "With Gallery",
+            "Category": "Content",
+            "Description": "Content with gallery"
+        },
+        {
+            "Name": "Mobile App",
+            "Category": "CTA",
+            "Description": "description and Download links of mobile app"
+        },
+        {
+            "Name": "Default",
+            "Category": "FAQ",
+            "Description": "Default frequently asked questions block"
+        },
+        {
+            "Name": "Default",
+            "Category": "Testimonials",
+            "Description": "Default Testimonials block"
+        },
+        {
+            "Name": "Cards",
+            "Category": "Testimonials",
+            "Description": "Testimonials in cards"
+        },
+        {
+            "Name": "Default",
+            "Category": "Customer Logos",
+            "Description": "Default customer logos section"
+        },
+        {
+            "Name": "Default",
+            "Category": "Schedule",
+            "Description": "Default schedule section"
         }
     ]
 }
