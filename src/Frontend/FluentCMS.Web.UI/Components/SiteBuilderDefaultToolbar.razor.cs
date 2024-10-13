@@ -39,11 +39,11 @@ public partial class SiteBuilderDefaultToolbar
         request.SiteId = ViewState.Site.Id;
         
         var pageResponse = await ApiClients.Page.CreateAsync(request);
-        // if (pageResponse.Data?.FullPath != null)
-        // {
+        if (pageResponse.Data?.FullPath != null)
+        {
             AddPageModalOpen = false;
-        //     NavigationManager.NavigateTo(pageResponse.Data.FullPath, true);
-        // }
+            NavigationManager.NavigateTo(pageResponse.Data.FullPath, true);
+        }
     }
 
     private async Task PageSettingsSubmit(PageSettingsModel model)
@@ -54,11 +54,11 @@ public partial class SiteBuilderDefaultToolbar
 
         var pageResponse = await ApiClients.Page.UpdateAsync(request);
         
-        // if (pageResponse.Data?.FullPath != null)
-        // {
+        if (pageResponse.Data?.FullPath != null)
+        {
             PageSettingsModalOpen = false;
-        //     NavigationManager.NavigateTo(pageResponse.Data.FullPath!, true);
-        // }
+            NavigationManager.NavigateTo(pageResponse.Data.FullPath!, true);
+        }
     }
     
     private async Task OpenAddPage()
@@ -79,9 +79,5 @@ public partial class SiteBuilderDefaultToolbar
         }
         PageSettingsModalOpen = true;
         await Task.CompletedTask;
-    }
-    protected override async Task OnInitializedAsync()
-    { 
-    
     }
 }

@@ -8,14 +8,14 @@ public interface IPageService : IAutoRegisterService
     Task<IEnumerable<PageModel>> GetHierarchyBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     Task<Page> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<PageModel> GetByFullPath(Guid siteId, string fullPath, CancellationToken cancellationToken = default);
-    Task<Page> Create(Page page, CancellationToken cancellationToken = default);
-    Task<Page> Update(Page page, CancellationToken cancellationToken = default);
+    Task<PageModel> Create(Page page, CancellationToken cancellationToken = default);
+    Task<PageModel> Update(Page page, CancellationToken cancellationToken = default);
     Task<Page> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
 public class PageService(IPageRepository pageRepository, IPageInternalService internalService, IMessagePublisher messagePublisher, IPermissionManager permissionManager) : IPageService
 {
-    public async Task<Page> Create(Page page, CancellationToken cancellationToken = default)
+    public async Task<PageModel> Create(Page page, CancellationToken cancellationToken = default)
     {
         if (!await permissionManager.HasAccess(page.SiteId, SitePermissionAction.SiteContributor, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
@@ -34,7 +34,8 @@ public class PageService(IPageRepository pageRepository, IPageInternalService in
 
         await messagePublisher.Publish(new Message<Page>(ActionNames.PageCreated, newPage), cancellationToken);
 
-        return newPage;
+        return await internalService.GetById(page.SiteId, page.Id, cancellationToken) ?? 
+            throw new AppException(ExceptionCodes.PageUnableToCreate);
     }
     // 
     
@@ -49,7 +50,7 @@ public class PageService(IPageRepository pageRepository, IPageInternalService in
     }
 
 
-    public async Task<Page> Update(Page page, CancellationToken cancellationToken = default)
+    public async Task<PageModel> Update(Page page, CancellationToken cancellationToken = default)
     {
         //fetch original page from db
         var originalPage = await pageRepository.GetById(page.Id, cancellationToken) ??
@@ -77,7 +78,8 @@ public class PageService(IPageRepository pageRepository, IPageInternalService in
 
         await messagePublisher.Publish(new Message<Page>(ActionNames.PageUpdated, updatedPage), cancellationToken);
 
-        return updatedPage;
+        return await internalService.GetById(page.SiteId, page.Id, cancellationToken) ?? 
+            throw new AppException(ExceptionCodes.PageUnableToUpdate);
     }
 
     public async Task<Page> Delete(Guid id, CancellationToken cancellationToken = default)
