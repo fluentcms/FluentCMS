@@ -17,7 +17,7 @@ public abstract class SiteAssociatedRepository<TEntity>(ILiteDBContext liteDbCon
         return await base.Update(entity, cancellationToken);
     }
 
-    public async Task<IEnumerable<TEntity>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TEntity>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         return await Collection.Query().Where(x => x.SiteId == siteId).ToListAsync();
