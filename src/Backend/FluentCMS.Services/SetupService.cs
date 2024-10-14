@@ -70,5 +70,8 @@ public class SetupService(IMessagePublisher messagePublisher, IGlobalSettingsRep
 
         foreach (var contentType in setupTemplate.ContentTypes)
             contentType.Id = Guid.NewGuid();
+
+        foreach (var layout in setupTemplate.Site.Layouts)
+            layout.Id = Guid.NewGuid();
     }
 }
