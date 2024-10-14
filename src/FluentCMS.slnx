@@ -10,6 +10,7 @@
     <Project Path="Backend\Repositories\FluentCMS.Repositories.Caching\FluentCMS.Repositories.Caching.csproj" />
     <Project Path="Backend\Repositories\FluentCMS.Repositories.LiteDb\FluentCMS.Repositories.LiteDb.csproj" />
     <Project Path="Backend\Repositories\FluentCMS.Repositories.MongoDB\FluentCMS.Repositories.MongoDB.csproj" />
+    <Project Path="Backend\Repositories\FluentCMS.Repositories.Postgres\FluentCMS.Repositories.Postgres.csproj" Type="Classic C#" />
   </Folder>
   <Folder Name="/Frontend/">
     <Project Path="Frontend\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj" />
@@ -48,6 +49,9 @@
   <Folder Name="/Providers/TemplateRenderingProviders/">
     <Project Path="Providers\TemplateRenderingProviders\FluentCMS.Providers.TemplateRenderingProviders.Abstractions\FluentCMS.Providers.TemplateRenderingProviders.Abstractions.csproj" />
     <Project Path="Providers\TemplateRenderingProviders\FluentCMS.Providers.TemplateRenderingProviders\FluentCMS.Providers.TemplateRenderingProviders.csproj" />
+  </Folder>
+  <Folder Name="/_Solution Items/">
+    <File Path="dev.docker-compose.yml" />
   </Folder>
   <Project Path="FluentCMS\FluentCMS.csproj" />
   <Project Path="Shared\Shared.csproj" />
