@@ -10,8 +10,7 @@ public class Page : SiteAssociatedEntity
     public Guid? EditLayoutId { get; set; }
     public Guid? DetailLayoutId { get; set; }
     public bool Locked { get; set; } = false;
-    public Dictionary<string, string> Settings { get; set; } = [];
-    // public IEnumerable<Guid> ViewRoleIds { get; set; } = [];
-    // public IEnumerable<Guid> ContributorRoleIds { get; set; } = [];
-    // public IEnumerable<Guid> AdminRoleIds { get; set; } = [];
+    public IEnumerable<Guid> ViewRoleIds { get; set; } = [];
+    public IEnumerable<Guid> ContributorRoleIds { get; set; } = [];
+    public IEnumerable<Guid> AdminRoleIds { get; set; } = [];
 }

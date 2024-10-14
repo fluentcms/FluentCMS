@@ -132,11 +132,21 @@ public partial class PageSettingsModal
             var layoutsResponse = await ApiClient.Layout.GetBySiteIdAsync(ViewState.Site.Id);
             var layouts = layoutsResponse?.Data?.ToList() ?? [];
 
-            LayoutOptions = layouts.Select(x => new SelectOption
-            {
-                Title = x.Name!,
-                Value = x.Id
-            }).ToList();
+            LayoutOptions = [
+                new SelectOption
+                {
+                    Title = "(default)",
+                    Value = Guid.Empty
+                }
+            ];
+
+            LayoutOptions.AddRange(
+                layouts.Select(x => new SelectOption
+                {
+                    Title = x.Name!,
+                    Value = x.Id
+                }).ToList()
+            );
         }
 
         await LoadPageOptions();
@@ -145,6 +155,18 @@ public partial class PageSettingsModal
     private async Task HandleSubmit()
     {
         PageDetailResponse response;
+
+        if(Model!.ParentId == Guid.Empty)
+            Model.ParentId = default!;
+            
+        if(Model!.LayoutId == Guid.Empty)
+            Model.LayoutId = default!;
+
+        if(Model!.EditLayoutId == Guid.Empty)
+            Model.EditLayoutId = default!;
+
+        if(Model!.DetailLayoutId == Guid.Empty)
+            Model.DetailLayoutId = default!;
 
         if (Id is null)
         {
@@ -176,25 +198,35 @@ public partial class PageSettingsModal
         var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Id);
         var pages = pagesResponse.Data ?? [];
 
-        PageOptions = pages.Where(x=> {
-            if(x.Locked) 
-                return false;
-            
-            // For add modal, show all pages in select.
-            if(Id is null)
-                return true;
-
-            if((x.FullPath + "/")!.StartsWith(ViewState.Page.FullPath + "/"))
+        PageOptions = [
+            new SelectOption
             {
-                return false;
+                Title = "(default)",
+                Value = Guid.Empty
             }
+        ];
 
-            return true;
-        }).Select(x => new SelectOption
-        {
-            Title = $"{x.FullPath} ({x.Title})",
-            Value = x.Id
-        }).OrderBy(x=> x.Title).ToList();
+        PageOptions.AddRange(
+            pages.Where(x=> {
+                if(x.Locked) 
+                    return false;
+                
+                // For add modal, show all pages in select.
+                if(Id is null)
+                    return true;
+
+                if((x.FullPath + "/")!.StartsWith(ViewState.Page.FullPath + "/"))
+                {
+                    return false;
+                }
+
+                return true;
+            }).Select(x => new SelectOption
+            {
+                Title = $"{x.FullPath} ({x.Title})",
+                Value = x.Id
+            }).OrderBy(x=> x.Title).ToList()
+        );
     }
 
     class SelectOption

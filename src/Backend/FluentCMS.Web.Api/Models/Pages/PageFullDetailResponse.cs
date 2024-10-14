@@ -14,4 +14,7 @@ public class PageFullDetailResponse : BaseSiteAssociatedResponse
     public Dictionary<string, List<PluginDetailResponse>> Sections { get; set; } = [];
     public bool Locked { get; set; } = false;
     public UserRoleDetailResponse User { get; set; } = default!;
+    public IEnumerable<Guid> ViewRoleIds { get; set; } = [];
+    public IEnumerable<Guid> ContributorRoleIds { get; set; } = [];
+    public IEnumerable<Guid> AdminRoleIds { get; set; } = [];
 }

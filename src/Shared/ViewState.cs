@@ -91,6 +91,9 @@ public class PageViewState
     public string FullPath { get; set; } = string.Empty;
     public bool Locked { get; set; } = false;
     public Dictionary<string, string> Settings { get; set; } = [];
+    public IEnumerable<Guid> AdminRoleIds { get; set; } = [];
+    public IEnumerable<Guid> ContributorRoleIds { get; set; } = [];
+    public IEnumerable<Guid> ViewRoleIds { get; set; } = [];
 }
 
 public class PluginViewState

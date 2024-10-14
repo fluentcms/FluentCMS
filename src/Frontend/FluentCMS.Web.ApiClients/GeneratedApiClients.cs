@@ -12519,6 +12519,15 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("user")]
         public UserRoleDetailResponse User { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("viewRoleIds")]
+        public System.Collections.Generic.ICollection<System.Guid>? ViewRoleIds { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("contributorRoleIds")]
+        public System.Collections.Generic.ICollection<System.Guid>? ContributorRoleIds { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("adminRoleIds")]
+        public System.Collections.Generic.ICollection<System.Guid>? AdminRoleIds { get; set; } = default!;
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.1.0.0 (NJsonSchema v11.0.2.0 (Newtonsoft.Json v13.0.0.0))")]

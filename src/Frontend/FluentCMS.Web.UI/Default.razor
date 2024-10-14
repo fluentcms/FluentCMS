@@ -39,6 +39,10 @@ else
         {
             <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.default.css">
         }
+        @if (ViewState.HasPageContributorAccess())
+        {
+            <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/plugin-container.css">
+        }
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/html.css">
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.css">
     </HeadContent>
@@ -47,5 +51,12 @@ else
         <SiteBuilderDefaultToolbar />
     }
     
-    @RenderDynamicContent(ViewState.Layout?.Body ?? string.Empty)
+    @if (ViewState.Page.Locked || ViewState.HasPageViewAccess())
+    {
+        @RenderDynamicContent(ViewState.Layout?.Body ?? string.Empty)
+    }
+    else
+    {
+        <h1>You have No Access to view this page.</h1>
+    }
 }
