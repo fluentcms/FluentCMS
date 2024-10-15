@@ -13,7 +13,7 @@
                 @(Layouts?.Where(x => x.Id == context.LayoutId).FirstOrDefault()?.Name ?? "(default)")
             </DataTableItem>
             <ActionButtons>
-                <ActionButton IconName="IconName.Eye" Color="Color.Success" Label="Open" Href="@context.FullPath" />
+                <ActionButton IconName="IconName.Eye" Color="Color.Success" Label="Open" Href="@context.FullPath" target="_blank" />
                 <ActionButtonEdit Href="@GetUrl("Update Page", new { id = @context.Id })"/>
                 <ActionButtonDelete @onclick="() => OnConfirm(context)"/>
             </ActionButtons>

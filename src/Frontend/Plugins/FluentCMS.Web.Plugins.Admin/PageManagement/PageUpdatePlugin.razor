@@ -6,6 +6,8 @@
     <FormInput Hint="Url slug of the page, should not be nested." @bind-Value="Model!.Path" Cols="6" Label="Path" Placeholder="Enter url path" />
     <ParentPageSelector @bind-Value="Model!.ParentId" Pages="@Pages" />
     <FormSelect @bind-Value="Model!.LayoutId" Data="LayoutOptions" ValueField="Value" TextField="Title" Cols="6" Label="Layout" Placeholder="Choose Layout" Visible="@(Layouts != null)" />
+    <FormSelect @bind-Value="Model!.EditLayoutId" Data="LayoutOptions" ValueField="Value" TextField="Title" Cols="6" Label="Edit Layout" Placeholder="Choose Edit Layout" Visible="@(Layouts != null)" />
+    <FormSelect @bind-Value="Model!.DetailLayoutId" Data="LayoutOptions" ValueField="Value" TextField="Title" Cols="6" Label="Detail Layout" Placeholder="Choose Detail Layout" Visible="@(Layouts != null)" />
     <FormNumberInput @bind-Value="Model!.Order" Cols="6" Label="Order" Placeholder="Enter page order" />
 
     <FormTextarea @bind-Value="Model!.Head" Label="Head" Placeholder="Enter Head content" />
