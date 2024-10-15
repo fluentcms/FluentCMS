@@ -12,7 +12,7 @@ public class PageDetailResponse : BaseSiteAssociatedResponse
     public Guid? DetailLayoutId { get; set; } 
     public Guid? EditLayoutId { get; set; } 
     public bool Locked { get; set; } = false;
-    public List<Guid> ViewRoleIds { get; set; } = [];
-    public List<Guid> ContributorRoleIds { get; set; } = [];
-    public List<Guid> AdminRoleIds { get; set; } = [];
+    public IEnumerable<Guid> ViewRoleIds { get; set; } = [];
+    public IEnumerable<Guid> ContributorRoleIds { get; set; } = [];
+    public IEnumerable<Guid> AdminRoleIds { get; set; } = [];
 }

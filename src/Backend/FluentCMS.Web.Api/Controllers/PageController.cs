@@ -18,7 +18,6 @@ public class PageController(ISiteService siteService, IPageService pageService, 
     {
         var pages = await pageService.GetBySiteId(siteId, cancellationToken);
         var pagesResponse = mapper.Map<List<PageDetailResponse>>(pages.ToList());
-        // TODO: Add settings to pagesResponse (Currently I don't use settings here)
         return OkPaged(pagesResponse);
     }
 
