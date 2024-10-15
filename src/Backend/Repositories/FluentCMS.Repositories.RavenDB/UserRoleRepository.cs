@@ -8,7 +8,10 @@ public class UserRoleRepository(IRavenDBContext RavenDbContext, IApiExecutionCon
 
         using (var session = Store.OpenAsyncSession())
         {
-            var qres = await session.Query<UserRole>().Where(x => x.SiteId == siteId && x.UserId == userId).ToListAsync(cancellationToken);
+            var qres = await session.Query<RavenEntity<UserRole>>()
+                                    .Where(x => x.Data.SiteId == siteId && x.Data.UserId == userId)
+                                    .Select(x => x.Data)
+                                    .ToListAsync(cancellationToken);
 
             return qres.AsEnumerable();
         }
@@ -20,7 +23,10 @@ public class UserRoleRepository(IRavenDBContext RavenDbContext, IApiExecutionCon
 
         using (var session = Store.OpenAsyncSession())
         {
-            var qres = await session.Query<UserRole>().Where(x => x.RoleId == roleId).ToListAsync(cancellationToken);
+            var qres = await session.Query<RavenEntity<UserRole>>()
+                                    .Where(x => x.Data.RoleId == roleId)
+                                    .Select(x => x.Data)
+                                    .ToListAsync(cancellationToken);
 
             return qres.AsEnumerable();
         }
@@ -32,7 +38,10 @@ public class UserRoleRepository(IRavenDBContext RavenDbContext, IApiExecutionCon
 
         using (var session = Store.OpenAsyncSession())
         {
-            var qres = await session.Query<UserRole>().Where(x => x.UserId == userId).ToListAsync(cancellationToken);
+            var qres = await session.Query<RavenEntity<UserRole>>()
+                                    .Where(x => x.Data.UserId == userId)
+                                    .Select(x => x.Data)
+                                    .ToListAsync(cancellationToken);
 
             return qres.AsEnumerable();
         }

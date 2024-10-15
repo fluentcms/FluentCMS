@@ -2,20 +2,25 @@
 
 public abstract class SiteAssociatedRepository<TEntity>(IRavenDBContext RavenDbContext, IApiExecutionContext apiExecutionContext) : AuditableEntityRepository<TEntity>(RavenDbContext, apiExecutionContext), ISiteAssociatedRepository<TEntity> where TEntity : ISiteAssociatedEntity
 {
-    public override async Task<TEntity?> Update(TEntity entity, CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
+    // public override async Task<TEntity?> Update(TEntity entity, CancellationToken cancellationToken = default)
+    // {
+    //     cancellationToken.ThrowIfCancellationRequested();
 
-        var existing = await GetById(entity.Id, cancellationToken);
-        if (existing is null)
-            return default;
+    //     using (var session = Store.OpenAsyncSession())
+    //     {
+    //         var existing = await session.Query<RavenEntity<TEntity>>().SingleOrDefaultAsync(x => x.Data.Id == entity.Id, cancellationToken);
+    //         if (existing == null)
+    //             return default;
 
-        SetAuditableFieldsForUpdate(entity, existing);
+    //         SetAuditableFieldsForUpdate(entity, existing.Data);
 
-        entity.SiteId = existing.SiteId;
+    //         existing.Data.SiteId = entity.SiteId;
 
-        return await base.Update(entity, cancellationToken);
-    }
+    //         await session.SaveChangesAsync();
+
+    //         return existing.Data;
+    //     }
+    // }
 
     public async Task<IEnumerable<TEntity>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {
@@ -23,19 +28,24 @@ public abstract class SiteAssociatedRepository<TEntity>(IRavenDBContext RavenDbC
 
         using (var session = Store.OpenAsyncSession())
         {
-            var qres = await session.Query<TEntity>().Where(x => x.SiteId == siteId).ToListAsync(cancellationToken);
+            var qres = await session.Query<RavenEntity<TEntity>>()
+                                    .Where(x => x.Data.SiteId == siteId)
+                                    .Select(x => x.Data)
+                                    .ToListAsync(cancellationToken);
 
             return qres.AsEnumerable();
         }
     }
 
-    public async Task<TEntity?> GetByIdForSite(Guid id, Guid siteId, CancellationToken cancellationToken = default)
+    public async Task<SiteAssociatedEntity?> GetByIdForSite(Guid id, Guid siteId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         using (var session = Store.OpenAsyncSession())
         {
-            return await session.Query<TEntity>().SingleOrDefaultAsync(x => x.Id == id && x.SiteId == siteId, cancellationToken);
+            var entity = await session.Query<RavenEntity<SiteAssociatedEntity>>().SingleOrDefaultAsync(x => x.Data.Id == id && x.Data.SiteId == siteId, cancellationToken);
+
+            return entity?.Data;
         }
     }
 }

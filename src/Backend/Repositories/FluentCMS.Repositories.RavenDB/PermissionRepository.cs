@@ -9,7 +9,10 @@ public class PermissionRepository(IRavenDBContext RavenDbContext, IApiExecutionC
         using (var session = Store.OpenAsyncSession())
         {
             // Delete existing permissions
-            var existingPermissions = await session.Query<Permission>().Where(x => x.EntityId == entityId && x.EntityType == entityTypeName && x.Action == action).ToListAsync(cancellationToken);
+            var existingPermissions = await session.Query<RavenEntity<Permission>>()
+                                        .Where(x => x.Data.EntityId == entityId && x.Data.EntityType == entityTypeName && x.Data.Action == action)
+                                        .ToListAsync(cancellationToken);
+
             foreach (var existingPermission in existingPermissions)
             {
                 session.Delete(existingPermission);
@@ -18,6 +21,7 @@ public class PermissionRepository(IRavenDBContext RavenDbContext, IApiExecutionC
             // Create new permissions
             var permissions = roleIds.Select(x => new Permission
             {
+                Id = Guid.NewGuid(),
                 EntityType = entityTypeName,
                 Action = action,
                 EntityId = entityId,
@@ -28,7 +32,9 @@ public class PermissionRepository(IRavenDBContext RavenDbContext, IApiExecutionC
             // Save the new permissions
             foreach (var permission in permissions)
             {
-                await session.StoreAsync(permission, cancellationToken);
+                SetAuditableFieldsForCreate(permission);
+
+                await session.StoreAsync(new RavenEntity<Permission>(permission), cancellationToken);
             }
 
             await session.SaveChangesAsync(cancellationToken);

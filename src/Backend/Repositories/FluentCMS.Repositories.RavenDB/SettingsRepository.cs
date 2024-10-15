@@ -12,7 +12,7 @@ public class SettingsRepository : AuditableEntityRepository<Settings>, ISettings
     {
         using (var session = Store.OpenAsyncSession())
         {
-            var existing = await session.Query<Settings>().SingleOrDefaultAsync(x => x.Id == entityId, cancellationToken);
+            var existing = await session.Query<RavenEntity<Settings>>().SingleOrDefaultAsync(x => x.Data.Id == entityId, cancellationToken);
 
             if (existing == null)
             {
@@ -21,28 +21,30 @@ public class SettingsRepository : AuditableEntityRepository<Settings>, ISettings
                     entityId = Guid.NewGuid();
                 }
 
-                existing = new Settings()
+                var setting = new Settings()
                 {
                     Id = entityId,
                     Values = settings
                 };
 
-                SetAuditableFieldsForCreate(existing);
+                SetAuditableFieldsForCreate(setting);
 
-                await session.StoreAsync(existing);
+                existing = new RavenEntity<Settings>(setting);
+
+                await session.StoreAsync(existing, cancellationToken);
             }
             else
             {
                 // add new settings to existing settings or update existing settings
                 foreach (var setting in settings)
-                    existing.Values[setting.Key] = setting.Value;
+                    existing.Data.Values[setting.Key] = setting.Value;
 
-                SetAuditableFieldsForUpdate(existing, existing);
+                SetAuditableFieldsForUpdate(existing.Data, existing.Data);
             }
 
             await session.SaveChangesAsync();
 
-            return existing;
+            return existing.Data;
         }
     }
 }

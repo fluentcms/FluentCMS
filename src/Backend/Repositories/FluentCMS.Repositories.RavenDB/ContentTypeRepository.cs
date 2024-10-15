@@ -8,7 +8,9 @@ public class ContentTypeRepository(IRavenDBContext dbContext, IApiExecutionConte
 
         using (var session = Store.OpenAsyncSession())
         {
-            return await session.Query<ContentType>().SingleOrDefaultAsync(x => x.Slug == contentTypeSlug);
+            var entity = await session.Query<RavenEntity<ContentType>>().SingleOrDefaultAsync(x => x.Data.Slug == contentTypeSlug, cancellationToken);
+
+            return entity?.Data;
         }
     }
 }

@@ -17,7 +17,9 @@ public class GlobalSettingsRepository : IGlobalSettingsRepository
 
         using (var session = _store.OpenAsyncSession())
         {
-            return await session.Query<GlobalSettings>().SingleOrDefaultAsync(cancellationToken);
+            var entity = await session.Query<RavenEntity<GlobalSettings>>().SingleOrDefaultAsync(cancellationToken);
+
+            return entity?.Data;
         }
     }
 
@@ -32,25 +34,25 @@ public class GlobalSettingsRepository : IGlobalSettingsRepository
 
         using (var session = _store.OpenAsyncSession())
         {
-            var dbEntity = await session.Query<GlobalSettings>().SingleOrDefaultAsync(cancellationToken);
+            var dbEntity = await session.Query<RavenEntity<GlobalSettings>>().SingleOrDefaultAsync(cancellationToken);
             if (dbEntity == null)
             {
                 SetAuditableFieldsForCreate(settings);
 
-                await session.StoreAsync(settings);
+                dbEntity = new RavenEntity<GlobalSettings>(settings);
 
-                dbEntity = settings;
+                await session.StoreAsync(dbEntity, cancellationToken);
             }
             else
             {
-                settings.CopyProperties(dbEntity);
+                settings.CopyProperties(dbEntity.Data);
 
-                SetAuditableFieldsForUpdate(dbEntity);
+                SetAuditableFieldsForUpdate(dbEntity.Data);
             }
 
             await session.SaveChangesAsync(cancellationToken);
 
-            return dbEntity;
+            return dbEntity?.Data;
         }
     }
 
@@ -63,20 +65,20 @@ public class GlobalSettingsRepository : IGlobalSettingsRepository
         return existing?.Initialized ?? false;
     }
 
-    private async Task<GlobalSettings?> Create(GlobalSettings settings, CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
+    // private async Task<GlobalSettings?> Create(GlobalSettings settings, CancellationToken cancellationToken = default)
+    // {
+    //     cancellationToken.ThrowIfCancellationRequested();
         
-        SetAuditableFieldsForCreate(settings);
-        using (var session = _store.OpenAsyncSession())
-        {
-            await session.StoreAsync(settings);
+    //     SetAuditableFieldsForCreate(settings);
+    //     using (var session = _store.OpenAsyncSession())
+    //     {
+    //         await session.StoreAsync(settings, settings.Id.ToString(), cancellationToken);
 
-            await session.SaveChangesAsync(cancellationToken);
-        }
+    //         await session.SaveChangesAsync(cancellationToken);
+    //     }
         
-        return settings;
-    }
+    //     return settings;
+    // }
 
     private void SetAuditableFieldsForCreate(GlobalSettings settings)
     {

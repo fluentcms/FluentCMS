@@ -11,7 +11,9 @@ public class SiteRepository : AuditableEntityRepository<Site>, ISiteRepository
 
         using (var session = Store.OpenAsyncSession())
         {
-            return await session.Query<Site>().SingleOrDefaultAsync(x => x.Urls.Contains(url), cancellationToken);
+            var entity = await session.Query<RavenEntity<Site>>().SingleOrDefaultAsync(x => x.Data.Urls.Contains(url), cancellationToken);
+
+            return entity?.Data;
         }
     }
 }

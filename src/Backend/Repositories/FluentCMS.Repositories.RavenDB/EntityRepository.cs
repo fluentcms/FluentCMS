@@ -21,7 +21,10 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
 
         using (var session = Store.OpenAsyncSession())
         {
-            var entities = await session.Query<TEntity>().ToListAsync(cancellationToken);
+            var entities = await session.Query<RavenEntity<TEntity>>()
+                                        .Select(x => x.Data)
+                                        .ToListAsync(cancellationToken);
+            
             return entities.AsEnumerable();
         }
     }
@@ -32,7 +35,9 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
 
         using (var session = Store.OpenAsyncSession())
         {
-            return await session.Query<TEntity>().SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+            var entity = await session.Query<RavenEntity<TEntity>>().SingleOrDefaultAsync(x => x.Data.Id == id, cancellationToken);
+
+            return entity.Data;
         }
     }
 
@@ -42,7 +47,10 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
 
         using (var session = Store.OpenAsyncSession())
         {
-            var entities = await session.Query<TEntity>().Where(x => ids.Contains(x.Id)).ToListAsync(cancellationToken);
+            var entities = await session.Query<RavenEntity<TEntity>>().Where(x => ids.Contains(x.Data.Id))
+                                        .Select(x => x.Data)
+                                        .ToListAsync(cancellationToken);
+
             return entities.AsEnumerable();
         }
     }
@@ -58,7 +66,7 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
                 entity.Id = Guid.NewGuid();
             }
 
-            await session.StoreAsync(entity);
+            await session.StoreAsync(new RavenEntity<TEntity>(entity), cancellationToken);
 
             await session.SaveChangesAsync(cancellationToken);
         }
@@ -81,7 +89,7 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
                     entity.Id = Guid.NewGuid();
                 }
 
-                await session.StoreAsync(entity);
+                await session.StoreAsync(new RavenEntity<TEntity>(entity), cancellationToken);
             }
 
             await session.SaveChangesAsync(cancellationToken);
@@ -96,8 +104,9 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
 
         using (var session = Store.OpenAsyncSession())
         {
-            var id = entity.Id;
-            var dbEntity = await session.Query<TEntity>().SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+            var id = entity.Id; // Needs to be extracted to guid to avoid type casts in query.
+
+            var dbEntity = await session.Query<RavenEntity<TEntity>>().SingleOrDefaultAsync(x => x.Data.Id == id, cancellationToken);
             if (dbEntity == null)
             {
                 if (entity.Id == Guid.Empty)
@@ -105,18 +114,18 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
                     entity.Id = Guid.NewGuid();
                 }
 
-                await session.StoreAsync(entity);
+                dbEntity = new RavenEntity<TEntity>(entity);
 
-                dbEntity = entity;
+                await session.StoreAsync(dbEntity, cancellationToken);
             }
             else
             {
-                entity.CopyProperties(dbEntity);
+                entity.CopyProperties(dbEntity.Data);
             }
 
             await session.SaveChangesAsync(cancellationToken);
 
-            return dbEntity;
+            return dbEntity.Data;
         }
     }
 
@@ -126,13 +135,13 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
 
         using (var session = Store.OpenAsyncSession())
         {
-            var entity = await session.Query<TEntity>().SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+            var entity = await session.Query<RavenEntity<TEntity>>().SingleOrDefaultAsync(x => x.Data.Id == id, cancellationToken);
 
             session.Delete(entity);
 
             await session.SaveChangesAsync(cancellationToken);
 
-            return entity;
+            return entity.Data; // A bit strange to return to object we just deleted.
         }
     }
 
@@ -142,7 +151,7 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
 
         using (var session = Store.OpenAsyncSession())
         {
-            var entities = await session.Query<TEntity>().Where(x => ids.Contains(x.Id)).ToListAsync(cancellationToken);
+            var entities = await session.Query<RavenEntity<TEntity>>().Where(x => ids.Contains(x.Data.Id)).ToListAsync(cancellationToken);
 
             foreach (var entity in entities)
             {
@@ -153,7 +162,7 @@ public abstract class EntityRepository<TEntity> : IEntityRepository<TEntity> whe
 
             await session.SaveChangesAsync(cancellationToken);
 
-            return entities;
+            return entities.Select(x => x.Data);
         }
     }
 }

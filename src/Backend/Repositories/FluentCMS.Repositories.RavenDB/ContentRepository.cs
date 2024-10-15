@@ -8,8 +8,9 @@ public class ContentRepository(IRavenDBContext dbContext, IApiExecutionContext a
         
         using (var session = Store.OpenAsyncSession())
         {
-            var entities = await session.Query<Content>()
-                                    .Where(x => x.TypeId == contentTypeId)
+            var entities = await session.Query<RavenEntity<Content>>()
+                                    .Where(x => x.Data.TypeId == contentTypeId)
+                                    .Select(x => x.Data)
                                     .ToListAsync(cancellationToken);
             
             return entities.AsEnumerable();

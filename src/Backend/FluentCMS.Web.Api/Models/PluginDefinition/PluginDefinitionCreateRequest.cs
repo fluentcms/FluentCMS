@@ -4,6 +4,8 @@ public class PluginDefinitionCreateRequest
 {
     public string Name { get; set; } = default!;
     public string Category { get; set; } = default!;
+    public string Assembly { get; set; } = default!;
     public string? Description { get; set; }
-    public string Type { get; set; } = default!;
+    public IEnumerable<PluginDefinitionType> Types { get; set; } = [];
+    public bool Locked { get; set; } = false;
 }

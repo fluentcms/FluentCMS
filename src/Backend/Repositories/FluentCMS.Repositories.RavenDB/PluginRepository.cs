@@ -8,7 +8,10 @@ public class PluginRepository(IRavenDBContext RavenDbContext, IApiExecutionConte
 
         using (var session = Store.OpenAsyncSession())
         {
-            var qres = await session.Query<Plugin>().Where(x => x.PageId == pageId).ToListAsync(cancellationToken);
+            var qres = await session.Query<RavenEntity<Plugin>>()
+                                    .Where(x => x.Data.PageId == pageId)
+                                    .Select(x => x.Data)
+                                    .ToListAsync(cancellationToken);
 
             return qres.AsEnumerable();
         }
@@ -18,15 +21,21 @@ public class PluginRepository(IRavenDBContext RavenDbContext, IApiExecutionConte
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var plugin = await GetById(pluginId, cancellationToken);
-
-        if (plugin != null)
+        using (var session = Store.OpenAsyncSession())
         {
-            plugin.Order = order;
-            plugin.Section = section;
+            var plugin = await session.Query<RavenEntity<Plugin>>().SingleOrDefaultAsync(x => x.Data.Id == pluginId, cancellationToken);
 
-            return await Update(plugin, cancellationToken);
+            if (plugin != null)
+            {
+                plugin.Data.Order = order;
+                plugin.Data.Section = section;
+
+                await session.SaveChangesAsync();
+
+                return plugin.Data;
+            }
         }
+
         return default;
     }
 
@@ -34,15 +43,22 @@ public class PluginRepository(IRavenDBContext RavenDbContext, IApiExecutionConte
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var plugin = await GetById(pluginId, cancellationToken);
-
-        if (plugin != null)
+        using (var session = Store.OpenAsyncSession())
         {
-            plugin.Cols = cols;
-            plugin.ColsMd = colsMd;
-            plugin.ColsLg = colsLg;
-            return await Update(plugin, cancellationToken);
+            var plugin = await session.Query<RavenEntity<Plugin>>().SingleOrDefaultAsync(x => x.Data.Id == pluginId, cancellationToken);
+
+            if (plugin != null)
+            {
+                plugin.Data.Cols = cols;
+                plugin.Data.ColsMd = colsMd;
+                plugin.Data.ColsLg = colsLg;
+
+                await session.SaveChangesAsync();
+
+                return plugin.Data;
+            }
         }
+
         return default;
     }
 }

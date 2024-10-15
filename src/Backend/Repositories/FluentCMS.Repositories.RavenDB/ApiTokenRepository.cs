@@ -6,9 +6,11 @@ public class ApiTokenRepository(IRavenDBContext dbContext, IApiExecutionContext 
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        using (var session = dbContext.Store.OpenAsyncSession())
+        using (var session = Store.OpenAsyncSession())
         {
-            return await session.Query<ApiToken>().SingleOrDefaultAsync(x => x.Key == apiKey, cancellationToken);
+            var entity = await session.Query<RavenEntity<ApiToken>>().SingleOrDefaultAsync(x => x.Data.Key == apiKey, cancellationToken);
+
+            return entity?.Data;
         }
     }
 
@@ -16,9 +18,11 @@ public class ApiTokenRepository(IRavenDBContext dbContext, IApiExecutionContext 
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        using (var session = dbContext.Store.OpenAsyncSession())
+        using (var session = Store.OpenAsyncSession())
         {
-            return await session.Query<ApiToken>().SingleOrDefaultAsync(x => x.Name == name, cancellationToken);
+            var entity = await session.Query<RavenEntity<ApiToken>>().SingleOrDefaultAsync(x => x.Data.Name == name, cancellationToken);
+
+            return entity?.Data;
         }
     }
 }

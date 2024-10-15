@@ -12,7 +12,10 @@ public class PluginContentRepository : SiteAssociatedRepository<PluginContent>, 
 
         using (var session = Store.OpenAsyncSession())
         {
-            var qres = await session.Query<PluginContent>().Where(x => x.PluginId == pluginId).ToListAsync(cancellationToken);
+            var qres = await session.Query<RavenEntity<PluginContent>>()
+                                    .Where(x => x.Data.PluginId == pluginId)
+                                    .Select(x => x.Data)
+                                    .ToListAsync(cancellationToken);
 
             return qres.AsEnumerable();
         }

@@ -27,25 +27,25 @@ public abstract class AuditableEntityRepository<TEntity>(IRavenDBContext dbConte
         using (var session = Store.OpenAsyncSession())
         {
             var id = entity.Id;
-            var dbEntity = await session.Query<TEntity>().SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+            var dbEntity = await session.Query<RavenEntity<TEntity>>().SingleOrDefaultAsync(x => x.Data.Id == id, cancellationToken);
             if (dbEntity == null)
             {
                 SetAuditableFieldsForCreate(entity);
 
-                await session.StoreAsync(entity);
+                dbEntity = new RavenEntity<TEntity>(entity);
 
-                dbEntity = entity;
+                await session.StoreAsync(dbEntity, cancellationToken);
             }
             else
             {
-                entity.CopyProperties(dbEntity);
+                entity.CopyProperties(dbEntity.Data);
 
-                SetAuditableFieldsForUpdate(entity, dbEntity);
+                SetAuditableFieldsForUpdate(entity, dbEntity.Data);
             }
 
             await session.SaveChangesAsync(cancellationToken);
 
-            return dbEntity;
+            return dbEntity.Data;
         }
     }
 
