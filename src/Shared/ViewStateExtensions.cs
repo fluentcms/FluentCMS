@@ -1,6 +1,4 @@
-﻿using System.Data.SqlTypes;
-
-namespace FluentCMS;
+﻿namespace FluentCMS;
 
 public static class ViewStateExtensions
 {
@@ -18,6 +16,10 @@ public static class ViewStateExtensions
         if (viewState.Page.Locked)
             return false;
 
+        // Admin roles should always have contributor access
+        if (viewState.HasPageAdminAccess())
+            return true;
+
         return viewState.Page.ContributorRoleIds.Any(roleId =>
                 viewState.User?.Roles.Select(x => x.Id).Contains(roleId) ?? false);
     }
@@ -25,7 +27,7 @@ public static class ViewStateExtensions
     public static bool HasPageViewAccess(this ViewState viewState)
     {
         // Admin and contributor roles should always have view access
-        if(viewState.HasPageContributorAccess() || viewState.HasPageAdminAccess())
+        if (viewState.HasPageContributorAccess() || viewState.HasPageAdminAccess())
             return true;
 
         return viewState.Page.ViewRoleIds.Any(roleId =>
