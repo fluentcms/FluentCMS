@@ -28,6 +28,8 @@ public partial class PageSettingsModal
     [Parameter]
     public Guid? Id { get; set; } = default!;
 
+    private List<string> Errors { get; set; } = [];
+
     private List<SelectOption> PageOptions { get; set; } = [];
 
     private List<SelectOption>? LayoutOptions { get; set; }
@@ -141,30 +143,45 @@ public partial class PageSettingsModal
 
     private async Task HandleSubmit()
     {
-        PageDetailResponse response;
 
-        if (Id is null)
+        try
         {
-            var request = Model!.ToCreateRequest(ViewState.Site.Id);
-            var pageResponse = await ApiClient.Page.CreateAsync(request);
+            PageDetailResponse response;
 
-            var settings = Model!.ToSettingsRequest(pageResponse.Data.Id);
-            await ApiClient.Settings.UpdateAsync(settings);
+            if (Id is null)
+            {
+                var request = Model!.ToCreateRequest(ViewState.Site.Id);
+                var pageResponse = await ApiClient.Page.CreateAsync(request);
 
-            response = pageResponse.Data;
+                var settings = Model!.ToSettingsRequest(pageResponse.Data.Id);
+                await ApiClient.Settings.UpdateAsync(settings);
+
+                response = pageResponse.Data;
+            }
+            else
+            {
+                var request = Model!.ToUpdateRequest(ViewState.Site.Id, Id.Value);
+                var pageResponse = await ApiClient.Page.UpdateAsync(request);
+
+                var settings = Model!.ToSettingsRequest(Id.Value);
+                await ApiClient.Settings.UpdateAsync(settings);
+                
+                response = pageResponse.Data;
+            }
+
+            await OnSubmit.InvokeAsync(response);
         }
-        else
+        catch (ApiClientException ex)
         {
-            var request = Model!.ToUpdateRequest(ViewState.Site.Id, Id.Value);
-            var pageResponse = await ApiClient.Page.UpdateAsync(request);
-
-            var settings = Model!.ToSettingsRequest(Id.Value);
-            await ApiClient.Settings.UpdateAsync(settings);
-            
-            response = pageResponse.Data;
+            Errors = ex.ApiResult?.Errors?.Select(x => $"{x.Code ?? string.Empty}: {x.Description ?? string.Empty}").ToList() ?? [ex.Message];
+            StateHasChanged();
         }
-
-        await OnSubmit.InvokeAsync(response);
+        catch (Exception ex)
+        {
+            Errors = [ex.Message];
+            StateHasChanged();
+        }
+        
         await LoadPageOptions();
     }
 
