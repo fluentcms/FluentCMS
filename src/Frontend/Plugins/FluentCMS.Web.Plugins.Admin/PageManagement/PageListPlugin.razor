@@ -8,9 +8,12 @@
     <ChildContent>
         <DataTable Items="Pages">
             <DataTableItem Label="Title">@context.Title</DataTableItem>
-            <DataTableItem Label="Path">@context.Path</DataTableItem>
+            <DataTableItem Label="Full Path">@context.FullPath</DataTableItem>
+            <DataTableItem Label="Layout">
+                @(Layouts?.Where(x => x.Id == context.LayoutId).FirstOrDefault()?.Name ?? "(default)")
+            </DataTableItem>
             <ActionButtons>
-                <ActionButton IconName="IconName.Eye" Color="Color.Success" Label="Open" Href="@GetPageUrl(context)" />
+                <ActionButton IconName="IconName.Eye" Color="Color.Success" Label="Open" Href="@context.FullPath" />
                 <ActionButtonEdit Href="@GetUrl("Update Page", new { id = @context.Id })"/>
                 <ActionButtonDelete @onclick="() => OnConfirm(context)"/>
             </ActionButtons>

@@ -34,7 +34,6 @@ public partial class PageSettingsModal
 
     private PageSettingsModel? Model { get; set; }
 
-
     private List<SelectOptionString> RobotsOptions =
     [
         new SelectOptionString
@@ -107,23 +106,11 @@ public partial class PageSettingsModal
         else
         {
             var pageResponse = await ApiClient.Page.GetByIdAsync(Id.Value);
-            var settings = pageResponse.Data.Settings ?? [];
 
             if (pageResponse.Data != null)
             {
-                Model = Mapper.Map<PageSettingsModel>(pageResponse.Data);
-
-                settings.TryGetValue("MetaTitle", out var metaTitle);
-                settings.TryGetValue("MetaDescription", out var metaDescription);
-                settings.TryGetValue("OgType", out var ogType);
-                settings.TryGetValue("Robots", out var robots);
-                settings.TryGetValue("Head", out var head);
-
-                Model.MetaTitle = metaTitle ?? string.Empty;
-                Model.MetaDescription = metaDescription ?? string.Empty;
-                Model.OgType = ogType ?? string.Empty;
-                Model.Robots = robots ?? string.Empty;
-                Model.Head = head ?? string.Empty;
+                Model = new();
+                Model.Initialize(pageResponse.Data);
             }
         }
 
@@ -155,18 +142,6 @@ public partial class PageSettingsModal
     private async Task HandleSubmit()
     {
         PageDetailResponse response;
-
-        if(Model!.ParentId == Guid.Empty)
-            Model.ParentId = default!;
-            
-        if(Model!.LayoutId == Guid.Empty)
-            Model.LayoutId = default!;
-
-        if(Model!.EditLayoutId == Guid.Empty)
-            Model.EditLayoutId = default!;
-
-        if(Model!.DetailLayoutId == Guid.Empty)
-            Model.DetailLayoutId = default!;
 
         if (Id is null)
         {
@@ -232,7 +207,7 @@ public partial class PageSettingsModal
     class SelectOption
     {
         public string Title { get; set; } = string.Empty;
-        public Guid? Value { get; set; }
+        public Guid Value { get; set; }
     }
 
     class SelectOptionString

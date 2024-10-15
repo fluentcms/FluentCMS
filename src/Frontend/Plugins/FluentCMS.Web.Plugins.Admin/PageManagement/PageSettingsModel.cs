@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-namespace FluentCMS.Web.UI;
+namespace FluentCMS.Web.Plugins.Admin.PageManagement;
 
 public class PageSettingsModel
 {
@@ -38,24 +38,6 @@ public class PageSettingsModel
 
     #endregion
 
-    public PageCreateRequest ToCreateRequest(Guid siteId)
-    {
-        return new PageCreateRequest()
-        {
-            SiteId = siteId,
-            Title = Title,       
-            Path = Path,
-            ParentId = ParentId != Guid.Empty ? ParentId : default!,
-            LayoutId = LayoutId != Guid.Empty ? LayoutId : default!,
-            EditLayoutId = EditLayoutId != Guid.Empty ? EditLayoutId : default!,
-            DetailLayoutId = DetailLayoutId != Guid.Empty ? DetailLayoutId : default!,
-            Order = Order,
-            AdminRoleIds = AdminRoleIds,
-            ContributorRoleIds = ContributorRoleIds,
-            ViewRoleIds = ViewRoleIds,
-        };
-    }
-
     public void Initialize(PageDetailResponse response)
     {
         Title = response.Title ?? string.Empty;
@@ -82,6 +64,24 @@ public class PageSettingsModel
         OgType = ogType ?? string.Empty;
         Robots = robots ?? string.Empty;
         Head = head ?? string.Empty;
+    }
+
+    public PageCreateRequest ToCreateRequest(Guid siteId)
+    {
+        return new PageCreateRequest()
+        {
+            SiteId = siteId,
+            Title = Title,       
+            Path = Path,
+            ParentId = ParentId != Guid.Empty ? ParentId : default!,
+            LayoutId = LayoutId != Guid.Empty ? LayoutId : default!,
+            EditLayoutId = EditLayoutId != Guid.Empty ? EditLayoutId : default!,
+            DetailLayoutId = DetailLayoutId != Guid.Empty ? DetailLayoutId : default!,
+            Order = Order,
+            AdminRoleIds = AdminRoleIds,
+            ContributorRoleIds = ContributorRoleIds,
+            ViewRoleIds = ViewRoleIds,
+        };
     }
 
     public PageUpdateRequest ToUpdateRequest(Guid siteId, Guid pageId)

@@ -8,14 +8,70 @@ public partial class PageUpdatePlugin
     private Guid Id { get; set; }
 
     [SupplyParameterFromForm(FormName = FORM_NAME)]
-    private PageUpdateRequest? Model { get; set; }
+    private PageSettingsModel? Model { get; set; }
 
     private List<LayoutDetailResponse>? Layouts { get; set; }
     private List<PageDetailResponse>? Pages { get; set; }
 
     private List<SelectOption>? LayoutOptions { get; set; }
 
-    private PageDetailResponse? Page { get; set; }
+    private List<SelectOptionString> RobotsOptions =
+    [
+        new SelectOptionString
+        {
+            Title = "(default)",
+            Value = string.Empty
+        },
+        new SelectOptionString
+        {
+            Title = "Index & Follow",
+            Value = "index,follow"
+        },
+        new SelectOptionString
+        {
+            Title = "Index & No Follow",
+            Value = "index,nofollow"
+        },
+        new SelectOptionString
+        {
+            Title = "No Index & Follow",
+            Value = "noindex,follow"
+        },
+        new SelectOptionString
+        {
+            Title = "No Index & No Follow",
+            Value = "noindex,nofollow"
+        }
+    ];
+
+    private List<SelectOptionString> OgTypeOptions =
+    [
+        new SelectOptionString
+        {
+            Title = "(default)",
+            Value = string.Empty
+        },
+        new SelectOptionString
+        {
+            Title = "Website",
+            Value = "website"
+        },
+        new SelectOptionString
+        {
+            Title = "Article",
+            Value = "article"
+        },
+        new SelectOptionString
+        {
+            Title = "Product",
+            Value = "product"
+        },
+        new SelectOptionString
+        {
+            Title = "Video",
+            Value = "video"
+        }
+    ];
 
     protected override async Task OnInitializedAsync()
     {
@@ -58,20 +114,22 @@ public partial class PageUpdatePlugin
         if (Model is null)
         {
             var pageResponse = await ApiClient.Page.GetByIdAsync(Id);
-            Page = pageResponse.Data;
-            Model = Mapper.Map<PageUpdateRequest>(Page);
+            if (pageResponse.Data != null)
+            {
+                Model = new();
+                Model.Initialize(pageResponse.Data);
+            }
         }
     }
 
     private async Task OnSubmit()
     {
-        if (Model!.ParentId == Guid.Empty)
-            Model.ParentId = default!;
+        var request = Model!.ToUpdateRequest(ViewState.Site.Id, Id);
+        await ApiClient.Page.UpdateAsync(request);
 
-        if (Model.LayoutId == Guid.Empty)
-            Model.LayoutId = default!;
-
-        await ApiClient.Page.UpdateAsync(Model);
-        NavigateBack(true);
+        var settings = Model.ToSettingsRequest(Id);
+        await ApiClient.Settings.UpdateAsync(settings);
+        
+        NavigateBack();
     }
 }
