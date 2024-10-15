@@ -2,20 +2,20 @@
 
 @if (Model != null)
 {
-    <EditForm Model="@Model" Name="PageSettings" OnValidSubmit="HandleSubmit">
+    <EditForm Model="@Model" Name="PageSettings" OnSubmit="HandleSubmit">
         <DataAnnotationsValidator />
         <Modal Visible="@Open" Size="ModalSize.Large" OnClose="HandleCancel">
             <ModalHeader>
                 <ModalTitle>@Title</ModalTitle>
             </ModalHeader>
-            <Tabs Active="General">
-                <TabList>
-                    <TabItem Name="General">General</TabItem>
-                    <TabItem Name="MetaTags">Meta tags</TabItem>
-                    <TabItem Name="Permissions">Permissions</TabItem>
-                </TabList>
-                <TabContent>
-                    <ModalBody>
+            <ModalBody>
+                <Tabs Active="General">
+                    <TabList>
+                        <TabItem Name="General">General</TabItem>
+                        <TabItem Name="MetaTags">Meta tags</TabItem>
+                        <TabItem Name="Permissions">Permissions</TabItem>
+                    </TabList>
+                    <TabContent>
                         <TabPanel Name="General">
                             <Grid GutterX="GridGutter.Large">
                                 <FormInput @bind-Value="Model!.Title" Cols="6" Label="Title" Placeholder="Enter Title" Required />
@@ -43,9 +43,16 @@
                                 <FormCheckboxGroup Hint="Roles which are able to manage page." @bind-Value="Model!.AdminRoleIds" Data="ViewState.Site.AllRoles" Label="AdminRoles" TextField="Name" ValueField="Id" />
                             </Grid>
                         </TabPanel>
-                    </ModalBody>
-                </TabContent>
-            </Tabs>
+                        <Spacer />
+                        <Alert Visible="Errors.Count > 0" Type="AlertType.Danger">
+                            @foreach (var error in Errors)
+                            {
+                                <p>@error</p>
+                            }
+                        </Alert>
+                    </TabContent>
+                </Tabs>
+            </ModalBody>
             <ModalFooter>
                 <Stack>
                     <Button @onclick="HandleCancel">Cancel</Button>
