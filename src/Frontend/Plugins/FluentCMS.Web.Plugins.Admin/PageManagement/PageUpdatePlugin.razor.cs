@@ -130,6 +130,6 @@ public partial class PageUpdatePlugin
         var settings = Model.ToSettingsRequest(Id);
         await ApiClient.Settings.UpdateAsync(settings);
         
-        NavigateBack();
+        NavigateBack(true);
     }
 }
