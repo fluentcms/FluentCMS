@@ -3,7 +3,7 @@ using System.IO;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class PageController(ISiteService siteService, IPageService pageService, IPluginDefinitionService pluginDefinitionService, IPluginService pluginService, ILayoutService layoutService, IRoleService roleService, IUserRoleService userRoleService, ISetupService setupService, ISettingsService settingsService, IApiExecutionContext apiExecutionContext, IMapper mapper) : BaseGlobalController
+public class PageController(ISiteService siteService, IPageService pageService, IPluginDefinitionService pluginDefinitionService, IPluginService pluginService, ILayoutService layoutService, IRoleService roleService, IUserRoleService userRoleService, ISetupService setupService, ISettingsService settingsService, IGlobalSettingsService globalSettingsService, IApiExecutionContext apiExecutionContext, IMapper mapper) : BaseGlobalController
 {
 
     public const string AREA = "Page Management";
@@ -68,7 +68,7 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         var entityResponse = mapper.Map<PageDetailResponse>(updatedPage);
         entityResponse.Settings = (await settingsService.GetById(page.Id, cancellationToken)).Values;
         return Ok(entityResponse);
-    }    
+    }
 
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]
@@ -132,6 +132,11 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         pageResponse.User = mapper.Map<UserRoleDetailResponse>(apiExecutionContext);
         var userRoleIds = await userRoleService.GetUserRoleIds(apiExecutionContext.UserId, site.Id, cancellationToken);
         pageResponse.User.Roles = pageResponse.Site.AllRoles.Where(x => userRoleIds.Contains(x.Id)).ToList();
+
+        // setting super admin flag
+        var globalSettings = await globalSettingsService.Get(cancellationToken);
+        if (globalSettings != null)
+            pageResponse.User.IsSuperAdmin = globalSettings.SuperAdmins.Contains(pageResponse.User.Username);
 
         // setting the plugin details
         var pluginSettingsDict = (await settingsService.GetByIds(plugins.Select(x => x.Id), cancellationToken)).ToDictionary(x => x.Id, x => x.Values);

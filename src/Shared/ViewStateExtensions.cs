@@ -7,6 +7,20 @@ public static class ViewStateExtensions
         if (viewState.Page.Locked)
             return false;
 
+        // super admins have always access to all areas
+        if (viewState.User.IsSuperAdmin)
+            return true;
+
+        // site admins have always access to all areas
+        if (viewState.Site.AdminRoles.Any(role =>
+            viewState.User?.Roles.Select(x => x.Id).Contains(role.Id) ?? false))
+            return true;
+
+        // site contributors have always access to all areas
+        if (viewState.Site.ContributorRoles.Any(role =>
+            viewState.User?.Roles.Select(x => x.Id).Contains(role.Id) ?? false))
+            return true;
+
         return viewState.Page.AdminRoleIds.Any(roleId =>
                 viewState.User?.Roles.Select(x => x.Id).Contains(roleId) ?? false);
     }
