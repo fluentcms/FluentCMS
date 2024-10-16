@@ -13443,11 +13443,11 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("editLayoutId")]
         public System.Guid EditLayoutId { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("adminRoles")]
-        public System.Collections.Generic.ICollection<RoleDetailResponse>? AdminRoles { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("adminRoleIds")]
+        public System.Collections.Generic.ICollection<System.Guid>? AdminRoleIds { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("contributorRoles")]
-        public System.Collections.Generic.ICollection<RoleDetailResponse>? ContributorRoles { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("contributorRoleIds")]
+        public System.Collections.Generic.ICollection<System.Guid>? ContributorRoleIds { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("allRoles")]
         public System.Collections.Generic.ICollection<RoleDetailResponse>? AllRoles { get; set; } = default!;
@@ -13877,6 +13877,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("isAuthenticated")]
         public bool IsAuthenticated { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuperAdmin")]
+        public bool IsSuperAdmin { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("userId")]
         public System.Guid UserId { get; set; } = default!;

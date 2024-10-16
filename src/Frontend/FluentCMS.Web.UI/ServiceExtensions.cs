@@ -88,8 +88,8 @@ public static class ServiceExtensions
                 viewState.User = mapper.Map<UserViewState>(pageResponse.Data.User);
                 viewState.User.Id = pageResponse.Data.User.UserId;
 
-                viewState.Site.HasAdminAccess = (pageResponse.Data.Site.AdminRoles ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role.Id) ?? false);
-                viewState.Site.HasContributorAccess = (pageResponse.Data.Site.ContributorRoles ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role.Id) ?? false);
+                viewState.Site.HasAdminAccess = (pageResponse.Data.Site.AdminRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
+                viewState.Site.HasContributorAccess = (pageResponse.Data.Site.ContributorRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
 
                 viewState.Page.HasAdminAccess = (pageResponse.Data.AdminRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
                 viewState.Page.HasContributorAccess = (pageResponse.Data.ContributorRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);

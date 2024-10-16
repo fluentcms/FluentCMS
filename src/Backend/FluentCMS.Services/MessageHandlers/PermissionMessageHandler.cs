@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Services.MessageHandlers;
 
-public class PermissionMessageHandler(IPermissionService permissionService) : IMessageHandler<SiteTemplate>
+public class PermissionMessageHandler(IPermissionService permissionService) : IMessageHandler<SiteTemplate>, IMessageHandler<Site>, IMessageHandler<Page>
 {
     public async Task Handle(Message<SiteTemplate> notification, CancellationToken cancellationToken)
     {
@@ -17,6 +17,36 @@ public class PermissionMessageHandler(IPermissionService permissionService) : IM
                 break;
 
             case ActionNames.SiteDeleted:
+                break;
+        }
+    }
+
+    public async Task Handle(Message<Site> notification, CancellationToken cancellationToken)
+    {
+        switch (notification.Action)
+        {
+            case ActionNames.SiteDeleted:
+                await permissionService.Set(notification.Payload.Id, SitePermissionAction.SiteContributor, [], cancellationToken);
+                await permissionService.Set(notification.Payload.Id, SitePermissionAction.SiteAdmin, [], cancellationToken);
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    public async Task Handle(Message<Page> notification, CancellationToken cancellationToken)
+    {
+        switch (notification.Action)
+        {
+            case ActionNames.PageDeleted:
+                await permissionService.Set(notification.Payload.SiteId, notification.Payload.Id, PagePermissionAction.PageContributor, [], cancellationToken);
+                await permissionService.Set(notification.Payload.SiteId, notification.Payload.Id, PagePermissionAction.PageView, [], cancellationToken);
+                await permissionService.Set(notification.Payload.SiteId, notification.Payload.Id, PagePermissionAction.PageAdmin, [], cancellationToken);
+
+                break;
+
+            default:
                 break;
         }
     }
