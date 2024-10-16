@@ -1,8 +1,7 @@
 ﻿namespace FluentCMS.Entities;
 
-public class AuditableEntityLog
+public class AuditableEntityLog : Entity
 {
-    public Guid Id { get; set; }
     public string EntityType { get; set; } = default!;
     public Guid EntityId { get; set; }
     public string Action { get; set; } = default!;
