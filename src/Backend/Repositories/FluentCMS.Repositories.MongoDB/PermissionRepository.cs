@@ -24,4 +24,13 @@ public class PermissionRepository(IMongoDBContext mongoDbContext, IApiExecutionC
 
         return await CreateMany(permissions, cancellationToken);
     }
+
+    public async Task<IEnumerable<Permission>> Get(Guid siteId, Guid entityId, string entityTypeName, string action, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var existPermissions = await Collection.Find(x => x.EntityId == entityId && x.EntityType == entityTypeName && x.Action == action).ToListAsync(cancellationToken: cancellationToken);
+
+        return existPermissions;
+    }
 }

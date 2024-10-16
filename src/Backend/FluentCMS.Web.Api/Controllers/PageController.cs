@@ -1,9 +1,10 @@
-﻿using FluentCMS.Web.Api.Filters;
+﻿using FluentCMS.Services.Permissions;
+using FluentCMS.Web.Api.Filters;
 using System.IO;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class PageController(ISiteService siteService, IPageService pageService, IPluginDefinitionService pluginDefinitionService, IPluginService pluginService, ILayoutService layoutService, IRoleService roleService, IUserRoleService userRoleService, ISetupService setupService, ISettingsService settingsService, IGlobalSettingsService globalSettingsService, IApiExecutionContext apiExecutionContext, IMapper mapper) : BaseGlobalController
+public class PageController(ISiteService siteService, IPageService pageService, IPermissionService permissionService, IPluginDefinitionService pluginDefinitionService, IPluginService pluginService, ILayoutService layoutService, IRoleService roleService, IUserRoleService userRoleService, ISetupService setupService, ISettingsService settingsService, IGlobalSettingsService globalSettingsService, IApiExecutionContext apiExecutionContext, IMapper mapper) : BaseGlobalController
 {
 
     public const string AREA = "Page Management";
@@ -53,6 +54,10 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         var page = mapper.Map<Page>(request);
         var newPage = await pageService.Create(page, cancellationToken);
 
+        await permissionService.Set(page.SiteId, newPage.Id, PagePermissionAction.PageView, request.ViewRoleIds, cancellationToken);
+        await permissionService.Set(page.SiteId, newPage.Id, PagePermissionAction.PageAdmin, request.AdminRoleIds, cancellationToken);
+        await permissionService.Set(page.SiteId, newPage.Id, PagePermissionAction.PageContributor, request.ContributorRoleIds, cancellationToken);
+
         var pageResponse = mapper.Map<PageDetailResponse>(newPage);
         pageResponse.Settings = (await settingsService.GetById(pageResponse.Id, cancellationToken)).Values;
         return Ok(pageResponse);
@@ -64,6 +69,10 @@ public class PageController(ISiteService siteService, IPageService pageService, 
     {
         var page = mapper.Map<Page>(request);
         var updatedPage = await pageService.Update(page, cancellationToken);
+
+        await permissionService.Set(page.SiteId, updatedPage.Id, PagePermissionAction.PageView, request.ViewRoleIds, cancellationToken);
+        await permissionService.Set(page.SiteId, updatedPage.Id, PagePermissionAction.PageAdmin, request.AdminRoleIds, cancellationToken);
+        await permissionService.Set(page.SiteId, updatedPage.Id, PagePermissionAction.PageContributor, request.ContributorRoleIds, cancellationToken);
 
         var entityResponse = mapper.Map<PageDetailResponse>(updatedPage);
         entityResponse.Settings = (await settingsService.GetById(page.Id, cancellationToken)).Values;
@@ -127,6 +136,8 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         // set contributor roles property for the site
         // TODO: read from IPermissionService
         pageResponse.Site.ContributorRoles = pageResponse.Site.AllRoles.Where(x => x.Type == RoleTypes.Administrators).ToList();
+
+        // TODO: set page admin, contributor and view permissions.
 
         // setting current user details and permissions
         pageResponse.User = mapper.Map<UserRoleDetailResponse>(apiExecutionContext);

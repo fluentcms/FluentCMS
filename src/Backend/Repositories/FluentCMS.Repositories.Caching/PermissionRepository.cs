@@ -8,4 +8,9 @@ public class PermissionRepository(IPermissionRepository repository, ICacheProvid
         InvalidateCache();
         return results;
     }
+    public async Task<IEnumerable<Permission>> Get(Guid siteId, Guid entityId, string entityTypeName, string action, CancellationToken cancellationToken = default)
+    {
+        var results = await repository.Get(siteId, entityId, entityTypeName, action, cancellationToken);
+        return results;
+    }
 }
