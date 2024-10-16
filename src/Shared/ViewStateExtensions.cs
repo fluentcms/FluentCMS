@@ -12,17 +12,14 @@ public static class ViewStateExtensions
             return true;
 
         // site admins have always access to all areas
-        if (viewState.Site.AdminRoles.Any(role =>
-            viewState.User?.Roles.Select(x => x.Id).Contains(role.Id) ?? false))
+        if (viewState.Site.HasAdminAccess)
             return true;
 
         // site contributors have always access to all areas
-        if (viewState.Site.ContributorRoles.Any(role =>
-            viewState.User?.Roles.Select(x => x.Id).Contains(role.Id) ?? false))
+        if (viewState.Site.HasContributorAccess)
             return true;
 
-        return viewState.Page.AdminRoleIds.Any(roleId =>
-                viewState.User?.Roles.Select(x => x.Id).Contains(roleId) ?? false);
+        return viewState.Page.HasAdminAccess;
     }
 
     public static bool HasPageContributorAccess(this ViewState viewState)
@@ -34,8 +31,7 @@ public static class ViewStateExtensions
         if (viewState.HasPageAdminAccess())
             return true;
 
-        return viewState.Page.ContributorRoleIds.Any(roleId =>
-                viewState.User?.Roles.Select(x => x.Id).Contains(roleId) ?? false);
+        return viewState.Page.HasContributorAccess;
     }
 
     public static bool HasPageViewAccess(this ViewState viewState)
@@ -44,7 +40,6 @@ public static class ViewStateExtensions
         if (viewState.HasPageContributorAccess() || viewState.HasPageAdminAccess())
             return true;
 
-        return viewState.Page.ViewRoleIds.Any(roleId =>
-                viewState.User?.Roles.Select(x => x.Id).Contains(roleId) ?? false);
+        return viewState.Page.HasViewAccess;
     }
 }

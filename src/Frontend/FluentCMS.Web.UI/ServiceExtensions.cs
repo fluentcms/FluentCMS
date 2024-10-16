@@ -87,6 +87,13 @@ public static class ServiceExtensions
                 viewState.Plugins = pageResponse.Data.Sections!.Values.SelectMany(x => x).Select(p => mapper.Map<PluginViewState>(p)).ToList();
                 viewState.User = mapper.Map<UserViewState>(pageResponse.Data.User);
 
+                viewState.Site.HasAdminAccess = (pageResponse.Data.Site.AdminRoles ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role.Id) ?? false);
+                viewState.Site.HasContributorAccess = (pageResponse.Data.Site.ContributorRoles ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role.Id) ?? false);
+
+                viewState.Page.HasAdminAccess = (pageResponse.Data.AdminRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
+                viewState.Page.HasContributorAccess = (pageResponse.Data.ContributorRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
+                viewState.Page.HasViewAccess = (pageResponse.Data.ViewRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
+
                 // check if the page is in edit mode
                 // it should have pluginId and pluginViewName query strings
                 var uriBuilder = new UriBuilder(navigationManager.Uri);
