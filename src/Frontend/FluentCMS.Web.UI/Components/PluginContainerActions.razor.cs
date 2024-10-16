@@ -59,7 +59,7 @@ public partial class PluginContainerActions
 
     private Dictionary<string, object> GetEditParameters()
     {
-        Dictionary<string, object> result = new() 
+        Dictionary<string, object> result = new()
         {
             { "Open", EditModalOpen },
             { "Plugin", Plugin },
@@ -108,7 +108,7 @@ public partial class PluginContainerActions
                 {"Style", SettingsModel.Style},
             }
         };
-      
+
         await ApiClients.Settings.UpdateAsync(request);
         SettingsModalOpen = false;
         await OnUpdate.InvokeAsync();

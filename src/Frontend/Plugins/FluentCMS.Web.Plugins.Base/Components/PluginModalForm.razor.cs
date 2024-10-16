@@ -27,7 +27,7 @@ public partial class PluginModalForm
 
     private async Task HandleCancel()
     {
-        OnCancel.InvokeAsync();
+        await OnCancel.InvokeAsync();
     }
 
     private async Task HandleSubmit()

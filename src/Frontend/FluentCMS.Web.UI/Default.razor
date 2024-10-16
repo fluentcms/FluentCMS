@@ -35,17 +35,25 @@ else
     <PageTitle>@ViewState.Page?.Title</PageTitle>
     <HeadContent>
         @RenderDynamicContent(ViewState.Layout?.Head ?? string.Empty)
-        @if (ViewState.HasPageAdminAccess())
+        @if (!ViewState.Page.Locked && ViewState.Page.HasAdminAccess)
         {
             <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.default.css">
+            <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/plugin-container.css">
         }
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/html.css">
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.css">
     </HeadContent>
-    @if (ViewState.HasPageAdminAccess())
+    @if (!ViewState.Page.Locked && ViewState.Page.HasAdminAccess)
     {
         <SiteBuilderDefaultToolbar />
     }
     
-    @RenderDynamicContent(ViewState.Layout?.Body ?? string.Empty)
+    @if (ViewState.Page.Locked || ViewState.Page.HasViewAccess)
+    {
+        @RenderDynamicContent(ViewState.Layout?.Body ?? string.Empty)
+    }
+    else
+    {
+        <h1>You have No Access to view this page.</h1>
+    }
 }

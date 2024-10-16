@@ -4,7 +4,7 @@ $modal: $prefix + "modal";
     @apply flex fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0 justify-center items-center;
 
     &-body {
-        max-height: 80vh;
+        max-height: 70vh;
         overflow: auto;
         @apply space-y-6 p-6;
     }

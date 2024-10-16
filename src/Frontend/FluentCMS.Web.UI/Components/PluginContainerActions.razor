@@ -1,6 +1,6 @@
 @namespace FluentCMS.Web.UI
 
-@if (ViewState.HasPageContributorAccess() && (ViewState.Type == ViewStateType.Default || ViewState.Type == ViewStateType.PagePreview))
+@if (ViewState.Page.HasAdminAccess && !ViewState.Page.Locked && (ViewState.Type == ViewStateType.Default || ViewState.Type == ViewStateType.PagePreview))
 {
     <div class="f-plugin-container-actions">
         <div class="f-plugin-toolbar-dropdown">
@@ -25,7 +25,7 @@
                         Edit
                     </button>
                 }
-                @if (ViewState.HasPageAdminAccess())
+                @if (ViewState.Page.HasAdminAccess)
                 {
                     <button @onclick="OpenDeleteConfirm" class="f-plugin-toolbar-dropdown-item">
                         <svg width="16" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -37,7 +37,7 @@
 
             </div>
         </div>
-        @if (ViewState.Type == ViewStateType.PagePreview && ViewState.HasPageAdminAccess())
+        @if (ViewState.Type == ViewStateType.PagePreview && ViewState.Page.HasAdminAccess)
         {
             <button class="f-plugin-toolbar-action f-plugin-container-action-drag">
                 <svg width="16" height="16" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">

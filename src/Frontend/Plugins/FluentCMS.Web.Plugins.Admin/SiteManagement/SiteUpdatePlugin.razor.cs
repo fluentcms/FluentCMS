@@ -140,7 +140,8 @@ public partial class SiteUpdatePlugin
         };
     }
 
-    public class SelectOption {
+    public class SelectOption
+    {
         public string Title { get; set; } = string.Empty;
         public string Key { get; set; } = string.Empty;
     }

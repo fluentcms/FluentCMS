@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Providers\ApiTokenProviders\FluentCMS.Providers.ApiTokenProviders.Abstractions\FluentCMS.Providers.ApiTokenProviders.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Providers\CacheProviders\FluentCMS.Providers.CacheProviders.Abstractions\FluentCMS.Providers.CacheProviders.Abstractions.csproj" />
     <ProjectReference Include="..\..\Providers\EmailProviders\FluentCMS.Providers.EmailProviders.Abstractions\FluentCMS.Providers.EmailProviders.Abstractions.csproj" />
     <ProjectReference Include="..\..\Providers\FileStorageProviders\FluentCMS.Providers.FileStorageProviders.Abstractions\FluentCMS.Providers.FileStorageProviders.Abstractions.csproj" />
     <ProjectReference Include="..\..\Providers\MessageBusProviders\FluentCMS.Providers.MessageBusProviders.Abstractions\FluentCMS.Providers.MessageBusProviders.Abstractions.csproj" />

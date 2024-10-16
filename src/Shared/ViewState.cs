@@ -50,10 +50,10 @@ public class SiteViewState
     public string Name { get; set; } = default!;
     public List<string> Urls { get; set; } = default!;
     public string? Description { get; set; }
-    public List<RoleViewState> AdminRoles { get; set; } = [];
-    public List<RoleViewState> ContributorRoles { get; set; } = [];
     public List<RoleViewState> AllRoles { get; set; } = [];
     public Dictionary<string, string> Settings { get; set; } = [];
+    public bool HasAdminAccess { get; set; }
+    public bool HasContributorAccess { get; set; }
 }
 
 public class RoleViewState
@@ -91,6 +91,8 @@ public class PageViewState
     public string FullPath { get; set; } = string.Empty;
     public bool Locked { get; set; } = false;
     public Dictionary<string, string> Settings { get; set; } = [];
+    public bool HasAdminAccess { get; set; }
+    public bool HasViewAccess { get; set; }
 }
 
 public class PluginViewState
@@ -131,4 +133,5 @@ public class UserViewState
     public string UserName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public List<RoleViewState> Roles { get; set; } = [];
+    public bool IsSuperAdmin { get; set; }
 }

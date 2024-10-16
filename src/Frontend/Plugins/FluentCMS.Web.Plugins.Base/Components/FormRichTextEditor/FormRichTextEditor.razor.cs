@@ -169,11 +169,12 @@ public partial class FormRichTextEditor : IAsyncDisposable
         }
 
         // TODO: Site url
-        var pagesResponse = await ApiClient.Page.GetAllAsync("localhost:5000");
-        if (pagesResponse?.Data != null)
-        {
-            Pages = pagesResponse.Data.ToList();
-        }
+        //var pagesResponse = await ApiClient.Page.GetAllAsync("localhost:5000");
+        //if (pagesResponse?.Data != null)
+        //{
+        //    Pages = pagesResponse.Data.ToList();
+        //}
+        Pages = [];
 
         await OnNavigateFolder(null);
     }

@@ -5947,12 +5947,12 @@ namespace FluentCMS.Web.ApiClients
     {
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(string siteUrl);
+        System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(System.Guid siteId);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(string siteUrl, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(System.Guid siteId, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -6038,18 +6038,18 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(string siteUrl)
+        public virtual System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(System.Guid siteId)
         {
-            return GetAllAsync(siteUrl, System.Threading.CancellationToken.None);
+            return GetAllAsync(siteId, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(string siteUrl, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PageDetailResponseIApiPagingResult> GetAllAsync(System.Guid siteId, System.Threading.CancellationToken cancellationToken)
         {
-            if (siteUrl == null)
-                throw new System.ArgumentNullException("siteUrl");
+            if (siteId == null)
+                throw new System.ArgumentNullException("siteId");
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -6062,9 +6062,9 @@ namespace FluentCMS.Web.ApiClients
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
-                    // Operation Path: "api/Page/GetAll/{siteUrl}"
+                    // Operation Path: "api/Page/GetAll/{siteId}"
                     urlBuilder_.Append("api/Page/GetAll/");
-                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(siteUrl, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -12304,10 +12304,6 @@ namespace FluentCMS.Web.ApiClients
         [System.ComponentModel.DataAnnotations.Required]
         public System.Collections.Generic.ICollection<System.Guid> ViewRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
 
-        [System.Text.Json.Serialization.JsonPropertyName("contributorRoleIds")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public System.Collections.Generic.ICollection<System.Guid> ContributorRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
-
         [System.Text.Json.Serialization.JsonPropertyName("adminRoleIds")]
         [System.ComponentModel.DataAnnotations.Required]
         public System.Collections.Generic.ICollection<System.Guid> AdminRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
@@ -12342,9 +12338,6 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("parentId")]
         public System.Guid? ParentId { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("layoutId")]
-        public System.Guid? LayoutId { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("title")]
         public string? Title { get; set; } = default!;
 
@@ -12357,23 +12350,23 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("path")]
         public string? Path { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("layout")]
-        public LayoutDetailResponse Layout { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("fullPath")]
+        public string? FullPath { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("detailLayout")]
-        public LayoutDetailResponse DetailLayout { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("layoutId")]
+        public System.Guid? LayoutId { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("editLayout")]
-        public LayoutDetailResponse EditLayout { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("detailLayoutId")]
+        public System.Guid? DetailLayoutId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("editLayoutId")]
+        public System.Guid? EditLayoutId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("locked")]
         public bool Locked { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("viewRoleIds")]
         public System.Collections.Generic.ICollection<System.Guid>? ViewRoleIds { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("contributorRoleIds")]
-        public System.Collections.Generic.ICollection<System.Guid>? ContributorRoleIds { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("adminRoleIds")]
         public System.Collections.Generic.ICollection<System.Guid>? AdminRoleIds { get; set; } = default!;
@@ -12519,6 +12512,12 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("user")]
         public UserRoleDetailResponse User { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("viewRoleIds")]
+        public System.Collections.Generic.ICollection<System.Guid>? ViewRoleIds { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("adminRoleIds")]
+        public System.Collections.Generic.ICollection<System.Guid>? AdminRoleIds { get; set; } = default!;
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.1.0.0 (NJsonSchema v11.0.2.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -12585,10 +12584,6 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("viewRoleIds")]
         [System.ComponentModel.DataAnnotations.Required]
         public System.Collections.Generic.ICollection<System.Guid> ViewRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
-
-        [System.Text.Json.Serialization.JsonPropertyName("contributorRoleIds")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public System.Collections.Generic.ICollection<System.Guid> ContributorRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
 
         [System.Text.Json.Serialization.JsonPropertyName("adminRoleIds")]
         [System.ComponentModel.DataAnnotations.Required]
@@ -13434,11 +13429,11 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("editLayoutId")]
         public System.Guid EditLayoutId { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("adminRoles")]
-        public System.Collections.Generic.ICollection<RoleDetailResponse>? AdminRoles { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("adminRoleIds")]
+        public System.Collections.Generic.ICollection<System.Guid>? AdminRoleIds { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("contributorRoles")]
-        public System.Collections.Generic.ICollection<RoleDetailResponse>? ContributorRoles { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("contributorRoleIds")]
+        public System.Collections.Generic.ICollection<System.Guid>? ContributorRoleIds { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("allRoles")]
         public System.Collections.Generic.ICollection<RoleDetailResponse>? AllRoles { get; set; } = default!;
@@ -13868,6 +13863,9 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("isAuthenticated")]
         public bool IsAuthenticated { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSuperAdmin")]
+        public bool IsSuperAdmin { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("userId")]
         public System.Guid UserId { get; set; } = default!;
