@@ -26,7 +26,7 @@ public class PageSettingsModel
     public ICollection<Guid> AdminRoleIds { get; set; } = [];
 
     #region Head 
-    
+
     public string MetaTitle { get; set; } = default!;
     public string MetaDescription { get; set; } = default!;
     public string Robots { get; set; } = default!;
@@ -67,7 +67,7 @@ public class PageSettingsModel
         return new PageCreateRequest()
         {
             SiteId = siteId,
-            Title = Title,       
+            Title = Title,
             Path = Path,
             ParentId = ParentId != Guid.Empty ? ParentId : default!,
             LayoutId = LayoutId != Guid.Empty ? LayoutId : default!,
@@ -85,7 +85,7 @@ public class PageSettingsModel
         {
             Id = pageId,
             SiteId = siteId,
-            Title = Title,       
+            Title = Title,
             Path = Path,
             ParentId = ParentId != Guid.Empty ? ParentId : default!,
             LayoutId = LayoutId != Guid.Empty ? LayoutId : default!,

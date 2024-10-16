@@ -169,7 +169,7 @@ public partial class PageSettingsModal
 
                 var settings = Model!.ToSettingsRequest(Id.Value);
                 await ApiClient.Settings.UpdateAsync(settings);
-                
+
                 response = pageResponse.Data;
             }
 
@@ -185,7 +185,7 @@ public partial class PageSettingsModal
             Errors = [ex.Message];
             StateHasChanged();
         }
-        
+
         await LoadPageOptions();
     }
 
@@ -203,15 +203,16 @@ public partial class PageSettingsModal
         ];
 
         PageOptions.AddRange(
-            pages.Where(x=> {
-                if(x.Locked) 
+            pages.Where(x =>
+            {
+                if (x.Locked)
                     return false;
-                
+
                 // For add modal, show all pages in select.
-                if(Id is null)
+                if (Id is null)
                     return true;
 
-                if((x.FullPath + "/")!.StartsWith(ViewState.Page.FullPath + "/"))
+                if ((x.FullPath + "/")!.StartsWith(ViewState.Page.FullPath + "/"))
                 {
                     return false;
                 }
@@ -221,7 +222,7 @@ public partial class PageSettingsModal
             {
                 Title = $"{x.FullPath} ({x.Title})",
                 Value = x.Id
-            }).OrderBy(x=> x.Title).ToList()
+            }).OrderBy(x => x.Title).ToList()
         );
     }
 

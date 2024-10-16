@@ -1,5 +1,3 @@
-using AutoMapper;
-
 namespace FluentCMS.Web.UI;
 
 public partial class SiteBuilderDefaultToolbar

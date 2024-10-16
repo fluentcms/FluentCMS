@@ -119,7 +119,7 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         pageResponse.Settings = pageSettings.Values;
 
         // set site permissions
-        pageResponse.Site.AdminRoleIds = (await permissionService.Get(site.Id, SitePermissionAction.SiteAdmin, cancellationToken)).Select(x=> x.RoleId).ToList();
+        pageResponse.Site.AdminRoleIds = (await permissionService.Get(site.Id, SitePermissionAction.SiteAdmin, cancellationToken)).Select(x => x.RoleId).ToList();
         pageResponse.Site.ContributorRoleIds = (await permissionService.Get(site.Id, SitePermissionAction.SiteAdmin, cancellationToken)).Select(x => x.RoleId).ToList();
 
         // set page permissions

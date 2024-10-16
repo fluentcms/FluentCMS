@@ -34,11 +34,11 @@ public class PageService(IPageRepository pageRepository, IPageInternalService in
 
         await messagePublisher.Publish(new Message<Page>(ActionNames.PageCreated, newPage), cancellationToken);
 
-        return await internalService.GetById(page.SiteId, page.Id, cancellationToken) ?? 
+        return await internalService.GetById(page.SiteId, page.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageUnableToCreate);
     }
     // 
-    
+
     public async Task<IEnumerable<PageModel>> GetHierarchyBySiteId(Guid siteId, CancellationToken cancellationToken = default)
     {
         var pages = await internalService.GetHierarchyBySiteId(siteId, cancellationToken) ?? [];
@@ -78,7 +78,7 @@ public class PageService(IPageRepository pageRepository, IPageInternalService in
 
         await messagePublisher.Publish(new Message<Page>(ActionNames.PageUpdated, updatedPage), cancellationToken);
 
-        return await internalService.GetById(page.SiteId, page.Id, cancellationToken) ?? 
+        return await internalService.GetById(page.SiteId, page.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.PageUnableToUpdate);
     }
 
