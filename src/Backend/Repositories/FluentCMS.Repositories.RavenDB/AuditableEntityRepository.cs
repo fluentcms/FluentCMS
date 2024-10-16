@@ -40,7 +40,7 @@ public abstract class AuditableEntityRepository<TEntity>(IRavenDBContext dbConte
             {
                 entity.CopyProperties(dbEntity.Data);
 
-                SetAuditableFieldsForUpdate(entity, dbEntity.Data);
+                SetAuditableFieldsForUpdate(dbEntity.Data, dbEntity.Data);
             }
 
             await session.SaveChangesAsync(cancellationToken);
