@@ -3,7 +3,7 @@
 
 @if(Item != null)
 {
-    @if (ViewState.Page.HasContributorAccess)
+    @if (ViewState.Page.HasAdminAccess)
     {
         <InlineEditor Value="@Item.Content" OnCancel="@OnCancel" OnSave="@UpdateContent" />
     }
@@ -14,7 +14,7 @@
         </div>
     }
 }
-else if (ViewState.Page.HasContributorAccess)
+else if (ViewState.Page.HasAdminAccess)
 {
     <BlockEmptyView OnBlockSelected="@SaveBlockContent" />
 }

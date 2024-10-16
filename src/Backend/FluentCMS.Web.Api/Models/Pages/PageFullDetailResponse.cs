@@ -15,6 +15,5 @@ public class PageFullDetailResponse : BaseSiteAssociatedResponse
     public bool Locked { get; set; } = false;
     public UserRoleDetailResponse User { get; set; } = default!;
     public List<Guid> ViewRoleIds { get; set; } = [];
-    public List<Guid> ContributorRoleIds { get; set; } = [];
     public List<Guid> AdminRoleIds { get; set; } = [];
 }

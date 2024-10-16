@@ -29,6 +29,9 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         var page = await pageService.GetById(id, cancellationToken);
         var pageResponse = mapper.Map<PageDetailResponse>(page);
         pageResponse.Settings = (await settingsService.GetById(id, cancellationToken)).Values;
+        pageResponse.ViewRoleIds = (await permissionService.Get(page.SiteId, page.Id, PagePermissionAction.PageView, cancellationToken)).Select(x => x.RoleId).ToList();
+        pageResponse.AdminRoleIds = (await permissionService.Get(page.SiteId, page.Id, PagePermissionAction.PageAdmin, cancellationToken)).Select(x => x.RoleId).ToList();
+
         return Ok(pageResponse);
     }
 
@@ -57,7 +60,6 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         // TODO: Refactor this to a PermissionsMessageHandler
         await permissionService.Set(page.SiteId, newPage.Id, PagePermissionAction.PageView, request.ViewRoleIds, cancellationToken);
         await permissionService.Set(page.SiteId, newPage.Id, PagePermissionAction.PageAdmin, request.AdminRoleIds, cancellationToken);
-        await permissionService.Set(page.SiteId, newPage.Id, PagePermissionAction.PageContributor, request.ContributorRoleIds, cancellationToken);
 
         var pageResponse = mapper.Map<PageDetailResponse>(newPage);
         pageResponse.Settings = (await settingsService.GetById(pageResponse.Id, cancellationToken)).Values;
@@ -74,7 +76,6 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         // TODO: Refactor this to a PermissionsMessageHandler
         await permissionService.Set(page.SiteId, updatedPage.Id, PagePermissionAction.PageView, request.ViewRoleIds, cancellationToken);
         await permissionService.Set(page.SiteId, updatedPage.Id, PagePermissionAction.PageAdmin, request.AdminRoleIds, cancellationToken);
-        await permissionService.Set(page.SiteId, updatedPage.Id, PagePermissionAction.PageContributor, request.ContributorRoleIds, cancellationToken);
 
         var entityResponse = mapper.Map<PageDetailResponse>(updatedPage);
         entityResponse.Settings = (await settingsService.GetById(page.Id, cancellationToken)).Values;
@@ -124,7 +125,6 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         // set page permissions
         pageResponse.ViewRoleIds = (await permissionService.Get(site.Id, page.Id, PagePermissionAction.PageView, cancellationToken)).Select(x => x.RoleId).ToList();
         pageResponse.AdminRoleIds = (await permissionService.Get(site.Id, page.Id, PagePermissionAction.PageAdmin, cancellationToken)).Select(x => x.RoleId).ToList();
-        pageResponse.ContributorRoleIds = (await permissionService.Get(site.Id, page.Id, PagePermissionAction.PageContributor, cancellationToken)).Select(x => x.RoleId).ToList();
 
         // setting current user details and permissions
         pageResponse.User = mapper.Map<UserRoleDetailResponse>(apiExecutionContext);

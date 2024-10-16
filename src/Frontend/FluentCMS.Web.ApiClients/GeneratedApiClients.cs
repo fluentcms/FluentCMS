@@ -12304,10 +12304,6 @@ namespace FluentCMS.Web.ApiClients
         [System.ComponentModel.DataAnnotations.Required]
         public System.Collections.Generic.ICollection<System.Guid> ViewRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
 
-        [System.Text.Json.Serialization.JsonPropertyName("contributorRoleIds")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public System.Collections.Generic.ICollection<System.Guid> ContributorRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
-
         [System.Text.Json.Serialization.JsonPropertyName("adminRoleIds")]
         [System.ComponentModel.DataAnnotations.Required]
         public System.Collections.Generic.ICollection<System.Guid> AdminRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
@@ -12371,9 +12367,6 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("viewRoleIds")]
         public System.Collections.Generic.ICollection<System.Guid>? ViewRoleIds { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("contributorRoleIds")]
-        public System.Collections.Generic.ICollection<System.Guid>? ContributorRoleIds { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("adminRoleIds")]
         public System.Collections.Generic.ICollection<System.Guid>? AdminRoleIds { get; set; } = default!;
@@ -12522,9 +12515,6 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("viewRoleIds")]
         public System.Collections.Generic.ICollection<System.Guid>? ViewRoleIds { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("contributorRoleIds")]
-        public System.Collections.Generic.ICollection<System.Guid>? ContributorRoleIds { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("adminRoleIds")]
         public System.Collections.Generic.ICollection<System.Guid>? AdminRoleIds { get; set; } = default!;
 
@@ -12594,10 +12584,6 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("viewRoleIds")]
         [System.ComponentModel.DataAnnotations.Required]
         public System.Collections.Generic.ICollection<System.Guid> ViewRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
-
-        [System.Text.Json.Serialization.JsonPropertyName("contributorRoleIds")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public System.Collections.Generic.ICollection<System.Guid> ContributorRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
 
         [System.Text.Json.Serialization.JsonPropertyName("adminRoleIds")]
         [System.ComponentModel.DataAnnotations.Required]

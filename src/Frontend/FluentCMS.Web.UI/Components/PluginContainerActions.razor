@@ -1,6 +1,6 @@
 @namespace FluentCMS.Web.UI
 
-@if (ViewState.Page.HasContributorAccess && (ViewState.Type == ViewStateType.Default || ViewState.Type == ViewStateType.PagePreview))
+@if (ViewState.Page.HasAdminAccess && (ViewState.Type == ViewStateType.Default || ViewState.Type == ViewStateType.PagePreview))
 {
     <div class="f-plugin-container-actions">
         <div class="f-plugin-toolbar-dropdown">

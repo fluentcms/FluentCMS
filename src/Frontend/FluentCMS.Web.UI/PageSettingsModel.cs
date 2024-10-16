@@ -23,9 +23,6 @@ public class PageSettingsModel
     public ICollection<Guid> ViewRoleIds { get; set; } = [];
 
     [Required]
-    public ICollection<Guid> ContributorRoleIds { get; set; } = [];
-
-    [Required]
     public ICollection<Guid> AdminRoleIds { get; set; } = [];
 
     #region Head 
@@ -51,7 +48,6 @@ public class PageSettingsModel
             DetailLayoutId = DetailLayoutId != Guid.Empty ? DetailLayoutId : default!,
             Order = Order,
             AdminRoleIds = AdminRoleIds,
-            ContributorRoleIds = ContributorRoleIds,
             ViewRoleIds = ViewRoleIds,
         };
     }
@@ -66,7 +62,6 @@ public class PageSettingsModel
         DetailLayoutId = response.DetailLayoutId;
         Order = response.Order;
         AdminRoleIds = response.AdminRoleIds ?? [];
-        ContributorRoleIds = response.ContributorRoleIds ?? [];
         ViewRoleIds = response.ViewRoleIds ?? [];
 
         var settings = response.Settings ?? [];
@@ -98,7 +93,6 @@ public class PageSettingsModel
             DetailLayoutId = DetailLayoutId != Guid.Empty ? DetailLayoutId : default!,
             Order = Order,
             AdminRoleIds = AdminRoleIds,
-            ContributorRoleIds = ContributorRoleIds,
             ViewRoleIds = ViewRoleIds,
         };
     }

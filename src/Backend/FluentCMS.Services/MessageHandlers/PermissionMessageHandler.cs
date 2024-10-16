@@ -40,7 +40,6 @@ public class PermissionMessageHandler(IPermissionService permissionService) : IM
         switch (notification.Action)
         {
             case ActionNames.PageDeleted:
-                await permissionService.Set(notification.Payload.SiteId, notification.Payload.Id, PagePermissionAction.PageContributor, [], cancellationToken);
                 await permissionService.Set(notification.Payload.SiteId, notification.Payload.Id, PagePermissionAction.PageView, [], cancellationToken);
                 await permissionService.Set(notification.Payload.SiteId, notification.Payload.Id, PagePermissionAction.PageAdmin, [], cancellationToken);
 

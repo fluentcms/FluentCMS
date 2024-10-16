@@ -21,6 +21,5 @@ public enum SitePermissionAction
 public enum PagePermissionAction
 {
     PageView,
-    PageContributor,
     PageAdmin
 }

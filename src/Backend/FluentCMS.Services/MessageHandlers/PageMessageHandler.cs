@@ -81,7 +81,6 @@ public class PageMessageHandler(IPageService pageService, IPermissionService per
         var contributorRoles = roles.Where(r => pageTemplate.ContributorRoles.Contains(r.Name)).Select(r => r.Id).ToList();
         var viewRoles = roles.Where(r => pageTemplate.ViewRoles.Contains(r.Name)).Select(r => r.Id).ToList();
         await permissionService.Set(page.SiteId, page.Id, PagePermissionAction.PageAdmin, adminRoles, cancellationToken);
-        await permissionService.Set(page.SiteId, page.Id, PagePermissionAction.PageContributor, contributorRoles, cancellationToken);
         await permissionService.Set(page.SiteId, page.Id, PagePermissionAction.PageView, viewRoles, cancellationToken);
 
         await CreatePageTemplates(page.Id, pageTemplate.Children, siteTemplate, cancellationToken);

@@ -92,8 +92,7 @@ public static class ServiceExtensions
                 viewState.Site.HasContributorAccess = viewState.Site.HasAdminAccess || (pageResponse.Data.Site.ContributorRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
 
                 viewState.Page.HasAdminAccess = viewState.Site.HasContributorAccess || (pageResponse.Data.AdminRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
-                viewState.Page.HasContributorAccess = viewState.Page.HasAdminAccess || (pageResponse.Data.ContributorRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
-                viewState.Page.HasViewAccess = viewState.Page.HasContributorAccess || (pageResponse.Data.ViewRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
+                viewState.Page.HasViewAccess = viewState.Page.HasAdminAccess || (pageResponse.Data.ViewRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
 
                 // check if the page is in edit mode
                 // it should have pluginId and pluginViewName query strings

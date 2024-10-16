@@ -92,7 +92,6 @@ public class PageViewState
     public bool Locked { get; set; } = false;
     public Dictionary<string, string> Settings { get; set; } = [];
     public bool HasAdminAccess { get; set; }
-    public bool HasContributorAccess { get; set; }
     public bool HasViewAccess { get; set; }
 }
 
