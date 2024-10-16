@@ -1,9 +1,10 @@
-﻿using FluentCMS.Web.Api.Filters;
+﻿using FluentCMS.Services.Permissions;
+using FluentCMS.Web.Api.Filters;
 using System.IO;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class PageController(ISiteService siteService, IPageService pageService, IPluginDefinitionService pluginDefinitionService, IPluginService pluginService, ILayoutService layoutService, IRoleService roleService, IUserRoleService userRoleService, ISetupService setupService, ISettingsService settingsService, IGlobalSettingsService globalSettingsService, IApiExecutionContext apiExecutionContext, IMapper mapper) : BaseGlobalController
+public class PageController(ISiteService siteService, IPageService pageService, IPermissionService permissionService, IPluginDefinitionService pluginDefinitionService, IPluginService pluginService, ILayoutService layoutService, IRoleService roleService, IUserRoleService userRoleService, ISetupService setupService, ISettingsService settingsService, IGlobalSettingsService globalSettingsService, IApiExecutionContext apiExecutionContext, IMapper mapper) : BaseGlobalController
 {
 
     public const string AREA = "Page Management";
@@ -53,6 +54,11 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         var page = mapper.Map<Page>(request);
         var newPage = await pageService.Create(page, cancellationToken);
 
+        // TODO: Refactor this to a PermissionsMessageHandler
+        await permissionService.Set(page.SiteId, newPage.Id, PagePermissionAction.PageView, request.ViewRoleIds, cancellationToken);
+        await permissionService.Set(page.SiteId, newPage.Id, PagePermissionAction.PageAdmin, request.AdminRoleIds, cancellationToken);
+        await permissionService.Set(page.SiteId, newPage.Id, PagePermissionAction.PageContributor, request.ContributorRoleIds, cancellationToken);
+
         var pageResponse = mapper.Map<PageDetailResponse>(newPage);
         pageResponse.Settings = (await settingsService.GetById(pageResponse.Id, cancellationToken)).Values;
         return Ok(pageResponse);
@@ -64,6 +70,11 @@ public class PageController(ISiteService siteService, IPageService pageService, 
     {
         var page = mapper.Map<Page>(request);
         var updatedPage = await pageService.Update(page, cancellationToken);
+
+        // TODO: Refactor this to a PermissionsMessageHandler
+        await permissionService.Set(page.SiteId, updatedPage.Id, PagePermissionAction.PageView, request.ViewRoleIds, cancellationToken);
+        await permissionService.Set(page.SiteId, updatedPage.Id, PagePermissionAction.PageAdmin, request.AdminRoleIds, cancellationToken);
+        await permissionService.Set(page.SiteId, updatedPage.Id, PagePermissionAction.PageContributor, request.ContributorRoleIds, cancellationToken);
 
         var entityResponse = mapper.Map<PageDetailResponse>(updatedPage);
         entityResponse.Settings = (await settingsService.GetById(page.Id, cancellationToken)).Values;
@@ -80,20 +91,6 @@ public class PageController(ISiteService siteService, IPageService pageService, 
     }
 
     #region Private Methods
-
-    private static string GetFullPath(Dictionary<Guid, Page> allPages, Page page)
-    {
-        var result = new List<string>();
-        var currentPage = page;
-        while (currentPage != null)
-        {
-            result.Add(currentPage.Path);
-            currentPage = currentPage.ParentId.HasValue ? allPages[currentPage.ParentId.Value] : default!;
-        }
-        result.Reverse();
-
-        return string.Join("", result);
-    }
 
     private async Task<IApiResult<PageFullDetailResponse>> GetPageResponse(string domain, string path, CancellationToken cancellationToken = default)
     {
@@ -120,13 +117,14 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         pageResponse.Sections = [];
         pageResponse.Settings = pageSettings.Values;
 
-        // set admin roles property for the site
-        // TODO: read from IPermissionService
-        pageResponse.Site.AdminRoles = pageResponse.Site.AllRoles.Where(x => x.Type == RoleTypes.Administrators).ToList();
+        // set site permissions
+        pageResponse.Site.AdminRoleIds = (await permissionService.Get(site.Id, SitePermissionAction.SiteAdmin, cancellationToken)).Select(x=> x.RoleId).ToList();
+        pageResponse.Site.ContributorRoleIds = (await permissionService.Get(site.Id, SitePermissionAction.SiteAdmin, cancellationToken)).Select(x => x.RoleId).ToList();
 
-        // set contributor roles property for the site
-        // TODO: read from IPermissionService
-        pageResponse.Site.ContributorRoles = pageResponse.Site.AllRoles.Where(x => x.Type == RoleTypes.Administrators).ToList();
+        // set page permissions
+        pageResponse.ViewRoleIds = (await permissionService.Get(site.Id, page.Id, PagePermissionAction.PageView, cancellationToken)).Select(x => x.RoleId).ToList();
+        pageResponse.AdminRoleIds = (await permissionService.Get(site.Id, page.Id, PagePermissionAction.PageAdmin, cancellationToken)).Select(x => x.RoleId).ToList();
+        pageResponse.ContributorRoleIds = (await permissionService.Get(site.Id, page.Id, PagePermissionAction.PageContributor, cancellationToken)).Select(x => x.RoleId).ToList();
 
         // setting current user details and permissions
         pageResponse.User = mapper.Map<UserRoleDetailResponse>(apiExecutionContext);
@@ -170,6 +168,7 @@ public class PageController(ISiteService siteService, IPageService pageService, 
                 Head = System.IO.File.ReadAllText(Path.Combine(ServiceConstants.DefaultTemplateFolder, "AuthLayout.head.html"))
             },
             Site = new(),
+            User = new(),
             Sections = new Dictionary<string, List<PluginDetailResponse>>
             {
                 ["Main"] =
