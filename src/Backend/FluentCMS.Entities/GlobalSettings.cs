@@ -2,8 +2,8 @@
 
 public class GlobalSettings : AuditableEntity
 {
-    public FileUploadConfig FileUpload { get; set; } = default!;
-    public IEnumerable<string> SuperAdmins { get; set; } = [];
+    public FileUploadConfig? FileUpload { get; set; } = default!;
+    public List<string> SuperAdmins { get; set; } = [];
     public bool Initialized { get; set; } = false;
 }
 
