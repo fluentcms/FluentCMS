@@ -1,6 +1,6 @@
 @namespace FluentCMS.Web.UI
 
-@if (ViewState.HasPageAdminAccess())
+@if (ViewState.Page.HasAdminAccess)
 {
     <HeadContent>
         <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.preview.css">
