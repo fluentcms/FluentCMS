@@ -12,8 +12,8 @@ public partial class PageUpdatePlugin
 
     private List<LayoutDetailResponse>? Layouts { get; set; }
     private List<PageDetailResponse>? Pages { get; set; }
-
     private List<SelectOption>? LayoutOptions { get; set; }
+    private List<RoleViewState>? AdminRoleOptions { get; set; }
 
     private List<SelectOptionString> RobotsOptions =
     [
@@ -110,6 +110,8 @@ public partial class PageUpdatePlugin
 
             Pages = pages.ToList();
         }
+
+        AdminRoleOptions = ViewState.Site.AllRoles.Where(x => x.Type != RoleTypesViewState.AllUsers && x.Type != RoleTypesViewState.Guest).ToList();
 
         if (Model is null)
         {

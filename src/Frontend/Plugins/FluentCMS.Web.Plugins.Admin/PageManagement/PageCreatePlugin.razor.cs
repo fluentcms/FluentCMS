@@ -10,6 +10,7 @@ public partial class PageCreatePlugin
     private List<LayoutDetailResponse>? Layouts { get; set; }
     private List<PageDetailResponse>? Pages { get; set; }
     private List<SelectOption>? LayoutOptions { get; set; }
+    private List<RoleViewState>? AdminRoleOptions { get; set; }
 
     private List<SelectOptionString> RobotsOptions =
     [
@@ -93,6 +94,9 @@ public partial class PageCreatePlugin
             );
 
         }
+
+        AdminRoleOptions = ViewState.Site.AllRoles.Where(x => x.Type != RoleTypesViewState.AllUsers && x.Type != RoleTypesViewState.Guest).ToList();
+
 
         if (Pages is null)
         {

@@ -36,6 +36,8 @@ public partial class PageSettingsModal
 
     private PageSettingsModel? Model { get; set; }
 
+    private List<RoleViewState> AdminRoleOptions { get; set; } = [];
+
     private List<SelectOptionString> RobotsOptions =
     [
         new SelectOptionString
@@ -137,6 +139,8 @@ public partial class PageSettingsModal
                 }).ToList()
             );
         }
+
+        AdminRoleOptions = ViewState.Site.AllRoles.Where(x => x.Type != RoleTypesViewState.AllUsers && x.Type != RoleTypesViewState.Guest).ToList();
 
         await LoadPageOptions();
     }

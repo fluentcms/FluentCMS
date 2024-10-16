@@ -39,7 +39,7 @@
                         <TabPanel Name="Permissions">
                             <Grid GutterX="GridGutter.Large">
                                 <FormCheckboxGroup Hint="Roles which can view the page." @bind-Value="Model!.ViewRoleIds" Data="ViewState.Site.AllRoles" Label="ViewRoles" TextField="Name" ValueField="Id" />
-                                <FormCheckboxGroup Hint="Roles which are able to manage page." @bind-Value="Model!.AdminRoleIds" Data="ViewState.Site.AllRoles" Label="AdminRoles" TextField="Name" ValueField="Id" />
+                                <FormCheckboxGroup Hint="Roles which are able to manage page." @bind-Value="Model!.AdminRoleIds" Data="AdminRoleOptions" Label="AdminRoles" TextField="Name" ValueField="Id" />
                             </Grid>
                         </TabPanel>
                         <Spacer />
