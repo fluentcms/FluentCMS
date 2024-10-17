@@ -8,6 +8,8 @@ public class SiteUpdateModel
     public Guid LayoutId { get; set; }
     public Guid DetailLayoutId { get; set; }
     public Guid EditLayoutId { get; set; }
+    public ICollection<Guid> AdminRoleIds { get; set; } = [];
+    public ICollection<Guid> ContributorRoleIds { get; set; } = [];
     public string MetaTitle { get; set; } = default!;
     public string MetaDescription { get; set; } = default!;
     public string Robots { get; set; } = default!;
