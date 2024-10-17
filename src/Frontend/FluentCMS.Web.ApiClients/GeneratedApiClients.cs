@@ -12757,6 +12757,9 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("assembly")]
         public string? Assembly { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("icon")]
+        public string? Icon { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string? Description { get; set; } = default!;
 
