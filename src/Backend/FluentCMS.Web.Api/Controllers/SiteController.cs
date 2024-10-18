@@ -1,8 +1,9 @@
 ﻿using FluentCMS.Services.Models;
+using FluentCMS.Services.Permissions;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class SiteController(ISiteService siteService, ISettingsService settingsService, IMapper mapper) : BaseGlobalController
+public class SiteController(ISiteService siteService, ISettingsService settingsService, IPermissionService permissionService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "Site Management";
     public const string READ = "Read";
@@ -26,6 +27,9 @@ public class SiteController(ISiteService siteService, ISettingsService settingsS
         var site = await siteService.GetById(id, cancellationToken);
         var siteResponse = mapper.Map<SiteDetailResponse>(site);
         siteResponse.Settings = (await settingsService.GetById(site.Id, cancellationToken)).Values;
+        siteResponse.AdminRoleIds = (await permissionService.Get(site.Id, SitePermissionAction.SiteAdmin, cancellationToken)).Select(x => x.RoleId);
+        siteResponse.ContributorRoleIds = (await permissionService.Get(site.Id, SitePermissionAction.SiteContributor, cancellationToken)).Select(x => x.RoleId);
+
         return Ok(siteResponse);
     }
 
@@ -45,6 +49,9 @@ public class SiteController(ISiteService siteService, ISettingsService settingsS
     {
         var entity = mapper.Map<Site>(request);
         var updated = await siteService.Update(entity, cancellationToken);
+        await permissionService.Set(updated.Id, SitePermissionAction.SiteAdmin, request.AdminRoleIds, cancellationToken);
+        await permissionService.Set(updated.Id, SitePermissionAction.SiteContributor, request.ContributorRoleIds, cancellationToken);
+
         var siteResponse = mapper.Map<SiteDetailResponse>(updated);
         siteResponse.Settings = (await settingsService.GetById(request.Id, cancellationToken)).Values;
         return Ok(siteResponse);

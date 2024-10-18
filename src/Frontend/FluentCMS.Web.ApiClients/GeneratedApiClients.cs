@@ -12754,11 +12754,11 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("category")]
         public string? Category { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("assembly")]
-        public string? Assembly { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("icon")]
         public string? Icon { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("assembly")]
+        public string? Assembly { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string? Description { get; set; } = default!;
@@ -13551,6 +13551,14 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("editLayoutId")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid EditLayoutId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("contributorRoleIds")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<System.Guid> ContributorRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("adminRoleIds")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<System.Guid> AdminRoleIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
 
     }
 

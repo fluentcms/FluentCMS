@@ -21,4 +21,10 @@ public class SiteUpdateRequest
 
     [Required]
     public Guid EditLayoutId { get; set; } = default!;
+
+    [Required]
+    public List<Guid> ContributorRoleIds { get; set; } = [];
+
+    [Required]
+    public List<Guid> AdminRoleIds { get; set; } = [];
 }
