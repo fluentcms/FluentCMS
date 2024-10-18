@@ -8,7 +8,7 @@ public partial class PageListPlugin
     public async Task Load()
     {
         var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Id);
-        Pages = pagesResponse?.Data?.Where(x => !x.Locked).OrderBy(x => x.Order).ToList() ?? [];
+        Pages = pagesResponse?.Data?.OrderBy(x => x.Order).ToList() ?? [];
     }
 
     protected override async Task OnInitializedAsync()
