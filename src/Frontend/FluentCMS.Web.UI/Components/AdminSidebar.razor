@@ -16,17 +16,21 @@
                     </li>
                     <li class="space-y-2 border-t border-gray-200 dark:border-gray-700"></li>
                     <li>
-                        <a id="adminSidebarContentTypeLink" href="/admin/content-types" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700 @(CurrentPath == "/admin/content-types" ? ActiveItemClasses : "")">
-                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white  @(CurrentPath == "/admin/content-type" ? ActiveIconClasses : "")" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                                <path fill-rule="evenodd" d="M15.514 3.293a1 1 0 0 0-1.415 0L12.151 5.24a.93.93 0 0 1 .056.052l6.5 6.5a.97.97 0 0 1 .052.056L20.707 9.9a1 1 0 0 0 0-1.415l-5.193-5.193ZM7.004 8.27l3.892-1.46 6.293 6.293-1.46 3.893a1 1 0 0 1-.603.591l-9.494 3.355a1 1 0 0 1-.98-.18l6.452-6.453a1 1 0 0 0-1.414-1.414l-6.453 6.452a1 1 0 0 1-.18-.98l3.355-9.494a1 1 0 0 1 .591-.603Z" clip-rule="evenodd" />
-                            </svg>
-                            <span class="flex-1 ml-3 whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Content-Type Builder</span>
+                        <a href="/admin/pages" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700  @(CurrentPath == "/admin/pages" ? ActiveItemClasses : "")">
+                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white @(CurrentPath == "/admin/pages" ? ActiveIconClasses : "")" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M20 7h-3a2 2 0 0 1-2-2V2" /><path d="M9 18a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2Z" /><path d="M3 7.6v12.8A1.6 1.6 0 0 0 4.6 22h9.8" /></g></svg>
+                            <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Pages</span>
                         </a>
                     </li>
                     <li>
                         <a id="adminSidebarBlockLink" href="/admin/blocks" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700  @(CurrentPath == "/admin/blocks" ? ActiveItemClasses : "")">
                             <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white  @(CurrentPath == "/admin/blocks" ? ActiveIconClasses : "")" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="m8 18l-6-6l6-6l1.425 1.425l-4.6 4.6L9.4 16.6zm8 0l-1.425-1.425l4.6-4.6L14.6 7.4L16 6l6 6z"/></svg>
                             <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Blocks</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a id="adminSidebarDefinitionsLink" href="/admin/plugins" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700  @(CurrentPath == "/admin/plugins" ? ActiveItemClasses : "")">
+                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white  @(CurrentPath == "/admin/plugins" ? ActiveIconClasses : "")" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><g fill="none" fill-rule="evenodd"><path d="m12.593 23.258l-.011.002l-.071.035l-.02.004l-.014-.004l-.071-.035q-.016-.005-.024.005l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427q-.004-.016-.017-.018m.265-.113l-.013.002l-.185.093l-.01.01l-.003.011l.018.43l.005.012l.008.007l.201.093q.019.005.029-.008l.004-.014l-.034-.614q-.005-.018-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014l-.034.614q.001.018.017.024l.015-.002l.201-.093l.01-.008l.004-.011l.017-.43l-.003-.012l-.01-.01z"/><path fill="currentColor" d="M10.5 4a1.472 1.472 0 0 0-1.317 2.13l.163.325A1.067 1.067 0 0 1 8.39 8H5a1 1 0 0 0-1 1v1.194c1.82-.109 3.5 1.331 3.5 3.306S5.82 16.915 4 16.806V19a1 1 0 0 0 1 1h2.194c-.109-1.82 1.331-3.5 3.306-3.5s3.415 1.68 3.306 3.5H15a1 1 0 0 0 1-1v-3.39c0-.794.835-1.31 1.545-.956l.324.163a1.472 1.472 0 1 0 0-2.634l-.324.163A1.067 1.067 0 0 1 16 11.39V9a1 1 0 0 0-1-1h-2.39c-.794 0-1.31-.835-.956-1.545l.163-.325A1.472 1.472 0 0 0 10.5 4M7.064 6c-.316-2.017 1.23-4 3.436-4s3.752 1.983 3.436 4H15a3 3 0 0 1 3 3v1.064c2.017-.316 4 1.23 4 3.436s-1.983 3.752-4 3.436V19a3 3 0 0 1-3 3h-2.407a1.06 1.06 0 0 1-.976-1.48l.085-.197a1.308 1.308 0 1 0-2.404 0l.085.198c.3.7-.214 1.479-.976 1.479H5a3 3 0 0 1-3-3v-3.407c0-.762.779-1.276 1.48-.976l.197.085a1.308 1.308 0 1 0 0-2.404l-.198.085c-.7.3-1.479-.214-1.479-.976V9a3 3 0 0 1 3-3z"/></g></svg>
+                            <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Plugins</span>
                         </a>
                     </li>
                     <li>
@@ -38,17 +42,28 @@
                         </a>
                     </li>
                     <li>
+                        <a id="adminSidebarRolesLink" href="/admin/roles" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700  @(CurrentPath == "/admin/roles" ? ActiveItemClasses : "")">
+                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white  @(CurrentPath == "/admin/roles" ? ActiveIconClasses : "")" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd" d="M8 10V7a4 4 0 1 1 8 0v3h1a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h1Zm2-3a2 2 0 1 1 4 0v3h-4V7Zm2 6a1 1 0 0 1 1 1v3a1 1 0 1 1-2 0v-3a1 1 0 0 1 1-1Z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Roles</span>
+                        </a>
+                    </li>
+                    <li class="space-y-2 border-t border-gray-200 dark:border-gray-700"></li>
+                    <li>
+                        <a id="adminSidebarContentTypeLink" href="/admin/content-types" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700 @(CurrentPath == "/admin/content-types" ? ActiveItemClasses : "")">
+                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white  @(CurrentPath == "/admin/content-type" ? ActiveIconClasses : "")" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd" d="M15.514 3.293a1 1 0 0 0-1.415 0L12.151 5.24a.93.93 0 0 1 .056.052l6.5 6.5a.97.97 0 0 1 .052.056L20.707 9.9a1 1 0 0 0 0-1.415l-5.193-5.193ZM7.004 8.27l3.892-1.46 6.293 6.293-1.46 3.893a1 1 0 0 1-.603.591l-9.494 3.355a1 1 0 0 1-.98-.18l6.452-6.453a1 1 0 0 0-1.414-1.414l-6.453 6.452a1 1 0 0 1-.18-.98l3.355-9.494a1 1 0 0 1 .591-.603Z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="flex-1 ml-3 whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Content-Type Builder</span>
+                        </a>
+                    </li>
+                    <li>
                         <a href="/admin/sites" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700  @(CurrentPath == "/admin/sites" ? ActiveItemClasses : "")">
                             <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white @(CurrentPath == "/admin/sites" ? ActiveIconClasses : "")" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                 <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.213 9.787a3.391 3.391 0 0 0-4.795 0l-3.425 3.426a3.39 3.39 0 0 0 4.795 4.794l.321-.304m-.321-4.49a3.39 3.39 0 0 0 4.795 0l3.424-3.426a3.39 3.39 0 0 0-4.794-4.795l-1.028.961" />
                             </svg>
                             <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Sites</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/admin/pages" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700  @(CurrentPath == "/admin/pages" ? ActiveItemClasses : "")">
-                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white @(CurrentPath == "/admin/pages" ? ActiveIconClasses : "")" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M20 7h-3a2 2 0 0 1-2-2V2" /><path d="M9 18a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2Z" /><path d="M3 7.6v12.8A1.6 1.6 0 0 0 4.6 22h9.8" /></g></svg>
-                            <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Pages</span>
                         </a>
                     </li>
                     <li>
@@ -65,14 +80,6 @@
                                 <path fill-rule="evenodd" d="M8 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2 9a4 4 0 0 0-4 4v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1a4 4 0 0 0-4-4H6Zm7.25-2.095c.478-.86.75-1.85.75-2.905a5.973 5.973 0 0 0-.75-2.906 4 4 0 1 1 0 5.811ZM15.466 20c.34-.588.535-1.271.535-2v-1a5.978 5.978 0 0 0-1.528-4H18a4 4 0 0 1 4 4v1a2 2 0 0 1-2 2h-4.535Z" clip-rule="evenodd" />
                             </svg>
                             <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Users</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a id="adminSidebarRolesLink" href="/admin/roles" class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 group dark:text-gray-200 dark:hover:bg-gray-700  @(CurrentPath == "/admin/roles" ? ActiveItemClasses : "")">
-                            <svg class="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white  @(CurrentPath == "/admin/roles" ? ActiveIconClasses : "")" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M13.849 4.22c-.684-1.626-3.014-1.626-3.698 0L8.397 8.387l-4.552.361c-1.775.14-2.495 2.331-1.142 3.477l3.468 2.937-1.06 4.392c-.413 1.713 1.472 3.067 2.992 2.149L12 19.35l3.897 2.354c1.52.918 3.405-.436 2.992-2.15l-1.06-4.39 3.468-2.938c1.353-1.146.633-3.336-1.142-3.477l-4.552-.36-1.754-4.17Z" />
-                            </svg>
-                            <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap group-hover:text-gray-800 dark:group-hover:text-white" sidebar-toggle-item>Roles</span>
                         </a>
                     </li>
                     <li>
