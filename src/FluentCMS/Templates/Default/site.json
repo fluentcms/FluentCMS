@@ -289,6 +289,21 @@
                     ]
                 },
                 {
+                    "Title": "Plugins",
+                    "Path": "/plugins",
+                    "Layout": "AdminLayout",
+                    "EditLayout": "AdminLayout",
+                    "AdminRoles": [ "Administrators" ],
+                    "Locked": true,
+                    "Plugins": [
+                        {
+                            "Definition": "Plugin Definition Management",
+                            "Section": "Main",
+                            "Locked": true
+                        }
+                    ]
+                },
+                {
                     "Title": "Pages",
                     "Path": "/pages",
                     "Layout": "AdminLayout",
