@@ -25,9 +25,13 @@ public partial class ContentListViewPlugin
 
             if (Items != null)
             {
+
                 var data = new Dictionary<string, object>
                 {
-                    { "Items", Items.Select(x => x.Data) }
+                    { "Items", Items.Select(x => {
+                        x.Data.Add("Id", x.Id);
+                        return x.Data;
+                    }) }
                 };
                 var content = Plugin.Settings["Template"] ?? "No Template";
                 Rendered = RenderingProvider.Render(content, data);

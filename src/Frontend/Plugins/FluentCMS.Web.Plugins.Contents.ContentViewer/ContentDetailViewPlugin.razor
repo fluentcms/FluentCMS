@@ -1,0 +1,15 @@
+@inherits BasePlugin
+@namespace FluentCMS.Web.Plugins.Contents.ContentViewer
+
+@if (Rendered != null)
+{
+    <div class="f-content-detail">
+        @((MarkupString)Rendered)
+    </div>
+}
+else
+{
+    <div class="f-content-detail f-content-detail-empty">
+        This plugin doesn't have any content.
+    </div>
+}
