@@ -93,6 +93,7 @@ public class PageViewState
     public Dictionary<string, string> Settings { get; set; } = [];
     public bool HasAdminAccess { get; set; }
     public bool HasViewAccess { get; set; }
+    public string? Slug { get; set; }
 }
 
 public class PluginViewState
