@@ -1,3 +1,5 @@
+using FluentCMS.Repositories.Postgres.Extensions;
+
 var builder = WebApplication.CreateBuilder(args);
 
 #region Services
@@ -10,10 +12,13 @@ services.AddUIComponents();
 services.AddCmsServices(configuration);
 
 // Use LiteDB as database
-services.AddLiteDbRepositories("LiteDb");
+// services.AddLiteDbRepositories("LiteDb");
 
 // Use MongoDB as database
 //services.AddMongoDbRepositories("MongoDb");
+
+// Use Postgres as database
+services.AddPostgresDbRepositories("Postgres");
 
 // Enable caching for repository layer
 services.AddCachedRepositories();
