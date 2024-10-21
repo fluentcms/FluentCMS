@@ -84,3 +84,11 @@
 .f-section .f-plugin-definition-item-icon {
     display: none;
 }
+
+body {
+    transition: all 0.3s ease;
+}
+
+body:not([data-responsive-mode]):has(.f-page-editor-sidebar-open) {
+    padding-right: 240px;
+}
