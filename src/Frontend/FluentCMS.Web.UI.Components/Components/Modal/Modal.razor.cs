@@ -9,6 +9,11 @@ public partial class Modal
     [Parameter]
     public EventCallback OnClose { get; set; }
 
+
+    [Parameter]
+    [CSSProperty]
+    public ModalPlacement Placement { get; set; } = ModalPlacement.Center;
+
     [Parameter]
     public RenderFragment ChildContent { get; set; } = default!;
 

@@ -1,7 +1,7 @@
 $modal: $prefix + "modal";
 
 .#{$modal} {
-    @apply flex fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0 justify-center items-center;
+    @apply flex fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0;
 
     &-body {
         max-height: 70vh;
@@ -39,6 +39,14 @@ $modal: $prefix + "modal";
 
     &-size-large > .#{$modal}-wrapper {
         @apply max-w-4xl xl:max-w-7xl;
+    }
+
+    &-placement-top {
+        @apply justify-center items-start pt-10 sm:pt-20 md:pt-24;
+    }
+
+    &-placement-center {
+        @apply  justify-center items-center;
     }
 
     &-backdrop {
