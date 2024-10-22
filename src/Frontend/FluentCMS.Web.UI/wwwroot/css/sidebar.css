@@ -89,3 +89,11 @@
 .f-section:has(.f-plugin-definition-item) .f-plugin-container-content {
     border-color: #154EF250;
 }
+
+body {
+    transition: all 0.3s ease;
+}
+
+body:not([data-responsive-mode]):has(.f-page-editor-sidebar-open) {
+    padding-right: 240px;
+}
