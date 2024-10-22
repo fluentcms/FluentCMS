@@ -24,6 +24,8 @@
     display: flex;
     transition: all 0.3s ease;
     align-items: center;
+    padding: 8px;
+    gap: 8px;
     opacity: 0;
     right: 0;
 }
@@ -34,21 +36,22 @@
 }
 
 .f-plugin-toolbar-action {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     display: flex;
+    border-radius: 3px;
     align-items: center;
     justify-content: center;
-    padding: 4px;
-    color: white;
-    background-color: #0055f0;
-    border: 1px solid #0055f0;
+    padding: 2px;
+    color: #154EF2;
+    background-color: white;
+    border: 1px solid #154EF250;
 }
 
 .f-plugin-toolbar-action:hover,
 .f-plugin-toolbar-dropdown:hover .f-plugin-toolbar-dropdown-toggler {
-    color: white;
-    background-color: #005590;
+    cursor: pointer;
+    background-color: #f0f0f0;
 }
 
 .f-plugin-toolbar-dropdown:hover .f-plugin-toolbar-dropdown-toggler {
