@@ -6,16 +6,17 @@ $inline-editor: $prefix + 'inline-editor';
     }
 
     [data-inline-editable] {
+        border: 1px dashed transparent;
         transition: all 0.3s ease;
     }
 
     [data-inline-editable]:hover {
-        box-shadow: 0 0 0 1px #36abff36;
+        border: 1px dashed #154EF250;
     }
     
     [data-inline-editable]:focus {
+        border: 1px dashed #154EF2;
         outline: none;
-        box-shadow: 0 0 0 1px #00559050;
     }
 
     // Styles of backdrop
