@@ -8,8 +8,14 @@ public partial class SiteBuilderDefaultToolbar
     [Inject]
     private ViewState ViewState { get; set; } = default!;
 
-    #region Add Page
+    private async Task OpenDesignMode()
+    {
+        var url = ViewState.Page.FullPath.EndsWith("/") ? ViewState.Page.FullPath + "?pageEdit=true" : ViewState.Page.FullPath + "/?pageEdit=true";
 
+        NavigationManager.NavigateTo(url, true);
+    }
+
+    #region Add Page
     private bool AddPageModalOpen { get; set; } = false;
 
     private async Task OpenAddPage()
