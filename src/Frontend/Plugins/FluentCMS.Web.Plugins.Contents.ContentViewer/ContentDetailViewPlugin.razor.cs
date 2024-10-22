@@ -1,4 +1,4 @@
-jusing FluentCMS.Providers.TemplateRenderingProviders.Abstractions;
+using FluentCMS.Providers.TemplateRenderingProviders.Abstractions;
 
 namespace FluentCMS.Web.Plugins.Contents.ContentViewer;
 
@@ -6,10 +6,7 @@ public partial class ContentDetailViewPlugin
 {
     [Inject]
     protected ITemplateRenderingProvider RenderingProvider { get; set; } = default!;
-    
-    [Inject]
-    protected ViewState ViewState { get; set; } = default!;
-    
+        
     private ContentDetailResponse Item { get; set; } = default!;
     private string Rendered { get; set; } = default!;
 
