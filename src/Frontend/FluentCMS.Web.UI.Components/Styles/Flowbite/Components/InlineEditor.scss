@@ -6,16 +6,17 @@ $inline-editor: $prefix + 'inline-editor';
     }
 
     [data-inline-editable] {
+        border: 1px dashed transparent;
         transition: all 0.3s ease;
     }
 
     [data-inline-editable]:hover {
-        box-shadow: 0 0 0 1px #36abff36;
+        border: 1px dashed #154EF250;
     }
     
     [data-inline-editable]:focus {
+        border: 1px dashed #154EF2;
         outline: none;
-        box-shadow: 0 0 0 1px #00559050;
     }
 
     // Styles of backdrop
@@ -37,15 +38,48 @@ $inline-editor: $prefix + 'inline-editor';
         display: flex;
         gap: 4px;
         position: absolute;
-        top: 2rem;
-        right: 1rem;
+        top: 6px;
+        right: 8px;
         opacity: 0;
         pointer-events: none;
         transition: all 0.3s ease;
     }        
+
+    &-action-save {
+        border-radius: 3px;
+        color: white;
+        background-color: #154EF2;
+        font-size: 12px;
+        padding: 2px 10px;
+    }
+
+    &-action-save:hover {
+        background-color: #1444d3;
+    }
+    
+    &-action-cancel {
+        font-size: 12px;
+        color: #6B7280;
+        padding: 2px 10px;
+    }
+    
+    &-action-cancel:hover {
+        color: #52565e;
+    }
+
+    &-action-message {
+        color: #154EF2;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    
 }
 
-.#{$inline-editor}-content:hover::after {
+.f-plugin-container:hover .#{$inline-editor}-dirty .#{$inline-editor}-actions {
+    right: 70px;
+}
+
+.f-plugin-container:hover .#{$inline-editor}-dirty .#{$inline-editor}-content::after {
     opacity: 0;
 }
 
