@@ -71,7 +71,7 @@ public partial class SiteUpdatePlugin
             Model = GetSiteUpdateModel(Site);
 
             var rolesResponse = await ApiClient.Role.GetAllAsync(Site.Id);
-            if(rolesResponse.Data != null)
+            if (rolesResponse.Data != null)
             {
                 AdminRoleOptions = (rolesResponse.Data ?? []).Where(x => x.Type != RoleTypes.AllUsers && x.Type != RoleTypes.Guest).ToList();
             }

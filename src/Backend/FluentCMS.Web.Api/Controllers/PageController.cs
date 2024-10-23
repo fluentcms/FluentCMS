@@ -47,19 +47,20 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         if (!await setupService.IsInitialized(cancellationToken))
             return Ok(new PageParentDetailResponse { Current = GetSetupPage() });
 
-        var response = new PageParentDetailResponse {};
+        var response = new PageParentDetailResponse { };
 
-        try {
+        try
+        {
             var current = await GetPageResponse(domain, path, cancellationToken);
 
             response.Current = current;
-        } 
-        catch(Exception ex)
+        }
+        catch (Exception)
         {
             var pathParts = path.Split('/');
             var parentPath = string.Join('/', pathParts.Take(pathParts.Length - 1));
-    
-            response.Slug = pathParts.Last();   
+
+            response.Slug = pathParts.Last();
             response.Parent = await GetPageResponse(domain, parentPath, cancellationToken);
         }
 
