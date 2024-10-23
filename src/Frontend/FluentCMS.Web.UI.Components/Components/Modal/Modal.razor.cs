@@ -12,7 +12,7 @@ public partial class Modal
 
     [Parameter]
     [CSSProperty]
-    public ModalPlacement Placement { get; set; } = ModalPlacement.Center;
+    public ModalPlacement Placement { get; set; } = ModalPlacement.Middle;
 
     [Parameter]
     public RenderFragment ChildContent { get; set; } = default!;

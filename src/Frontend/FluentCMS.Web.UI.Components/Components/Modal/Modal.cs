@@ -10,6 +10,6 @@ public enum ModalSize
 
 public enum ModalPlacement
 {
-    Center,
+    Middle,
     Top
 }
