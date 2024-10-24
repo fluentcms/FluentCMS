@@ -1,7 +1,9 @@
 $autocomplete: $prefix + "form-autocomplete";
 
-.#{$autocomplete}, .#{$autocomplete}-multiple {
+.#{$autocomplete},
+.#{$autocomplete}-multiple {
     @apply relative;
+
     &.ts-hidden-accessible {
         display: none;
     }
@@ -22,6 +24,7 @@ $autocomplete: $prefix + "form-autocomplete";
     &.has-items:not(.focus) .ts-control input {
         @apply hidden;
     }
+
     &.multi .item {
         @apply cursor-pointer bg-blue-100 text-blue-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300;
 
@@ -36,6 +39,7 @@ $autocomplete: $prefix + "form-autocomplete";
         .option {
             @apply cursor-pointer block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white;
         }
+
         .option[aria-disabled="true"] {
             @apply hidden;
         }
