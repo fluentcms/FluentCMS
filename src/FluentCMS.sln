@@ -40,7 +40,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Contents.TextHTML", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.TextHTML\FluentCMS.Web.Plugins.Contents.TextHTML.csproj", "{818F8CD0-5218-4480-A541-BD9D59416CDE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Web.Plugins.Contents.Block", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.Block\FluentCMS.Web.Plugins.Contents.Block.csproj", "{9D8B6051-BE99-42E4-B569-43ABA3A9510D}"
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Contents.RichText", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.RichText\FluentCMS.Web.Plugins.Contents.RichText.csproj", "{54DBC633-2A8D-4531-AA22-23824C6CFCD9}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Providers", "Providers", "{CA060C96-322D-4410-8D32-0AF5DA8A975C}"
 EndProject
@@ -85,6 +84,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers.CacheProviders", "Providers\CacheProviders\FluentCMS.Providers.CacheProviders\FluentCMS.Providers.CacheProviders.csproj", "{6FEFA4A7-CF69-44CD-BD03-AC5C702B7BA0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers.CacheProviders.Abstractions", "Providers\CacheProviders\FluentCMS.Providers.CacheProviders.Abstractions\FluentCMS.Providers.CacheProviders.Abstractions.csproj", "{97999608-B9AD-46B4-AF10-311B109A90BE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Web.Plugins.Contents.Iframe", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.Iframe\FluentCMS.Web.Plugins.Contents.Iframe.csproj", "{73B6E291-89AA-4EB7-BE38-C5884BAAB248}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -216,6 +217,10 @@ Global
 		{97999608-B9AD-46B4-AF10-311B109A90BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{97999608-B9AD-46B4-AF10-311B109A90BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{97999608-B9AD-46B4-AF10-311B109A90BE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{73B6E291-89AA-4EB7-BE38-C5884BAAB248}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{73B6E291-89AA-4EB7-BE38-C5884BAAB248}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{73B6E291-89AA-4EB7-BE38-C5884BAAB248}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{73B6E291-89AA-4EB7-BE38-C5884BAAB248}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -258,6 +263,7 @@ Global
 		{016945AB-5C4D-42A1-81B9-8C12FC6E40E6} = {CA060C96-322D-4410-8D32-0AF5DA8A975C}
 		{6FEFA4A7-CF69-44CD-BD03-AC5C702B7BA0} = {016945AB-5C4D-42A1-81B9-8C12FC6E40E6}
 		{97999608-B9AD-46B4-AF10-311B109A90BE} = {016945AB-5C4D-42A1-81B9-8C12FC6E40E6}
+		{73B6E291-89AA-4EB7-BE38-C5884BAAB248} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2E9F4217-7A58-48A4-9850-84CD0CDA31DA}
