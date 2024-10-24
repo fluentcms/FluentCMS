@@ -4,15 +4,51 @@ $grid: $prefix + "grid";
 
 $grid-column-width: math.div(100%, 12);
 
-$grid-breakpoint: ( small: 0, medium: 768px, large: 1200px );
+$grid-breakpoint: (
+    small: 0,
+    medium: 768px,
+    large: 1200px
+);
 
-$grid-items: ( start, end, center, baseline, stretch);
+$grid-items: (
+    start,
+    end,
+    center,
+    baseline,
+    stretch
+);
 
-$grid-gutter: ( small: 0.25em, medium: 0.5em, large: 1em );
+$grid-gutter: (
+    small: 0.25em,
+    medium: 0.5em,
+    large: 1em
+);
 
-$grid-justify: ( normal, start, end, center, between, around, evenly, stretch);
+$grid-justify: (
+    normal,
+    start,
+    end,
+    center,
+    between,
+    around,
+    evenly,
+    stretch
+);
 
-$grid-item-column: ( one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 );
+$grid-item-column: (
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+    eleven: 11,
+    twelve: 12
+);
 
 .#{$grid} {
     --grid-gutter-x: 0;
@@ -37,26 +73,26 @@ $grid-item-column: ( one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 
     @each $breakpoint, $value in $grid-breakpoint {
         @media (min-width: $value) {
             @each $key in $grid-items {
-                &-items-#{$breakpoint}-#{$key} > div {
+                &-items-#{$breakpoint}-#{$key}>div {
                     @apply items-#{$key};
                 }
             }
 
             @each $key in $grid-justify {
-                &-justify-#{$breakpoint}-#{$key} > div {
+                &-justify-#{$breakpoint}-#{$key}>div {
                     @apply justify-#{$key};
                 }
             }
         }
     }
 
-    & > div {
+    &>div {
         @apply flex flex-wrap h-full;
         margin-top: calc(var(--grid-gutter-y) * -1);
         margin-left: calc(var(--grid-gutter-x) * -1);
     }
 
-    &-no-wrap-true > div {
+    &-no-wrap-true>div {
         @apply flex-nowrap;
     }
 }

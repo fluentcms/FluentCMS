@@ -12,6 +12,7 @@ $tab: $prefix + 'tab';
 
     &-list {
         @apply mb-4 border-b border-gray-200 dark:border-gray-700;
+
         &-inner {
             @apply flex flex-wrap -mb-px;
         }

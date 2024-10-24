@@ -19,12 +19,15 @@ $indicator: $prefix + 'indicator';
 .#{$indicator-dot} {
     @apply flex w-2 h-2 me-1 rounded-full flex-shrink-0;
 
-    .#{$indicator}-color-default &, &.#{$indicator}-color-default {
+    .#{$indicator}-color-default &,
+    &.#{$indicator}-color-default {
         @apply bg-gray-600;
     }
 
     @each $key, $value in $colors {
-        .#{$indicator}-color-#{$key} &, &.#{$indicator}-color-#{$key} {
+
+        .#{$indicator}-color-#{$key} &,
+        &.#{$indicator}-color-#{$key} {
             @apply bg-#{$value}-600;
         }
     }

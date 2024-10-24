@@ -6,11 +6,11 @@ $confirm: $prefix + "confirm";
     &-backdrop {
         @apply bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40;
     }
-    
+
     &-body {
         @apply p-4 md:p-5 text-center;
 
-        & > .#{$prefix + "icon"} {
+        &>.#{$prefix + "icon"} {
             @apply block mx-auto mb-4 text-gray-400 w-12 h-12 dark:text-gray-200;
         }
     }
@@ -18,7 +18,7 @@ $confirm: $prefix + "confirm";
     &-content {
         @apply relative bg-white rounded-lg shadow dark:bg-gray-700;
 
-        & > .#{$prefix + "close-button"} {
+        &>.#{$prefix + "close-button"} {
             @apply absolute top-3 end-2.5;
         }
     }

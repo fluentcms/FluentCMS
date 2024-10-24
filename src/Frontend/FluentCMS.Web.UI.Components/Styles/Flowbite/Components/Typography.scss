@@ -75,7 +75,7 @@ $typography: $prefix + "typography";
         @apply font-black;
     }
 
-    @each $key in ( left, center, right, justify, start, end) {
+    @each $key in (left, center, right, justify, start, end) {
         &-align-#{$key} {
             @apply text-#{$key};
         }
