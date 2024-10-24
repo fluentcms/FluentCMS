@@ -17,7 +17,7 @@ public partial class BlockEditPlugin
                 return;
 
             if (content!.Count == 0)
-                throw new Exception("This plugin doesn't have any content");
+                return;
 
             Model = new BlockContent
             {
@@ -25,6 +25,23 @@ public partial class BlockEditPlugin
                 Content = content![0].Content
             };
         }
+    }
+
+    private async Task OnBlockSelected(BlockDetailResponse selectedBlock)
+    {
+        var block = new BlockContent
+        {
+            Content = selectedBlock.Content ?? string.Empty
+        };
+
+        var createResponse = await ApiClient.PluginContent.CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, block.ToDictionary());
+
+        Model = new BlockContent
+        {
+            Id = createResponse.Data.Id,
+            Content = block.Content
+        };
+        await OnSubmit.InvokeAsync();
     }
 
     private async Task HandleSubmit()
