@@ -38,6 +38,9 @@ public class LayoutProcessor(ITemplateRenderingProvider renderingProvider) : ILa
             // adding html segment to the list
             // this html content will be rendered as it is
             // before the component
+            if (htmlEndIndex < 0)
+                htmlEndIndex = 0;
+
             var htmlMarkup = content[htmlStartIndex..htmlEndIndex];
             segments.Add(new HtmlSegment
             {
