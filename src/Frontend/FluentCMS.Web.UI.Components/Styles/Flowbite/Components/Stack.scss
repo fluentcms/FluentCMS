@@ -1,13 +1,29 @@
 $stack: $prefix + 'stack';
 
-$stack-items: ( start, end, center, baseline, stretch);
+$stack-items: (
+    start,
+    end,
+    center,
+    baseline,
+    stretch
+);
 
-$stack-justify: ( normal, start, end, center, between, around, evenly, stretch);
+$stack-justify: (
+    normal,
+    start,
+    end,
+    center,
+    between,
+    around,
+    evenly,
+    stretch
+);
 
 .#{$stack} {
     @apply flex items-center;
 
-    &-gutter-small, &-gutter-default {
+    &-gutter-small,
+    &-gutter-default {
         @apply gap-2;
     }
 

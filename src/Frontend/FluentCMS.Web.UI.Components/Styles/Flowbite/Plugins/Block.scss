@@ -10,8 +10,8 @@ $block: $prefix + 'block';
 
     &-modal {
         &-body {
-            display: flex; 
-            height: calc(80vh - 3rem); 
+            display: flex;
+            height: calc(80vh - 3rem);
             overflow: hidden;
         }
 
@@ -20,24 +20,26 @@ $block: $prefix + 'block';
             top: 1rem;
             right: 2rem;
         }
-        
+
         &-sidebar {
             padding: 24px;
-            overflow: auto; 
-            width: 260px; 
-            flex-shrink: 0; 
-            cursor: pointer; 
+            overflow: auto;
+            width: 260px;
+            flex-shrink: 0;
+            cursor: pointer;
             border-right: 1px solid #E5E7EB;
 
             &-title {
                 @apply text-2xl font-bold text-gray-900 pb-4;
             }
+
             &-item {
                 @apply py-2.5 px-3 border-b border-gray-300;
                 white-space: nowrap;
             }
+
             &-item-active {
-                @apply bg-gray-50 font-bold; 
+                @apply bg-gray-50 font-bold;
             }
         }
 
@@ -45,20 +47,20 @@ $block: $prefix + 'block';
             display: flex;
             flex-wrap: wrap;
             width: 100%;
-            gap: 16px; 
+            gap: 16px;
             overflow: auto;
             padding: 1rem;
             padding-top: 4rem;
         }
 
         &-preview {
-            display: flex; 
+            display: flex;
             flex-direction: column;
-            gap: 16px; 
-            width: calc(50% - 8px); 
+            gap: 16px;
+            width: calc(50% - 8px);
 
             &-item {
-                position: relative; 
+                position: relative;
                 cursor: pointer;
             }
 
@@ -67,11 +69,11 @@ $block: $prefix + 'block';
             }
 
             &-content {
-                zoom: calc(100% / 3); 
-                overflow: hidden; 
-                user-select: none; 
-                pointer-events: none; 
-                border-radius: 16px; 
+                zoom: calc(100% / 3);
+                overflow: hidden;
+                user-select: none;
+                pointer-events: none;
+                border-radius: 16px;
                 transition: all 0.3s ease;
                 border: 1px solid #dbdbdb;
             }
