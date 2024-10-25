@@ -85,7 +85,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers.CachePr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers.CacheProviders.Abstractions", "Providers\CacheProviders\FluentCMS.Providers.CacheProviders.Abstractions\FluentCMS.Providers.CacheProviders.Abstractions.csproj", "{97999608-B9AD-46B4-AF10-311B109A90BE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Web.Plugins.Contents.Iframe", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.Iframe\FluentCMS.Web.Plugins.Contents.Iframe.csproj", "{73B6E291-89AA-4EB7-BE38-C5884BAAB248}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Web.Plugins.Contents.IFrame", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.IFrame\FluentCMS.Web.Plugins.Contents.IFrame.csproj", "{73B6E291-89AA-4EB7-BE38-C5884BAAB248}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

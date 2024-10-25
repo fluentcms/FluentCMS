@@ -1,0 +1,13 @@
+@inherits BasePlugin
+@namespace FluentCMS.Web.Plugins.Contents.IFrame
+
+<div class="f-iframe-content" style="height: @(Height ?? "auto");">
+    @if (IsUsingSrc)
+    {    
+        <iframe src="@Source"/>
+    } 
+    else
+    {
+        @((MarkupString)EmbedCode)
+    }
+</div>

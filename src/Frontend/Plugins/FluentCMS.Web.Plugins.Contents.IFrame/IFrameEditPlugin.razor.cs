@@ -1,8 +1,8 @@
-namespace FluentCMS.Web.Plugins.Contents.Iframe;
+namespace FluentCMS.Web.Plugins.Contents.IFrame;
 
-public partial class IframeEditPlugin
+public partial class IFrameEditPlugin
 {
-    private IframeSettingsModel? Model { get; set; }
+    private IFrameSettingsModel? Model { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -11,12 +11,14 @@ public partial class IframeEditPlugin
             Plugin.Settings.TryGetValue("Src", out var src);
             Plugin.Settings.TryGetValue("Height", out var height);
             Plugin.Settings.TryGetValue("EmbedCode", out var embedCode);
+            Plugin.Settings.TryGetValue("IsUsingSrc", out var isUsingSrc);
 
             Model = new()
             {
                 Src = src ?? string.Empty,
                 Height = height ?? string.Empty,
                 EmbedCode = embedCode ?? string.Empty,
+                IsUsingSrc = isUsingSrc == "true" ? true : false,
             };
         }
     }
@@ -33,6 +35,7 @@ public partial class IframeEditPlugin
                 { "Src", Model.Src },
                 { "Height", Model.Height },
                 { "EmbedCode", Model.EmbedCode },
+                { "IsUsingSrc", Model.IsUsingSrc.ToString() },
             }
         };
         await ApiClient.Settings.UpdateAsync(request);
@@ -40,10 +43,11 @@ public partial class IframeEditPlugin
         await OnSubmit.InvokeAsync();
     }
 
-    class IframeSettingsModel
+    class IFrameSettingsModel
     {
         public string Src { get; set; } = string.Empty;
         public string Height { get; set; } = string.Empty;
         public string EmbedCode { get; set; } = string.Empty;
+        public bool IsUsingSrc { get; set; } = true;
     };
 }

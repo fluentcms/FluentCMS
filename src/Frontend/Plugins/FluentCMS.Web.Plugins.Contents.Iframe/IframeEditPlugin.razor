@@ -1,8 +1,0 @@
-@inherits BaseEditPlugin
-@namespace FluentCMS.Web.Plugins.Contents.Iframe
-
-<PluginModalForm Open="Open" Title="Edit Iframe" Model="@Model" OnSubmit="HandleSubmit" OnCancel="OnCancel" Name="IframeEditPlugin">
-    <FormInput Hint="" Placeholder="Enter Url of the source page" @bind-Value="@Model!.Src" Label="Source URL" />
-    <FormTextarea Hint="If you set this value, Source would not be used." Rows="5" Placeholder="Enter embed iframe code" @bind-Value="@Model!.EmbedCode" Label="Embed Code" />
-    <FormInput Placeholder="Enter Height of iframe (400px, 50%, ...)" @bind-Value="@Model!.Height" Label="Height " />
-</PluginModalForm>
