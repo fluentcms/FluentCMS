@@ -15,10 +15,11 @@ $tree-selector: $prefix + 'tree-selector';
         &-open {
             @apply block;
         }
-        
+
         &-inner {
             @apply ps-10 hidden;
         }
+
         &-inner-open {
             @apply flex flex-col;
         }
@@ -46,24 +47,27 @@ $tree-selector: $prefix + 'tree-selector';
         &-toggler {
             @apply rounded-md text-xl cursor-pointer flex items-center justify-center w-8 h-8 transition-all;
         }
+
         &-toggler-icon::before {
             @apply text-lg;
             content: '+';
         }
-        
+
         &-toggler-hidden {
             visibility: hidden;
-            
+
         }
+
         &-toggler:hover {
             @apply bg-gray-100 dark:bg-gray-700;
         }
     }
 }
-.#{$tree-selector}-option:has(.#{$tree-selector}-option-active) > .#{$tree-selector}-option-header > .#{$tree-selector}-option-content {
+
+.#{$tree-selector}-option:has(.#{$tree-selector}-option-active)>.#{$tree-selector}-option-header>.#{$tree-selector}-option-content {
     @apply bg-blue-50/50 dark:bg-gray-600/50;
 }
 
-.#{$tree-selector}-option-active > .#{$tree-selector}-option-header > .#{$tree-selector}-option-content {
+.#{$tree-selector}-option-active>.#{$tree-selector}-option-header>.#{$tree-selector}-option-content {
     @apply bg-blue-100 dark:bg-gray-600;
 }

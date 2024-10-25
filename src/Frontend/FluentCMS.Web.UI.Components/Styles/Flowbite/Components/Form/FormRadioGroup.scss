@@ -1,4 +1,5 @@
 $form-radio-group: $prefix + 'form-radio-group';
+
 .#{$form-radio-group} {
     &-vertical-false {
         @apply flex flex-wrap;

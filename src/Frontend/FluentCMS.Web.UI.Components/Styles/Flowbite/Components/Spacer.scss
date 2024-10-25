@@ -1,7 +1,9 @@
 $spacer: $prefix + 'spacer';
 
 .#{$spacer} {
-    &-size-default, &-size-medium {
+
+    &-size-default,
+    &-size-medium {
         @apply h-4;
     }
 
