@@ -14,12 +14,11 @@ public partial class IFrameViewPlugin
             Plugin.Settings.TryGetValue("Src", out var src);
             Plugin.Settings.TryGetValue("Height", out var height);
             Plugin.Settings.TryGetValue("EmbedCode", out var embedCode);
-            Plugin.Settings.TryGetValue("IsUsingSrc", out var isUsingSrc);
 
             Source = src ?? string.Empty;
             Height = height ?? string.Empty;
             EmbedCode = embedCode ?? string.Empty;
-            IsUsingSrc = isUsingSrc == "true";
+            IsUsingSrc = string.IsNullOrEmpty(embedCode);
         }
         await base.OnInitializedAsync();
     }
