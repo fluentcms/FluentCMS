@@ -4,7 +4,7 @@
 {
     <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="@Name" Enhance>
         <DataAnnotationsValidator />                
-        <Modal Size="ModalSize.Large" Visible="Open">
+        <Modal Placement="ModalPlacement.Top" Size="ModalSize.Large" Visible="Open">
             <ModalHeader>@Title</ModalHeader>
             <ModalBody>
                 <Grid GutterX="GridGutter.Large">

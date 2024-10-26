@@ -17,6 +17,7 @@
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.TextHTML\FluentCMS.Web.Plugins.Contents.TextHTML.csproj" />
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.Block\FluentCMS.Web.Plugins.Contents.Block.csproj" />
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.RichText\FluentCMS.Web.Plugins.Contents.RichText.csproj" />
+        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.IFrame\FluentCMS.Web.Plugins.Contents.IFrame.csproj" />
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.ContentViewer\FluentCMS.Web.Plugins.Contents.ContentViewer.csproj" />
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin\FluentCMS.Web.Plugins.Admin.csproj" />
         <ProjectReference Include="..\Providers\ApiTokenProviders\FluentCMS.Providers.ApiTokenProviders\FluentCMS.Providers.ApiTokenProviders.csproj" />
