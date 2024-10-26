@@ -665,11 +665,6 @@
             "Name": "Simple",
             "Category": "Title",
             "Description": "simple title block"
-        },
-        {
-            "Name": "PortfolioFeaturedProjects",
-            "Category": "Content",
-            "Description": "featured projects section used in portfolio"
         }
     ]
 }
