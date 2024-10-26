@@ -273,6 +273,13 @@
             ]
         },
         {
+            "Title": "Contact Me",
+            "Path": "/contact",
+            "Layout": "DefaultLayout",
+            "ViewRoles": [ "All Users" ],
+            "Plugins": []
+        },
+        {
             "Title": "Admin",
             "Path": "/admin",
             "Layout": "AdminLayout",
