@@ -2,7 +2,7 @@
 @namespace FluentCMS.Web.Plugins.Contents.IFrame
 
 <PluginModalForm Open="Open" Title="Edit IFrame" Model="@Model" OnSubmit="HandleSubmit" OnCancel="OnCancel" Name="IFrameEditPlugin">
-    <FormSwitch Label="Use Source URL"  Text="Select to use a page URL, or deselect to embed custom HTML for the iframe."  @bind-Value="@Model.IsUsingSrc" />
+    <FormSwitch Label="Use Source URL" Text="Select to use a page URL, or deselect to embed custom HTML for the iframe." @bind-Value="@Model!.IsUsingSrc" />
 
     @if (Model.IsUsingSrc)
     {

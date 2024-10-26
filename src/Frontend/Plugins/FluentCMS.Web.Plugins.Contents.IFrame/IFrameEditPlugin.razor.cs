@@ -18,9 +18,10 @@ public partial class IFrameEditPlugin
                 Src = src ?? string.Empty,
                 Height = height ?? string.Empty,
                 EmbedCode = embedCode ?? string.Empty,
-                IsUsingSrc = isUsingSrc == "true" ? true : false,
+                IsUsingSrc = isUsingSrc == "true",
             };
         }
+        await base.OnInitializedAsync();
     }
 
     private async Task HandleSubmit()
