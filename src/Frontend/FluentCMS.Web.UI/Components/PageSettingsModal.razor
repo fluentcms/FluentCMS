@@ -4,7 +4,7 @@
 {
     <EditForm Model="@Model" Name="PageSettings" OnSubmit="HandleSubmit">
         <DataAnnotationsValidator />
-        <Modal Visible="@Open" Size="ModalSize.Large" OnClose="HandleCancel">
+        <Modal Visible="@Open" Placement="ModalPlacement.Top" Size="ModalSize.Large" OnClose="HandleCancel">
             <ModalHeader>
                 <ModalTitle>@Title</ModalTitle>
             </ModalHeader>

@@ -38,16 +38,33 @@ public class PageController(ISiteService siteService, IPageService pageService, 
     [HttpGet]
     [DecodeQueryParam]
     [Policy(AREA, READ)]
-    public async Task<IApiResult<PageFullDetailResponse>> GetByUrl([FromQuery] string url, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<PageParentDetailResponse>> GetByUrl([FromQuery] string url, CancellationToken cancellationToken = default)
     {
         var uri = new Uri(url);
         var domain = uri.Authority;
         var path = uri.AbsolutePath;
 
         if (!await setupService.IsInitialized(cancellationToken))
-            return Ok(GetSetupPage());
+            return Ok(new PageParentDetailResponse { Current = GetSetupPage() });
 
-        return await GetPageResponse(domain, path, cancellationToken);
+        var response = new PageParentDetailResponse { };
+
+        try
+        {
+            var current = await GetPageResponse(domain, path, cancellationToken);
+
+            response.Current = current;
+        }
+        catch (Exception)
+        {
+            var pathParts = path.Split('/');
+            var parentPath = string.Join('/', pathParts.Take(pathParts.Length - 1));
+
+            response.Slug = pathParts.Last();
+            response.Parent = await GetPageResponse(domain, parentPath, cancellationToken);
+        }
+
+        return Ok(response);
     }
 
     [HttpPost]
@@ -93,7 +110,7 @@ public class PageController(ISiteService siteService, IPageService pageService, 
 
     #region Private Methods
 
-    private async Task<IApiResult<PageFullDetailResponse>> GetPageResponse(string domain, string path, CancellationToken cancellationToken = default)
+    private async Task<PageFullDetailResponse> GetPageResponse(string domain, string path, CancellationToken cancellationToken = default)
     {
         var site = await siteService.GetByUrl(domain, cancellationToken);
         var page = await pageService.GetByFullPath(site.Id, path, cancellationToken);
@@ -153,7 +170,7 @@ public class PageController(ISiteService siteService, IPageService pageService, 
             pageResponse.Sections[plugin.Section].Add(pluginResponse);
         }
 
-        return Ok(pageResponse);
+        return pageResponse;
     }
 
     private static PageFullDetailResponse GetSetupPage()

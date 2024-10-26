@@ -2,12 +2,12 @@ using FluentCMS.Providers.TemplateRenderingProviders.Abstractions;
 
 namespace FluentCMS.Web.Plugins.Contents.ContentViewer;
 
-public partial class ContentListViewPlugin
+public partial class ContentDetailViewPlugin
 {
     [Inject]
     protected ITemplateRenderingProvider RenderingProvider { get; set; } = default!;
 
-    private List<ContentDetailResponse> Items { get; set; } = default!;
+    private ContentDetailResponse Item { get; set; } = default!;
     private string Rendered { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
@@ -16,22 +16,29 @@ public partial class ContentListViewPlugin
         {
             if (Plugin.Settings.TryGetValue("ContentTypeSlug", out var slug) && !string.IsNullOrEmpty(slug))
             {
-                var response = await ApiClient.Content.GetAllAsync(slug);
-                if (response.Data != null)
+                if (Guid.TryParse(ViewState.Page.Slug, out var id))
                 {
-                    Items = response.Data.ToList();
+                    var response = await ApiClient.Content.GetByIdAsync(slug, id);
+                    if (response.Data != null)
+                    {
+                        Item = response.Data;
+                    }
+                }
+                else
+                {
+                    var response = await ApiClient.Content.GetAllAsync(slug);
+                    if (response.Data != null)
+                    {
+                        Item = response.Data.LastOrDefault() ?? default!;
+                    }
                 }
             }
 
-            if (Items != null)
+            if (Item != null)
             {
-
                 var data = new Dictionary<string, object>
                 {
-                    { "Items", Items.Select(x => {
-                        x.Data.Add("Id", x.Id);
-                        return x.Data;
-                    }) }
+                    { "Item", Item.Data }
                 };
                 var content = Plugin.Settings["Template"] ?? "No Template";
                 Rendered = RenderingProvider.Render(content, data);
