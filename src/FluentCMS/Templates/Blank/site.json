@@ -2,7 +2,6 @@
     "Name": "FluentCMS Administration",
     "Description": "FluentCMS blank site template",
     "Layout": "DefaultLayout",
-    "EditLayout": "EditLayout",
     "DetailLayout": "SingleLayout",
     "AdminRoles": [ "Administrators" ],
     "ContributorRoles": [ "Contributors" ],
@@ -44,9 +43,6 @@
             "Name": "AuthLayout"
         },
         {
-            "Name": "EditLayout"
-        },
-        {
             "Name": "SingleLayout"
         }
     ],
@@ -54,7 +50,6 @@
         {
             "Title": "Home",
             "Path": "/",
-            "EditLayout": "EditLayout",
             "ViewRoles": [ "All Users" ],
             "Plugins": []
         },
@@ -62,7 +57,6 @@
             "Title": "Admin",
             "Path": "/admin",
             "Layout": "AdminLayout",
-            "EditLayout": "AdminLayout",
             "AdminRoles": [ "Administrators" ],
             "Locked": true,
             "Plugins": [],
@@ -71,7 +65,6 @@
                     "Title": "Content Type Builder",
                     "Path": "/content-types",
                     "Layout": "AdminLayout",
-                    "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
@@ -86,7 +79,6 @@
                     "Title": "Users",
                     "Path": "/users",
                     "Layout": "AdminLayout",
-                    "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
@@ -101,7 +93,6 @@
                     "Title": "File Management",
                     "Path": "/files",
                     "Layout": "AdminLayout",
-                    "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
@@ -116,7 +107,6 @@
                     "Title": "Api Tokens",
                     "Path": "/api-tokens",
                     "Layout": "AdminLayout",
-                    "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
@@ -131,7 +121,6 @@
                     "Title": "Roles",
                     "Path": "/roles",
                     "Layout": "AdminLayout",
-                    "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
@@ -146,7 +135,6 @@
                     "Title": "Sites",
                     "Path": "/sites",
                     "Layout": "AdminLayout",
-                    "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
@@ -161,7 +149,6 @@
                     "Title": "Plugins",
                     "Path": "/plugins",
                     "Layout": "AdminLayout",
-                    "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
@@ -176,7 +163,6 @@
                     "Title": "Pages",
                     "Path": "/pages",
                     "Layout": "AdminLayout",
-                    "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
@@ -191,7 +177,6 @@
                     "Title": "Blocks",
                     "Path": "/blocks",
                     "Layout": "AdminLayout",
-                    "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
@@ -206,7 +191,6 @@
                     "Title": "Layouts",
                     "Path": "/layouts",
                     "Layout": "AdminLayout",
-                    "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
@@ -221,7 +205,6 @@
                     "Title": "GlobalSettings",
                     "Path": "/globalsettings",
                     "Layout": "AdminLayout",
-                    "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
@@ -307,7 +290,6 @@
                     "Path": "/profile",
                     "ViewRoles": [ "Authenticated Users" ],
                     "Layout": "AdminLayout",
-                    "EditLayout": "AdminLayout",
                     "Locked": true,
                     "Plugins": [
                         {

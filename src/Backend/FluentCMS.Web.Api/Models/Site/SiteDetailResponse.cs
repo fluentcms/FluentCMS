@@ -7,7 +7,6 @@ public class SiteDetailResponse : BaseAuditableResponse
     public List<string> Urls { get; set; } = [];
     public Guid LayoutId { get; set; }
     public Guid DetailLayoutId { get; set; }
-    public Guid EditLayoutId { get; set; }
     public IEnumerable<Guid> AdminRoleIds { get; set; } = [];
     public IEnumerable<Guid> ContributorRoleIds { get; set; } = [];
     public List<RoleDetailResponse> AllRoles { get; set; } = [];

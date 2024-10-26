@@ -15,15 +15,7 @@ else if (ViewState.Type == ViewStateType.PagePreview)
         </Body>
     </SiteBuilderPreview>
 }
-else if (ViewState.Type == ViewStateType.PluginEdit)
-{
-    <HeadContent>
-        @RenderDynamicContent(ViewState.EditLayout?.Head ?? string.Empty)
-    </HeadContent>
-
-    @RenderDynamicContent(ViewState.EditLayout?.Body ?? string.Empty)
-}
-else if (ViewState.Type == ViewStateType.PluginDetail)
+else if (ViewState.Type == ViewStateType.PluginDetail && !ViewState.Page.Locked)
 {
     <HeadContent>
         @RenderDynamicContent(ViewState.DetailLayout?.Head ?? string.Empty)

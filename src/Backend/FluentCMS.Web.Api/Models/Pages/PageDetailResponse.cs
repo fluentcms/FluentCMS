@@ -10,7 +10,6 @@ public class PageDetailResponse : BaseSiteAssociatedResponse
     public string FullPath { get; set; } = default!;
     public Guid? LayoutId { get; set; }
     public Guid? DetailLayoutId { get; set; }
-    public Guid? EditLayoutId { get; set; }
     public bool Locked { get; set; } = false;
     public IEnumerable<Guid> ViewRoleIds { get; set; } = [];
     public IEnumerable<Guid> AdminRoleIds { get; set; } = [];

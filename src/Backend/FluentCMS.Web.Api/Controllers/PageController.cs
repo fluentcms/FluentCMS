@@ -122,7 +122,6 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         var roles = await roleService.GetAllForSite(site.Id, cancellationToken) ?? [];
 
         var layoutId = page.LayoutId ?? site.LayoutId;
-        var editLayoutId = page.EditLayoutId ?? site.EditLayoutId;
         var detailLayoutId = page.DetailLayoutId ?? site.DetailLayoutId;
 
         var pageResponse = mapper.Map<PageFullDetailResponse>(page);
@@ -130,7 +129,6 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         pageResponse.Site.AllRoles = mapper.Map<List<RoleDetailResponse>>(roles);
         pageResponse.Site.Settings = siteSettings.Values;
         pageResponse.Layout = mapper.Map<LayoutDetailResponse>(layoutsDict[layoutId]);
-        pageResponse.EditLayout = mapper.Map<LayoutDetailResponse>(layoutsDict[editLayoutId]);
         pageResponse.DetailLayout = mapper.Map<LayoutDetailResponse>(layoutsDict[detailLayoutId]);
         pageResponse.Sections = [];
         pageResponse.Settings = pageSettings.Values;

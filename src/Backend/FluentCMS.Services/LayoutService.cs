@@ -68,7 +68,7 @@ public class LayoutService(ILayoutRepository layoutRepository, ISiteRepository s
         var site = await siteRepository.GetById(siteId, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteNotFound);
 
-        if (site.LayoutId == id || site.EditLayoutId == id || site.DetailLayoutId == id)
+        if (site.LayoutId == id || site.DetailLayoutId == id)
             throw new AppException(ExceptionCodes.LayoutUnableToDeleteDefaultLayout);
 
         var deleted = await layoutRepository.Delete(id, cancellationToken) ??

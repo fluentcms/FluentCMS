@@ -7,7 +7,6 @@ public class SiteUpdateModel
     public string Description { get; set; } = default!;
     public Guid LayoutId { get; set; }
     public Guid DetailLayoutId { get; set; }
-    public Guid EditLayoutId { get; set; }
     public ICollection<Guid> AdminRoleIds { get; set; } = [];
     public ICollection<Guid> ContributorRoleIds { get; set; } = [];
     public string MetaTitle { get; set; } = default!;

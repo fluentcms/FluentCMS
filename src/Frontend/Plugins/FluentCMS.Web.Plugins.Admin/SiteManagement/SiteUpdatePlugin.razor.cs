@@ -104,7 +104,6 @@ public partial class SiteUpdatePlugin
             Description = siteDetailResponse.Description ?? string.Empty,
             LayoutId = siteDetailResponse.LayoutId,
             DetailLayoutId = siteDetailResponse.DetailLayoutId,
-            EditLayoutId = siteDetailResponse.EditLayoutId,
             AdminRoleIds = siteDetailResponse.AdminRoleIds!,
             ContributorRoleIds = siteDetailResponse.ContributorRoleIds!,
             MetaTitle = settings["MetaTitle"] ?? string.Empty,
@@ -127,7 +126,6 @@ public partial class SiteUpdatePlugin
             Description = Model.Description,
             LayoutId = Model.LayoutId,
             DetailLayoutId = Model.DetailLayoutId,
-            EditLayoutId = Model.EditLayoutId,
             AdminRoleIds = Model.AdminRoleIds,
             ContributorRoleIds = Model.ContributorRoleIds,
             Urls = [.. Model.Urls.Split(",")]

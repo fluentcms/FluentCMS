@@ -10,7 +10,7 @@
     </div>
 }
 
-@if (ViewState.Plugin != null && (ViewState.Type == ViewStateType.PluginEdit || ViewState.Type == ViewStateType.PluginDetail) && Name.ToLower() == "main")
+@if (ViewState.Plugin != null && (ViewState.Type == ViewStateType.PluginDetail) && Name.ToLower() == "main")
 {
     <div class="f-section" data-name="@Name">
         <PluginContainer Plugin="@ViewState.Plugin" />

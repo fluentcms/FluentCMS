@@ -7,7 +7,6 @@ public class ViewState : IDisposable
     public PageViewState Page { get; set; } = default!;
     public LayoutViewState Layout { get; set; } = default!;
     public LayoutViewState DetailLayout { get; set; } = default!;
-    public LayoutViewState EditLayout { get; set; } = default!;
     public List<PluginViewState> Plugins { get; set; } = default!;
     public UserViewState User { get; set; } = default!;
     public PluginViewState? Plugin { get; set; }
@@ -38,7 +37,6 @@ public class ViewState : IDisposable
 public enum ViewStateType
 {
     Default,
-    PluginEdit,
     PluginDetail,
     PagePreview,
     PageEdit

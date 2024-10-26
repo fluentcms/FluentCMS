@@ -91,7 +91,6 @@ public class SiteService(ISiteRepository siteRepository, IPluginDefinitionReposi
 
         site.Urls = [ValidateAndFormatUrl(siteTemplate.Url)];
         site.LayoutId = layouts.Where(x => x.Name == siteTemplate.Layout).Single().Id;
-        site.EditLayoutId = layouts.Where(x => x.Name == siteTemplate.EditLayout).Single().Id;
         site.DetailLayoutId = layouts.Where(x => x.Name == siteTemplate.DetailLayout).Single().Id;
 
         ValidateAndFormatUrls(site);

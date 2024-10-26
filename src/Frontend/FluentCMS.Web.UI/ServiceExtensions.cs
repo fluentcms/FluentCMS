@@ -86,7 +86,6 @@ public static class ServiceExtensions
                 viewState.Page.Slug = pageResponse.Data.Slug;
                 viewState.Layout = mapper.Map<LayoutViewState>(page.Layout);
                 viewState.DetailLayout = mapper.Map<LayoutViewState>(page.DetailLayout);
-                viewState.EditLayout = mapper.Map<LayoutViewState>(page.EditLayout);
                 viewState.Site = mapper.Map<SiteViewState>(page.Site);
                 viewState.Plugins = page.Sections!.Values.SelectMany(x => x).Select(p => mapper.Map<PluginViewState>(p)).ToList();
                 viewState.User = mapper.Map<UserViewState>(page.User);
@@ -107,15 +106,8 @@ public static class ServiceExtensions
                     // check if the pluginId is valid
                     if (Guid.TryParse(queryParams["pluginId"], out var pluginId))
                     {
-                        // TODO: Decide when show edit and when show detail view
-                        if (queryParams["viewMode"] == "detail")
-                        {
-                            viewState.Type = ViewStateType.PluginDetail;
-                        }
-                        else
-                        {
-                            viewState.Type = ViewStateType.PluginEdit;
-                        }
+                        viewState.Type = ViewStateType.PluginDetail;
+                        
                         viewState.Plugin = viewState.Plugins.Single(x => x.Id == pluginId);
                         viewState.PluginViewName = queryParams["viewName"];
                     }

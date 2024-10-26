@@ -13,7 +13,6 @@ public class PageSettingsModel
 
     public Guid? ParentId { get; set; } = default;
     public Guid? LayoutId { get; set; } = default;
-    public Guid? EditLayoutId { get; set; } = default;
     public Guid? DetailLayoutId { get; set; } = default;
 
     [Required]
@@ -44,7 +43,6 @@ public class PageSettingsModel
             Path = Path,
             ParentId = ParentId != Guid.Empty ? ParentId : default!,
             LayoutId = LayoutId != Guid.Empty ? LayoutId : default!,
-            EditLayoutId = EditLayoutId != Guid.Empty ? EditLayoutId : default!,
             DetailLayoutId = DetailLayoutId != Guid.Empty ? DetailLayoutId : default!,
             Order = Order,
             AdminRoleIds = AdminRoleIds,
@@ -58,7 +56,6 @@ public class PageSettingsModel
         Path = response.Path ?? string.Empty;
         ParentId = response.ParentId;
         LayoutId = response.LayoutId;
-        EditLayoutId = response.EditLayoutId;
         DetailLayoutId = response.DetailLayoutId;
         Order = response.Order;
         AdminRoleIds = response.AdminRoleIds ?? [];
@@ -89,7 +86,6 @@ public class PageSettingsModel
             Path = Path,
             ParentId = ParentId != Guid.Empty ? ParentId : default!,
             LayoutId = LayoutId != Guid.Empty ? LayoutId : default!,
-            EditLayoutId = EditLayoutId != Guid.Empty ? EditLayoutId : default!,
             DetailLayoutId = DetailLayoutId != Guid.Empty ? DetailLayoutId : default!,
             Order = Order,
             AdminRoleIds = AdminRoleIds,

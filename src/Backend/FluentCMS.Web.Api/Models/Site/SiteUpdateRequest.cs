@@ -20,9 +20,6 @@ public class SiteUpdateRequest
     public Guid DetailLayoutId { get; set; } = default!;
 
     [Required]
-    public Guid EditLayoutId { get; set; } = default!;
-
-    [Required]
     public List<Guid> ContributorRoleIds { get; set; } = [];
 
     [Required]

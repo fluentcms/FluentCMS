@@ -23,9 +23,6 @@
             <DataTableItem Label="Detail Layout">
                 @Layouts.Find(x => x.Id == context.DetailLayoutId)?.Name
             </DataTableItem>
-            <DataTableItem Label="Edit Layout">
-                @Layouts.Find(x => x.Id == context.EditLayoutId)?.Name
-            </DataTableItem>
             <ActionButtons>
                 <ActionButtonEdit Href="@GetUrl("Update Site", new { id = @context.Id })" />
                 <ActionButtonDelete @onclick="() => OnConfirm(context)" />

@@ -8,7 +8,6 @@ public class PageTemplate
     public string Title { get; set; } = default!;
     public string? Layout { get; set; } = default!;
     public string? DetailLayout { get; set; } = default!;
-    public string? EditLayout { get; set; } = default!;
     public List<PageTemplate> Children { get; set; } = [];
     public List<PluginTemplate> Plugins { get; set; } = [];
     public bool Locked { get; set; } = false;

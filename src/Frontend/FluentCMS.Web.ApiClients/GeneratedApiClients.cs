@@ -12286,9 +12286,6 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("detailLayoutId")]
         public System.Guid? DetailLayoutId { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("editLayoutId")]
-        public System.Guid? EditLayoutId { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("title")]
         [System.ComponentModel.DataAnnotations.Required]
         public string Title { get; set; } = default!;
@@ -12358,9 +12355,6 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("detailLayoutId")]
         public System.Guid? DetailLayoutId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("editLayoutId")]
-        public System.Guid? EditLayoutId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("locked")]
         public bool Locked { get; set; } = default!;
@@ -12497,9 +12491,6 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("detailLayout")]
         public LayoutDetailResponse DetailLayout { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("editLayout")]
-        public LayoutDetailResponse EditLayout { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("site")]
         public SiteDetailResponse Site { get; set; } = default!;
 
@@ -12602,9 +12593,6 @@ namespace FluentCMS.Web.ApiClients
 
         [System.Text.Json.Serialization.JsonPropertyName("detailLayoutId")]
         public System.Guid? DetailLayoutId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("editLayoutId")]
-        public System.Guid? EditLayoutId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("title")]
         [System.ComponentModel.DataAnnotations.Required]
@@ -13465,9 +13453,6 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("detailLayoutId")]
         public System.Guid DetailLayoutId { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("editLayoutId")]
-        public System.Guid EditLayoutId { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("adminRoleIds")]
         public System.Collections.Generic.ICollection<System.Guid>? AdminRoleIds { get; set; } = default!;
 
@@ -13583,10 +13568,6 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("detailLayoutId")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid DetailLayoutId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("editLayoutId")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public System.Guid EditLayoutId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("contributorRoleIds")]
         [System.ComponentModel.DataAnnotations.Required]

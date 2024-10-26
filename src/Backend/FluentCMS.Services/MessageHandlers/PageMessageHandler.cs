@@ -22,11 +22,6 @@ public class PageMessageHandler(IPageService pageService, IPermissionService per
                         page.DetailLayoutId = null;
                         await pageService.Update(page, cancellationToken);
                     }
-                    if (page.EditLayoutId == layoutId)
-                    {
-                        page.EditLayoutId = null;
-                        await pageService.Update(page, cancellationToken);
-                    }
                 }
                 break;
 
@@ -71,7 +66,6 @@ public class PageMessageHandler(IPageService pageService, IPermissionService per
             Title = pageTemplate.Title,
             LayoutId = layouts.Where(x => x.Name == pageTemplate.Layout).SingleOrDefault()?.Id,
             DetailLayoutId = layouts.Where(x => x.Name == pageTemplate.DetailLayout).SingleOrDefault()?.Id,
-            EditLayoutId = layouts.Where(x => x.Name == pageTemplate.EditLayout).SingleOrDefault()?.Id,
             Order = order,
             Locked = pageTemplate.Locked,
         };

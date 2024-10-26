@@ -11,8 +11,6 @@ public class PageCreateRequest
 
     public Guid? DetailLayoutId { get; set; } = default!;
 
-    public Guid? EditLayoutId { get; set; } = default!;
-
     [Required]
     public string Title { get; set; } = string.Empty;
 
