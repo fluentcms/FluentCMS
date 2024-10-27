@@ -1,5 +1,3 @@
-// TODO
-
 $accordion: $prefix + "accordion";
 
 .#{$accordion} {
@@ -32,6 +30,7 @@ $accordion: $prefix + "accordion";
     }
 
     &:not(:last-of-type) {
+
         .#{$accordion}-content,
         .#{$accordion}-toggler {
             @apply border-b-0;

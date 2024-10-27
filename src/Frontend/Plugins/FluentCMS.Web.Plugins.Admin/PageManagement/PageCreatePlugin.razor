@@ -6,9 +6,17 @@
     <FormInput Hint="Url slug of the page, should not be nested." @bind-Value="Model!.Path" Cols="6" Label="Path" Placeholder="Enter url path" />
     <ParentPageSelector @bind-Value="Model!.ParentId" Pages="@Pages" />
     <FormSelect @bind-Value="Model!.LayoutId" Data="LayoutOptions" ValueField="Value" TextField="Title" Cols="6" Label="Layout" Placeholder="Choose Layout" Visible="@(Layouts != null)" />
+    <FormSelect @bind-Value="Model!.EditLayoutId" Data="LayoutOptions" ValueField="Value" TextField="Title" Cols="6" Label="Edit Layout" Placeholder="Choose Edit Layout" Visible="@(Layouts != null)" />
+    <FormSelect @bind-Value="Model!.DetailLayoutId" Data="LayoutOptions" ValueField="Value" TextField="Title" Cols="6" Label="Detail Layout" Placeholder="Choose Detail Layout" Visible="@(Layouts != null)" />
     <FormNumberInput Hint="Order of page in Menus." @bind-Value="Model!.Order" Cols="6" Label="Order" Placeholder="Enter page order" />
+
+    <FormTextarea @bind-Value="Model!.Head" Label="Head" Placeholder="Enter Head content" />
+    <FormInput @bind-Value="Model!.MetaTitle" Cols="12" Label="Meta Title" Placeholder="Enter Meta Title" />
+    <FormTextarea @bind-Value="Model.MetaDescription" Label="Meta Description" Placeholder="Enter Meta Description" />
+    <FormSelect Data="RobotsOptions" @bind-Value="Model!.Robots" TextField="Title" ValueField="Value" Cols="6" Label="Robots behavior" Placeholder="Choose robots behavior" />
+    <FormSelect Data="OgTypeOptions" @bind-Value="Model!.OgType" TextField="Title" ValueField="Value" Cols="6" Label="Og Type" Placeholder="Choose page type" />
+
     <FormCheckboxGroup Hint="Roles which can view the page." @bind-Value="Model!.ViewRoleIds" Data="ViewState.Site.AllRoles" Label="ViewRoles" TextField="Name" ValueField="Id" />
-    <FormCheckboxGroup Hint="Roles which are able to manage plugins." @bind-Value="Model!.ContributorRoleIds" Data="ViewState.Site.AllRoles" Label="ContributorRoles" TextField="Name" ValueField="Id" />
-    <FormCheckboxGroup Hint="Roles which are able to manage page." @bind-Value="Model!.AdminRoleIds" Data="ViewState.Site.AllRoles" Label="AdminRoles" TextField="Name" ValueField="Id" />
+    <FormCheckboxGroup Hint="Roles which are able to manage page." @bind-Value="Model!.AdminRoleIds" Data="AdminRoleOptions" Label="AdminRoles" TextField="Name" ValueField="Id" />
     <FormActions Cancel Submit />
 </PluginForm>

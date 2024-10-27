@@ -24,4 +24,11 @@ public class PermissionRepository(ILiteDBContext liteDbContext, IApiExecutionCon
 
         return await CreateMany(permissions, cancellationToken);
     }
+
+    public async Task<IEnumerable<Permission>> Get(Guid siteId, Guid entityId, string entityTypeName, string action, CancellationToken cancellationToken)
+    {
+        var existPermissions = await Collection.Query().Where(x => x.EntityId == entityId && x.EntityType == entityTypeName && x.Action == action).ToListAsync();
+
+        return existPermissions;
+    }
 }

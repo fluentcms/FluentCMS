@@ -2,9 +2,9 @@
 
 public abstract class SiteAssociatedRepository<TEntity>(ISiteAssociatedRepository<TEntity> siteAssociatedRepository, ICacheProvider cacheProvider) : AuditableEntityRepository<TEntity>(siteAssociatedRepository, cacheProvider), ISiteAssociatedRepository<TEntity> where TEntity : ISiteAssociatedEntity
 {
-    public async Task<IEnumerable<TEntity>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TEntity>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {
-        var entities = await siteAssociatedRepository.GetAll(cancellationToken);
+        var entities = await GetAll(cancellationToken);
         return entities.Where(e => e.SiteId == siteId);
     }
 }

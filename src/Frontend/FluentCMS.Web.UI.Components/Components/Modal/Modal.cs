@@ -7,3 +7,9 @@ public enum ModalSize
     Medium,
     Large
 }
+
+public enum ModalPlacement
+{
+    Middle,
+    Top
+}

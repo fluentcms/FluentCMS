@@ -11,6 +11,7 @@ public partial class SiteUpdatePlugin
     private SiteUpdateModel? Model { get; set; }
 
     private List<LayoutDetailResponse>? Layouts { get; set; }
+    private List<RoleDetailResponse> AdminRoleOptions = [];
     private SiteDetailResponse? Site { get; set; }
 
     private List<SelectOption> RobotsOptions =
@@ -63,13 +64,19 @@ public partial class SiteUpdatePlugin
 
     protected override async Task OnInitializedAsync()
     {
-
         if (Model is null)
         {
             var siteResponse = await ApiClient.Site.GetByIdAsync(Id);
             Site = siteResponse.Data;
             Model = GetSiteUpdateModel(Site);
+
+            var rolesResponse = await ApiClient.Role.GetAllAsync(Site.Id);
+            if (rolesResponse.Data != null)
+            {
+                AdminRoleOptions = (rolesResponse.Data ?? []).Where(x => x.Type != RoleTypes.AllUsers && x.Type != RoleTypes.Guest).ToList();
+            }
         }
+
 
         if (Layouts is null)
         {
@@ -98,6 +105,8 @@ public partial class SiteUpdatePlugin
             LayoutId = siteDetailResponse.LayoutId,
             DetailLayoutId = siteDetailResponse.DetailLayoutId,
             EditLayoutId = siteDetailResponse.EditLayoutId,
+            AdminRoleIds = siteDetailResponse.AdminRoleIds!,
+            ContributorRoleIds = siteDetailResponse.ContributorRoleIds!,
             MetaTitle = settings["MetaTitle"] ?? string.Empty,
             MetaDescription = settings["MetaDescription"] ?? string.Empty,
             GoogleTagsId = settings["GoogleTagsId"] ?? string.Empty,
@@ -119,6 +128,8 @@ public partial class SiteUpdatePlugin
             LayoutId = Model.LayoutId,
             DetailLayoutId = Model.DetailLayoutId,
             EditLayoutId = Model.EditLayoutId,
+            AdminRoleIds = Model.AdminRoleIds,
+            ContributorRoleIds = Model.ContributorRoleIds,
             Urls = [.. Model.Urls.Split(",")]
         };
     }
@@ -140,7 +151,8 @@ public partial class SiteUpdatePlugin
         };
     }
 
-    public class SelectOption {
+    public class SelectOption
+    {
         public string Title { get; set; } = string.Empty;
         public string Key { get; set; } = string.Empty;
     }

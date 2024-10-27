@@ -60,8 +60,8 @@
 
 .f-page-editor-sidebar {
     width: 240px;
-    background-color: #ffffff;
-    border-left: 1px solid #dfdfdf;
+    background-color: #F9F9F9;
+    box-shadow: inset 1px 0 2px #dfdfdf;
     transition: all 0.3s ease;
     top: 46px;
     bottom: 0;
@@ -76,11 +76,24 @@
 }
 
 .f-section .f-plugin-definition-item {
-    background-color: #444444;
-    color: #444444;
+    background-color: transparent;
+    color: transparent;
     width: 100%;
+    border: 2px dashed #154EF2;
 }
 
 .f-section .f-plugin-definition-item-icon {
     display: none;
+}
+
+.f-section:has(.f-plugin-definition-item) .f-plugin-container-content {
+    border-color: #154EF250;
+}
+
+body {
+    transition: all 0.3s ease;
+}
+
+body:not([data-responsive-mode]):has(.f-page-editor-sidebar-open) {
+    padding-right: 240px;
 }

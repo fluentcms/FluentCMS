@@ -3,7 +3,7 @@
 
 @if (Item != null)
 {
-    @if(ViewState.HasPageContributorAccess())
+    @if(ViewState.Page.HasAdminAccess && ViewState.Type == ViewStateType.PagePreview)
     {
         <InlineEditor Value="@Item.Content" OnCancel="OnCancel" OnSave="UpdateContent"/>
     }

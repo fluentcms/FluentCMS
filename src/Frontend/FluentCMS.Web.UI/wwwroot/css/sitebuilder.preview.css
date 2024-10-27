@@ -22,17 +22,12 @@ a[href] {
     cursor: grab;
 }
 
-.f-plugin-container-moving {
-    opacity: 0.5;
-}
-
 .f-section {
     min-height: 100px;
 }
 
 .f-section:has(.f-plugin-definition-item) {
-    box-shadow: inset 0 0 32px #2032ff;
-    border: 1px solid rgb(0, 81, 255);
+    box-shadow: inset 0 0 1px #2032ff;
 }
 
 .f-plugin-definition-item {

@@ -21,13 +21,5 @@ public enum SitePermissionAction
 public enum PagePermissionAction
 {
     PageView,
-    PageContributor,
     PageAdmin
-}
-
-public enum PluginPermissionAction
-{
-    PluginView,
-    PluginContributor,
-    PluginAdmin
 }

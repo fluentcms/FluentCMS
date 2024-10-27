@@ -14,7 +14,7 @@ public class SettingsController(ISettingsService settingsService) : BaseGlobalCo
         var response = new SettingsDetailResponse
         {
             Id = settings.Id,
-            Settings = settings.Values            
+            Settings = settings.Values
         };
 
         return Ok(response);

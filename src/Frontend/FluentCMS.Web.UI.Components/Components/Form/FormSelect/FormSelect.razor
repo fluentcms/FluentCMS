@@ -13,7 +13,7 @@
                 name="@NameAttributeValue" @bind="@CurrentValueAsString">
             @if (!string.IsNullOrEmpty(Placeholder))
             {
-                <option disabled selected value="null">@Placeholder</option>
+                <option disabled hidden selected value="null">@Placeholder</option>
             }
             @if (ChildContent == null)
             {

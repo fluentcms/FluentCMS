@@ -1,6 +1,12 @@
 $toast: $prefix + 'toast';
 
-$toast-types: ( "info": "blue", "danger": "red", "warning": "yellow", "success": "green", "default": "gray" );
+$toast-types: (
+    "info": "blue",
+    "danger": "red",
+    "warning": "yellow",
+    "success": "green",
+    "default": "gray"
+);
 
 .#{$toast} {
     @apply flex items-center p-4 text-sm rounded-lg w-full;

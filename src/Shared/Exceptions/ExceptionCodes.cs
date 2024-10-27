@@ -141,10 +141,9 @@ public static class ExceptionCodes
     public const string PageUnableToDelete = "Page.UnableToDelete";
     public const string PagePathMustBeUnique = "Page.PathMustBeUnique";
     public const string PageNotFound = "Page.NotFound";
+    public const string PagePathInvalidCharacter = "Page.PathInvalidCharacter";
     public const string PageParentPageNotFound = "Page.ParentPageNotFound";
     public const string PageParentMustBeOnTheSameSite = "Page.ParentMustBeOnTheSameSite";
-    public const string PageViewPermissionsAreNotASubsetOfParent = "Page.ViewPermissionsAreNotASubsetOfParent";
-    public const string PageSiteIdCannotBeChanged = "Page.SiteIdCannotBeChanged";
     public const string PageHasChildren = "Page.PageHasChildren";
 
     #endregion
