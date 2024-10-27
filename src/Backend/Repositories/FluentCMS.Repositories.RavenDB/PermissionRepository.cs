@@ -2,6 +2,20 @@
 
 public class PermissionRepository(IRavenDBContext RavenDbContext, IApiExecutionContext apiExecutionContext) : SiteAssociatedRepository<Permission>(RavenDbContext, apiExecutionContext), IPermissionRepository
 {
+    public async Task<IEnumerable<Permission>> Get(Guid siteId, Guid entityId, string entityTypeName, string action, CancellationToken cancellationToken = default)
+    {
+        using (var session = Store.OpenAsyncSession())
+        {
+            var permissions = await session.Query<RavenEntity<Permission>>()
+                                        .Where(x => x.Data.EntityId == entityId && x.Data.EntityType == entityTypeName && x.Data.Action == action)
+                                        .Select(x => x.Data)
+                                        .ToListAsync(cancellationToken);
+
+            return permissions;
+        }
+    }
+
+
     public async Task<IEnumerable<Permission>> Set(Guid siteId, Guid entityId, string entityTypeName, string action, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
