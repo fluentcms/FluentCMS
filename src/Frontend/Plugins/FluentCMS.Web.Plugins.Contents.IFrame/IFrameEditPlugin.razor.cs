@@ -11,14 +11,13 @@ public partial class IFrameEditPlugin
             Plugin.Settings.TryGetValue("Src", out var src);
             Plugin.Settings.TryGetValue("Height", out var height);
             Plugin.Settings.TryGetValue("EmbedCode", out var embedCode);
-            Plugin.Settings.TryGetValue("IsUsingSrc", out var isUsingSrc);
 
             Model = new()
             {
                 Src = src ?? string.Empty,
                 Height = height ?? string.Empty,
                 EmbedCode = embedCode ?? string.Empty,
-                IsUsingSrc = isUsingSrc == "true",
+                IsUsingSrc = string.IsNullOrEmpty(embedCode),
             };
         }
         await base.OnInitializedAsync();
@@ -33,12 +32,21 @@ public partial class IFrameEditPlugin
         {
             Id = Plugin.Id,
             Settings = new Dictionary<string, string> {
-                { "Src", Model.Src },
                 { "Height", Model.Height },
-                { "EmbedCode", Model.EmbedCode },
-                { "IsUsingSrc", Model.IsUsingSrc.ToString() },
             }
         };
+
+        if (Model.IsUsingSrc)
+        {
+            request.Settings.Add("Src", Model.Src);
+            request.Settings.Add("EmbedCode", string.Empty);
+        }
+        else
+        {
+            request.Settings.Add("Src", string.Empty);
+            request.Settings.Add("EmbedCode", Model.EmbedCode);
+        }
+
         await ApiClient.Settings.UpdateAsync(request);
 
         await OnSubmit.InvokeAsync();
