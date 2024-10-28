@@ -91,13 +91,19 @@ public static class ExceptionCodes
 
     #endregion
 
-    #region Asset (File/Folder)
+    #region Folder
 
     public const string FolderUnableToCreate = "Folder.UnableToCreate";
-    public const string FolderParentFolderNotFound = "Folder.ParentFolderNotFound";
+    public const string FolderInvalidName = "Folder.InvalidName";
+    public const string FolderAlreadyExists = "Folder.AlreadyExists";
+    public const string FolderParentNotFound = "Folder.ParentNotFound";
     public const string FolderNotFound = "Folder.NotFound";
     public const string FolderUnableToUpdate = "Folder.UnableToUpdate";
     public const string FolderUnableToDelete = "Folder.UnableToDelete";
+
+    #endregion
+
+    #region File
 
     public const string FileNotFound = "File.NotFound";
     public const string FileUnableToDelete = "File.UnableToDelete";

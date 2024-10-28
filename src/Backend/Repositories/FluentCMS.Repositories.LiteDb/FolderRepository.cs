@@ -1,8 +1,11 @@
-﻿namespace FluentCMS.Repositories.LiteDb;
+﻿
+namespace FluentCMS.Repositories.LiteDb;
 
-public class FolderRepository : AuditableEntityRepository<Folder>, IFolderRepository
+public class FolderRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : SiteAssociatedRepository<Folder>(liteDbContext, apiExecutionContext), IFolderRepository
 {
-    public FolderRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : base(liteDbContext, apiExecutionContext)
+    public async Task<Folder?> GetByName(Guid? parentId, string normalizedName, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        return await Collection.Query().Where(x => x.ParentId == parentId && x.NormalizedName == normalizedName).SingleOrDefaultAsync();
     }
 }

@@ -1,9 +1,6 @@
 ﻿namespace FluentCMS.Repositories.MongoDB;
 
-public class FileRepository : AuditableEntityRepository<File>, IFileRepository
+public class FileRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : SiteAssociatedRepository<File>(mongoDbContext, apiExecutionContext), IFileRepository
 {
-    public FileRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : base(mongoDbContext, apiExecutionContext)
-    {
-    }
 }
 

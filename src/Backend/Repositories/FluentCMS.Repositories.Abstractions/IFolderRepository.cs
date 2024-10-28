@@ -1,5 +1,6 @@
 ﻿namespace FluentCMS.Repositories.Abstractions;
 
-public interface IFolderRepository : IAuditableEntityRepository<Folder>
+public interface IFolderRepository : ISiteAssociatedRepository<Folder>
 {
+    Task<Folder?> GetByName(Guid? parentId, string normalizedName, CancellationToken cancellationToken = default);
 }

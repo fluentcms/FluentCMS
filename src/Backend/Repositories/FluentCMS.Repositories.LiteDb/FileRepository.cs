@@ -1,8 +1,5 @@
 ﻿namespace FluentCMS.Repositories.LiteDb;
 
-public class FileRepository : AuditableEntityRepository<File>, IFileRepository
+public class FileRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : SiteAssociatedRepository<File>(liteDbContext, apiExecutionContext), IFileRepository
 {
-    public FileRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : base(liteDbContext, apiExecutionContext)
-    {
-    }
 }

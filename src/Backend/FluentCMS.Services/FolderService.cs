@@ -1,33 +1,62 @@
-﻿namespace FluentCMS.Services;
+﻿using System.Text.RegularExpressions;
+
+namespace FluentCMS.Services;
 
 public interface IFolderService : IAutoRegisterService
 {
     Task<Folder> Create(Folder folder, CancellationToken cancellationToken = default);
-    Task<IEnumerable<Folder>> GetAll(CancellationToken cancellationToken = default);
+    Task<Folder> CreateRoot(Guid siteId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Folder>> GetAll(Guid siteId, CancellationToken cancellationToken = default);
     Task<Folder> GetById(Guid id, CancellationToken cancellationToken = default);
-    Task<Folder> Update(Folder folder, CancellationToken cancellationToken = default);
+    Task<Folder> GetByPath(string folderPath, CancellationToken cancellationToken = default);
+    Task<Folder> Rename(Guid folderId, string name, CancellationToken cancellationToken = default);
+    Task<Folder> Move(Guid folderId, Guid parentFolderId, CancellationToken cancellationToken = default);
     Task<Folder> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
-
-public class FolderService(IFolderRepository folderRepository) : IFolderService
+public partial class FolderService(IFolderRepository folderRepository) : IFolderService
 {
+    public async Task<Folder> CreateRoot(Guid siteId, CancellationToken cancellationToken = default)
+    {
+        var normalizedName = GetNormalizedFolderName(ServiceConstants.ROOT_FOLDER_PATH);
+
+        if (await folderRepository.GetByName(null, normalizedName, cancellationToken) != null)
+            throw new AppException(ExceptionCodes.FolderAlreadyExists);
+
+        var rootFolder = new Folder
+        {
+            Name = ServiceConstants.ROOT_FOLDER_PATH,
+            NormalizedName = normalizedName,
+            SiteId = siteId
+        };
+
+        return await folderRepository.Create(rootFolder, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FolderUnableToCreate);
+    }
+
     public async Task<Folder> Create(Folder folder, CancellationToken cancellationToken = default)
     {
+        folder.NormalizedName = GetNormalizedFolderName(folder.Name);
+
         // check if parent folder exists
-        if (folder.FolderId != null)
-        {
-            _ = await folderRepository.GetById(folder.FolderId.Value, cancellationToken) ??
-                throw new AppException(ExceptionCodes.FolderParentFolderNotFound);
-        }
+        if (folder.ParentId == null)
+            throw new AppException(ExceptionCodes.FolderParentNotFound);
+
+        _ = await folderRepository.GetById(folder.ParentId.Value, cancellationToken) ??
+                throw new AppException(ExceptionCodes.FolderParentNotFound);
+
+        // check if folder with the same name already exists
+        var existingFolder = await folderRepository.GetByName(folder.ParentId, folder.NormalizedName, cancellationToken);
+        if (existingFolder != null)
+            throw new AppException(ExceptionCodes.FolderAlreadyExists);
 
         return await folderRepository.Create(folder, cancellationToken) ??
             throw new AppException(ExceptionCodes.FolderUnableToCreate);
     }
 
-    public async Task<IEnumerable<Folder>> GetAll(CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Folder>> GetAll(Guid siteId, CancellationToken cancellationToken = default)
     {
-        return await folderRepository.GetAll(cancellationToken);
+        return await folderRepository.GetAllForSite(siteId, cancellationToken);
     }
 
     public async Task<Folder> GetById(Guid id, CancellationToken cancellationToken = default)
@@ -40,12 +69,11 @@ public class FolderService(IFolderRepository folderRepository) : IFolderService
 
     public async Task<Folder> Update(Folder folder, CancellationToken cancellationToken = default)
     {
-        // check if parent folder exists
-        if (folder.FolderId != null)
-        {
-            _ = await folderRepository.GetById(folder.FolderId.Value, cancellationToken) ??
-                throw new AppException(ExceptionCodes.FolderParentFolderNotFound);
-        }
+        folder.NormalizedName = GetNormalizedFolderName(folder.Name);
+
+        // check if folder with the same name already exists
+        _ = await folderRepository.GetByName(folder.ParentId, folder.NormalizedName, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FolderNotFound);
 
         return await folderRepository.Update(folder, cancellationToken) ??
             throw new AppException(ExceptionCodes.FolderUnableToUpdate);
@@ -55,5 +83,82 @@ public class FolderService(IFolderRepository folderRepository) : IFolderService
     {
         return await folderRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.FolderUnableToDelete);
+    }
+
+    public Task<Folder> GetByPath(string folderPath, CancellationToken cancellationToken = default)
+    {
+        folderPath = GetNormalizedFolderName(folderPath);
+
+        // split folder path
+        string[] folderNames = folderPath.Split('/');
+
+        return FindFolder(null, folderNames, 0, cancellationToken);
+    }
+
+    // find folder recursively by parent folder
+    private async Task<Folder> FindFolder(Guid? parentId, string[] folderNames, int index, CancellationToken cancellationToken)
+    {
+        if (index == folderNames.Length)
+        {
+            return await folderRepository.GetByName(parentId, folderNames[index - 1], cancellationToken) ??
+                throw new AppException(ExceptionCodes.FolderNotFound);
+        }
+        var folder = await folderRepository.GetByName(parentId, folderNames[index], cancellationToken) ??
+            throw new AppException(ExceptionCodes.FolderNotFound);
+
+        return await FindFolder(folder.Id, folderNames, index + 1, cancellationToken);
+    }
+
+    public async Task<Folder> Rename(Guid folderId, string name, CancellationToken cancellationToken = default)
+    {
+        var normalizedName = GetNormalizedFolderName(name);
+
+        // check if folder with the same name already exists
+        _ = await folderRepository.GetByName(folderId, normalizedName, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FolderNotFound);
+
+        var existingFolder = await folderRepository.GetById(folderId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FolderNotFound);
+
+        existingFolder.Name = name;
+        existingFolder.NormalizedName = normalizedName;
+
+        return await folderRepository.Update(existingFolder, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FolderUnableToUpdate);
+    }
+
+    public async Task<Folder> Move(Guid folderId, Guid parentFolderId, CancellationToken cancellationToken = default)
+    {
+        _ = await folderRepository.GetById(parentFolderId, cancellationToken) ??
+                throw new AppException(ExceptionCodes.FolderParentNotFound);
+
+        var existingFolder = await folderRepository.GetById(folderId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FolderNotFound);
+
+        existingFolder.ParentId = parentFolderId;
+
+        return await folderRepository.Update(existingFolder, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FolderUnableToUpdate);
+    }
+
+    private static string GetNormalizedFolderName(string folderName)
+    {
+        var normalized = folderName.Trim().ToLower();
+
+        if (!IsValidFolderName(normalized))
+            throw new AppException(ExceptionCodes.FolderInvalidName);
+
+        return normalized;
+    }
+
+    // Regular expression to allow only alphanumeric, spaces, underscores, and certain special characters
+    private static readonly Regex _regex = new Regex(@"^[\w\-. ]+$");
+
+    private static bool IsValidFolderName(string folderName)
+    {
+        if (string.IsNullOrWhiteSpace(folderName))
+            return false; // Folder name should not be empty or whitespace
+
+        return _regex.IsMatch(folderName);
     }
 }
