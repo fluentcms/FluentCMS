@@ -26,7 +26,7 @@
     align-items: center;
     padding: 8px;
     gap: 8px;
-    opacity: 0;
+    opacity: 1;
     right: 0;
 }
 
@@ -101,9 +101,6 @@
     pointer-events: none;
 }
 
-.f-plugin-container:hover .f-plugin-container-actions {
-    opacity: 1;
-}
 
 [data-responsive-mode] .f-plugin-container-actions {
     display: none;
