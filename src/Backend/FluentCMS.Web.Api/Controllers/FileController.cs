@@ -25,11 +25,14 @@ public class FileController(IFileService fileService, IFolderService folderServi
     {
         var filesResponse = new List<FileDetailResponse>();
 
+        var folder = await folderService.GetById(folderId, cancellationToken);
+
         foreach (var formFile in files.Where(x => x.Length > 0))
         {
             var file = new File
             {
                 FolderId = folderId,
+                SiteId = folder.SiteId,
                 Name = formFile.FileName,
                 Size = formFile.Length,
                 ContentType = formFile.ContentType,
@@ -74,7 +77,7 @@ public class FileController(IFileService fileService, IFolderService folderServi
         var folder = await folderService.GetByPath(folderPath, cancellationToken);
 
         // find file by name and folder id
-        var file = await fileService.GetById(folder.Id, cancellationToken);
+        var file = await fileService.GetByName(folder.Id, fileName, cancellationToken);
 
         // get file stream
         var fileStream = await fileService.GetStream(folder.Id, cancellationToken);

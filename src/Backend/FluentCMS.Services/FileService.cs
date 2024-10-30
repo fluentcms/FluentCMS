@@ -10,7 +10,6 @@ public interface IFileService : IAutoRegisterService
     Task<File> Update(File file, CancellationToken cancellationToken = default);
     Task<File> Delete(Guid id, CancellationToken cancellationToken = default);
     Task<System.IO.Stream> GetStream(Guid id, CancellationToken cancellationToken = default);
-    //Task<System.IO.Stream> GetStream(string fileUrl, CancellationToken cancellationToken = default);
     Task<IEnumerable<File>> GetAll(Guid siteId, CancellationToken cancellationToken = default);
 }
 
@@ -23,6 +22,8 @@ public class FileService(IFileRepository fileRepository, IFolderRepository folde
 
         if (folder.SiteId != file.SiteId)
             throw new AppException(ExceptionCodes.FolderNotFound);
+
+        file.NormalizedName = GetNormalizedFileName(file.Name);
 
         await fileRepository.Create(file, cancellationToken);
 
@@ -50,16 +51,22 @@ public class FileService(IFileRepository fileRepository, IFolderRepository folde
         return file;
     }
 
+    public async Task<File> GetByName(Guid folderId, string fileName, CancellationToken cancellationToken = default)
+    {
+        var folder = await folderRepository.GetById(folderId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FolderNotFound);
+
+        var normalizedFileName = GetNormalizedFileName(fileName);
+
+        return await fileRepository.GetByName(folder.SiteId, folder.Id, normalizedFileName, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FileNotFound);
+    }
+
     public async Task<System.IO.Stream> GetStream(Guid id, CancellationToken cancellationToken = default)
     {
         return await fileStorageProvider.Download(id.ToString(), cancellationToken) ??
             throw new AppException(ExceptionCodes.FileNotFound);
     }
-
-    //public async Task<System.IO.Stream> GetStream(string fileUrl, CancellationToken cancellationToken = default)
-    //{
-
-    //}
 
     public async Task<File> Update(File file, CancellationToken cancellationToken = default)
     {
@@ -73,5 +80,11 @@ public class FileService(IFileRepository fileRepository, IFolderRepository folde
         return await fileRepository.Update(file, cancellationToken) ??
             throw new AppException(ExceptionCodes.FileUnableToUpdate);
 
+    }
+
+    private static string GetNormalizedFileName(string fileName)
+    {
+        var normalized = fileName.Trim().ToLower();
+        return normalized;
     }
 }
