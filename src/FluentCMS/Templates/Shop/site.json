@@ -59,6 +59,42 @@
             "Plugins": []
         },
         {
+            "Title": "About Us",
+            "Path": "/about",
+            "ViewRoles": [ "All Users" ],
+            "Plugins": []
+        },
+        {
+            "Title": "Contact Us",
+            "Path": "/contact",
+            "ViewRoles": [ "All Users" ],
+            "Plugins": []
+        },
+        {
+            "Title": "Privacy & Policy",
+            "Path": "/privacy",
+            "ViewRoles": [ "All Users" ],
+            "Plugins": []
+        },
+        {
+            "Title": "Categorires",
+            "Path": "/categories",
+            "ViewRoles": [ "All Users" ],
+            "Plugins": []
+        },
+        {
+            "Title": "Product Detail",
+            "Path": "/products",
+            "ViewRoles": [ "All Users" ],
+            "Plugins": []
+        },
+        {
+            "Title": "Cart",
+            "Path": "/cart",
+            "ViewRoles": [ "All Users" ],
+            "Plugins": []
+        },
+        {
             "Title": "Admin",
             "Path": "/admin",
             "Layout": "AdminLayout",

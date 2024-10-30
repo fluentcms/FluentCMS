@@ -429,5 +429,35 @@
                 }
             ]
         }
+    ],
+    "ContentTypes": [
+        {
+            "Name": "Products",
+            "Slug": "products",
+            "Desscription": "Manage List of products",
+            "Fields": [
+                {
+                    "Type": "string",
+                    "Name": "Title",
+                    "Label": "Title",
+                    "Description": "product post title",
+                    "Required": true,
+                    "Settings": {
+                        "Placeholder": "Enter product title",
+                        "DataTableColumnOrder": 1,
+                        "DataTableVisible": true,
+                        "DataTableViewComponent": "StringFieldDataTableView",
+                        "FormViewOrder": 1,
+                        "FormViewComponent": "StringFieldFormText",
+                        "FormColWidth": 12
+                    }
+                }
+            ],
+            "Contents": [
+                {
+                    "Title": "Apple"
+                }
+            ]
+        }
     ]
 }
