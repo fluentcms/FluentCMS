@@ -55,18 +55,6 @@ public class FolderController(IFolderService folderService, IFileService fileSer
         return Ok(folderDetailResponse);
     }
 
-    [HttpPut]
-    [Policy(AREA, UPDATE)]
-    public async Task<IApiResult<FolderDetailResponse>> Rename([FromBody] FolderMoveRequest request, CancellationToken cancellationToken = default)
-    {
-        var folder = await folderService.Move(request.Id, request.ParentId, cancellationToken);
-
-        var allFoldersDict = await GetFoldersResponseDict(folder.SiteId, cancellationToken);
-        var folderDetailResponse = allFoldersDict[folder.Id];
-
-        return Ok(folderDetailResponse);
-    }
-
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)

@@ -99,9 +99,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public AccountClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -111,7 +111,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -153,7 +153,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Account/Register"
                     urlBuilder_.Append("api/Account/Register");
 
@@ -235,7 +235,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Account/Authenticate"
                     urlBuilder_.Append("api/Account/Authenticate");
 
@@ -317,7 +317,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Account/ChangePassword"
                     urlBuilder_.Append("api/Account/ChangePassword");
 
@@ -399,7 +399,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Account/SendPasswordResetToken"
                     urlBuilder_.Append("api/Account/SendPasswordResetToken");
 
@@ -481,7 +481,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Account/ValidatePasswordResetToken"
                     urlBuilder_.Append("api/Account/ValidatePasswordResetToken");
 
@@ -559,7 +559,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Account/GetCurrent"
                     urlBuilder_.Append("api/Account/GetCurrent");
 
@@ -641,7 +641,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Account/Update"
                     urlBuilder_.Append("api/Account/Update");
 
@@ -766,7 +766,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -778,13 +778,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -881,9 +881,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public ApiTokenClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -893,7 +893,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -931,7 +931,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ApiToken/GetAll"
                     urlBuilder_.Append("api/ApiToken/GetAll");
 
@@ -1012,7 +1012,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ApiToken/GetById/{id}"
                     urlBuilder_.Append("api/ApiToken/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -1095,7 +1095,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ApiToken/Create"
                     urlBuilder_.Append("api/ApiToken/Create");
 
@@ -1177,7 +1177,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ApiToken/Update"
                     urlBuilder_.Append("api/ApiToken/Update");
 
@@ -1256,7 +1256,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ApiToken/RegenerateSecret"
                     urlBuilder_.Append("api/ApiToken/RegenerateSecret");
                     urlBuilder_.Append('?');
@@ -1343,7 +1343,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ApiToken/Delete/{id}"
                     urlBuilder_.Append("api/ApiToken/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -1422,7 +1422,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ApiToken/GetPolicies"
                     urlBuilder_.Append("api/ApiToken/GetPolicies");
 
@@ -1547,7 +1547,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -1559,13 +1559,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -1644,9 +1644,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public BlockClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -1656,7 +1656,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -1697,7 +1697,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Block/GetById/{id}"
                     urlBuilder_.Append("api/Block/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -1776,7 +1776,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Block/GetAllForSite"
                     urlBuilder_.Append("api/Block/GetAllForSite");
                     urlBuilder_.Append('?');
@@ -1864,7 +1864,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Block/Create"
                     urlBuilder_.Append("api/Block/Create");
 
@@ -1946,7 +1946,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Block/Update"
                     urlBuilder_.Append("api/Block/Update");
 
@@ -2027,7 +2027,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Block/Delete/{id}"
                     urlBuilder_.Append("api/Block/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -2153,7 +2153,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -2165,13 +2165,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -2250,9 +2250,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public ContentClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -2262,7 +2262,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -2303,7 +2303,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Content/{contentTypeSlug}/GetAll"
                     urlBuilder_.Append("api/Content/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(contentTypeSlug, System.Globalization.CultureInfo.InvariantCulture)));
@@ -2389,7 +2389,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Content/{contentTypeSlug}/GetById/{id}"
                     urlBuilder_.Append("api/Content/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(contentTypeSlug, System.Globalization.CultureInfo.InvariantCulture)));
@@ -2477,7 +2477,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Content/{contentTypeSlug}/Create"
                     urlBuilder_.Append("api/Content/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(contentTypeSlug, System.Globalization.CultureInfo.InvariantCulture)));
@@ -2567,7 +2567,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Content/{contentTypeSlug}/Update/{id}"
                     urlBuilder_.Append("api/Content/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(contentTypeSlug, System.Globalization.CultureInfo.InvariantCulture)));
@@ -2654,7 +2654,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Content/{contentTypeSlug}/Delete/{id}"
                     urlBuilder_.Append("api/Content/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(contentTypeSlug, System.Globalization.CultureInfo.InvariantCulture)));
@@ -2782,7 +2782,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -2794,13 +2794,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -2906,9 +2906,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public ContentTypeClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -2918,7 +2918,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -2959,7 +2959,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ContentType/GetBySlug/{slug}"
                     urlBuilder_.Append("api/ContentType/GetBySlug/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(slug, System.Globalization.CultureInfo.InvariantCulture)));
@@ -3041,7 +3041,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ContentType/GetById/{id}"
                     urlBuilder_.Append("api/ContentType/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -3120,7 +3120,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ContentType/GetAll"
                     urlBuilder_.Append("api/ContentType/GetAll");
 
@@ -3202,7 +3202,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ContentType/Create"
                     urlBuilder_.Append("api/ContentType/Create");
 
@@ -3284,7 +3284,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ContentType/Update"
                     urlBuilder_.Append("api/ContentType/Update");
 
@@ -3365,7 +3365,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ContentType/Delete/{id}"
                     urlBuilder_.Append("api/ContentType/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -3451,7 +3451,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ContentType/SetField/{id}"
                     urlBuilder_.Append("api/ContentType/SetField/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -3536,7 +3536,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ContentType/DeleteField/{id}/{name}"
                     urlBuilder_.Append("api/ContentType/DeleteField/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -3664,7 +3664,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -3676,13 +3676,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -3727,12 +3727,21 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task DownloadAsync(System.Guid id);
+        System.Threading.Tasks.Task DownloadGetAsync(System.Guid id);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task DownloadAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task DownloadGetAsync(System.Guid id, System.Threading.CancellationToken cancellationToken);
+
+        /// <returns>OK</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task DownloadGetAsync(string? url);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task DownloadGetAsync(string? url, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -3761,9 +3770,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public FileClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -3773,7 +3782,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -3814,7 +3823,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/File/GetById/{id}"
                     urlBuilder_.Append("api/File/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -3911,7 +3920,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/File/Upload"
                     urlBuilder_.Append("api/File/Upload");
                     urlBuilder_.Append('?');
@@ -3975,15 +3984,15 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task DownloadAsync(System.Guid id)
+        public virtual System.Threading.Tasks.Task DownloadGetAsync(System.Guid id)
         {
-            return DownloadAsync(id, System.Threading.CancellationToken.None);
+            return DownloadGetAsync(id, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task DownloadAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task DownloadGetAsync(System.Guid id, System.Threading.CancellationToken cancellationToken)
         {
             if (id == null)
                 throw new System.ArgumentNullException("id");
@@ -3997,10 +4006,88 @@ namespace FluentCMS.Web.ApiClients
                     request_.Method = new System.Net.Http.HttpMethod("GET");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/File/Download/{id}"
                     urlBuilder_.Append("api/File/Download/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            return;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiClientException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <returns>OK</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        public virtual System.Threading.Tasks.Task DownloadGetAsync(string? url)
+        {
+            return DownloadGetAsync(url, System.Threading.CancellationToken.None);
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiClientException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task DownloadGetAsync(string? url, System.Threading.CancellationToken cancellationToken)
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/File/Download"
+                    urlBuilder_.Append("api/File/Download");
+                    urlBuilder_.Append('?');
+                    if (url != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("url")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(url, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -4074,7 +4161,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/File/Delete/{id}"
                     urlBuilder_.Append("api/File/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4157,7 +4244,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/File/Update"
                     urlBuilder_.Append("api/File/Update");
 
@@ -4282,7 +4369,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -4294,13 +4381,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -4327,12 +4414,12 @@ namespace FluentCMS.Web.ApiClients
     {
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<FolderDetailResponseIApiResult> GetAllAsync();
+        System.Threading.Tasks.Task<FolderDetailResponseIApiResult> GetAllAsync(System.Guid siteId);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<FolderDetailResponseIApiResult> GetAllAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<FolderDetailResponseIApiResult> GetAllAsync(System.Guid siteId, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -4354,12 +4441,12 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<FolderDetailResponseIApiResult> UpdateAsync(FolderUpdateRequest? body);
+        System.Threading.Tasks.Task<FolderDetailResponseIApiResult> RenameAsync(FolderRenameRequest? body);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<FolderDetailResponseIApiResult> UpdateAsync(FolderUpdateRequest? body, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<FolderDetailResponseIApiResult> RenameAsync(FolderRenameRequest? body, System.Threading.CancellationToken cancellationToken);
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
@@ -4379,9 +4466,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public FolderClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -4391,7 +4478,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -4409,16 +4496,19 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<FolderDetailResponseIApiResult> GetAllAsync()
+        public virtual System.Threading.Tasks.Task<FolderDetailResponseIApiResult> GetAllAsync(System.Guid siteId)
         {
-            return GetAllAsync(System.Threading.CancellationToken.None);
+            return GetAllAsync(siteId, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<FolderDetailResponseIApiResult> GetAllAsync(System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<FolderDetailResponseIApiResult> GetAllAsync(System.Guid siteId, System.Threading.CancellationToken cancellationToken)
         {
+            if (siteId == null)
+                throw new System.ArgumentNullException("siteId");
+
             var client_ = _httpClient;
             var disposeClient_ = false;
             try
@@ -4429,9 +4519,10 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
-                    // Operation Path: "api/Folder/GetAll"
-                    urlBuilder_.Append("api/Folder/GetAll");
+
+                    // Operation Path: "api/Folder/GetAll/{siteId}"
+                    urlBuilder_.Append("api/Folder/GetAll/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -4510,7 +4601,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Folder/GetById/{id}"
                     urlBuilder_.Append("api/Folder/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4593,7 +4684,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Folder/Create"
                     urlBuilder_.Append("api/Folder/Create");
 
@@ -4651,15 +4742,15 @@ namespace FluentCMS.Web.ApiClients
 
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<FolderDetailResponseIApiResult> UpdateAsync(FolderUpdateRequest? body)
+        public virtual System.Threading.Tasks.Task<FolderDetailResponseIApiResult> RenameAsync(FolderRenameRequest? body)
         {
-            return UpdateAsync(body, System.Threading.CancellationToken.None);
+            return RenameAsync(body, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiClientException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<FolderDetailResponseIApiResult> UpdateAsync(FolderUpdateRequest? body, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<FolderDetailResponseIApiResult> RenameAsync(FolderRenameRequest? body, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -4675,9 +4766,9 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
-                    // Operation Path: "api/Folder/Update"
-                    urlBuilder_.Append("api/Folder/Update");
+
+                    // Operation Path: "api/Folder/Rename"
+                    urlBuilder_.Append("api/Folder/Rename");
 
                     PrepareRequest(client_, request_, urlBuilder_);
 
@@ -4756,7 +4847,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Folder/Delete/{id}"
                     urlBuilder_.Append("api/Folder/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4882,7 +4973,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -4894,13 +4985,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -4952,9 +5043,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public GlobalSettingsClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -4964,7 +5055,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -5002,7 +5093,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/GlobalSettings/Get"
                     urlBuilder_.Append("api/GlobalSettings/Get");
 
@@ -5084,7 +5175,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/GlobalSettings/Update"
                     urlBuilder_.Append("api/GlobalSettings/Update");
 
@@ -5209,7 +5300,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -5221,13 +5312,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -5315,9 +5406,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public LayoutClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -5327,7 +5418,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -5365,7 +5456,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Layout/GetBySiteId"
                     urlBuilder_.Append("api/Layout/GetBySiteId");
                     urlBuilder_.Append('?');
@@ -5449,7 +5540,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Layout/GetAll"
                     urlBuilder_.Append("api/Layout/GetAll");
 
@@ -5530,7 +5621,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Layout/Get/{id}"
                     urlBuilder_.Append("api/Layout/Get/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5613,7 +5704,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Layout/Create"
                     urlBuilder_.Append("api/Layout/Create");
 
@@ -5695,7 +5786,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Layout/Update"
                     urlBuilder_.Append("api/Layout/Update");
 
@@ -5776,7 +5867,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Layout/Delete/{id}"
                     urlBuilder_.Append("api/Layout/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5902,7 +5993,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -5914,13 +6005,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -6008,9 +6099,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public PageClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -6020,7 +6111,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -6061,7 +6152,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Page/GetAll/{siteId}"
                     urlBuilder_.Append("api/Page/GetAll/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6143,7 +6234,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Page/GetById/{id}"
                     urlBuilder_.Append("api/Page/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6222,7 +6313,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Page/GetByUrl"
                     urlBuilder_.Append("api/Page/GetByUrl");
                     urlBuilder_.Append('?');
@@ -6310,7 +6401,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Page/Create"
                     urlBuilder_.Append("api/Page/Create");
 
@@ -6392,7 +6483,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Page/Update"
                     urlBuilder_.Append("api/Page/Update");
 
@@ -6473,7 +6564,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Page/Delete/{id}"
                     urlBuilder_.Append("api/Page/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6599,7 +6690,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -6611,13 +6702,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -6696,9 +6787,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public PluginClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -6708,7 +6799,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -6749,7 +6840,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Plugin/GetById/{id}"
                     urlBuilder_.Append("api/Plugin/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6832,7 +6923,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Plugin/InitialCreate"
                     urlBuilder_.Append("api/Plugin/InitialCreate");
 
@@ -6914,7 +7005,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Plugin/UpdateOrders"
                     urlBuilder_.Append("api/Plugin/UpdateOrders");
 
@@ -6996,7 +7087,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Plugin/UpdateCols"
                     urlBuilder_.Append("api/Plugin/UpdateCols");
 
@@ -7077,7 +7168,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Plugin/Delete/{id}"
                     urlBuilder_.Append("api/Plugin/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7203,7 +7294,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -7215,13 +7306,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -7300,9 +7391,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public PluginContentClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -7312,7 +7403,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -7356,7 +7447,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/PluginContent/{pluginContentTypeName}/GetAll/{pluginId}"
                     urlBuilder_.Append("api/PluginContent/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginContentTypeName, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7446,7 +7537,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/PluginContent/{pluginContentTypeName}/GetById/{pluginId}/{id}"
                     urlBuilder_.Append("api/PluginContent/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginContentTypeName, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7539,7 +7630,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/PluginContent/{pluginContentTypeName}/Create/{pluginId}"
                     urlBuilder_.Append("api/PluginContent/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginContentTypeName, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7633,7 +7724,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/PluginContent/{pluginContentTypeName}/Update/{pluginId}/{id}"
                     urlBuilder_.Append("api/PluginContent/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginContentTypeName, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7725,7 +7816,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/PluginContent/{pluginContentTypeName}/Delete/{pluginId}/{id}"
                     urlBuilder_.Append("api/PluginContent/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(pluginContentTypeName, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7855,7 +7946,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -7867,13 +7958,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -7925,9 +8016,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public PluginDefinitionClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -7937,7 +8028,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -7979,7 +8070,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/PluginDefinition/Create"
                     urlBuilder_.Append("api/PluginDefinition/Create");
 
@@ -8057,7 +8148,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/PluginDefinition/GetAll"
                     urlBuilder_.Append("api/PluginDefinition/GetAll");
 
@@ -8182,7 +8273,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -8194,13 +8285,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -8279,9 +8370,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public RoleClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -8291,7 +8382,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -8329,7 +8420,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Role/GetAll"
                     urlBuilder_.Append("api/Role/GetAll");
                     urlBuilder_.Append('?');
@@ -8416,7 +8507,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Role/GetById/{id}"
                     urlBuilder_.Append("api/Role/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -8499,7 +8590,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Role/Create"
                     urlBuilder_.Append("api/Role/Create");
 
@@ -8581,7 +8672,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Role/Update"
                     urlBuilder_.Append("api/Role/Update");
 
@@ -8662,7 +8753,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Role/Delete/{id}"
                     urlBuilder_.Append("api/Role/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -8788,7 +8879,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -8800,13 +8891,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -8849,9 +8940,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public SettingsClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -8861,7 +8952,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -8903,7 +8994,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Settings/Update"
                     urlBuilder_.Append("api/Settings/Update");
 
@@ -9028,7 +9119,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -9040,13 +9131,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -9107,9 +9198,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public SetupClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -9119,7 +9210,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -9157,7 +9248,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Setup/IsInitialized"
                     urlBuilder_.Append("api/Setup/IsInitialized");
 
@@ -9239,7 +9330,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Setup/Start"
                     urlBuilder_.Append("api/Setup/Start");
 
@@ -9317,7 +9408,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Setup/GetTemplates"
                     urlBuilder_.Append("api/Setup/GetTemplates");
 
@@ -9442,7 +9533,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -9454,13 +9545,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -9539,9 +9630,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public SiteClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -9551,7 +9642,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -9589,7 +9680,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Site/GetAll"
                     urlBuilder_.Append("api/Site/GetAll");
 
@@ -9670,7 +9761,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Site/GetById/{id}"
                     urlBuilder_.Append("api/Site/GetById/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -9753,7 +9844,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Site/Create"
                     urlBuilder_.Append("api/Site/Create");
 
@@ -9835,7 +9926,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Site/Update"
                     urlBuilder_.Append("api/Site/Update");
 
@@ -9916,7 +10007,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/Site/Delete/{siteId}"
                     urlBuilder_.Append("api/Site/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(siteId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -10042,7 +10133,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -10054,13 +10145,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -10148,9 +10239,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public UserClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -10160,7 +10251,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -10198,7 +10289,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/User/GetAll"
                     urlBuilder_.Append("api/User/GetAll");
 
@@ -10279,7 +10370,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/User/Get/{userId}"
                     urlBuilder_.Append("api/User/Get/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(userId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -10362,7 +10453,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/User/Update"
                     urlBuilder_.Append("api/User/Update");
 
@@ -10444,7 +10535,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/User/SetPassword"
                     urlBuilder_.Append("api/User/SetPassword");
 
@@ -10526,7 +10617,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/User/Create"
                     urlBuilder_.Append("api/User/Create");
 
@@ -10607,7 +10698,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/User/Delete/{id}"
                     urlBuilder_.Append("api/User/Delete/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -10733,7 +10824,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -10745,13 +10836,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -10803,9 +10894,9 @@ namespace FluentCMS.Web.ApiClients
         private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
         private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
-    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public UserRoleClient(System.Net.Http.HttpClient httpClient)
-    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _httpClient = httpClient;
             Initialize();
@@ -10815,7 +10906,7 @@ namespace FluentCMS.Web.ApiClients
         {
             var settings = new System.Text.Json.JsonSerializerOptions();
             var converters = new System.Text.Json.Serialization.JsonConverter[] { new DictionaryJsonConverter() };
-            foreach(var converter in converters)
+            foreach (var converter in converters)
                 settings.Converters.Add(converter);
             UpdateJsonSerializerSettings(settings);
             return settings;
@@ -10853,7 +10944,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/UserRole/GetUserRoles"
                     urlBuilder_.Append("api/UserRole/GetUserRoles");
                     urlBuilder_.Append('?');
@@ -10945,7 +11036,7 @@ namespace FluentCMS.Web.ApiClients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/UserRole/Update"
                     urlBuilder_.Append("api/UserRole/Update");
 
@@ -11070,7 +11161,7 @@ namespace FluentCMS.Web.ApiClients
                     var field = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -11082,13 +11173,13 @@ namespace FluentCMS.Web.ApiClients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
             else if (value is byte[])
             {
-                return System.Convert.ToBase64String((byte[]) value);
+                return System.Convert.ToBase64String((byte[])value);
             }
             else if (value is string[])
             {
@@ -11836,6 +11927,9 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("settings")]
         public System.Collections.Generic.Dictionary<string, string>? Settings { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("siteId")]
+        public System.Guid SiteId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("folderId")]
         public System.Guid FolderId { get; set; } = default!;
 
@@ -11965,12 +12059,17 @@ namespace FluentCMS.Web.ApiClients
     public partial class FolderCreateRequest
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("siteId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SiteId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("name")]
         [System.ComponentModel.DataAnnotations.Required]
         public string Name { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("folderId")]
-        public System.Guid FolderId { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("parentId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid ParentId { get; set; } = default!;
 
     }
 
@@ -11999,8 +12098,8 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("name")]
         public string? Name { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("folderId")]
-        public System.Guid FolderId { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("parentId")]
+        public System.Guid? ParentId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("size")]
         public long Size { get; set; } = default!;
@@ -12044,19 +12143,16 @@ namespace FluentCMS.Web.ApiClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.1.0.0 (NJsonSchema v11.0.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class FolderUpdateRequest
+    public partial class FolderRenameRequest
     {
-
-        [System.Text.Json.Serialization.JsonPropertyName("name")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public string Name { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("folderId")]
-        public System.Guid FolderId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Name { get; set; } = default!;
 
     }
 
@@ -14016,12 +14112,12 @@ namespace FluentCMS.Web.ApiClients
     public partial class FileParameter
     {
         public FileParameter(System.IO.Stream data)
-            : this (data, null, null)
+            : this(data, null, null)
         {
         }
 
         public FileParameter(System.IO.Stream data, string? fileName)
-            : this (data, fileName, null)
+            : this(data, fileName, null)
         {
         }
 
@@ -14042,10 +14138,10 @@ namespace FluentCMS.Web.ApiClients
 
 }
 
-#pragma warning restore  108
-#pragma warning restore  114
-#pragma warning restore  472
-#pragma warning restore  612
+#pragma warning restore 108
+#pragma warning restore 114
+#pragma warning restore 472
+#pragma warning restore 612
 #pragma warning restore 1573
 #pragma warning restore 1591
 #pragma warning restore 8073
@@ -14053,4 +14149,3 @@ namespace FluentCMS.Web.ApiClients
 #pragma warning restore 8603
 #pragma warning restore 8604
 #pragma warning restore 8625
-
