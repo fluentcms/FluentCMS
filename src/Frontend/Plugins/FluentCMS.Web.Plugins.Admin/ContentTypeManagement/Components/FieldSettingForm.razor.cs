@@ -20,8 +20,23 @@ public partial class FieldSettingForm
     [Parameter]
     public RenderFragment ChildContent { get; set; } = default!;
 
+    private List<string> Errors { get; set; } = [];
+
     protected async Task OnFormSubmit()
     {
-        await OnSubmit.InvokeAsync();
+        try 
+        {
+            await OnSubmit.InvokeAsync();
+        }
+        catch (ApiClientException ex)
+        {
+            Errors = ex.ApiResult?.Errors?.Select(x => $"{x.Code ?? string.Empty}: {x.Description ?? string.Empty}").ToList() ?? [ex.Message];
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Errors = [ex.Message];
+            StateHasChanged();
+        }
     }
 }
