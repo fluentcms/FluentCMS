@@ -1,6 +1,6 @@
 ﻿@inherits BasePlugin
 @rendermode InteractiveServer
-
+@*
 <PluginBody Title="File Management">
     <SubtitleFragment>
         <Breadcrumb>
@@ -75,7 +75,7 @@
 
 <FileUploadModal Config="FileUploadConfig" Visible="FileUploadModalOpen" OnSubmit="OnUpload" OnCancel="OnUploadCancel"/>
 
-@if (FolderUpdateModalOpen && FolderUpdateModel != null && RootFolder != null)
+ @if (FolderUpdateModalOpen && FolderUpdateModel != null && RootFolder != null)
 {
     <FolderUpdateModal RootFolder="RootFolder" Model="FolderUpdateModel" OnSubmit="OnUpdateFolder" OnCancel="OnUpdateFolderCancel"/>
 }
@@ -84,3 +84,4 @@
 {
     <FileUpdateModal RootFolder="RootFolder" Model="FileUpdateModel" OnSubmit="OnUpdateFile" OnCancel="OnUpdateFileCancel"/>
 }
+ *@

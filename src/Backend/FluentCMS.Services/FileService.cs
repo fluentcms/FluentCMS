@@ -7,8 +7,9 @@ public interface IFileService : IAutoRegisterService
     Task<File> Create(File file, System.IO.Stream fileContent, CancellationToken cancellationToken = default);
     Task<File> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<File> GetByName(Guid folderId, string fileName, CancellationToken cancellationToken = default);
-    Task<File> Update(File file, CancellationToken cancellationToken = default);
+    Task<File> Rename(Guid id, string name, CancellationToken cancellationToken = default);
     Task<File> Delete(Guid id, CancellationToken cancellationToken = default);
+    Task<File> Move(Guid id, Guid folderId, CancellationToken cancellationToken = default);
     Task<System.IO.Stream> GetStream(Guid id, CancellationToken cancellationToken = default);
     Task<IEnumerable<File>> GetAll(Guid siteId, CancellationToken cancellationToken = default);
 }
@@ -68,18 +69,33 @@ public class FileService(IFileRepository fileRepository, IFolderRepository folde
             throw new AppException(ExceptionCodes.FileNotFound);
     }
 
-    public async Task<File> Update(File file, CancellationToken cancellationToken = default)
+    public async Task<File> Rename(Guid id, string name, CancellationToken cancellationToken = default)
     {
-        // check if parent folder exists
-        if (file.FolderId != null)
-        {
-            _ = await folderRepository.GetById(file.FolderId, cancellationToken) ??
-                throw new AppException(ExceptionCodes.FolderNotFound);
-        }
+        var file = await fileRepository.GetById(id, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FileNotFound);
+
+        file.Name = name;
+        file.NormalizedName = GetNormalizedFileName(name);
 
         return await fileRepository.Update(file, cancellationToken) ??
             throw new AppException(ExceptionCodes.FileUnableToUpdate);
+    }
 
+    public async Task<File> Move(Guid id, Guid folderId, CancellationToken cancellationToken = default)
+    {
+        var folder = await folderRepository.GetById(folderId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FolderNotFound);
+
+        var file = await fileRepository.GetById(id, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FileNotFound);
+
+        if (file.SiteId != folder.SiteId)
+            throw new AppException(ExceptionCodes.FolderNotFound);
+
+        file.FolderId = folderId;
+
+        return await fileRepository.Update(file, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FileUnableToUpdate);
     }
 
     private static string GetNormalizedFileName(string fileName)

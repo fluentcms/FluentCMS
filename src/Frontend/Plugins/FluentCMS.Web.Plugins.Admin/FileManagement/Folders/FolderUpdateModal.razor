@@ -1,7 +1,7 @@
 @inherits BaseComponent
 
 @namespace FluentCMS.Web.Plugins.Admin.FileManagement
-
+@* 
 @if (Visible && Model != null)
 {
     <EditForm Model="@Model" OnSubmit="HandleSubmit">
@@ -15,7 +15,7 @@
                 <DataAnnotationsValidator />
                 <Grid>
                     <FormInput @bind-Value="Model.Name" Label="Name" Placeholder="Enter Folder Name" Required />
-                    <FormSelect @bind-Value="Model.FolderId" Data="Folders" ValueField="Id" TextField="Name" Label="Parent Folder" Placeholder="Choose Parent Folder" Required/>
+                    <FormSelect @bind-Value="Model.ParentId" Data="Folders" ValueField="Id" TextField="Name" Label="Parent Folder" Placeholder="Choose Parent Folder" Required/>
                 </Grid>
             </ModalBody>
             <ModalFooter>
@@ -28,3 +28,4 @@
         </Modal>
     </EditForm>
 }
+ *@

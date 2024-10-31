@@ -212,57 +212,57 @@ public partial class FormRichTextEditor : IAsyncDisposable
         FolderId = folderId;
         FolderDetailResponse? folderDetail;
 
-        var folderDetailResponse = await ApiClient.Folder.GetAllAsync();
+        //var folderDetailResponse = await ApiClient.Folder.GetAllAsync();
 
-        if (folderId is null || folderId == Guid.Empty)
-        {
-            folderDetail = folderDetailResponse?.Data;
-        }
-        else
-        {
-            folderDetail = FindFolderById(folderDetailResponse?.Data?.Folders ?? [], folderId.Value);
-        }
+        //if (folderId is null || folderId == Guid.Empty)
+        //{
+        //    folderDetail = folderDetailResponse?.Data;
+        //}
+        //else
+        //{
+        //    folderDetail = FindFolderById(folderDetailResponse?.Data?.Folders ?? [], folderId.Value);
+        //}
 
-        if (folderDetail != null)
-        {
-            Assets = [];
+        //if (folderDetail != null)
+        //{
+        //    Assets = [];
 
-            if (folderId != null && folderId != Guid.Empty)
-            {
-                Assets.Add(new AssetDetail
-                {
-                    Name = "(parent)",
-                    IsFolder = true,
-                    Id = folderDetail.FolderId,
-                    IsParentFolder = true
-                });
-            }
+        //    if (folderId != null && folderId != Guid.Empty)
+        //    {
+        //        Assets.Add(new AssetDetail
+        //        {
+        //            Name = "(parent)",
+        //            IsFolder = true,
+        //            Id = folderDetail.FolderId,
+        //            IsParentFolder = true
+        //        });
+        //    }
 
-            foreach (var item in folderDetail.Folders ?? [])
-            {
-                Assets.Add(new AssetDetail
-                {
-                    Name = item.Name ?? string.Empty,
-                    IsFolder = true,
-                    Id = item.Id,
-                    FolderId = item.FolderId,
-                    Size = item.Size,
-                });
-            }
+        //    foreach (var item in folderDetail.Folders ?? [])
+        //    {
+        //        Assets.Add(new AssetDetail
+        //        {
+        //            Name = item.Name ?? string.Empty,
+        //            IsFolder = true,
+        //            Id = item.Id,
+        //            FolderId = item.FolderId,
+        //            Size = item.Size,
+        //        });
+        //    }
 
-            foreach (var item in folderDetail.Files ?? [])
-            {
-                Assets.Add(new AssetDetail
-                {
-                    Name = item.Name ?? string.Empty,
-                    IsFolder = false,
-                    FolderId = item.FolderId,
-                    Id = item.Id,
-                    Size = item.Size,
-                    ContentType = item.ContentType ?? string.Empty
-                });
-            }
-        }
+        //    foreach (var item in folderDetail.Files ?? [])
+        //    {
+        //        Assets.Add(new AssetDetail
+        //        {
+        //            Name = item.Name ?? string.Empty,
+        //            IsFolder = false,
+        //            FolderId = item.FolderId,
+        //            Id = item.Id,
+        //            Size = item.Size,
+        //            ContentType = item.ContentType ?? string.Empty
+        //        });
+        //    }
+        //}
         StateHasChanged();
     }
 

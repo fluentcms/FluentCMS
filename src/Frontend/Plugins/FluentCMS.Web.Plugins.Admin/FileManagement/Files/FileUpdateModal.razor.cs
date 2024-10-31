@@ -2,14 +2,14 @@ namespace FluentCMS.Web.Plugins.Admin.FileManagement;
 
 public partial class FileUpdateModal
 {
-    [Parameter]
-    public EventCallback<FileUpdateRequest> OnSubmit { get; set; }
+    //[Parameter]
+    //public EventCallback<FileUpdateRequest> OnSubmit { get; set; }
 
     [Parameter]
     public EventCallback OnCancel { get; set; }
 
-    [Parameter, EditorRequired]
-    public FileUpdateRequest Model { get; set; } = default!;
+    //[Parameter, EditorRequired]
+    //public FileUpdateRequest Model { get; set; } = default!;
 
     [Parameter, EditorRequired]
     public FolderDetailResponse RootFolder { get; set; } = default!;
@@ -21,20 +21,20 @@ public partial class FileUpdateModal
         if (folders is null || string.IsNullOrEmpty(prefix))
             return;
 
-        foreach (var folder in folders)
-        {
-            if (folder.Id == Model.Id)
-                continue;
+        //foreach (var folder in folders)
+        //{
+        //    if (folder.Id == Model.Id)
+        //        continue;
 
-            FolderOptions.Add(new FolderSelectOption
-            {
-                Id = folder.Id,
-                Name = $"{prefix} / {folder.Name}"
-            });
+        //    FolderOptions.Add(new FolderSelectOption
+        //    {
+        //        Id = folder.Id,
+        //        Name = $"{prefix} / {folder.Name}"
+        //    });
 
-            if (folder.Folders != null && folder.Folders.Any())
-                await AddFolders(folder.Folders, $"{folder.Name}");
-        }
+        //    if (folder.Folders != null && folder.Folders.Any())
+        //        await AddFolders(folder.Folders, $"{folder.Name}");
+        //}
     }
 
     protected override async Task OnInitializedAsync()
@@ -54,7 +54,7 @@ public partial class FileUpdateModal
 
     private async Task HandleSubmit()
     {
-        await OnSubmit.InvokeAsync(Model);
+        //await OnSubmit.InvokeAsync(Model);
     }
 
     private async Task HandleCancel()

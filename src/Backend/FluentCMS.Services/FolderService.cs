@@ -14,7 +14,7 @@ public interface IFolderService : IAutoRegisterService
     Task<Folder> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
-public partial class FolderService(IFolderRepository folderRepository) : IFolderService
+public partial class FolderService(IFolderRepository folderRepository, IFileRepository fileRepository) : IFolderService
 {
     public async Task<Folder> CreateRoot(Guid siteId, CancellationToken cancellationToken = default)
     {
@@ -67,22 +67,15 @@ public partial class FolderService(IFolderRepository folderRepository) : IFolder
         return folder;
     }
 
-    public async Task<Folder> Update(Folder folder, CancellationToken cancellationToken = default)
-    {
-        folder.NormalizedName = GetNormalizedFolderName(folder.Name);
-
-        // check if folder with the same name already exists
-        _ = await folderRepository.GetByName(folder.ParentId, folder.NormalizedName, cancellationToken) ??
-            throw new AppException(ExceptionCodes.FolderNotFound);
-
-        return await folderRepository.Update(folder, cancellationToken) ??
-            throw new AppException(ExceptionCodes.FolderUnableToUpdate);
-    }
-
     public async Task<Folder> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        return await folderRepository.Delete(id, cancellationToken) ??
-            throw new AppException(ExceptionCodes.FolderUnableToDelete);
+        var existingFolder = await folderRepository.GetById(id, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FolderNotFound);
+
+        var allFolders = await GetAll(existingFolder.SiteId, cancellationToken);
+        var allFiles = await fileRepository.GetAllForSite(existingFolder.SiteId, cancellationToken);
+
+        return await DeleteSubFolders(id, allFolders.ToList(), allFiles.ToList(), cancellationToken);
     }
 
     public Task<Folder> GetByPath(string folderPath, CancellationToken cancellationToken = default)
@@ -160,5 +153,17 @@ public partial class FolderService(IFolderRepository folderRepository) : IFolder
             return false; // Folder name should not be empty or whitespace
 
         return _regex.IsMatch(folderName);
+    }
+
+    private async Task<Folder> DeleteSubFolders(Guid parentFolderId, List<Folder> allFolders, List<File> allFiles, CancellationToken cancellationToken = default)
+    {
+        var fileIds = allFiles.Where(x => x.FolderId == parentFolderId).Select(x => x.Id);
+        await fileRepository.DeleteMany(fileIds, cancellationToken);
+
+        foreach (var childFolder in allFolders.Where(x => x.ParentId == parentFolderId))
+            await DeleteSubFolders(childFolder.Id, allFolders, allFiles, cancellationToken);
+
+        return await folderRepository.Delete(parentFolderId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FolderUnableToDelete);
     }
 }
