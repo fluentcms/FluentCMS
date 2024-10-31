@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Services.MessageHandlers;
+﻿using Microsoft.AspNetCore.StaticFiles;
+
+namespace FluentCMS.Services.MessageHandlers;
 
 public class FolderMessageHandler(IFolderService folderService, IFileService fileService) : IMessageHandler<SetupTemplate>
 {
@@ -49,11 +51,25 @@ public class FolderMessageHandler(IFolderService folderService, IFileService fil
                     Id = Guid.NewGuid(),
                     Name = new System.IO.FileInfo(fileName).Name,
                     SiteId = siteId,
-                    FolderId = parentFolder.Id
+                    FolderId = parentFolder.Id,
+                    Size = new System.IO.FileInfo(fileName).Length,
+                    ContentType = GetContentType(fileName),
                 };
                 using var contentStream = new System.IO.FileStream(fileName, System.IO.FileMode.Open);
                 await fileService.Create(file, contentStream, cancellationToken);
             }
         }
     }
+
+    private static string GetContentType(string fileName)
+    {
+        var provider = new FileExtensionContentTypeProvider();
+        if (!provider.TryGetContentType(fileName, out var contentType))
+        {
+            // If the file extension is not recognized, default to a generic content type
+            contentType = "application/octet-stream";
+        }
+        return contentType;
+    }
+
 }

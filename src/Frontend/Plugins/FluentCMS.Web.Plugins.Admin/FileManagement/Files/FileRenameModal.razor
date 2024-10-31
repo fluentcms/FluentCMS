@@ -8,14 +8,13 @@
         <Modal Size="ModalSize.Large" OnClose="HandleCancel">
             <ModalHeader Closable>
                 <ModalTitle>
-                    Update File
+                    Rename File
                 </ModalTitle>
             </ModalHeader>
             <ModalBody>
                 <DataAnnotationsValidator />
                 <Grid>
                     <FormInput @bind-Value="Model.Name" Label="Name" Placeholder="Enter File Name" Required />
-                    <FormSelect @bind-Value="Model.FolderId" Data="FolderOptions" ValueField="Id" TextField="Name" Label="Parent Folder" Placeholder="Choose Parent Folder" Required/>
                 </Grid>
             </ModalBody>
             <ModalFooter>
@@ -28,3 +27,4 @@
         </Modal>
     </EditForm>
 }
+

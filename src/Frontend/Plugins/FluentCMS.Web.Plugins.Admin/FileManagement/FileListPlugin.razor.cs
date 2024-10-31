@@ -12,10 +12,10 @@ public partial class FileListPlugin
     private bool FolderCreateModalOpen { get; set; } = false;
     private bool FolderRenameModalOpen { get; set; } = false;
     private bool FileUploadModalOpen { get; set; } = false;
-    private bool FileUpdateModalOpen { get; set; } = false;
+    private bool FileRenameModalOpen { get; set; } = false;
 
     private FolderRenameRequest? FolderRenameModel { get; set; }
-    private FileUpdateRequest? FileUpdateModel { get; set; }
+    private FileRenameRequest? FileRenameModel { get; set; }
     private FolderDetailResponse? RootFolder { get; set; }
     private FileUploadConfig? FileUploadConfig { get; set; }
 
@@ -84,7 +84,7 @@ public partial class FileListPlugin
 
         if (folderDetailResponse?.Data != null)
         {
-            RootFolder = folderDetailResponse.Data;
+           RootFolder = folderDetailResponse.Data;
 
             if (FolderId is null || FolderId == Guid.Empty || FolderId == RootFolder.Id)
             {
@@ -99,14 +99,14 @@ public partial class FileListPlugin
             {
                 folderDetail = FindFolderById(RootFolder!.Folders, FolderId.Value);
 
-                BreadcrumbItems.Add(new FolderBreadcrumbItemType
-                {
-                    Icon = IconName.Folder,
-                    Title = "Root",
-                    Href = GetUrl("Files List", new { folderId = Guid.Empty })
-                });
-                BreadcrumbItems.Reverse();
-            }
+               BreadcrumbItems.Add(new FolderBreadcrumbItemType
+               {
+                   Icon = IconName.Folder,
+                   Title = "Root",
+                   Href = GetUrl("Files List", new { folderId = Guid.Empty })
+               });
+               BreadcrumbItems.Reverse();
+           }
 
             if (folderDetail != null)
             {
@@ -194,9 +194,9 @@ public partial class FileListPlugin
     }
     #endregion
 
-    #region Update File & Folder
+    #region Rename File & Folder
 
-    private async Task OpenUpdateModal(AssetDetail detail)
+    private async Task OpenRenameModal(AssetDetail detail)
     {
         if (detail.IsFolder)
         {
@@ -212,35 +212,34 @@ public partial class FileListPlugin
         {
             SelectedFileExtension = Path.GetExtension(detail.Name);
 
-            FileUpdateModel = new FileUpdateRequest
+            FileRenameModel = new FileRenameRequest
             {
                 Id = detail.Id!,
                 Name = detail.Name.Replace(SelectedFileExtension, ""),
-                FolderId = detail.ParentId ?? Guid.Empty
             };
 
-            FileUpdateModalOpen = true;
+           FileRenameModalOpen = true;
         }
         await Task.CompletedTask;
     }
 
-    private async Task OnUpdateFile(FileUpdateRequest request)
+    private async Task OnRenameFile(FileRenameRequest request)
     {
-        request.Name = request.Name + SelectedFileExtension;
-        FileUpdateModalOpen = false;
-        await ApiClient.File.UpdateAsync(request);
-        await Load();
+       request.Name = request.Name + SelectedFileExtension;
+       FileRenameModalOpen = false;
+       await ApiClient.File.RenameAsync(request);
+       await Load();
     }
 
-    private async Task OnUpdateFileCancel()
+    private async Task OnRenameFileCancel()
     {
-        FileUpdateModalOpen = false;
-        FileUpdateModel = default!;
+        FileRenameModalOpen = false;
+        FileRenameModel = default!;
 
         await Task.CompletedTask;
     }
 
-    private async Task OnUpdateFolder(FolderRenameRequest request)
+    private async Task OnRenameFolder(FolderRenameRequest request)
     {
         await ApiClient.Folder.RenameAsync(request);
         FolderRenameModalOpen = false;

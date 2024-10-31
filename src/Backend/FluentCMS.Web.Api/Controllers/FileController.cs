@@ -95,14 +95,18 @@ public class FileController(IFileService fileService, IFolderService folderServi
 
     [HttpPut]
     [Policy(AREA, UPDATE)]
-    public async Task<IApiResult<FileDetailResponse>> Update([FromBody] FileUpdateRequest request, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<FileDetailResponse>> Rename([FromBody] FileRenameRequest request, CancellationToken cancellationToken = default)
     {
-        var file = await fileService.GetById(request.Id, cancellationToken);
-        //file.Name = request.Name;
-        //file.FolderId = request.FolderId == Guid.Empty ? null : request.FolderId;
+        var file = await fileService.Rename(request.Id, request.Name, cancellationToken);
+        var fileResponse = mapper.Map<FileDetailResponse>(file);
+        return Ok(fileResponse);
+    }
 
-        //await fileService.Update(file, cancellationToken);
-
+    [HttpPut]
+    [Policy(AREA, UPDATE)]
+    public async Task<IApiResult<FileDetailResponse>> Move([FromBody] FileMoveRequest request, CancellationToken cancellationToken = default)
+    {
+        var file = await fileService.Move(request.Id, request.FolderId, cancellationToken);
         var fileResponse = mapper.Map<FileDetailResponse>(file);
         return Ok(fileResponse);
     }

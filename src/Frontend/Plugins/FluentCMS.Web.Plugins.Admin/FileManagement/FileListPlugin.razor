@@ -59,7 +59,7 @@
 
                 @if (!context.IsParentFolder)
                 {
-                    <ActionButtonEdit @onclick="() => OpenUpdateModal(context)" />
+                    <ActionButtonEdit @onclick="() => OpenRenameModal(context)" />
                     <ActionButtonDelete @onclick="() => OnConfirm(context)" />
                 }
             </ActionButtons>
@@ -77,10 +77,10 @@
 
 @if (FolderRenameModalOpen && FolderRenameModel != null && RootFolder != null)
 {
-    <FolderRenameModal Model="FolderRenameModel" OnSubmit="OnUpdateFolder" OnCancel="OnRenameFolderCancel"/>
+    <FolderRenameModal Model="FolderRenameModel" OnSubmit="OnRenameFolder" OnCancel="OnRenameFolderCancel"/>
 }
 
-@if (FileUpdateModalOpen && FileUpdateModel != null && RootFolder != null)
+@if (FileRenameModalOpen && FileRenameModel != null && RootFolder != null)
 {
-    <FileUpdateModal RootFolder="RootFolder" Model="FileUpdateModel" OnSubmit="OnUpdateFile" OnCancel="OnUpdateFileCancel"/>
+    <FileRenameModal RootFolder="RootFolder" Model="FileRenameModel" OnSubmit="OnRenameFile" OnCancel="OnRenameFileCancel"/>
 }

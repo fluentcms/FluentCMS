@@ -52,7 +52,6 @@ public class MappingProfile : Profile
 
         #region File Folder
 
-        CreateMap<FileDetailResponse, FileUpdateRequest>();
 
         #endregion
     }

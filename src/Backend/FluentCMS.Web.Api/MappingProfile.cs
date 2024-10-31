@@ -103,7 +103,6 @@ public class MappingProfile : Profile
         #region File Folder Asset
 
         CreateMap<File, FileDetailResponse>();
-        CreateMap<FileUpdateRequest, File>();
         CreateMap<Folder, FolderDetailResponse>();
         CreateMap<FolderCreateRequest, Folder>();
 

@@ -219,16 +219,16 @@ public partial class FormRichTextEditor : IAsyncDisposable
 
         if (folderId is null || folderId == Guid.Empty)
         {
-            folderDetail = folderDetailResponse?.Data;
+           folderDetail = folderDetailResponse?.Data;
         }
         else
         {
-            folderDetail = FindFolderById(folderDetailResponse?.Data?.Folders ?? [], folderId.Value);
+           folderDetail = FindFolderById(folderDetailResponse?.Data?.Folders ?? [], folderId.Value);
         }
 
         if (folderDetail != null)
         {
-            Assets = [];
+           Assets = [];
 
             if (folderId != null && folderId != Guid.Empty)
             {
