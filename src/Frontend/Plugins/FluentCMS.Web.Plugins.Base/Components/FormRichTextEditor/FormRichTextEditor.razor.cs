@@ -7,6 +7,9 @@ public partial class FormRichTextEditor : IAsyncDisposable
     public IJSRuntime JS { get; set; } = default!;
 
     [Inject]
+    public ViewState ViewState { get; set; } = default!;
+
+    [Inject]
     private ApiClientFactory ApiClient { get; set; } = default!;
 
     public ElementReference? Element { get; set; }
@@ -212,7 +215,7 @@ public partial class FormRichTextEditor : IAsyncDisposable
         FolderId = folderId;
         FolderDetailResponse? folderDetail;
 
-        var folderDetailResponse = await ApiClient.Folder.GetAllAsync();
+        var folderDetailResponse = await ApiClient.Folder.GetAllAsync(ViewState.Site.Id);
 
         if (folderId is null || folderId == Guid.Empty)
         {
@@ -233,7 +236,7 @@ public partial class FormRichTextEditor : IAsyncDisposable
                 {
                     Name = "(parent)",
                     IsFolder = true,
-                    Id = folderDetail.FolderId,
+                    Id = folderDetail.Id,
                     IsParentFolder = true
                 });
             }
@@ -245,7 +248,7 @@ public partial class FormRichTextEditor : IAsyncDisposable
                     Name = item.Name ?? string.Empty,
                     IsFolder = true,
                     Id = item.Id,
-                    FolderId = item.FolderId,
+                    ParentId = item.Id,
                     Size = item.Size,
                 });
             }
@@ -256,7 +259,7 @@ public partial class FormRichTextEditor : IAsyncDisposable
                 {
                     Name = item.Name ?? string.Empty,
                     IsFolder = false,
-                    FolderId = item.FolderId,
+                    ParentId = item.FolderId,
                     Id = item.Id,
                     Size = item.Size,
                     ContentType = item.ContentType ?? string.Empty

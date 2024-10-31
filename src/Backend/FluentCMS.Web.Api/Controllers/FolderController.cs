@@ -74,7 +74,7 @@ public class FolderController(IFolderService folderService, IFileService fileSer
         var filesResponseDict = files.ToDictionary(x => x.Id, mapper.Map<FileDetailResponse>);
         var rootFolderDetailResponse = mapper.Map<FolderDetailResponse>(rootFolder);
 
-        foldersResponseDict.Add(rootFolderDetailResponse.Id, rootFolderDetailResponse);
+        // foldersResponseDict.Add(rootFolderDetailResponse.Id, rootFolderDetailResponse);
 
         foreach (var folderResponse in foldersResponseDict.Values)
         {
@@ -94,6 +94,6 @@ public class FolderController(IFolderService folderService, IFileService fileSer
             folderResponse.Size = folderResponse.Files.Sum(x => x.Size) + folderResponse.Folders.Sum(x => x.Size);
         }
 
-        return result;
+        return foldersResponseDict;
     }
 }

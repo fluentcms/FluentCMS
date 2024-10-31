@@ -20,7 +20,7 @@ public partial class FolderCreateModal
 
     private async Task HandleSubmit()
     {
-        Model.FolderId = FolderId ?? Guid.Empty;
+        Model.ParentId = FolderId ?? default!;
         await OnSubmit.InvokeAsync(Model);
         Model = new();
     }

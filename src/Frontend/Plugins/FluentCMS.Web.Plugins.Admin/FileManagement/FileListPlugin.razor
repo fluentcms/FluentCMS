@@ -11,7 +11,7 @@
         </Breadcrumb>
     </SubtitleFragment>
     <ActionsFragment>
-        <ActionButtonBack Visible="FolderId != null && FolderId != Guid.Empty" Href="@GetUrl("Files List", new { folderId = ParentId })" />
+        <ActionButtonBack Visible="ParentFolderId != null" Href="@GetUrl("Files List", new { folderId = ParentFolderId })" />
         <ActionButton IconName="IconName.Plus" @onclick="() => FolderCreateModalOpen = true" Label="Add Folder" />
         <ActionButtonCreate @onclick="() => FileUploadModalOpen = true" Label="Upload File" />
     </ActionsFragment>
@@ -26,7 +26,7 @@
                 }
                 else
                 {
-                    <Button Link download="@context.Name" Href="@GetUrl("Files List", new { folderId = @context.Id })">
+                    <Button Link download="@context.Name" Href="@($"/api/File/Download/{context.Id}")">
                         @context.Name
                     </Button>
                 }
@@ -36,7 +36,7 @@
                     Folder
                 </Badge>
                 <Badge Color="Color.Success" Visible="!context.IsFolder">
-                    @context.ContentType
+                    @(string.IsNullOrEmpty(context.ContentType) ? "Unknown" : context.ContentType)
                 </Badge>
             </DataTableItem>
             <DataTableItem Label="Size">
@@ -75,9 +75,9 @@
 
 <FileUploadModal Config="FileUploadConfig" Visible="FileUploadModalOpen" OnSubmit="OnUpload" OnCancel="OnUploadCancel"/>
 
-@if (FolderUpdateModalOpen && FolderUpdateModel != null && RootFolder != null)
+@if (FolderRenameModalOpen && FolderRenameModel != null && RootFolder != null)
 {
-    <FolderUpdateModal RootFolder="RootFolder" Model="FolderUpdateModel" OnSubmit="OnUpdateFolder" OnCancel="OnUpdateFolderCancel"/>
+    <FolderRenameModal Model="FolderRenameModel" OnSubmit="OnUpdateFolder" OnCancel="OnRenameFolderCancel"/>
 }
 
 @if (FileUpdateModalOpen && FileUpdateModel != null && RootFolder != null)

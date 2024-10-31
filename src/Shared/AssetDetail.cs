@@ -7,6 +7,6 @@ public class AssetDetail
     public string ContentType { get; set; } = string.Empty;
     public long? Size { get; set; }
     public bool IsFolder { get; set; }
-    public Guid? FolderId { get; set; }
+    public Guid? ParentId { get; set; }
     public bool IsParentFolder { get; set; } = false;
 }
