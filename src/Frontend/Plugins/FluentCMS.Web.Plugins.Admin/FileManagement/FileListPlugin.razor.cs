@@ -21,6 +21,25 @@ public partial class FileListPlugin
 
     private string SelectedFileExtension { get; set; } = string.Empty;
 
+    private async Task DownloadFile(Guid id)
+    {
+        await Task.CompletedTask;
+        // 
+    }
+
+    private async Task HandleDataTableRowClick(AssetDetail item)
+    {
+        if(item.IsFolder)
+        {
+            NavigateTo(GetUrl("Files List", new { folderId = item.Id }));
+        }
+        else
+        {
+            await DownloadFile(item.Id);
+        }
+        await Task.CompletedTask;
+    }
+
     #region Helper Methods
 
     FolderDetailResponse? FindFolderById(ICollection<FolderDetailResponse>? folders, Guid folderId)
@@ -62,11 +81,17 @@ public partial class FileListPlugin
 
     protected override async Task OnInitializedAsync()
     {
-        var settingsResponse = await ApiClient.GlobalSettings.GetAsync();
-        if (settingsResponse?.Data != null)
+        FileUploadConfig = new FileUploadConfig
         {
-            FileUploadConfig = settingsResponse.Data.FileUpload;
-        }
+            AllowedExtensions = "*",
+            MaxCount = 5,
+            MaxSize = 1024 * 1024 * 5 // 5 mb
+        };
+        // var settingsResponse = await ApiClient.GlobalSettings.GetAsync();
+        // if (settingsResponse?.Data != null)
+        // {
+        //     FileUploadConfig = settingsResponse.Data.FileUpload;
+        // }
         await Task.CompletedTask;
     }
 
@@ -86,7 +111,7 @@ public partial class FileListPlugin
         {
            RootFolder = folderDetailResponse.Data;
 
-            if (FolderId is null || FolderId == Guid.Empty || FolderId == RootFolder.Id)
+            if (FolderId is null || FolderId == RootFolder.Id)
             {
                 BreadcrumbItems.Add(new FolderBreadcrumbItemType
                 {
@@ -99,26 +124,26 @@ public partial class FileListPlugin
             {
                 folderDetail = FindFolderById(RootFolder!.Folders, FolderId.Value);
 
-               BreadcrumbItems.Add(new FolderBreadcrumbItemType
-               {
-                   Icon = IconName.Folder,
-                   Title = "Root",
-                   Href = GetUrl("Files List", new { folderId = Guid.Empty })
-               });
-               BreadcrumbItems.Reverse();
+                BreadcrumbItems.Add(new FolderBreadcrumbItemType
+                {
+                    Icon = IconName.Folder,
+                    Title = "Root",
+                    Href = GetUrl("Files List", new { })
+                });
+                BreadcrumbItems.Reverse();
            }
 
             if (folderDetail != null)
             {
                 Items = [];
 
-                if (FolderId != null && FolderId != Guid.Empty && FolderId != RootFolder.Id)
+                if (FolderId != null && FolderId != RootFolder.Id)
                 {
                     Items.Add(new AssetDetail
                     {
                         Name = "(parent)",
                         IsFolder = true,
-                        Id = folderDetail.ParentId.Value == RootFolder.Id ? Guid.Empty : folderDetail.ParentId.Value,
+                        Id = folderDetail.ParentId.Value,
                         IsParentFolder = true
                     });
                 }
@@ -129,7 +154,7 @@ public partial class FileListPlugin
                     {
                         Items.Add(new AssetDetail
                         {
-                            Name = item.Name,
+                            Name = item.Name ?? string.Empty,
                             IsFolder = true,
                             Id = item.Id,
                             ParentId = item.ParentId,
@@ -141,7 +166,7 @@ public partial class FileListPlugin
                     {
                         Items.Add(new AssetDetail
                         {
-                            Name = item.Name,
+                            Name = item.Name ?? string.Empty,
                             IsFolder = false,
                             ParentId = item.FolderId,
                             Id = item.Id,
@@ -161,7 +186,7 @@ public partial class FileListPlugin
 
     private async Task OnUpload(List<FileParameter> files)
     {
-        await ApiClient.File.UploadAsync(FolderId, files);
+        await ApiClient.File.UploadAsync(FolderId ?? RootFolder?.Id, files);
         FileUploadModalOpen = false;
         await Load();
     }
@@ -251,6 +276,69 @@ public partial class FileListPlugin
         FolderRenameModalOpen = false;
         FolderRenameModel = default!;
 
+        await Task.CompletedTask;
+    }
+
+    #endregion
+
+    #region Move File & Folder
+    private bool FolderMoveModalOpen { get; set; } = false;
+    private bool FileMoveModalOpen { get; set; } = false;
+    private Guid? FolderMoveModel { get; set; }
+    private Guid? FileMoveModel { get; set; }
+
+    private async Task OpenMoveModal(AssetDetail asset)
+    {
+        if (asset.IsFolder && !asset.IsParentFolder)
+        {
+            FolderMoveModel = asset.Id;
+            FolderMoveModalOpen = true;
+        } 
+        else
+        {
+            FileMoveModel = asset.Id;
+            FileMoveModalOpen = true;
+        }
+        await Task.CompletedTask;
+    }
+    private async Task OnFolderMove(Guid parentId)
+    {  
+
+        if(FolderMoveModel is null) return;
+
+        await ApiClient.Folder.MoveAsync(new FolderMoveRequest
+        {
+            Id = FolderMoveModel.Value,
+            ParentId = parentId,
+        });
+        FolderMoveModalOpen = false;
+        await Load();
+    }
+    
+    private async Task OnFileMove(Guid parentId)
+    {  
+        if(FileMoveModel is null) return;
+
+        await ApiClient.File.MoveAsync(new FileMoveRequest
+        {
+            Id = FileMoveModel.Value,
+            FolderId = parentId,
+        });
+        FileMoveModalOpen = false;
+        await Load();
+    }
+
+    private async Task OnMoveFolderCancel()
+    {
+        FolderMoveModalOpen = false;
+        FolderMoveModel = default!;
+        await Task.CompletedTask;
+    }
+
+    private async Task OnMoveFileCancel()
+    {
+        FileMoveModalOpen = false;
+        FileMoveModel = default!;
         await Task.CompletedTask;
     }
 
