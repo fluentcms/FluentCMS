@@ -20,6 +20,9 @@ public partial class FolderService(IFolderRepository folderRepository, IFileRepo
     {
         var normalizedName = GetNormalizedFolderName(ServiceConstants.ROOT_FOLDER_PATH);
 
+        if (!IsValidFolderName(normalizedName))
+            throw new AppException(ExceptionCodes.FolderInvalidName);
+
         if (await folderRepository.GetByName(null, normalizedName, cancellationToken) != null)
             throw new AppException(ExceptionCodes.FolderAlreadyExists);
 
@@ -37,6 +40,9 @@ public partial class FolderService(IFolderRepository folderRepository, IFileRepo
     public async Task<Folder> Create(Folder folder, CancellationToken cancellationToken = default)
     {
         folder.NormalizedName = GetNormalizedFolderName(folder.Name);
+
+        if (!IsValidFolderName(folder.NormalizedName))
+            throw new AppException(ExceptionCodes.FolderInvalidName);
 
         // check if parent folder exists
         if (folder.ParentId == null)
@@ -83,7 +89,7 @@ public partial class FolderService(IFolderRepository folderRepository, IFileRepo
         folderPath = GetNormalizedFolderName(folderPath);
 
         // split folder path
-        string[] folderNames = folderPath.Split('/');
+        string[] folderNames = folderPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
 
         return FindFolder(null, folderNames, 0, cancellationToken);
     }
@@ -91,9 +97,9 @@ public partial class FolderService(IFolderRepository folderRepository, IFileRepo
     // find folder recursively by parent folder
     private async Task<Folder> FindFolder(Guid? parentId, string[] folderNames, int index, CancellationToken cancellationToken)
     {
-        if (index == folderNames.Length)
+        if (index == folderNames.Length - 1)
         {
-            return await folderRepository.GetByName(parentId, folderNames[index - 1], cancellationToken) ??
+            return await folderRepository.GetByName(parentId, folderNames[index], cancellationToken) ??
                 throw new AppException(ExceptionCodes.FolderNotFound);
         }
         var folder = await folderRepository.GetByName(parentId, folderNames[index], cancellationToken) ??
@@ -105,6 +111,9 @@ public partial class FolderService(IFolderRepository folderRepository, IFileRepo
     public async Task<Folder> Rename(Guid folderId, string name, CancellationToken cancellationToken = default)
     {
         var normalizedName = GetNormalizedFolderName(name);
+
+        if (!IsValidFolderName(normalizedName))
+            throw new AppException(ExceptionCodes.FolderInvalidName);
 
         // check if folder with the same name already exists
         _ = await folderRepository.GetByName(folderId, normalizedName, cancellationToken) ??
@@ -136,12 +145,7 @@ public partial class FolderService(IFolderRepository folderRepository, IFileRepo
 
     private static string GetNormalizedFolderName(string folderName)
     {
-        var normalized = folderName.Trim().ToLower();
-
-        if (!IsValidFolderName(normalized))
-            throw new AppException(ExceptionCodes.FolderInvalidName);
-
-        return normalized;
+        return folderName.Trim().ToLower();
     }
 
     // Regular expression to allow only alphanumeric, spaces, underscores, and certain special characters
@@ -166,4 +170,5 @@ public partial class FolderService(IFolderRepository folderRepository, IFileRepo
         return await folderRepository.Delete(parentFolderId, cancellationToken) ??
             throw new AppException(ExceptionCodes.FolderUnableToDelete);
     }
+
 }

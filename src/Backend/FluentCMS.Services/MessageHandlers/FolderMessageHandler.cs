@@ -22,7 +22,7 @@ public class FolderMessageHandler(IFolderService folderService, IFileService fil
         var rootFolder = await folderService.CreateRoot(setupTemplate.Site.Id, cancellationToken);
 
         // read from assets folder and create Folders object model for the site
-        var assetsPath = System.IO.Path.Combine(ServiceConstants.SetupTemplatesFolder, setupTemplate.Template, ServiceConstants.SetupAssetsFolder);
+        var assetsPath = System.IO.Path.Combine(ServiceConstants.SetupTemplatesFolder, setupTemplate.Template, ServiceConstants.SetupFilesFolder);
 
         await CreateChildFolders(setupTemplate.Site.Id, rootFolder, assetsPath, cancellationToken);
     }

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using FluentCMS.Web.Api.Filters;
+using Microsoft.AspNetCore.Http;
 
 namespace FluentCMS.Web.Api.Controllers;
 
@@ -57,6 +58,7 @@ public class FileController(IFileService fileService, IFolderService folderServi
     }
 
     [HttpGet]
+    [DecodeQueryParam]
     [Policy(AREA, READ)]
     public async Task<IResult> Download([FromQuery] string url, CancellationToken cancellationToken = default)
     {
@@ -71,7 +73,7 @@ public class FileController(IFileService fileService, IFolderService folderServi
         var fileName = System.IO.Path.GetFileName(fullPath);
 
         // Extract the folder path (excluding the file name)
-        var folderPath = System.IO.Path.GetDirectoryName(fullPath) ?? "/";
+        var folderPath = fullPath[..fullPath.LastIndexOf('/')];
 
         // find folders by url
         var folder = await folderService.GetByPath(folderPath, cancellationToken);
@@ -80,7 +82,7 @@ public class FileController(IFileService fileService, IFolderService folderServi
         var file = await fileService.GetByName(folder.Id, fileName, cancellationToken);
 
         // get file stream
-        var fileStream = await fileService.GetStream(folder.Id, cancellationToken);
+        var fileStream = await fileService.GetStream(file.Id, cancellationToken);
 
         return Results.File(fileStream, contentType: file.ContentType, fileDownloadName: file.Name, lastModified: file.ModifiedAt ?? file.CreatedAt);
     }

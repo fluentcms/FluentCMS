@@ -3,7 +3,7 @@
 public static class ServiceConstants
 {
     public const string SetupTemplatesFolder = "Templates";
-    public const string SetupAssetsFolder = "Assets";
+    public const string SetupFilesFolder = "files";
     public const string SetupManifestFile = "manifest.json";
     public const string SetupSiteTemplateFile = "site.json";
     public const string DefaultTemplateFolder = "Templates/Default";
@@ -13,5 +13,5 @@ public static class ServiceConstants
     public const string PASSWORD_RESET_PURPOSE = "passwordReset";
     public const string PASSWORD_RESET_TOKEN_PROVIDER = "passwordResetProvider";
 
-    public const string ROOT_FOLDER_PATH = "root";
+    public const string ROOT_FOLDER_PATH = "files";
 }
