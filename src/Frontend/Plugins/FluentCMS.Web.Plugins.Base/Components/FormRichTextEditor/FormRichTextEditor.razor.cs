@@ -269,11 +269,11 @@ public partial class FormRichTextEditor : IAsyncDisposable
         StateHasChanged();
     }
 
-    public async Task OnChooseImage(AssetDetail image)
+    public async Task OnChooseImage(Guid fileId)
     {
         ImageModalOpen = false;
 
-        ImageUrl = "/API/File/Download/" + image.Id;
+        ImageUrl = "/API/File/Download/" + fileId;
         ImageAlt = "(TODO) Image ALT";
 
         if (Module != null)

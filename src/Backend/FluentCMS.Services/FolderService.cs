@@ -116,8 +116,9 @@ public partial class FolderService(IFolderRepository folderRepository, IFileRepo
             throw new AppException(ExceptionCodes.FolderInvalidName);
 
         // check if folder with the same name already exists
-        _ = await folderRepository.GetByName(folderId, normalizedName, cancellationToken) ??
-            throw new AppException(ExceptionCodes.FolderNotFound);
+        // TODO: These lines has problem.
+        // _ = await folderRepository.GetByName(folderId, normalizedName, cancellationToken) ??
+        //     throw new AppException(ExceptionCodes.FolderNotFound);
 
         var existingFolder = await folderRepository.GetById(folderId, cancellationToken) ??
             throw new AppException(ExceptionCodes.FolderNotFound);

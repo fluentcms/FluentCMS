@@ -1,0 +1,27 @@
+@namespace FluentCMS.Web.Plugins.Admin.FileManagement
+
+<Modal Placement="ModalPlacement.Top" Visible Size="ModalSize.Large" OnClose="HandleCancel">
+    <ModalHeader>
+        <ModalTitle>
+            Choose Folder
+        </ModalTitle>
+    </ModalHeader>
+    <div style="max-height: 60vh; overflow: auto;">
+        <FilesTable DisabledFolder="@DisabledFolder" @bind-FolderId="@Model">
+            <ActionsFragment>
+                @* <ActionButton Visible="!context.IsFolder" IconName="IconName.Download" Label="Download" download="@context.Name" @onclick="() => DownloadFile(context.Id)" Color="Color.Primary" /> *@
+                <ActionButtonOpen Visible="context.IsFolder && context.Id != DisabledFolder" @onclick="() => Model = context.Id" />
+            </ActionsFragment>
+        </FilesTable>
+    </div>
+    <ModalBody>
+        <Grid>
+            <GridItem Small="GridItemColumn.Twelve">
+                <Stack>
+                    <Button Color="@Color.Primary" @onclick="OnChooseFolder">Move Here</Button>
+                    <Button @onclick="HandleCancel">Cancel</Button>
+                </Stack>
+            </GridItem>
+        </Grid>
+    </ModalBody>
+</Modal>

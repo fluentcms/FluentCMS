@@ -1,8 +1,8 @@
-namespace FluentCMS.Web.Plugins.Admin.FileManagement;
+namespace FluentCMS.Web.Plugins;
 
 public class FolderBreadcrumbItemType
 {
-    public string? Href { get; set; }
+    public Guid? Id { get; set; }
     public string? Title { get; set; }
     public IconName Icon { get; set; } = IconName.Default;
 };

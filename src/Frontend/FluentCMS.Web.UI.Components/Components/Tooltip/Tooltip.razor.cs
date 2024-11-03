@@ -21,7 +21,7 @@ public partial class Tooltip : IAsyncDisposable
     {
         if (Module is not null)
         {
-            await Module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), Element);
+            await Module.InvokeVoidAsync("dispose", DotNetRef, Element);
             await Module.DisposeAsync();
         }
         DotNetRef?.Dispose();

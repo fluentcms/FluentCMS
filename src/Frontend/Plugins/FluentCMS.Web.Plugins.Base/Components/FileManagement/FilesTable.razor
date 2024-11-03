@@ -1,0 +1,29 @@
+@namespace FluentCMS.Web.Plugins
+
+<DataTable @key="@Items" Items="Items" OnRowClick="(AssetDetail item) => HandleRowClick(item)">
+    <DataTableItem Label="Name">
+        <Stack>
+            @((MarkupString)GetFileIcon(context))
+            <span>@context.Name</span>
+        </Stack>
+    </DataTableItem>
+    <DataTableItem Label="Type">
+        <Badge Color="Color.Info" Visible="@context.IsFolder">
+            Folder
+        </Badge>
+        <Badge Color="Color.Success" Visible="!context.IsFolder">
+            @(string.IsNullOrEmpty(context.ContentType) ? "Unknown" : context.ContentType)
+        </Badge>
+    </DataTableItem>
+    <DataTableItem Label="Size">
+        @HumanizeFileSize(context.Size)
+    </DataTableItem>
+    <ActionButtons>
+        <Stack Justify="StackJustify.End">
+            @if (ActionsFragment != null)
+            {
+                @ActionsFragment(context)
+            }
+        </Stack>
+    </ActionButtons>
+</DataTable>
