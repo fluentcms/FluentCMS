@@ -1,86 +1,26 @@
 ﻿@inherits BasePlugin
 @rendermode InteractiveServer
 
-<PluginBody Title="File Management">
-    <SubtitleFragment>
-        <Breadcrumb style="height: 20px;">
-            
-            @foreach (var item in BreadcrumbItems)
-            {
-                <BreadcrumbItem IconName="@item.Icon" Href="@item.Href">@item.Title</BreadcrumbItem>
-            }
-        </Breadcrumb>
-    </SubtitleFragment>
+<PluginBody Title="@($"File Management ({Folder?.Name ?? "..."})")">
     <ActionsFragment>
-        <ActionButtonBack Visible="ParentFolderId != null" Href="@GetUrl("Files List", new { folderId = ParentFolderId })" />
+        <ActionButtonBack Visible="Folder?.ParentId != null" Href="@GetUrl("Files List", new { folderId = Folder?.ParentId })" />
         <ActionButton IconName="IconName.Plus" @onclick="() => FolderCreateModalOpen = true" Label="Add Folder" />
         <ActionButtonCreate @onclick="() => FileUploadModalOpen = true" Label="Upload File" />
     </ActionsFragment>
     <ChildContent>
-        <DataTable Items="Items" OnRowClick="(AssetDetail item) => HandleDataTableRowClick(item)">
-            <DataTableItem Label="Name">
-                <Stack>
-                    @if (@context.IsFolder)
-                    {
-                        @if (context.IsParentFolder)
-                        {
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M11 17h2v-4.2l1.6 1.6L16 13l-4-4l-4 4l1.4 1.4l1.6-1.6zm-7 3q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h6l2 2h8q.825 0 1.413.588T22 8v10q0 .825-.587 1.413T20 20zm0-2h16V8h-8.825l-2-2H4zm0 0V6z"/></svg>
-                        }
-                        else
-                        {
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M4 20q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h6l2 2h8q.825 0 1.413.588T22 8v10q0 .825-.587 1.413T20 20zm0-2h16V8h-8.825l-2-2H4zm0 0V6z"/></svg>
-                        }
-                        <span>@context.Name</span>
-                    }
-                    else
-                    {
-                        @if (context.ContentType.StartsWith("image/"))
-                        {
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="m14 2l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm4 18V9h-5V4H6v16zm-1-7v6H7l5-5l2 2m-4-5.5A1.5 1.5 0 0 1 8.5 12A1.5 1.5 0 0 1 7 10.5A1.5 1.5 0 0 1 8.5 9a1.5 1.5 0 0 1 1.5 1.5"/></svg>
-                        }
-                        else
-                        {
-
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm0 2h7v5h5v11H6zm2 8v2h8v-2zm0 4v2h5v-2z"/></svg>
-                        }
-                        <span>@context.Name</span>
-                    }
-                </Stack>
-            </DataTableItem>
-            <DataTableItem Label="Type">
-                <Badge Color="Color.Info" Visible="@context.IsFolder">
-                    Folder
-                </Badge>
-                <Badge Color="Color.Success" Visible="!context.IsFolder">
-                    @(string.IsNullOrEmpty(context.ContentType) ? "Unknown" : context.ContentType)
-                </Badge>
-            </DataTableItem>
-            <DataTableItem Label="Size">
-                @if (context.Size > 1024 * 1024)
-                {
-                    <text>@(context.Size / (1024 * 1024)) MB</text>
-                }
-                else if(context.Size > 1024)
-                {
-                    <text>@(context.Size / 1024) KB</text>
-                }
-                else
-                {
-                    <text>...</text>
-                }
-            </DataTableItem>
-            <ActionButtons>
+        <FilesTable @ref="FilesTable" @bind-FolderId="@FolderId" @bind-Folder="@Folder">
+            <ActionsFragment>
                 <ActionButton Visible="!context.IsFolder" IconName="IconName.Download" Label="Download" download="@context.Name" Href="@GetUrl("Files List", new { folderId = context.Id })" Color="Color.Primary" target="_blank" />
                 <ActionButtonOpen Visible="context.IsFolder" Href="@GetUrl("Files List", new { folderId = context.Id })" />
 
                 @if (!context.IsParentFolder)
                 {
-                    <ActionButtonEdit @onclick="() => OpenRenameModal(context)" />
+                    <ActionButton IconName="IconName.Edit" Label="Rename" Color="Color.Primary" @onclick="() => OpenRenameModal(context)" />
                     <ActionButton Label="Move" @onclick="() => OpenMoveModal(context)" IconName="IconName.FolderMove" />
                     <ActionButtonDelete @onclick="() => OnConfirm(context)" />
                 }
-            </ActionButtons>
-        </DataTable>
+            </ActionsFragment>
+        </FilesTable>
     </ChildContent>
 </PluginBody>
 
@@ -99,19 +39,19 @@
 
 <FileUploadModal Config="FileUploadConfig" Visible="FileUploadModalOpen" OnSubmit="OnUpload" OnCancel="OnUploadCancel"/>
 
-@if (FolderRenameModalOpen && FolderRenameModel != null && RootFolder != null)
+@if (FolderRenameModalOpen && FolderRenameModel != null)
 {
     <FolderRenameModal Model="FolderRenameModel" OnSubmit="OnRenameFolder" OnCancel="OnRenameFolderCancel"/>
 }
 
-@if (FileRenameModalOpen && FileRenameModel != null && RootFolder != null)
+@if (FileRenameModalOpen && FileRenameModel != null)
 {
     <FileRenameModal RootFolder="RootFolder" Model="FileRenameModel" OnSubmit="OnRenameFile" OnCancel="OnRenameFileCancel"/>
 }
 
 @if (FolderMoveModalOpen && FolderMoveModel != null)
 {
-    <FolderSelectorModal Model="FolderId" OnSubmit="OnFolderMove" OnCancel="OnMoveFolderCancel"/>
+    <FolderSelectorModal DisabledFolder="FolderMoveModel" Model="FolderId" OnSubmit="OnFolderMove" OnCancel="OnMoveFolderCancel"/>
 }
 @if (FileMoveModalOpen && FileMoveModel != null)
 {

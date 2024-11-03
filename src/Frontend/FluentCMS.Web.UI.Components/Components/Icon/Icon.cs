@@ -9,6 +9,7 @@ public enum IconName
     AtSign,
     Boolean,
     CalendarWeek,
+    Check,
     ClipboardList,
     Clock,
     Close,
