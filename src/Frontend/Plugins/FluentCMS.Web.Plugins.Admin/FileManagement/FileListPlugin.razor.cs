@@ -24,13 +24,18 @@ public partial class FileListPlugin
 
     private List<FolderDetailResponse> BreadcrumbItems { get; set; } = [];
 
-    private async Task DownloadFile(Guid id)
+    private string GetDownloadUrl(AssetDetail file)
     {
-        await Task.CompletedTask;
-        //
+        return string.Join("/", BreadcrumbItems.Select(x => x.Name)) + "/" + file.Name;
     }
 
     #region Initialize & Lifecycle
+
+    private async Task NavigateFolder(Guid folderId)
+    {
+        FolderId = folderId;
+        StateHasChanged();
+    }    
 
     protected override async Task OnInitializedAsync()
     {

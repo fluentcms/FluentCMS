@@ -7,10 +7,35 @@
         </ModalTitle>
     </ModalHeader>
     <div style="max-height: 60vh; overflow: auto;">
-        <FilesTable @bind-FolderId="@FolderId" OnRowClick="(AssetDetail item) => OnSelectFile(item)">
+        <Breadcrumb style="height: 40px; padding-left: 24px;">
+            @foreach (var breadcrumbItem in ParentFolders)
+            {
+                @if (breadcrumbItem.Id == FolderId)
+                {
+                    <BreadcrumbItem>
+                        @breadcrumbItem.Name
+                    </BreadcrumbItem>
+                }
+                else if(breadcrumbItem.Id == RootFolder?.Id)
+                {
+                    <BreadcrumbItem @onclick="() => NavigateFolder(breadcrumbItem.Id)" IconName="IconName.Folder">
+                        @breadcrumbItem.Name
+                    </BreadcrumbItem>
+                }
+                else
+                {
+                    <BreadcrumbItem @onclick="() => NavigateFolder(breadcrumbItem.Id)">
+                        @breadcrumbItem.Name
+                    </BreadcrumbItem>
+                }
+            }
+        </Breadcrumb>
+
+        <FilesTable @key="@FolderId" @bind-FolderId="@FolderId" @bind-ParentFolders="ParentFolders" OnRowClick="(AssetDetail item) => OnSelectFile(item)">
             <ActionsFragment>
                 <ActionButton Visible="!context.IsFolder" IconName="IconName.Check" Label="Select" @onclick="() => OnSelectFile(context)" />
-                <ActionButton Visible="!context.IsFolder" IconName="IconName.Download" Label="Download" @onclick="() => DownloadFile(context.Id)" Color="Color.Primary" />
+                <ActionButton Visible="!context.IsFolder" IconName="IconName.Download"
+Label="Download" Href="@GetDownloadUrl(context)" Color="Color.Primary" />
                 <ActionButtonOpen Visible="context.IsFolder" @onclick="() => NavigateFolder(context.Id)" />
             </ActionsFragment>
         </FilesTable>

@@ -19,31 +19,35 @@ public partial class FilesTable
 
     [Parameter]
     public EventCallback<AssetDetail> OnRowClick { get; set; } = default!;
-    
+
     [Parameter]
     public Guid? DisabledFolder { get; set; }
-    
-    [Parameter]
-    public EventCallback<Guid?> FolderIdChanged { get; set; }
-
-    [Parameter]
-    public EventCallback<List<FolderDetailResponse>> ParentFoldersChanged { get; set; }
-
-    [Parameter]
-    public EventCallback<FolderDetailResponse?> FolderChanged { get; set; }
 
     [Parameter]
     public List<FolderDetailResponse> ParentFolders { get; set; } = [];
 
     [Parameter]
-    public Guid? FolderId { get; set; } = default!;
+    public EventCallback<List<FolderDetailResponse>> ParentFoldersChanged { get; set; }
 
     [Parameter]
     public FolderDetailResponse? Folder { get; set; } = default!;
 
-    private List<AssetDetail> Items { get; set; } = [];
+    [Parameter]
+    public EventCallback<FolderDetailResponse?> FolderChanged { get; set; }
 
-    private FolderDetailResponse? RootFolder { get; set; } = default!;
+    [Parameter]
+    public Guid? FolderId { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<Guid?> FolderIdChanged { get; set; }
+
+    [Parameter]
+    public FolderDetailResponse? RootFolder { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<FolderDetailResponse> RootFolderChanged { get; set; }
+
+    private List<AssetDetail> Items { get; set; } = [];
 
     private static string ParentFolderIcon => "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M11 17h2v-4.2l1.6 1.6L16 13l-4-4l-4 4l1.4 1.4l1.6-1.6zm-7 3q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h6l2 2h8q.825 0 1.413.588T22 8v10q0 .825-.587 1.413T20 20zm0-2h16V8h-8.825l-2-2H4zm0 0V6z\"/></svg>";
     private static string FolderIcon => "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M4 20q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h6l2 2h8q.825 0 1.413.588T22 8v10q0 .825-.587 1.413T20 20zm0-2h16V8h-8.825l-2-2H4zm0 0V6z\"/></svg>";
@@ -99,7 +103,7 @@ public partial class FilesTable
             Folder = folderDetail;
             await FolderChanged.InvokeAsync(Folder);
 
-            if (RootFolder.Id != FolderId && folderDetail.ParentId != null)
+            if (RootFolder?.Id != FolderId && folderDetail.ParentId != null)
             {
                 Items.Add(new AssetDetail
                 {
@@ -155,7 +159,7 @@ public partial class FilesTable
     private async Task NavigateFolder(Guid? folderId)
     {
         if (folderId is null)
-            FolderId = RootFolder.Id;
+            FolderId = RootFolder?.Id;
         else
             FolderId = folderId;
 
@@ -166,17 +170,18 @@ public partial class FilesTable
     private async Task DownloadFile(Guid id)
     {
         await Task.CompletedTask;
-        // 
+        //
     }
 
     protected override async Task OnInitializedAsync()
     {
         var rootFolderDetailResponse = await ApiClient.Folder.GetAllAsync(ViewState.Site.Id);
         RootFolder = rootFolderDetailResponse.Data;
+        await RootFolderChanged.InvokeAsync(RootFolder);
 
         if(FolderId is null)
         {
-            FolderId ??= RootFolder.Id;
+            FolderId ??= RootFolder?.Id;
             await FolderIdChanged.InvokeAsync(FolderId.Value);
         }
 

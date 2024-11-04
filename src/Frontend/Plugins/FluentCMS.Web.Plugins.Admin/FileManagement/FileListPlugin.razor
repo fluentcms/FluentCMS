@@ -12,19 +12,19 @@
             {
                 @if (breadcrumbItem.Id == FolderId)
                 {
-                    <BreadcrumbItem data-enhance-nav="disabled">
+                    <BreadcrumbItem>
                         @breadcrumbItem.Name
                     </BreadcrumbItem>
                 }
                 else if(breadcrumbItem.Id == RootFolder?.Id)
                 {
-                    <BreadcrumbItem data-enhance-nav="disabled" Href="@GetUrl("Files List", new { FolderId = breadcrumbItem.Id })" IconName="IconName.Folder">
+                    <BreadcrumbItem @onclick="() => NavigateFolder(breadcrumbItem.Id)" IconName="IconName.Folder">
                         @breadcrumbItem.Name
                     </BreadcrumbItem>
                 }
                 else
                 {
-                    <BreadcrumbItem data-enhance-nav="disabled" Href="@GetUrl("Files List", new { FolderId = breadcrumbItem.Id })">
+                    <BreadcrumbItem @onclick="() => NavigateFolder(breadcrumbItem.Id)">
                         @breadcrumbItem.Name
                     </BreadcrumbItem>
                 }
@@ -32,10 +32,11 @@
         </Breadcrumb>
     </SubtitleFragment>
     <ChildContent>
-        <FilesTable @ref="FilesTable" @bind-FolderId="@FolderId" @bind-Folder="@Folder" @bind-ParentFolders="BreadcrumbItems">
+        <FilesTable @key="@FolderId" @ref="FilesTable" @bind-FolderId="@FolderId" @bind-RootFolder="RootFolder" @bind-Folder="@Folder" @bind-ParentFolders="BreadcrumbItems">
             <ActionsFragment>
-                <ActionButton Visible="!context.IsFolder" IconName="IconName.Download" Label="Download" download="@context.Name" Href="@GetUrl("Files List", new { folderId = context.Id })" Color="Color.Primary" target="_blank" />
-                <ActionButtonOpen Visible="context.IsFolder" Href="@GetUrl("Files List", new { folderId = context.Id })" />
+                <ActionButton Visible="!context.IsFolder" IconName="IconName.Download"
+Label="Download" download="@context.Name" Href="@GetDownloadUrl(context)" Color="Color.Primary" target="_blank" />
+                <ActionButtonOpen Visible="context.IsFolder" @onclick="() => NavigateFolder(context.Id)" />
 
                 @if (!context.IsParentFolder)
                 {

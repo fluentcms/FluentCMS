@@ -3,16 +3,20 @@ namespace FluentCMS.Web.Plugins;
 public partial class FileSelectorModal
 {
     [Parameter]
-    public EventCallback<Guid> OnSubmit { get; set; }
+    public EventCallback<string> OnSubmit { get; set; }
 
     [Parameter]
     public EventCallback OnCancel { get; set; }
 
     [Parameter]
     public Guid? FolderId { get; set; }
-    
+
     [Parameter]
     public Guid? Model { get; set; } = default!;
+
+    private List<FolderDetailResponse> ParentFolders { get; set; } = [];
+
+    private FolderDetailResponse? RootFolder { get; set; }
 
     private async Task NavigateFolder(Guid id)
     {
@@ -21,10 +25,9 @@ public partial class FileSelectorModal
         await Task.CompletedTask;
     }
 
-    private async Task DownloadFile(Guid id)
+    private string GetDownloadUrl(AssetDetail file)
     {
-        // TODO: download file
-        await Task.CompletedTask;
+        return string.Join("/", ParentFolders.Select(x => x.Name)) + "/" + file.Name;
     }
 
 
@@ -33,7 +36,7 @@ public partial class FileSelectorModal
         if (item.IsFolder) return;
 
         Model = item.Id;
-        await OnSubmit.InvokeAsync(item.Id);
+        await OnSubmit.InvokeAsync(GetDownloadUrl(item));
     }
 
     private async Task HandleCancel()

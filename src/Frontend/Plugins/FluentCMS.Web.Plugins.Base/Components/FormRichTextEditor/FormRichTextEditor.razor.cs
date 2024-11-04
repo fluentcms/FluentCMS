@@ -121,15 +121,16 @@ public partial class FormRichTextEditor : IAsyncDisposable
 
     }
 
-    private async Task OnChooseFile(AssetDetail file)
+    private async Task OnChooseFile(string url)
     {
-        Text = file.Name;
-        Href = $"/API/File/Download/{file.Id}";
+        // Text = file.Name;
+        Text = url.Split("/").Last();
+        Href = url;
 
         LinkModalOpen = false;
 
         if (Module != null)
-            await Module.InvokeVoidAsync("setLink", DotNetRef, Element, new { Href = Href, Text = Text, Mode = "File" });
+            await Module.InvokeVoidAsync("setLink", DotNetRef, Element, new { Href, Text, Mode = "File" });
 
     }
 
@@ -269,11 +270,11 @@ public partial class FormRichTextEditor : IAsyncDisposable
         StateHasChanged();
     }
 
-    public async Task OnChooseImage(Guid fileId)
+    public async Task OnChooseImage(string url)
     {
         ImageModalOpen = false;
 
-        ImageUrl = "/API/File/Download/" + fileId;
+        ImageUrl = url;
         ImageAlt = "(TODO) Image ALT";
 
         if (Module != null)

@@ -14,6 +14,16 @@ public partial class FolderSelectorModal
     [Parameter]
     public Guid? Model { get; set; } = default!;
 
+    private List<FolderDetailResponse> ParentFolders { get; set; } = [];
+    private FolderDetailResponse RootFolder { get; set; }
+
+    private async Task NavigateFolder(Guid folderId)
+    {
+        Model = folderId;
+        StateHasChanged();
+        await Task.CompletedTask;
+    }
+
     private async Task OnChooseFolder()
     {
         if (Model is null) return;
