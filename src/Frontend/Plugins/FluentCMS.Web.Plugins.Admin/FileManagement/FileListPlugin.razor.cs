@@ -22,10 +22,12 @@ public partial class FileListPlugin
 
     private string SelectedFileExtension { get; set; } = string.Empty;
 
+    private List<FolderDetailResponse> BreadcrumbItems { get; set; } = [];
+
     private async Task DownloadFile(Guid id)
     {
         await Task.CompletedTask;
-        // 
+        //
     }
 
     #region Initialize & Lifecycle

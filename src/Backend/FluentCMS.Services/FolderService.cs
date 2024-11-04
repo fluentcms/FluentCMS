@@ -9,6 +9,7 @@ public interface IFolderService : IAutoRegisterService
     Task<IEnumerable<Folder>> GetAll(Guid siteId, CancellationToken cancellationToken = default);
     Task<Folder> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<Folder> GetByPath(string folderPath, CancellationToken cancellationToken = default);
+    Task<List<Folder>> GetParentFolders(Guid folderId, CancellationToken cancellationToken = default);
     Task<Folder> Rename(Guid folderId, string name, CancellationToken cancellationToken = default);
     Task<Folder> Move(Guid folderId, Guid parentFolderId, CancellationToken cancellationToken = default);
     Task<Folder> Delete(Guid id, CancellationToken cancellationToken = default);
@@ -71,6 +72,27 @@ public partial class FolderService(IFolderRepository folderRepository, IFileRepo
             throw new AppException(ExceptionCodes.FolderNotFound);
 
         return folder;
+    }
+
+    public async Task<List<Folder>> GetParentFolders(Guid folderId, CancellationToken cancellationToken = default)
+    {
+        var folders = new List<Folder>();
+        var currentFolder = await folderRepository.GetById(folderId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FolderNotFound);
+            
+        folders.Add(currentFolder);
+
+        while (currentFolder != null && currentFolder.ParentId != null)
+        {
+            currentFolder = await folderRepository.GetById(currentFolder.ParentId.Value, cancellationToken) ??
+                throw new AppException(ExceptionCodes.FolderNotFound);
+            if (currentFolder != null)
+                folders.Add(currentFolder);
+        }
+
+        folders.Reverse();
+
+        return folders;
     }
 
     public async Task<Folder> Delete(Guid id, CancellationToken cancellationToken = default)

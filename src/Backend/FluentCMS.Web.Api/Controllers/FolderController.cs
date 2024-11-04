@@ -67,6 +67,16 @@ public class FolderController(IFolderService folderService, IFileService fileSer
         return Ok(folderDetailResponse);
     }
 
+    [HttpGet("{id}")]
+    [Policy(AREA, READ)]
+    public async Task<IApiPagingResult<FolderDetailResponse>> GetParentFolders([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    {
+        var folders = await folderService.GetParentFolders(id, cancellationToken);
+
+        var response = mapper.Map<List<FolderDetailResponse>>(folders);
+        return OkPaged(response);
+    }
+
     [HttpDelete("{id}")]
     [Policy(AREA, DELETE)]
     public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)

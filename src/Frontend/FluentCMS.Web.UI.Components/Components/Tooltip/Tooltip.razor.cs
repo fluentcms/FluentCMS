@@ -27,6 +27,12 @@ public partial class Tooltip : IAsyncDisposable
         DotNetRef?.Dispose();
     }
 
+    protected override async Task OnInitializedAsync()
+    {
+        DotNetRef = DotNetObjectReference.Create(this);
+        await Task.CompletedTask;
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
@@ -36,7 +42,6 @@ public partial class Tooltip : IAsyncDisposable
             throw new InvalidOperationException("JS runtime has not been initialized.");
         }
 
-        DotNetRef = DotNetObjectReference.Create(this);
         Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Tooltip/Tooltip.razor.js");
 
         // TODO: handle run time changing properties

@@ -3,12 +3,36 @@
 
 <PluginBody Title="@($"File Management ({Folder?.Name ?? "..."})")">
     <ActionsFragment>
-        <ActionButtonBack Visible="Folder?.ParentId != null" Href="@GetUrl("Files List", new { folderId = Folder?.ParentId })" />
         <ActionButton IconName="IconName.Plus" @onclick="() => FolderCreateModalOpen = true" Label="Add Folder" />
         <ActionButtonCreate @onclick="() => FileUploadModalOpen = true" Label="Upload File" />
     </ActionsFragment>
+    <SubtitleFragment>
+        <Breadcrumb style="height: 20px;">
+            @foreach (var breadcrumbItem in BreadcrumbItems)
+            {
+                @if (breadcrumbItem.Id == FolderId)
+                {
+                    <BreadcrumbItem data-enhance-nav="disabled">
+                        @breadcrumbItem.Name
+                    </BreadcrumbItem>
+                }
+                else if(breadcrumbItem.Id == RootFolder?.Id)
+                {
+                    <BreadcrumbItem data-enhance-nav="disabled" Href="@GetUrl("Files List", new { FolderId = breadcrumbItem.Id })" IconName="IconName.Folder">
+                        @breadcrumbItem.Name
+                    </BreadcrumbItem>
+                }
+                else
+                {
+                    <BreadcrumbItem data-enhance-nav="disabled" Href="@GetUrl("Files List", new { FolderId = breadcrumbItem.Id })">
+                        @breadcrumbItem.Name
+                    </BreadcrumbItem>
+                }
+            }
+        </Breadcrumb>
+    </SubtitleFragment>
     <ChildContent>
-        <FilesTable @ref="FilesTable" @bind-FolderId="@FolderId" @bind-Folder="@Folder">
+        <FilesTable @ref="FilesTable" @bind-FolderId="@FolderId" @bind-Folder="@Folder" @bind-ParentFolders="BreadcrumbItems">
             <ActionsFragment>
                 <ActionButton Visible="!context.IsFolder" IconName="IconName.Download" Label="Download" download="@context.Name" Href="@GetUrl("Files List", new { folderId = context.Id })" Color="Color.Primary" target="_blank" />
                 <ActionButtonOpen Visible="context.IsFolder" Href="@GetUrl("Files List", new { folderId = context.Id })" />

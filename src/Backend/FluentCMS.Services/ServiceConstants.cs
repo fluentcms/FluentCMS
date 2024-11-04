@@ -3,7 +3,7 @@
 public static class ServiceConstants
 {
     public const string SetupTemplatesFolder = "Templates";
-    public const string SetupFilesFolder = "files";
+    public const string SetupFilesFolder = "Files";
     public const string SetupManifestFile = "manifest.json";
     public const string SetupSiteTemplateFile = "site.json";
     public const string DefaultTemplateFolder = "Templates/Default";

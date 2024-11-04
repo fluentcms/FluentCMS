@@ -27,7 +27,13 @@ public partial class FilesTable
     public EventCallback<Guid?> FolderIdChanged { get; set; }
 
     [Parameter]
+    public EventCallback<List<FolderDetailResponse>> ParentFoldersChanged { get; set; }
+
+    [Parameter]
     public EventCallback<FolderDetailResponse?> FolderChanged { get; set; }
+
+    [Parameter]
+    public List<FolderDetailResponse> ParentFolders { get; set; } = [];
 
     [Parameter]
     public Guid? FolderId { get; set; } = default!;
@@ -130,6 +136,11 @@ public partial class FilesTable
             }
         }
         await Task.CompletedTask;
+
+        var parentFoldersResponse = await ApiClient.Folder.GetParentFoldersAsync(FolderId.Value);
+        ParentFolders = parentFoldersResponse.Data?.ToList() ?? [];
+        await ParentFoldersChanged.InvokeAsync(ParentFolders);
+
         StateHasChanged();
     }
 
