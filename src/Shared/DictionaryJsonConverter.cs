@@ -118,6 +118,9 @@ public class DictionaryJsonConverter : JsonConverter<Dictionary<string, object?>
             case double doubleValue:
                 writer.WriteNumberValue(doubleValue);
                 break;
+            case decimal decimalValue:
+                writer.WriteNumberValue(decimalValue);
+                break;
             case int intValue:
                 writer.WriteNumberValue(intValue);
                 break;
