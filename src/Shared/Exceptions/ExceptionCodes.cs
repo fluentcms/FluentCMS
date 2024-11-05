@@ -97,6 +97,10 @@ public static class ExceptionCodes
     public const string FolderInvalidName = "Folder.InvalidName";
     public const string FolderAlreadyExists = "Folder.AlreadyExists";
     public const string FolderParentNotFound = "Folder.ParentNotFound";
+    public const string FolderCannotRenameRootFolder = "Folder.CannotRenameRootFolder";
+    public const string FolderCannotMoveRootFolder = "Folder.CannotMoveRootFolder";
+    public const string FolderCannotMoveToItself = "Folder.CannotMoveToItself";
+    public const string FolderCannotMoveToChild = "Folder.CannotMoveToChild";
     public const string FolderNotFound = "Folder.NotFound";
     public const string FolderUnableToUpdate = "Folder.UnableToUpdate";
     public const string FolderUnableToDelete = "Folder.UnableToDelete";
