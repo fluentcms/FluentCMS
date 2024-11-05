@@ -123,7 +123,6 @@ public partial class FormRichTextEditor : IAsyncDisposable
 
     private async Task OnChooseFile(string url)
     {
-        // Text = file.Name;
         Text = url.Split("/").Last();
         Href = url;
 
@@ -220,16 +219,16 @@ public partial class FormRichTextEditor : IAsyncDisposable
 
         if (folderId is null || folderId == Guid.Empty)
         {
-           folderDetail = folderDetailResponse?.Data;
+            folderDetail = folderDetailResponse?.Data;
         }
         else
         {
-           folderDetail = FindFolderById(folderDetailResponse?.Data?.Folders ?? [], folderId.Value);
+            folderDetail = FindFolderById(folderDetailResponse?.Data?.Folders ?? [], folderId.Value);
         }
 
         if (folderDetail != null)
         {
-           Assets = [];
+            Assets = [];
 
             if (folderId != null && folderId != Guid.Empty)
             {
@@ -249,7 +248,7 @@ public partial class FormRichTextEditor : IAsyncDisposable
                     Name = item.Name ?? string.Empty,
                     IsFolder = true,
                     Id = item.Id,
-                    ParentId = item.Id,
+                    ParentId = item.ParentId,
                     Size = item.Size,
                 });
             }
@@ -273,13 +272,10 @@ public partial class FormRichTextEditor : IAsyncDisposable
     public async Task OnChooseImage(string url)
     {
         ImageModalOpen = false;
-
-        ImageUrl = url;
         ImageAlt = "(TODO) Image ALT";
 
         if (Module != null)
-            await Module.InvokeVoidAsync("setImage", DotNetRef, Element, new { Alt = ImageAlt, Url = ImageUrl });
-
+            await Module.InvokeVoidAsync("setImage", DotNetRef, Element, new { Alt = ImageAlt, Url = url });
     }
 
     public async Task OnUpload()

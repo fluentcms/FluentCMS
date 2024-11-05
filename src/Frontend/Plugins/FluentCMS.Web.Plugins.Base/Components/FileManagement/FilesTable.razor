@@ -3,7 +3,7 @@
 <DataTable @key="@Items" Items="Items" OnRowClick="(AssetDetail item) => HandleRowClick(item)">
     <DataTableItem Label="Name">
         <Stack>
-            @((MarkupString)GetFileIcon(context))
+            <Icon Name="@GetFileIcon(context)" />
             <span>@context.Name</span>
         </Stack>
     </DataTableItem>

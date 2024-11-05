@@ -50,45 +50,6 @@
                         </TabPanel>
                         <TabPanel Name="File">
                             <FileSelectorModal OnSubmit="OnChooseFile" OnCancel="OnLinkModalClose" />
-                            @* <DataTable Items="Assets">
-                                <DataTableItem Label="Name">
-                                    @if (context.IsFolder)
-                                    {
-                                        <Button Link @onclick="() => OnNavigateFolder(context.Id)">
-                                            @context.Name
-                                        </Button>
-                                    }
-                                    else
-                                    {
-                                        @context.Name
-                                    }
-                                </DataTableItem>
-                                <DataTableItem Label="Type">
-                                    <Badge Color="Color.Info" Visible="@context.IsFolder">
-                                        Folder
-                                    </Badge>
-                                    <Badge Color="Color.Success" Visible="!context.IsFolder">
-                                        @context.ContentType
-                                    </Badge>
-                                </DataTableItem>
-                                <DataTableItem Label="Size">
-                                    @context.Size
-                                </DataTableItem>
-                                <DataTableItem Label="">
-                                    <Stack Justify="StackJustify.End">
-                                        <Button Visible="!context.IsFolder" Size="ButtonSize.Small" @onclick="() => OnChooseFile(context)" Color="Color.Primary">
-                                            Choose
-                                        </Button>
-                                        <Button Visible="!context.IsFolder" Size="ButtonSize.Small" Outline Href="@($"/Api/File/Download/{context.Id}")" Color="Color.Primary">
-                                            Download
-                                        </Button>
-                                        <Button Visible="context.IsFolder" Size="ButtonSize.Small" @onclick="() => OnNavigateFolder(context.Id)" Color="Color.Primary">
-                                            <Icon Name="IconName.Eye" />
-                                            Open
-                                        </Button>
-                                    </Stack>
-                                </DataTableItem>
-                            </DataTable> *@
                             <Spacer />
                             <Stack>
                                 <Button @onclick="OnLinkModalClose">Cancel</Button>

@@ -49,11 +49,6 @@ public partial class FilesTable
 
     private List<AssetDetail> Items { get; set; } = [];
 
-    private static string ParentFolderIcon => "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M11 17h2v-4.2l1.6 1.6L16 13l-4-4l-4 4l1.4 1.4l1.6-1.6zm-7 3q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h6l2 2h8q.825 0 1.413.588T22 8v10q0 .825-.587 1.413T20 20zm0-2h16V8h-8.825l-2-2H4zm0 0V6z\"/></svg>";
-    private static string FolderIcon => "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M4 20q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h6l2 2h8q.825 0 1.413.588T22 8v10q0 .825-.587 1.413T20 20zm0-2h16V8h-8.825l-2-2H4zm0 0V6z\"/></svg>";
-    private static string FileIcon => "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm0 2h7v5h5v11H6zm2 8v2h8v-2zm0 4v2h5v-2z\"/></svg>";
-    private static string ImageIcon => "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"m14 2l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm4 18V9h-5V4H6v16zm-1-7v6H7l5-5l2 2m-4-5.5A1.5 1.5 0 0 1 8.5 12A1.5 1.5 0 0 1 7 10.5A1.5 1.5 0 0 1 8.5 9a1.5 1.5 0 0 1 1.5 1.5\"/></svg>";
-
     private async Task HandleRowClick(AssetDetail item)
     {
         if(item.Id == DisabledFolder)
@@ -65,18 +60,18 @@ public partial class FilesTable
         await OnRowClick.InvokeAsync(item);
     }
 
-    private string GetFileIcon(AssetDetail item)
+    private IconName GetFileIcon(AssetDetail item)
     {
         if (item.IsParentFolder)
-            return ParentFolderIcon;
+            return IconName.ParentFolder;
 
         if (item.IsFolder)
-            return FolderIcon;
+            return IconName.Folder;
 
         if (item.ContentType?.StartsWith("image/") ?? false)
-            return ImageIcon;
+            return IconName.Image;
 
-        return FileIcon;
+        return IconName.File;
     }
 
     private static string HumanizeFileSize(long? size)
