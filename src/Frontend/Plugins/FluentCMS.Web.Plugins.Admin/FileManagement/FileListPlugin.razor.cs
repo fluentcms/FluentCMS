@@ -2,26 +2,12 @@ namespace FluentCMS.Web.Plugins.Admin.FileManagement;
 
 public partial class FileListPlugin
 {
-    private List<AssetDetail> Items { get; set; } = [];
-
     [SupplyParameterFromQuery(Name = "folderId")]
     private Guid? FolderId { get; set; }
+
     private FolderDetailResponse? Folder { get; set; }
-
     private FilesTable? FilesTable { get; set; }
-
-    private bool FolderCreateModalOpen { get; set; } = false;
-    private bool FolderRenameModalOpen { get; set; } = false;
-    private bool FileUploadModalOpen { get; set; } = false;
-    private bool FileRenameModalOpen { get; set; } = false;
-
-    private FolderRenameRequest? FolderRenameModel { get; set; }
-    private FileRenameRequest? FileRenameModel { get; set; }
     private FolderDetailResponse? RootFolder { get; set; }
-    private FileUploadConfig? FileUploadConfig { get; set; }
-
-    private string SelectedFileExtension { get; set; } = string.Empty;
-
     private List<FolderDetailResponse> BreadcrumbItems { get; set; } = [];
 
     private string GetDownloadUrl(AssetDetail file)
@@ -29,35 +15,32 @@ public partial class FileListPlugin
         return string.Join("/", BreadcrumbItems.Select(x => x.Name)) + "/" + file.Name;
     }
 
-    #region Initialize & Lifecycle
-
     private async Task NavigateFolder(Guid folderId)
     {
         FolderId = folderId;
         StateHasChanged();
-    }    
-
-    protected override async Task OnInitializedAsync()
-    {
-        FileUploadConfig = new FileUploadConfig
-        {
-            AllowedExtensions = "*",
-            MaxCount = 5,
-            MaxSize = 1024 * 1024 * 5 // 5 mb
-        };
-
-        // TODO: Read file upload config from global settings;
-        // var settingsResponse = await ApiClient.GlobalSettings.GetAsync();
-        // if (settingsResponse?.Data != null)
-        // {
-        //     FileUploadConfig = settingsResponse.Data.FileUpload;
-        // }
         await Task.CompletedTask;
     }
 
-    #endregion
+    protected override async Task OnInitializedAsync()
+    {
+        var settingsResponse = await ApiClient.GlobalSettings.GetAsync();
+        if (settingsResponse?.Data != null)
+        {
+            FileUploadConfig = settingsResponse.Data.FileUpload ?? new FileUploadConfig
+            {
+                AllowedExtensions = "*",
+                MaxCount = 5,
+                MaxSize = 1024 * 1024 * 5 // 5 mb
+            };
+        }
+        await Task.CompletedTask;
+    }
 
     #region Upload File
+
+    private FileUploadConfig? FileUploadConfig { get; set; }
+    private bool FileUploadModalOpen { get; set; } = false;
 
     private async Task OnUpload(List<FileParameter> files)
     {
@@ -75,6 +58,8 @@ public partial class FileListPlugin
     #endregion
 
     #region Create folder
+
+    private bool FolderCreateModalOpen { get; set; } = false;
 
     private async Task OnCreateFolder(FolderCreateRequest request)
     {
@@ -95,6 +80,12 @@ public partial class FileListPlugin
     #endregion
 
     #region Rename File & Folder
+
+    private bool FileRenameModalOpen { get; set; } = false;
+    private bool FolderRenameModalOpen { get; set; } = false;
+    private FileRenameRequest? FileRenameModel { get; set; }
+    private FolderRenameRequest? FolderRenameModel { get; set; }
+    private string SelectedFileExtension { get; set; } = string.Empty;
 
     private async Task OpenRenameModal(AssetDetail detail)
     {
@@ -157,6 +148,7 @@ public partial class FileListPlugin
     #endregion
 
     #region Move File & Folder
+
     private bool FolderMoveModalOpen { get; set; } = false;
     private bool FileMoveModalOpen { get; set; } = false;
     private Guid? FolderMoveModel { get; set; }
@@ -187,7 +179,7 @@ public partial class FileListPlugin
             ParentId = parentId,
         });
         FolderMoveModalOpen = false;
-        await FilesTable?.Load();
+        FilesTable?.Load();
     }
 
     private async Task OnFileMove(Guid parentId)

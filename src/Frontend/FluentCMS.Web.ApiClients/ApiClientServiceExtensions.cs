@@ -92,6 +92,6 @@ public static class ApiClientServiceExtensions
         catch (Exception)
         {
             return default;
-        }        
+        }
     }
 }
