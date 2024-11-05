@@ -8,7 +8,7 @@ public interface IFolderService : IAutoRegisterService
     Task<Folder> CreateRoot(Guid siteId, CancellationToken cancellationToken = default);
     Task<IEnumerable<Folder>> GetAll(Guid siteId, CancellationToken cancellationToken = default);
     Task<Folder> GetById(Guid id, CancellationToken cancellationToken = default);
-    Task<Folder> GetByPath(string folderPath, CancellationToken cancellationToken = default);
+    Task<Folder> GetByPath(Guid siteId, string folderPath, CancellationToken cancellationToken = default);
     Task<List<Folder>> GetParentFolders(Guid folderId, CancellationToken cancellationToken = default);
     Task<Folder> Rename(Guid folderId, string name, CancellationToken cancellationToken = default);
     Task<Folder> Move(Guid folderId, Guid parentFolderId, CancellationToken cancellationToken = default);
@@ -24,7 +24,7 @@ public partial class FolderService(IFolderRepository folderRepository, IFileRepo
         if (!IsValidFolderName(normalizedName))
             throw new AppException(ExceptionCodes.FolderInvalidName);
 
-        if (await folderRepository.GetByName(null, normalizedName, cancellationToken) != null)
+        if (await folderRepository.GetByName(siteId, null, normalizedName, cancellationToken) != null)
             throw new AppException(ExceptionCodes.FolderAlreadyExists);
 
         var rootFolder = new Folder
@@ -53,7 +53,7 @@ public partial class FolderService(IFolderRepository folderRepository, IFileRepo
                 throw new AppException(ExceptionCodes.FolderParentNotFound);
 
         // check if folder with the same name already exists
-        var existingFolder = await folderRepository.GetByName(folder.ParentId, folder.NormalizedName, cancellationToken);
+        var existingFolder = await folderRepository.GetByName(folder.SiteId, folder.ParentId, folder.NormalizedName, cancellationToken);
         if (existingFolder != null)
             throw new AppException(ExceptionCodes.FolderAlreadyExists);
 
@@ -79,7 +79,7 @@ public partial class FolderService(IFolderRepository folderRepository, IFileRepo
         var folders = new List<Folder>();
         var currentFolder = await folderRepository.GetById(folderId, cancellationToken) ??
             throw new AppException(ExceptionCodes.FolderNotFound);
-            
+
         folders.Add(currentFolder);
 
         while (currentFolder != null && currentFolder.ParentId != null)
@@ -106,28 +106,28 @@ public partial class FolderService(IFolderRepository folderRepository, IFileRepo
         return await DeleteSubFolders(id, allFolders.ToList(), allFiles.ToList(), cancellationToken);
     }
 
-    public Task<Folder> GetByPath(string folderPath, CancellationToken cancellationToken = default)
+    public Task<Folder> GetByPath(Guid siteId, string folderPath, CancellationToken cancellationToken = default)
     {
         folderPath = GetNormalizedFolderName(folderPath);
 
         // split folder path
         string[] folderNames = folderPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
 
-        return FindFolder(null, folderNames, 0, cancellationToken);
+        return FindFolder(siteId, null, folderNames, 0, cancellationToken);
     }
 
     // find folder recursively by parent folder
-    private async Task<Folder> FindFolder(Guid? parentId, string[] folderNames, int index, CancellationToken cancellationToken)
+    private async Task<Folder> FindFolder(Guid siteId, Guid? parentId, string[] folderNames, int index, CancellationToken cancellationToken)
     {
         if (index == folderNames.Length - 1)
         {
-            return await folderRepository.GetByName(parentId, folderNames[index], cancellationToken) ??
+            return await folderRepository.GetByName(siteId, parentId, folderNames[index], cancellationToken) ??
                 throw new AppException(ExceptionCodes.FolderNotFound);
         }
-        var folder = await folderRepository.GetByName(parentId, folderNames[index], cancellationToken) ??
+        var folder = await folderRepository.GetByName(siteId, parentId, folderNames[index], cancellationToken) ??
             throw new AppException(ExceptionCodes.FolderNotFound);
 
-        return await FindFolder(folder.Id, folderNames, index + 1, cancellationToken);
+        return await FindFolder(siteId, folder.Id, folderNames, index + 1, cancellationToken);
     }
 
     public async Task<Folder> Rename(Guid folderId, string name, CancellationToken cancellationToken = default)
@@ -137,13 +137,18 @@ public partial class FolderService(IFolderRepository folderRepository, IFileRepo
         if (!IsValidFolderName(normalizedName))
             throw new AppException(ExceptionCodes.FolderInvalidName);
 
-        // check if folder with the same name already exists
-        // TODO: These lines has problem.
-        // _ = await folderRepository.GetByName(folderId, normalizedName, cancellationToken) ??
-        //     throw new AppException(ExceptionCodes.FolderNotFound);
-
         var existingFolder = await folderRepository.GetById(folderId, cancellationToken) ??
             throw new AppException(ExceptionCodes.FolderNotFound);
+
+        // check if folder with the same name already exists
+        var existingFolderSameName = await folderRepository.GetByName(existingFolder.SiteId, existingFolder.ParentId, normalizedName, cancellationToken);
+
+        // check if the folder is not root folder
+        if (existingFolder.ParentId == null)
+            throw new AppException(ExceptionCodes.FolderCannotRenameRootFolder);
+
+        if (existingFolderSameName != null && existingFolderSameName.Id != folderId)
+            throw new AppException(ExceptionCodes.FolderAlreadyExists);
 
         existingFolder.Name = name;
         existingFolder.NormalizedName = normalizedName;
@@ -154,10 +159,29 @@ public partial class FolderService(IFolderRepository folderRepository, IFileRepo
 
     public async Task<Folder> Move(Guid folderId, Guid parentFolderId, CancellationToken cancellationToken = default)
     {
-        _ = await folderRepository.GetById(parentFolderId, cancellationToken) ??
+        // check if folder is not moving to itself
+        if (folderId == parentFolderId)
+            throw new AppException(ExceptionCodes.FolderCannotMoveToItself);
+
+        // check if folder exists
+        var existingFolder = await folderRepository.GetById(folderId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FolderNotFound);
+
+        // check if the folder is not root folder
+        if (existingFolder.ParentId == null)
+            throw new AppException(ExceptionCodes.FolderCannotMoveRootFolder);
+
+        // check if parent folder exists
+        var parentFolder = await folderRepository.GetById(parentFolderId, cancellationToken) ??
                 throw new AppException(ExceptionCodes.FolderParentNotFound);
 
-        var existingFolder = await folderRepository.GetById(folderId, cancellationToken) ??
+        // check if folder is not moving to its child
+        var parentFolders = await GetParentFolders(parentFolderId, cancellationToken);
+        if (parentFolders.Any(x => x.Id == folderId))
+            throw new AppException(ExceptionCodes.FolderCannotMoveToChild);
+
+        // check parent folder and folder is in the same site
+        if (parentFolder.SiteId != existingFolder.SiteId)
             throw new AppException(ExceptionCodes.FolderNotFound);
 
         existingFolder.ParentId = parentFolderId;

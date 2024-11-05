@@ -1,6 +1,7 @@
 using FluentCMS.Web.Api.Middleware;
 using FluentCMS.Web.UI;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,10 +45,7 @@ app.UseDeveloperExceptionPage();
 
 app.UseHttpsRedirection();
 
-app.UseWhen(context => context.Request.Path.StartsWithSegments("/files"), app =>
-{
-    app.UseMiddleware<RemoteFileProviderMiddleware>();
-});
+app.UseRemoteStaticFileServices();
 
 app.UseStaticFiles();
 

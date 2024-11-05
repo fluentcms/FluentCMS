@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class FileController(IFileService fileService, IFolderService folderService, IMapper mapper) : BaseGlobalController
+public class FileController(IFileService fileService, IFolderService folderService, ISiteService siteService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "Asset Management";
     public const string READ = "Read";
@@ -66,6 +66,10 @@ public class FileController(IFileService fileService, IFolderService folderServi
         // extract folder path and file name from the url 
         var uri = new Uri(url);
 
+        // Get site by domain name
+        var domain = uri.Authority;
+        var site = await siteService.GetByUrl(domain, cancellationToken);
+
         // Get the full path from the URL (without the scheme and domain)
         string fullPath = uri.AbsolutePath;
 
@@ -76,7 +80,7 @@ public class FileController(IFileService fileService, IFolderService folderServi
         var folderPath = fullPath[..fullPath.LastIndexOf('/')];
 
         // find folders by url
-        var folder = await folderService.GetByPath(folderPath, cancellationToken);
+        var folder = await folderService.GetByPath(site.Id, folderPath, cancellationToken);
 
         // find file by name and folder id
         var file = await fileService.GetByName(folder.Id, fileName, cancellationToken);
