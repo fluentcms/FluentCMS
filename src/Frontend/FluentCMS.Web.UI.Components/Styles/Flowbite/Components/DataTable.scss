@@ -34,7 +34,7 @@ $data-table: $prefix + "data-table";
     &-hoverable-true {
         .#{$data-table}-body {
             .#{$data-table}-row {
-                @apply hover:bg-gray-50 dark:hover:bg-gray-600;
+                @apply hover:bg-gray-50 cursor-pointer dark:hover:bg-gray-600;
             }
         }
     }

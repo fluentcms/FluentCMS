@@ -50,6 +50,16 @@ public static class ServiceExtensions
         return app;
     }
 
+    public static IApplicationBuilder UseRemoteStaticFileServices(this WebApplication app)
+    {
+        app.UseWhen(context => context.Request.Path.StartsWithSegments($"/files"), app =>
+        {
+            app.UseMiddleware<RemoteFileProviderMiddleware>();
+        });
+
+        return app;
+    }
+
     private static IServiceCollection AddViewState(this IServiceCollection services)
     {
         services.AddScoped(sp =>

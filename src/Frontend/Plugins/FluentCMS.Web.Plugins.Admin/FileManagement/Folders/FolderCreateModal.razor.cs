@@ -13,6 +13,8 @@ public partial class FolderCreateModal
 
     public FolderCreateRequest Model { get; set; } = new();
 
+    private List<string> Errors { get; set; } = [];
+
     protected override async Task OnInitializedAsync()
     {
         await Task.CompletedTask;
@@ -20,9 +22,22 @@ public partial class FolderCreateModal
 
     private async Task HandleSubmit()
     {
-        Model.FolderId = FolderId ?? Guid.Empty;
-        await OnSubmit.InvokeAsync(Model);
-        Model = new();
+        try 
+        {
+            Model.ParentId = FolderId ?? default!;
+            await OnSubmit.InvokeAsync(Model);
+            Model = new();
+        }
+        catch (ApiClientException ex)
+        {
+            Errors = ex.ApiResult?.Errors?.Select(x => $"{x.Code ?? string.Empty}: {x.Description ?? string.Empty}").ToList() ?? [ex.Message];
+            StateHasChanged();
+        }
+        catch(Exception ex)
+        {
+            Errors = [ex.Message];
+            StateHasChanged();
+        }
     }
 
     private async Task HandleCancel()
