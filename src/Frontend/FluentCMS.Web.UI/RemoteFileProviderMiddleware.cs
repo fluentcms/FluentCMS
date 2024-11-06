@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Web.UI;
@@ -21,8 +20,9 @@ public class RemoteFileProviderMiddleware(RequestDelegate next)
         {
             context.Response.ContentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
 
+            // TODO: think of a way for caching to be configurable
             // Set Cache-Control header to cache file indefinitely, assuming content will not change
-            context.Response.Headers["Cache-Control"] = "public, max-age=31536000, immutable";
+            //context.Response.Headers["Cache-Control"] = "public, max-age=31536000, immutable";
 
             await using var responseStream = await response.Content.ReadAsStreamAsync(context.RequestAborted);
 
