@@ -2,6 +2,7 @@
 
 public class FileDetailResponse : BaseAuditableResponse
 {
+    public Guid SiteId { get; set; }
     public Guid FolderId { get; set; }
     public string Name { get; set; } = default!;
     public long Size { get; set; }

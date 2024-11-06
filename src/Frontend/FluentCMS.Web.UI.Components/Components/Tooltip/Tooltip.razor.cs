@@ -19,12 +19,26 @@ public partial class Tooltip : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (Module is not null)
-        {
-            await Module.InvokeVoidAsync("dispose", DotNetObjectReference.Create(this), Element);
-            await Module.DisposeAsync();
+        try {
+
+            if (Module is not null)
+            {
+                await Module.InvokeVoidAsync("dispose", DotNetRef, Element);
+                await Module.DisposeAsync();
+            }
+            DotNetRef?.Dispose();
         }
-        DotNetRef?.Dispose();
+        catch(Exception ex)
+        {
+            // 
+        }
+
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        DotNetRef = DotNetObjectReference.Create(this);
+        await Task.CompletedTask;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -36,7 +50,6 @@ public partial class Tooltip : IAsyncDisposable
             throw new InvalidOperationException("JS runtime has not been initialized.");
         }
 
-        DotNetRef = DotNetObjectReference.Create(this);
         Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/FluentCMS.Web.UI.Components/Components/Tooltip/Tooltip.razor.js");
 
         // TODO: handle run time changing properties
