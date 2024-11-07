@@ -1,12 +1,12 @@
 ﻿namespace FluentCMS.Services.MessageHandlers;
 
-public class ContentTypeMessageHandler(IContentTypeService contentTypeService) : IMessageHandler<SetupTemplate>
+public class ContentTypeMessageHandler(IContentTypeService contentTypeService) : IMessageHandler<SiteTemplate>
 {
-    public async Task Handle(Message<SetupTemplate> notification, CancellationToken cancellationToken)
+    public async Task Handle(Message<SiteTemplate> notification, CancellationToken cancellationToken)
     {
         switch (notification.Action)
         {
-            case ActionNames.SetupStarted:
+            case ActionNames.SiteCreated:
                 foreach (var contentTypeTemplate in notification.Payload.ContentTypes)
                 {
                     var contentType = new ContentType

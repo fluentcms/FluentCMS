@@ -43,7 +43,6 @@ public class SetupService(IMessagePublisher messagePublisher, IGlobalSettingsRep
                throw new AppException($"Failed to read/deserialize {ServiceConstants.SetupManifestFile}");
 
         setupTemplate.PluginDefinitions = jsonSetupTemplate.PluginDefinitions;
-        setupTemplate.ContentTypes = jsonSetupTemplate.ContentTypes;
 
         setupTemplate.Site = new SiteTemplate
         {
@@ -67,7 +66,7 @@ public class SetupService(IMessagePublisher messagePublisher, IGlobalSettingsRep
         foreach (var pluginDefinition in setupTemplate.PluginDefinitions)
             pluginDefinition.Id = Guid.NewGuid();
 
-        foreach (var contentType in setupTemplate.ContentTypes)
-            contentType.Id = Guid.NewGuid();
+    //  foreach (var contentType in setupTemplate.ContentTypes)
+//           contentType.Id = Guid.NewGuid();
     }
 }

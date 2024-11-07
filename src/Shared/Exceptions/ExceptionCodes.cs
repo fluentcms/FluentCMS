@@ -66,6 +66,7 @@ public static class ExceptionCodes
     public const string ContentTypeNameCannotBeChanged = "ContentType.NameCannotBeChanged";
     public const string ContentTypeNameMustBeUnique = "ContentType.NameMustBeUnique";
     public const string ContentTypeFieldNotFound = "ContentType.FieldNotFound";
+    public const string ContentTypeSiteIdRequired = "ContentType.TypeSiteIdRequired";
     public const string ContentTypeInvalidAppId = "ContentType.InvalidAppId";
     public const string ContentTypeDuplicateSlug = "ContentType.DuplicateSlug";
 

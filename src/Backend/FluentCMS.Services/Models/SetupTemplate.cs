@@ -9,6 +9,5 @@ public class SetupTemplate
     public string Template { get; set; } = default!;
     public SiteTemplate Site { get; set; } = default!;
     public List<PluginDefinition> PluginDefinitions { get; set; } = [];
-    public List<ContentTypeTemplate> ContentTypes { get; set; } = [];
 }
 
