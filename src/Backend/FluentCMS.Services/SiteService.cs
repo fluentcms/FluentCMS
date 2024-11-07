@@ -105,7 +105,6 @@ public class SiteService(ISiteRepository siteRepository, IPluginDefinitionReposi
         var newSite = await siteRepository.Create(site, cancellationToken) ??
             throw new AppException(ExceptionCodes.SiteUnableToCreate);
 
-
         await messagePublisher.Publish(new Message<SiteTemplate>(ActionNames.SiteCreated, siteTemplate), cancellationToken);
         await messagePublisher.Publish(new Message<SiteTemplate>(ActionNames.SetupInitializePlugins, siteTemplate), cancellationToken);
 

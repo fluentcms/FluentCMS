@@ -18,10 +18,10 @@ services.AddCmsServices(configuration);
 // services.AddLiteDbRepositories("LiteDb");
 
 // Use MongoDB as database
-services.AddMongoDbRepositories("MongoDb");
+// services.AddMongoDbRepositories("MongoDb");
 
 // Enable caching for repository layer
-services.AddCachedRepositories();
+//services.AddCachedRepositories();
 
 #endregion
 

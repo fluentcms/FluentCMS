@@ -12,9 +12,6 @@ public class ContentTypeController(IMapper mapper, IContentTypeService contentTy
     [Policy(AREA, READ)]
     public async Task<IApiResult<ContentTypeDetailResponse>> GetBySlug([FromQuery] Guid siteId, [FromRoute] string slug, CancellationToken cancellationToken = default)
     {
-        if (siteId == Guid.Empty)
-            throw new AppException(ExceptionCodes.ContentTypeSiteIdRequired);
-
         var contentTypes = await contentTypeService.GetBySlug(siteId, slug, cancellationToken);
         var contentTypeResponses = mapper.Map<ContentTypeDetailResponse>(contentTypes);
         return Ok(contentTypeResponses);
