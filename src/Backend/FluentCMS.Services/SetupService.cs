@@ -65,8 +65,5 @@ public class SetupService(IMessagePublisher messagePublisher, IGlobalSettingsRep
     {
         foreach (var pluginDefinition in setupTemplate.PluginDefinitions)
             pluginDefinition.Id = Guid.NewGuid();
-
-    //  foreach (var contentType in setupTemplate.ContentTypes)
-//           contentType.Id = Guid.NewGuid();
     }
 }
