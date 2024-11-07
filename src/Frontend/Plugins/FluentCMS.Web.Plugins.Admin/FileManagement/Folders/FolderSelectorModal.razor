@@ -18,19 +18,19 @@
                 }
                 else if(breadcrumbItem.Id == RootFolder?.Id)
                 {
-                    <BreadcrumbItem @onclick="() => NavigateFolder(breadcrumbItem.Id)" IconName="IconName.Folder">
+                    <BreadcrumbItem Link @onclick="() => NavigateFolder(breadcrumbItem.Id)" IconName="IconName.Folder">
                         @breadcrumbItem.Name
                     </BreadcrumbItem>
                 }
                 else
                 {
-                    <BreadcrumbItem @onclick="() => NavigateFolder(breadcrumbItem.Id)">
+                    <BreadcrumbItem Link @onclick="() => NavigateFolder(breadcrumbItem.Id)">
                         @breadcrumbItem.Name
                     </BreadcrumbItem>
                 }
             }
         </Breadcrumb>
-        <FilesTable @key="@Model" DisabledFolder="@DisabledFolder" @bind-FolderId="@Model" @bind-RootFolder="@RootFolder" @bind-ParentFolders="ParentFolders">
+        <FilesTable @key="@Model" HideFiles DisabledFolder="@DisabledFolder" @bind-FolderId="@Model" @bind-RootFolder="@RootFolder" @bind-ParentFolders="ParentFolders">
             <ActionsFragment>
                 <ActionButtonOpen Visible="context.IsFolder && context.Id != DisabledFolder" @onclick="() => NavigateFolder(context.Id)" />
             </ActionsFragment>

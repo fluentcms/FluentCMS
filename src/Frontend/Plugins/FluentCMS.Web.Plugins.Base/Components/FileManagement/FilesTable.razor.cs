@@ -18,6 +18,9 @@ public partial class FilesTable
     public RenderFragment<AssetDetail> ActionsFragment { get; set; } = default!;
 
     [Parameter]
+    public bool HideFiles { get; set; } = false;
+
+    [Parameter]
     public EventCallback<AssetDetail> OnRowClick { get; set; } = default!;
 
     [Parameter]
@@ -121,17 +124,20 @@ public partial class FilesTable
                 });
             }
 
-            foreach (var item in folderDetail.Files ?? [])
+            if (!HideFiles)
             {
-                Items.Add(new AssetDetail
+                foreach (var item in folderDetail.Files ?? [])
                 {
-                    Name = item.Name ?? string.Empty,
-                    IsFolder = false,
-                    ParentId = item.FolderId,
-                    Id = item.Id,
-                    Size = item.Size,
-                    ContentType = item.ContentType
-                });
+                    Items.Add(new AssetDetail
+                    {
+                        Name = item.Name ?? string.Empty,
+                        IsFolder = false,
+                        ParentId = item.FolderId,
+                        Id = item.Id,
+                        Size = item.Size,
+                        ContentType = item.ContentType
+                    });
+                }
             }
         }
         await Task.CompletedTask;

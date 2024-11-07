@@ -18,13 +18,13 @@
                 }
                 else if(breadcrumbItem.Id == RootFolder?.Id)
                 {
-                    <BreadcrumbItem @onclick="() => NavigateFolder(breadcrumbItem.Id)" IconName="IconName.Folder">
+                    <BreadcrumbItem Link @onclick="() => NavigateFolder(breadcrumbItem.Id)" IconName="IconName.Folder">
                         @breadcrumbItem.Name
                     </BreadcrumbItem>
                 }
                 else
                 {
-                    <BreadcrumbItem @onclick="() => NavigateFolder(breadcrumbItem.Id)">
+                    <BreadcrumbItem Link @onclick="() => NavigateFolder(breadcrumbItem.Id)">
                         @breadcrumbItem.Name
                     </BreadcrumbItem>
                 }
