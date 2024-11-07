@@ -40,7 +40,11 @@ public class ContentController(
     {
         // TODO: Validate siteId
         var contentType = await contentTypeService.GetBySlug(siteId, contentTypeSlug, cancellationToken);
-        var content = new Content { TypeId = contentType.Id, Data = data };
+        var content = new Content { 
+            SiteId = siteId, 
+            TypeId = contentType.Id, 
+            Data = data 
+        };
         await contentService.Create(content, cancellationToken);
         var response = mapper.Map<ContentDetailResponse>(content);
         return Ok(response);
@@ -52,7 +56,12 @@ public class ContentController(
     {
         // TODO: Validate siteId
         var contentType = await contentTypeService.GetBySlug(siteId, contentTypeSlug, cancellationToken);
-        var content = new Content { Id = id, TypeId = contentType.Id, Data = data };
+        var content = new Content { 
+            Id = id, 
+            SiteId = siteId,
+            TypeId = contentType.Id, 
+            Data = data 
+        };
         await contentService.Update(content, cancellationToken);
         var response = mapper.Map<ContentDetailResponse>(content);
         return Ok(response);
