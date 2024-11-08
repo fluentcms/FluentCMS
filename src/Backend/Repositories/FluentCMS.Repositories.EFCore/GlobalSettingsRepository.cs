@@ -2,22 +2,28 @@
 
 public class GlobalSettingsRepository(FluentCmsDbContext dbContext, IApiExecutionContext apiExecutionContext) : IGlobalSettingsRepository
 {
+    protected readonly DbSet<GlobalSettings> DbSet = dbContext.Set<GlobalSettings>();
+
     public async Task<GlobalSettings?> Get(CancellationToken cancellationToken = default)
     {
-
-        return await _collection.Query().SingleOrDefaultAsync();
+        return await DbSet.FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<GlobalSettings?> Update(GlobalSettings settings, CancellationToken cancellationToken = default)
     {
-        var existing = await Get(cancellationToken);
+        var existingSettings = await Get(cancellationToken);
 
-        if (existing == null)
+        if (existingSettings == null)
             return await Create(settings, cancellationToken);
+
+        // since we have always one record on the table, the id is always the same
+        settings.Id = existingSettings.Id;
 
         SetAuditableFieldsForUpdate(settings);
 
-        await _collection.UpdateAsync(settings.Id, settings);
+        DbSet.Update(settings);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         return settings;
     }
@@ -25,7 +31,9 @@ public class GlobalSettingsRepository(FluentCmsDbContext dbContext, IApiExecutio
     private async Task<GlobalSettings?> Create(GlobalSettings settings, CancellationToken cancellationToken = default)
     {
         SetAuditableFieldsForCreate(settings);
-        await _collection.InsertAsync(settings);
+        DbSet.Add(settings);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
         return settings;
     }
 

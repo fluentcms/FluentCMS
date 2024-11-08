@@ -19,5 +19,17 @@ public class FluentCmsDbContext : DbContext
             .IsUnique();  // Ensure unique keys per Settings instance
 
         #endregion
+
+        #region GlobalSettings
+
+        // Configure SuperAdmins as a comma-separated string
+        modelBuilder.Entity<GlobalSettings>()
+            .Property(gs => gs.SuperAdmins)
+            .HasConversion(
+                v => string.Join(",", v), // Convert IEnumerable<string> to string for storage
+                v => v.Split(',', StringSplitOptions.RemoveEmptyEntries) // Convert string to IEnumerable<string>
+            );
+
+        #endregion
     }
 }
