@@ -63,6 +63,12 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
         modelBuilder.Entity<Block>()
             .HasIndex(p => p.SiteId);
 
+        modelBuilder.Entity<Content>()
+            .HasIndex(p => p.SiteId);
+
+        modelBuilder.Entity<ContentType>()
+            .HasIndex(p => p.SiteId);
+
         modelBuilder.Entity<File>()
             .HasIndex(p => p.SiteId);
 
