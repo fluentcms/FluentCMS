@@ -31,5 +31,37 @@ public class FluentCmsDbContext : DbContext
             );
 
         #endregion
+
+        #region Site Associated Entities
+
+        modelBuilder.Entity<Block>()
+            .HasIndex(p => p.SiteId);
+
+        modelBuilder.Entity<File>()
+            .HasIndex(p => p.SiteId);
+
+        modelBuilder.Entity<Folder>()
+            .HasIndex(p => p.SiteId);
+
+        modelBuilder.Entity<Layout>()
+            .HasIndex(p => p.SiteId);
+
+        modelBuilder.Entity<Page>()
+            .HasIndex(p => p.SiteId);
+
+        modelBuilder.Entity<Permission>()
+            .HasIndex(p => p.SiteId);
+
+        modelBuilder.Entity<Plugin>()
+            .HasIndex(p => p.SiteId);
+
+        modelBuilder.Entity<Role>()
+            .HasIndex(p => p.SiteId);
+
+        modelBuilder.Entity<UserRole>()
+            .HasIndex(p => p.SiteId);
+
+        #endregion
+
     }
 }
