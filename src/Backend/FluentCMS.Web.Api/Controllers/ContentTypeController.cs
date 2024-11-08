@@ -10,9 +10,9 @@ public class ContentTypeController(IMapper mapper, IContentTypeService contentTy
 
     [HttpGet("{slug}")]
     [Policy(AREA, READ)]
-    public async Task<IApiResult<ContentTypeDetailResponse>> GetBySlug([FromRoute] string slug, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<ContentTypeDetailResponse>> GetBySlug([FromQuery] Guid siteId, [FromRoute] string slug, CancellationToken cancellationToken = default)
     {
-        var contentTypes = await contentTypeService.GetBySlug(slug, cancellationToken);
+        var contentTypes = await contentTypeService.GetBySlug(siteId, slug, cancellationToken);
         var contentTypeResponses = mapper.Map<ContentTypeDetailResponse>(contentTypes);
         return Ok(contentTypeResponses);
     }
@@ -28,9 +28,9 @@ public class ContentTypeController(IMapper mapper, IContentTypeService contentTy
 
     [HttpGet]
     [Policy(AREA, READ)]
-    public async Task<IApiPagingResult<ContentTypeDetailResponse>> GetAll(CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<ContentTypeDetailResponse>> GetAll([FromQuery] Guid siteId, CancellationToken cancellationToken = default)
     {
-        var contentTypes = await contentTypeService.GetAll(cancellationToken);
+        var contentTypes = await contentTypeService.GetAll(siteId, cancellationToken);
         var contentTypeResponses = mapper.Map<List<ContentTypeDetailResponse>>(contentTypes);
         return OkPaged(contentTypeResponses);
     }
