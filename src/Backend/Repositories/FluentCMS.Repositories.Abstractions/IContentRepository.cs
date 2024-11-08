@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Repositories.Abstractions;
 
-public interface IContentRepository : IAuditableEntityRepository<Content>
+public interface IContentRepository : ISiteAssociatedRepository<Content>
 {
     Task<IEnumerable<Content>> GetAll(Guid contentTypeId, CancellationToken cancellationToken = default);
 }

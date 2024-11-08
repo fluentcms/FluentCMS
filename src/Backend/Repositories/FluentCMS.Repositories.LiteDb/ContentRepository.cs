@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Repositories.LiteDb;
 
-public class ContentRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : AuditableEntityRepository<Content>(liteDbContext, apiExecutionContext),
+public class ContentRepository(ILiteDBContext liteDbContext, IApiExecutionContext apiExecutionContext) : SiteAssociatedRepository<Content>(liteDbContext, apiExecutionContext),
     IContentRepository
 {
     public async Task<IEnumerable<Content>> GetAll(Guid contentTypeId, CancellationToken cancellationToken = default)
