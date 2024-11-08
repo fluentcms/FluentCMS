@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Repositories.EFCore;
 
-public class ContentRepository(FluentCmsDbContext dbContext, IApiExecutionContext apiExecutionContext) : AuditableEntityRepository<Content>(dbContext, apiExecutionContext),
+public class ContentRepository(FluentCmsDbContext dbContext, IApiExecutionContext apiExecutionContext) : SiteAssociatedRepository<Content>(dbContext, apiExecutionContext),
     IContentRepository
 {
 
