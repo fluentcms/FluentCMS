@@ -4,16 +4,16 @@ public class UserRoleRepository(FluentCmsDbContext dbContext, IApiExecutionConte
 {
     public async Task<IEnumerable<UserRole>> GetUserRoles(Guid userId, Guid siteId, CancellationToken cancellationToken = default)
     {
-        return await DbSet.Where(x => x.SiteId == siteId && x.UserId == userId).ToListAsync(cancellationToken);
+        return await DbContext.UserRoles.Where(x => x.SiteId == siteId && x.UserId == userId).ToListAsync(cancellationToken);
     }
 
     public async Task<IEnumerable<UserRole>> GetByRoleId(Guid roleId, CancellationToken cancellationToken = default)
     {
-        return await DbSet.Where(x => x.RoleId == roleId).ToListAsync(cancellationToken);
+        return await DbContext.UserRoles.Where(x => x.RoleId == roleId).ToListAsync(cancellationToken);
     }
 
     public async Task<IEnumerable<UserRole>> GetByUserId(Guid userId, CancellationToken cancellationToken = default)
     {
-        return await DbSet.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
+        return await DbContext.UserRoles.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
     }
 }

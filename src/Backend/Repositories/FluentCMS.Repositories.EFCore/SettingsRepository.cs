@@ -2,12 +2,9 @@
 
 public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionContext apiExecutionContext) : ISettingsRepository
 {
-    protected readonly FluentCmsDbContext DbContext = dbContext;
-    protected readonly DbSet<Settings> DbSet = dbContext.Set<Settings>();
-
     public async Task<IEnumerable<Settings>> GetAll(CancellationToken cancellationToken = default)
     {
-        var settingsList = await DbSet.Include(s => s.Values).ToListAsync(cancellationToken);
+        var settingsList = await dbContext.Settings.Include(s => s.Values).ToListAsync(cancellationToken);
 
         foreach (var settings in settingsList)
             settings.Values = settings.Values.ToDictionary(sv => sv.Key, sv => sv.Value);
@@ -17,9 +14,7 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
 
     public async Task<Settings?> GetById(Guid entityId, CancellationToken cancellationToken = default)
     {
-        var settings = await DbSet
-             .Include(s => s.Values)
-             .FirstOrDefaultAsync(s => s.Id == entityId, cancellationToken);
+        var settings = await dbContext.Settings.Include(s => s.Values).FirstOrDefaultAsync(s => s.Id == entityId, cancellationToken);
 
         if (settings != null)
             settings.Values = settings.Values.ToDictionary(sv => sv.Key, sv => sv.Value);
@@ -29,7 +24,7 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
 
     public async Task<IEnumerable<Settings>> GetByIds(IEnumerable<Guid> entityIds, CancellationToken cancellationToken = default)
     {
-        var settingsList = await DbSet.Where(s => entityIds.Contains(s.Id)).Include(s => s.Values).ToListAsync(cancellationToken);
+        var settingsList = await dbContext.Settings.Where(s => entityIds.Contains(s.Id)).Include(s => s.Values).ToListAsync(cancellationToken);
 
         foreach (var settings in settingsList)
             settings.Values = settings.Values.ToDictionary(sv => sv.Key, sv => sv.Value);
@@ -53,12 +48,12 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
 
             SetAuditableFieldsForCreate(existingSettings);
 
-            DbSet.Add(existingSettings);
+            dbContext.Settings.Add(existingSettings);
 
             // Convert the dictionary to a list of SettingsValue entities
             foreach (var kvp in settings)
             {
-                DbContext.Set<SettingsValue>().Add(new SettingsValue
+                dbContext.SettingsValues.Add(new SettingsValue
                 {
                     Id = Guid.NewGuid(),
                     SettingsId = entityId,
@@ -77,7 +72,7 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
         }
 
         // Save changes to the database
-        await DbContext.SaveChangesAsync(cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         // Reload the entity with updated values
         existingSettings.Values = settings;

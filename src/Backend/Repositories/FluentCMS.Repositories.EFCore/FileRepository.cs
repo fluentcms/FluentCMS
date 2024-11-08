@@ -4,6 +4,6 @@ public class FileRepository(FluentCmsDbContext dbContext, IApiExecutionContext a
 {
     public async Task<File?> GetByName(Guid siteId, Guid folderId, string normalizedFileName, CancellationToken cancellationToken = default)
     {
-        return await DbSet.FirstOrDefaultAsync(x => x.SiteId == siteId && x.FolderId == folderId && x.NormalizedName == normalizedFileName, cancellationToken);
+        return await DbContext.Files.FirstOrDefaultAsync(x => x.SiteId == siteId && x.FolderId == folderId && x.NormalizedName == normalizedFileName, cancellationToken);
     }
 }

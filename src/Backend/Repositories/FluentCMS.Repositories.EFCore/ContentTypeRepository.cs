@@ -4,6 +4,6 @@ public class ContentTypeRepository(FluentCmsDbContext dbContext, IApiExecutionCo
 {
     public async Task<ContentType?> GetBySlug(string contentTypeSlug, CancellationToken cancellationToken = default)
     {
-        return await DbSet.SingleOrDefaultAsync(x => x.Slug == contentTypeSlug, cancellationToken);
+        return await DbContext.ContentTypes.SingleOrDefaultAsync(x => x.Slug == contentTypeSlug, cancellationToken);
     }
 }

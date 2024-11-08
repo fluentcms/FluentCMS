@@ -2,11 +2,10 @@
 
 public class GlobalSettingsRepository(FluentCmsDbContext dbContext, IApiExecutionContext apiExecutionContext) : IGlobalSettingsRepository
 {
-    protected readonly DbSet<GlobalSettings> DbSet = dbContext.Set<GlobalSettings>();
 
     public async Task<GlobalSettings?> Get(CancellationToken cancellationToken = default)
     {
-        return await DbSet.FirstOrDefaultAsync(cancellationToken);
+        return await dbContext.GlobalSettings.FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<GlobalSettings?> Update(GlobalSettings settings, CancellationToken cancellationToken = default)
@@ -21,7 +20,7 @@ public class GlobalSettingsRepository(FluentCmsDbContext dbContext, IApiExecutio
 
         SetAuditableFieldsForUpdate(settings);
 
-        DbSet.Update(settings);
+        dbContext.GlobalSettings.Update(settings);
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -31,7 +30,7 @@ public class GlobalSettingsRepository(FluentCmsDbContext dbContext, IApiExecutio
     private async Task<GlobalSettings?> Create(GlobalSettings settings, CancellationToken cancellationToken = default)
     {
         SetAuditableFieldsForCreate(settings);
-        DbSet.Add(settings);
+        dbContext.GlobalSettings.Add(settings);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return settings;

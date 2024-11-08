@@ -4,6 +4,6 @@ public class PluginContentRepository(FluentCmsDbContext dbContext, IApiExecution
 {
     public async Task<IEnumerable<PluginContent>> GetByPluginId(Guid pluginId, CancellationToken cancellationToken = default)
     {
-        return await DbSet.Where(x => x.PluginId == pluginId).ToListAsync(cancellationToken);
+        return await DbContext.PluginContents.Where(x => x.PluginId == pluginId).ToListAsync(cancellationToken);
     }
 }

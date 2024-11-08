@@ -4,7 +4,7 @@ public class PluginRepository(FluentCmsDbContext dbContext, IApiExecutionContext
 {
     public async Task<IEnumerable<Plugin>> GetByPageId(Guid pageId, CancellationToken cancellationToken = default)
     {
-        return await DbSet.Where(x => x.PageId == pageId).ToListAsync(cancellationToken);
+        return await DbContext.Plugins.Where(x => x.PageId == pageId).ToListAsync(cancellationToken);
     }
 
     public async Task<Plugin?> UpdateOrder(Guid pluginId, string section, int order, CancellationToken cancellationToken = default)

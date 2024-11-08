@@ -4,6 +4,6 @@ public class SiteRepository(FluentCmsDbContext dbContext, IApiExecutionContext a
 {
     public async Task<Site?> GetByUrl(string url, CancellationToken cancellationToken = default)
     {
-        return await DbSet.Where(x => x.Urls.Contains(url)).SingleOrDefaultAsync(cancellationToken);
+        return await DbContext.Sites.Where(x => x.Urls.Contains(url)).SingleOrDefaultAsync(cancellationToken);
     }
 }
