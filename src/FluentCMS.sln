@@ -89,7 +89,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Conte
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Contents.RichText", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.RichText\FluentCMS.Web.Plugins.Contents.RichText.csproj", "{F7CEDDC1-BA59-4B75-8B3E-6D2AB99E11EB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Repositories.EFCore", "Backend\Repositories\FluentCMS.Repositories.EFCore\FluentCMS.Repositories.EFCore.csproj", "{ED250B5A-9685-459B-912D-42DF52EEBCDD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Repositories.EFCore", "Backend\Repositories\FluentCMS.Repositories.EFCore\FluentCMS.Repositories.EFCore.csproj", "{D7672307-B219-493C-B083-897534F7A6FA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -225,6 +225,10 @@ Global
 		{F7CEDDC1-BA59-4B75-8B3E-6D2AB99E11EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F7CEDDC1-BA59-4B75-8B3E-6D2AB99E11EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F7CEDDC1-BA59-4B75-8B3E-6D2AB99E11EB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D7672307-B219-493C-B083-897534F7A6FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7672307-B219-493C-B083-897534F7A6FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7672307-B219-493C-B083-897534F7A6FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7672307-B219-493C-B083-897534F7A6FA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -268,6 +272,7 @@ Global
 		{97999608-B9AD-46B4-AF10-311B109A90BE} = {016945AB-5C4D-42A1-81B9-8C12FC6E40E6}
 		{73B6E291-89AA-4EB7-BE38-C5884BAAB248} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
 		{F7CEDDC1-BA59-4B75-8B3E-6D2AB99E11EB} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
+		{D7672307-B219-493C-B083-897534F7A6FA} = {1CC73AD2-CFC9-4FE7-96C0-0E4FEFBB66F1}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2E9F4217-7A58-48A4-9850-84CD0CDA31DA}
