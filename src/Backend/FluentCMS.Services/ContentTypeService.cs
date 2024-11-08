@@ -2,8 +2,8 @@
 
 public interface IContentTypeService : IAutoRegisterService
 {
-    Task<IEnumerable<ContentType>> GetAll(CancellationToken cancellationToken = default);
-    Task<ContentType> GetBySlug(string contentTypeSlug, CancellationToken cancellationToken = default);
+    Task<IEnumerable<ContentType>> GetAll(Guid siteId, CancellationToken cancellationToken = default);
+    Task<ContentType> GetBySlug(Guid siteId, string contentTypeSlug, CancellationToken cancellationToken = default);
     Task<ContentType> Create(ContentType contentType, CancellationToken cancellationToken = default);
     Task<ContentType> Update(ContentType contentType, CancellationToken cancellationToken = default);
     Task<ContentType> Delete(Guid contentTypeId, CancellationToken cancellationToken = default);
@@ -14,20 +14,20 @@ public interface IContentTypeService : IAutoRegisterService
 
 public class ContentTypeService(IContentTypeRepository contentTypeRepository, IMessagePublisher messagePublisher) : IContentTypeService
 {
-    public Task<IEnumerable<ContentType>> GetAll(CancellationToken cancellationToken = default)
+    public Task<IEnumerable<ContentType>> GetAll(Guid siteId, CancellationToken cancellationToken = default)
     {
-        return contentTypeRepository.GetAll(cancellationToken);
+        return contentTypeRepository.GetAllForSite(siteId, cancellationToken);
     }
 
-    public async Task<ContentType> GetBySlug(string contentTypeSlug, CancellationToken cancellationToken = default)
+    public async Task<ContentType> GetBySlug(Guid siteId, string contentTypeSlug, CancellationToken cancellationToken = default)
     {
-        return await contentTypeRepository.GetBySlug(contentTypeSlug, cancellationToken) ??
+        return await contentTypeRepository.GetBySlug(siteId, contentTypeSlug, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeNotFound);
     }
 
     public async Task<ContentType> Create(ContentType contentType, CancellationToken cancellationToken = default)
     {
-        await CheckDuplicateSlug(contentType);
+        await CheckDuplicateSlug(contentType.SiteId, contentType);
 
         var created = await contentTypeRepository.Create(contentType, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeUnableToCreate);
@@ -49,11 +49,11 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository, IM
 
     public async Task<ContentType> Update(ContentType contentType, CancellationToken cancellationToken = default)
     {
-        await CheckDuplicateSlug(contentType);
-
         // only allow name and description to be updated
         var original = await contentTypeRepository.GetById(contentType.Id, cancellationToken) ??
             throw new AppException(ExceptionCodes.ContentTypeNotFound);
+
+        await CheckDuplicateSlug(original.SiteId, contentType);
 
         original.Title = contentType.Title;
         original.Description = contentType.Description;
@@ -66,9 +66,9 @@ public class ContentTypeService(IContentTypeRepository contentTypeRepository, IM
         return updated;
     }
 
-    private async Task CheckDuplicateSlug(ContentType contentType)
+    private async Task CheckDuplicateSlug(Guid siteId, ContentType contentType)
     {
-        var originalBySlug = await contentTypeRepository.GetBySlug(contentType.Slug);
+        var originalBySlug = await contentTypeRepository.GetBySlug(siteId, contentType.Slug);
         if (originalBySlug != null && originalBySlug.Id != contentType.Id) throw new AppException(ExceptionCodes.ContentTypeDuplicateSlug);
     }
 
