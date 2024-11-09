@@ -5,7 +5,12 @@ public partial class SingleFileFieldFormFilePicker
     [Inject]
     protected ApiClientFactory ApiClient { get; set; } = default!;
 
+    [Inject]
+    private ViewState ViewState { get; set; } = default!;
+
     private List<FileParameter> Files { get; set; } = [];
+
+    private FolderDetailResponse RootFolder { get; set; } = default!;
 
     private async Task OnFilesChanged(InputFileChangeEventArgs e)
     {
@@ -17,7 +22,7 @@ public partial class SingleFileFieldFormFilePicker
         }
 
         // TODO upload file in root folder or other folder.
-        var result = await ApiClient.File.UploadAsync(default, Files);
+        var result = await ApiClient.File.UploadAsync(RootFolder.Id, Files);
         if (result?.Data != null && result.Data.Count > 0)
         {
             FieldValue.Value = result.Data.Select(x => x.Id).ToList()[0];
@@ -35,8 +40,16 @@ public partial class SingleFileFieldFormFilePicker
         var settingsResponse = await ApiClient.GlobalSettings.GetAsync();
         if (settingsResponse?.Data != null)
         {
-            FileUploadConfig = settingsResponse.Data.FileUpload;
+            FileUploadConfig = settingsResponse.Data.FileUpload ?? new FileUploadConfig
+            {
+                AllowedExtensions = "*",
+                MaxCount = 5,
+                MaxSize = 1024 * 1024 * 5 // 5 mb
+            };
         }
+
+        var rootFolderResponse = await ApiClient.Folder.GetAllAsync(ViewState.Site.Id);
+        RootFolder = rootFolderResponse.Data;
         await Load();
     }
 
