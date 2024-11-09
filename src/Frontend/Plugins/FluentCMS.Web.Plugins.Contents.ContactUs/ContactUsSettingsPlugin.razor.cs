@@ -9,9 +9,6 @@ public partial class ContactUsSettingsPlugin
     [SupplyParameterFromQuery(Name = nameof(Id))]
     private Guid? Id { get; set; } = default!;
 
-
-    private List<ContactUsContent> Items { get; set; } = [];
-
     protected override async Task OnInitializedAsync()
     {
         Plugin.Settings.TryGetValue("EmailAddress", out var emailAddress);
