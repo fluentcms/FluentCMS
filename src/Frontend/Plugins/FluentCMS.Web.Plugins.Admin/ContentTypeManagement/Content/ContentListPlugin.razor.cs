@@ -14,7 +14,7 @@ public partial class ContentListPlugin
     {
         if (!string.IsNullOrEmpty(ContentTypeSlug))
         {
-            var contentsResponse = await ApiClient.Content.GetAllAsync(ContentTypeSlug);
+            var contentsResponse = await ApiClient.Content.GetAllAsync(ViewState.Site.Id, ContentTypeSlug);
             Contents = contentsResponse?.Data?.ToList() ?? [];
         }
     }

@@ -18,7 +18,7 @@ public partial class ContentDetailViewPlugin
             {
                 if (Guid.TryParse(ViewState.Page.Slug, out var id))
                 {
-                    var response = await ApiClient.Content.GetByIdAsync(slug, id);
+                    var response = await ApiClient.Content.GetByIdAsync(ViewState.Site.Id, slug, id);
                     if (response.Data != null)
                     {
                         Item = response.Data;
@@ -26,7 +26,7 @@ public partial class ContentDetailViewPlugin
                 }
                 else
                 {
-                    var response = await ApiClient.Content.GetAllAsync(slug);
+                    var response = await ApiClient.Content.GetAllAsync(ViewState.Site.Id, slug);
                     if (response.Data != null)
                     {
                         Item = response.Data.LastOrDefault() ?? default!;

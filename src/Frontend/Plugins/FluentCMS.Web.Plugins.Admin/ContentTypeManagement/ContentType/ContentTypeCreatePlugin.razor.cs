@@ -9,6 +9,7 @@ public partial class ContentTypeCreatePlugin
 
     private async Task OnSubmit()
     {
+        Model.SiteId = ViewState.Site.Id;
         await ApiClient.ContentType.CreateAsync(Model);
         NavigateBack();
     }

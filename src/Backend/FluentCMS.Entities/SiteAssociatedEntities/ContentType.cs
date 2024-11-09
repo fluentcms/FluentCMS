@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Entities;
 
-public class ContentType : AuditableEntity
+public class ContentType : SiteAssociatedEntity
 {
     public string Slug { get; set; } = default!;
     public string Title { get; set; } = default!;

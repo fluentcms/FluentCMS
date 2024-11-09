@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Web.Api.Models;
 
-public class ContentTypeDetailResponse : BaseAuditableResponse
+public class ContentTypeDetailResponse : BaseSiteAssociatedResponse
 {
     public string Slug { get; set; } = default!;
     public string Title { get; set; } = default!;

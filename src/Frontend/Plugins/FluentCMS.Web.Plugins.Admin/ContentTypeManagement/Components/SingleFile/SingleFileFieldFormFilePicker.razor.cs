@@ -16,6 +16,7 @@ public partial class SingleFileFieldFormFilePicker
             Files.Add(new FileParameter(Data, file.Name, file.ContentType));
         }
 
+        // TODO upload file in root folder or other folder.
         var result = await ApiClient.File.UploadAsync(default, Files);
         if (result?.Data != null && result.Data.Count > 0)
         {
