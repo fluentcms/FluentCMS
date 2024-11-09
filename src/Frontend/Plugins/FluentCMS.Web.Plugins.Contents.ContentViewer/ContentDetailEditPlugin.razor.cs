@@ -9,7 +9,7 @@ public partial class ContentDetailEditPlugin
 
     protected override async Task OnInitializedAsync()
     {
-        var contentTypeResponse = await ApiClient.ContentType.GetAllAsync();
+        var contentTypeResponse = await ApiClient.ContentType.GetAllAsync(ViewState.Site.Id);
         if (contentTypeResponse?.Data != null)
         {
             ContentTypes = contentTypeResponse.Data.ToList();

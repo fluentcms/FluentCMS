@@ -7,6 +7,9 @@ public partial class FormRichTextEditor : IAsyncDisposable
     public IJSRuntime JS { get; set; } = default!;
 
     [Inject]
+    public ViewState ViewState { get; set; } = default!;
+
+    [Inject]
     private ApiClientFactory ApiClient { get; set; } = default!;
 
     public ElementReference? Element { get; set; }
@@ -118,15 +121,15 @@ public partial class FormRichTextEditor : IAsyncDisposable
 
     }
 
-    private async Task OnChooseFile(AssetDetail file)
+    private async Task OnChooseFile(string url)
     {
-        Text = file.Name;
-        Href = $"/API/File/Download/{file.Id}";
+        Text = url.Split("/").Last();
+        Href = url;
 
         LinkModalOpen = false;
 
         if (Module != null)
-            await Module.InvokeVoidAsync("setLink", DotNetRef, Element, new { Href = Href, Text = Text, Mode = "File" });
+            await Module.InvokeVoidAsync("setLink", DotNetRef, Element, new { Href, Text, Mode = "File" });
 
     }
 
@@ -212,7 +215,7 @@ public partial class FormRichTextEditor : IAsyncDisposable
         FolderId = folderId;
         FolderDetailResponse? folderDetail;
 
-        var folderDetailResponse = await ApiClient.Folder.GetAllAsync();
+        var folderDetailResponse = await ApiClient.Folder.GetAllAsync(ViewState.Site.Id);
 
         if (folderId is null || folderId == Guid.Empty)
         {
@@ -233,7 +236,7 @@ public partial class FormRichTextEditor : IAsyncDisposable
                 {
                     Name = "(parent)",
                     IsFolder = true,
-                    Id = folderDetail.FolderId,
+                    Id = folderDetail.Id,
                     IsParentFolder = true
                 });
             }
@@ -245,7 +248,7 @@ public partial class FormRichTextEditor : IAsyncDisposable
                     Name = item.Name ?? string.Empty,
                     IsFolder = true,
                     Id = item.Id,
-                    FolderId = item.FolderId,
+                    ParentId = item.ParentId,
                     Size = item.Size,
                 });
             }
@@ -256,7 +259,7 @@ public partial class FormRichTextEditor : IAsyncDisposable
                 {
                     Name = item.Name ?? string.Empty,
                     IsFolder = false,
-                    FolderId = item.FolderId,
+                    ParentId = item.FolderId,
                     Id = item.Id,
                     Size = item.Size,
                     ContentType = item.ContentType ?? string.Empty
@@ -266,16 +269,13 @@ public partial class FormRichTextEditor : IAsyncDisposable
         StateHasChanged();
     }
 
-    public async Task OnChooseImage(AssetDetail image)
+    public async Task OnChooseImage(string url)
     {
         ImageModalOpen = false;
-
-        ImageUrl = "/API/File/Download/" + image.Id;
         ImageAlt = "(TODO) Image ALT";
 
         if (Module != null)
-            await Module.InvokeVoidAsync("setImage", DotNetRef, Element, new { Alt = ImageAlt, Url = ImageUrl });
-
+            await Module.InvokeVoidAsync("setImage", DotNetRef, Element, new { Alt = ImageAlt, Url = url });
     }
 
     public async Task OnUpload()

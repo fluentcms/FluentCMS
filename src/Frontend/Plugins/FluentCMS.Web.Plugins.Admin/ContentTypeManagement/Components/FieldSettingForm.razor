@@ -4,7 +4,8 @@
 @if (Model != null)
 {
     <EditForm Model="@Model" OnSubmit="OnFormSubmit">
-        <Modal Size="ModalSize.Large">
+        <DataAnnotationsValidator />
+        <Modal Placement="ModalPlacement.Top" Size="ModalSize.Large">
             <ModalHeader Closable OnClose="OnCancel">
                 <ModalTitle Visible="@(CurrentState == FieldManagementState.Create)">
                     Create New Field@* New @FieldType?.Title Field *@
@@ -14,8 +15,13 @@
                 </ModalTitle>
             </ModalHeader>
             <ModalBody>
-                <DataAnnotationsValidator />
                 @ChildContent
+                <Alert Visible="Errors.Count > 0" Type="AlertType.Danger">
+                    @foreach (var error in Errors)
+                    {
+                        <p>@error</p>
+                    }
+                </Alert>
             </ModalBody>
             <ModalFooter>
                 <FormActions>

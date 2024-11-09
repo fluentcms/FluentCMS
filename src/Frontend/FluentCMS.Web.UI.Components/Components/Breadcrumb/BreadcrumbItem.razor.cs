@@ -6,6 +6,9 @@ public partial class BreadcrumbItem
     public string? Href { get; set; }
 
     [Parameter]
+    public bool Link { get; set; } = false;
+
+    [Parameter]
     public IconName IconName { get; set; } = IconName.Default;
 
     [Parameter]

@@ -78,13 +78,20 @@ public static class ApiClientServiceExtensions
 
     private static string? GetUserJwt(IServiceProvider sp)
     {
-        var authStateProvider = sp.GetRequiredService<AuthenticationStateProvider>();
-        var authStateTask = authStateProvider.GetAuthenticationStateAsync();
-        var authState = authStateTask.GetAwaiter().GetResult();
+        try
+        {
+            var authStateProvider = sp.GetRequiredService<AuthenticationStateProvider>();
+            var authStateTask = authStateProvider.GetAuthenticationStateAsync();
+            var authState = authStateTask.GetAwaiter().GetResult();
 
-        if (authState?.User?.Identity == null || !authState.User.Identity.IsAuthenticated)
+            if (authState?.User?.Identity == null || !authState.User.Identity.IsAuthenticated)
+                return default;
+
+            return authState.User.FindFirstValue("jwt") ?? default;
+        }
+        catch (Exception)
+        {
             return default;
-
-        return authState.User.FindFirstValue("jwt") ?? default;
+        }
     }
 }

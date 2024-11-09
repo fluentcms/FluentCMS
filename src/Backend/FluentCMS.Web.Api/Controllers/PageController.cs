@@ -175,14 +175,25 @@ public class PageController(ISiteService siteService, IPageService pageService, 
 
     private static PageFullDetailResponse GetSetupPage()
     {
+        var body = System.IO.File.ReadAllText(Path.Combine(ServiceConstants.DefaultTemplateFolder, "AuthLayout.body.html"));
+
+        body = body.Replace("\"/files/images", "\"/images");
+        body = body.Replace("\"/files/js", "\"/js");
+        body = body.Replace("\"/files/css", "\"/css");
+
+        var head = System.IO.File.ReadAllText(Path.Combine(ServiceConstants.DefaultTemplateFolder, "AuthLayout.head.html"));
+        head = head.Replace("\"/files/images", "\"/images");
+        head = head.Replace("\"/files/js", "\"/js");
+        head = head.Replace("\"/files/css", "\"/css");
+
         var page = new PageFullDetailResponse
         {
             Title = "Setup",
             Locked = true,
             Layout = new LayoutDetailResponse
             {
-                Body = System.IO.File.ReadAllText(Path.Combine(ServiceConstants.DefaultTemplateFolder, "AuthLayout.body.html")),
-                Head = System.IO.File.ReadAllText(Path.Combine(ServiceConstants.DefaultTemplateFolder, "AuthLayout.head.html"))
+                Body = body,
+                Head = head
             },
             Site = new(),
             User = new(),

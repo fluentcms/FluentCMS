@@ -16,7 +16,7 @@ public partial class ContentListViewPlugin
         {
             if (Plugin.Settings.TryGetValue("ContentTypeSlug", out var slug) && !string.IsNullOrEmpty(slug))
             {
-                var response = await ApiClient.Content.GetAllAsync(slug);
+                var response = await ApiClient.Content.GetAllAsync(ViewState.Site.Id, slug);
                 if (response.Data != null)
                 {
                     Items = response.Data.ToList();

@@ -49,45 +49,7 @@
 
                         </TabPanel>
                         <TabPanel Name="File">
-                            <DataTable Items="Assets">
-                                <DataTableItem Label="Name">
-                                    @if (context.IsFolder)
-                                    {
-                                        <Button Link @onclick="() => OnNavigateFolder(context.Id)">
-                                            @context.Name
-                                        </Button>
-                                    }
-                                    else
-                                    {
-                                        @context.Name
-                                    }
-                                </DataTableItem>
-                                <DataTableItem Label="Type">
-                                    <Badge Color="Color.Info" Visible="@context.IsFolder">
-                                        Folder
-                                    </Badge>
-                                    <Badge Color="Color.Success" Visible="!context.IsFolder">
-                                        @context.ContentType
-                                    </Badge>
-                                </DataTableItem>
-                                <DataTableItem Label="Size">
-                                    @context.Size
-                                </DataTableItem>
-                                <DataTableItem Label="">
-                                    <Stack Justify="StackJustify.End">
-                                        <Button Visible="!context.IsFolder" Size="ButtonSize.Small" @onclick="() => OnChooseFile(context)" Color="Color.Primary">
-                                            Choose
-                                        </Button>
-                                        <Button Visible="!context.IsFolder" Size="ButtonSize.Small" Outline Href="@($"/Api/File/Download/{context.Id}")" Color="Color.Primary">
-                                            Download
-                                        </Button>
-                                        <Button Visible="context.IsFolder" Size="ButtonSize.Small" @onclick="() => OnNavigateFolder(context.Id)" Color="Color.Primary">
-                                            <Icon Name="IconName.Eye" />
-                                            Open
-                                        </Button>
-                                    </Stack>
-                                </DataTableItem>
-                            </DataTable>
+                            <FileSelectorModal OnSubmit="OnChooseFile" OnCancel="OnLinkModalClose" />
                             <Spacer />
                             <Stack>
                                 <Button @onclick="OnLinkModalClose">Cancel</Button>
@@ -122,81 +84,7 @@
     }
     @if (ImageModalOpen)
     {
-        <Modal Size="ModalSize.Large" OnClose="OnImageModalClose">
-            <ModalHeader>
-                <ModalTitle>
-                    Choose Image
-                </ModalTitle>
-            </ModalHeader>
-            <ModalBody>
-                <Tabs Active="@ImageMode">
-                    <TabList>
-                        <TabItem Name="Library">From Library</TabItem>
-                        <TabItem Name="External">External</TabItem>
-                    </TabList>
-                    <TabContent>
-                        <TabPanel Name="Library">
-                            <DataTable Items="Assets">
-                                <DataTableItem Label="Name">
-                                    @if (context.IsFolder)
-                                    {
-                                        <Button Link @onclick="() => OnNavigateFolder(context.Id)">
-                                            @context.Name
-                                        </Button>
-                                    }
-                                    else
-                                    {
-                                        @context.Name
-                                    }
-                                </DataTableItem>
-                                <DataTableItem Label="Type">
-                                    <Badge Color="Color.Info" Visible="@context.IsFolder">
-                                        Folder
-                                    </Badge>
-                                    <Badge Color="Color.Success" Visible="!context.IsFolder">
-                                        @context.ContentType
-                                    </Badge>
-                                </DataTableItem>
-                                <DataTableItem Label="Size">
-                                    @context.Size
-                                </DataTableItem>
-                                <DataTableItem Label="">
-                                    <Stack Justify="StackJustify.End">
-                                        <Button Visible="!context.IsFolder" Size="ButtonSize.Small" @onclick="() => OnChooseImage(context)" Color="Color.Primary">
-                                            Choose
-                                        </Button>
-                                        <Button Visible="!context.IsFolder" Size="ButtonSize.Small" Outline Href="@($"/Api/File/Download/{context.Id}")" Color="Color.Primary">
-                                            Download
-                                        </Button>
-                                        <Button Visible="context.IsFolder" Size="ButtonSize.Small" @onclick="() => OnNavigateFolder(context.Id)" Color="Color.Primary">
-                                            <Icon Name="IconName.Eye" />
-                                            Open
-                                        </Button>
-                                    </Stack>
-                                </DataTableItem>
-                            </DataTable>
-                            <Spacer />
-                            <Stack>
-                                <Button @onclick="OnImageModalClose">Cancel</Button>
-                                <Button Color="Color.Primary" @onclick="OnUpload">Upload file here</Button>
-                            </Stack>
-                        </TabPanel>
-                        <TabPanel Name="External">
-                            <Grid>
-                                <FormInput Label="Image Url" Placeholder="Enter url" @bind-Value="ImageUrl" />
-                                <FormInput Label="Alt Text" Placeholder="Enter alt text" @bind-Value="ImageAlt" />
-                                <GridItem Small="GridItemColumn.Twelve">
-                                    <Stack>
-                                        <Button @onclick="OnImageModalClose">Cancel</Button>
-                                        <Button Color="Color.Primary" @onclick="OnChooseImageExternal">Done</Button>
-                                    </Stack>
-                                </GridItem>
-                            </Grid>
-                        </TabPanel>
-                    </TabContent>
-                </Tabs>
-            </ModalBody>
-        </Modal>
+        <FileSelectorModal OnCancel="OnImageModalClose" OnSubmit="OnChooseImage"/>
     }
 
     <InputFile style="display: none" Id="@($"upload-{Id}")" OnChange="OnFilesChanged"/>

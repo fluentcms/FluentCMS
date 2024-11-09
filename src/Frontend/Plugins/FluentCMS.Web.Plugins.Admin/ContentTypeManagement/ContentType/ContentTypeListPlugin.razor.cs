@@ -11,7 +11,7 @@ public partial class ContentTypeListPlugin
 
     private async Task Load()
     {
-        var contentTypesResponse = await ApiClient.ContentType.GetAllAsync();
+        var contentTypesResponse = await ApiClient.ContentType.GetAllAsync(ViewState.Site.Id);
         ContentTypes = contentTypesResponse?.Data?.ToList() ?? [];
     }
 

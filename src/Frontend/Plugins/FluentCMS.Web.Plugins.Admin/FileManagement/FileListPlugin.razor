@@ -1,86 +1,84 @@
 ﻿@inherits BasePlugin
 @rendermode InteractiveServer
 
-<PluginBody Title="File Management">
-    <SubtitleFragment>
-        <Breadcrumb>
-            @foreach (var item in BreadcrumbItems)
-            {
-                <BreadcrumbItem IconName="@item.Icon" Href="@item.Href">@item.Title</BreadcrumbItem>
-            }
-        </Breadcrumb>
-    </SubtitleFragment>
+<PluginBody Title="@($"File Management ({Folder?.Name ?? "..."})")">
     <ActionsFragment>
-        <ActionButtonBack Visible="FolderId != null && FolderId != Guid.Empty" Href="@GetUrl("Files List", new { folderId = ParentId })" />
         <ActionButton IconName="IconName.Plus" @onclick="() => FolderCreateModalOpen = true" Label="Add Folder" />
         <ActionButtonCreate @onclick="() => FileUploadModalOpen = true" Label="Upload File" />
     </ActionsFragment>
-    <ChildContent>
-        <DataTable Items="Items">
-            <DataTableItem Label="Name">
-                @if (@context.IsFolder)
+    <SubtitleFragment>
+        <Breadcrumb style="height: 20px;">
+            @foreach (var breadcrumbItem in BreadcrumbItems)
+            {
+                @if (breadcrumbItem.Id == FolderId)
                 {
-                    <Button Link Href="@GetUrl("Files List", new { folderId = @context.Id })">
-                        @context.Name
-                    </Button>
+                    <BreadcrumbItem>
+                        @breadcrumbItem.Name
+                    </BreadcrumbItem>
+                }
+                else if(breadcrumbItem.Id == RootFolder?.Id)
+                {
+                    <BreadcrumbItem Link @onclick="() => NavigateFolder(breadcrumbItem.Id)" IconName="IconName.Folder">
+                        @breadcrumbItem.Name
+                    </BreadcrumbItem>
                 }
                 else
                 {
-                    <Button Link download="@context.Name" Href="@GetUrl("Files List", new { folderId = @context.Id })">
-                        @context.Name
-                    </Button>
+                    <BreadcrumbItem Link @onclick="() => NavigateFolder(breadcrumbItem.Id)">
+                        @breadcrumbItem.Name
+                    </BreadcrumbItem>
                 }
-            </DataTableItem>
-            <DataTableItem Label="Type">
-                <Badge Color="Color.Info" Visible="@context.IsFolder">
-                    Folder
-                </Badge>
-                <Badge Color="Color.Success" Visible="!context.IsFolder">
-                    @context.ContentType
-                </Badge>
-            </DataTableItem>
-            <DataTableItem Label="Size">
-                @if (context.Size > 1024 * 1024)
-                {
-                    <text>@(context.Size / (1024 * 1024)) MB</text>
-                }
-                else if(context.Size > 1024)
-                {
-                    <text>@(context.Size / 1024) KB</text>
-                }
-                else 
-                {
-                    <text>...</text>
-                }
-            </DataTableItem>
-            <ActionButtons>
-                <ActionButton Visible="!context.IsFolder" IconName="IconName.Download" Label="Download" download="@context.Name" Href="@GetUrl("Files List", new { folderId = context.Id })" Color="Color.Primary" target="_blank" />
-                <ActionButtonOpen Visible="context.IsFolder" Href="@GetUrl("Files List", new { folderId = context.Id })" />
+            }
+        </Breadcrumb>
+    </SubtitleFragment>
+    <ChildContent>
+        <FilesTable @key="@FolderId" @ref="FilesTable" @bind-FolderId="@FolderId" @bind-RootFolder="RootFolder" @bind-Folder="@Folder" @bind-ParentFolders="BreadcrumbItems">
+            <ActionsFragment>
+                <ActionButton Visible="!context.IsFolder" IconName="IconName.Download"
+Label="Download" download="@context.Name" Href="@GetDownloadUrl(context)" Color="Color.Primary" target="_blank" />
+                <ActionButtonOpen Visible="context.IsFolder" @onclick="() => NavigateFolder(context.Id)" />
 
                 @if (!context.IsParentFolder)
                 {
-                    <ActionButtonEdit @onclick="() => OpenUpdateModal(context)" />
+                    <ActionButton IconName="IconName.Edit" Label="Rename" Color="Color.Primary" @onclick="() => OpenRenameModal(context)" />
+                    <ActionButton Label="Move" @onclick="() => OpenMoveModal(context)" IconName="IconName.FolderMove" />
                     <ActionButtonDelete @onclick="() => OnConfirm(context)" />
                 }
-            </ActionButtons>
-        </DataTable>
+            </ActionsFragment>
+        </FilesTable>
     </ChildContent>
 </PluginBody>
 
 <Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedItem != null">
-    Are you sure to delete <b>"@SelectedItem!.Name"</b> @(SelectedItem!.IsFolder ? "folder" : "file")?
+    @if (SelectedItem!.IsFolder)
+    {
+        <span>Are you sure to delete <b>"@SelectedItem!.Name"</b> folder with all of it's files & folders?</span>
+    }
+    else
+    {
+        <span>Are you sure to delete <b>"@SelectedItem!.Name"</b> file?</span>
+    }
 </Confirm>
 
 <FolderCreateModal FolderId="@FolderId" Visible="FolderCreateModalOpen" OnSubmit="OnCreateFolder" OnCancel="OnCreateFolderCancel"/>
 
 <FileUploadModal Config="FileUploadConfig" Visible="FileUploadModalOpen" OnSubmit="OnUpload" OnCancel="OnUploadCancel"/>
 
-@if (FolderUpdateModalOpen && FolderUpdateModel != null && RootFolder != null)
+@if (FolderRenameModalOpen && FolderRenameModel != null)
 {
-    <FolderUpdateModal RootFolder="RootFolder" Model="FolderUpdateModel" OnSubmit="OnUpdateFolder" OnCancel="OnUpdateFolderCancel"/>
+    <FolderRenameModal Model="FolderRenameModel" OnSubmit="OnRenameFolder" OnCancel="OnRenameFolderCancel"/>
 }
 
-@if (FileUpdateModalOpen && FileUpdateModel != null && RootFolder != null)
+@if (FileRenameModalOpen && FileRenameModel != null)
 {
-    <FileUpdateModal RootFolder="RootFolder" Model="FileUpdateModel" OnSubmit="OnUpdateFile" OnCancel="OnUpdateFileCancel"/>
+    <FileRenameModal RootFolder="RootFolder" Model="FileRenameModel" OnSubmit="OnRenameFile" OnCancel="OnRenameFileCancel"/>
+}
+
+@if (FolderMoveModalOpen && FolderMoveModel != null)
+{
+    <FolderSelectorModal DisabledFolder="FolderMoveModel" Model="FolderId" OnSubmit="OnFolderMove" OnCancel="OnMoveFolderCancel"/>
+}
+@if (FileMoveModalOpen && FileMoveModel != null)
+{
+    <FolderSelectorModal Model="FolderId" OnSubmit="OnFileMove" OnCancel="OnMoveFileCancel"/>
 }

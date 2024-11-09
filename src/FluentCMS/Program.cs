@@ -1,3 +1,8 @@
+using FluentCMS.Web.Api.Middleware;
+using FluentCMS.Web.UI;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.DependencyInjection;
+
 var builder = WebApplication.CreateBuilder(args);
 
 #region Services
@@ -39,6 +44,8 @@ var app = builder.Build();
 app.UseDeveloperExceptionPage();
 
 app.UseHttpsRedirection();
+
+app.UseRemoteStaticFileServices();
 
 app.UseStaticFiles();
 

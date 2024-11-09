@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Repositories.Abstractions;
 
-public interface IContentTypeRepository : IAuditableEntityRepository<ContentType>
+public interface IContentTypeRepository : ISiteAssociatedRepository<ContentType>
 {
-    Task<ContentType?> GetBySlug(string contentTypeSlug, CancellationToken cancellationToken = default);
+    Task<ContentType?> GetBySlug(Guid siteId, string contentTypeSlug, CancellationToken cancellationToken = default);
 }

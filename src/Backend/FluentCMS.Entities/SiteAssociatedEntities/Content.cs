@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Entities;
 
-public class Content : AuditableEntity
+public class Content : SiteAssociatedEntity
 {
     public Guid TypeId { get; set; }
     public Dictionary<string, object?> Data { get; set; } = [];
