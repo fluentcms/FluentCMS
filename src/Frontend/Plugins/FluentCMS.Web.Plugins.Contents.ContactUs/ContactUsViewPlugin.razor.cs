@@ -1,7 +1,12 @@
 namespace FluentCMS.Web.Plugins.Contents.ContactUs;
 
+using FluentCMS.Providers.EmailProviders;
+
 public partial class ContactUsViewPlugin
 {
+    [Inject]
+    private IEmailProvider EmailProvider { get; set; } = default!;
+
     public const string CONTENT_TYPE_NAME = nameof(ContactUsContent);
 
     private string EmailAddress { get; set; } = default!; 
@@ -21,7 +26,6 @@ public partial class ContactUsViewPlugin
 
         await ApiClient.PluginContent.CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.ToDictionary());
 
-        // TODO Import service
-        // await emailProvider.Send(Model.Email, Model.Subject, Model.Message, cancellationToken);
+        await EmailProvider.Send(Model.Email, EmailAddress, Model.Subject, Model.Message);
     }
 }

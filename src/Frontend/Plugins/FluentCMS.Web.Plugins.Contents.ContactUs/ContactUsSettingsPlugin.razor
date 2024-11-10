@@ -4,12 +4,3 @@
 <PluginModalForm Open="Open" Model="@Model" Name="@PLUGIN_SETTINGS_FORM" OnSubmit="@HandleSubmit" OnCancel="OnCancel" Title="Edit Contact Us settings">
     <FormInput Placeholder="Enter Your Email address" @bind-Value="@Model!.EmailAddress" Label="Your Email" />
 </PluginModalForm>
-    @* <Typography Size="TextSize.H5">Submitted contact requests</Typography>
-    <Spacer />
-    <Card>
-        <DataTable Items="Items">
-            <DataTableItem Label="Email">@context.Email</DataTableItem>
-            <DataTableItem Label="Subject">@context.Subject</DataTableItem>
-            <DataTableItem Label="Message">@context.Message</DataTableItem>
-        </DataTable>
-    </Card> *@

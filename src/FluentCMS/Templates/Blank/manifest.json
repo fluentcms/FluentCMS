@@ -326,6 +326,10 @@
                 {
                     "Name": "Edit",
                     "Type": "ContactUsSettingsPlugin"
+                },
+                {
+                    "Name": "Data",
+                    "Type": "ContactUsDataPlugin"
                 }
             ]
         },
