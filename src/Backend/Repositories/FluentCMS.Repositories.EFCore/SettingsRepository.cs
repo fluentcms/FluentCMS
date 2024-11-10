@@ -40,27 +40,19 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
         if (existingSettings == null)
         {
             // Create a new Settings entity if it doesn't exist
-            existingSettings = new Settings
+            var newSettings = new Settings
             {
                 Id = entityId,
                 Values = settings
             };
 
-            SetAuditableFieldsForCreate(existingSettings);
+            SetAuditableFieldsForCreate(newSettings);
+            dbContext.Settings.Add(newSettings);
 
-            dbContext.Settings.Add(existingSettings);
+            // Save changes to the database
+            await dbContext.SaveChangesAsync(cancellationToken);
 
-            // Convert the dictionary to a list of SettingsValue entities
-            foreach (var kvp in settings)
-            {
-                dbContext.SettingsValues.Add(new SettingsValue
-                {
-                    Id = Guid.NewGuid(),
-                    SettingsId = entityId,
-                    Key = kvp.Key,
-                    Value = kvp.Value
-                });
-            }
+            return newSettings;
         }
         else
         {
@@ -69,15 +61,12 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
 
             foreach (var kvp in settings)
                 existingValues[kvp.Key] = kvp.Value;
-        }
 
-        // Save changes to the database
-        await dbContext.SaveChangesAsync(cancellationToken);
+            // Save changes to the database
+            await dbContext.SaveChangesAsync(cancellationToken);
 
-        // Reload the entity with updated values
-        existingSettings.Values = settings;
-
-        return existingSettings;
+            return existingSettings;
+        }        
     }
 
     private void SetAuditableFieldsForCreate(Settings settings)

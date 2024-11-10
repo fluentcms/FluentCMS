@@ -1,4 +1,7 @@
-﻿namespace FluentCMS.Repositories.EFCore;
+﻿using Microsoft.AspNetCore.Identity;
+using System.Text.Json;
+
+namespace FluentCMS.Repositories.EFCore;
 
 public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : DbContext(options)
 {
@@ -21,7 +24,6 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
     public DbSet<Plugin> Plugins { get; set; } = default!;
     public DbSet<Role> Roles { get; set; } = default!;
     public DbSet<Settings> Settings { get; set; } = default!;
-    public DbSet<SettingsValue> SettingsValues { get; set; } = default!;
     public DbSet<Site> Sites { get; set; } = default!;
     public DbSet<User> Users { get; set; } = default!;
     public DbSet<UserRole> UserRoles { get; set; } = default!;
@@ -30,19 +32,20 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        base.OnModelCreating(modelBuilder);
 
-        #region Settings and SettingValues
+        #region Settings
 
-        modelBuilder.Entity<Settings>()
-            .HasMany<SettingsValue>()
-            .WithOne(sv => sv.Settings)
-            .HasForeignKey(sv => sv.SettingsId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<SettingsValue>()
-            .HasIndex(sv => new { sv.SettingsId, sv.Key })
-            .IsUnique();  // Ensure unique keys per Settings instance
+        modelBuilder.Entity<Settings>(entity =>
+        {
+            // Configure the Values dictionary to be stored as a JSON string
+            entity.Property(e => e.Values)
+                .HasConversion(
+                    // Serialize the dictionary to JSON when saving to the database
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    // Deserialize the JSON string back to a dictionary when reading from the database
+                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null)
+                );
+        });
 
         #endregion
 
@@ -50,50 +53,192 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
 
         // Configure SuperAdmins as a comma-separated string
         modelBuilder.Entity<GlobalSettings>()
+            .Ignore(gs => gs.SuperAdmins)
+            .Ignore(gs => gs.FileUpload)
             .Property(gs => gs.SuperAdmins)
             .HasConversion(
                 v => string.Join(",", v), // Convert IEnumerable<string> to string for storage
-                v => v.Split(',', StringSplitOptions.RemoveEmptyEntries) // Convert string to IEnumerable<string>
+                v => v.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList() // Convert string to IEnumerable<string>
             );
 
         #endregion
 
-        #region Site Associated Entities
+        #region ContentType and ContentTypeField
 
-        modelBuilder.Entity<Block>()
-            .HasIndex(p => p.SiteId);
+        modelBuilder.Entity<ContentType>(entity =>
+        {
+            // Define one-to-many relationship between ContentType and ContentTypeField
+            entity.HasMany(c => c.Fields)
+                  .WithOne()
+                  .HasForeignKey("ContentTypeId") // Shadow property for the foreign key
+                  .OnDelete(DeleteBehavior.Cascade); // Configure cascade delete if needed
+        });
 
-        modelBuilder.Entity<Content>()
-            .HasIndex(p => p.SiteId);
-
-        modelBuilder.Entity<ContentType>()
-            .HasIndex(p => p.SiteId);
-
-        modelBuilder.Entity<File>()
-            .HasIndex(p => p.SiteId);
-
-        modelBuilder.Entity<Folder>()
-            .HasIndex(p => p.SiteId);
-
-        modelBuilder.Entity<Layout>()
-            .HasIndex(p => p.SiteId);
-
-        modelBuilder.Entity<Page>()
-            .HasIndex(p => p.SiteId);
-
-        modelBuilder.Entity<Permission>()
-            .HasIndex(p => p.SiteId);
-
-        modelBuilder.Entity<Plugin>()
-            .HasIndex(p => p.SiteId);
-
-        modelBuilder.Entity<Role>()
-            .HasIndex(p => p.SiteId);
-
-        modelBuilder.Entity<UserRole>()
-            .HasIndex(p => p.SiteId);
+        modelBuilder.Entity<ContentTypeField>(entity =>
+        {
+            // Configure Settings to be stored as JSON
+            entity.Property(e => e.Settings)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null), // Convert to JSON when saving
+                    v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, (JsonSerializerOptions)null) // Convert back to dictionary when reading
+                );
+        });
 
         #endregion
 
+        #region Content
+
+        modelBuilder.Entity<Content>(entity =>
+        {
+            // Configure the Data property to be stored as a JSON string
+            entity.Property(e => e.Data)
+                .HasConversion(
+                    // Serialize the dictionary to JSON when saving to the database
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    // Deserialize the JSON string back to a dictionary when reading from the database
+                    v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, (JsonSerializerOptions)null)
+                );
+        });
+
+        #endregion
+
+        #region Plugin Content
+
+        modelBuilder.Entity<PluginContent>(entity =>
+        {
+            // Configure the Data property to be stored as a JSON string
+            entity.Property(e => e.Data)
+                .HasConversion(
+                    // Serialize the dictionary to JSON when saving to the database
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    // Deserialize the JSON string back to a dictionary when reading from the database
+                    v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, (JsonSerializerOptions)null)
+                );
+        });
+
+        #endregion
+
+        #region ApiToken and Policy
+
+        modelBuilder.Entity<ApiToken>(entity =>
+        {
+            entity.HasMany(e => e.Policies)
+              .WithOne()
+              .HasForeignKey("ApiTokenId") // Shadow foreign key property in Policy table
+              .OnDelete(DeleteBehavior.Cascade); // Cascade delete policies if ApiToken is deleted
+        });
+
+        // Configure the Policy entity
+        modelBuilder.Entity<Policy>(entity =>
+        {
+            // Store Actions as a comma-separated string
+            entity.Property(e => e.Actions)
+                .HasConversion(
+                    v => string.Join(",", v), // Convert list to comma-separated string when saving
+                    v => v.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList() // Convert back to list when reading
+                )
+                .HasColumnType("nvarchar(max)"); // Store as a long string in the database
+        });
+
+        #endregion        
+
+        #region PluginDefition
+
+        // Configure PluginDefinition entity
+        modelBuilder.Entity<PluginDefinition>(entity =>
+        {
+            // Define one-to-many relationship between PluginDefinition and PluginDefinitionType
+            entity.HasMany(p => p.Types)
+                  .WithOne() // No navigation property back to PluginDefinition in PluginDefinitionType
+                  .HasForeignKey("PluginDefinitionId") // Shadow property for the foreign key
+                  .OnDelete(DeleteBehavior.Cascade); // Configure cascade delete if needed
+        });
+
+        // Configure PluginDefinitionType entity
+        modelBuilder.Entity<PluginDefinitionType>(entity =>
+        {
+            // Define the shadow property for Id
+            entity.Property<Guid>("Id")
+                  .ValueGeneratedOnAdd(); // Configure it to be generated by the database
+
+            // Configure composite key (or use Id as the primary key if preferred)
+            entity.HasKey("Id"); // Using the shadow Id as the primary key
+        });
+
+        #endregion
+
+        #region User and Role
+
+        // Configure User entity
+        modelBuilder.Entity<User>(entity =>
+        {
+            // Define one-to-many relationships with shadow foreign keys for each child collection
+            entity.HasMany(u => u.Logins)
+                  .WithOne()
+                  .HasForeignKey("UserId") // Shadow foreign key for User
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(u => u.Tokens)
+                  .WithOne()
+                  .HasForeignKey("UserId") // Shadow foreign key for User
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(u => u.Claims)
+                  .WithOne()
+                  .HasForeignKey("UserId") // Shadow foreign key for User
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(u => u.RecoveryCodes)
+                  .WithOne()
+                  .HasForeignKey("UserId") // Shadow foreign key for User
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure UserTwoFactorRecoveryCode as a separate entity
+        modelBuilder.Entity<UserTwoFactorRecoveryCode>(entity =>
+        {
+            // Define the shadow property for Id
+            entity.Property<Guid>("Id")
+                  .ValueGeneratedOnAdd(); // Configure it to be generated by the database
+
+            // Configure composite key (or use Id as the primary key if preferred)
+            entity.HasKey("Id"); // Using the shadow Id as the primary key
+        });
+
+        // Configure IdentityUserLogin, IdentityUserToken, and IdentityUserClaim with composite keys
+        modelBuilder.Entity<IdentityUserLogin<Guid>>(entity =>
+        {
+            entity.HasKey(login => new { login.LoginProvider, login.ProviderKey });
+        });
+
+        modelBuilder.Entity<IdentityUserToken<Guid>>(entity =>
+        {
+            entity.HasKey(token => new { token.UserId, token.LoginProvider, token.Name });
+        });
+
+        modelBuilder.Entity<IdentityUserClaim<Guid>>(entity =>
+        {
+            entity.HasKey(claim => claim.Id); // Id as primary key for claims
+        });
+
+        #endregion
+
+        #region Site
+
+        modelBuilder.Entity<Site>(entity =>
+        {
+            // Configure the Urls property to be stored as a comma-separated string
+            entity.Property(e => e.Urls)
+                .HasConversion(
+                    // Convert the List<string> to a comma-separated string for storage
+                    v => string.Join(",", v),
+                    // Convert the comma-separated string back to a List<string> when reading
+                    v => v.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList()
+                );
+        });
+
+        #endregion
+
+        base.OnModelCreating(modelBuilder);
     }
 }
