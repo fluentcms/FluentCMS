@@ -1,0 +1,9 @@
+@inherits BaseFieldValueComponent<ICollection<Guid>, MultiFileFieldModel>
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+<Stack>
+    @foreach(var file in FieldValue.Value)
+    {
+        <Button Link Href="@GetDownloadUrl(file)")">@GetFileName(file)</Button>
+    }
+</Stack>

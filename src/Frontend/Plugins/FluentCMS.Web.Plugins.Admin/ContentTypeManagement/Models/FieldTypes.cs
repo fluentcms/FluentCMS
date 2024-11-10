@@ -9,6 +9,7 @@ public class FieldTypes
     public const string MULTI_SELECT = "multi-select";
     public const string DATE_TIME = "datetime";
     public const string SINGLE_FILE = "single-file";
+    public const string MULTI_FILE = "multi-file";
 
     public static Type GetSettingType(string fieldTypeKey) =>
         All[fieldTypeKey].SettingViewType;
@@ -170,6 +171,28 @@ public class FieldTypes
                     new FieldType.Component("File", typeof(SingleFileFieldDataTableFile)),
 
                     // new FieldType.Component("Text", typeof(DateFieldDataTableView)),
+                ]
+            }
+        },
+        {
+            MULTI_FILE,
+            new FieldType
+            {
+                Title = "Multi File",
+                Icon = IconName.ClipboardList,
+                Description = "Multiple Files like images, videos, etc",
+                Key = MULTI_FILE,
+                Order = 8,
+                SettingViewType = typeof(MultiFileFieldSettings),
+                FormComponents =
+                [
+                    new FieldType.Component("Files Picker", typeof(MultiFileFieldFormFilesPicker)),
+                    // new FieldType.Component("Images Picker", typeof(MultiFileFieldFormImagesPicker)),
+                ],
+                DataTableComponents =
+                [
+                    new FieldType.Component("Files", typeof(MultiFileFieldDataTableFiles)),
+                    // new FieldType.Component("Images", typeof(MultiFileFieldDataTableImages)),
                 ]
             }
         }

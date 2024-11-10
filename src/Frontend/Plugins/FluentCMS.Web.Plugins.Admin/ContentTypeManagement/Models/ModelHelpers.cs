@@ -39,6 +39,20 @@ public static class ModelHelpers
                                 .Select(x => x?.ToString() ?? string.Empty)
                                 .ToList()
                 };
+            case FieldTypes.MULTI_FILE:
+                return new FieldValue<ICollection<Guid>>
+                {
+                    Name = fieldModel.Name,
+                    Value = (valuesDict[fieldModel.Name] as object[] ?? [])
+                                .Select(x =>
+                                {
+                                    if (Guid.TryParse(x.ToString(), out var guid))
+                                        return guid;
+
+                                    return Guid.Empty;
+                                })
+                                .ToList()
+                };
 
             default:
                 throw new NotSupportedException($"Field type '{fieldModel.Type}' is not supported.");
@@ -66,6 +80,9 @@ public static class ModelHelpers
 
             case FieldTypes.MULTI_SELECT:
                 return new FieldValue<ICollection<string>> { Name = fieldModel.Name };
+
+            case FieldTypes.MULTI_FILE:
+                return new FieldValue<ICollection<Guid>> { Name = fieldModel.Name };
 
             default:
                 throw new NotSupportedException($"Field type '{fieldModel.Type}' is not supported.");
@@ -124,6 +141,7 @@ public static class ModelHelpers
             FieldTypes.SINGLE_SELECT => src.ToFieldModel<string?, SelectFieldModel>(),
             FieldTypes.SINGLE_FILE => src.ToFieldModel<Guid?, SingleFileFieldModel>(),
             FieldTypes.MULTI_SELECT => src.ToFieldModel<ICollection<string>, MultiSelectFieldModel>(),
+            FieldTypes.MULTI_FILE => src.ToFieldModel<ICollection<Guid>, MultiFileFieldModel>(),
             _ => throw new NotSupportedException($"Field type '{typeName}' is not supported."),
         };
     }
