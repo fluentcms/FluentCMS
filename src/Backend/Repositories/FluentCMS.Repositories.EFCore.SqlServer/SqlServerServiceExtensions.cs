@@ -1,6 +1,6 @@
 ﻿using FluentCMS.Repositories.EFCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Extensions.DependencyInjection;
 

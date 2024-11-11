@@ -66,7 +66,7 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
             await dbContext.SaveChangesAsync(cancellationToken);
 
             return existingSettings;
-        }        
+        }
     }
 
     private void SetAuditableFieldsForCreate(Settings settings)

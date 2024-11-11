@@ -7,7 +7,7 @@ public class SetupRepository(IMongoDBContext mongoDbContext) : ISetupRepository
         cancellationToken.ThrowIfCancellationRequested();
 
         // Check if the collection exists within the database
-        var collections = await mongoDbContext.Database.ListCollectionNamesAsync(cancellationToken : cancellationToken);
+        var collections = await mongoDbContext.Database.ListCollectionNamesAsync(cancellationToken: cancellationToken);
         var collectionName = nameof(GlobalSettings).ToLowerInvariant();
 
         // check if collection exists

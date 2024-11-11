@@ -8,7 +8,7 @@ public partial class ContactUsDataPlugin
     {
         var response = await ApiClient.PluginContent.GetAllAsync(nameof(ContactUsContent), Plugin!.Id);
         Items = response.Data?.ToContentList<ContactUsContent>() ?? [];
-        
+
         await base.OnInitializedAsync();
     }
 }
