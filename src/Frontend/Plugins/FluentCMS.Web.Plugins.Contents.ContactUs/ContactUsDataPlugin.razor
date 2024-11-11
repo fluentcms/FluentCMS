@@ -1,0 +1,10 @@
+@inherits BaseEditPlugin
+@namespace FluentCMS.Web.Plugins.Contents.ContactUs
+
+<PluginModal Open="Open" OnClose="OnCancel" Title="Submitted Contact Requests">
+    <DataTable Items="Items">
+        <DataTableItem Label="Email">@context.Email</DataTableItem>
+        <DataTableItem Label="Subject">@context.Subject</DataTableItem>
+        <DataTableItem Label="Message">@context.Message</DataTableItem>
+    </DataTable>
+</PluginModal>
