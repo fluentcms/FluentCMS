@@ -4,37 +4,34 @@
 
 <FormField Label="@ContentTypeField!.Label" Cols="@Field.FormColWidth" Required="@ContentTypeField!.Required" OnChange="OnFilesChanged">
 
-@if (FieldValue.Value == null)
-{
     <Grid>
         <FormFileUpload Multiple Required="@ContentTypeField!.Required" OnChange="OnFilesChanged" />
-    </Grid>
-}
-else
-{
-    <Stack Vertical>
-        @foreach (var item in FieldValue.Value)
+        @if (FieldValue.Value != null)
         {
-            <Card>
-                <CardBody>
-                    <Grid JustifySmall="GridJustify.Between" ItemsSmall="GridItems.Center">
-                        <GridItem>
-                            <Typography>@GetFileName(item)</Typography>
-                        </GridItem>
-                        <GridItem>
-                            <Stack Justify="StackJustify.End">
-                                <Button Size="ButtonSize.Small" Ghost Color="Color.Primary" Href="@GetFileUrl(item)" target="_blank">
-                                    <Icon Name="IconName.Download" />
-                                </Button>
-                                <Button Size="ButtonSize.Small" Ghost Color="Color.Danger" @onclick="() => RemoveValue(item)">
-                                    <Icon Name="IconName.Delete" />
-                                </Button>
-                            </Stack>
-                        </GridItem>
-                    </Grid>
-                </CardBody>
-            </Card>
+            <Stack Items="StackItems.Stretch" Vertical>
+                @foreach (var item in FieldValue.Value)
+                {
+                    <Card style="width: 100%;">
+                        <CardBody>
+                            <Grid JustifySmall="GridJustify.Between" ItemsSmall="GridItems.Center">
+                                <GridItem>
+                                    <Typography>@GetFileName(item)</Typography>
+                                </GridItem>
+                                <GridItem>
+                                    <Stack Justify="StackJustify.End">
+                                        <Button Size="ButtonSize.Small" Ghost Color="Color.Primary" Href="@GetFileUrl(item)" target="_blank">
+                                            <Icon Name="IconName.Download" />
+                                        </Button>
+                                        <Button Size="ButtonSize.Small" Ghost Color="Color.Danger" @onclick="() => RemoveValue(item)">
+                                            <Icon Name="IconName.Delete" />
+                                        </Button>
+                                    </Stack>
+                                </GridItem>
+                            </Grid>
+                        </CardBody>
+                    </Card>
+                }
+            </Stack>
         }
-    </Stack>
-}
+    </Grid>
 </FormField>

@@ -60,17 +60,16 @@ public partial class MultiFileFieldFormFilesPicker
 
     protected override async Task OnInitializedAsync()
     {
-        // var settingsResponse = await ApiClient.GlobalSettings.GetAsync();
-        // if (settingsResponse?.Data != null)
-        // {
-            // FileUploadConfig = settingsResponse.Data.FileUpload ?? new FileUploadConfig
-            FileUploadConfig = new FileUploadConfig
+        var settingsResponse = await ApiClient.GlobalSettings.GetAsync();
+        if (settingsResponse?.Data != null)
+        {
+            FileUploadConfig = settingsResponse.Data.FileUpload ?? new FileUploadConfig
             {
                 AllowedExtensions = "*",
                 MaxCount = 5,
                 MaxSize = 1024 * 1024 * 5 // 5 mb
             };
-        // }
+        }
 
         if (FieldValue.Value is null)
             FieldValue.Value = [];
