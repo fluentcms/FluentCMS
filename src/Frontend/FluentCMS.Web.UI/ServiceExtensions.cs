@@ -86,56 +86,98 @@ public static class ServiceExtensions
             {
                 var pageResponse = apiClient.Page.GetByUrlAsync(navigationManager.Uri).GetAwaiter().GetResult();
 
-                if (pageResponse?.Data == null)
-                    throw new Exception("Error while loading ViewState");
-
                 var page = pageResponse.Data.Current;
                 page ??= pageResponse.Data.Parent;
 
-                viewState.Page = mapper.Map<PageViewState>(page);
-                viewState.Page.Slug = pageResponse.Data.Slug;
-                viewState.Layout = mapper.Map<LayoutViewState>(page.Layout);
-                viewState.DetailLayout = mapper.Map<LayoutViewState>(page.DetailLayout);
-                viewState.EditLayout = mapper.Map<LayoutViewState>(page.EditLayout);
-                viewState.Site = mapper.Map<SiteViewState>(page.Site);
-                viewState.Plugins = page.Sections!.Values.SelectMany(x => x).Select(p => mapper.Map<PluginViewState>(p)).ToList();
-                viewState.User = mapper.Map<UserViewState>(page.User);
-                viewState.User.Id = page.User.UserId;
-
-                viewState.Site.HasAdminAccess = viewState.User.IsSuperAdmin || (page.Site.AdminRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
-                viewState.Site.HasContributorAccess = viewState.Site.HasAdminAccess || (page.Site.ContributorRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
-
-                viewState.Page.HasAdminAccess = viewState.Site.HasContributorAccess || (page.AdminRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
-                viewState.Page.HasViewAccess = viewState.Page.HasAdminAccess || (page.ViewRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
-
-                // check if the page is in edit mode
-                // it should have pluginId and pluginViewName query strings
-                var uriBuilder = new UriBuilder(navigationManager.Uri);
-                var queryParams = HttpUtility.ParseQueryString(uriBuilder.Query);
-                if (queryParams["pluginId"] != null && queryParams["viewName"] != null)
+                // Setup page
+                if (page is null)
                 {
-                    // check if the pluginId is valid
-                    if (Guid.TryParse(queryParams["pluginId"], out var pluginId))
+                    var body = File.ReadAllText(Path.Combine("../Frontend/FluentCMS.Web.UI", "Setup", "SetupLayout.body.html"));
+                    var head = File.ReadAllText(Path.Combine("../Frontend/FluentCMS.Web.UI", "Setup", "SetupLayout.head.html"));
+
+                    viewState.User = new();
+                    viewState.Site = new();
+                    viewState.Page = new();
+                    viewState.Page.Title = "Setup";
+                    viewState.Page.Locked = true;
+                    viewState.Layout = new LayoutViewState
                     {
-                        // TODO: Decide when show edit and when show detail view
-                        if (queryParams["viewMode"] == "detail")
+                        Body = body,
+                        Head = head
+                    };
+                    viewState.Plugins = new List<PluginViewState>
+                    {
+                        new()
                         {
-                            viewState.Type = ViewStateType.PluginDetail;
+                            Locked = true,
+                            Section = "Main",
+                            Definition = new PluginDefinitionViewState
+                            {
+                                Name = "Setup",
+                                Description = "Setup View Plugin",
+                                Assembly = "FluentCMS.Web.UI.dll",
+                                Locked = true,
+                                Types =
+                                [
+                                    new PluginDefinitionTypeViewState
+                                    {
+                                        IsDefault = true,
+                                        Name = "Setup",
+                                        Type = "SetupViewPlugin"
+                                    }
+                                ]
+                            }
                         }
-                        else
-                        {
-                            viewState.Type = ViewStateType.PluginEdit;
-                        }
-                        viewState.Plugin = viewState.Plugins.Single(x => x.Id == pluginId);
-                        viewState.PluginViewName = queryParams["viewName"];
-                    }
+                    };
                 }
+                else
+                {
 
-                if (queryParams["pageEdit"] != null)
-                    viewState.Type = ViewStateType.PageEdit;
+                    viewState.Page = mapper.Map<PageViewState>(page);
+                    viewState.Page.Slug = pageResponse.Data?.Slug;
+                    viewState.Layout = mapper.Map<LayoutViewState>(page.Layout);
+                    viewState.DetailLayout = mapper.Map<LayoutViewState>(page.DetailLayout);
+                    viewState.EditLayout = mapper.Map<LayoutViewState>(page.EditLayout);
+                    viewState.Site = mapper.Map<SiteViewState>(page.Site);
+                    viewState.Plugins = page.Sections!.Values.SelectMany(x => x).Select(p => mapper.Map<PluginViewState>(p)).ToList();
+                    viewState.User = mapper.Map<UserViewState>(page.User);
+                    viewState.User.Id = page.User.UserId;
 
-                if (queryParams["pagePreview"] != null)
-                    viewState.Type = ViewStateType.PagePreview;
+                    viewState.Site.HasAdminAccess = viewState.User.IsSuperAdmin || (page.Site.AdminRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
+                    viewState.Site.HasContributorAccess = viewState.Site.HasAdminAccess || (page.Site.ContributorRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
+
+                    viewState.Page.HasAdminAccess = viewState.Site.HasContributorAccess || (page.AdminRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
+                    viewState.Page.HasViewAccess = viewState.Page.HasAdminAccess || (page.ViewRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
+
+                    // check if the page is in edit mode
+                    // it should have pluginId and pluginViewName query strings
+                    var uriBuilder = new UriBuilder(navigationManager.Uri);
+                    var queryParams = HttpUtility.ParseQueryString(uriBuilder.Query);
+                    if (queryParams["pluginId"] != null && queryParams["viewName"] != null)
+                    {
+                        // check if the pluginId is valid
+                        if (Guid.TryParse(queryParams["pluginId"], out var pluginId))
+                        {
+                            // TODO: Decide when show edit and when show detail view
+                            if (queryParams["viewMode"] == "detail")
+                            {
+                                viewState.Type = ViewStateType.PluginDetail;
+                            }
+                            else
+                            {
+                                viewState.Type = ViewStateType.PluginEdit;
+                            }
+                            viewState.Plugin = viewState.Plugins.Single(x => x.Id == pluginId);
+                            viewState.PluginViewName = queryParams["viewName"];
+                        }
+                    }
+
+                    if (queryParams["pageEdit"] != null)
+                        viewState.Type = ViewStateType.PageEdit;
+
+                    if (queryParams["pagePreview"] != null)
+                        viewState.Type = ViewStateType.PagePreview;
+                }
             };
             viewState.Reload();
 

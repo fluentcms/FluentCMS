@@ -1,6 +1,13 @@
 ﻿@page "/{**Route:nonfile}"
 
-@if (ViewState.Type == ViewStateType.PageEdit)
+@if (!IsInitialized)
+{
+    <HeadContent>
+        @RenderDynamicContent(ViewState.Layout.Head ?? string.Empty)
+    </HeadContent>
+    @RenderDynamicContent(ViewState.Layout.Body ?? string.Empty)
+}
+else if (ViewState.Type == ViewStateType.PageEdit)
 {
     <SiteBuilder />
 }

@@ -1,6 +1,7 @@
 ﻿using FluentCMS.Web.ApiClients.Services;
+using Microsoft.AspNetCore.Http;
 
-namespace FluentCMS.Web.Plugins.Admin.Auth;
+namespace FluentCMS.Web.UI;
 
 public partial class SetupViewPlugin
 {
