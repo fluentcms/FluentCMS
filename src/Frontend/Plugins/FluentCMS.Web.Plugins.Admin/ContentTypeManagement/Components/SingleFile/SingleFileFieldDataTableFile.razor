@@ -1,8 +1,7 @@
 @inherits BaseFieldValueComponent<Guid?, SingleFileFieldModel>
 @namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
 
-@FieldValue.Value
 @if (FieldValue.Value != null)
 {
-    <Button Link Href="@($"/API/File/Download/{FieldValue.Value}")">Download</Button>
+    <Button Link target="_blank" Href="@FilePath">@FileName</Button>
 }
