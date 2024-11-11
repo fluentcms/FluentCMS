@@ -4,43 +4,6 @@ namespace Microsoft.Extensions.DependencyInjection;
 
 public static class EFCoreServiceExtensions
 {
-    //public static IServiceCollection AddMySqlRepositories(this IServiceCollection services, string connectionString)
-    //{
-    //    services.AddEFCoreRepositories();
-
-    //    services.AddDbContext<FluentCmsDbContext>((sp, options) =>
-    //        options.UseMySql(GetConnectionString(sp, connectionString), ServerVersion.AutoDetect(connectionString)));
-
-    //    return services;
-    //}
-
-    //public static IServiceCollection AddSqliteRepositories(this IServiceCollection services, string connectionString)
-    //{
-    //    services.AddEFCoreRepositories();
-
-    //    services.AddDbContext<FluentCmsDbContext>((sp, options) =>
-    //        options.UseSqlite("Data Source=fluentcms.db"));
-
-    //    return services;
-    //}
-
-    //public static IServiceCollection AddPostgresRepositories(this IServiceCollection services, string connectionString)
-    //{
-    //    services.AddEFCoreRepositories();
-
-    //    services.AddDbContext<FluentCmsDbContext>((sp, options) =>
-    //        options.UseNpgsql(GetConnectionString(sp, connectionString)));
-
-    //    return services;
-    //}
-
-    //private static string GetConnectionString(IServiceProvider provider, string connectionString)
-    //{
-    //    var configuration = provider.GetService<IConfiguration>() ?? throw new InvalidOperationException("IConfiguration is not registered.");
-    //    var connString = configuration.GetConnectionString(connectionString);
-    //    return connString ?? throw new InvalidOperationException($"Connection string '{connectionString}' not found.");
-    //}
-
     public static IServiceCollection AddEFCoreRepositories(this IServiceCollection services)
     {
         // Register repositories

@@ -11,6 +11,10 @@
     <ItemGroup>
         <ProjectReference Include="..\Backend\FluentCMS.Web.Api\FluentCMS.Web.Api.csproj" />
         <ProjectReference Include="..\Backend\Repositories\FluentCMS.Repositories.Caching\FluentCMS.Repositories.Caching.csproj" />
+        <ProjectReference Include="..\Backend\Repositories\FluentCMS.Repositories.EFCore.MySql\FluentCMS.Repositories.EFCore.MySql.csproj" />
+        <ProjectReference Include="..\Backend\Repositories\FluentCMS.Repositories.EFCore.PostgreSQL\FluentCMS.Repositories.EFCore.PostgreSQL.csproj" />
+        <ProjectReference Include="..\Backend\Repositories\FluentCMS.Repositories.EFCore.Sqlite\FluentCMS.Repositories.EFCore.Sqlite.csproj" />
+        <ProjectReference Include="..\Backend\Repositories\FluentCMS.Repositories.EFCore.SqlServer\FluentCMS.Repositories.EFCore.SqlServer.csproj" />
         <ProjectReference Include="..\Backend\Repositories\FluentCMS.Repositories.MongoDB\FluentCMS.Repositories.MongoDB.csproj" />
         <ProjectReference Include="..\Backend\Repositories\FluentCMS.Repositories.LiteDb\FluentCMS.Repositories.LiteDb.csproj" />
         <ProjectReference Include="..\Frontend\FluentCMS.Web.UI\FluentCMS.Web.UI.csproj" />

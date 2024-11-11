@@ -4,14 +4,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
-public static class SqlServerServiceExtensions
+public static class MySqlServiceExtensions
 {
-    public static IServiceCollection AddSqlServerRepositories(this IServiceCollection services, string connectionStringName)
+    public static IServiceCollection AddMySqlRepositories(this IServiceCollection services, string connectionStringName)
     {
         services.AddEFCoreRepositories();
 
         services.AddDbContext<FluentCmsDbContext>((sp, options) =>
-            options.UseSqlServer(sp.GetConnectionString(connectionStringName)));
+            options.UseMySql(sp.GetConnectionString(connectionStringName), ServerVersion.AutoDetect(connectionStringName)));
 
         return services;
     }
