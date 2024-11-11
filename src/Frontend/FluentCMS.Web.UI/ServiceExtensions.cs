@@ -89,21 +89,19 @@ public static class ServiceExtensions
                 var page = pageResponse.Data.Current;
                 page ??= pageResponse.Data.Parent;
 
-                // Setup page
+                // TODO: await setupManager.IsInitialized() 
                 if (page is null)
                 {
-                    var body = File.ReadAllText(Path.Combine("../Frontend/FluentCMS.Web.UI", "Setup", "SetupLayout.body.html"));
-                    var head = File.ReadAllText(Path.Combine("../Frontend/FluentCMS.Web.UI", "Setup", "SetupLayout.head.html"));
-
                     viewState.User = new();
                     viewState.Site = new();
-                    viewState.Page = new();
-                    viewState.Page.Title = "Setup";
-                    viewState.Page.Locked = true;
+                    viewState.Page = new()
+                    {
+                        Title = "Setup"
+                    };
                     viewState.Layout = new LayoutViewState
                     {
-                        Body = body,
-                        Head = head
+                        Body = SetupLayout.Body,
+                        Head = SetupLayout.Head
                     };
                     viewState.Plugins = new List<PluginViewState>
                     {
