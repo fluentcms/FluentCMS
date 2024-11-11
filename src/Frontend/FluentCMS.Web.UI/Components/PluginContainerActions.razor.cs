@@ -19,6 +19,7 @@ public partial class PluginContainerActions
 
     #region Plugin Edit
     private bool EditModalOpen { get; set; } = false;
+    private bool DataModalOpen { get; set; } = false;
 
     private Type? GetPluginType(string typeName)
     {
@@ -37,6 +38,24 @@ public partial class PluginContainerActions
             throw new InvalidOperationException("Plugin type not found!");
 
         return type;
+    }
+
+    private async Task OpenDataModal()
+    {
+        DataModalOpen = true;
+        await Task.CompletedTask;
+    }
+
+    private async Task OnDataCancel()
+    {
+        DataModalOpen = false;
+        await Task.CompletedTask;
+    }
+
+    private async Task OnDataSubmit()
+    {
+        DataModalOpen = false;
+        await OnUpdate.InvokeAsync();
     }
 
     private async Task OpenEditModal()
@@ -65,6 +84,17 @@ public partial class PluginContainerActions
             { "Plugin", Plugin },
             { "OnSubmit", EventCallback.Factory.Create(this, OnEditSubmit) },
             { "OnCancel", EventCallback.Factory.Create(this, OnEditCancel) },
+        };
+
+        return result;
+    }
+    private Dictionary<string, object> GetDataParameters()
+    {
+        Dictionary<string, object> result = new()
+        {
+            { "Open", DataModalOpen },
+            { "Plugin", Plugin },
+            { "OnCancel", EventCallback.Factory.Create(this, OnDataCancel) },
         };
 
         return result;
