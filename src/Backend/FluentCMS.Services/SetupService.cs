@@ -10,7 +10,7 @@ public interface ISetupService : IAutoRegisterService
     Task<bool> IsInitialized(CancellationToken cancellationToken = default);
 }
 
-public class SetupService(IMessagePublisher messagePublisher, IGlobalSettingsRepository globalSettingsRepository, IPermissionManager permissionManager) : ISetupService
+public class SetupService(IMessagePublisher messagePublisher, ISetupRepository setupRepository, IPermissionManager permissionManager) : ISetupService
 {
     public Task<IEnumerable<string>> GetTemplates(CancellationToken cancellationToken = default)
     {
@@ -20,12 +20,12 @@ public class SetupService(IMessagePublisher messagePublisher, IGlobalSettingsRep
 
     public Task<bool> IsInitialized(CancellationToken cancellationToken = default)
     {
-        return globalSettingsRepository.Initialized(cancellationToken);
+        return setupRepository.Initialized(cancellationToken);
     }
 
     public async Task<bool> Start(SetupTemplate setupTemplate, CancellationToken cancellationToken = default)
     {
-        if (await globalSettingsRepository.Initialized(cancellationToken))
+        if (await setupRepository.Initialized(cancellationToken))
             throw new AppException(ExceptionCodes.SetupAlreadyInitialized);
 
         if (!await permissionManager.HasAccess(GlobalPermissionAction.SuperAdmin, cancellationToken))

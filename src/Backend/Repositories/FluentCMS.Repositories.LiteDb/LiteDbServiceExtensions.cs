@@ -27,6 +27,7 @@ public static class LiteDbServiceExtensions
         services.AddScoped<IPluginRepository, PluginRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<ISettingsRepository, SettingsRepository>();
+        services.AddScoped<ISetupRepository, SetupRepository>();
         services.AddScoped<ISiteRepository, SiteRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserRoleRepository, UserRoleRepository>();

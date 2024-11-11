@@ -12,7 +12,7 @@ public class PermissionManager : IPermissionManager
     private List<Role> _roles;
     private List<Permission> _permissions;
 
-    public PermissionManager(IApiExecutionContext apiExecutionContext, IPermissionRepository permissionRepository, IUserRoleRepository userRoleRepository, IGlobalSettingsRepository globalSettingsRepository, IRoleRepository roleRepository)
+    public PermissionManager(IApiExecutionContext apiExecutionContext, IPermissionRepository permissionRepository, IUserRoleRepository userRoleRepository, IGlobalSettingsRepository globalSettingsRepository, ISetupRepository setupRepository, IRoleRepository roleRepository)
     {
         _apiExecutionContext = apiExecutionContext;
         _permissionRepository = permissionRepository;
@@ -21,7 +21,7 @@ public class PermissionManager : IPermissionManager
         _roleRepository = roleRepository;
 
         // setup is not done yet
-        if (!_globalSettingsRepository.Initialized().GetAwaiter().GetResult())
+        if (!setupRepository.Initialized().GetAwaiter().GetResult())
         {
             _isSuperAdmin = true;
         }

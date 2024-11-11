@@ -36,13 +36,6 @@ public class GlobalSettingsRepository(FluentCmsDbContext dbContext, IApiExecutio
         return settings;
     }
 
-    public async Task<bool> Initialized(CancellationToken cancellationToken = default)
-    {
-        var existing = await Get(cancellationToken);
-
-        return existing?.Initialized ?? false;
-    }
-
     private void SetAuditableFieldsForCreate(GlobalSettings settings)
     {
         settings.Id = Guid.NewGuid();
