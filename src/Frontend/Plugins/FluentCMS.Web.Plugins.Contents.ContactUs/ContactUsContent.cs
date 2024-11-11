@@ -1,3 +1,5 @@
+namespace FluentCMS.Web.Plugins.Contents.ContactUs;
+
 public class ContactUsContent : IContent
 {
     public Guid Id { get; set; } = Guid.Empty;

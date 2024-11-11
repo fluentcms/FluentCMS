@@ -2,7 +2,7 @@ namespace FluentCMS.Web.Plugins.Contents.ContactUs;
 
 public partial class ContactUsDataPlugin
 {
-    private List<ContactUsContent> Items { get; set; }
+    private List<ContactUsContent> Items { get; set; } = [];
 
     protected override async Task OnInitializedAsync()
     {

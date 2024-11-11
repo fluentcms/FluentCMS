@@ -1,6 +1,6 @@
-namespace FluentCMS.Web.Plugins.Contents.ContactUs;
-
 using FluentCMS.Providers.EmailProviders;
+
+namespace FluentCMS.Web.Plugins.Contents.ContactUs;
 
 public partial class ContactUsViewPlugin
 {
@@ -9,23 +9,16 @@ public partial class ContactUsViewPlugin
 
     public const string CONTENT_TYPE_NAME = nameof(ContactUsContent);
 
-    private string EmailAddress { get; set; } = default!; 
-
     private ContactUsContent Model { get; set; } = new();
-    
-    protected override async Task OnInitializedAsync()
-    {
-        Plugin.Settings.TryGetValue("EmailAddress", out var emailAddress);
-        EmailAddress = emailAddress ?? string.Empty;
-        await base.OnInitializedAsync();
-    }
 
     protected async Task OnSubmit()
     {
-        Console.WriteLine($"Should send email: {Model.Email} - {Model.Subject} - {Model.Message}");
+        Plugin.Settings.TryGetValue("EmailAddress", out var emailAddress);
+        emailAddress ??= string.Empty;
 
         await ApiClient.PluginContent.CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.ToDictionary());
 
-        await EmailProvider.Send(Model.Email, EmailAddress, Model.Subject, Model.Message);
+        if (!string.IsNullOrWhiteSpace(emailAddress))
+            await EmailProvider.Send(Model.Email, emailAddress, Model.Subject, Model.Message);
     }
 }

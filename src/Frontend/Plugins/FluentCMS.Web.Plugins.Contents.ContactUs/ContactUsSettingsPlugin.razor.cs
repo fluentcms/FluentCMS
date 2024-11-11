@@ -11,19 +11,24 @@ public partial class ContactUsSettingsPlugin
 
     protected override async Task OnInitializedAsync()
     {
-        Plugin.Settings.TryGetValue("EmailAddress", out var emailAddress);
-        Model = new ContactUsSettings {
-            EmailAddress = emailAddress ?? string.Empty
-        };
+        if (Model == null)
+        {
+            Plugin.Settings.TryGetValue("EmailAddress", out var emailAddress);
+            Model = new ContactUsSettings
+            {
+                EmailAddress = emailAddress ?? string.Empty
+            };
+        }
         await base.OnInitializedAsync();
     }
 
     private async Task HandleSubmit()
     {
-        await ApiClient.Settings.UpdateAsync(new SettingsUpdateRequest {
+        await ApiClient.Settings.UpdateAsync(new SettingsUpdateRequest
+        {
             Id = Plugin.Id,
             Settings = new Dictionary<string, string> {
-                { "EmailAddress", Model.EmailAddress }
+                { "EmailAddress", Model!.EmailAddress }
             }
         });
 
