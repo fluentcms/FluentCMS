@@ -90,7 +90,10 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Contents.RichText", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.RichText\FluentCMS.Web.Plugins.Contents.RichText.csproj", "{F7CEDDC1-BA59-4B75-8B3E-6D2AB99E11EB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Repositories.EFCore", "Backend\Repositories\FluentCMS.Repositories.EFCore\FluentCMS.Repositories.EFCore.csproj", "{D7672307-B219-493C-B083-897534F7A6FA}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Web.Plugins.Contents.ContactUs", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.ContactUs\FluentCMS.Web.Plugins.Contents.ContactUs.csproj", "{D32484B4-BB1D-46F9-9F81-20DE4673F922}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Repositories.EFCore.SqlServer", "Backend\Repositories\FluentCMS.Repositories.EFCore.SqlServer\FluentCMS.Repositories.EFCore.SqlServer.csproj", "{6E78A183-5E79-4CC4-A515-9A98B425A485}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -234,6 +237,10 @@ Global
 		{D32484B4-BB1D-46F9-9F81-20DE4673F922}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D32484B4-BB1D-46F9-9F81-20DE4673F922}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D32484B4-BB1D-46F9-9F81-20DE4673F922}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6E78A183-5E79-4CC4-A515-9A98B425A485}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E78A183-5E79-4CC4-A515-9A98B425A485}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E78A183-5E79-4CC4-A515-9A98B425A485}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E78A183-5E79-4CC4-A515-9A98B425A485}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -279,6 +286,7 @@ Global
 		{F7CEDDC1-BA59-4B75-8B3E-6D2AB99E11EB} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
 		{D7672307-B219-493C-B083-897534F7A6FA} = {1CC73AD2-CFC9-4FE7-96C0-0E4FEFBB66F1}
 		{D32484B4-BB1D-46F9-9F81-20DE4673F922} = {BB5FD6A0-0840-4381-AB68-AD61499368ED}
+		{6E78A183-5E79-4CC4-A515-9A98B425A485} = {1CC73AD2-CFC9-4FE7-96C0-0E4FEFBB66F1}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2E9F4217-7A58-48A4-9850-84CD0CDA31DA}
