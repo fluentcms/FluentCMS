@@ -13,9 +13,6 @@ CREATE TABLE ApiToken (
     ModifiedAt DATETIME NULL
 );
 
--- Index for fast lookup by Key and Enabled status
-CREATE INDEX IX_ApiToken_Key_Enabled ON ApiToken ("Key", Enabled);
-
 -- Table for Policy entries related to ApiToken
 CREATE TABLE "Policy" (
     Id UNIQUEIDENTIFIER PRIMARY KEY,
@@ -271,7 +268,7 @@ CREATE TABLE ContentTypeField (
     Description NVARCHAR(MAX) NOT NULL,
     Type NVARCHAR(255) NOT NULL,
     Required BIT NOT NULL,
-    Unique BIT NOT NULL,
+    "Unique" BIT NOT NULL,
     Label NVARCHAR(255) NOT NULL,
     Settings NVARCHAR(MAX) NULL, -- JSON representation of the dictionary
     CONSTRAINT FK_ContentTypeField_ContentType FOREIGN KEY (ContentTypeId)
@@ -281,7 +278,7 @@ CREATE TABLE ContentTypeField (
 CREATE INDEX IX_ContentTypeField_ContentTypeId_Name ON ContentTypeField (ContentTypeId, Name);
 
 -- Table for File
-CREATE TABLE File (
+CREATE TABLE "File" (
     Id UNIQUEIDENTIFIER PRIMARY KEY,
     SiteId UNIQUEIDENTIFIER NOT NULL,
     Name NVARCHAR(255) NOT NULL,
@@ -296,7 +293,7 @@ CREATE TABLE File (
     ModifiedAt DATETIME NULL
 );
 
-CREATE INDEX IX_File_SiteId_Name ON File (SiteId, Name);
+CREATE INDEX IX_File_SiteId_Name ON "File" (SiteId, Name);
 
 -- Table for Folder
 CREATE TABLE Folder (

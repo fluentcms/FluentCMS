@@ -136,8 +136,7 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                 .HasConversion(
                     v => string.Join(",", v), // Convert list to comma-separated string when saving
                     v => v.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList() // Convert back to list when reading
-                )
-                .HasColumnType("nvarchar(max)"); // Store as a long string in the database
+                );
         });
 
         #endregion        
