@@ -28,7 +28,9 @@ public partial class FormMarkdownEditor : IAsyncDisposable
         if (Value == _value) return;
 
         _value = Value;
-        await Module.InvokeVoidAsync("update", DotNetRef, Element, new { Value });
+
+        if (Module is not null)
+            await Module.InvokeVoidAsync("update", DotNetRef, Element, new { Value });
     }
 
     public async ValueTask DisposeAsync()
