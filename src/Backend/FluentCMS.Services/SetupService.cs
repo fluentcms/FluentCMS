@@ -28,6 +28,9 @@ public class SetupService(IMessagePublisher messagePublisher, ISetupRepository s
         if (await setupRepository.Initialized(cancellationToken))
             throw new AppException(ExceptionCodes.SetupAlreadyInitialized);
 
+        // initialize db if it's not initialized
+        await setupRepository.InitializeDb(cancellationToken);
+
         if (!await permissionManager.HasAccess(GlobalPermissionAction.SuperAdmin, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
 

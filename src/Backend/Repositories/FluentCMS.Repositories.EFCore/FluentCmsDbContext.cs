@@ -82,6 +82,10 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null), // Convert to JSON when saving
                     v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, (JsonSerializerOptions)null) // Convert back to dictionary when reading
                 );
+
+            // Define the shadow property "Id" as the primary key
+            entity.Property<Guid>("Id").ValueGeneratedOnAdd();
+            entity.HasKey("Id");
         });
 
         #endregion
@@ -137,6 +141,11 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                     v => string.Join(",", v), // Convert list to comma-separated string when saving
                     v => v.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList() // Convert back to list when reading
                 );
+
+
+            // Define the shadow property "Id" as the primary key
+            entity.Property<Guid>("Id").ValueGeneratedOnAdd();
+            entity.HasKey("Id");
         });
 
         #endregion        
