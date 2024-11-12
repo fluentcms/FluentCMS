@@ -28,14 +28,16 @@ public partial class Default
     [Inject]
     public SetupManager SetupManager { set; get; } = default!;
 
-    private bool IsInitialized { get; set; } = false;
-
     protected override async Task OnInitializedAsync()
     {
-        IsInitialized = await SetupManager.IsInitialized();
 
-        if (!IsInitialized && HttpContext != null)
-            await AuthManager.Logout(HttpContext);
+        if (!await SetupManager.IsInitialized())
+        {
+            if(HttpContext != null)
+                await AuthManager.Logout(HttpContext);
+
+            NavigationManager.NavigateTo("/setup", true);
+        } 
     }
 
     protected RenderFragment RenderDynamicContent(string content) => builder =>
