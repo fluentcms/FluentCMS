@@ -92,6 +92,12 @@ public static class ServiceExtensions
                 var page = pageResponse.Data.Current;
                 page ??= pageResponse.Data.Parent;
 
+                // For setup page
+                page ??= new();
+                page.User ??= new();
+                page.Site ??= new();
+                page.Sections ??= [];
+
                 viewState.Page = mapper.Map<PageViewState>(page);
                 viewState.Page.Slug = pageResponse.Data.Slug;
                 viewState.Layout = mapper.Map<LayoutViewState>(page.Layout);
