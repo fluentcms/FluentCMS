@@ -32,10 +32,6 @@ CREATE INDEX IX_Policies_ApiTokenId ON Policies (ApiTokenId);
 -- Table for GlobalSettings
 CREATE TABLE GlobalSettings (
     Id TEXT PRIMARY KEY,
-    Initialized INTEGER NOT NULL DEFAULT 0, -- Boolean as INTEGER
-    FileUpload_MaxSize INTEGER NOT NULL,
-    FileUpload_MaxCount INTEGER NOT NULL,
-    FileUpload_AllowedExtensions TEXT NOT NULL,
     SuperAdmins TEXT, -- Comma-separated string for list of super admins
     CreatedBy TEXT NOT NULL,
     CreatedAt DATETIME NOT NULL,
@@ -47,7 +43,7 @@ CREATE TABLE GlobalSettings (
 CREATE TABLE PluginDefinitions (
     Id TEXT PRIMARY KEY, -- GUID as TEXT
     Name TEXT NOT NULL,
-    Category TEXT NOT NULL,
+    Category TEXT,
     Assembly TEXT NOT NULL,
     Icon TEXT, -- Nullable field
     Description TEXT, -- Nullable field
@@ -61,7 +57,7 @@ CREATE TABLE PluginDefinitions (
 
 -- Table for PluginDefinitionTypes (related to PluginDefinitions)
 CREATE TABLE PluginDefinitionTypes (
-    Id TEXT PRIMARY KEY, -- GUID as TEXT
+    Id INTEGER PRIMARY KEY AUTOINCREMENT, -- Auto-incrementing ID
     PluginDefinitionId TEXT NOT NULL, -- Foreign key to PluginDefinitions
     Name TEXT NOT NULL,
     Type TEXT NOT NULL,
@@ -88,8 +84,26 @@ CREATE TABLE Sites (
     ModifiedAt DATETIME
 );
 
--- Index for Sites by Name
-CREATE INDEX IX_Sites_Name ON Sites (Name);
+-- Table for Settings
+CREATE TABLE Settings (
+    Id TEXT PRIMARY KEY, -- The Id of the entity this setting belongs to
+    CreatedBy TEXT NOT NULL,
+    CreatedAt DATETIME NOT NULL,
+    ModifiedBy TEXT,
+    ModifiedAt DATETIME
+);
+
+-- Table for SettingValues (child table of Settings)
+CREATE TABLE SettingValues (
+    Id TEXT PRIMARY KEY,
+    SettingsId TEXT NOT NULL, -- Foreign key to Settings table
+    Key TEXT NOT NULL,
+    Value TEXT NOT NULL,
+    FOREIGN KEY (SettingsId) REFERENCES Settings(Id) ON DELETE CASCADE
+);
+
+-- Index for efficient lookup by SettingsId and Key
+CREATE INDEX IX_SettingValues_SettingsId_Key ON SettingValues (SettingsId, Key);
 
 -- Table for Roles
 CREATE TABLE Roles (

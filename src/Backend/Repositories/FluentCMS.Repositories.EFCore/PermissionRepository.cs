@@ -14,7 +14,9 @@ public class PermissionRepository(FluentCmsDbContext dbContext, IApiExecutionCon
             Action = action,
             EntityId = entityId,
             RoleId = x,
-            SiteId = siteId
+            SiteId = siteId,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = ApiExecutionContext.Username
         });
 
         if (!permissions.Any())
