@@ -16,20 +16,18 @@ CREATE TABLE ApiTokens (
     ModifiedAt DATETIME
 );
 
--- Index for ApiTokens by Key and Enabled status
-CREATE INDEX IX_ApiTokens_Key_Enabled ON ApiTokens (Key, Enabled);
-
 -- Table for Policies (related to ApiTokens)
 CREATE TABLE Policies (
-    Id TEXT PRIMARY KEY, -- GUID as TEXT
+    Id INTEGER PRIMARY KEY AUTOINCREMENT, -- Auto-incrementing ID
     ApiTokenId TEXT NOT NULL, -- Foreign key to ApiTokens
     Area TEXT NOT NULL,
-    Actions TEXT NOT NULL, -- Comma-separated string for list of actions
+    Actions TEXT NOT NULL, -- Comma-separated string to store list of actions
     FOREIGN KEY (ApiTokenId) REFERENCES ApiTokens(Id) ON DELETE CASCADE
 );
 
--- Index for Policies by ApiTokenId
+-- Index for Policies by ApiTokenId for optimized querying
 CREATE INDEX IX_Policies_ApiTokenId ON Policies (ApiTokenId);
+
 
 -- Table for GlobalSettings
 CREATE TABLE GlobalSettings (
@@ -44,6 +42,36 @@ CREATE TABLE GlobalSettings (
     ModifiedBy TEXT,
     ModifiedAt DATETIME
 );
+
+-- Table for PluginDefinitions
+CREATE TABLE PluginDefinitions (
+    Id TEXT PRIMARY KEY, -- GUID as TEXT
+    Name TEXT NOT NULL,
+    Category TEXT NOT NULL,
+    Assembly TEXT NOT NULL,
+    Icon TEXT, -- Nullable field
+    Description TEXT, -- Nullable field
+    Locked INTEGER NOT NULL DEFAULT 0, -- Boolean as INTEGER (1 for true, 0 for false)
+    CreatedBy TEXT NOT NULL,
+    CreatedAt DATETIME NOT NULL,
+    ModifiedBy TEXT,
+    ModifiedAt DATETIME
+);
+
+
+-- Table for PluginDefinitionTypes (related to PluginDefinitions)
+CREATE TABLE PluginDefinitionTypes (
+    Id TEXT PRIMARY KEY, -- GUID as TEXT
+    PluginDefinitionId TEXT NOT NULL, -- Foreign key to PluginDefinitions
+    Name TEXT NOT NULL,
+    Type TEXT NOT NULL,
+    IsDefault INTEGER NOT NULL DEFAULT 0, -- Boolean as INTEGER (1 for true, 0 for false)
+    FOREIGN KEY (PluginDefinitionId) REFERENCES PluginDefinitions(Id) ON DELETE CASCADE
+);
+
+-- Index for PluginDefinitionTypes by PluginDefinitionId and Name
+CREATE INDEX IX_PluginDefinitionTypes_PluginDefinitionId ON PluginDefinitionTypes (PluginDefinitionId);
+
 
 -- Table for Sites
 CREATE TABLE Sites (
