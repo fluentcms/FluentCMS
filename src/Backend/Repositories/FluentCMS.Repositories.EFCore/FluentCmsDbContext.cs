@@ -144,8 +144,14 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
 
 
             // Define the shadow property "Id" as the primary key
-            entity.Property<Guid>("Id").ValueGeneratedOnAdd();
+            entity.Property<int>("Id").ValueGeneratedOnAdd();
             entity.HasKey("Id");
+
+            // Foreign key relationship to ApiToken (assuming ApiTokenId is defined in your model)
+            entity.HasOne<ApiToken>()
+                  .WithMany(a => a.Policies)
+                  .HasForeignKey("ApiTokenId") // Shadow foreign key to link to ApiToken
+                  .OnDelete(DeleteBehavior.Cascade); // Cascade delete for related policies
         });
 
         #endregion        
