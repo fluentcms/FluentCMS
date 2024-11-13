@@ -90,7 +90,7 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                 );
 
             // Define the shadow property "Id" as the primary key
-            entity.Property<Guid>("Id").ValueGeneratedOnAdd();
+            entity.Property<int>("Id").ValueGeneratedOnAdd();
             entity.HasKey("Id");
         });
 
