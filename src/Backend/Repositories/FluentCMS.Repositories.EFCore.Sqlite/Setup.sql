@@ -390,7 +390,7 @@ CREATE TABLE PluginContents (
     Id TEXT PRIMARY KEY,
     SiteId TEXT NOT NULL,
     PluginId TEXT NOT NULL, -- Foreign key to Plugins
-    Type TEXT NOT NULL,
+    Type TEXT,
     Data TEXT, -- JSON representation of the dictionary
     CreatedBy TEXT NOT NULL,
     CreatedAt DATETIME NOT NULL,

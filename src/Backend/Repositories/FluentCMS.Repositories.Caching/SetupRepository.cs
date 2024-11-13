@@ -11,8 +11,9 @@ public class SetupRepository(ISetupRepository setupRepository, ICacheProvider ca
 
     public async Task<bool> InitializeDb(CancellationToken cancellationToken = default)
     {
-        InvalidateCache();
-        return await setupRepository.InitializeDb(cancellationToken);
+        var result = await setupRepository.InitializeDb(cancellationToken);
+        cacheProvider.Set(CacheKey, result);
+        return result;
     }
 
     private async Task<bool> GetCached(CancellationToken cancellationToken = default)
