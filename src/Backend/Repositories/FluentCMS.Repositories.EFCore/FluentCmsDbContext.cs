@@ -29,12 +29,18 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
     public DbSet<SettingValue> SettingValues { get; set; }
     public DbSet<Site> Sites { get; set; } = default!;
     public DbSet<User> Users { get; set; } = default!;
+    public DbSet<IdentityUserLogin<Guid>> UserLogins { get; set; } = default!;
+    public DbSet<IdentityUserToken<Guid>> UserTokens { get; set; } = default!;
+    public DbSet<UserTwoFactorRecoveryCode> UserTwoFactorRecoveryCodes { get; set; } = default!;
+    public DbSet<IdentityUserClaim<Guid>> UserClaims { get; set; } = default!;
     public DbSet<UserRole> UserRoles { get; set; } = default!;
 
     #endregion
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var jsonSerializerOptions = new JsonSerializerOptions();
+        jsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
 
         #region Settings
 
@@ -70,6 +76,8 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                   .WithOne()
                   .HasForeignKey("ContentTypeId") // Shadow property for the foreign key
                   .OnDelete(DeleteBehavior.Cascade); // Configure cascade delete if needed
+
+            //entity.Navigation(e => e.Fields).AutoInclude();
         });
 
         modelBuilder.Entity<ContentTypeField>(entity =>
@@ -77,8 +85,8 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
             // Configure Settings to be stored as JSON
             entity.Property(e => e.Settings)
                 .HasConversion(
-                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null), // Convert to JSON when saving
-                    v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, (JsonSerializerOptions)null) // Convert back to dictionary when reading
+                    v => JsonSerializer.Serialize(v, jsonSerializerOptions), // Convert to JSON when saving
+                    v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, jsonSerializerOptions) // Convert back to dictionary when reading
                 );
 
             // Define the shadow property "Id" as the primary key
@@ -96,9 +104,9 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
             entity.Property(e => e.Data)
                 .HasConversion(
                     // Serialize the dictionary to JSON when saving to the database
-                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Serialize(v, jsonSerializerOptions),
                     // Deserialize the JSON string back to a dictionary when reading from the database
-                    v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, (JsonSerializerOptions)null)
+                    v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, jsonSerializerOptions)
                 );
         });
 
@@ -112,9 +120,9 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
             entity.Property(e => e.Data)
                 .HasConversion(
                     // Serialize the dictionary to JSON when saving to the database
-                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Serialize(v, jsonSerializerOptions),
                     // Deserialize the JSON string back to a dictionary when reading from the database
-                    v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, (JsonSerializerOptions)null)
+                    v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, jsonSerializerOptions)
                 );
         });
 
@@ -129,6 +137,9 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
               .HasForeignKey("ApiTokenId") // Shadow foreign key property in Policy table
               .OnDelete(DeleteBehavior.Cascade); // Cascade delete policies if ApiToken is deleted
         });
+
+        modelBuilder.Entity<ApiToken>()
+            .Navigation(e => e.Policies).AutoInclude();
 
         // Configure the Policy entity
         modelBuilder.Entity<Policy>(entity =>
@@ -165,6 +176,9 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                   .HasForeignKey("PluginDefinitionId") // Shadow property for the foreign key
                   .OnDelete(DeleteBehavior.Cascade); // Configure cascade delete if needed
         });
+
+        //modelBuilder.Entity<PluginDefinition>()
+        //    .Navigation(e => e.Types).AutoInclude();
 
         // Configure PluginDefinitionType entity
         modelBuilder.Entity<PluginDefinitionType>(entity =>
@@ -210,7 +224,12 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                   .WithOne()
                   .HasForeignKey("UserId") // Shadow foreign key for User
                   .OnDelete(DeleteBehavior.Cascade);
-        });
+
+            //entity.Navigation(e => e.Logins).AutoInclude();
+            //entity.Navigation(e => e.Tokens).AutoInclude();
+            //entity.Navigation(e => e.Claims).AutoInclude();
+            //entity.Navigation(e => e.RecoveryCodes).AutoInclude();
+        });            
 
         // Configure UserTwoFactorRecoveryCode as a separate entity
         modelBuilder.Entity<UserTwoFactorRecoveryCode>(entity =>

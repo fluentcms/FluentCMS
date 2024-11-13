@@ -13,9 +13,12 @@ public class SetupRepository(FluentCmsDbContext dbContext) : ISetupRepository
             return false;
 
         // Check if the GlobalSettings table exists
-        var tableExists = await dbContext.Database.ExecuteSqlRawAsync(@"SELECT count(name) FROM sqlite_master WHERE type='table' AND name='GlobalSettings';", cancellationToken: cancellationToken) > 0;
+        var commandText = "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='GlobalSettings';";
+        await using var command = dbContext.Database.GetDbConnection().CreateCommand();
+        command.CommandText = commandText;
+        await dbContext.Database.OpenConnectionAsync(cancellationToken);
 
-        return tableExists;
+        return (long)(await command.ExecuteScalarAsync(cancellationToken) ?? 0) > 0;
     }
 
     public async Task<bool> InitializeDb(CancellationToken cancellationToken = default)

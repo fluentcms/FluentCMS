@@ -43,7 +43,7 @@ CREATE TABLE GlobalSettings (
 CREATE TABLE PluginDefinitions (
     Id TEXT PRIMARY KEY, -- GUID as TEXT
     Name TEXT NOT NULL,
-    Category TEXT,
+    Category TEXT NOT NULL,
     Assembly TEXT NOT NULL,
     Icon TEXT, -- Nullable field
     Description TEXT, -- Nullable field
