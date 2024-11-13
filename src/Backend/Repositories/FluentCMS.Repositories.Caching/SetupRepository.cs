@@ -26,9 +26,4 @@ public class SetupRepository(ISetupRepository setupRepository, ICacheProvider ca
         }
         return isInitiliazed;
     }
-
-    private void InvalidateCache()
-    {
-        cacheProvider.Remove(CacheKey);
-    }
 }
