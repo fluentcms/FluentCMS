@@ -54,7 +54,7 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
             dbContext.Settings.Add(newSettings);
 
             // Add each dictionary entry to the SettingValues table
-            foreach (var kvp in settings)
+            foreach (var kvp in settings.Where(x => !string.IsNullOrEmpty(x.Value)))
             {
                 var settingValue = new SettingValue
                 {
@@ -65,8 +65,17 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
                 };
                 dbContext.SettingValues.Add(settingValue);
             }
-            // Save changes to the database
-            await dbContext.SaveChangesAsync(cancellationToken);
+            try
+            {
+
+                // Save changes to the database
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+
+                throw;
+            }
 
             return newSettings;
         }
@@ -82,7 +91,7 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
             dbContext.SettingValues.RemoveRange(existingValues);
 
             // Add updated values to SettingValues table
-            foreach (var kvp in settings)
+            foreach (var kvp in settings.Where(x => !string.IsNullOrEmpty(x.Value)))
             {
                 var settingValue = new SettingValue
                 {

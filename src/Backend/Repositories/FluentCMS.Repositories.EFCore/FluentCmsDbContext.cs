@@ -77,7 +77,7 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                   .HasForeignKey("ContentTypeId") // Shadow property for the foreign key
                   .OnDelete(DeleteBehavior.Cascade); // Configure cascade delete if needed
 
-            //entity.Navigation(e => e.Fields).AutoInclude();
+            entity.Navigation(e => e.Fields).AutoInclude();
         });
 
         modelBuilder.Entity<ContentTypeField>(entity =>
@@ -175,10 +175,9 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                   .WithOne() // No navigation property back to PluginDefinition in PluginDefinitionType
                   .HasForeignKey("PluginDefinitionId") // Shadow property for the foreign key
                   .OnDelete(DeleteBehavior.Cascade); // Configure cascade delete if needed
-        });
 
-        //modelBuilder.Entity<PluginDefinition>()
-        //    .Navigation(e => e.Types).AutoInclude();
+            entity.Navigation(e => e.Types).AutoInclude();
+        });
 
         // Configure PluginDefinitionType entity
         modelBuilder.Entity<PluginDefinitionType>(entity =>
@@ -229,7 +228,7 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
             //entity.Navigation(e => e.Tokens).AutoInclude();
             //entity.Navigation(e => e.Claims).AutoInclude();
             //entity.Navigation(e => e.RecoveryCodes).AutoInclude();
-        });            
+        });
 
         // Configure UserTwoFactorRecoveryCode as a separate entity
         modelBuilder.Entity<UserTwoFactorRecoveryCode>(entity =>
