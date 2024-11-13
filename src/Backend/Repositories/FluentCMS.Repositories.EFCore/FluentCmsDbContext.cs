@@ -277,6 +277,12 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
 
         base.OnModelCreating(modelBuilder);
     }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        // Configure the DbContext to use NoTracking by default
+        optionsBuilder.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+    }
 }
 
 public class SettingValue
