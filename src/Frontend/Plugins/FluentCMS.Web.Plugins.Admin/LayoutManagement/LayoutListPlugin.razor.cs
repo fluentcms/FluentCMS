@@ -3,9 +3,13 @@
 public partial class LayoutListPlugin
 {
     private List<LayoutDetailResponse> Layouts { get; set; } = [];
+    private SiteDetailResponse Site { get; set; }
 
     private async Task Load()
     {
+        var siteResponse = await ApiClient.Site.GetByIdAsync(ViewState.Site.Id);
+        Site = siteResponse.Data;
+        
         var response = await ApiClient.Layout.GetBySiteIdAsync(ViewState.Site.Id);
         Layouts = response?.Data?.ToList() ?? [];
     }
