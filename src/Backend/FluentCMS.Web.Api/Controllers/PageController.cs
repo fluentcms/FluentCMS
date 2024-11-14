@@ -1,6 +1,5 @@
 ﻿using FluentCMS.Services.Permissions;
 using FluentCMS.Web.Api.Filters;
-using System.IO;
 
 namespace FluentCMS.Web.Api.Controllers;
 
@@ -45,7 +44,7 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         var path = uri.AbsolutePath;
 
         if (!await setupService.IsInitialized(cancellationToken))
-            return Ok(new PageParentDetailResponse { Current = GetSetupPage() });
+            return Ok(new PageParentDetailResponse { Current = default! });
 
         var response = new PageParentDetailResponse { };
 
@@ -171,61 +170,6 @@ public class PageController(ISiteService siteService, IPageService pageService, 
         }
 
         return pageResponse;
-    }
-
-    private static PageFullDetailResponse GetSetupPage()
-    {
-        var body = System.IO.File.ReadAllText(Path.Combine(ServiceConstants.DefaultTemplateFolder, "AuthLayout.body.html"));
-
-        body = body.Replace("\"/files/images", "\"/images");
-        body = body.Replace("\"/files/js", "\"/js");
-        body = body.Replace("\"/files/css", "\"/css");
-
-        var head = System.IO.File.ReadAllText(Path.Combine(ServiceConstants.DefaultTemplateFolder, "AuthLayout.head.html"));
-        head = head.Replace("\"/files/images", "\"/images");
-        head = head.Replace("\"/files/js", "\"/js");
-        head = head.Replace("\"/files/css", "\"/css");
-
-        var page = new PageFullDetailResponse
-        {
-            Title = "Setup",
-            Locked = true,
-            Layout = new LayoutDetailResponse
-            {
-                Body = body,
-                Head = head
-            },
-            Site = new(),
-            User = new(),
-            Sections = new Dictionary<string, List<PluginDetailResponse>>
-            {
-                ["Main"] =
-                  [
-                      new()
-                      {
-                          Locked = true,
-                          Section = "Main",
-                          Definition = new PluginDefinitionDetailResponse
-                          {
-                              Name = "Setup",
-                              Description = "Setup View Plugin",
-                              Assembly = "FluentCMS.Web.Plugins.Admin.dll",
-                              Locked = true,
-                              Types =
-                              [
-                                  new PluginDefinitionType
-                                  {
-                                      IsDefault = true,
-                                      Name = "Setup",
-                                      Type = "SetupViewPlugin"
-                                  }
-                              ]
-                          }
-                      }
-                  ]
-            }
-        };
-        return page;
     }
 
     #endregion
