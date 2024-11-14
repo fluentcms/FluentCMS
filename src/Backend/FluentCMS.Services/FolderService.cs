@@ -196,7 +196,7 @@ public partial class FolderService(IFolderRepository folderRepository, IFileRepo
     }
 
     // Regular expression to allow only alphanumeric, spaces, underscores, and certain special characters
-    private static readonly Regex _regex = new Regex(@"^[\w\-. ]+$");
+    private static readonly Regex _regex = new(@"^[\w\-. ]+$");
 
     private static bool IsValidFolderName(string folderName)
     {

@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 namespace FluentCMS.Web.Plugins.Admin.PageManagement;
 
 public class PageSettingsModel
