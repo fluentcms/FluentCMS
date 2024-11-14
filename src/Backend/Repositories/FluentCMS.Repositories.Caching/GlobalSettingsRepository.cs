@@ -9,11 +9,6 @@ public class GlobalSettingsRepository(IGlobalSettingsRepository globalSettingsRe
         return await GetCached(cancellationToken);
     }
 
-    public async Task<bool> Initialized(CancellationToken cancellationToken = default)
-    {
-        return await GetCached(cancellationToken) != null;
-    }
-
     public async Task<GlobalSettings?> Update(GlobalSettings settings, CancellationToken cancellationToken = default)
     {
         var updated = await globalSettingsRepository.Update(settings, cancellationToken);

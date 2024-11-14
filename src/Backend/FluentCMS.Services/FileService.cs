@@ -88,16 +88,18 @@ public class FileService(IFileRepository fileRepository, IFolderRepository folde
 
     public async Task<File> Rename(Guid id, string name, CancellationToken cancellationToken = default)
     {
+        var normalizedFileName = GetNormalizedFileName(name);
+
         var file = await fileRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.FileNotFound);
 
-        file.Name = name;
-        file.NormalizedName = GetNormalizedFileName(name);
-
         // check if file with the same name already exists
-        var existingFile = await fileRepository.GetByName(file.SiteId, file.FolderId, file.NormalizedName, cancellationToken);
+        var existingFile = await fileRepository.GetByName(file.SiteId, file.FolderId, normalizedFileName, cancellationToken);
         if (existingFile != null)
             throw new AppException(ExceptionCodes.FileAlreadyExists);
+
+        file.Name = name;
+        file.NormalizedName = normalizedFileName;
 
         return await fileRepository.Update(file, cancellationToken) ??
             throw new AppException(ExceptionCodes.FileUnableToUpdate);

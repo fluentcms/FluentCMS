@@ -2,7 +2,7 @@ using Microsoft.JSInterop;
 
 namespace FluentCMS.Web.UI;
 
-public partial class SiteBuilderToolbarDropdown: IAsyncDisposable
+public partial class SiteBuilderToolbarDropdown : IAsyncDisposable
 {
     [Inject]
     public IJSRuntime JS { get; set; } = default!;

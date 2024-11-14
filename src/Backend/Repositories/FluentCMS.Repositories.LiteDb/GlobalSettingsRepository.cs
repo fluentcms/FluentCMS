@@ -34,15 +34,6 @@ public class GlobalSettingsRepository(ILiteDBContext liteDbContext, IApiExecutio
         return settings;
     }
 
-    public async Task<bool> Initialized(CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var existing = await Get(cancellationToken);
-
-        return existing?.Initialized ?? false;
-    }
-
     private void SetAuditableFieldsForCreate(GlobalSettings settings)
     {
         settings.Id = Guid.NewGuid();

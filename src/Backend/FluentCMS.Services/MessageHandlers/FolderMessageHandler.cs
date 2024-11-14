@@ -54,6 +54,7 @@ public class FolderMessageHandler(IFolderService folderService, IFileService fil
                     FolderId = parentFolder.Id,
                     Size = new System.IO.FileInfo(fileName).Length,
                     ContentType = GetContentType(fileName),
+                    Extension = new System.IO.FileInfo(fileName).Extension
                 };
                 using var contentStream = new System.IO.FileStream(fileName, System.IO.FileMode.Open);
                 await fileService.Create(file, contentStream, cancellationToken);

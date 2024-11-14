@@ -3,11 +3,6 @@
 <PluginBody Title="Plugins">
     <ChildContent>
         <DataTable Items="PluginDefinitions">
-            <DataTableItem Label="Icon">
-                <span>
-                    @((MarkupString)(context.Icon ?? ""))
-                </span>
-            </DataTableItem>
             <DataTableItem Label="Title">@context.Name </DataTableItem>
             <DataTableItem Label="Description">@context.Description </DataTableItem>
             <DataTableItem Label="Assembly">@context.Assembly </DataTableItem>
