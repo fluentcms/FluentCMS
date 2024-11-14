@@ -1,0 +1,79 @@
+@page "/setup"
+
+<HeadContent>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-title" content="FluentCMS">
+    <meta name="application-name" content="FluentCMS">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="theme-color" content="#2d3250">
+
+    <link rel="icon" type="image/png" sizes="32x32" href="/_content/FluentCMS.Web.UI/setup/images/favicon-32x32.png">
+    <link rel="stylesheet" href="/_content/FluentCMS.Web.UI.Components/css/flowbite.min.css" />
+    <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/setup/css/app.css" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/_content/FluentCMS.Web.UI/setup/images/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/_content/FluentCMS.Web.UI/setup/images/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/_content/FluentCMS.Web.UI/setup/images/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/_content/FluentCMS.Web.UI/setup/images/favicon-16x16.png">
+    <link rel="mask-icon" href="/_content/FluentCMS.Web.UI/setup/images/safari-pinned-tab.svg" color="#2d3250">
+    <script src="/_content/FluentCMS.Web.UI/setup/js/tailwind.cdn.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f4f8fd',
+                            100: '#e8f1fb',
+                            200: '#c6ddf4',
+                            300: '#a3c8ed',
+                            400: '#5e9fe0',
+                            500: '#1976d2',
+                            600: '#176abd',
+                            700: '#13599e',
+                            800: '#0f477e',
+                            900: '#0c3a67',
+                            on: '#f4f8fd',
+                            dark: {
+                                DEFAULT: '#a3c8ed',
+                                on: '#0f477e',
+                            }
+                        },
+                    },
+                },
+            }
+        }
+    </script>
+</HeadContent>
+
+<div id="loading-bar" class="fixed start-0 transition-transform bg-gray-100 dark:bg-gray-800 w-full overflow-hidden top-0">
+    <div class="loading-bar-animate w-full h-full bg-blue-500"></div>
+</div>
+<section class="bg-white dark:bg-gray-900">
+    <div class="grid lg:h-screen lg:grid-cols-2">
+        <div class="flex justify-center items-center py-6 px-4 lg:py-0 sm:px-0">
+            <div class="w-full max-w-md space-y-4 md:space-y-6 xl:max-w-xl">
+                <SetupView />
+            </div>
+        </div>
+        <div class="flex justify-center items-center py-6 px-4 2xl:px-24 bg-primary-600 lg:py-0 sm:px-0">
+            <div class="max-w-md xl:max-w-xl 2xl:max-w-4xl">
+                <a href="#" class="flex items-center mb-4 text-2xl font-semibold text-white">
+                    <img src="/_content/FluentCMS.Web.UI/setup/images/logo-dark.svg" class="h-10" alt="FluentCMS Logo">
+                </a>
+                <h1 class="mb-4 text-3xl font-extrabold tracking-tight leading-none text-white xl:text-5xl">
+                    Welcome to FluentCMS
+                </h1>
+                <p class="mb-4 font-light text-primary-200 lg:mb-8">
+                    Building and managing content has never been easier. Experience the power of AI with FluentCMS.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script src="/_content/FluentCMS.Web.UI/setup/js/flowbite.min.js"></script>
+<script src="/_content/FluentCMS.Web.UI/setup/js/app.js"></script>
+<script src="/_content/FluentCMS.Web.UI/setup/js/loadingbar.js"></script>

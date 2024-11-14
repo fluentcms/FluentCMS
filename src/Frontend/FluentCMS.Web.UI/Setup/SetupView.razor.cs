@@ -1,8 +1,9 @@
 ﻿using FluentCMS.Web.ApiClients.Services;
+using Microsoft.AspNetCore.Http;
 
-namespace FluentCMS.Web.Plugins.Admin.Auth;
+namespace FluentCMS.Web.UI;
 
-public partial class SetupViewPlugin
+public partial class SetupView
 {
     public const string FORM_NAME = "SetupForm";
 
@@ -11,6 +12,15 @@ public partial class SetupViewPlugin
 
     [Inject]
     private SetupManager SetupManager { get; set; } = default!;
+
+    [Inject]
+    private IHttpContextAccessor HttpContextAccessor { get; set; } = default!;
+
+    [Inject]
+    private ApiClientFactory ApiClient { get; set; } = default!;
+
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = default!;
 
     [Inject]
     private AuthManager AuthManager { get; set; } = default!;
@@ -24,12 +34,6 @@ public partial class SetupViewPlugin
         if (await SetupManager.IsInitialized())
             throw new InvalidOperationException("Setup is already complete.");
 
-        if (Templates is null)
-        {
-            var templatesResponse = await ApiClient.Setup.GetTemplatesAsync();
-            Templates = templatesResponse?.Data?.ToList() ?? [];
-        }
-
         Model ??= new SetupRequest
         {
             Username = "admin",
@@ -38,12 +42,27 @@ public partial class SetupViewPlugin
             Url = new Uri(NavigationManager.BaseUri).Authority,
             Template = "Default"
         };
+
+        if (Templates is null)
+        {
+            var templatesResponse = await ApiClient.Setup.GetTemplatesAsync();
+            Templates = templatesResponse?.Data?.ToList() ?? [];
+        }
+    }
+
+    protected virtual void NavigateTo(string path, bool forceLoad = false)
+    {
+        if (HttpContextAccessor?.HttpContext != null && !HttpContextAccessor.HttpContext.Response.HasStarted)
+            HttpContextAccessor.HttpContext.Response.Redirect(path);
+        else
+            NavigationManager.NavigateTo(path, forceLoad);
     }
 
     private async Task OnSubmit()
     {
         if (await SetupManager.Start(Model!))
         {
+            await AuthManager.Logout(HttpContext);
             await AuthManager.Login(HttpContext, Model!.Username, Model.Password, true);
             NavigateTo("/");
         }

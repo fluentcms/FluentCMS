@@ -42,19 +42,24 @@ const textEditors = new Map();
 function destroyQuill(instance, el) {
     if (!instance) return;
 
-    instance.theme.modules.toolbar.container.remove();
-    instance.theme.modules.clipboard.container.remove();
-    instance.theme.tooltip.root.remove();
+    try {
+        instance.theme.modules.toolbar.container.remove();
+        instance.theme.modules.clipboard.container.remove();
+        instance.theme.tooltip.root.remove();
 
-    el.classList.forEach((cls) => {
-        if (cls.startsWith("ql-")) {
-            requestAnimationFrame(() => {
-                el.classList.remove(cls);
-            });
-        }
-    });
+        el.classList.forEach((cls) => {
+            if (cls.startsWith("ql-")) {
+                requestAnimationFrame(() => {
+                    el.classList.remove(cls);
+                });
+            }
+        });
 
-    el.innerHTML = instance.root.innerHTML
+        el.innerHTML = instance.root.innerHTML
+    } catch(err) {
+        // 
+    }
+
 }
 
 export function update(dotnet, element, config) {
