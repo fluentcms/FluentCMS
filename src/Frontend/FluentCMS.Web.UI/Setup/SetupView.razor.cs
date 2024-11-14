@@ -57,11 +57,12 @@ public partial class SetupView
         else
             NavigationManager.NavigateTo(path, forceLoad);
     }
-    
+
     private async Task OnSubmit()
     {
         if (await SetupManager.Start(Model!))
         {
+            await AuthManager.Logout(HttpContext);
             await AuthManager.Login(HttpContext, Model!.Username, Model.Password, true);
             NavigateTo("/");
         }
