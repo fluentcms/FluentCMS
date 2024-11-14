@@ -37,6 +37,7 @@ FluentCMS is an open-source project, and we welcome contributions from the commu
 - MySQL (coming soon)
 - SQL Server (coming soon)
 - SQLite (coming soon)
+- PostgreSQL (coming soon)
 
 ## Getting Started
 
