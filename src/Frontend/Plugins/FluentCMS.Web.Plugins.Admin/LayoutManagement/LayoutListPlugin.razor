@@ -13,7 +13,7 @@
             <DataTableItem Label="Modified By">@(context.ModifiedBy ?? string.Empty)</DataTableItem>
             <DataTableItem Label="Modified At">@context.ModifiedAt</DataTableItem>
             <ActionButtons>
-                <ActionButtonDelete Visible="@(context.Id != ViewState.Layout.Id && context.Id != ViewState.EditLayout.Id && context.Id != ViewState.DetailLayout.Id)" @onclick="() => OnConfirm(context)" />
+                <ActionButtonDelete Visible="@(context.Id != Site.LayoutId && context.Id != Site.EditLayoutId && context.Id != Site.DetailLayoutId)" @onclick="() => OnConfirm(context)" />
                 <ActionButtonEdit Href="@GetUrl("Update Layout", new { id = @context.Id })" />
             </ActionButtons>
         </DataTable>
