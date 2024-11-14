@@ -11,7 +11,7 @@ public abstract class BaseContentPlugin : BasePlugin
     {
         if (!string.IsNullOrEmpty(ContentTypeSlug))
         {
-            var contentTypeResponse = await ApiClient.ContentType.GetBySlugAsync(ContentTypeSlug);
+            var contentTypeResponse = await ApiClient.ContentType.GetBySlugAsync(ViewState.Site.Id, ContentTypeSlug);
             ContentType = contentTypeResponse?.Data;
         }
     }

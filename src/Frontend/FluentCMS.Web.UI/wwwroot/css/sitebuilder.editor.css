@@ -4,6 +4,10 @@
     box-sizing: border-box;
 }
 
+.f-toolbar-container {
+    margin-right: var(--scrollbar-width);
+}
+
 .f-page-editor-toggler {
     position: fixed;
     transition: all 0.3s ease;
@@ -15,10 +19,6 @@
     border-start-start-radius: 20px;
     border-end-start-radius: 20px;
     gap: 0.25rem;
-    /* padding: 0.125rem; */
-    /* background-color: white; */
-    /* border: 1px solid #dfdfdf; */
-    /* border-right: none; */
     z-index: 100;
 }
 

@@ -3,7 +3,11 @@
 public class FolderCreateRequest
 {
     [Required]
+    public Guid SiteId { get; set; } = default!;
+
+    [Required]
     public string Name { get; set; } = default!;
 
-    public Guid FolderId { get; set; }
+    [Required]
+    public Guid ParentId { get; set; }
 }

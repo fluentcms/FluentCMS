@@ -15,6 +15,18 @@ services.AddLiteDbRepositories("LiteDb");
 // Use MongoDB as database
 //services.AddMongoDbRepositories("MongoDb");
 
+// Use Sqlite as database
+//services.AddSqliteRepositories("Sqlite");
+
+// Use SqlServer as database
+//services.AddSqlServerRepositories("SqlServer");
+
+// Use Sqlite as database
+//services.AddMySqlRepositories("MySql");
+
+// Use PostgreSQL as database
+//services.AddPostgresRepositories("PostgreSQL");
+
 // Enable caching for repository layer
 services.AddCachedRepositories();
 
@@ -39,6 +51,8 @@ var app = builder.Build();
 app.UseDeveloperExceptionPage();
 
 app.UseHttpsRedirection();
+
+app.UseRemoteStaticFileServices();
 
 app.UseStaticFiles();
 

@@ -8,5 +8,5 @@ public class ApiToken : AuditableEntity
     public string Secret { get; set; } = default!;
     public DateTime? ExpireAt { get; set; }
     public bool Enabled { get; set; } = true;
-    public ICollection<Policy> Policies { get; set; } = [];
+    public List<Policy> Policies { get; set; } = [];
 }

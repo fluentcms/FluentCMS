@@ -15,7 +15,6 @@ public class GlobalSettingsMessageHandler(IGlobalSettingsService globalSettingsS
                 break;
 
             case ActionNames.SetupCompleted:
-                await globalSettingsService.SetInitialized(cancellationToken);
                 break;
 
             default:

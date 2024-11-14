@@ -1,23 +1,29 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <InvariantGlobalization>true</InvariantGlobalization>
-		<Version>0.0.0.0</Version>
+        <Version>0.0.0.0</Version>
     </PropertyGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\Backend\FluentCMS.Web.Api\FluentCMS.Web.Api.csproj" />
         <ProjectReference Include="..\Backend\Repositories\FluentCMS.Repositories.Caching\FluentCMS.Repositories.Caching.csproj" />
+        <ProjectReference Include="..\Backend\Repositories\FluentCMS.Repositories.EFCore.MySql\FluentCMS.Repositories.EFCore.MySql.csproj" />
+        <ProjectReference Include="..\Backend\Repositories\FluentCMS.Repositories.EFCore.PostgreSQL\FluentCMS.Repositories.EFCore.PostgreSQL.csproj" />
+        <ProjectReference Include="..\Backend\Repositories\FluentCMS.Repositories.EFCore.Sqlite\FluentCMS.Repositories.EFCore.Sqlite.csproj" />
+        <ProjectReference Include="..\Backend\Repositories\FluentCMS.Repositories.EFCore.SqlServer\FluentCMS.Repositories.EFCore.SqlServer.csproj" />
         <ProjectReference Include="..\Backend\Repositories\FluentCMS.Repositories.MongoDB\FluentCMS.Repositories.MongoDB.csproj" />
         <ProjectReference Include="..\Backend\Repositories\FluentCMS.Repositories.LiteDb\FluentCMS.Repositories.LiteDb.csproj" />
         <ProjectReference Include="..\Frontend\FluentCMS.Web.UI\FluentCMS.Web.UI.csproj" />
-        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.TextHTML\FluentCMS.Web.Plugins.Contents.TextHTML.csproj" />
-        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.Block\FluentCMS.Web.Plugins.Contents.Block.csproj" />
-        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.RichText\FluentCMS.Web.Plugins.Contents.RichText.csproj" />
-        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Contents.ContentViewer\FluentCMS.Web.Plugins.Contents.ContentViewer.csproj" />
+        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.TextHTML\FluentCMS.Web.Plugins.TextHTML.csproj" />
+        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Block\FluentCMS.Web.Plugins.Block.csproj" />
+        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.ContactUs\FluentCMS.Web.Plugins.ContactUs.csproj" />
+        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.RichText\FluentCMS.Web.Plugins.RichText.csproj" />
+        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.IFrame\FluentCMS.Web.Plugins.IFrame.csproj" />
+        <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.ContentViewer\FluentCMS.Web.Plugins.ContentViewer.csproj" />
         <ProjectReference Include="..\Frontend\Plugins\FluentCMS.Web.Plugins.Admin\FluentCMS.Web.Plugins.Admin.csproj" />
         <ProjectReference Include="..\Providers\ApiTokenProviders\FluentCMS.Providers.ApiTokenProviders\FluentCMS.Providers.ApiTokenProviders.csproj" />
         <ProjectReference Include="..\Providers\CacheProviders\FluentCMS.Providers.CacheProviders\FluentCMS.Providers.CacheProviders.csproj" />
@@ -26,14 +32,14 @@
         <ProjectReference Include="..\Providers\MessageBusProviders\FluentCMS.Providers.MessageBusProviders\FluentCMS.Providers.MessageBusProviders.csproj" />
         <ProjectReference Include="..\Providers\TemplateRenderingProviders\FluentCMS.Providers.TemplateRenderingProviders\FluentCMS.Providers.TemplateRenderingProviders.csproj" />
     </ItemGroup>
-	<ItemGroup>
-		<None Include="wwwroot\**">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-	</ItemGroup>
-	<ItemGroup>
-		<None Include="Templates\**">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-	</ItemGroup>
+    <ItemGroup>
+        <None Include="wwwroot\**">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="Templates\**">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
 </Project>

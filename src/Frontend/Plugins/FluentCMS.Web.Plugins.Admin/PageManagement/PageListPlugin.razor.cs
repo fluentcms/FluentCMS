@@ -5,27 +5,10 @@ public partial class PageListPlugin
     private List<PageDetailResponse> Pages { get; set; } = [];
     private List<LayoutDetailResponse> Layouts { get; set; } = [];
 
-    [SupplyParameterFromQuery(Name = "id")]
-    private Guid? Id { get; set; } = default!;
-
-    [SupplyParameterFromQuery(Name = "viewType")]
-    private string? ViewType { get; set; } = default!;
-
-    [SupplyParameterFromQuery(Name = "redirectTo")]
-    private string? RedirectTo { get; set; } = default!;
-
     public async Task Load()
     {
-        if (Id != null)
-        {
-            NavigateTo(GetUrl("Update Page", new { Id, redirectTo = RedirectTo }, false));
-        }
-        if (ViewType == "Create")
-        {
-            NavigateTo(GetUrl("Create Page", new { redirectTo = RedirectTo, openNewPage = true }, false));
-        }
-        var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Urls[0]);
-        Pages = pagesResponse?.Data?.Where(x => !x.Locked).ToList() ?? [];
+        var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Id);
+        Pages = pagesResponse?.Data?.OrderBy(x => x.FullPath).ToList() ?? [];
     }
 
     protected override async Task OnInitializedAsync()
@@ -33,27 +16,6 @@ public partial class PageListPlugin
         var layoutsResponse = await ApiClient.Layout.GetBySiteIdAsync(ViewState.Site.Id);
         Layouts = layoutsResponse?.Data?.ToList() ?? [];
         await Load();
-    }
-
-    private string GetPageUrl(PageDetailResponse page)
-    {
-        var result = new List<string>();
-        var currentPage = page;
-        while (currentPage != null)
-        {
-            result.Add(currentPage.Path!);
-            if (currentPage.ParentId.HasValue)
-            {
-                currentPage = Pages.Where(x => x.Id == currentPage.ParentId.Value).FirstOrDefault();
-            }
-            else
-            {
-                currentPage = default!;
-            }
-        }
-        result.Reverse();
-
-        return string.Join("", result);
     }
 
     #region Delete Page

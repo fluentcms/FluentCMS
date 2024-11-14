@@ -8,34 +8,65 @@ public partial class SiteBuilderDefaultToolbar
     [Inject]
     private ViewState ViewState { get; set; } = default!;
 
-    private string GetPageAddUrl()
+    private async Task OpenDesignMode()
     {
-        var uri = new Uri(NavigationManager.Uri);
-        var redirectTo = Uri.EscapeDataString(uri.PathAndQuery);
-        var queryParams = new Dictionary<string, string?>()
-        {
-            { "viewType", "Create" },
-            { "redirectTo", redirectTo }
-        };
+        var url = ViewState.Page.FullPath.EndsWith("/") ? ViewState.Page.FullPath + "?pageEdit=true" : ViewState.Page.FullPath + "/?pageEdit=true";
 
-        var queryParamsString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
-
-        return $"/admin/pages?{queryParamsString}";
+        NavigationManager.NavigateTo(url, true);
     }
 
-    private string GetPageEditUrl()
+    #region Add Page
+    private bool AddPageModalOpen { get; set; } = false;
+
+    private async Task OpenAddPage()
     {
-        var uri = new Uri(NavigationManager.Uri);
-        var redirectTo = Uri.EscapeDataString(uri.PathAndQuery);
-
-        var queryParams = new Dictionary<string, string?>()
-        {
-            { "Id", ViewState.Page.Id.ToString() },
-            { "redirectTo", redirectTo }
-        };
-
-        var queryParamsString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
-
-        return $"/admin/pages?{queryParamsString}";
+        AddPageModalOpen = true;
+        await Task.CompletedTask;
     }
+
+    private async Task CloseAddPage()
+    {
+        AddPageModalOpen = false;
+        await Task.CompletedTask;
+    }
+
+    private async Task AddPageSubmit(PageDetailResponse response)
+    {
+        if (response.FullPath != null)
+        {
+            AddPageModalOpen = false;
+            NavigationManager.NavigateTo(response.FullPath, true);
+        }
+        await Task.CompletedTask;
+    }
+
+    #endregion
+
+    #region Page Settings
+
+    private bool PageSettingsModalOpen { get; set; } = false;
+
+    private async Task OpenPageSettings()
+    {
+        PageSettingsModalOpen = true;
+        await Task.CompletedTask;
+    }
+
+    private async Task ClosePageSettings()
+    {
+        PageSettingsModalOpen = false;
+        await Task.CompletedTask;
+    }
+
+    private async Task PageSettingsSubmit(PageDetailResponse response)
+    {
+        PageSettingsModalOpen = false;
+        if (response.FullPath != null)
+        {
+            NavigationManager.NavigateTo(response.FullPath!, true);
+        }
+        await Task.CompletedTask;
+    }
+
+    #endregion
 }

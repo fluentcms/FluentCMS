@@ -10,6 +10,8 @@ public static class ServiceExtensions
         // Register repositories
         services.Decorate<IApiTokenRepository, ApiTokenRepository>();
         services.Decorate<IBlockRepository, BlockRepository>();
+        services.Decorate<IFileRepository, FileRepository>();
+        services.Decorate<IFolderRepository, FolderRepository>();
         services.Decorate<IGlobalSettingsRepository, GlobalSettingsRepository>();
         services.Decorate<ILayoutRepository, LayoutRepository>();
         services.Decorate<IPageRepository, PageRepository>();
@@ -18,6 +20,7 @@ public static class ServiceExtensions
         services.Decorate<IPluginRepository, PluginRepository>();
         services.Decorate<IRoleRepository, RoleRepository>();
         services.Decorate<ISettingsRepository, SettingsRepository>();
+        services.Decorate<ISetupRepository, SetupRepository>();
         services.Decorate<ISiteRepository, SiteRepository>();
         services.Decorate<IUserRoleRepository, UserRoleRepository>();
 

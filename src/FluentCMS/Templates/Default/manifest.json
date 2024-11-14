@@ -166,6 +166,20 @@
             ]
         },
         {
+            "Name": "Plugin Definition Management",
+            "Category": "Admin",
+            "Description": "Plugin Definition Management Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.Admin.dll",
+            "Locked": true,
+            "Types": [
+                {
+                    "Name": "Definitions List",
+                    "Type": "DefinitionListPlugin",
+                    "IsDefault": true
+                }
+            ]
+        },
+        {
             "Name": "Page Management",
             "Category": "Admin",
             "Description": "Page Management Plugin",
@@ -299,9 +313,33 @@
             ]
         },
         {
+            "Name": "Contact Us Plugin",
+            "Category": "Content",
+            "Description": "Contact Us Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.ContactUs.dll",
+            "Icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"48\" height=\"48\" style=\"padding: 8px; color: #606060;\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M19.95 21q-3.125 0-6.187-1.35T8.2 15.8t-3.85-5.55T3 4.05V3h5.9l.925 5.025l-2.85 2.875q.55.975 1.225 1.85t1.45 1.625q.725.725 1.588 1.388T13.1 17l2.9-2.9l5 1.025V21z\"/></svg>",
+            "Types": [
+                {
+                    "Name": "View",
+                    "Type": "ContactUsViewPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Edit",
+                    "Type": "ContactUsSettingsPlugin"
+                },
+                {
+                    "Name": "Data",
+                    "Type": "ContactUsDataPlugin"
+                }
+            ]
+        },
+        {
             "Name": "TextHTML Plugin",
+            "Category": "Content",
             "Description": "TextHTML Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Contents.TextHTML.dll",
+            "Assembly": "FluentCMS.Web.Plugins.TextHTML.dll",
+            "Icon": "<svg width=\"48\" height=\"48\" viewBox=\"0 0 48 48\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M34.1562 19.6875C34.1563 19.6177 34.1426 19.5486 34.1159 19.4841C34.0893 19.4196 34.0502 19.361 34.0009 19.3116L33.7352 19.046L26.5634 11.8741C26.514 11.8248 26.4554 11.7857 26.3909 11.7591C26.3264 11.7324 26.2573 11.7187 26.1875 11.7188H13.4375C13.0148 11.7188 12.6094 11.8867 12.3105 12.1855C12.0117 12.4844 11.8438 12.8898 11.8438 13.3125V23.9375C11.8438 24.0784 11.8997 24.2135 11.9993 24.3132C12.099 24.4128 12.2341 24.4688 12.375 24.4688C12.5159 24.4688 12.651 24.4128 12.7507 24.3132C12.8503 24.2135 12.9062 24.0784 12.9062 23.9375V13.3125C12.9062 13.1716 12.9622 13.0365 13.0618 12.9368C13.1615 12.8372 13.2966 12.7813 13.4375 12.7813H25.6562V19.6875C25.6562 19.8284 25.7122 19.9635 25.8118 20.0632C25.9115 20.1628 26.0466 20.2188 26.1875 20.2188H33.0938V23.9375C33.0938 24.0784 33.1497 24.2135 33.2493 24.3132C33.349 24.4128 33.4841 24.4688 33.625 24.4688C33.7659 24.4688 33.901 24.4128 34.0007 24.3132C34.1003 24.2135 34.1562 24.0784 34.1562 23.9375V19.6875ZM26.7188 13.5316L32.342 19.1562H26.7188V13.5316ZM14.5 29.25V35.625C14.5 35.7659 14.444 35.901 14.3444 36.0007C14.2448 36.1003 14.1096 36.1562 13.9688 36.1562C13.8279 36.1562 13.6927 36.1003 13.5931 36.0007C13.4935 35.901 13.4375 35.7659 13.4375 35.625V32.9688H9.71875V35.625C9.71875 35.7659 9.66278 35.901 9.56315 36.0007C9.46352 36.1003 9.3284 36.1562 9.1875 36.1562C9.0466 36.1562 8.91148 36.1003 8.81185 36.0007C8.71222 35.901 8.65625 35.7659 8.65625 35.625V29.25C8.65625 29.1091 8.71222 28.974 8.81185 28.8743C8.91148 28.7747 9.0466 28.7188 9.1875 28.7188C9.3284 28.7188 9.46352 28.7747 9.56315 28.8743C9.66278 28.974 9.71875 29.1091 9.71875 29.25V31.9062H13.4375V29.25C13.4375 29.1091 13.4935 28.974 13.5931 28.8743C13.6927 28.7747 13.8279 28.7188 13.9688 28.7188C14.1096 28.7188 14.2448 28.7747 14.3444 28.8743C14.444 28.974 14.5 29.1091 14.5 29.25ZM21.9375 29.25C21.9375 29.3909 21.8815 29.526 21.7819 29.6257C21.6823 29.7253 21.5471 29.7812 21.4062 29.7812H19.8125V35.625C19.8125 35.7659 19.7565 35.901 19.6569 36.0007C19.5573 36.1003 19.4221 36.1562 19.2812 36.1562C19.1404 36.1562 19.0052 36.1003 18.9056 36.0007C18.806 35.901 18.75 35.7659 18.75 35.625V29.7812H17.1562C17.0154 29.7812 16.8802 29.7253 16.7806 29.6257C16.681 29.526 16.625 29.3909 16.625 29.25C16.625 29.1091 16.681 28.974 16.7806 28.8743C16.8802 28.7747 17.0154 28.7188 17.1562 28.7188H21.4062C21.5471 28.7188 21.6823 28.7747 21.7819 28.8743C21.8815 28.974 21.9375 29.1091 21.9375 29.25ZM31.5 29.25V35.625C31.5 35.7659 31.444 35.901 31.3444 36.0007C31.2448 36.1003 31.1096 36.1562 30.9688 36.1562C30.8279 36.1562 30.6927 36.1003 30.5931 36.0007C30.4935 35.901 30.4375 35.7659 30.4375 35.625V30.8438L28.2062 33.8187C28.1568 33.8847 28.0926 33.9383 28.0188 33.9752C27.9451 34.012 27.8637 34.0312 27.7812 34.0312C27.6988 34.0312 27.6174 34.012 27.5437 33.9752C27.4699 33.9383 27.4057 33.8847 27.3563 33.8187L25.125 30.8438V35.625C25.125 35.7659 25.069 35.901 24.9694 36.0007C24.8698 36.1003 24.7346 36.1562 24.5938 36.1562C24.4529 36.1562 24.3177 36.1003 24.2181 36.0007C24.1185 35.901 24.0625 35.7659 24.0625 35.625V29.25C24.0625 29.1385 24.0976 29.0298 24.1628 28.9394C24.228 28.8489 24.32 28.7813 24.4258 28.746C24.5315 28.7108 24.6457 28.7097 24.7522 28.7429C24.8586 28.7762 24.9518 28.8421 25.0187 28.9313L27.7812 32.6141L30.5438 28.9313C30.6107 28.8421 30.7039 28.7762 30.8103 28.7429C30.9168 28.7097 31.031 28.7108 31.1367 28.746C31.2425 28.7813 31.3345 28.8489 31.3997 28.9394C31.4649 29.0298 31.5 29.1385 31.5 29.25ZM38.9375 35.625C38.9375 35.7659 38.8815 35.901 38.7819 36.0007C38.6823 36.1003 38.5471 36.1562 38.4062 36.1562H34.6875C34.5466 36.1562 34.4115 36.1003 34.3118 36.0007C34.2122 35.901 34.1562 35.7659 34.1562 35.625V29.25C34.1562 29.1091 34.2122 28.974 34.3118 28.8743C34.4115 28.7747 34.5466 28.7188 34.6875 28.7188C34.8284 28.7188 34.9635 28.7747 35.0632 28.8743C35.1628 28.974 35.2188 29.1091 35.2188 29.25V35.0938H38.4062C38.5471 35.0938 38.6823 35.1497 38.7819 35.2493C38.8815 35.349 38.9375 35.4841 38.9375 35.625Z\" fill=\"#2F2F2F\" /></svg>",
             "Types": [
                 {
                     "Name": "View",
@@ -316,8 +354,10 @@
         },
         {
             "Name": "RichText Plugin",
+            "Category": "Content",
             "Description": "RichText Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Contents.RichText.dll",
+            "Assembly": "FluentCMS.Web.Plugins.RichText.dll",
+            "Icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" style=\"padding: 8px; color: #606060;\" width=\"48\" height=\"48\" viewBox=\"0 0 16 16\"><g fill=\"currentColor\"><path d=\"M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z\" /><path d=\"M4.5 12.5A.5.5 0 0 1 5 12h3a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5m0-2A.5.5 0 0 1 5 10h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5m1.639-3.708l1.33.886l1.854-1.855a.25.25 0 0 1 .289-.047l1.888.974V8.5a.5.5 0 0 1-.5.5H5a.5.5 0 0 1-.5-.5V8s1.54-1.274 1.639-1.208M6.25 6a.75.75 0 1 0 0-1.5a.75.75 0 0 0 0 1.5\" /></g></svg>",
             "Types": [
                 {
                     "Name": "View",
@@ -331,9 +371,29 @@
             ]
         },
         {
+            "Name": "IFrame Plugin",
+            "Category": "Content",
+            "Description": "IFrame Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.IFrame.dll",
+            "Icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" style=\"padding: 8px; color: #606060;\" width=\"48\" height=\"48\" viewBox=\"0 0 16 16\"><g fill=\"currentColor\"><path d=\"M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z\" /><path d=\"M4.5 12.5A.5.5 0 0 1 5 12h3a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5m0-2A.5.5 0 0 1 5 10h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5m1.639-3.708l1.33.886l1.854-1.855a.25.25 0 0 1 .289-.047l1.888.974V8.5a.5.5 0 0 1-.5.5H5a.5.5 0 0 1-.5-.5V8s1.54-1.274 1.639-1.208M6.25 6a.75.75 0 1 0 0-1.5a.75.75 0 0 0 0 1.5\" /></g></svg>",
+            "Types": [
+                {
+                    "Name": "View",
+                    "Type": "IFrameViewPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Edit",
+                    "Type": "IFrameEditPlugin"
+                }
+            ]
+        },
+        {
             "Name": "Block Plugin",
+            "Category": "Content",
             "Description": "Block Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Contents.Block.dll",
+            "Assembly": "FluentCMS.Web.Plugins.Block.dll",
+            "Icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" style=\"padding: 8px; color: #606060;\" width=\"48\" height=\"48\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M4.825 12.025L8.7 15.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275l-4.6-4.6q-.15-.15-.213-.325T2.426 12t.063-.375t.212-.325l4.6-4.6q.3-.3.713-.3t.712.3t.3.713t-.3.712zm14.35-.05L15.3 8.1q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.6 4.6q.15.15.213.325t.062.375t-.062.375t-.213.325l-4.6 4.6q-.3.3-.7.288t-.7-.313t-.3-.712t.3-.713z\" /></svg>",
             "Types": [
                 {
                     "Name": "View",
@@ -343,6 +403,42 @@
                 {
                     "Name": "Edit",
                     "Type": "BlockEditPlugin"
+                }
+            ]
+        },
+        {
+            "Name": "Content List",
+            "Category": "Content",
+            "Description": "Content List Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.ContentViewer.dll",
+            "Icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" style=\"padding: 8px; color: #606060;\" width=\"48\" height=\"48\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M15.514 3.293a1 1 0 0 0-1.415 0L12.151 5.24l.056.052l6.5 6.5l.052.056L20.707 9.9a1 1 0 0 0 0-1.415l-5.193-5.193ZM7.004 8.27l3.892-1.46l6.293 6.293l-1.46 3.893a1 1 0 0 1-.603.591l-9.494 3.355a1 1 0 0 1-.98-.18l6.452-6.453a1 1 0 0 0-1.414-1.414l-6.453 6.452a1 1 0 0 1-.18-.98l3.355-9.494a1 1 0 0 1 .591-.603Z\" clip-rule=\"evenodd\" /></svg>",
+            "Types": [
+                {
+                    "Name": "View",
+                    "Type": "ContentListViewPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Edit",
+                    "Type": "ContentListEditPlugin"
+                }
+            ]
+        },
+        {
+            "Name": "Content Detail",
+            "Category": "Content",
+            "Description": "Content Detail Plugin",
+            "Assembly": "FluentCMS.Web.Plugins.ContentViewer.dll",
+            "Icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" style=\"padding: 8px; color: #606060;\" width=\"48\" height=\"48\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M15.514 3.293a1 1 0 0 0-1.415 0L12.151 5.24l.056.052l6.5 6.5l.052.056L20.707 9.9a1 1 0 0 0 0-1.415l-5.193-5.193ZM7.004 8.27l3.892-1.46l6.293 6.293l-1.46 3.893a1 1 0 0 1-.603.591l-9.494 3.355a1 1 0 0 1-.98-.18l6.452-6.453a1 1 0 0 0-1.414-1.414l-6.453 6.452a1 1 0 0 1-.18-.98l3.355-9.494a1 1 0 0 1 .591-.603Z\" clip-rule=\"evenodd\" /></svg>",
+            "Types": [
+                {
+                    "Name": "View",
+                    "Type": "ContentDetailViewPlugin",
+                    "IsDefault": true
+                },
+                {
+                    "Name": "Edit",
+                    "Type": "ContentDetailEditPlugin"
                 }
             ]
         },
@@ -357,535 +453,6 @@
                     "Name": "Globals Setting",
                     "Type": "GlobalSettingsPlugin",
                     "IsDefault": true
-                }
-            ]
-        },
-        {
-            "Name": "Content List",
-            "Description": "Content List Plugin",
-            "Assembly": "FluentCMS.Web.Plugins.Contents.ContentViewer.dll",
-            "Types": [
-                {
-                    "Name": "View",
-                    "Type": "ContentListViewPlugin",
-                    "IsDefault": true
-                },
-                {
-                    "Name": "Edit",
-                    "Type": "ContentListEditPlugin"
-                }
-            ]
-        }
-    ],
-    "ContentTypes": [
-        {
-            "Slug": "blog",
-            "Title": "Blog Post",
-            "Description": "Blog post content type",
-            "Fields": [
-                {
-                    "Name": "Title",
-                    "Description": "Blog post title",
-                    "Type": "string",
-                    "Required": true,
-                    "Label": "Title",
-                    "Settings": {
-                        "Placeholder": "Enter post title",
-                        "DataTableColumnOrder": 1,
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "StringFieldDataTableView",
-                        "FormViewOrder": 1,
-                        "FormColWidth": 6,
-                        "FormViewComponent": "StringFieldFormText"
-                    }
-                },
-                {
-                    "Name": "Content",
-                    "Type": "string",
-                    "Required": true,
-                    "Description": "Blog post content",
-                    "Label": "Content",
-                    "Settings": {
-                        "Placeholder": "Enter post content",
-                        "DataTableVisible": false,
-                        "DataTableViewComponent": "StringFieldDataTableView",
-                        "FormViewOrder": 4,
-                        "FormColWidth": 12,
-                        "FormViewComponent": "StringFieldFormRichText"
-                    }
-                },
-                {
-                    "Name": "Featured Image",
-                    "Type": "single-file",
-                    "Label": "Featured Image",
-                    "Description": "Blog post main image",
-                    "Required": false,
-                    "Settings": {
-                        "Placeholder": "Choose post main image",
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "SingleFileFieldDataTableFile",
-                        "FormViewOrder": 4,
-                        "FormColWidth": 12,
-                        "FormViewComponent": "SingleFileFieldFormFilePicker"
-                    }
-                },
-                {
-                    "Name": "Slug",
-                    "Type": "string",
-                    "Required": true,
-                    "Unique": true,
-                    "Description": "Url slug of the post",
-                    "Label": "Slug",
-                    "Settings": {
-                        "Placeholder": "Enter url slug of the post",
-                        "DataTableColumnOrder": 2,
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "StringFieldDataTableView",
-                        "FormViewOrder": 2,
-                        "FormColWidth": 6,
-                        "FormViewComponent": "StringFieldFormText",
-                        "Pattern": "[a-zA-Z0-9-]"
-                    }
-                },
-                {
-                    "Name": "Order",
-                    "Type": "number",
-                    "Required": true,
-                    "Description": "Blog post view order",
-                    "Label": "View Order",
-                    "Settings": {
-                        "Placeholder": "Enter view order of the post",
-                        "DataTableColumnOrder": 2,
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "NumberFieldDataTableView",
-                        "FormViewOrder": 8,
-                        "FormColWidth": 6,
-                        "FormViewComponent": "NumberFieldFormInput"
-                    }
-                },
-                {
-                    "Name": "Status",
-                    "Type": "single-select",
-                    "Required": true,
-                    "Description": "status of the blog post",
-                    "Label": "Status",
-                    "Settings": {
-                        "Placeholder": "Choose status of post",
-                        "DataTableColumnOrder": 4,
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "SelectFieldDataTableBadge",
-                        "FormViewOrder": 5,
-                        "FormColWidth": 12,
-                        "FormViewComponent": "SelectFieldFormAutocomplete",
-                        "DefaultValue": "Draft",
-                        "Options": "Draft\nIn Review\nPublished\nRejected\nArchived"
-                    }
-                },
-                {
-                    "Name": "Tags",
-                    "Type": "multi-select",
-                    "Description": "Tags of the blog post",
-                    "Label": "Tags",
-                    "Settings": {
-                        "Placeholder": "Choose tags of the post",
-                        "DataTableColumnOrder": 4,
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "MultiSelectFieldDataTableBadges",
-                        "FormViewOrder": 6,
-                        "FormColWidth": 12,
-                        "FormViewComponent": "MultiSelectFieldFormAutocomplete",
-                        "Options": "C#\nHtml\nCss\nJavascript\nBlazor\nAsp.net\nOther\nWeb Development\nResponsive Design"
-                    }
-                },
-                {
-                    "Name": "PublishedAt",
-                    "Type": "datetime",
-                    "Description": "Publish date of this post",
-                    "Label": "Published At",
-                    "Settings": {
-                        "Placeholder": "Choose post publish date",
-                        "DataTableColumnOrder": 4,
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "DateFieldDataTableView",
-                        "FormViewOrder": 7,
-                        "FormColWidth": 6,
-                        "FormViewComponent": "DateFieldFormDate"
-                    }
-                }
-            ],
-            "Contents": [
-                {
-                    "Title": "Introduction to Responsive Web Design",
-                    "Content": "In today's digital landscape, responsive web design is crucial for reaching users on multiple devices. This post explores the principles of responsive design and offers tips for implementation.",
-                    "Slug": "introduction-to-responsive-web-design",
-                    "Tags": [ "Html", "Css", "Javascript" ],
-                    "Status": "Published",
-                    "PublishedAt": "2024-06-06T15:04:05.641Z",
-                    "Order": 1
-                },
-                {
-                    "Title": "Exploring the Power of C# LINQ",
-                    "Content": "LINQ (Language-Integrated Query) in C# is a powerful tool for querying and manipulating data. This post dives into the basics of LINQ and demonstrates its usage with practical examples.",
-                    "Slug": "exploring-the-power-of-csharp-linq",
-                    "Tags": [ "C#", "Other" ],
-                    "Status": "Published",
-                    "PublishedAt": "2024-06-07T15:04:05.641Z",
-                    "Order": 2
-                },
-                {
-                    "Title": "Getting Started with Blazor: A Comprehensive Guide",
-                    "Content": "<p>Blazor, Microsoft's innovative web framework, empowers developers to craft interactive web applications seamlessly using C#. This tutorial provides a concise overview of Blazor's core concepts, showcasing its capability to run C# code directly in the browser through WebAssembly.</p><p><br></p><h2>Example</h2><p>Let's explore a basic example: a Blazor component that implements a simple counter.</p><div class=\"ql-code-block-container\" spellcheck=\"false\"><div class=\"ql-code-block\" data-language=\"plain\">Copy code</div><div class=\"ql-code-block\" data-language=\"plain\">@page \"/counter\"</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">&lt;h1&gt;Counter&lt;/h1&gt;</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">&lt;p&gt;Current count: @currentCount&lt;/p&gt;</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">&lt;button class=\"btn btn-primary\" @onclick=\"IncrementCount\"&gt;Click me&lt;/button&gt;</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">@code {</div><div class=\"ql-code-block\" data-language=\"plain\">    private int currentCount = 0;</div><div class=\"ql-code-block\" data-language=\"plain\"><br></div><div class=\"ql-code-block\" data-language=\"plain\">    private void IncrementCount()</div><div class=\"ql-code-block\" data-language=\"plain\">    {</div><div class=\"ql-code-block\" data-language=\"plain\">        currentCount++;</div><div class=\"ql-code-block\" data-language=\"plain\">    }</div><div class=\"ql-code-block\" data-language=\"plain\">}</div></div><p>In this snippet, a Blazor component is defined to maintain and display a count. Upon clicking the button, the count increments without requiring a page refresh, demonstrating Blazor's efficient handling of user interactions and UI updates.</p><p><br></p><h2>Conclusion</h2><p>Blazor presents an enticing opportunity for .NET developers, whether seasoned or new to web development, to harness the power of C# in crafting dynamic web applications. With its seamless integration and intuitive features, Blazor streamlines the development process, making it an invaluable tool in the modern web development landscape.</p><p><br></p><p><br></p><p><br></p><p><br></p>",
-                    "Slug": "getting-started-with-blazor-a-comprehensive-guide",
-                    "Tags": [ "C#", "Blazor", "Javascript" ],
-                    "Status": "In Review",
-                    "PublishedAt": "2024-06-09T15:04:05.641Z",
-                    "Order": 3
-                },
-                {
-                    "Title": "Mastering CSS Grid for Modern Web Layouts",
-                    "Content": "<p>In the realm of web design, CSS Grid has revolutionized the way developers approach layout creation. This comprehensive guide delves into the intricacies of CSS Grid, exploring its two-dimensional grid system that allows for the creation of complex layouts with ease. We will cover the fundamental concepts such as grid containers, grid items, and grid lines, and demonstrate how to use them to build responsive and dynamic web pages.</p><p>You will learn how to define grid tracks, create grid cells, and manage grid areas. Additionally, we will explore advanced techniques like grid auto-placement, grid alignment properties, and the use of CSS Grid with media queries for responsive design. By the end of this post, you will have a solid understanding of how to leverage CSS Grid to create modern, efficient, and visually appealing web layouts.</p>",
-                    "Slug": "mastering-css-grid-for-modern-web-layouts",
-                    "Tags": [ "Css", "Html", "Responsive Design" ],
-                    "Status": "Published",
-                    "PublishedAt": "2024-06-10T15:04:05.641Z",
-                    "Order": 4
-                },
-                {
-                    "Title": "Advanced JavaScript Techniques for Efficient Web Development",
-                    "Content": "<p>JavaScript remains a cornerstone of modern web development, offering endless possibilities for enhancing user interaction and functionality. This post focuses on advanced JavaScript techniques that can significantly improve the efficiency and performance of your web applications. We will explore topics such as asynchronous programming with Promises and async/await, the use of modern JavaScript features like destructuring and template literals, and the importance of modularizing your code with ES6 modules.</p><p>Furthermore, we will delve into the world of JavaScript frameworks and libraries, discussing how they can streamline your development process and help you build scalable and maintainable applications. Whether you are a seasoned JavaScript developer or just starting out, this post will equip you with the knowledge and tools necessary to take your web development skills to the next level.</p>",
-                    "Slug": "advanced-javascript-techniques-for-efficient-web-development",
-                    "Tags": [ "Javascript", "Web Development", "Other" ],
-                    "Status": "Published",
-                    "PublishedAt": "2024-06-11T15:04:05.641Z",
-                    "Order": 5
-                }
-            ]
-        },
-        {
-            "Slug": "job-listing",
-            "Title": "Job Listing",
-            "Description": "Content type for job listings",
-            "Fields": [
-                {
-                    "Name": "Title",
-                    "Type": "string",
-                    "Required": true,
-                    "Description": "Title of the job listing",
-                    "Label": "Title",
-                    "Settings": {
-                        "Placeholder": "Enter job title",
-                        "DataTableColumnOrder": 1,
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "StringFieldDataTableView",
-                        "FormViewOrder": 1,
-                        "FormColWidth": 6,
-                        "FormViewComponent": "StringFieldFormText",
-                        "DefaultValue": "Untitled"
-                    }
-                },
-                {
-                    "Name": "Slug",
-                    "Type": "string",
-                    "Required": true,
-                    "Description": "Url slug of the job listing",
-                    "Label": "Slug",
-                    "Settings": {
-                        "Placeholder": "Enter url slug",
-                        "DataTableColumnOrder": 2,
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "StringFieldDataTableView",
-                        "FormViewOrder": 1,
-                        "FormColWidth": 6,
-                        "FormViewComponent": "StringFieldFormText",
-                        "DefaultValue": "Untitled"
-                    }
-                },
-                {
-                    "Name": "Short Description",
-                    "Type": "string",
-                    "Description": "Short Description of the job listing",
-                    "Required": true,
-                    "Label": "Short Description",
-                    "Settings": {
-                        "Placeholder": "Enter short description 2 - 3 lines for SEO",
-                        "DataTableVisible": false,
-                        "DataTableViewComponent": "StringFieldDataTableView",
-                        "FormViewOrder": 2,
-                        "FormColWidth": 12,
-                        "FormViewComponent": "StringFieldFormTextArea"
-                    }
-                },
-                {
-                    "Name": "Description",
-                    "Type": "string",
-                    "Required": true,
-                    "Description": "Description of the job listing",
-                    "Label": "Description",
-                    "Settings": {
-                        "Placeholder": "Enter job description",
-                        "DataTableVisible": false,
-                        "DataTableViewComponent": "StringFieldDataTableView",
-                        "FormViewOrder": 2,
-                        "FormColWidth": 12,
-                        "FormViewComponent": "StringFieldFormRichText"
-                    }
-                },
-                {
-                    "Name": "Location",
-                    "Type": "string",
-                    "Required": true,
-                    "Description": "Location of the job",
-                    "Label": "Location",
-                    "Settings": {
-                        "Placeholder": "Enter job location",
-                        "DataTableColumnOrder": 2,
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "StringFieldDataTableView",
-                        "FormViewOrder": 3,
-                        "FormColWidth": 6,
-                        "FormViewComponent": "StringFieldFormText"
-                    }
-                },
-                {
-                    "Name": "Company",
-                    "Type": "string",
-                    "Required": true,
-                    "Description": "Name of the company",
-                    "Label": "Company",
-                    "Settings": {
-                        "Placeholder": "Enter company name",
-                        "DataTableColumnOrder": 3,
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "StringFieldDataTableView",
-                        "FormViewOrder": 4,
-                        "FormColWidth": 6,
-                        "FormViewComponent": "StringFieldFormText"
-                    }
-                },
-                {
-                    "Name": "Type",
-                    "Type": "single-select",
-                    "Description": "Type of job (e.g., full-time, part-time)",
-                    "Required": true,
-                    "Label": "Job Type",
-                    "Settings": {
-                        "Placeholder": "Select job type",
-                        "DataTableColumnOrder": 4,
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "SelectFieldDataTableBadge",
-                        "FormViewOrder": 5,
-                        "FormColWidth": 6,
-                        "FormViewComponent": "SelectFieldFormSelect",
-                        "Options": "Full-time\nPart-time\nContract\nInternship\nFreelance"
-                    }
-                },
-                {
-                    "Name": "Application Deadline",
-                    "Type": "datetime",
-                    "Description": "Date of Application Deadline",
-                    "Label": "Application Deadline",
-                    "Required": true,
-                    "Settings": {
-                        "Placeholder": "Select deadline date",
-                        "DataTableColumnOrder": 5,
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "DateFieldDataTableView",
-                        "FormViewOrder": 6,
-                        "FormColWidth": 6,
-                        "FormViewComponent": "DateFieldFormDate",
-                        "Format": "yyyy-MM-dd"
-                    }
-                }
-            ],
-            "Contents": [
-                {
-                    "Title": "Frontend Developer at Tech Innovations Inc",
-                    "Slug": "frontend-developer-at-tech-innovations-inc",
-                    "Short Description": "Exciting opportunity for a skilled Frontend Developer to join Tech Innovations Inc. and contribute to cutting-edge projects in San Francisco. Apply now!",
-                    "Description": "Join our dynamic team as a Frontend Developer and contribute to cutting-edge projects that push the boundaries of web technology. You'll be responsible for developing user-facing features, optimizing web applications for maximum speed and scalability, and collaborating with cross-functional teams to deliver high-quality software solutions.",
-                    "Type": "Full-time",
-                    "Location": "San Fransisco, US",
-                    "Company": "Tech Innovations Inc",
-                    "Application Deadline": "2024-09-01T15:04:05.641Z"
-                },
-                {
-                    "Title": "Data Scientist at AI Innovations Ltd",
-                    "Slug": "data-scientist-at-ai-innovations-ltd",
-                    "Short Description": "Exciting opportunity for a talented Data Scientist to join AI Innovations Ltd. Apply now to work on groundbreaking AI projects!",
-                    "Description": "AI Innovations Ltd is seeking a skilled Data Scientist to contribute to cutting-edge AI projects. You'll be responsible for analyzing large datasets, developing machine learning models, and generating actionable insights to drive business decisions. If you're passionate about artificial intelligence and thrive in a collaborative environment, we want to hear from you!",
-                    "Type": "Full-time",
-                    "Location": "Seattle, US",
-                    "Company": "AI Innovations Ltd",
-                    "Application Deadline": "2024-09-15T15:04:05.641Z"
-                },
-                {
-                    "Title": "UX/UI Designer at Creative Solutions Inc",
-                    "Slug": "ux-ui-designer-at-creative-solutions-inc",
-                    "Short Description": "Exciting opportunity for a creative UX/UI Designer to join Creative Solutions Inc. Apply now and showcase your design expertise!",
-                    "Description": "Join our team at Creative Solutions Inc as a UX/UI Designer and play a key role in crafting intuitive and visually stunning user experiences. You'll collaborate with product managers and developers to translate user needs into engaging design solutions. If you're passionate about design and have a keen eye for detail, we'd love to hear from you!",
-                    "Type": "Contract",
-                    "Location": "Remote",
-                    "Company": "Creative Solutions Inc",
-                    "Application Deadline": "2024-09-30T15:04:05.641Z"
-                },
-                {
-                    "Title": "Marketing Manager at Tech Innovations Inc",
-                    "Slug": "marketing-manager-at-tech-innovations-inc",
-                    "Short Description": "Exciting opportunity for a results-driven Marketing Manager to join Tech Innovations Inc. Apply now and drive our marketing initiatives!",
-                    "Description": "Tech Innovations Inc is seeking a talented Marketing Manager to develop and execute strategic marketing campaigns. You'll oversee digital marketing efforts, manage marketing budgets, and analyze campaign performance. If you're passionate about marketing and have a track record of driving growth, we want to hear from you!",
-                    "Type": "Full-time",
-                    "Location": "San Francisco, US",
-                    "Company": "Tech Innovations Inc",
-                    "Application Deadline": "2024-10-10T15:04:05.641Z"
-                },
-                {
-                    "Title": "Software Engineer (Mobile) at MobileTech Solutions",
-                    "Slug": "software-engineer-mobile-at-mobiletech-solutions",
-                    "Short Description": "Exciting opportunity for a skilled Mobile Software Engineer to join MobileTech Solutions. Apply now and develop innovative mobile applications!",
-                    "Description": "Join MobileTech Solutions as a Mobile Software Engineer and work on cutting-edge mobile applications. You'll collaborate with cross-functional teams to design, develop, and maintain mobile apps for iOS and Android platforms. If you're passionate about mobile development and have a strong foundation in software engineering principles, we'd love to hear from you!",
-                    "Type": "Full-time",
-                    "Location": "Remote",
-                    "Company": "MobileTech Solutions",
-                    "Application Deadline": "2024-10-20T15:04:05.641Z"
-                }
-            ]
-        },
-        {
-            "Slug": "book",
-            "Title": "Book",
-            "Description": "Content type for books",
-            "Fields": [
-                {
-                    "Name": "Title",
-                    "Type": "string",
-                    "Required": true,
-                    "Description": "Title of the book",
-                    "Label": "Title",
-                    "Settings": {
-                        "Placeholder": "Enter book title",
-                        "DataTableColumnOrder": 1,
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "StringFieldDataTableView",
-                        "FormViewOrder": 1,
-                        "FormColWidth": 6,
-                        "FormViewComponent": "StringFieldFormText",
-                        "DefaultValue": "Untitled"
-                    }
-                },
-                {
-                    "Name": "Author",
-                    "Type": "string",
-                    "Required": true,
-                    "Description": "Author of the book",
-                    "Label": "Author",
-                    "Settings": {
-                        "Placeholder": "Enter author name",
-                        "DataTableColumnOrder": 2,
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "StringFieldDataTableView",
-                        "FormViewOrder": 2,
-                        "FormColWidth": 6,
-                        "FormViewComponent": "StringFieldFormText"
-                    }
-                },
-                {
-                    "Name": "ISBN",
-                    "Type": "string",
-                    "Required": true,
-                    "Unique": true,
-                    "Description": "ISBN of the book",
-                    "Label": "ISBN",
-                    "Settings": {
-                        "Placeholder": "Enter ISBN",
-                        "DataTableColumnOrder": 3,
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "StringFieldDataTableView",
-                        "FormViewOrder": 3,
-                        "FormColWidth": 6,
-                        "FormViewComponent": "StringFieldFormText"
-                    }
-                },
-                {
-                    "Name": "Genre",
-                    "Type": "string",
-                    "Required": true,
-                    "Description": "Genre of the book",
-                    "Label": "Genre",
-                    "Settings": {
-                        "Placeholder": "Enter genre",
-                        "DataTableColumnOrder": 4,
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "StringFieldDataTableView",
-                        "FormViewOrder": 4,
-                        "FormColWidth": 6,
-                        "FormViewComponent": "StringFieldFormText"
-                    }
-                },
-                {
-                    "Name": "Publication Date",
-                    "Type": "datetime",
-                    "Required": true,
-                    "Description": "Publication date of the book",
-                    "Label": "Publication Date",
-                    "Settings": {
-                        "Placeholder": "Select publication date",
-                        "DataTableColumnOrder": 5,
-                        "DataTableVisible": true,
-                        "DataTableViewComponent": "DateFieldDataTableView",
-                        "FormViewOrder": 5,
-                        "FormColWidth": 6,
-                        "FormViewComponent": "DateFieldFormDate",
-                        "Format": "yyyy MMMM"
-                    }
-                },
-                {
-                    "Name": "Description",
-                    "Type": "string",
-                    "Required": true,
-                    "Description": "Description of the book",
-                    "Label": "Description",
-                    "Settings": {
-                        "Placeholder": "Enter book description",
-                        "DataTableVisible": false,
-                        "DataTableViewComponent": "StringFieldDataTableView",
-                        "FormViewOrder": 6,
-                        "FormColWidth": 12,
-                        "FormViewComponent": "StringFieldFormMarkdownText"
-                    }
-                }
-            ],
-            "Contents": [
-                {
-                    "Title": "1984",
-                    "Author": "George Orwell",
-                    "ISBN": "9780451524935",
-                    "Genre": "Dystopian Fiction",
-                    "Publication Date": "1949-06-08T00:00:00.000Z",
-                    "Description": "1984 is a dystopian novel set in a totalitarian regime where the government monitors and controls every aspect of citizens' lives. It explores themes of surveillance, propaganda, and the erosion of individual freedom."
-                },
-                {
-                    "Title": "To Kill a Mockingbird",
-                    "Author": "Harper Lee",
-                    "ISBN": "9780061120084",
-                    "Genre": "Fiction",
-                    "Publication Date": "1960-07-11T00:00:00.000Z",
-                    "Description": "To Kill a Mockingbird is a classic novel that addresses issues of racial injustice and moral growth in a small Southern town. Through the eyes of young Scout Finch, the book explores themes of empathy, compassion, and standing up for what is right."
-                },
-                {
-                    "Title": "The Great Gatsby",
-                    "Author": "F. Scott Fitzgerald",
-                    "ISBN": "9780743273565",
-                    "Genre": "Fiction",
-                    "Publication Date": "1925-04-10T00:00:00.000Z",
-                    "Description": "The Great Gatsby is a novel set in the Roaring Twenties, depicting the decadence and moral decay of the Jazz Age. It explores themes of wealth, love, and the American Dream through the eyes of narrator Nick Carraway and the enigmatic Jay Gatsby."
-                },
-                {
-                    "Title": "The Hobbit",
-                    "Author": "J.R.R. Tolkien",
-                    "ISBN": "9780345339683",
-                    "Genre": "Fantasy",
-                    "Publication Date": "1937-09-21T00:00:00.000Z",
-                    "Description": "The Hobbit is a fantasy novel that follows the journey of Bilbo Baggins, a hobbit who is swept into an epic quest to reclaim the lost kingdom of Erebor from the dragon Smaug. Along the way, Bilbo encounters trolls, elves, and a mysterious creature named Gollum."
                 }
             ]
         }

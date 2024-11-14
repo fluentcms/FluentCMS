@@ -4,35 +4,35 @@ public abstract class EntityRepository<TEntity>(IEntityRepository<TEntity> entit
 {
     private static string GetAllCacheKey => $"{typeof(TEntity).Name}_GetAll";
 
-    public async Task<TEntity?> Create(TEntity entity, CancellationToken cancellationToken = default)
+    public virtual async Task<TEntity?> Create(TEntity entity, CancellationToken cancellationToken = default)
     {
         var newEntity = await entityRepository.Create(entity, cancellationToken);
         InvalidateCache();
         return newEntity;
     }
 
-    public async Task<IEnumerable<TEntity>> CreateMany(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TEntity>> CreateMany(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
     {
         var newEntities = await entityRepository.CreateMany(entities, cancellationToken);
         InvalidateCache();
         return newEntities ?? [];
     }
 
-    public async Task<TEntity?> Delete(Guid id, CancellationToken cancellationToken = default)
+    public virtual async Task<TEntity?> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var deleted = await entityRepository.Delete(id, cancellationToken);
         InvalidateCache();
         return deleted;
     }
 
-    public async Task<IEnumerable<TEntity>> DeleteMany(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TEntity>> DeleteMany(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
     {
         var deleted = await entityRepository.DeleteMany(ids, cancellationToken);
         InvalidateCache();
         return deleted;
     }
 
-    public async Task<IEnumerable<TEntity>> GetAll(CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TEntity>> GetAll(CancellationToken cancellationToken = default)
     {
         var entitiesDict = await GetCachedDictionary(cancellationToken);
         return entitiesDict.Values;
@@ -51,7 +51,7 @@ public abstract class EntityRepository<TEntity>(IEntityRepository<TEntity> entit
         return default;
     }
 
-    public async Task<IEnumerable<TEntity>> GetByIds(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TEntity>> GetByIds(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
     {
         // access to cached dictionary
         var entitiesDict = await GetCachedDictionary(cancellationToken);

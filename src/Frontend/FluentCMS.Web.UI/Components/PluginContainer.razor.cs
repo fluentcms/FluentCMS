@@ -20,11 +20,11 @@ public partial class PluginContainer
     private ApiClientFactory ApiClient { get; set; } = default!;
 
     private IDictionary<string, object> Parameters { get; set; } = new Dictionary<string, object>();
-    
+
     private async Task ReloadPlugin()
     {
         var pluginResponse = await ApiClient.Plugin.GetByIdAsync(Plugin.Id);
-        if(pluginResponse.Data != null)
+        if (pluginResponse.Data != null)
         {
             Plugin = Mapper.Map<PluginViewState>(pluginResponse.Data);
             Parameters = new Dictionary<string, object>

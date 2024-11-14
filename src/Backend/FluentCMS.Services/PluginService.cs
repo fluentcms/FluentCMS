@@ -13,7 +13,7 @@ public interface IPluginService : IAutoRegisterService
 }
 
 
-public class PluginService(IPluginRepository pluginRepository, IPageRepository pageRepository, IPermissionManager permissionManager, IMessagePublisher messagePublisher) : IPluginService
+public class PluginService(IPluginRepository pluginRepository, IPageRepository pageRepository, IMessagePublisher messagePublisher) : IPluginService
 {
     public async Task<Plugin> Create(Plugin plugin, CancellationToken cancellationToken = default)
     {

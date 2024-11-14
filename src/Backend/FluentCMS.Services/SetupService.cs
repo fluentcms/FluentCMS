@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 
 namespace FluentCMS.Services;
@@ -11,7 +10,7 @@ public interface ISetupService : IAutoRegisterService
     Task<bool> IsInitialized(CancellationToken cancellationToken = default);
 }
 
-public class SetupService(IMessagePublisher messagePublisher, IGlobalSettingsRepository globalSettingsRepository, IPermissionManager permissionManager, IMapper mapper) : ISetupService
+public class SetupService(IMessagePublisher messagePublisher, ISetupRepository setupRepository, IPermissionManager permissionManager) : ISetupService
 {
     public Task<IEnumerable<string>> GetTemplates(CancellationToken cancellationToken = default)
     {
@@ -21,13 +20,16 @@ public class SetupService(IMessagePublisher messagePublisher, IGlobalSettingsRep
 
     public Task<bool> IsInitialized(CancellationToken cancellationToken = default)
     {
-        return globalSettingsRepository.Initialized(cancellationToken);
+        return setupRepository.Initialized(cancellationToken);
     }
 
     public async Task<bool> Start(SetupTemplate setupTemplate, CancellationToken cancellationToken = default)
     {
-        if (await globalSettingsRepository.Initialized(cancellationToken))
+        if (await setupRepository.Initialized(cancellationToken))
             throw new AppException(ExceptionCodes.SetupAlreadyInitialized);
+
+        // initialize db if it's not initialized
+        await setupRepository.InitializeDb(cancellationToken);
 
         if (!await permissionManager.HasAccess(GlobalPermissionAction.SuperAdmin, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
@@ -44,7 +46,6 @@ public class SetupService(IMessagePublisher messagePublisher, IGlobalSettingsRep
                throw new AppException($"Failed to read/deserialize {ServiceConstants.SetupManifestFile}");
 
         setupTemplate.PluginDefinitions = jsonSetupTemplate.PluginDefinitions;
-        setupTemplate.ContentTypes = jsonSetupTemplate.ContentTypes;
 
         setupTemplate.Site = new SiteTemplate
         {
@@ -67,8 +68,5 @@ public class SetupService(IMessagePublisher messagePublisher, IGlobalSettingsRep
     {
         foreach (var pluginDefinition in setupTemplate.PluginDefinitions)
             pluginDefinition.Id = Guid.NewGuid();
-
-        foreach (var contentType in setupTemplate.ContentTypes)
-            contentType.Id = Guid.NewGuid();
     }
 }

@@ -41,6 +41,8 @@ public class MappingProfile : Profile
         CreateMap<PageUpdateRequest, Page>();
         CreateMap<Page, PageDetailResponse>();
         CreateMap<Page, PageFullDetailResponse>();
+        CreateMap<PageModel, PageFullDetailResponse>();
+        CreateMap<PageModel, PageDetailResponse>();
 
         #endregion
 
@@ -101,10 +103,8 @@ public class MappingProfile : Profile
         #region File Folder Asset
 
         CreateMap<File, FileDetailResponse>();
-        CreateMap<FileUpdateRequest, File>();
         CreateMap<Folder, FolderDetailResponse>();
         CreateMap<FolderCreateRequest, Folder>();
-        CreateMap<FolderUpdateRequest, Folder>();
 
         #endregion
 

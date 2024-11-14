@@ -5,7 +5,9 @@
 @if (Visible)
 {
     <li @attributes="AdditionalAttributes">
-        <div class="@this.GetClasses()">
+        <div class="@this.GetClasses() @(Link || !string.IsNullOrEmpty(Href) ?
+        this.ClassName("BreadcrumbItemLink") :
+        "")">
             @if (IconName != IconName.Default)
             {
                 <Icon Class="@this.ClassName("BreadcrumbItemIcon")" Name="@IconName" />
@@ -18,7 +20,7 @@
             }
             @if (!string.IsNullOrEmpty(Href))
             {
-                <a href="@Href" class="@this.ClassName("BreadcrumbItemLink")">
+                <a href="@Href" class="@this.ClassName("BreadcrumbItemText")">
                     @ChildContent
                 </a>
             }

@@ -14,9 +14,10 @@ public class ContentController(
 
     [HttpGet]
     [Policy(AREA, READ)]
-    public async Task<IApiPagingResult<ContentDetailResponse>> GetAll([FromRoute] string contentTypeSlug, CancellationToken cancellationToken = default)
+    public async Task<IApiPagingResult<ContentDetailResponse>> GetAll([FromQuery] Guid siteId, [FromRoute] string contentTypeSlug, CancellationToken cancellationToken = default)
     {
-        var contentType = await contentTypeService.GetBySlug(contentTypeSlug, cancellationToken);
+        // TODO: Validate siteId
+        var contentType = await contentTypeService.GetBySlug(siteId, contentTypeSlug, cancellationToken);
         var contents = await contentService.GetAll(contentType.Id, cancellationToken);
         var contentResponses = mapper.Map<List<ContentDetailResponse>>(contents);
         return OkPaged(contentResponses);
@@ -24,9 +25,10 @@ public class ContentController(
 
     [HttpGet("{id}")]
     [Policy(AREA, READ)]
-    public async Task<IApiResult<ContentDetailResponse>> GetById([FromRoute] string contentTypeSlug, Guid id, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<ContentDetailResponse>> GetById([FromQuery] Guid siteId, [FromRoute] string contentTypeSlug, Guid id, CancellationToken cancellationToken = default)
     {
-        var contentType = await contentTypeService.GetBySlug(contentTypeSlug, cancellationToken);
+        // TODO: Validate siteId
+        var contentType = await contentTypeService.GetBySlug(siteId, contentTypeSlug, cancellationToken);
         var content = await contentService.GetById(id, cancellationToken);
         var contentResponse = mapper.Map<ContentDetailResponse>(content);
         return Ok(contentResponse);
@@ -34,10 +36,16 @@ public class ContentController(
 
     [HttpPost]
     [Policy(AREA, CREATE)]
-    public async Task<IApiResult<ContentDetailResponse>> Create([FromRoute] string contentTypeSlug, [FromBody] Dictionary<string, object?> data, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<ContentDetailResponse>> Create([FromQuery] Guid siteId, [FromRoute] string contentTypeSlug, [FromBody] Dictionary<string, object?> data, CancellationToken cancellationToken = default)
     {
-        var contentType = await contentTypeService.GetBySlug(contentTypeSlug, cancellationToken);
-        var content = new Content { TypeId = contentType.Id, Data = data };
+        // TODO: Validate siteId
+        var contentType = await contentTypeService.GetBySlug(siteId, contentTypeSlug, cancellationToken);
+        var content = new Content
+        {
+            SiteId = siteId,
+            TypeId = contentType.Id,
+            Data = data
+        };
         await contentService.Create(content, cancellationToken);
         var response = mapper.Map<ContentDetailResponse>(content);
         return Ok(response);
@@ -45,10 +53,17 @@ public class ContentController(
 
     [HttpPut("{id}")]
     [Policy(AREA, UPDATE)]
-    public async Task<IApiResult<ContentDetailResponse>> Update([FromRoute] string contentTypeSlug, [FromRoute] Guid id, [FromBody] Dictionary<string, object?> data, CancellationToken cancellationToken = default)
+    public async Task<IApiResult<ContentDetailResponse>> Update([FromQuery] Guid siteId, [FromRoute] string contentTypeSlug, [FromRoute] Guid id, [FromBody] Dictionary<string, object?> data, CancellationToken cancellationToken = default)
     {
-        var contentType = await contentTypeService.GetBySlug(contentTypeSlug, cancellationToken);
-        var content = new Content { Id = id, TypeId = contentType.Id, Data = data };
+        // TODO: Validate siteId
+        var contentType = await contentTypeService.GetBySlug(siteId, contentTypeSlug, cancellationToken);
+        var content = new Content
+        {
+            Id = id,
+            SiteId = siteId,
+            TypeId = contentType.Id,
+            Data = data
+        };
         await contentService.Update(content, cancellationToken);
         var response = mapper.Map<ContentDetailResponse>(content);
         return Ok(response);

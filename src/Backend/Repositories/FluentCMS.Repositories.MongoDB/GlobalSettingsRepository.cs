@@ -35,15 +35,6 @@ public class GlobalSettingsRepository : IGlobalSettingsRepository
         return await _collection.FindOneAndReplaceAsync(idFilter, settings, null, cancellationToken);
     }
 
-    public async Task<bool> Initialized(CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var existing = await Get(cancellationToken);
-
-        return existing?.Initialized ?? false;
-    }
-
     private async Task<GlobalSettings?> Create(GlobalSettings settings, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

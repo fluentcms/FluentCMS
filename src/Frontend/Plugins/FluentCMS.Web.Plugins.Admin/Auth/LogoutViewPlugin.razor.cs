@@ -15,6 +15,6 @@ public partial class LogoutViewPlugin
         if (HttpContext != null)
             await AuthManager.Logout(HttpContext);
 
-        NavigateTo("/");
+        NavigateTo("/", true);
     }
 }

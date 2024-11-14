@@ -14,5 +14,6 @@ public class MappingProfile : Profile
         CreateMap<SiteTemplate, SiteTemplate>();
         CreateMap<PluginDefinition, PluginDefinition>();
         CreateMap<ContentTypeTemplate, ContentTypeTemplate>();
+        CreateMap<Page, PageModel>();
     }
 }

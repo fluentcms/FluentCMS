@@ -50,6 +50,16 @@ public static class ServiceExtensions
         return app;
     }
 
+    public static IApplicationBuilder UseRemoteStaticFileServices(this WebApplication app)
+    {
+        app.UseWhen(context => context.Request.Path.StartsWithSegments($"/files"), app =>
+        {
+            app.UseMiddleware<RemoteFileProviderMiddleware>();
+        });
+
+        return app;
+    }
+
     private static IServiceCollection AddViewState(this IServiceCollection services)
     {
         services.AddScoped(sp =>
@@ -79,13 +89,30 @@ public static class ServiceExtensions
                 if (pageResponse?.Data == null)
                     throw new Exception("Error while loading ViewState");
 
-                viewState.Page = mapper.Map<PageViewState>(pageResponse.Data);
-                viewState.Layout = mapper.Map<LayoutViewState>(pageResponse.Data.Layout);
-                viewState.DetailLayout = mapper.Map<LayoutViewState>(pageResponse.Data.DetailLayout);
-                viewState.EditLayout = mapper.Map<LayoutViewState>(pageResponse.Data.EditLayout);
-                viewState.Site = mapper.Map<SiteViewState>(pageResponse.Data.Site);
-                viewState.Plugins = pageResponse.Data.Sections!.Values.SelectMany(x => x).Select(p => mapper.Map<PluginViewState>(p)).ToList();
-                viewState.User = mapper.Map<UserViewState>(pageResponse.Data.User);
+                var page = pageResponse.Data.Current;
+                page ??= pageResponse.Data.Parent;
+
+                // For setup page
+                page ??= new();
+                page.User ??= new();
+                page.Site ??= new();
+                page.Sections ??= [];
+
+                viewState.Page = mapper.Map<PageViewState>(page);
+                viewState.Page.Slug = pageResponse.Data.Slug;
+                viewState.Layout = mapper.Map<LayoutViewState>(page.Layout);
+                viewState.DetailLayout = mapper.Map<LayoutViewState>(page.DetailLayout);
+                viewState.EditLayout = mapper.Map<LayoutViewState>(page.EditLayout);
+                viewState.Site = mapper.Map<SiteViewState>(page.Site);
+                viewState.Plugins = page.Sections!.Values.SelectMany(x => x).Select(p => mapper.Map<PluginViewState>(p)).ToList();
+                viewState.User = mapper.Map<UserViewState>(page.User);
+                viewState.User.Id = page.User.UserId;
+
+                viewState.Site.HasAdminAccess = viewState.User.IsSuperAdmin || (page.Site.AdminRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
+                viewState.Site.HasContributorAccess = viewState.Site.HasAdminAccess || (page.Site.ContributorRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
+
+                viewState.Page.HasAdminAccess = viewState.Site.HasContributorAccess || (page.AdminRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
+                viewState.Page.HasViewAccess = viewState.Page.HasAdminAccess || (page.ViewRoleIds ?? []).Any(role => viewState.User?.Roles.Select(x => x.Id).Contains(role) ?? false);
 
                 // check if the page is in edit mode
                 // it should have pluginId and pluginViewName query strings
