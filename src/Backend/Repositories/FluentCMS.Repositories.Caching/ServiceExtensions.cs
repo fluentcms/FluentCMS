@@ -20,6 +20,7 @@ public static class ServiceExtensions
         services.Decorate<IPluginRepository, PluginRepository>();
         services.Decorate<IRoleRepository, RoleRepository>();
         services.Decorate<ISettingsRepository, SettingsRepository>();
+        services.Decorate<ISetupRepository, SetupRepository>();
         services.Decorate<ISiteRepository, SiteRepository>();
         services.Decorate<IUserRoleRepository, UserRoleRepository>();
 

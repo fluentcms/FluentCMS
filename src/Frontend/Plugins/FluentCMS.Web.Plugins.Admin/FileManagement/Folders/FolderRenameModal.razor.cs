@@ -15,7 +15,7 @@ public partial class FolderRenameModal
 
     private async Task HandleSubmit()
     {
-        try 
+        try
         {
             await OnSubmit.InvokeAsync(Model);
         }
@@ -24,7 +24,7 @@ public partial class FolderRenameModal
             Errors = ex.ApiResult?.Errors?.Select(x => $"{x.Code ?? string.Empty}: {x.Description ?? string.Empty}").ToList() ?? [ex.Message];
             StateHasChanged();
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             Errors = [ex.Message];
             StateHasChanged();

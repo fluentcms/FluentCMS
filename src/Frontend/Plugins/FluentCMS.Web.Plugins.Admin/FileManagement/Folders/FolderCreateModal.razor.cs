@@ -22,7 +22,7 @@ public partial class FolderCreateModal
 
     private async Task HandleSubmit()
     {
-        try 
+        try
         {
             Model.ParentId = FolderId ?? default!;
             await OnSubmit.InvokeAsync(Model);
@@ -33,7 +33,7 @@ public partial class FolderCreateModal
             Errors = ex.ApiResult?.Errors?.Select(x => $"{x.Code ?? string.Empty}: {x.Description ?? string.Empty}").ToList() ?? [ex.Message];
             StateHasChanged();
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             Errors = [ex.Message];
             StateHasChanged();

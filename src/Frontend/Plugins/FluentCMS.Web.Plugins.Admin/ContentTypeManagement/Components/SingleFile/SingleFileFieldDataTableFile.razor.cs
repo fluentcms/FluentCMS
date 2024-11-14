@@ -4,7 +4,7 @@ public partial class SingleFileFieldDataTableFile
 {
     [Inject]
     private ViewState ViewState { get; set; }
-    
+
     [Inject]
     private ApiClientFactory ApiClient { get; set; }
 
