@@ -43,7 +43,6 @@ FluentCMS is an open-source project, and we welcome contributions from the commu
 ### Prerequisites
 
 - .NET SDK 8.0 or higher
-- MongoDb (if you want to use MongoDB as database)
 
 ### Installation
 
