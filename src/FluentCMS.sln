@@ -37,9 +37,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Shared", "Shared\Shared.csp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin", "Frontend\Plugins\FluentCMS.Web.Plugins.Admin\FluentCMS.Web.Plugins.Admin.csproj", "{70B5742E-C249-4B51-985C-2B4B7BDAB489}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Contents.TextHTML", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.TextHTML\FluentCMS.Web.Plugins.Contents.TextHTML.csproj", "{818F8CD0-5218-4480-A541-BD9D59416CDE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.TextHTML", "Frontend\Plugins\FluentCMS.Web.Plugins.TextHTML\FluentCMS.Web.Plugins.TextHTML.csproj", "{818F8CD0-5218-4480-A541-BD9D59416CDE}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Contents.Block", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.Block\FluentCMS.Web.Plugins.Contents.Block.csproj", "{9D8B6051-BE99-42E4-B569-43ABA3A9510D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Block", "Frontend\Plugins\FluentCMS.Web.Plugins.Block\FluentCMS.Web.Plugins.Block.csproj", "{9D8B6051-BE99-42E4-B569-43ABA3A9510D}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Providers", "Providers", "{CA060C96-322D-4410-8D32-0AF5DA8A975C}"
 EndProject
@@ -67,7 +67,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Providers.Message
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Providers.FileStorageProviders", "Providers\FileStorageProviders\FluentCMS.Providers.FileStorageProviders\FluentCMS.Providers.FileStorageProviders.csproj", "{2673EBC9-E99C-4A3F-AEA1-72FF42DEAD0C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Contents.ContentViewer", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.ContentViewer\FluentCMS.Web.Plugins.Contents.ContentViewer.csproj", "{2FB1EE8A-F07C-41F6-855C-031CA3346BFA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.ContentViewer", "Frontend\Plugins\FluentCMS.Web.Plugins.ContentViewer\FluentCMS.Web.Plugins.ContentViewer.csproj", "{2FB1EE8A-F07C-41F6-855C-031CA3346BFA}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TemplateRenderingProviders", "TemplateRenderingProviders", "{7705739E-5D69-4DF4-8C77-34AD3D991683}"
 EndProject
@@ -85,13 +85,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Providers.CachePr
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Providers.CacheProviders.Abstractions", "Providers\CacheProviders\FluentCMS.Providers.CacheProviders.Abstractions\FluentCMS.Providers.CacheProviders.Abstractions.csproj", "{97999608-B9AD-46B4-AF10-311B109A90BE}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Contents.IFrame", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.IFrame\FluentCMS.Web.Plugins.Contents.IFrame.csproj", "{73B6E291-89AA-4EB7-BE38-C5884BAAB248}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.IFrame", "Frontend\Plugins\FluentCMS.Web.Plugins.IFrame\FluentCMS.Web.Plugins.IFrame.csproj", "{73B6E291-89AA-4EB7-BE38-C5884BAAB248}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Contents.RichText", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.RichText\FluentCMS.Web.Plugins.Contents.RichText.csproj", "{F7CEDDC1-BA59-4B75-8B3E-6D2AB99E11EB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.RichText", "Frontend\Plugins\FluentCMS.Web.Plugins.RichText\FluentCMS.Web.Plugins.RichText.csproj", "{F7CEDDC1-BA59-4B75-8B3E-6D2AB99E11EB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Repositories.EFCore", "Backend\Repositories\FluentCMS.Repositories.EFCore\FluentCMS.Repositories.EFCore.csproj", "{D7672307-B219-493C-B083-897534F7A6FA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Web.Plugins.Contents.ContactUs", "Frontend\Plugins\FluentCMS.Web.Plugins.Contents.ContactUs\FluentCMS.Web.Plugins.Contents.ContactUs.csproj", "{D32484B4-BB1D-46F9-9F81-20DE4673F922}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Web.Plugins.ContactUs", "Frontend\Plugins\FluentCMS.Web.Plugins.ContactUs\FluentCMS.Web.Plugins.ContactUs.csproj", "{D32484B4-BB1D-46F9-9F81-20DE4673F922}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Repositories.EFCore.SqlServer", "Backend\Repositories\FluentCMS.Repositories.EFCore.SqlServer\FluentCMS.Repositories.EFCore.SqlServer.csproj", "{6E78A183-5E79-4CC4-A515-9A98B425A485}"
 EndProject
