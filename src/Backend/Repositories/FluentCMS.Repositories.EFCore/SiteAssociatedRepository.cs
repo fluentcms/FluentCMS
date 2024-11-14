@@ -8,8 +8,6 @@ public abstract class SiteAssociatedRepository<TEntity>(FluentCmsDbContext dbCon
         if (existing is null)
             return default;
 
-        SetAuditableFieldsForUpdate(entity, existing);
-
         entity.SiteId = existing.SiteId;
 
         return await base.Update(entity, cancellationToken);
