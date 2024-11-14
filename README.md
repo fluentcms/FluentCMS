@@ -63,24 +63,25 @@ FluentCMS is an open-source project, and we welcome contributions from the commu
    FluentCMS supports multiple databases. Configure the desired database by following these steps:
 
       * **Set the Database in `Program.cs`:** 
-      uncomment the database service you want to use and ensure others are commented out. For example, to use LiteDB:
+      Uncomment the database service you want to use and ensure others are commented out. For example, to use LiteDB:
 
       ```csharp
       services.AddLiteDbRepositories("LiteDb");
       ```
 
-   * **Provide Connection Strings in `appsettings.json`:** Add your connection string under "ConnectionStrings" in appsettings.json for the desired database:
+   * **Provide Connection Strings in `appsettings.json`:** 
+      Add your connection string under "ConnectionStrings" in appsettings.json for the desired database:
 
-```json
-"ConnectionStrings": {
-    "LiteDb": "Filename=./fluentcms.db",
-    "MongoDb": "mongodb://localhost:27017/FluentCMS",
-    "Sqlite": "Data Source=FluentCMS.db",
-    "SqlServer": "your_sql_server_connection_string",
-    "MySql": "your_mysql_connection_string",
-    "PostgreSQL": "your_postgresql_connection_string"
-}
-```
+      ```json
+      "ConnectionStrings": {
+         "LiteDb": "Filename=./fluentcms.db",
+         "MongoDb": "mongodb://localhost:27017/FluentCMS",
+         "Sqlite": "Data Source=FluentCMS.db",
+         "SqlServer": "your_sql_server_connection_string",
+         "MySql": "your_mysql_connection_string",
+         "PostgreSQL": "your_postgresql_connection_string"
+      }
+      ```
 
 
 4. Run the application:
