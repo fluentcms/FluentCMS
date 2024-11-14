@@ -65,9 +65,9 @@ FluentCMS is an open-source project, and we welcome contributions from the commu
       * **Set the Database in `Program.cs`:** 
       Uncomment the database service you want to use and ensure others are commented out. For example, to use LiteDB:
 
-      ```csharp
-      services.AddLiteDbRepositories("LiteDb");
-      ```
+         ```csharp
+         services.AddLiteDbRepositories("LiteDb");
+         ```
 
    * **Provide Connection Strings in `appsettings.json`:** 
       Add your connection string under "ConnectionStrings" in appsettings.json for the desired database:
