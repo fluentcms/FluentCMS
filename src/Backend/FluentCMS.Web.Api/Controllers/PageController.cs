@@ -1,6 +1,5 @@
 ﻿using FluentCMS.Services.Permissions;
 using FluentCMS.Web.Api.Filters;
-using System.IO;
 
 namespace FluentCMS.Web.Api.Controllers;
 
