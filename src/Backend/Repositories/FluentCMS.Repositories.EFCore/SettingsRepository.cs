@@ -65,17 +65,9 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
                 };
                 dbContext.SettingValues.Add(settingValue);
             }
-            try
-            {
 
-                // Save changes to the database
-                await dbContext.SaveChangesAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-
-                throw;
-            }
+            // Save changes to the database
+            await dbContext.SaveChangesAsync(cancellationToken);
 
             return newSettings;
         }

@@ -17,16 +17,16 @@ CREATE TABLE ApiTokens (
 );
 
 -- Table for Policies (related to ApiTokens)
-CREATE TABLE Policies (
-    Id INTEGER PRIMARY KEY AUTOINCREMENT, -- Auto-incrementing ID
+CREATE TABLE ApiTokenPolicies (
+    Id TEXT PRIMARY KEY, -- Auto-incrementing ID
     ApiTokenId TEXT NOT NULL, -- Foreign key to ApiTokens
     Area TEXT NOT NULL,
     Actions TEXT NOT NULL, -- Comma-separated string to store list of actions
     FOREIGN KEY (ApiTokenId) REFERENCES ApiTokens(Id) ON DELETE CASCADE
 );
 
--- Index for Policies by ApiTokenId for optimized querying
-CREATE INDEX IX_Policies_ApiTokenId ON Policies (ApiTokenId);
+-- Index for ApiTokenPolicies by ApiTokenId for optimized querying
+CREATE INDEX IX_ApiTokenPolicies_ApiTokenId ON ApiTokenPolicies (ApiTokenId);
 
 
 -- Table for GlobalSettings

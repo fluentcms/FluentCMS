@@ -9,7 +9,7 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
     #region DbSets
 
     public DbSet<ApiToken> ApiTokens { get; set; } = default!;
-    public DbSet<Policy> Policies { get; set; } = default!;
+    public DbSet<PolicyValue> ApiTokenPolicies { get; set; } = default!;
     public DbSet<Block> Blocks { get; set; } = default!;
     public DbSet<Content> Contents { get; set; } = default!;
     public DbSet<ContentType> ContentTypes { get; set; } = default!;
@@ -130,19 +130,20 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
 
         #region ApiToken and Policy
 
-        modelBuilder.Entity<ApiToken>(entity =>
-        {
-            entity.HasMany(e => e.Policies)
-              .WithOne()
-              .HasForeignKey("ApiTokenId") // Shadow foreign key property in Policy table
-              .OnDelete(DeleteBehavior.Cascade); // Cascade delete policies if ApiToken is deleted
-        });
-
         modelBuilder.Entity<ApiToken>()
-            .Navigation(e => e.Policies).AutoInclude();
+            .Ignore(s => s.Policies);
+
+        modelBuilder.Entity<PolicyValue>()
+            .HasOne(sv => sv.ApiToken)
+            .WithMany()
+            .HasForeignKey(sv => sv.ApiTokenId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        //modelBuilder.Entity<ApiToken>()
+        //    .Navigation(e => e.Policies).AutoInclude();
 
         // Configure the Policy entity
-        modelBuilder.Entity<Policy>(entity =>
+        modelBuilder.Entity<PolicyValue>(entity =>
         {
             // Store Actions as a comma-separated string
             entity.Property(e => e.Actions)
@@ -150,17 +151,6 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                     v => string.Join(",", v), // Convert list to comma-separated string when saving
                     v => v.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList() // Convert back to list when reading
                 );
-
-
-            // Define the shadow property "Id" as the primary key
-            entity.Property<int>("Id").ValueGeneratedOnAdd();
-            entity.HasKey("Id");
-
-            // Foreign key relationship to ApiToken (assuming ApiTokenId is defined in your model)
-            entity.HasOne<ApiToken>()
-                  .WithMany(a => a.Policies)
-                  .HasForeignKey("ApiTokenId") // Shadow foreign key to link to ApiToken
-                  .OnDelete(DeleteBehavior.Cascade); // Cascade delete for related policies
         });
 
         #endregion        
@@ -292,4 +282,13 @@ public class SettingValue
     public string Key { get; set; } = default!;
     public string Value { get; set; } = default!;
     public Settings Settings { get; set; } = default!;
+}
+
+public class PolicyValue
+{
+    public Guid Id { get; set; } // Primary Key
+    public string Area { get; set; } = default!;
+    public List<string> Actions { get; set; } = [];
+    public ApiToken ApiToken { get; set; } = default!;
+    public Guid ApiTokenId { get; set; } = default!;
 }
