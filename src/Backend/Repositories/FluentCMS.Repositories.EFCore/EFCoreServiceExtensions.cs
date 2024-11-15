@@ -6,6 +6,8 @@ public static class EFCoreServiceExtensions
 {
     public static IServiceCollection AddEFCoreRepositories(this IServiceCollection services)
     {
+        services.AddAutoMapper(typeof(MappingProfile));
+
         // Register repositories
         services.AddScoped<IApiTokenRepository, ApiTokenRepository>();
         services.AddScoped<IBlockRepository, BlockRepository>();

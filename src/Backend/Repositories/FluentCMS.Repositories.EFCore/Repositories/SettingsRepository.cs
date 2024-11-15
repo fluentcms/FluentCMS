@@ -56,7 +56,7 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
             // Add each dictionary entry to the SettingValues table
             foreach (var kvp in settings.Where(x => !string.IsNullOrEmpty(x.Value)))
             {
-                var settingValue = new SettingValue
+                var settingValue = new DbModels.SettingValue
                 {
                     Id = Guid.NewGuid(),
                     SettingsId = newSettings.Id,
@@ -85,7 +85,7 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
             // Add updated values to SettingValues table
             foreach (var kvp in settings.Where(x => !string.IsNullOrEmpty(x.Value)))
             {
-                var settingValue = new SettingValue
+                var settingValue = new DbModels.SettingValue
                 {
                     Id = Guid.NewGuid(),
                     SettingsId = existingSettings.Id,

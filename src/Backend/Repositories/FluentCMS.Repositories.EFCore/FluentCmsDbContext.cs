@@ -8,8 +8,9 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
 
     #region DbSets
 
-    public DbSet<ApiToken> ApiTokens { get; set; } = default!;
-    public DbSet<PolicyValue> ApiTokenPolicies { get; set; } = default!;
+    public DbSet<DbModels.ApiToken> ApiTokens { get; set; } = default!;
+    public DbSet<DbModels.ApiTokenPolicy> ApiTokenPolicies { get; set; } = default!;
+
     public DbSet<Block> Blocks { get; set; } = default!;
     public DbSet<Content> Contents { get; set; } = default!;
     public DbSet<ContentType> ContentTypes { get; set; } = default!;
@@ -26,7 +27,7 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
     public DbSet<Plugin> Plugins { get; set; } = default!;
     public DbSet<Role> Roles { get; set; } = default!;
     public DbSet<Settings> Settings { get; set; } = default!;
-    public DbSet<SettingValue> SettingValues { get; set; }
+    public DbSet<DbModels.SettingValue> SettingValues { get; set; }
     public DbSet<Site> Sites { get; set; } = default!;
     public DbSet<User> Users { get; set; } = default!;
     public DbSet<IdentityUserLogin<Guid>> UserLogins { get; set; } = default!;
@@ -47,7 +48,7 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
         modelBuilder.Entity<Settings>()
             .Ignore(s => s.Values);
 
-        modelBuilder.Entity<SettingValue>()
+        modelBuilder.Entity<DbModels.SettingValue>()
             .HasOne(sv => sv.Settings)
             .WithMany()
             .HasForeignKey(sv => sv.SettingsId)
@@ -128,32 +129,32 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
 
         #endregion
 
-        #region ApiToken and Policy
-
-        modelBuilder.Entity<ApiToken>()
-            .Ignore(s => s.Policies);
-
-        modelBuilder.Entity<PolicyValue>()
-            .HasOne(sv => sv.ApiToken)
-            .WithMany()
-            .HasForeignKey(sv => sv.ApiTokenId)
-            .OnDelete(DeleteBehavior.Cascade);
+        //#region ApiToken and Policy
 
         //modelBuilder.Entity<ApiToken>()
-        //    .Navigation(e => e.Policies).AutoInclude();
+        //    .Ignore(s => s.Policies);
 
-        // Configure the Policy entity
-        modelBuilder.Entity<PolicyValue>(entity =>
-        {
-            // Store Actions as a comma-separated string
-            entity.Property(e => e.Actions)
-                .HasConversion(
-                    v => string.Join(",", v), // Convert list to comma-separated string when saving
-                    v => v.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList() // Convert back to list when reading
-                );
-        });
+        //modelBuilder.Entity<PolicyValue>()
+        //    .HasOne(sv => sv.ApiToken)
+        //    .WithMany()
+        //    .HasForeignKey(sv => sv.ApiTokenId)
+        //    .OnDelete(DeleteBehavior.Cascade);
 
-        #endregion        
+        modelBuilder.Entity<DbModels.ApiToken>()
+            .Navigation(e => e.Policies).AutoInclude();
+
+        //// Configure the Policy entity
+        //modelBuilder.Entity<PolicyValue>(entity =>
+        //{
+        //    // Store Actions as a comma-separated string
+        //    entity.Property(e => e.Actions)
+        //        .HasConversion(
+        //            v => string.Join(",", v), // Convert list to comma-separated string when saving
+        //            v => v.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList() // Convert back to list when reading
+        //        );
+        //});
+
+        //#endregion        
 
         #region Plugin Defition
 
@@ -275,14 +276,7 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
     }
 }
 
-public class SettingValue
-{
-    public Guid Id { get; set; } // Primary Key
-    public Guid SettingsId { get; set; } // Foreign key to Settings
-    public string Key { get; set; } = default!;
-    public string Value { get; set; } = default!;
-    public Settings Settings { get; set; } = default!;
-}
+
 
 public class PolicyValue
 {
