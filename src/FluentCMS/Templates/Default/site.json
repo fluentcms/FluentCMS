@@ -243,6 +243,7 @@
             "Layout": "AdminLayout",
             "EditLayout": "AdminLayout",
             "AdminRoles": [ "Administrators" ],
+            "ViewRoles": [ "Administrators" ],
             "Locked": true,
             "Plugins": [],
             "Children": [
@@ -252,6 +253,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -267,6 +269,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -282,6 +285,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -297,6 +301,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -312,6 +317,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -327,6 +333,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -342,6 +349,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -357,6 +365,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -372,6 +381,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -387,6 +397,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
@@ -402,6 +413,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Locked": true,
                     "Plugins": [
                         {
