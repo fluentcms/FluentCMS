@@ -37,13 +37,13 @@ FluentCMS is an open-source project, and we welcome contributions from the commu
 - MySQL (coming soon)
 - SQL Server (coming soon)
 - SQLite (coming soon)
+- PostgreSQL (coming soon)
 
 ## Getting Started
 
 ### Prerequisites
 
 - .NET SDK 8.0 or higher
-- MongoDb (if you want to use MongoDB as database)
 
 ### Installation
 
@@ -58,14 +58,39 @@ FluentCMS is an open-source project, and we welcome contributions from the commu
    ```bash
    cd FluentCMS/src/FluentCMS/
    ```
+3. Configure the Database
 
-3. Run the application:
+   FluentCMS supports multiple databases. Configure the desired database by following these steps:
+
+      * **Set the Database in `Program.cs`:** 
+      Uncomment the database service you want to use and ensure others are commented out. For example, to use LiteDB:
+
+         ```csharp
+         services.AddLiteDbRepositories("LiteDb");
+         ```
+
+   * **Provide Connection Strings in `appsettings.json`:** 
+      Add your connection string under "ConnectionStrings" in appsettings.json for the desired database:
+
+      ```json
+      "ConnectionStrings": {
+         "LiteDb": "Filename=./fluentcms.db",
+         "MongoDb": "mongodb://localhost:27017/FluentCMS",
+         "Sqlite": "Data Source=FluentCMS.db",
+         "SqlServer": "your_sql_server_connection_string",
+         "MySql": "your_mysql_connection_string",
+         "PostgreSQL": "your_postgresql_connection_string"
+      }
+      ```
+
+
+4. Run the application:
 
    ```bash
    dotnet run
    ```
 
-4. Visit `http://localhost:5000` in your browser.
+5. Visit `http://localhost:5000` in your browser.
 
 ## Documentation
 

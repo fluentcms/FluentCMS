@@ -34,7 +34,10 @@ else
 {
     <PageTitle>@ViewState.Page?.Title</PageTitle>
     <HeadContent>
-        @RenderDynamicContent(ViewState.Layout?.Head ?? string.Empty)
+        @if (ViewState.Page.HasViewAccess)
+        {
+            @RenderDynamicContent(ViewState.Layout?.Head ?? string.Empty)
+        }
         @if (!ViewState.Page.Locked && ViewState.Page.HasAdminAccess)
         {
             <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.default.css">
@@ -47,7 +50,7 @@ else
         <SiteBuilderDefaultToolbar />
     }
     
-    @if (ViewState.Page.Locked || ViewState.Page.HasViewAccess)
+    @if (ViewState.Page.HasViewAccess)
     {
         @RenderDynamicContent(ViewState.Layout?.Body ?? string.Empty)
     }
