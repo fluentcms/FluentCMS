@@ -186,6 +186,7 @@
         {
             "Title": "Blogs",
             "Path": "/blogs",
+            "Layout": "SingleLayout",
             "EditLayout": "EditLayout",
             "ViewRoles": [ "All Users" ],
             "Settings": {
@@ -254,6 +255,7 @@
             "Layout": "AdminLayout",
             "EditLayout": "AdminLayout",
             "AdminRoles": [ "Administrators" ],
+            "ViewRoles": [ "Administrators" ],
             "Locked": true,
             "Plugins": [],
             "Children": [
@@ -263,6 +265,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Settings": {
                         "Index": "false",
                         "Follow": "false"
@@ -282,6 +285,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Settings": {
                         "Index": "false",
                         "Follow": "false"
@@ -301,6 +305,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Settings": {
                         "Index": "false",
                         "Follow": "false"
@@ -320,6 +325,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Settings": {
                         "Index": "false",
                         "Follow": "false"
@@ -339,6 +345,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Settings": {
                         "Index": "false",
                         "Follow": "false"
@@ -358,6 +365,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Settings": {
                         "Index": "false",
                         "Follow": "false"
@@ -377,6 +385,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Settings": {
                         "Index": "false",
                         "Follow": "false"
@@ -396,6 +405,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Settings": {
                         "Index": "false",
                         "Follow": "false"
@@ -415,6 +425,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Settings": {
                         "Index": "false",
                         "Follow": "false"
@@ -434,6 +445,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Settings": {
                         "Index": "false",
                         "Follow": "false"
@@ -453,6 +465,7 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
                     "Settings": {
                         "Index": "false",
                         "Follow": "false"
