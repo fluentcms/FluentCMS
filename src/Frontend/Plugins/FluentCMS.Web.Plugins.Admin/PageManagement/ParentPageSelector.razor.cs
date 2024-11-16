@@ -46,7 +46,7 @@ public partial class ParentPageSelector
         {
             Guid? parentId = page.ParentId == Guid.Empty ? null : page.ParentId;
 
-            if (!parentId.HasValue)
+            if (parentId is null)
             {
                 PageOptions.Add(pageDictionary[page.Id]);
             }

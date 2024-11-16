@@ -64,6 +64,10 @@
             "Path": "/",
             "EditLayout": "EditLayout",
             "ViewRoles": [ "All Users" ],
+            "Settings": {
+                "Index": "true",
+                "Follow": "true"
+            },
             "Plugins": [
                 {
                     "Definition": "TextHTML Plugin",
@@ -184,6 +188,10 @@
             "Path": "/blogs",
             "EditLayout": "EditLayout",
             "ViewRoles": [ "All Users" ],
+            "Settings": {
+                "Index": "true",
+                "Follow": "true"
+            },
             "Plugins": [
 
                 {
@@ -212,6 +220,10 @@
                     "Path": "/detail",
                     "Layout": "SingleLayout",
                     "ViewRoles": [ "All Users" ],
+                    "Settings": {
+                        "Index": "true",
+                        "Follow": "true"
+                    },
                     "Plugins": [
                         {
                             "Definition": "TextHTML Plugin",
@@ -251,6 +263,10 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -266,6 +282,10 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -281,6 +301,10 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -296,6 +320,10 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -311,6 +339,10 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -326,6 +358,10 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -341,6 +377,10 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -356,6 +396,10 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -371,6 +415,10 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -386,6 +434,10 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -401,6 +453,10 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -422,6 +478,10 @@
                     "Locked": true,
                     "Layout": "AuthLayout",
                     "ViewRoles": [ "All Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Plugins": [
                         {
                             "Definition": "Login",
@@ -433,6 +493,10 @@
                     "Title": "Logout",
                     "Path": "/logout",
                     "ViewRoles": [ "All Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -447,6 +511,10 @@
                     "Locked": true,
                     "Layout": "AuthLayout",
                     "ViewRoles": [ "All Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Plugins": [
                         {
                             "Definition": "Register",
@@ -460,6 +528,10 @@
                     "Locked": true,
                     "Layout": "AuthLayout",
                     "ViewRoles": [ "All Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Plugins": [
                         {
                             "Definition": "Reset Password",
@@ -473,6 +545,10 @@
                     "Locked": true,
                     "Layout": "AuthLayout",
                     "ViewRoles": [ "All Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Plugins": [
                         {
                             "Definition": "Forgot Password",
@@ -486,6 +562,10 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "ViewRoles": [ "Authenticated Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {

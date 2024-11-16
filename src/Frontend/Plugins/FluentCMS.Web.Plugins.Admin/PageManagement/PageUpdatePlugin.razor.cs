@@ -15,35 +15,6 @@ public partial class PageUpdatePlugin
     private List<SelectOption>? LayoutOptions { get; set; }
     private List<RoleViewState>? AdminRoleOptions { get; set; }
 
-    private List<SelectOptionString> RobotsOptions =
-    [
-        new SelectOptionString
-        {
-            Title = "(default)",
-            Value = string.Empty
-        },
-        new SelectOptionString
-        {
-            Title = "Index & Follow",
-            Value = "index,follow"
-        },
-        new SelectOptionString
-        {
-            Title = "Index & No Follow",
-            Value = "index,nofollow"
-        },
-        new SelectOptionString
-        {
-            Title = "No Index & Follow",
-            Value = "noindex,follow"
-        },
-        new SelectOptionString
-        {
-            Title = "No Index & No Follow",
-            Value = "noindex,nofollow"
-        }
-    ];
-
     private List<SelectOptionString> OgTypeOptions =
     [
         new SelectOptionString
@@ -107,6 +78,7 @@ public partial class PageUpdatePlugin
 
             pages = pages.Where(x => x.ParentId != Id);
             pages = pages.Where(x => x.Id != Id);
+            pages = pages.Where(x => x.FullPath != "/");
 
             Pages = pages.ToList();
         }

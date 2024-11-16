@@ -208,6 +208,9 @@ public partial class PageSettingsModal
                 if (x.Locked)
                     return false;
 
+                if (x.Path == "/")
+                    return false;
+
                 // For add modal, show all pages in select.
                 if (Id is null)
                     return true;

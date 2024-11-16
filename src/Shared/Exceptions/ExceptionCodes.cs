@@ -154,6 +154,10 @@ public static class ExceptionCodes
     public const string PageNotFound = "Page.NotFound";
     public const string PagePathInvalidCharacter = "Page.PathInvalidCharacter";
     public const string PageParentPageNotFound = "Page.ParentPageNotFound";
+    public const string PageParentCannotBeHome = "Page.ParentCannotBeHome";
+    public const string PagePathReservedName = "Page.PathReservedName";
+    public const string PageHomeCannotHaveParent = "Page.HomeCannotHaveParent";
+    public const string PageUnableToUpdateHome = "Page.UnableToUpdateHome";
     public const string PageParentMustBeOnTheSameSite = "Page.ParentMustBeOnTheSameSite";
     public const string PageHasChildren = "Page.PageHasChildren";
 
