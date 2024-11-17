@@ -140,7 +140,7 @@ public class FileService(IFileRepository fileRepository, IFolderRepository folde
             throw new AppException(ExceptionCodes.FileUnableToUpdate);
     }
 
-    private static readonly Regex _fileNameRegex = new(@"^[\w\-]+(\.[A-Za-z]{2,6})?$");
+    private static readonly Regex _fileNameRegex = new(@"^[\w\-\s]+(\.[A-Za-z]{2,6})?$");
 
     private static bool IsValidFileName(string fileName)
     {
