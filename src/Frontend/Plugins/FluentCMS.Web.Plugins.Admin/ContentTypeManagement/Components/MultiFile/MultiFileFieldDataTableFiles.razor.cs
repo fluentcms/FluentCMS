@@ -10,21 +10,34 @@ public partial class MultiFileFieldDataTableFiles
     {
         foreach (var item in FieldValue.Value)
         {
-            var fileResponse = await ApiClient.File.GetByIdAsync(item);
-            var foldersResponse = await ApiClient.Folder.GetParentFoldersAsync(fileResponse.Data.FolderId);
-            var fileName = string.Join("/", (foldersResponse.Data ?? []).Select(x => x.Name)) + "/" + fileResponse.Data.Name;
-
-            FileUrlsDict.Add(fileResponse.Data.Id, fileName);
+            try {
+                var fileResponse = await ApiClient.File.GetByIdAsync(item);
+                FileUrlsDict.Add(fileResponse.Data.Id, fileResponse.Data.Path);
+            }
+            catch(Exception ex)
+            {
+                // File not found
+            }
         }
     }
 
     private string GetFileName(Guid file)
     {
-        return FileUrlsDict[file].Split("/").Last();
+        FileUrlsDict.TryGetValue(file, out string fileName);
+
+        if(string.IsNullOrEmpty(fileName))
+            return "";
+
+        return fileName.Split("/").Last();
     }
 
     private string GetDownloadUrl(Guid file)
     {
-        return FileUrlsDict[file];
+        FileUrlsDict.TryGetValue(file, out string fileName);
+
+        if(string.IsNullOrEmpty(fileName))
+            return "";
+
+        return fileName;
     }
 }

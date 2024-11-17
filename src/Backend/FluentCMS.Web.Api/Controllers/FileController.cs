@@ -17,6 +17,7 @@ public class FileController(IFileService fileService, IFolderService folderServi
     {
         var file = await fileService.GetById(id, cancellationToken);
         var fileResponse = mapper.Map<FileDetailResponse>(file);
+        fileResponse.Path = await fileService.GetFilePath(file);
         return Ok(fileResponse);
     }
 
@@ -42,7 +43,9 @@ public class FileController(IFileService fileService, IFolderService folderServi
 
             await fileService.Create(file, formFile.OpenReadStream(), cancellationToken);
 
-            filesResponse.Add(mapper.Map<FileDetailResponse>(file));
+            var fileResponse = mapper.Map<FileDetailResponse>(file);
+            fileResponse.Path = await fileService.GetFilePath(file);
+            filesResponse.Add(fileResponse);
         }
 
         return OkPaged(filesResponse);

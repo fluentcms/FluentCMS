@@ -4,6 +4,9 @@
 <Stack>
     @foreach(var file in FieldValue.Value)
     {
-        <Button Link Href="@GetDownloadUrl(file)")">@GetFileName(file)</Button>
+        @if (!string.IsNullOrEmpty(GetFileName(file)))
+        {
+            <Button Link Href="@GetDownloadUrl(file)">@GetFileName(file)</Button>
+        }
     }
 </Stack>

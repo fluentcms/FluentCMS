@@ -31,7 +31,14 @@ public partial class ContentListPlugin
 
     private static Type GetDataTableComponent(string fieldTypeName, string viewName, string name)
     {
-        return FieldTypes.All[fieldTypeName].DataTableComponents.FirstOrDefault(x => x.Name == viewName)?.Type ??
+        return FieldTypes.All[fieldTypeName].DataTableComponents.Where(x =>
+            {
+                if (string.IsNullOrEmpty(viewName))
+                    return true;
+
+                return x.Name == viewName;
+            })
+            .FirstOrDefault()?.Type ??
                throw new NotSupportedException($"Failed to Get DataTable Component '{viewName}' for Field '{name}'.");
     }
 

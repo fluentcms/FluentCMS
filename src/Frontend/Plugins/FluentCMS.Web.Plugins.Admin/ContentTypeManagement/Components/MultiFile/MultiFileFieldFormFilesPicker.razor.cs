@@ -8,30 +8,28 @@ public partial class MultiFileFieldFormFilesPicker
     [Inject]
     protected ViewState ViewState { get; set; } = default!;
 
-    private List<FileParameter> Files { get; set; } = [];
-
-    private FolderDetailResponse RootFolder { get; set; }
+    private FolderDetailResponse? RootFolder { get; set; }
     private Dictionary<Guid, string> FileUrlsDict { get; set; } = [];
 
-    private async Task OnFilesChanged(InputFileChangeEventArgs e)
-    {
-        Files = [];
-        foreach (var file in e.GetMultipleFiles(FileUploadConfig!.MaxCount))
-        {
-            var Data = file.OpenReadStream(FileUploadConfig!.MaxSize);
-            Files.Add(new FileParameter(Data, file.Name, file.ContentType));
-        }
+    private bool FileSelectorModalOpen { get; set; } = false;
 
-        var result = await ApiClient.File.UploadAsync(RootFolder.Id, Files);
-        if (result?.Data != null && result.Data.Count > 0)
-        {
-            foreach (var item in result.Data)
-            {
-                var url = await GetFileUrl(item);
-                FileUrlsDict.Add(item.Id, url);
-                FieldValue.Value.Add(item.Id);
-            }
-        }
+    private async Task OpenFileSelectorModal()
+    {
+        FileSelectorModalOpen = true;
+        await Task.CompletedTask;
+    }
+
+    private async Task CloseFileSelectorModal()
+    {
+        FileSelectorModalOpen = false;
+        await Task.CompletedTask;
+    }
+
+    private async Task OnFileSelectorSubmit(AssetDetail file)
+    {
+        FileSelectorModalOpen = false;
+        FieldValue.Value.Add(file.Id);
+        await Load();
     }
 
     private async Task RemoveValue(Guid item)
@@ -41,51 +39,45 @@ public partial class MultiFileFieldFormFilesPicker
     }
 
     private string GetFileName(Guid item)
-    { 
-        return FileUrlsDict[item].Split("/").Last();
+    {
+        FileUrlsDict.TryGetValue(item, out var fileUrl);
+        if (!string.IsNullOrEmpty(fileUrl))
+            return fileUrl.Split("/").Last();
+
+        return "";
     }
 
     private string GetFileUrl(Guid item)
     {
-        return FileUrlsDict[item];
+        FileUrlsDict.TryGetValue(item, out var fileUrl);
+        if (!string.IsNullOrEmpty(fileUrl))
+            return fileUrl;
+
+        return "";
     }
 
-    private async Task<string> GetFileUrl(FileDetailResponse file)
+    private async Task Load()
     {
-        var foldersResponse = await ApiClient.Folder.GetParentFoldersAsync(file.FolderId);
-        return string.Join("/", (foldersResponse.Data ?? []).Select(x => x.Name)) + "/" + file.Name; 
-    }
-
-    private FileUploadConfig? FileUploadConfig { get; set; }
-
-    protected override async Task OnInitializedAsync()
-    {
-        var settingsResponse = await ApiClient.GlobalSettings.GetAsync();
-        if (settingsResponse?.Data != null)
-        {
-            FileUploadConfig = settingsResponse.Data.FileUpload ?? new FileUploadConfig
-            {
-                AllowedExtensions = "*",
-                MaxCount = 5,
-                MaxSize = 1024 * 1024 * 5 // 5 mb
-            };
-        }
-
-        if (FieldValue.Value is null)
-            FieldValue.Value = [];
-
+        FileUrlsDict = [];
         if (FieldValue.Value.Count > 0)
         {
             foreach (var item in FieldValue.Value)
             {
                 var fileResponse = await ApiClient.File.GetByIdAsync(item);
 
-                var url = await GetFileUrl(fileResponse.Data);
-                FileUrlsDict.Add(item, url);
+                FileUrlsDict.Add(item, fileResponse.Data.Path!);
             }
         }
+    }
 
+    protected override async Task OnInitializedAsync()
+    {
+        if (FieldValue.Value is null)
+            FieldValue.Value = [];
+    
         var rootFolderResponse = await ApiClient.Folder.GetAllAsync(ViewState.Site.Id);
         RootFolder = rootFolderResponse.Data;
+
+        await Load();
     }
 }

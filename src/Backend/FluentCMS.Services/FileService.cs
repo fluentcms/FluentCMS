@@ -10,11 +10,12 @@ public interface IFileService : IAutoRegisterService
     Task<File> Rename(Guid id, string name, CancellationToken cancellationToken = default);
     Task<File> Delete(Guid id, CancellationToken cancellationToken = default);
     Task<File> Move(Guid id, Guid folderId, CancellationToken cancellationToken = default);
+    Task<string> GetFilePath(File file, CancellationToken cancellationToken = default);
     Task<System.IO.Stream> GetStream(Guid id, CancellationToken cancellationToken = default);
     Task<IEnumerable<File>> GetAll(Guid siteId, CancellationToken cancellationToken = default);
 }
 
-public class FileService(IFileRepository fileRepository, IFolderRepository folderRepository, IFileStorageProvider fileStorageProvider) : IFileService
+public class FileService(IFileRepository fileRepository, IFolderRepository folderRepository, IFolderService folderService, IFileStorageProvider fileStorageProvider) : IFileService
 {
     public async Task<File> Create(File file, System.IO.Stream fileContent, CancellationToken cancellationToken = default)
     {
@@ -78,6 +79,14 @@ public class FileService(IFileRepository fileRepository, IFolderRepository folde
 
         return await fileRepository.GetByName(folder.SiteId, folder.Id, normalizedFileName, cancellationToken) ??
             throw new AppException(ExceptionCodes.FileNotFound);
+    }
+
+    public async Task<string> GetFilePath(File file, CancellationToken cancellationToken = default)
+    {
+        var folders = await folderService.GetParentFolders(file.FolderId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FolderNotFound);
+
+        return string.Join("/", folders.Select(x => x.Name)) + "/" + file.Name;
     }
 
     public async Task<System.IO.Stream> GetStream(Guid id, CancellationToken cancellationToken = default)
