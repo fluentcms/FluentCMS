@@ -110,6 +110,7 @@ public static class ExceptionCodes
     #region File
 
     public const string FileNotFound = "File.NotFound";
+    public const string FileInvalidName = "File.InvalidName";
     public const string FileUnableToDelete = "File.UnableToDelete";
     public const string FileAlreadyExists = "File.AlreadyExists";
     public const string FileUnableToCreate = "File.UnableToCreate";

@@ -1,4 +1,5 @@
-﻿using FluentCMS.Providers.FileStorageProviders;
+﻿using System.Text.RegularExpressions;
+using FluentCMS.Providers.FileStorageProviders;
 
 namespace FluentCMS.Services;
 
@@ -102,6 +103,9 @@ public class FileService(IFileRepository fileRepository, IFolderRepository folde
         var file = await fileRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.FileNotFound);
 
+        if (!IsValidFileName(normalizedFileName))
+            throw new AppException(ExceptionCodes.FileInvalidName);
+
         // check if file with the same name already exists
         var existingFile = await fileRepository.GetByName(file.SiteId, file.FolderId, normalizedFileName, cancellationToken);
         if (existingFile != null)
@@ -134,6 +138,16 @@ public class FileService(IFileRepository fileRepository, IFolderRepository folde
 
         return await fileRepository.Update(file, cancellationToken) ??
             throw new AppException(ExceptionCodes.FileUnableToUpdate);
+    }
+
+    private static readonly Regex _fileNameRegex = new(@"^[\w\-]+(\.[A-Za-z]{2,6})?$");
+
+    private static bool IsValidFileName(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            return false; // Folder name should not be empty or whitespace
+
+        return _fileNameRegex.IsMatch(fileName);
     }
 
     private static string GetNormalizedFileName(string fileName)
