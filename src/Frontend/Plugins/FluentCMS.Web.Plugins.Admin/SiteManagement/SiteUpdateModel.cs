@@ -12,7 +12,9 @@ public class SiteUpdateModel
     public ICollection<Guid> ContributorRoleIds { get; set; } = [];
     public string MetaTitle { get; set; } = default!;
     public string MetaDescription { get; set; } = default!;
-    public string Robots { get; set; } = default!;
+    public bool Index { get; set; } = default!;
+    public bool Follow { get; set; } = default!;
+    public string RobotsTxt { get; set; } = default!;
     public string OgType { get; set; } = default!;
     public string GoogleTagsId { get; set; } = default!;
     public string Head { get; set; } = default!;

@@ -7,6 +7,7 @@
     <FormSelect @bind-Value="Model!.Template" Cols="6" Data="Templates" Label="Template" />
     <FormInput Hint="Page's MetaTitle will replace this value." @bind-Value="Model!.MetaTitle" Cols="12" Label="Meta Title" Placeholder="Enter Meta Title" />
     <FormTextarea Hint="Page's MetaDescription will replace this value." @bind-Value="Model.MetaDescription" Label="Meta Description" Placeholder="Enter Meta Description" />
+    <FormTextarea @bind-Value="Model.RobotsTxt" Label="Content of robots.txt" Placeholder="Enter content for robots.txt file" />
     <FormTextarea @bind-Value="Model!.Head" Cols="12" Label="Head" Placeholder="Enter Head content for all pages" />
     <FormActions Cancel Submit />
 </PluginForm>

@@ -52,6 +52,7 @@ public partial class SiteCreatePlugin
                 ["MetaDescription"] = Model.MetaDescription,
                 ["Head"] = Model.Head,
                 ["Robots"] = "index,follow",
+                ["RobotsTxt"] = Model.RobotsTxt,
                 ["OgType"] = "website",
                 ["GoogleTagsId"] = string.Empty
             }
