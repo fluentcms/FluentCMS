@@ -1,57 +1,41 @@
-﻿namespace FluentCMS.Repositories.EFCore;
+﻿using AutoMapper;
 
-public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionContext apiExecutionContext) : ISettingsRepository
+namespace FluentCMS.Repositories.EFCore;
+
+public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionContext apiExecutionContext, IMapper mapper) : ISettingsRepository
 {
     public async Task<IEnumerable<Settings>> GetAll(CancellationToken cancellationToken = default)
     {
-        var settingsList = await dbContext.Settings.ToListAsync(cancellationToken);
-        var settingValues = await dbContext.SettingValues.ToListAsync(cancellationToken);
-
-        // set the Values property of each Settings entity to a dictionary of its SettingValues
-        foreach (var settings in settingsList)
-            settings.Values = settingValues.Where(sv => sv.SettingsId == settings.Id).ToDictionary(sv => sv.Key, sv => sv.Value);
-
-        return settingsList;
+        var dbSettings = await dbContext.Settings.ToListAsync(cancellationToken);
+        return mapper.Map<IEnumerable<Settings>>(dbSettings);
     }
 
     public async Task<Settings?> GetById(Guid entityId, CancellationToken cancellationToken = default)
     {
-        var settings = await dbContext.Settings.FirstOrDefaultAsync(s => s.Id == entityId, cancellationToken);
-
-        if (settings != null)
-            settings.Values = dbContext.SettingValues.Where(x => x.SettingsId == settings.Id).ToDictionary(sv => sv.Key, sv => sv.Value);
-
-        return settings;
+        var dbSettings = await dbContext.Settings.FirstOrDefaultAsync(ct => ct.Id == entityId, cancellationToken);
+        return dbSettings != null ? mapper.Map<Settings>(dbSettings) : null;
     }
 
     public async Task<IEnumerable<Settings>> GetByIds(IEnumerable<Guid> entityIds, CancellationToken cancellationToken = default)
     {
-        var settingsList = await dbContext.Settings.Where(s => entityIds.Contains(s.Id)).ToListAsync(cancellationToken);
-        var settingValues = await dbContext.SettingValues.Where(sv => entityIds.Contains(sv.SettingsId)).ToListAsync(cancellationToken);
-
-        // set the Values property of each Settings entity to a dictionary of its SettingValues
-        foreach (var settings in settingsList)
-            settings.Values = settingValues.Where(sv => sv.SettingsId == settings.Id).ToDictionary(sv => sv.Key, sv => sv.Value);
-
-        return settingsList;
+        var dbSettings = await dbContext.Settings.Where(ct => entityIds.Contains(ct.Id)).ToListAsync(cancellationToken);
+        return mapper.Map<IEnumerable<Settings>>(dbSettings);
     }
 
     public async Task<Settings?> Update(Guid entityId, Dictionary<string, string> settings, CancellationToken cancellationToken = default)
     {
-        // Retrieve the Settings entity, including its related SettingsValues
-        var existingSettings = await GetById(entityId, cancellationToken);
+        var existingDbSettings = await dbContext.Settings.FirstOrDefaultAsync(ct => ct.Id == entityId, cancellationToken);
 
-        if (existingSettings == null)
+        if (existingDbSettings == null)
         {
             // Create a new Settings entity if it doesn't exist
-            var newSettings = new Settings
+            var newDbSettings = new DbModels.Settings
             {
                 Id = entityId,
-                Values = settings
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = apiExecutionContext.Username
             };
 
-            SetAuditableFieldsForCreate(newSettings);
-            dbContext.Settings.Add(newSettings);
 
             // Add each dictionary entry to the SettingValues table
             foreach (var kvp in settings.Where(x => !string.IsNullOrEmpty(x.Value)))
@@ -59,57 +43,48 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
                 var settingValue = new DbModels.SettingValue
                 {
                     Id = Guid.NewGuid(),
-                    SettingsId = newSettings.Id,
+                    SettingsId = newDbSettings.Id,
                     Key = kvp.Key,
                     Value = kvp.Value
                 };
-                dbContext.SettingValues.Add(settingValue);
+                newDbSettings.Values.Add(settingValue);
             }
 
+            dbContext.Settings.Add(newDbSettings);
             // Save changes to the database
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            return newSettings;
+            return mapper.Map<Settings>(newDbSettings);
         }
         else
         {
-            SetAuditableFieldsForUpdate(existingSettings);
-
-            // Update any properties in the Settings entity if needed
-            dbContext.Entry(existingSettings).CurrentValues.SetValues(settings);
-
-            // Remove existing values from SettingValues table
-            var existingValues = dbContext.SettingValues.Where(sv => sv.SettingsId == existingSettings.Id);
-            dbContext.SettingValues.RemoveRange(existingValues);
+            existingDbSettings.ModifiedAt = DateTime.UtcNow;
+            existingDbSettings.ModifiedBy = apiExecutionContext.Username;
 
             // Add updated values to SettingValues table
             foreach (var kvp in settings.Where(x => !string.IsNullOrEmpty(x.Value)))
             {
-                var settingValue = new DbModels.SettingValue
+                var settingValue = existingDbSettings.Values.FirstOrDefault(x => x.Key == kvp.Key);
+                if (settingValue == null)
                 {
-                    Id = Guid.NewGuid(),
-                    SettingsId = existingSettings.Id,
-                    Key = kvp.Key,
-                    Value = kvp.Value
-                };
-                dbContext.SettingValues.Add(settingValue);
+                    settingValue = new DbModels.SettingValue
+                    {
+                        Id = Guid.NewGuid(),
+                        SettingsId = existingDbSettings.Id,
+                        Key = kvp.Key,
+                        Value = kvp.Value
+                    };
+                    existingDbSettings.Values.Add(settingValue);
+                }
+                else
+                {
+                    settingValue.Value = kvp.Value;
+                }
             }
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            return existingSettings;
+            return mapper.Map<Settings>(existingDbSettings);
         }
-    }
-
-    private void SetAuditableFieldsForCreate(Settings settings)
-    {
-        settings.CreatedAt = DateTime.UtcNow;
-        settings.CreatedBy = apiExecutionContext.Username;
-    }
-
-    private void SetAuditableFieldsForUpdate(Settings settings)
-    {
-        settings.ModifiedAt = DateTime.UtcNow;
-        settings.ModifiedBy = apiExecutionContext.Username;
     }
 }

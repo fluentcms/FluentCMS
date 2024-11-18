@@ -13,8 +13,8 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
 
     public DbSet<Block> Blocks { get; set; } = default!;
     public DbSet<Content> Contents { get; set; } = default!;
-    public DbSet<ContentType> ContentTypes { get; set; } = default!;
-    public DbSet<ContentTypeField> ContentTypeFields { get; set; } = default!;
+    public DbSet<DbModels.ContentType> ContentTypes { get; set; } = default!;
+    public DbSet<DbModels.ContentTypeField> ContentTypeFields { get; set; } = default!;
     public DbSet<File> Files { get; set; } = default!;
     public DbSet<Folder> Folders { get; set; } = default!;
     public DbSet<GlobalSettings> GlobalSettings { get; set; } = default!;
@@ -26,7 +26,7 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
     public DbSet<PluginDefinitionType> PluginDefinitionTypes { get; set; } = default!;
     public DbSet<Plugin> Plugins { get; set; } = default!;
     public DbSet<Role> Roles { get; set; } = default!;
-    public DbSet<Settings> Settings { get; set; } = default!;
+    public DbSet<DbModels.Settings> Settings { get; set; } = default!;
     public DbSet<DbModels.SettingValue> SettingValues { get; set; }
     public DbSet<Site> Sites { get; set; } = default!;
     public DbSet<User> Users { get; set; } = default!;
@@ -43,9 +43,33 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
         var jsonSerializerOptions = new JsonSerializerOptions();
         jsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
 
+        modelBuilder.Entity<DbModels.ApiToken>()
+            .Navigation(e => e.Policies).AutoInclude();
+
+
+        #region ContentType
+
+        modelBuilder.Entity<DbModels.ContentType>(entity =>
+        {
+            entity.Navigation(e => e.Fields).AutoInclude();
+        });
+
+        modelBuilder.Entity<DbModels.ContentTypeField>(entity =>
+        {
+            entity.Property(e => e.Settings)
+                .HasConversion(
+                    // Serialize the dictionary to JSON when saving to the database
+                    v => JsonSerializer.Serialize(v, jsonSerializerOptions),
+                    // Deserialize the JSON string back to a dictionary when reading from the database
+                    v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, jsonSerializerOptions)
+                );
+        });
+
+        #endregion
+
         #region Settings
 
-        modelBuilder.Entity<Settings>()
+        modelBuilder.Entity<DbModels.Settings>()
             .Ignore(s => s.Values);
 
         modelBuilder.Entity<DbModels.SettingValue>()
@@ -65,35 +89,6 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                 v => string.Join(",", v), // Convert IEnumerable<string> to string for storage
                 v => v.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList() // Convert string to IEnumerable<string>
             );
-
-        #endregion
-
-        #region ContentType and ContentTypeField
-
-        modelBuilder.Entity<ContentType>(entity =>
-        {
-            // Define one-to-many relationship between ContentType and ContentTypeField
-            entity.HasMany(c => c.Fields)
-                  .WithOne()
-                  .HasForeignKey("ContentTypeId") // Shadow property for the foreign key
-                  .OnDelete(DeleteBehavior.Cascade); // Configure cascade delete if needed
-
-            entity.Navigation(e => e.Fields).AutoInclude();
-        });
-
-        modelBuilder.Entity<ContentTypeField>(entity =>
-        {
-            // Configure Settings to be stored as JSON
-            entity.Property(e => e.Settings)
-                .HasConversion(
-                    v => JsonSerializer.Serialize(v, jsonSerializerOptions), // Convert to JSON when saving
-                    v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, jsonSerializerOptions) // Convert back to dictionary when reading
-                );
-
-            // Define the shadow property "Id" as the primary key
-            entity.Property<int>("Id").ValueGeneratedOnAdd();
-            entity.HasKey("Id");
-        });
 
         #endregion
 
@@ -128,33 +123,6 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
         });
 
         #endregion
-
-        //#region ApiToken and Policy
-
-        //modelBuilder.Entity<ApiToken>()
-        //    .Ignore(s => s.Policies);
-
-        //modelBuilder.Entity<PolicyValue>()
-        //    .HasOne(sv => sv.ApiToken)
-        //    .WithMany()
-        //    .HasForeignKey(sv => sv.ApiTokenId)
-        //    .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<DbModels.ApiToken>()
-            .Navigation(e => e.Policies).AutoInclude();
-
-        //// Configure the Policy entity
-        //modelBuilder.Entity<PolicyValue>(entity =>
-        //{
-        //    // Store Actions as a comma-separated string
-        //    entity.Property(e => e.Actions)
-        //        .HasConversion(
-        //            v => string.Join(",", v), // Convert list to comma-separated string when saving
-        //            v => v.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList() // Convert back to list when reading
-        //        );
-        //});
-
-        //#endregion        
 
         #region Plugin Defition
 
@@ -274,15 +242,4 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
         // Configure the DbContext to use NoTracking by default
         optionsBuilder.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
     }
-}
-
-
-
-public class PolicyValue
-{
-    public Guid Id { get; set; } // Primary Key
-    public string Area { get; set; } = default!;
-    public List<string> Actions { get; set; } = [];
-    public ApiToken ApiToken { get; set; } = default!;
-    public Guid ApiTokenId { get; set; } = default!;
 }

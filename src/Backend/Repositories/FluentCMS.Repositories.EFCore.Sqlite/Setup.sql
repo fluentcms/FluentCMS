@@ -260,7 +260,7 @@ CREATE INDEX IX_ContentTypes_SiteId_Slug ON ContentTypes (SiteId, Slug);
 
 -- Table for ContentTypeFields (related to ContentTypes)
 CREATE TABLE ContentTypeFields (
-    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Id TEXT PRIMARY KEY,
     ContentTypeId TEXT NOT NULL, -- Foreign key to ContentTypes
     Name TEXT NOT NULL,
     Description TEXT NOT NULL,
