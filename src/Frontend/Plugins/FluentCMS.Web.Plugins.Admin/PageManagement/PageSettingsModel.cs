@@ -28,7 +28,8 @@ public class PageSettingsModel
 
     public string MetaTitle { get; set; } = default!;
     public string MetaDescription { get; set; } = default!;
-    public string Robots { get; set; } = default!;
+    public bool Index { get; set; } = default!;
+    public bool Follow { get; set; } = default!;
     public string OgType { get; set; } = default!;
     public string Head { get; set; } = default!;
 
@@ -51,13 +52,15 @@ public class PageSettingsModel
         settings.TryGetValue("MetaTitle", out var metaTitle);
         settings.TryGetValue("MetaDescription", out var metaDescription);
         settings.TryGetValue("OgType", out var ogType);
-        settings.TryGetValue("Robots", out var robots);
+        settings.TryGetValue("Index", out var index);
+        settings.TryGetValue("Follow", out var follow);
         settings.TryGetValue("Head", out var head);
 
         MetaTitle = metaTitle ?? string.Empty;
         MetaDescription = metaDescription ?? string.Empty;
         OgType = ogType ?? string.Empty;
-        Robots = robots ?? string.Empty;
+        Index = index == "true";
+        Follow = follow == "true";
         Head = head ?? string.Empty;
     }
 
@@ -105,7 +108,8 @@ public class PageSettingsModel
             {
                 ["MetaTitle"] = MetaTitle,
                 ["MetaDescription"] = MetaDescription,
-                ["Robots"] = Robots,
+                ["Index"] = Index ? "true" : "false",
+                ["Follow"] = Follow ? "true" : "false",
                 ["OgType"] = OgType,
                 ["Head"] = Head
             }

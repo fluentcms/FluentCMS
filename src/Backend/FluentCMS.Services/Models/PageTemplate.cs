@@ -15,4 +15,5 @@ public class PageTemplate
     public List<string> AdminRoles { get; set; } = [];
     public List<string> ContributorRoles { get; set; } = [];
     public List<string> ViewRoles { get; set; } = [];
+    public Dictionary<string, string> Settings { get; set; } = [];
 }

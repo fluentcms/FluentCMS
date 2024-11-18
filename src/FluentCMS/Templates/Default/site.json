@@ -66,6 +66,10 @@
             "Path": "/",
             "EditLayout": "EditLayout",
             "ViewRoles": [ "All Users" ],
+            "Settings": {
+                "Index": "true",
+                "Follow": "true"
+            },
             "Plugins": [
                 {
                     "Definition": "TextHTML Plugin",
@@ -187,6 +191,10 @@
             "Layout": "SingleLayout",
             "EditLayout": "EditLayout",
             "ViewRoles": [ "All Users" ],
+            "Settings": {
+                "Index": "true",
+                "Follow": "true"
+            },
             "Plugins": [
 
                 {
@@ -215,6 +223,10 @@
                     "Path": "/detail",
                     "Layout": "SingleLayout",
                     "ViewRoles": [ "All Users" ],
+                    "Settings": {
+                        "Index": "true",
+                        "Follow": "true"
+                    },
                     "Plugins": [
                         {
                             "Definition": "TextHTML Plugin",
@@ -256,6 +268,10 @@
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -272,6 +288,10 @@
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -288,6 +308,10 @@
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -304,6 +328,10 @@
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -320,6 +348,10 @@
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -336,6 +368,10 @@
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -352,6 +388,10 @@
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -368,6 +408,10 @@
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -384,6 +428,10 @@
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -400,6 +448,10 @@
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -416,6 +468,10 @@
                     "EditLayout": "AdminLayout",
                     "AdminRoles": [ "Administrators" ],
                     "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -437,6 +493,10 @@
                     "Locked": true,
                     "Layout": "AuthLayout",
                     "ViewRoles": [ "All Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Plugins": [
                         {
                             "Definition": "Login",
@@ -448,6 +508,10 @@
                     "Title": "Logout",
                     "Path": "/logout",
                     "ViewRoles": [ "All Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -462,6 +526,10 @@
                     "Locked": true,
                     "Layout": "AuthLayout",
                     "ViewRoles": [ "All Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Plugins": [
                         {
                             "Definition": "Register",
@@ -475,6 +543,10 @@
                     "Locked": true,
                     "Layout": "AuthLayout",
                     "ViewRoles": [ "All Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Plugins": [
                         {
                             "Definition": "Reset Password",
@@ -488,6 +560,10 @@
                     "Locked": true,
                     "Layout": "AuthLayout",
                     "ViewRoles": [ "All Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Plugins": [
                         {
                             "Definition": "Forgot Password",
@@ -501,6 +577,10 @@
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
                     "ViewRoles": [ "Authenticated Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
