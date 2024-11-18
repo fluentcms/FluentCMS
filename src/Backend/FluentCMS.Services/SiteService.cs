@@ -13,9 +13,10 @@ public interface ISiteService : IAutoRegisterService
     Task<Site> Create(SiteTemplate siteTemplate, CancellationToken cancellationToken = default);
     Task<Site> Update(Site site, CancellationToken cancellationToken = default);
     Task<Site> Delete(Guid id, CancellationToken cancellationToken = default);
+    Task<string> GetSitemap(Site site, Uri uri, CancellationToken cancellationToken = default);
 }
 
-public class SiteService(ISiteRepository siteRepository, IPluginDefinitionRepository pluginDefinitionRepository, IMessagePublisher messagePublisher, IPermissionManager permissionManager, IMapper mapper) : ISiteService
+public class SiteService(ISiteRepository siteRepository, IPluginDefinitionRepository pluginDefinitionRepository, ISettingsService settingsService, IPageService pageService, IMessagePublisher messagePublisher, IPermissionManager permissionManager, IMapper mapper) : ISiteService
 {
     public async Task<IEnumerable<Site>> GetAll(CancellationToken cancellationToken = default)
     {
@@ -142,6 +143,40 @@ public class SiteService(ISiteRepository siteRepository, IPluginDefinitionReposi
         await messagePublisher.Publish(new Message<Site>(ActionNames.SiteDeleted, deletedSite), cancellationToken);
 
         return deletedSite;
+    }
+
+    public async Task<string> GetSitemap(Site site, Uri uri, CancellationToken cancellationToken = default)
+    {
+        var pages = await pageService.GetBySiteId(site.Id, cancellationToken);
+        var settings = await settingsService.GetByIds(pages.Select(x => x.Id), cancellationToken);
+
+        var result = "";
+
+        result += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+        result += "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n";
+
+        foreach (var page in pages)
+        {
+            var pageSettings = settings.FirstOrDefault(x => x.Id == page.Id);
+            if(pageSettings is null) 
+                continue;
+
+            pageSettings.Values.TryGetValue("Index", out var index);
+
+            if(index == "true")
+            {
+                result += "    <url>\n";
+                result += $"        <loc>{uri.Scheme}://{uri.Host}{page.FullPath}</loc>\n";
+                if (page.ModifiedAt.HasValue)
+                    result += $"        <lastmod>{page.ModifiedAt.Value.ToString("yyyy-MM-dd")}</lastmod>\n";
+                else
+                    result += $"        <lastmod>{page.CreatedAt.ToString("yyyy-MM-dd")}</lastmod>\n";
+                result += "    </url>\n";
+            }
+        }
+
+        result += "</urlset>";
+        return result;
     }
 
     private static void ValidateAndFormatUrls(Site site)

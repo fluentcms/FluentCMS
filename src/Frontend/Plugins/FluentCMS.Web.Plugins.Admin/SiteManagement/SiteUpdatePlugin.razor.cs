@@ -13,31 +13,6 @@ public partial class SiteUpdatePlugin
     private List<LayoutDetailResponse>? Layouts { get; set; }
     private List<RoleDetailResponse> AdminRoleOptions = [];
     private SiteDetailResponse? Site { get; set; }
-
-    private List<SelectOption> RobotsOptions =
-    [
-        new SelectOption
-        {
-            Title = "Index & Follow",
-            Key = "index,follow"
-        },
-        new SelectOption
-        {
-            Title = "Index & No Follow",
-            Key = "index,nofollow"
-        },
-        new SelectOption
-        {
-            Title = "No Index & Follow",
-            Key = "noindex,follow"
-        },
-        new SelectOption
-        {
-            Title = "No Index & No Follow",
-            Key = "noindex,nofollow"
-        }
-    ];
-
     private List<SelectOption> OgTypeOptions =
     [
         new SelectOption
@@ -97,6 +72,10 @@ public partial class SiteUpdatePlugin
     {
         var settings = siteDetailResponse.Settings ?? [];
 
+        settings.TryGetValue("Index", out var index);
+        settings.TryGetValue("Follow", out var follow);
+            
+
         var model = new SiteUpdateModel
         {
             Id = Id,
@@ -110,7 +89,9 @@ public partial class SiteUpdatePlugin
             MetaTitle = settings["MetaTitle"] ?? string.Empty,
             MetaDescription = settings["MetaDescription"] ?? string.Empty,
             GoogleTagsId = settings["GoogleTagsId"] ?? string.Empty,
-            Robots = settings["Robots"] ?? string.Empty,
+            Index = index == "true",
+            Follow = follow == "true",
+            RobotsTxt = settings["RobotsTxt"] ?? string.Empty,
             OgType = settings["OgType"] ?? string.Empty,
             Head = settings["Head"] ?? string.Empty,
             Urls = string.Join(",", siteDetailResponse.Urls ?? []),
@@ -144,7 +125,9 @@ public partial class SiteUpdatePlugin
                 ["MetaTitle"] = Model!.MetaTitle,
                 ["MetaDescription"] = Model.MetaDescription,
                 ["GoogleTagsId"] = Model.GoogleTagsId,
-                ["Robots"] = Model.Robots,
+                ["Index"] = Model.Index ? "true" : "false",
+                ["Follow"] = Model.Follow ? "true" : "false",
+                ["RobotsTxt"] = Model.RobotsTxt,
                 ["OgType"] = Model.OgType,
                 ["Head"] = Model.Head
             }
