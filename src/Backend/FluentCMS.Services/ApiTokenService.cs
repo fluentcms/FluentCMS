@@ -34,6 +34,9 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
 
     public async Task<ApiToken> Create(ApiToken apiToken, CancellationToken cancellationToken = default)
     {
+        // remove policies with empty actions
+        apiToken.Policies = apiToken.Policies.Where(x => x.Actions.Count != 0).ToList();
+
         if (!await permissionManager.HasAccess(GlobalPermissionAction.SuperAdmin, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
 
@@ -54,6 +57,9 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IApiTokenPr
 
     public async Task<ApiToken> Update(ApiToken apiToken, CancellationToken cancellationToken = default)
     {
+        // remove policies with empty actions
+        apiToken.Policies = apiToken.Policies.Where(x => x.Actions.Count != 0).ToList();
+
         if (!await permissionManager.HasAccess(GlobalPermissionAction.SuperAdmin, cancellationToken))
             throw new AppException(ExceptionCodes.PermissionDenied);
 
