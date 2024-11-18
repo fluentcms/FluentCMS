@@ -166,8 +166,11 @@ public class SiteService(ISiteRepository siteRepository, IPluginDefinitionReposi
             if(index == "true")
             {
                 result += "    <url>\n";
-                result += $"        <loc>{uri.Scheme}://{uri.Scheme}{page.FullPath}</loc>\n";
-                result += $"        <lastmod>{2004-11-23}</lastmod>\n";
+                result += $"        <loc>{uri.Scheme}://{uri.Host}{page.FullPath}</loc>\n";
+                if (page.ModifiedAt.HasValue)
+                    result += $"        <lastmod>{page.ModifiedAt.Value.ToString("yyyy-MM-dd")}</lastmod>\n";
+                else
+                    result += $"        <lastmod>{page.CreatedAt.ToString("yyyy-MM-dd")}</lastmod>\n";
                 result += "    </url>\n";
             }
         }
