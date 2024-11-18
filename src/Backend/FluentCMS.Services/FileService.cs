@@ -1,4 +1,5 @@
-﻿using FluentCMS.Providers.FileStorageProviders;
+﻿using System.Text.RegularExpressions;
+using FluentCMS.Providers.FileStorageProviders;
 
 namespace FluentCMS.Services;
 
@@ -10,11 +11,12 @@ public interface IFileService : IAutoRegisterService
     Task<File> Rename(Guid id, string name, CancellationToken cancellationToken = default);
     Task<File> Delete(Guid id, CancellationToken cancellationToken = default);
     Task<File> Move(Guid id, Guid folderId, CancellationToken cancellationToken = default);
+    Task<string> GetFilePath(File file, CancellationToken cancellationToken = default);
     Task<System.IO.Stream> GetStream(Guid id, CancellationToken cancellationToken = default);
     Task<IEnumerable<File>> GetAll(Guid siteId, CancellationToken cancellationToken = default);
 }
 
-public class FileService(IFileRepository fileRepository, IFolderRepository folderRepository, IFileStorageProvider fileStorageProvider) : IFileService
+public class FileService(IFileRepository fileRepository, IFolderRepository folderRepository, IFolderService folderService, IFileStorageProvider fileStorageProvider) : IFileService
 {
     public async Task<File> Create(File file, System.IO.Stream fileContent, CancellationToken cancellationToken = default)
     {
@@ -80,6 +82,14 @@ public class FileService(IFileRepository fileRepository, IFolderRepository folde
             throw new AppException(ExceptionCodes.FileNotFound);
     }
 
+    public async Task<string> GetFilePath(File file, CancellationToken cancellationToken = default)
+    {
+        var folders = await folderService.GetParentFolders(file.FolderId, cancellationToken) ??
+            throw new AppException(ExceptionCodes.FolderNotFound);
+
+        return string.Join("/", folders.Select(x => x.Name)) + "/" + file.Name;
+    }
+
     public async Task<System.IO.Stream> GetStream(Guid id, CancellationToken cancellationToken = default)
     {
         return await fileStorageProvider.Download(id.ToString(), cancellationToken) ??
@@ -92,6 +102,9 @@ public class FileService(IFileRepository fileRepository, IFolderRepository folde
 
         var file = await fileRepository.GetById(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.FileNotFound);
+
+        if (!IsValidFileName(normalizedFileName))
+            throw new AppException(ExceptionCodes.FileInvalidName);
 
         // check if file with the same name already exists
         var existingFile = await fileRepository.GetByName(file.SiteId, file.FolderId, normalizedFileName, cancellationToken);
@@ -125,6 +138,16 @@ public class FileService(IFileRepository fileRepository, IFolderRepository folde
 
         return await fileRepository.Update(file, cancellationToken) ??
             throw new AppException(ExceptionCodes.FileUnableToUpdate);
+    }
+
+    private static readonly Regex _fileNameRegex = new(@"[a-zA-Z0-9_\-\.\(\)\s]+(\.[a-zA-Z0-9]{2,6})?");
+
+    private static bool IsValidFileName(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            return false; // Folder name should not be empty or whitespace
+
+        return _fileNameRegex.IsMatch(fileName);
     }
 
     private static string GetNormalizedFileName(string fileName)

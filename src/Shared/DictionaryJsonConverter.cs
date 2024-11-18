@@ -133,6 +133,9 @@ public class DictionaryJsonConverter : JsonConverter<Dictionary<string, object?>
             case Dictionary<string, object?> dictionaryValue:
                 Write(writer, dictionaryValue, options);
                 break;
+            case IEnumerable<Guid> arrayValue:
+                WriteArray(writer, arrayValue.Select(x=> x.ToString()), options);
+                break;
             case IEnumerable<object> arrayValue:
                 WriteArray(writer, arrayValue, options);
                 break;

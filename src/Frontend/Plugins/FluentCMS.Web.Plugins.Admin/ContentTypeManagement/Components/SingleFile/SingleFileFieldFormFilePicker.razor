@@ -6,7 +6,7 @@
 @if (FieldValue.Value == null)
 {
     <Grid>
-        <FormFileUpload Required="@ContentTypeField!.Required" OnChange="OnFilesChanged" />
+        <Button @onclick="OpenFileSelectorModal">Choose File</Button>
     </Grid>
 }
 else
@@ -19,7 +19,7 @@ else
                 </GridItem>
                 <GridItem>
                     <Stack Justify="StackJustify.End">
-                        <Button Size="ButtonSize.Small" Ghost Color="Color.Primary" Href="@($"/API/File/Download/{FieldValue.Value}")" target="_blank">
+                        <Button Size="ButtonSize.Small" Ghost Color="Color.Primary" Href="@FileUrl" target="_blank">
                             <Icon Name="IconName.Download" />
                         </Button>
                         <Button Size="ButtonSize.Small" Ghost Color="Color.Danger" @onclick="() => FieldValue.Value = default!">
@@ -32,3 +32,8 @@ else
     </Card>
 }
 </FormField>
+
+@if (FileSelectorModalOpen)
+{
+    <FileSelectorModal FolderId="RootFolder.Id" OnCancel="CloseFileSelectorModal" OnSubmit="OnFileSelectorSubmit"/>
+}

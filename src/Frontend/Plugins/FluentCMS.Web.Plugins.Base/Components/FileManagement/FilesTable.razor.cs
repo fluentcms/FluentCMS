@@ -133,6 +133,7 @@ public partial class FilesTable
                         Name = item.Name ?? string.Empty,
                         IsFolder = false,
                         ParentId = item.FolderId,
+                        Path = item.Path,
                         Id = item.Id,
                         Size = item.Size,
                         ContentType = item.ContentType
