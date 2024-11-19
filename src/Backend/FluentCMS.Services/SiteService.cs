@@ -158,12 +158,12 @@ public class SiteService(ISiteRepository siteRepository, IPluginDefinitionReposi
         foreach (var page in pages)
         {
             var pageSettings = settings.FirstOrDefault(x => x.Id == page.Id);
-            if(pageSettings is null) 
+            if (pageSettings is null)
                 continue;
 
             pageSettings.Values.TryGetValue("Index", out var index);
 
-            if(index == "true")
+            if (index == "true")
             {
                 result += "    <url>\n";
                 result += $"        <loc>{uri.Scheme}://{uri.Host}{page.FullPath}</loc>\n";

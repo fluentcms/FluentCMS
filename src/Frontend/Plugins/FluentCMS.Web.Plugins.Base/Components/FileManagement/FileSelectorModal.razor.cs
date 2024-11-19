@@ -30,7 +30,7 @@ public partial class FileSelectorModal
     private async Task OpenFileUpload()
     {
         // FileUplaodRef;
-//        FileUploadModalOpen = true;
+        //        FileUploadModalOpen = true;
         await Task.CompletedTask;
     }
 
@@ -82,7 +82,7 @@ public partial class FileSelectorModal
                 AllowedExtensions = "*",
                 MaxCount = 5,
                 MaxSize = 1024 * 1024 * 5 // 5 mb
-            };  
+            };
         }
     }
 }

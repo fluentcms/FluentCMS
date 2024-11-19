@@ -9,7 +9,7 @@ public static class ModelHelpers
 
     public static IFieldValue GetFieldValue(this IFieldModel fieldModel, IDictionary<string, object?> valuesDict)
     {
-        
+
         switch (fieldModel.Type)
         {
             case FieldTypes.STRING:
@@ -44,7 +44,7 @@ public static class ModelHelpers
                 valuesDict.TryGetValue(fieldModel.Name, out var value);
                 return new FieldValue<ICollection<Guid>>
                 {
-                    
+
                     Name = fieldModel.Name,
                     Value = (value as object[] ?? [])
                                 .Select(x =>

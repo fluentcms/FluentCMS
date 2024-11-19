@@ -161,8 +161,8 @@ public class PageService(IPageRepository pageRepository, IPageInternalService in
         page.Path = NormalizeFullPath(page.Path);
 
         var _reservedNames = new List<string> {
-            "/setup", 
-            "/api", 
+            "/setup",
+            "/api",
             "/files"
         };
 

@@ -64,8 +64,10 @@ public static class ServiceExtensions
         return app;
     }
 
-    private static void MapRobotsTxtRoute(this WebApplication app) {
-        app.MapGet("/robots.txt", async (HttpContext httpContext, ApiClientFactory apiClient) => {
+    private static void MapRobotsTxtRoute(this WebApplication app)
+    {
+        app.MapGet("/robots.txt", async (HttpContext httpContext, ApiClientFactory apiClient) =>
+        {
             try
             {
                 // Extract the domain from the current URI
@@ -86,8 +88,10 @@ public static class ServiceExtensions
             }
         });
     }
-    private static void MapSiteMapXmlRoute(this WebApplication app) {
-        app.MapGet("/sitemap.xml", async (HttpContext httpContext, ApiClientFactory apiClient) => {
+    private static void MapSiteMapXmlRoute(this WebApplication app)
+    {
+        app.MapGet("/sitemap.xml", async (HttpContext httpContext, ApiClientFactory apiClient) =>
+        {
             try
             {
                 var url = httpContext.Request.Scheme + "://" + httpContext.Request.Host;

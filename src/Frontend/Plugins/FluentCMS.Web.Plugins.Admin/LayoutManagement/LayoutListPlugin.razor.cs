@@ -9,7 +9,7 @@ public partial class LayoutListPlugin
     {
         var siteResponse = await ApiClient.Site.GetByIdAsync(ViewState.Site.Id);
         Site = siteResponse.Data;
-        
+
         var response = await ApiClient.Layout.GetBySiteIdAsync(ViewState.Site.Id);
         Layouts = response?.Data?.ToList() ?? [];
     }
