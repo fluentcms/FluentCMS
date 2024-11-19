@@ -74,7 +74,7 @@ public partial class MultiFileFieldFormFilesPicker
     {
         if (FieldValue.Value is null)
             FieldValue.Value = [];
-    
+
         var rootFolderResponse = await ApiClient.Folder.GetAllAsync(ViewState.Site.Id);
         RootFolder = rootFolderResponse.Data;
 

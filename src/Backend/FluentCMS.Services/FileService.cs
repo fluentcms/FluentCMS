@@ -1,5 +1,5 @@
-﻿using System.Text.RegularExpressions;
-using FluentCMS.Providers.FileStorageProviders;
+﻿using FluentCMS.Providers.FileStorageProviders;
+using System.Text.RegularExpressions;
 
 namespace FluentCMS.Services;
 

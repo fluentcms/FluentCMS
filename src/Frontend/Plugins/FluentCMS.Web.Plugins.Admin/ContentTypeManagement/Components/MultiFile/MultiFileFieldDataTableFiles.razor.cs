@@ -10,11 +10,12 @@ public partial class MultiFileFieldDataTableFiles
     {
         foreach (var item in FieldValue.Value)
         {
-            try {
+            try
+            {
                 var fileResponse = await ApiClient.File.GetByIdAsync(item);
                 FileUrlsDict.Add(fileResponse.Data.Id, fileResponse.Data.Path);
             }
-            catch(Exception ex)
+            catch (Exception)
             {
                 // File not found
             }
@@ -25,7 +26,7 @@ public partial class MultiFileFieldDataTableFiles
     {
         FileUrlsDict.TryGetValue(file, out string fileName);
 
-        if(string.IsNullOrEmpty(fileName))
+        if (string.IsNullOrEmpty(fileName))
             return "";
 
         return fileName.Split("/").Last();
@@ -35,7 +36,7 @@ public partial class MultiFileFieldDataTableFiles
     {
         FileUrlsDict.TryGetValue(file, out string fileName);
 
-        if(string.IsNullOrEmpty(fileName))
+        if (string.IsNullOrEmpty(fileName))
             return "";
 
         return fileName;

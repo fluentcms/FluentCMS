@@ -66,7 +66,7 @@ public class SiteController(ISiteService siteService, ISettingsService settingsS
     }
 
     [HttpGet]
-    public async Task<IApiResult<string>> GetRobotsTxt([FromQuery] string url, CancellationToken cancellationToken = default) 
+    public async Task<IApiResult<string>> GetRobotsTxt([FromQuery] string url, CancellationToken cancellationToken = default)
     {
         var uri = new Uri(url);
         var domain = uri.Authority;
@@ -84,7 +84,7 @@ public class SiteController(ISiteService siteService, ISettingsService settingsS
     }
 
     [HttpGet]
-    public async Task<IApiResult<string>> GetSitemapXml([FromQuery] string url, CancellationToken cancellationToken = default) 
+    public async Task<IApiResult<string>> GetSitemapXml([FromQuery] string url, CancellationToken cancellationToken = default)
     {
         var uri = new Uri(url);
         var domain = uri.Authority;

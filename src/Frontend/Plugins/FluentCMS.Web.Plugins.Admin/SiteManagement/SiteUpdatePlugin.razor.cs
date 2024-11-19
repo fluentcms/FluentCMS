@@ -74,7 +74,7 @@ public partial class SiteUpdatePlugin
 
         settings.TryGetValue("Index", out var index);
         settings.TryGetValue("Follow", out var follow);
-            
+
 
         var model = new SiteUpdateModel
         {

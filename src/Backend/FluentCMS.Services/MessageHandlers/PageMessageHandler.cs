@@ -75,7 +75,7 @@ public class PageMessageHandler(IPageService pageService, ISettingsService setti
             Order = order,
             Locked = pageTemplate.Locked,
         };
-        
+
         var newPage = await pageService.Create(page, cancellationToken);
 
         await settingsService.Update(newPage.Id, pageTemplate.Settings, cancellationToken);
