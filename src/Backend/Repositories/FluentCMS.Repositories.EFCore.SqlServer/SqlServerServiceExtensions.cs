@@ -1,4 +1,6 @@
-﻿using FluentCMS.Repositories.EFCore;
+﻿using FluentCMS.Repositories.Abstractions;
+using FluentCMS.Repositories.EFCore;
+using FluentCMS.Repositories.EFCore.SqlServer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -8,6 +10,8 @@ public static class SqlServerServiceExtensions
 {
     public static IServiceCollection AddSqlServerRepositories(this IServiceCollection services, string connectionStringName)
     {
+        services.AddScoped<ISetupRepository, SetupRepository>();
+
         services.AddEFCoreRepositories();
 
         services.AddDbContext<FluentCmsDbContext>((sp, options) =>
