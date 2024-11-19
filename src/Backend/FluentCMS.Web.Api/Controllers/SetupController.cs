@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class SetupController(ISetupService setupService, IMapper mapper) : BaseGlobalController
+public class SetupController(ISetupService setupService, IMapper mapper, IAccountService accountService) : BaseGlobalController
 {
     public const string AREA = "Setup Management";
     public const string READ = "Read";
@@ -19,6 +19,8 @@ public class SetupController(ISetupService setupService, IMapper mapper) : BaseG
     [Policy(AREA, CREATE)]
     public async Task<IApiResult<bool>> Start(SetupRequest request)
     {
+        await accountService.ValidateUserName(request.Username);
+        await accountService.ValidatePassword(request.Password);
         var setupTemplate = mapper.Map<SetupTemplate>(request);
         return Ok(await setupService.Start(setupTemplate));
     }
