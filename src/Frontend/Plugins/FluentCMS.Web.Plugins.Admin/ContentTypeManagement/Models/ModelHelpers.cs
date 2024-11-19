@@ -26,6 +26,9 @@ public static class ModelHelpers
                 return new FieldValue<bool> { Name = fieldModel.Name, Value = valuesDict.TryGetValue(fieldModel.Name, out object? boolValue) && ((bool?)boolValue ?? false) };
 
             case FieldTypes.DATE_TIME:
+                if (valuesDict[fieldModel.Name] is DateTime _dateTime)
+                    return new FieldValue<DateTime?> { Name = fieldModel.Name, Value = _dateTime };
+
                 // try parse the value as a DateTime
                 if (valuesDict[fieldModel.Name] is string dateTimeStr && DateTime.TryParse(dateTimeStr, out DateTime dateTime))
                     return new FieldValue<DateTime?> { Name = fieldModel.Name, Value = dateTime };
