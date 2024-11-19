@@ -24,6 +24,8 @@ public static class ExceptionCodes
     public const string UserChangePasswordFailed = "User.ChangePasswordFailed";
     public const string UserTokenGenerationFailed = "User.TokenGenerationFailed";
     public const string UserSuperAdminCanNotBeDeleted = "User.SuperAdminCanNotBeDeleted";
+    public const string UserInvalidPassword = "User.InvalidPassword";
+    public const string UserInvalidUsername = "User.InvalidUsername";
 
     #endregion
 
