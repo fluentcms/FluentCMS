@@ -16,7 +16,7 @@ public class PermissionMessageHandler(IPermissionService permissionService) : IM
 
                 break;
 
-            case ActionNames.SiteDeleted:
+            default:
                 break;
         }
     }

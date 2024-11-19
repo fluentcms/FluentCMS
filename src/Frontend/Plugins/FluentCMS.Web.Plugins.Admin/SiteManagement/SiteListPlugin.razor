@@ -28,7 +28,7 @@
             </DataTableItem>
             <ActionButtons>
                 <ActionButtonEdit Href="@GetUrl("Update Site", new { id = @context.Id })" />
-                <ActionButtonDelete @onclick="() => OnConfirm(context)" />
+                <ActionButtonDelete @onclick="() => OnConfirm(context)" Visible="ViewState.Site.Id != context.Id" />
             </ActionButtons>
         </DataTable>
     </ChildContent>

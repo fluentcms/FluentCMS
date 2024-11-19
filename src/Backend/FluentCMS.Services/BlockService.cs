@@ -7,6 +7,7 @@ public interface IBlockService : IAutoRegisterService
     Task<Block> Create(Block Block, CancellationToken cancellationToken = default);
     Task<Block> Update(Block Block, CancellationToken cancellationToken = default);
     Task<Block> Delete(Guid id, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Block>> Delete(IEnumerable<Guid> ids, CancellationToken cancellationToken = default);
 }
 
 public class BlockService(IBlockRepository blockRepository) : IBlockService
@@ -50,5 +51,10 @@ public class BlockService(IBlockRepository blockRepository) : IBlockService
 
         return await blockRepository.Delete(id, cancellationToken) ??
             throw new AppException(ExceptionCodes.BlockUnableToDelete);
+    }
+
+    public async Task<IEnumerable<Block>> Delete(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        return await blockRepository.DeleteMany(ids, cancellationToken);
     }
 }
