@@ -3,5 +3,5 @@
 public class Content : SiteAssociatedEntity
 {
     public Guid TypeId { get; set; }
-    public Dictionary<string, object?> Data { get; set; } = [];
+    public ICollection<ContentData> ContentData { get; set; } = [];
 }

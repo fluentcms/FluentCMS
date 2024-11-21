@@ -1,7 +1,9 @@
 ﻿namespace FluentCMS.Repositories.EFCore.DbModels;
 
-public class Policy
+public class Policy : Entity
 {
+    public Guid ApiTokenId { get; set; } // foreign key
     public string Area { get; set; } = default!;
-    public List<string> Actions { get; set; } = [];
+    public string Actions { get; set; } = default!;
+    public ApiToken ApiToken { get; set; } = default!; // navigation property
 }
