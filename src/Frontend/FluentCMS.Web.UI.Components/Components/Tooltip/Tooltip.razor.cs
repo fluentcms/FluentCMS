@@ -19,7 +19,8 @@ public partial class Tooltip : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        try {
+        try
+        {
 
             if (Module is not null)
             {
@@ -28,7 +29,7 @@ public partial class Tooltip : IAsyncDisposable
             }
             DotNetRef?.Dispose();
         }
-        catch(Exception ex)
+        catch (Exception)
         {
             // 
         }

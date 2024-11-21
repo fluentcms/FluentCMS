@@ -31,12 +31,13 @@
         </div>
 
         <div class="f-toolbar-end">
-            <button @onclick="OpenAddPage" class="f-toolbar-button f-toolbar-button-link">
-
-                <span>+ </span>
-                <span class="f-toolbar-button-text">New Page</span>
-
-            </button>
+            @if (ViewState.Site.HasAdminAccess || ViewState.Site.HasContributorAccess)
+            {
+                <button @onclick="OpenAddPage" class="f-toolbar-button f-toolbar-button-link">
+                    <span>+ </span>
+                    <span class="f-toolbar-button-text">New Page</span>
+                </button>
+            }
 
             <button @onclick="@OpenPageSettings" class="f-toolbar-button f-toolbar-button-link">
                 <svg style="margin-top: 2px;" width="11" height="11" viewBox="0 0 11 11" fill="none"

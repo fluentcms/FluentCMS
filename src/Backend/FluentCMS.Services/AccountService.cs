@@ -13,6 +13,8 @@ public interface IAccountService : IAutoRegisterService
     Task<bool> ChangePasswordByResetToken(string email, string token, string newPassword, CancellationToken cancellationToken = default);
     Task<UserToken> GetToken(User user, CancellationToken cancellationToken = default);
     Task<bool> SendPasswordResetToken(string email, CancellationToken cancellationToken = default);
+    Task<bool> ValidatePassword(string password, CancellationToken cancellationToken = default);
+    Task<bool> ValidateUserName(string username, CancellationToken cancellationToken = default);
 }
 
 public class AccountService(UserManager<User> userManager, IEmailProvider emailProvider, IConfiguration configuration, IApiExecutionContext apiExecutionContext, IUserTokenProvider userTokenProvider, IMessagePublisher messagePublisher) : IAccountService
@@ -140,4 +142,33 @@ public class AccountService(UserManager<User> userManager, IEmailProvider emailP
 
         return user;
     }
+
+    public async Task<bool> ValidatePassword(string password, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(password))
+            throw new AppException(ExceptionCodes.UserInvalidPassword);
+
+        var passwordValidators = userManager.PasswordValidators;
+        var identityUser = new User(); // Create a dummy user for validation.
+
+        foreach (var validator in passwordValidators)
+        {
+            var result = await validator.ValidateAsync(userManager, identityUser, password);
+            result.ThrowIfInvalid();
+        }
+
+        return true;
+    }
+
+    public Task<bool> ValidateUserName(string username, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+            throw new AppException(ExceptionCodes.UserInvalidUsername);
+
+        if (username.Length < 3 || username.Length > 50)
+            throw new AppException(ExceptionCodes.UserInvalidUsername);
+
+        return Task.FromResult(true);
+    }
+
 }

@@ -5,6 +5,7 @@ using FluentCMS.Web.UI.DynamicRendering;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using System.Web;
 
@@ -44,6 +45,9 @@ public static class ServiceExtensions
     {
         app.UseAntiforgery();
 
+        app.MapRobotsTxtRoute();
+        app.MapSiteMapXmlRoute();
+
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
 
@@ -58,6 +62,53 @@ public static class ServiceExtensions
         });
 
         return app;
+    }
+
+    private static void MapRobotsTxtRoute(this WebApplication app)
+    {
+        app.MapGet("/robots.txt", async (HttpContext httpContext, ApiClientFactory apiClient) =>
+        {
+            try
+            {
+                // Extract the domain from the current URI
+                var url = httpContext.Request.Scheme + "://" + httpContext.Request.Host;
+
+                // Fetch the robots.txt content for the specific domain
+                var robotsTxtResponse = await apiClient.Site.GetRobotsTxtAsync(url);
+                var robotsTxtContent = robotsTxtResponse.Data;
+
+                // Return the content as plain text
+                return Results.Text(robotsTxtContent, "text/plain");
+            }
+            catch (Exception ex)
+            {
+                // Handle any potential errors
+                Console.WriteLine($"Error fetching robots.txt for domain: {ex.Message}");
+                return Results.Problem("Unable to retrieve robots.txt", statusCode: 500);
+            }
+        });
+    }
+    private static void MapSiteMapXmlRoute(this WebApplication app)
+    {
+        app.MapGet("/sitemap.xml", async (HttpContext httpContext, ApiClientFactory apiClient) =>
+        {
+            try
+            {
+                var url = httpContext.Request.Scheme + "://" + httpContext.Request.Host;
+
+                var sitemapResponse = await apiClient.Site.GetSitemapXmlAsync(url);
+                var sitemapContent = sitemapResponse.Data;
+
+                // Return the content as plain text
+                return Results.Text(sitemapContent, "text/xml");
+            }
+            catch (Exception ex)
+            {
+                // Handle any potential errors
+                Console.WriteLine($"Error fetching sitemap for domain: {ex.Message}");
+                return Results.Problem("Unable to retrieve sitemap", statusCode: 500);
+            }
+        });
     }
 
     private static IServiceCollection AddViewState(this IServiceCollection services)
@@ -91,6 +142,12 @@ public static class ServiceExtensions
 
                 var page = pageResponse.Data.Current;
                 page ??= pageResponse.Data.Parent;
+
+                // For setup page
+                page ??= new();
+                page.User ??= new();
+                page.Site ??= new();
+                page.Sections ??= [];
 
                 viewState.Page = mapper.Map<PageViewState>(page);
                 viewState.Page.Slug = pageResponse.Data.Slug;

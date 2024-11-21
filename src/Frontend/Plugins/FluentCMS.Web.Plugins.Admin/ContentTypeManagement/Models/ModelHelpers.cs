@@ -9,6 +9,7 @@ public static class ModelHelpers
 
     public static IFieldValue GetFieldValue(this IFieldModel fieldModel, IDictionary<string, object?> valuesDict)
     {
+
         switch (fieldModel.Type)
         {
             case FieldTypes.STRING:
@@ -25,6 +26,9 @@ public static class ModelHelpers
                 return new FieldValue<bool> { Name = fieldModel.Name, Value = valuesDict.TryGetValue(fieldModel.Name, out object? boolValue) && ((bool?)boolValue ?? false) };
 
             case FieldTypes.DATE_TIME:
+                if (valuesDict[fieldModel.Name] is DateTime _dateTime)
+                    return new FieldValue<DateTime?> { Name = fieldModel.Name, Value = _dateTime };
+
                 // try parse the value as a DateTime
                 if (valuesDict[fieldModel.Name] is string dateTimeStr && DateTime.TryParse(dateTimeStr, out DateTime dateTime))
                     return new FieldValue<DateTime?> { Name = fieldModel.Name, Value = dateTime };
@@ -37,6 +41,22 @@ public static class ModelHelpers
                     Name = fieldModel.Name,
                     Value = (valuesDict[fieldModel.Name] as object[] ?? [])
                                 .Select(x => x?.ToString() ?? string.Empty)
+                                .ToList()
+                };
+            case FieldTypes.MULTI_FILE:
+                valuesDict.TryGetValue(fieldModel.Name, out var value);
+                return new FieldValue<ICollection<Guid>>
+                {
+
+                    Name = fieldModel.Name,
+                    Value = (value as object[] ?? [])
+                                .Select(x =>
+                                {
+                                    if (Guid.TryParse(x.ToString(), out var guid))
+                                        return guid;
+
+                                    return Guid.Empty;
+                                })
                                 .ToList()
                 };
 
@@ -66,6 +86,9 @@ public static class ModelHelpers
 
             case FieldTypes.MULTI_SELECT:
                 return new FieldValue<ICollection<string>> { Name = fieldModel.Name };
+
+            case FieldTypes.MULTI_FILE:
+                return new FieldValue<ICollection<Guid>> { Name = fieldModel.Name };
 
             default:
                 throw new NotSupportedException($"Field type '{fieldModel.Type}' is not supported.");
@@ -124,6 +147,7 @@ public static class ModelHelpers
             FieldTypes.SINGLE_SELECT => src.ToFieldModel<string?, SelectFieldModel>(),
             FieldTypes.SINGLE_FILE => src.ToFieldModel<Guid?, SingleFileFieldModel>(),
             FieldTypes.MULTI_SELECT => src.ToFieldModel<ICollection<string>, MultiSelectFieldModel>(),
+            FieldTypes.MULTI_FILE => src.ToFieldModel<ICollection<Guid>, MultiFileFieldModel>(),
             _ => throw new NotSupportedException($"Field type '{typeName}' is not supported."),
         };
     }

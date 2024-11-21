@@ -54,10 +54,10 @@ public partial class FilesTable
 
     private async Task HandleRowClick(AssetDetail item)
     {
-        if(item.Id == DisabledFolder)
+        if (item.Id == DisabledFolder)
             return;
 
-        if(item.IsFolder)
+        if (item.IsFolder)
             await NavigateFolder(item.Id);
 
         await OnRowClick.InvokeAsync(item);
@@ -79,7 +79,7 @@ public partial class FilesTable
 
     private static string HumanizeFileSize(long? size)
     {
-        if(size is null || size == 0) return "...";
+        if (size is null || size == 0) return "...";
 
         if (size > 1024 * 1024)
             return $"{size / (1024 * 1024)} MB";
@@ -133,6 +133,7 @@ public partial class FilesTable
                         Name = item.Name ?? string.Empty,
                         IsFolder = false,
                         ParentId = item.FolderId,
+                        Path = item.Path,
                         Id = item.Id,
                         Size = item.Size,
                         ContentType = item.ContentType
@@ -153,7 +154,7 @@ public partial class FilesTable
     {
         FolderId ??= RootFolder?.Id;
 
-        if(FolderId is null)
+        if (FolderId is null)
             return;
     }
 
@@ -180,7 +181,7 @@ public partial class FilesTable
         RootFolder = rootFolderDetailResponse.Data;
         await RootFolderChanged.InvokeAsync(RootFolder);
 
-        if(FolderId is null)
+        if (FolderId is null)
         {
             FolderId ??= RootFolder?.Id;
             await FolderIdChanged.InvokeAsync(FolderId.Value);

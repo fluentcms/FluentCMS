@@ -20,7 +20,7 @@ public partial class ContentCreatePlugin
     }
     private static Type GetFormFieldType(IFieldModel fieldModel)
     {
-        return FieldTypes.All[fieldModel.Type].FormComponents.Where(x => x.Name == fieldModel.FormViewComponent).FirstOrDefault()?.Type ??
+        return FieldTypes.All[fieldModel.Type].FormComponents.Where(x => string.IsNullOrEmpty(fieldModel.FormViewComponent) || x.Name == fieldModel.FormViewComponent).FirstOrDefault()?.Type ??
             throw new NotSupportedException($"Field type '{fieldModel.Type}' is not supported.");
     }
 

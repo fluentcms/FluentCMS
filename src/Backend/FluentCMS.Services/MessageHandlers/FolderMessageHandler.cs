@@ -2,13 +2,13 @@
 
 namespace FluentCMS.Services.MessageHandlers;
 
-public class FolderMessageHandler(IFolderService folderService, IFileService fileService) : IMessageHandler<SetupTemplate>
+public class FolderMessageHandler(IFolderService folderService, IFileService fileService) : IMessageHandler<SiteTemplate>
 {
-    public async Task Handle(Message<SetupTemplate> notification, CancellationToken cancellationToken)
+    public async Task Handle(Message<SiteTemplate> notification, CancellationToken cancellationToken)
     {
         switch (notification.Action)
         {
-            case ActionNames.SetupCompleted:
+            case ActionNames.SiteCreated:
                 await CreateFolders(notification.Payload, cancellationToken);
                 break;
 
@@ -17,14 +17,14 @@ public class FolderMessageHandler(IFolderService folderService, IFileService fil
         }
     }
 
-    private async Task CreateFolders(SetupTemplate setupTemplate, CancellationToken cancellationToken)
+    private async Task CreateFolders(SiteTemplate siteTemplate, CancellationToken cancellationToken)
     {
-        var rootFolder = await folderService.CreateRoot(setupTemplate.Site.Id, cancellationToken);
+        var rootFolder = await folderService.CreateRoot(siteTemplate.Id, cancellationToken);
 
         // read from assets folder and create Folders object model for the site
-        var assetsPath = System.IO.Path.Combine(ServiceConstants.SetupTemplatesFolder, setupTemplate.Template, ServiceConstants.SetupFilesFolder);
+        var assetsPath = System.IO.Path.Combine(ServiceConstants.SetupTemplatesFolder, siteTemplate.Template, ServiceConstants.SetupFilesFolder);
 
-        await CreateChildFolders(setupTemplate.Site.Id, rootFolder, assetsPath, cancellationToken);
+        await CreateChildFolders(siteTemplate.Id, rootFolder, assetsPath, cancellationToken);
     }
 
     private async Task CreateChildFolders(Guid siteId, Folder parentFolder, string path, CancellationToken cancellationToken)
@@ -54,6 +54,7 @@ public class FolderMessageHandler(IFolderService folderService, IFileService fil
                     FolderId = parentFolder.Id,
                     Size = new System.IO.FileInfo(fileName).Length,
                     ContentType = GetContentType(fileName),
+                    Extension = new System.IO.FileInfo(fileName).Extension
                 };
                 using var contentStream = new System.IO.FileStream(fileName, System.IO.FileMode.Open);
                 await fileService.Create(file, contentStream, cancellationToken);

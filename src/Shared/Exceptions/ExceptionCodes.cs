@@ -24,6 +24,8 @@ public static class ExceptionCodes
     public const string UserChangePasswordFailed = "User.ChangePasswordFailed";
     public const string UserTokenGenerationFailed = "User.TokenGenerationFailed";
     public const string UserSuperAdminCanNotBeDeleted = "User.SuperAdminCanNotBeDeleted";
+    public const string UserInvalidPassword = "User.InvalidPassword";
+    public const string UserInvalidUsername = "User.InvalidUsername";
 
     #endregion
 
@@ -110,6 +112,7 @@ public static class ExceptionCodes
     #region File
 
     public const string FileNotFound = "File.NotFound";
+    public const string FileInvalidName = "File.InvalidName";
     public const string FileUnableToDelete = "File.UnableToDelete";
     public const string FileAlreadyExists = "File.AlreadyExists";
     public const string FileUnableToCreate = "File.UnableToCreate";
@@ -154,6 +157,10 @@ public static class ExceptionCodes
     public const string PageNotFound = "Page.NotFound";
     public const string PagePathInvalidCharacter = "Page.PathInvalidCharacter";
     public const string PageParentPageNotFound = "Page.ParentPageNotFound";
+    public const string PageParentCannotBeHome = "Page.ParentCannotBeHome";
+    public const string PagePathReservedName = "Page.PathReservedName";
+    public const string PageHomeCannotHaveParent = "Page.HomeCannotHaveParent";
+    public const string PageUnableToUpdateHome = "Page.UnableToUpdateHome";
     public const string PageParentMustBeOnTheSameSite = "Page.ParentMustBeOnTheSameSite";
     public const string PageHasChildren = "Page.PageHasChildren";
 

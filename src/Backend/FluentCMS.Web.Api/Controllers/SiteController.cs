@@ -3,7 +3,7 @@ using FluentCMS.Services.Permissions;
 
 namespace FluentCMS.Web.Api.Controllers;
 
-public class SiteController(ISiteService siteService, ISettingsService settingsService, IPermissionService permissionService, IMapper mapper) : BaseGlobalController
+public class SiteController(ISiteService siteService, ISettingsService settingsService, IPermissionService permissionService, ISetupService setupService, IMapper mapper) : BaseGlobalController
 {
     public const string AREA = "Site Management";
     public const string READ = "Read";
@@ -63,5 +63,37 @@ public class SiteController(ISiteService siteService, ISettingsService settingsS
     {
         await siteService.Delete(siteId, cancellationToken);
         return Ok(true);
+    }
+
+    [HttpGet]
+    public async Task<IApiResult<string>> GetRobotsTxt([FromQuery] string url, CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri(url);
+        var domain = uri.Authority;
+        if (!await setupService.IsInitialized(cancellationToken))
+            return Ok("");
+
+        var site = await siteService.GetByUrl(domain, cancellationToken);
+        var siteSettings = await settingsService.GetById(site.Id, cancellationToken);
+
+        siteSettings.Values.TryGetValue("RobotsTxt", out var robotsTxt);
+        var content = robotsTxt;
+        content += $"\n\nsitemap: {uri.Scheme}://{uri.Host}/sitemap.xml";
+
+        return Ok(content);
+    }
+
+    [HttpGet]
+    public async Task<IApiResult<string>> GetSitemapXml([FromQuery] string url, CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri(url);
+        var domain = uri.Authority;
+        if (!await setupService.IsInitialized(cancellationToken))
+            return Ok("");
+
+        var site = await siteService.GetByUrl(domain, cancellationToken);
+        var content = await siteService.GetSitemap(site, uri, cancellationToken);
+
+        return Ok(content);
     }
 }

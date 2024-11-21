@@ -12,35 +12,6 @@ public partial class PageCreatePlugin
     private List<SelectOption>? LayoutOptions { get; set; }
     private List<RoleViewState>? AdminRoleOptions { get; set; }
 
-    private List<SelectOptionString> RobotsOptions =
-    [
-        new SelectOptionString
-        {
-            Title = "(default)",
-            Value = string.Empty
-        },
-        new SelectOptionString
-        {
-            Title = "Index & Follow",
-            Value = "index,follow"
-        },
-        new SelectOptionString
-        {
-            Title = "Index & No Follow",
-            Value = "index,nofollow"
-        },
-        new SelectOptionString
-        {
-            Title = "No Index & Follow",
-            Value = "noindex,follow"
-        },
-        new SelectOptionString
-        {
-            Title = "No Index & No Follow",
-            Value = "noindex,nofollow"
-        }
-    ];
-
     private List<SelectOptionString> OgTypeOptions =
     [
         new SelectOptionString
@@ -101,7 +72,7 @@ public partial class PageCreatePlugin
         if (Pages is null)
         {
             var pagesResponse = await ApiClient.Page.GetAllAsync(ViewState.Site.Id);
-            Pages = pagesResponse?.Data?.Where(x => !x.Locked).ToList();
+            Pages = pagesResponse?.Data?.Where(x => !x.Locked).Where(x => x.FullPath != "/").ToList();
         }
 
         Model ??= new();

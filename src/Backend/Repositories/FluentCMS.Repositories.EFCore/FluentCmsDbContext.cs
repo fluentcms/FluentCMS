@@ -1,0 +1,245 @@
+﻿using Microsoft.AspNetCore.Identity;
+using System.Text.Json;
+
+namespace FluentCMS.Repositories.EFCore;
+
+public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : DbContext(options)
+{
+
+    #region DbSets
+
+    public DbSet<DbModels.ApiToken> ApiTokens { get; set; } = default!;
+    public DbSet<DbModels.ApiTokenPolicy> ApiTokenPolicies { get; set; } = default!;
+
+    public DbSet<Block> Blocks { get; set; } = default!;
+    public DbSet<Content> Contents { get; set; } = default!;
+    public DbSet<DbModels.ContentType> ContentTypes { get; set; } = default!;
+    public DbSet<DbModels.ContentTypeField> ContentTypeFields { get; set; } = default!;
+    public DbSet<File> Files { get; set; } = default!;
+    public DbSet<Folder> Folders { get; set; } = default!;
+    public DbSet<GlobalSettings> GlobalSettings { get; set; } = default!;
+    public DbSet<Layout> Layouts { get; set; } = default!;
+    public DbSet<Page> Pages { get; set; } = default!;
+    public DbSet<Permission> Permissions { get; set; } = default!;
+    public DbSet<PluginContent> PluginContents { get; set; } = default!;
+    public DbSet<PluginDefinition> PluginDefinitions { get; set; } = default!;
+    public DbSet<PluginDefinitionType> PluginDefinitionTypes { get; set; } = default!;
+    public DbSet<Plugin> Plugins { get; set; } = default!;
+    public DbSet<Role> Roles { get; set; } = default!;
+    public DbSet<DbModels.Settings> Settings { get; set; } = default!;
+    public DbSet<DbModels.SettingValue> SettingValues { get; set; }
+    public DbSet<Site> Sites { get; set; } = default!;
+    public DbSet<User> Users { get; set; } = default!;
+    public DbSet<IdentityUserLogin<Guid>> UserLogins { get; set; } = default!;
+    public DbSet<IdentityUserToken<Guid>> UserTokens { get; set; } = default!;
+    public DbSet<UserTwoFactorRecoveryCode> UserTwoFactorRecoveryCodes { get; set; } = default!;
+    public DbSet<IdentityUserClaim<Guid>> UserClaims { get; set; } = default!;
+    public DbSet<UserRole> UserRoles { get; set; } = default!;
+
+    #endregion
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        var jsonSerializerOptions = new JsonSerializerOptions();
+        jsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
+
+        modelBuilder.Entity<DbModels.ApiToken>()
+            .Navigation(e => e.Policies).AutoInclude();
+
+
+        #region ContentType
+
+        modelBuilder.Entity<DbModels.ContentType>(entity =>
+        {
+            entity.Navigation(e => e.Fields).AutoInclude();
+        });
+
+        modelBuilder.Entity<DbModels.ContentTypeField>(entity =>
+        {
+            entity.Property(e => e.Settings)
+                .HasConversion(
+                    // Serialize the dictionary to JSON when saving to the database
+                    v => JsonSerializer.Serialize(v, jsonSerializerOptions),
+                    // Deserialize the JSON string back to a dictionary when reading from the database
+                    v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, jsonSerializerOptions)
+                );
+        });
+
+        #endregion
+
+        #region Settings
+
+        modelBuilder.Entity<DbModels.Settings>()
+            .Ignore(s => s.Values);
+
+        modelBuilder.Entity<DbModels.SettingValue>()
+            .HasOne(sv => sv.Settings)
+            .WithMany()
+            .HasForeignKey(sv => sv.SettingsId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        #endregion
+
+        #region GlobalSettings
+
+        // Configure SuperAdmins as a comma-separated string
+        modelBuilder.Entity<GlobalSettings>()
+            .Property(gs => gs.SuperAdmins)
+            .HasConversion(
+                v => string.Join(",", v), // Convert IEnumerable<string> to string for storage
+                v => v.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList() // Convert string to IEnumerable<string>
+            );
+
+        #endregion
+
+        #region Content
+
+        modelBuilder.Entity<Content>(entity =>
+        {
+            // Configure the Data property to be stored as a JSON string
+            entity.Property(e => e.Data)
+                .HasConversion(
+                    // Serialize the dictionary to JSON when saving to the database
+                    v => JsonSerializer.Serialize(v, jsonSerializerOptions),
+                    // Deserialize the JSON string back to a dictionary when reading from the database
+                    v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, jsonSerializerOptions)
+                );
+        });
+
+        #endregion
+
+        #region Plugin Content
+
+        modelBuilder.Entity<PluginContent>(entity =>
+        {
+            // Configure the Data property to be stored as a JSON string
+            entity.Property(e => e.Data)
+                .HasConversion(
+                    // Serialize the dictionary to JSON when saving to the database
+                    v => JsonSerializer.Serialize(v, jsonSerializerOptions),
+                    // Deserialize the JSON string back to a dictionary when reading from the database
+                    v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, jsonSerializerOptions)
+                );
+        });
+
+        #endregion
+
+        #region Plugin Defition
+
+        // Configure PluginDefinition entity
+        modelBuilder.Entity<PluginDefinition>(entity =>
+        {
+            // Define one-to-many relationship between PluginDefinition and PluginDefinitionType
+            entity.HasMany(p => p.Types)
+                  .WithOne() // No navigation property back to PluginDefinition in PluginDefinitionType
+                  .HasForeignKey("PluginDefinitionId") // Shadow property for the foreign key
+                  .OnDelete(DeleteBehavior.Cascade); // Configure cascade delete if needed
+
+            entity.Navigation(e => e.Types).AutoInclude();
+        });
+
+        // Configure PluginDefinitionType entity
+        modelBuilder.Entity<PluginDefinitionType>(entity =>
+        {
+            // Define the shadow property for Id
+            entity.Property<int>("Id")
+                  .ValueGeneratedOnAdd(); // Configure it to be generated by the database
+
+            // Configure composite key (or use Id as the primary key if preferred)
+            entity.HasKey("Id"); // Using the shadow Id as the primary key
+
+            // Foreign key relationship to PluginDefinitionType
+            entity.HasOne<PluginDefinition>()
+                  .WithMany(a => a.Types)
+                  .HasForeignKey("PluginDefinitionId") // Shadow foreign key to link to ApiToken
+                  .OnDelete(DeleteBehavior.Cascade); // Cascade delete for related policies
+        });
+
+        #endregion
+
+        #region User and Role
+
+        // Configure User entity
+        modelBuilder.Entity<User>(entity =>
+        {
+            // Define one-to-many relationships with shadow foreign keys for each child collection
+            entity.HasMany(u => u.Logins)
+                  .WithOne()
+                  .HasForeignKey("UserId") // Shadow foreign key for User
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(u => u.Tokens)
+                  .WithOne()
+                  .HasForeignKey("UserId") // Shadow foreign key for User
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(u => u.Claims)
+                  .WithOne()
+                  .HasForeignKey("UserId") // Shadow foreign key for User
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(u => u.RecoveryCodes)
+                  .WithOne()
+                  .HasForeignKey("UserId") // Shadow foreign key for User
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            //entity.Navigation(e => e.Logins).AutoInclude();
+            //entity.Navigation(e => e.Tokens).AutoInclude();
+            //entity.Navigation(e => e.Claims).AutoInclude();
+            //entity.Navigation(e => e.RecoveryCodes).AutoInclude();
+        });
+
+        // Configure UserTwoFactorRecoveryCode as a separate entity
+        modelBuilder.Entity<UserTwoFactorRecoveryCode>(entity =>
+        {
+            // Define the shadow property for Id
+            entity.Property<Guid>("Id")
+                  .ValueGeneratedOnAdd(); // Configure it to be generated by the database
+
+            // Configure composite key (or use Id as the primary key if preferred)
+            entity.HasKey("Id"); // Using the shadow Id as the primary key
+        });
+
+        // Configure IdentityUserLogin, IdentityUserToken, and IdentityUserClaim with composite keys
+        modelBuilder.Entity<IdentityUserLogin<Guid>>(entity =>
+        {
+            entity.HasKey(login => new { login.LoginProvider, login.ProviderKey });
+        });
+
+        modelBuilder.Entity<IdentityUserToken<Guid>>(entity =>
+        {
+            entity.HasKey(token => new { token.UserId, token.LoginProvider, token.Name });
+        });
+
+        modelBuilder.Entity<IdentityUserClaim<Guid>>(entity =>
+        {
+            entity.HasKey(claim => claim.Id); // Id as primary key for claims
+        });
+
+        #endregion
+
+        #region Site
+
+        modelBuilder.Entity<Site>(entity =>
+        {
+            // Configure the Urls property to be stored as a comma-separated string
+            entity.Property(e => e.Urls)
+                .HasConversion(
+                    // Convert the List<string> to a comma-separated string for storage
+                    v => string.Join(",", v),
+                    // Convert the comma-separated string back to a List<string> when reading
+                    v => v.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList()
+                );
+        });
+
+        #endregion
+
+        base.OnModelCreating(modelBuilder);
+    }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        // Configure the DbContext to use NoTracking by default
+        optionsBuilder.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+    }
+}

@@ -11,12 +11,12 @@ public interface IFieldModel
     public string Description { get; set; }
     public int DataTableColumnOrder { get; set; }
     public bool DataTableVisible { get; set; }
-    
+
     [Required]
     public string DataTableViewComponent { get; set; }
     public int FormViewOrder { get; set; }
     public int FormColWidth { get; set; }
-    
+
     [Required]
     public string FormViewComponent { get; set; }
 
@@ -46,10 +46,10 @@ public abstract class FieldModel<T> : IFieldModel<T>
     public string DataTableViewComponent { get; set; } = default!;
     public int FormViewOrder { get; set; } = 0;
     public int FormColWidth { get; set; } = 12;
-    
+
     [Required]
     public string FormViewComponent { get; set; } = default!;
-    
+
     [Required]
     public string Label { get; set; } = string.Empty;
     public T DefaultValue { get; set; } = default!;

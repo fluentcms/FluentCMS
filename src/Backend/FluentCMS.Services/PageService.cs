@@ -70,6 +70,9 @@ public class PageService(IPageRepository pageRepository, IPageInternalService in
         if (page.Path != originalPage.Path)
             await ValidateDuplicatePath(page, cancellationToken);
 
+        if (originalPage.Path == "/" && page.Path != "/")
+            throw new AppException(ExceptionCodes.PageUnableToUpdateHome);
+
         var updatedPage = await pageRepository.Update(page, cancellationToken)
              ?? throw new AppException(ExceptionCodes.PageUnableToUpdate);
 
@@ -157,6 +160,12 @@ public class PageService(IPageRepository pageRepository, IPageInternalService in
     {
         page.Path = NormalizeFullPath(page.Path);
 
+        var _reservedNames = new List<string> {
+            "/setup",
+            "/api",
+            "/files"
+        };
+
         // Check if path is valid 
         // Only one segment without forward slash (/) is allowed
         // that should starts with forward slash (/)
@@ -165,6 +174,8 @@ public class PageService(IPageRepository pageRepository, IPageInternalService in
         if (!Regex.IsMatch(page.Path, @"^\/[a-z0-9-_~]+$") && page.Path != "/")
             throw new AppException(ExceptionCodes.PagePathInvalidCharacter);
 
+        if (page.ParentId is null && _reservedNames.Contains(page.Path))
+            throw new AppException(ExceptionCodes.PagePathReservedName);
     }
 
     private async Task ValidateParentPage(Page page, CancellationToken cancellationToken = default)
@@ -179,6 +190,13 @@ public class PageService(IPageRepository pageRepository, IPageInternalService in
             // If parent id is not on the same site
             if (parentPage.SiteId != page.SiteId)
                 throw new AppException(ExceptionCodes.PageParentMustBeOnTheSameSite);
+
+            // If parent page's Path is /
+            if (parentPage.Path == "/")
+                throw new AppException(ExceptionCodes.PageParentCannotBeHome);
+
+            if (page.Path == "/")
+                throw new AppException(ExceptionCodes.PageHomeCannotHaveParent);
         }
     }
 

@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Services.MessageHandlers;
 
-public class PageMessageHandler(IPageService pageService, IPermissionService permissionService) : IMessageHandler<SiteTemplate>, IMessageHandler<Layout>
+public class PageMessageHandler(IPageService pageService, ISettingsService settingsService, IPermissionService permissionService) : IMessageHandler<SiteTemplate>, IMessageHandler<Layout>
 {
     public async Task Handle(Message<Layout> notification, CancellationToken cancellationToken)
     {
@@ -75,7 +75,10 @@ public class PageMessageHandler(IPageService pageService, IPermissionService per
             Order = order,
             Locked = pageTemplate.Locked,
         };
-        await pageService.Create(page, cancellationToken);
+
+        var newPage = await pageService.Create(page, cancellationToken);
+
+        await settingsService.Update(newPage.Id, pageTemplate.Settings, cancellationToken);
 
         var adminRoles = roles.Where(r => pageTemplate.AdminRoles.Contains(r.Name)).Select(r => r.Id).ToList();
         var contributorRoles = roles.Where(r => pageTemplate.ContributorRoles.Contains(r.Name)).Select(r => r.Id).ToList();

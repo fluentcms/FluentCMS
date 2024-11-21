@@ -24,7 +24,7 @@ public partial class FieldSettingForm
 
     protected async Task OnFormSubmit()
     {
-        try 
+        try
         {
             await OnSubmit.InvokeAsync();
         }

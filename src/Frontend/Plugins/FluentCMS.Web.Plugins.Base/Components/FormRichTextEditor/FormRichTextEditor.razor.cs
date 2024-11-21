@@ -121,10 +121,10 @@ public partial class FormRichTextEditor : IAsyncDisposable
 
     }
 
-    private async Task OnChooseFile(string url)
+    private async Task OnChooseFile(AssetDetail file)
     {
-        Text = url.Split("/").Last();
-        Href = url;
+        Text = file.Path?.Split("/").Last();
+        Href = file.Path;
 
         LinkModalOpen = false;
 
@@ -269,8 +269,9 @@ public partial class FormRichTextEditor : IAsyncDisposable
         StateHasChanged();
     }
 
-    public async Task OnChooseImage(string url)
+    public async Task OnChooseImage(AssetDetail file)
     {
+        var url = file.Path;
         ImageModalOpen = false;
         ImageAlt = "(TODO) Image ALT";
 

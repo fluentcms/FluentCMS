@@ -10,7 +10,7 @@ public partial class FolderSelectorModal
 
     [Parameter]
     public Guid? DisabledFolder { get; set; }
-    
+
     [Parameter]
     public Guid? Model { get; set; } = default!;
 
