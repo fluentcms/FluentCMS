@@ -67,6 +67,10 @@
             "Path": "/",
             "EditLayout": "EditLayout",
             "ViewRoles": ["All Users"],
+            "Settings": {
+                "Index": "true",
+                "Follow": "true"
+            },
             "Plugins": [
                 {
                     "Definition": "TextHTML Plugin",
@@ -123,6 +127,10 @@
             "Path": "/projects",
             "EditLayout": "EditLayout",
             "ViewRoles": ["All Users"],
+            "Settings": {
+                "Index": "true",
+                "Follow": "true"
+            },
             "Plugins": [
                 {
                     "Definition": "TextHTML Plugin",
@@ -149,6 +157,10 @@
                     "Path": "/detail",
                     "Layout": "SingleLayout",
                     "ViewRoles": ["All Users"],
+                    "Settings": {
+                        "Index": "true",
+                        "Follow": "true"
+                    },
                     "Plugins": [
                         {
                             "Definition": "Content Detail",
@@ -177,6 +189,10 @@
             "Path": "/about",
             "Layout": "Columns-1-3",
             "ViewRoles": [ "All Users"],
+            "Settings": {
+                "Index": "true",
+                "Follow": "true"
+            },
             "Plugins": [
                 {
                     "Definition": "TextHTML Plugin",
@@ -194,7 +210,7 @@
                     "Type": "TextHTMLContent",
                     "Content": [
                         {
-                            "Content": "<div class=\"sm:pr-12\"><img src=\"/images/blocks/joseph-mcfall.png\" alt=\"Profile Image\" class=\"w-full md:w-full md:h-auto rounded-full shadow-lg object-cover\"></div>"
+                            "Content": "<div class=\"sm:pr-12\"><img src=\"/files/images/blocks/joseph-mcfall.png\" alt=\"Profile Image\" class=\"w-full md:w-full md:h-auto rounded-full shadow-lg object-cover\"></div>"
                         }
                     ]
                 },
@@ -246,7 +262,7 @@
                     "Section": "Right",
                     "Content": [
                         {
-                            "Content": "<section class=\"bg-gray-100 dark:bg-gray-900\">\n    <div class=\"grid mb-8 lg:mb-12 lg:grid-cols-2\">\n        <figure\n            class=\"flex flex-col justify-center items-center p-8 text-center border-b border-gray-200 md:p-12 lg:border-r dark:bg-gray-800 dark:border-gray-700\">\n            <blockquote class=\"mx-auto mb-8 max-w-2xl text-gray-500 dark:text-gray-400\">\n                <h3 class=\"text-lg font-semibold text-gray-900 dark:text-white\" data-inline-editable>\n                    A Seamless Launch\n                </h3>\n                <p class=\"my-4\" data-inline-editable>\n                    \"Working with [Your Name] was a game-changer for our\n                    project. Their expertise allowed us to launch a user-friendly platform that exceeded our\n                    expectations. They took the time to understand our needs and delivered a solution that not only\n                    looked great but also performed flawlessly.\"\n                </p>\n            </blockquote>\n            <figcaption class=\"flex justify-center items-center space-x-3\">\n                <img class=\"w-9 h-9 rounded-full\" src=\"/images/karen-nelson.png\" alt=\"profile picture\">\n                <div class=\"space-y-0.5 font-medium dark:text-white text-left\">\n                    <div data-inline-editable>Sarah T.</div>\n                    <div class=\"text-sm font-light text-gray-500 dark:text-gray-400\" data-inline-editable>\n                        Product Manager at Innovate Tech</div>\n                </div>\n            </figcaption>\n        </figure>\n        <figure\n            class=\"flex flex-col justify-center items-center p-8 text-center border-b border-gray-200 md:p-12 dark:bg-gray-800 dark:border-gray-700\">\n            <blockquote class=\"mx-auto mb-8 max-w-2xl text-gray-500 dark:text-gray-400\">\n                <h3 class=\"text-lg font-semibold text-gray-900 dark:text-white\" data-inline-editable>\n                    Transforming Our Vision\n                </h3>\n                <p class=\"my-4\" data-inline-editable>\n                    \"[Your Name] transformed our vision into reality with their\n                    exceptional development skills. They crafted a tailored solution that streamlined our processes and\n                    increased efficiency across the board. Their attention to detail and commitment to quality is\n                    unmatched.\"\n                </p>\n            </blockquote>\n            <figcaption class=\"flex justify-center items-center space-x-3\">\n                <img class=\"w-9 h-9 rounded-full\" src=\"/images/roberta-casas.png\" alt=\"profile picture\">\n                <div class=\"space-y-0.5 font-medium dark:text-white text-left\">\n                    <div data-inline-editable>&nbsp;James R.</div>\n                    <div class=\"text-sm font-light text-gray-500 dark:text-gray-400\" data-inline-editable>\n                        CEO of EcoSolutions</div>\n                </div>\n            </figcaption>\n        </figure>\n        <figure\n            class=\"flex flex-col justify-center items-center p-8 text-center border-b border-gray-200 lg:border-b-0 md:p-12 lg:border-r dark:bg-gray-800 dark:border-gray-700\">\n            <blockquote class=\"mx-auto mb-8 max-w-2xl text-gray-500 dark:text-gray-400\">\n                <h3 class=\"text-lg font-semibold text-gray-900 dark:text-white\" data-inline-editable>\n                    Elevating User Experience\n                </h3>\n                <p class=\"my-4\" data-inline-editable>\n                    \"The UI/UX design work by [Your Name] elevated our user\n                    experience significantly. They researched our target audience and implemented design elements that\n                    resonated deeply. Our users have praised the intuitive navigation and modern aesthetics, which have\n                    greatly improved engagement.\"\n                </p>\n            </blockquote>\n            <figcaption class=\"flex justify-center items-center space-x-3\">\n                <img class=\"w-9 h-9 rounded-full\" src=\"/images/jese-leos.png\" alt=\"profile picture\">\n                <div class=\"space-y-0.5 font-medium dark:text-white text-left\">\n                    <div data-inline-editable>Linda K.</div>\n                    <div class=\"text-sm font-light text-gray-500 dark:text-gray-400\" data-inline-editable>\n                        Marketing Director at TrendyApp\n                    </div>\n                </div>\n            </figcaption>\n        </figure>\n        <figure\n            class=\"flex flex-col justify-center items-center p-8 text-center border-gray-200 md:p-12 dark:bg-gray-800 dark:border-gray-700\">\n            <blockquote class=\"mx-auto mb-8 max-w-2xl text-gray-500 dark:text-gray-400\">\n                <h3 class=\"text-lg font-semibold text-gray-900 dark:text-white\" data-inline-editable>\n                    Revolutionizing Our Infrastructure\n                </h3>\n                <p class=\"my-4\" data-inline-editable>\n                    \"[Your Name]'s expertise in cloud and DevOps engineering\n                    revolutionized our deployment process. They helped us migrate our infrastructure to the cloud\n                    seamlessly and set up CI/CD pipelines that improved our development cycle efficiency. Their\n                    proactive support and knowledge made a significant difference in our scalability.\"\n                </p>\n            </blockquote>\n            <figcaption class=\"flex justify-center items-center space-x-3\">\n                <img class=\"w-9 h-9 rounded-full\" src=\"/images/blocks/joseph-mcfall.png\" alt=\"profile picture\">\n                <div class=\"space-y-0.5 font-medium dark:text-white text-left\">\n                    <div data-inline-editable>Mark D.</div>\n                    <div class=\"text-sm font-light text-gray-500 dark:text-gray-400\" data-inline-editable>\n                        CTO of FutureSoft\n                    </div>\n                </div>\n            </figcaption>\n        </figure>\n    </div>\n</section>"
+                            "Content": "<section class=\"bg-gray-100 dark:bg-gray-900\">\n    <div class=\"grid mb-8 lg:mb-12 lg:grid-cols-2\">\n        <figure\n            class=\"flex flex-col justify-center items-center p-8 text-center border-b border-gray-200 md:p-12 lg:border-r dark:bg-gray-800 dark:border-gray-700\">\n            <blockquote class=\"mx-auto mb-8 max-w-2xl text-gray-500 dark:text-gray-400\">\n                <h3 class=\"text-lg font-semibold text-gray-900 dark:text-white\" data-inline-editable>\n                    A Seamless Launch\n                </h3>\n                <p class=\"my-4\" data-inline-editable>\n                    \"Working with [Your Name] was a game-changer for our\n                    project. Their expertise allowed us to launch a user-friendly platform that exceeded our\n                    expectations. They took the time to understand our needs and delivered a solution that not only\n                    looked great but also performed flawlessly.\"\n                </p>\n            </blockquote>\n            <figcaption class=\"flex justify-center items-center space-x-3\">\n                <img class=\"w-9 h-9 rounded-full\" src=\"/files/images/karen-nelson.png\" alt=\"profile picture\">\n                <div class=\"space-y-0.5 font-medium dark:text-white text-left\">\n                    <div data-inline-editable>Sarah T.</div>\n                    <div class=\"text-sm font-light text-gray-500 dark:text-gray-400\" data-inline-editable>\n                        Product Manager at Innovate Tech</div>\n                </div>\n            </figcaption>\n        </figure>\n        <figure\n            class=\"flex flex-col justify-center items-center p-8 text-center border-b border-gray-200 md:p-12 dark:bg-gray-800 dark:border-gray-700\">\n            <blockquote class=\"mx-auto mb-8 max-w-2xl text-gray-500 dark:text-gray-400\">\n                <h3 class=\"text-lg font-semibold text-gray-900 dark:text-white\" data-inline-editable>\n                    Transforming Our Vision\n                </h3>\n                <p class=\"my-4\" data-inline-editable>\n                    \"[Your Name] transformed our vision into reality with their\n                    exceptional development skills. They crafted a tailored solution that streamlined our processes and\n                    increased efficiency across the board. Their attention to detail and commitment to quality is\n                    unmatched.\"\n                </p>\n            </blockquote>\n            <figcaption class=\"flex justify-center items-center space-x-3\">\n                <img class=\"w-9 h-9 rounded-full\" src=\"/files/images/roberta-casas.png\" alt=\"profile picture\">\n                <div class=\"space-y-0.5 font-medium dark:text-white text-left\">\n                    <div data-inline-editable>&nbsp;James R.</div>\n                    <div class=\"text-sm font-light text-gray-500 dark:text-gray-400\" data-inline-editable>\n                        CEO of EcoSolutions</div>\n                </div>\n            </figcaption>\n        </figure>\n        <figure\n            class=\"flex flex-col justify-center items-center p-8 text-center border-b border-gray-200 lg:border-b-0 md:p-12 lg:border-r dark:bg-gray-800 dark:border-gray-700\">\n            <blockquote class=\"mx-auto mb-8 max-w-2xl text-gray-500 dark:text-gray-400\">\n                <h3 class=\"text-lg font-semibold text-gray-900 dark:text-white\" data-inline-editable>\n                    Elevating User Experience\n                </h3>\n                <p class=\"my-4\" data-inline-editable>\n                    \"The UI/UX design work by [Your Name] elevated our user\n                    experience significantly. They researched our target audience and implemented design elements that\n                    resonated deeply. Our users have praised the intuitive navigation and modern aesthetics, which have\n                    greatly improved engagement.\"\n                </p>\n            </blockquote>\n            <figcaption class=\"flex justify-center items-center space-x-3\">\n                <img class=\"w-9 h-9 rounded-full\" src=\"/files/images/jese-leos.png\" alt=\"profile picture\">\n                <div class=\"space-y-0.5 font-medium dark:text-white text-left\">\n                    <div data-inline-editable>Linda K.</div>\n                    <div class=\"text-sm font-light text-gray-500 dark:text-gray-400\" data-inline-editable>\n                        Marketing Director at TrendyApp\n                    </div>\n                </div>\n            </figcaption>\n        </figure>\n        <figure\n            class=\"flex flex-col justify-center items-center p-8 text-center border-gray-200 md:p-12 dark:bg-gray-800 dark:border-gray-700\">\n            <blockquote class=\"mx-auto mb-8 max-w-2xl text-gray-500 dark:text-gray-400\">\n                <h3 class=\"text-lg font-semibold text-gray-900 dark:text-white\" data-inline-editable>\n                    Revolutionizing Our Infrastructure\n                </h3>\n                <p class=\"my-4\" data-inline-editable>\n                    \"[Your Name]'s expertise in cloud and DevOps engineering\n                    revolutionized our deployment process. They helped us migrate our infrastructure to the cloud\n                    seamlessly and set up CI/CD pipelines that improved our development cycle efficiency. Their\n                    proactive support and knowledge made a significant difference in our scalability.\"\n                </p>\n            </blockquote>\n            <figcaption class=\"flex justify-center items-center space-x-3\">\n                <img class=\"w-9 h-9 rounded-full\" src=\"/files/images/blocks/joseph-mcfall.png\" alt=\"profile picture\">\n                <div class=\"space-y-0.5 font-medium dark:text-white text-left\">\n                    <div data-inline-editable>Mark D.</div>\n                    <div class=\"text-sm font-light text-gray-500 dark:text-gray-400\" data-inline-editable>\n                        CTO of FutureSoft\n                    </div>\n                </div>\n            </figcaption>\n        </figure>\n    </div>\n</section>"
                         }
                     ]
                 },
@@ -277,14 +293,34 @@
             "Path": "/contact",
             "Layout": "DefaultLayout",
             "ViewRoles": [ "All Users" ],
-            "Plugins": []
+            "Plugins": [
+                {
+                    "Definition": "TextHTML Plugin",
+                    "Section": "Main",
+                    "Type": "TextHTMLContent",
+                    "Content": [
+                        {
+                            "Content": "<div class=\"max-w-screen-md mx-auto text-center my-8\">\n\t<h2 class=\"mb-4 text-4xl tracking-tight font-extrabold text-gray-900 dark:text-white\" data-inline-editable>Contact Me</h2>\n\t<p class=\"text-gray-500 sm:text-xl dark:text-gray-400\" data-inline-editable>\n\t\tYou can contact me by filling this form, I will reach you ASAP.\n\t</p>\n</div>"
+                        }
+                    ]
+                },
+                {
+                    "Definition": "Contact Us Plugin",
+                    "Section": "Main",
+                    "Settings": {
+                        "EmailAddress": "your.email@example.com",
+                        "Class": "p-8"
+                    }
+                }
+            ]
         },
         {
             "Title": "Admin",
             "Path": "/admin",
             "Layout": "AdminLayout",
             "EditLayout": "AdminLayout",
-            "AdminRoles": ["Administrators"],
+            "AdminRoles": [ "Administrators" ],
+            "ViewRoles": [ "Administrators" ],
             "Locked": true,
             "Plugins": [],
             "Children": [
@@ -293,7 +329,12 @@
                     "Path": "/content-types",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
-                    "AdminRoles": ["Administrators"],
+                    "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -308,7 +349,12 @@
                     "Path": "/users",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
-                    "AdminRoles": ["Administrators"],
+                    "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -323,7 +369,12 @@
                     "Path": "/files",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
-                    "AdminRoles": ["Administrators"],
+                    "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -338,7 +389,12 @@
                     "Path": "/api-tokens",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
-                    "AdminRoles": ["Administrators"],
+                    "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -353,7 +409,12 @@
                     "Path": "/roles",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
-                    "AdminRoles": ["Administrators"],
+                    "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -368,7 +429,12 @@
                     "Path": "/sites",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
-                    "AdminRoles": ["Administrators"],
+                    "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -383,7 +449,12 @@
                     "Path": "/plugins",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
-                    "AdminRoles": ["Administrators"],
+                    "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -398,7 +469,12 @@
                     "Path": "/pages",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
-                    "AdminRoles": ["Administrators"],
+                    "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -413,7 +489,12 @@
                     "Path": "/blocks",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
-                    "AdminRoles": ["Administrators"],
+                    "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -428,7 +509,12 @@
                     "Path": "/layouts",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
-                    "AdminRoles": ["Administrators"],
+                    "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -443,7 +529,12 @@
                     "Path": "/globalsettings",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
-                    "AdminRoles": ["Administrators"],
+                    "AdminRoles": [ "Administrators" ],
+                    "ViewRoles": [ "Administrators" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -464,7 +555,11 @@
                     "Path": "/login",
                     "Locked": true,
                     "Layout": "AuthLayout",
-                    "ViewRoles": ["All Users"],
+                    "ViewRoles": [ "All Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Plugins": [
                         {
                             "Definition": "Login",
@@ -475,7 +570,11 @@
                 {
                     "Title": "Logout",
                     "Path": "/logout",
-                    "ViewRoles": ["All Users"],
+                    "ViewRoles": [ "All Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -489,7 +588,11 @@
                     "Path": "/register",
                     "Locked": true,
                     "Layout": "AuthLayout",
-                    "ViewRoles": ["All Users"],
+                    "ViewRoles": [ "All Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Plugins": [
                         {
                             "Definition": "Register",
@@ -502,7 +605,11 @@
                     "Path": "/reset-password",
                     "Locked": true,
                     "Layout": "AuthLayout",
-                    "ViewRoles": ["All Users"],
+                    "ViewRoles": [ "All Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Plugins": [
                         {
                             "Definition": "Reset Password",
@@ -515,7 +622,11 @@
                     "Path": "/forgot-password",
                     "Locked": true,
                     "Layout": "AuthLayout",
-                    "ViewRoles": ["All Users"],
+                    "ViewRoles": [ "All Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Plugins": [
                         {
                             "Definition": "Forgot Password",
@@ -528,7 +639,11 @@
                     "Path": "/profile",
                     "Layout": "AdminLayout",
                     "EditLayout": "AdminLayout",
-                    "ViewRoles": ["Authenticated Users"],
+                    "ViewRoles": [ "Authenticated Users" ],
+                    "Settings": {
+                        "Index": "false",
+                        "Follow": "false"
+                    },
                     "Locked": true,
                     "Plugins": [
                         {
@@ -665,6 +780,241 @@
             "Name": "Simple",
             "Category": "Title",
             "Description": "simple title block"
+        }
+    ],
+    "ContentTypes": [
+        {
+            "Slug": "project",
+            "Title": "Project",
+            "Description": "A content type for showcasing individual portfolio projects.",
+            "Fields": [
+                {
+                    "Name": "project_title",
+                    "Description": "Title of the project",
+                    "Type": "string",
+                    "Required": true,
+                    "Unique": true,
+                    "Label": "Project Title",
+                    "Settings": {
+                        "Placeholder": "Enter project title",
+                        "DataTableColumnOrder": 1,
+                        "DataTableVisible": true,
+                        "DataTableViewComponent": "StringFieldDataTableView",
+                        "FormViewOrder": 1,
+                        "FormColWidth": 6,
+                        "FormViewComponent": "StringFieldFormText"
+                    }
+                },
+                {
+                    "Name": "description",
+                    "Description": "Detailed description of the project",
+                    "Type": "string",
+                    "" : "",
+                    "Required": true,
+                    "Unique": false,
+                    "Label": "Description",
+                    "Settings": {
+                        "Placeholder": "Enter project description",
+                        "DataTableColumnOrder": 2,
+                        "DataTableVisible": true,
+                        "DataTableViewComponent": "StringFieldDataTableView",
+                        "FormViewOrder": 3,
+                        "FormColWidth": 12,
+                        "FormViewComponent": "StringFieldFormMarkdownText"
+                    }
+                },
+                {
+                    "Name": "start_date",
+                    "Description": "The date the project was started",
+                    "Type": "datetime",
+                    "Required": true,
+                    "Unique": false,
+                    "Label": "Start Date",
+                    "Settings": {
+                        "Placeholder": "Choose the date the project was started",
+                        "DataTableColumnOrder": 3,
+                        "DataTableVisible": true,
+                        "DataTableViewComponent": "DateFieldDataTableView",
+                        "FormViewOrder": 4,
+                        "FormColWidth": 6,
+                        "FormViewComponent": "DateFieldFormDate"
+                    }
+                },
+                {
+                    "Name": "end_date",
+                    "Description": "The date the project was completed (optional)",
+                    "Type": "datetime",
+                    "Required": false,
+                    "Unique": false,
+                    "Label": "End Date",
+                    "Settings": {
+                        "Placeholder": "Choose the date the project was finished",
+                        "DataTableColumnOrder": 4,
+                        "DataTableVisible": true,
+                        "DataTableViewComponent": "DateFieldDataTableView",
+                        "FormViewOrder": 5,
+                        "FormColWidth": 6,
+                        "FormViewComponent": "DateFieldFormDate"
+                    }
+                },
+                {
+                    "Name": "technologies",
+                    "Description": "List of technologies used in the project",
+                    "Type": "string",
+                    "Required": true,
+                    "Unique": false,
+                    "Label": "Technologies",
+                    "Settings": {
+                        "Placeholder": "Enter name of technologies used in the project",
+                        "DataTableColumnOrder": 2,
+                        "DataTableVisible": true,
+                        "DataTableViewComponent": "StringFieldDataTableView",
+                        "FormViewOrder": 6,
+                        "FormColWidth": 12,
+                        "FormViewComponent": "StringFieldFormTextArea"
+                    }
+                },
+                {
+                    "Name": "project_url",
+                    "Description": "URL link to the live project or repository",
+                    "Type": "string",
+                    "Required": false,
+                    "Unique": false,
+                    "Label": "Project URL",
+                    "Settings": {
+                        "Placeholder": "Enter url or repisotory link of project",
+                        "DataTableColumnOrder": 6,
+                        "DataTableVisible": true,
+                        "DataTableViewComponent": "StringFieldDataTableView",
+                        "FormViewOrder": 2,
+                        "FormColWidth": 6,
+                        "FormViewComponent": "StringFieldFormText"
+                    }
+                },
+                {
+                    "Name": "image",
+                    "Description": "An image or screenshot of the project",
+                    "Type": "single-file",
+                    "Required": false,
+                    "Unique": false,
+                    "Label": "Image",
+                    "Settings": {
+                        "Placeholder": "Choose post main image",
+                        "DataTableVisible": true,
+                        "DataTableViewComponent": "SingleFileFieldDataTableFile",
+                        "FormViewOrder": 3,
+                        "FormColWidth": 12,
+                        "FormViewComponent": "SingleFileFieldFormFilePicker"
+                    }
+                }
+            ],
+            "Contents": [
+                {
+                    "project_title": "Personal Portfolio Website",
+                    "description": "A personal website showcasing my portfolio, blog, and contact information.",
+                    "start_date": "2023-01-15",
+                    "end_date": "2023-03-10",
+                    "technologies": "HTML, CSS, JavaScript, Tailwind CSS",
+                    "project_url": "https://portfolio.example.com",
+                    "image": "/files/contents/portfolio.png"
+                },
+                {
+                    "project_title": "E-commerce Platform",
+                    "description": "An e-commerce platform with a fully functional product listing, cart, and checkout system.",
+                    "start_date": "2022-05-01",
+                    "end_date": "2022-07-20",
+                    "technologies": "React,Node.js,MongoDB,Stripe API",
+                    "project_url": "https://ecommerce.example.com",
+                    "image": "/files/contents/commerce.png"
+                },
+                {
+                    "project_title": "Task Management App",
+                    "description": "A mobile-friendly task management application with features like task assignment and deadlines.",
+                    "start_date": "2022-08-10",
+                    "end_date": "2022-10-05",
+                    "technologies": "Vue.js, Firebase, Tailwind CSS",
+                    "project_url": "https://taskmanager.example.com",
+                    "image": "/files/contents/task.png"
+                },
+                {
+                    "project_title": "Social Media Dashboard",
+                    "description": "A dashboard that aggregates social media analytics from platforms like Twitter, Facebook, and Instagram.",
+                    "start_date": "2023-02-01",
+                    "end_date": "2023-04-15",
+                    "technologies": "Next.js, Node.js, Chart.js, API Integrations",
+                    "project_url": "https://socialdashboard.example.com",
+                    "image": "/files/contents/dashboard.png"
+                },
+                {
+                    "project_title": "Blog Platform",
+                    "description": "A blog platform with rich text editing, category management, and SEO optimizations.",
+                    "start_date": "2021-11-01",
+                    "end_date": "2022-01-15",
+                    "technologies": "WordPress, PHP, MySQL",
+                    "project_url": "https://blogplatform.example.com",
+                    "image": "/files/contents/blog.png"
+                },
+                {
+                    "project_title": "Real Estate Listing Website",
+                    "description": "A website for real estate agencies to list properties with interactive maps and contact features.",
+                    "start_date": "2022-09-05",
+                    "end_date": "2022-11-20",
+                    "technologies": "Laravel , Vue.js, Leaflet.js",
+                    "project_url": "https://realestate.example.com",
+                    "image": "/files/contents/real-estate.png"
+
+                }
+            ]
+        },
+        {
+            "Slug": "skill",
+            "Title": "Skill",
+            "Description": "A content type for listing skills in the portfolio.",
+            "Fields": [
+                {
+                    "Name": "skill_name",
+                    "Description": "Name of the skill",
+                    "Type": "string",
+                    "Required": true,
+                    "Unique": true,
+                    "Label": "Skill Name",
+                    "Settings": null
+                },
+                {
+                    "Name": "proficiency",
+                    "Description": "Level of proficiency in this skill",
+                    "Type": "string",
+                    "Required": true,
+                    "Unique": false,
+                    "Label": "Proficiency",
+                    "Settings": {
+                        "options": [
+                            "Beginner",
+                            "Intermediate",
+                            "Advanced",
+                            "Expert"
+                        ]
+                    }
+                }
+            ],
+            "Contents": [
+                {
+                    "skill_name": "React",
+                    "proficiency": "Advanced"
+                },
+                {
+                    "skill_name": "Blazor",
+                    "proficiency": "Advanced"
+                },
+                {
+                    "skill_name": "SEO",
+                    "proficiency": "Expert"
+                },
+                {
+                    "skill_name": "HTML",
+                    "proficiency": "Beginner"
+                }
+            ]
         }
     ]
 }
