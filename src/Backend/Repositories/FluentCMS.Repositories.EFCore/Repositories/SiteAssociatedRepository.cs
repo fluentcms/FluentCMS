@@ -1,6 +1,10 @@
 ﻿namespace FluentCMS.Repositories.EFCore;
 
-public abstract class SiteAssociatedRepository<TEntity>(FluentCmsDbContext dbContext, IApiExecutionContext apiExecutionContext) : AuditableEntityRepository<TEntity>(dbContext, apiExecutionContext), ISiteAssociatedRepository<TEntity> where TEntity : SiteAssociatedEntity
+public interface ISiteAssociatedRepository<TEntity, TDBEntity> : ISiteAssociatedRepository<TEntity> where TEntity : ISiteAssociatedEntity where TDBEntity : ISiteAssociatedEntityModel
+{
+}
+
+public abstract class SiteAssociatedRepository<TEntity, TDBEntity>(FluentCmsDbContext dbContext, IMapper mapper, IApiExecutionContext apiExecutionContext) : AuditableEntityRepository<TEntity, TDBEntity>(dbContext, mapper, apiExecutionContext), ISiteAssociatedRepository<TEntity, TDBEntity> where TEntity : SiteAssociatedEntity where TDBEntity : SiteAssociatedEntityModel
 {
     public override async Task<TEntity?> Update(TEntity entity, CancellationToken cancellationToken = default)
     {
@@ -15,6 +19,6 @@ public abstract class SiteAssociatedRepository<TEntity>(FluentCmsDbContext dbCon
 
     public virtual async Task<IEnumerable<TEntity>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {
-        return await dbContext.Set<TEntity>().Where(x => x.SiteId == siteId).ToListAsync(cancellationToken);
+        return await DbContext.Set<TEntity>().Where(x => x.SiteId == siteId).ToListAsync(cancellationToken);
     }
 }

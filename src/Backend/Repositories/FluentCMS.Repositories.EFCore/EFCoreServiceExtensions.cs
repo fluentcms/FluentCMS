@@ -25,8 +25,8 @@ public static class EFCoreServiceExtensions
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<ISettingsRepository, SettingsRepository>();
         services.AddScoped<ISiteRepository, SiteRepository>();
-        services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IUserRoleRepository, UserRoleRepository>();
+        //services.AddScoped<IUserRepository, UserRepository>();
+        //services.AddScoped<IUserRoleRepository, UserRoleRepository>();
 
         return services;
     }

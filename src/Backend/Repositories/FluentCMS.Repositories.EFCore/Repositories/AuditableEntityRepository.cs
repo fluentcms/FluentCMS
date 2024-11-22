@@ -1,6 +1,11 @@
 ﻿namespace FluentCMS.Repositories.EFCore;
 
-public abstract class AuditableEntityRepository<TEntity>(FluentCmsDbContext dbContext, IApiExecutionContext apiExecutionContext) : EntityRepository<TEntity>(dbContext), IAuditableEntityRepository<TEntity> where TEntity : class, IAuditableEntity
+public interface IAuditableEntityRepository<TEntity, TDBEntity> : IEntityRepository<TEntity> where TEntity : IAuditableEntity where TDBEntity : IAuditableEntityModel
+{
+
+}
+
+public abstract class AuditableEntityRepository<TEntity, TDBEntity>(FluentCmsDbContext dbContext, IMapper mapper, IApiExecutionContext apiExecutionContext) : EntityRepository<TEntity, TDBEntity>(dbContext, mapper), IAuditableEntityRepository<TEntity, TDBEntity> where TEntity : class, IAuditableEntity where TDBEntity : class, IAuditableEntityModel
 {
     protected readonly IApiExecutionContext ApiExecutionContext = apiExecutionContext;
 
