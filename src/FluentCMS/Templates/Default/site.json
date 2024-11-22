@@ -212,7 +212,7 @@
                     "Section": "Main",
                     "Cols": 12,
                     "Settings": {
-                        "Template": "{{ for item in Items }}\n<a href=\"/blogs/detail/{{ item.Id }}\" class=\"blog-post block mb-8 p-4 bg-white shadow rounded-lg\">\n    <h2 class=\"text-2xl font-bold text-gray-800\">{{ item.Title }}</h2>\n    <div class=\"blog-meta text-sm text-gray-600 mt-2\">\n        <span class=\"blog-slug\">Slug: <span class=\"font-medium text-gray-700\">{{ item.Slug }}</span></span> | \n        <span class=\"blog-published-at\">Published At: <span class=\"font-medium text-gray-700\">{{ item.PublishedAt }}</span></span> | \n        <span class=\"blog-status\">Status: <span class=\"font-medium text-gray-700\">{{ item.Status }}</span></span> | \n        <span class=\"blog-order\">Order: <span class=\"font-medium text-gray-700\">{{ item.Order }}</span></span>\n    </div>\n    \n     \n    <div class=\"blog-tags mt-4\">\n        <strong class=\"text-gray-800\">Tags:</strong>\n        <div class=\"inline-flex flex-wrap space-x-2 mt-2\">\n            {{ for tag in item.Tags }}\n                <span class=\"blog-tag bg-blue-100 text-blue-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded\">{{ tag }}</span>\n            {{ end }}\n        </div>\n    </div>\n    \n    {{ if item.FeaturedImage }}\n    <div class=\"blog-featured-image mt-6\">\n        <img class=\"w-full h-auto rounded-lg\" src=\"{{ item.FeaturedImage }}\" alt=\"Featured Image\">\n    </div>\n    {{ end }}\n</a>\n{{ end }}",
+                        "Template": "{{ for item in Items }}\n<a href=\"/blogs/detail/{{ item.Id }}\" class=\"blog-post flex flex-wrap mb-8 p-4 bg-white shadow rounded-lg\">\n    {{ if item.FeaturedImage }}\n    <div class=\"blog-featured-image w-32 h-32 flex-shrink-0 mr-4\">\n        <img class=\"w-full h-full object-cover rounded-lg\" src=\"/files/{{ item.FeaturedImage }}\" alt=\"Featured Image\">\n    </div>\n    {{ end }}\n    <div class=\"flex-1\">\n        <h2 class=\"text-2xl font-bold text-gray-800\">{{ item.Title }}</h2>\n        <div class=\"blog-meta text-sm text-gray-600 mt-2\">\n            <span class=\"blog-slug\">Slug: <span class=\"font-medium text-gray-700\">{{ item.Slug }}</span></span> | \n            <span class=\"blog-published-at\">Published At: <span class=\"font-medium text-gray-700\">{{ item.PublishedAt }}</span></span> | \n            <span class=\"blog-status\">Status: <span class=\"font-medium text-gray-700\">{{ item.Status }}</span></span> | \n            <span class=\"blog-order\">Order: <span class=\"font-medium text-gray-700\">{{ item.Order }}</span></span>\n        </div>\n        <div class=\"blog-tags mt-4\">\n            <strong class=\"text-gray-800\">Tags:</strong>\n            <div class=\"inline-flex flex-wrap space-x-2 mt-2\">\n                {{ for tag in item.Tags }}\n                    <span class=\"blog-tag bg-blue-100 text-blue-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded\">{{ tag }}</span>\n                {{ end }}\n            </div>\n        </div>\n    </div>\n</a>\n{{ end }}",
                         "ContentTypeSlug": "blog"
                     }
                 }
@@ -243,7 +243,7 @@
                             "Section": "Main",
                             "Cols": 12,
                             "Settings": {
-                                "Template": "<div class=\"blog-post block mb-8 p-4 bg-white shadow rounded-lg\">\n    <h2 class=\"text-2xl font-bold text-gray-800\">{{ Item.Title }}</h2>\n    <div class=\"blog-meta text-sm text-gray-600 mt-2\">\n        <span class=\"blog-slug\">\n            Slug:\n            <span class=\"font-medium text-gray-700\">\n                {{ Item.Slug }}\n            </span>\n        </span> |\n        <span class=\"blog-published-at\">Published At:\n            <span class=\"font-medium\n                text-gray-700\">\n                {{ Item.PublishedAt }}\n            </span></span> |\n        <span class=\"blog-status\">Status:\n            <span class=\"font-medium text-gray-700\">\n                {{ Item.Status }}\n            </span></span> |\n        <span class=\"blog-order\">Order:\n            <span class=\"font-medium text-gray-700\">\n                {{ Item.Order }}\n            </span>\n        </span>\n    </div>\n\n    <div class=\"f-rich-text-content my-8\">{{ Item.Content }}</div>\n    <div class=\"blog-tags mt-4\">\n        <strong class=\"text-gray-800\">Tags:</strong>\n        <div class=\"inline-flex flex-wrap space-x-2 mt-2\">\n            {{ for tag in Item.Tags }}\n                <span class=\"blog-tag bg-blue-100 text-blue-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded\">\n                    {{ tag }}\n                </span>\n            {{ end }}\n        </div>\n    </div>\n\n    {{ if Item.FeaturedImage }}\n        <div class=\"blog-featured-image mt-6\">\n            <img class=\"w-full h-auto rounded-lg\" src=\"{{ Item.FeaturedImage }}\" alt=\"Featured Image\">\n        </div>\n    {{ end }}\n</div>",
+                                "Template": "<div class=\"blog-post block mb-8 p-4 bg-white shadow rounded-lg\">\n    <h2 class=\"text-2xl font-bold text-gray-800\">{{ Item.Title }}</h2>\n {{ if Item.FeaturedImage }}\n        <div class=\"blog-featured-image mt-6\">\n            <img class=\"w-full sm:w-1/2 h-auto rounded-lg\" src=\"/files/{{ Item.FeaturedImage }}\" alt=\"Featured Image\">\n        </div>\n    {{ end }}\n   <div class=\"blog-meta text-sm text-gray-600 mt-2\">\n        <span class=\"blog-slug\">\n            Slug:\n            <span class=\"font-medium text-gray-700\">\n                {{ Item.Slug }}\n            </span>\n        </span> |\n        <span class=\"blog-published-at\">Published At:\n            <span class=\"font-medium\n                text-gray-700\">\n                {{ Item.PublishedAt }}\n            </span></span> |\n        <span class=\"blog-status\">Status:\n            <span class=\"font-medium text-gray-700\">\n                {{ Item.Status }}\n            </span></span> |\n        <span class=\"blog-order\">Order:\n            <span class=\"font-medium text-gray-700\">\n                {{ Item.Order }}\n            </span>\n        </span>\n    </div>\n\n    <div class=\"f-rich-text-content my-8\">{{ Item.Content }}</div>\n    <div class=\"blog-tags mt-4\">\n        <strong class=\"text-gray-800\">Tags:</strong>\n        <div class=\"inline-flex flex-wrap space-x-2 mt-2\">\n            {{ for tag in Item.Tags }}\n                <span class=\"blog-tag bg-blue-100 text-blue-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded\">\n                    {{ tag }}\n                </span>\n            {{ end }}\n        </div>\n    </div>\n\n    \n</div>",
                                 "ContentTypeSlug": "blog"
                             }
                         }
@@ -752,7 +752,7 @@
                     }
                 },
                 {
-                    "Name": "Featured Image",
+                    "Name": "FeaturedImage",
                     "Type": "single-file",
                     "Label": "Featured Image",
                     "Description": "Blog post main image",
@@ -858,7 +858,8 @@
                     "Tags": [ "Html", "Css", "Javascript" ],
                     "Status": "Published",
                     "PublishedAt": "2024-06-06T15:04:05.641Z",
-                    "Order": 1
+                    "Order": 1,
+                    "FeaturedImage": "/files/contents/responsive.jpg"
                 },
                 {
                     "Title": "Exploring the Power of C# LINQ",
@@ -867,7 +868,8 @@
                     "Tags": [ "C#", "Other" ],
                     "Status": "Published",
                     "PublishedAt": "2024-06-07T15:04:05.641Z",
-                    "Order": 2
+                    "Order": 2,
+                    "FeaturedImage": "/files/contents/linq.jpg"
                 },
                 {
                     "Title": "Getting Started with Blazor: A Comprehensive Guide",
@@ -876,7 +878,8 @@
                     "Tags": [ "C#", "Blazor", "Javascript" ],
                     "Status": "In Review",
                     "PublishedAt": "2024-06-09T15:04:05.641Z",
-                    "Order": 3
+                    "Order": 3,
+                    "FeaturedImage": "/files/contents/blazor.jpg"
                 },
                 {
                     "Title": "Mastering CSS Grid for Modern Web Layouts",
@@ -885,7 +888,8 @@
                     "Tags": [ "Css", "Html", "Responsive Design" ],
                     "Status": "Published",
                     "PublishedAt": "2024-06-10T15:04:05.641Z",
-                    "Order": 4
+                    "Order": 4,
+                    "FeaturedImage": "/files/contents/css.webp"
                 },
                 {
                     "Title": "Advanced JavaScript Techniques for Efficient Web Development",
@@ -894,7 +898,8 @@
                     "Tags": [ "Javascript", "Web Development", "Other" ],
                     "Status": "Published",
                     "PublishedAt": "2024-06-11T15:04:05.641Z",
-                    "Order": 5
+                    "Order": 5,
+                    "FeaturedImage": "/files/contents/javascript.jpg"
                 }
             ]
         },

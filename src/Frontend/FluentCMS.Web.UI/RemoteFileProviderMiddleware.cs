@@ -13,8 +13,17 @@ public class RemoteFileProviderMiddleware(RequestDelegate next)
         // Retrieve the IFileClient service from HttpContext.RequestServices
         var fileClient = context.RequestServices.GetRequiredService<IFileClient>();
 
+        HttpResponseMessage response = default!;
+        if (Guid.TryParse(request.Path.Value["/files/".Length..], out var id))
+        {
+            response = await fileClient.DownloadGetResponseMessageByIdAsync(id, context.RequestAborted);
+        }
+        else
+        {
+            response = await fileClient.DownloadGetResponseMessageAsync(url, context.RequestAborted);
+        }
+
         // Use the file client to download the file response
-        var response = await fileClient.DownloadGetResponseMessageAsync(url, context.RequestAborted);
 
         if (response.IsSuccessStatusCode)
         {

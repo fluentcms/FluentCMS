@@ -105,6 +105,8 @@ public class MappingProfile : Profile
         CreateMap<File, FileDetailResponse>();
         CreateMap<Folder, FolderDetailResponse>();
         CreateMap<FolderCreateRequest, Folder>();
+        CreateMap<Folder, FolderTemplate>();
+        CreateMap<File, FileTemplate>();
 
         #endregion
 
