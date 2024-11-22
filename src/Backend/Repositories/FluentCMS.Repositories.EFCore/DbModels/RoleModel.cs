@@ -1,6 +1,7 @@
 ﻿namespace FluentCMS.Repositories.EFCore.DbModels;
 
-public class Role : SiteAssociatedEntity
+[Table("Roles")]
+public class RoleModel : SiteAssociatedEntityModel
 {
     public string Name { get; set; } = default!;
     public string? Description { get; set; }

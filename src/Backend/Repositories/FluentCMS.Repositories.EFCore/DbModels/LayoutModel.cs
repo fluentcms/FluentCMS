@@ -1,6 +1,7 @@
 ﻿namespace FluentCMS.Repositories.EFCore.DbModels;
 
-public class Layout : SiteAssociatedEntity
+[Table("Layouts")]
+public class LayoutModel : SiteAssociatedEntityModel
 {
     public string Name { get; set; } = default!;
     public string Body { get; set; } = default!;

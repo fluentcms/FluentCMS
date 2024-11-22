@@ -1,6 +1,7 @@
 ﻿namespace FluentCMS.Repositories.EFCore.DbModels;
 
-public class ApiToken : AuditableEntity
+[Table("ApiTokens")]
+public class ApiTokenModel : AuditableEntity
 {
     public string Name { get; set; } = default!;
     public string? Description { get; set; }
@@ -8,5 +9,5 @@ public class ApiToken : AuditableEntity
     public string Secret { get; set; } = default!;
     public DateTime? ExpireAt { get; set; }
     public bool Enabled { get; set; } = true;
-    public ICollection<Policy> Policies { get; set; } = [];
+    public ICollection<ApiTokenPolicyModel> Policies { get; set; } = [];
 }

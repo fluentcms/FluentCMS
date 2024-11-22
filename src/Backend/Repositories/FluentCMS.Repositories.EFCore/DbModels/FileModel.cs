@@ -1,6 +1,7 @@
 ﻿namespace FluentCMS.Repositories.EFCore.DbModels;
 
-public class File : SiteAssociatedEntity
+[Table("Files")]
+public class FileModel : SiteAssociatedEntityModel
 {
     public string Name { get; set; } = default!;
     public string NormalizedName { get; set; } = default!;
@@ -9,5 +10,5 @@ public class File : SiteAssociatedEntity
     public string ContentType { get; set; } = default!;
     public long Size { get; set; }
 
-    public Folder Folder { get; set; } = default!; // Navigation property
+    public FolderModel Folder { get; set; } = default!; // Navigation property
 }

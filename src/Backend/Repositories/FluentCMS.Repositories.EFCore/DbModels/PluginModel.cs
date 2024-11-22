@@ -1,6 +1,7 @@
 ﻿namespace FluentCMS.Repositories.EFCore.DbModels;
 
-public class Plugin : SiteAssociatedEntity
+[Table("Plugins")]
+public class PluginModel : SiteAssociatedEntityModel
 {
     public Guid DefinitionId { get; set; }
     public Guid PageId { get; set; }
@@ -10,4 +11,6 @@ public class Plugin : SiteAssociatedEntity
     public int ColsLg { get; set; } = 0;
     public string Section { get; set; } = default!;
     public bool Locked { get; set; } = false;
+    public PageModel Page { get; set; } = default!; // Navigation property
+    public PluginDefinitionModel PluginDefinition { get; set; } = default!; // Navigation property
 }

@@ -1,6 +1,7 @@
 ﻿namespace FluentCMS.Repositories.EFCore.DbModels;
 
-public class Page : SiteAssociatedEntity
+[Table("Pages")]
+public class PageModel : SiteAssociatedEntityModel
 {
     public string Title { get; set; } = string.Empty;
     public Guid? ParentId { get; set; }
@@ -10,4 +11,10 @@ public class Page : SiteAssociatedEntity
     public Guid? EditLayoutId { get; set; }
     public Guid? DetailLayoutId { get; set; }
     public bool Locked { get; set; } = false;
+
+    public PageModel? Parent { get; set; } // Navigation property
+    public LayoutModel? Layout { get; set; } // Navigation property
+    public LayoutModel? EditLayout { get; set; } // Navigation property
+    public LayoutModel? DetailLayout { get; set; } // Navigation property
+    public ICollection<PageModel> Children { get; set; } = []; // Navigation property
 }

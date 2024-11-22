@@ -1,6 +1,7 @@
 namespace FluentCMS.Repositories.EFCore.DbModels;
 
-public class Block : SiteAssociatedEntity
+[Table("Blocks")]
+public class BlockModel : SiteAssociatedEntityModel
 {
     public string Name { get; set; } = default!;
     public string Category { get; set; } = default!;

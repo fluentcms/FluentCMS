@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Repositories.EFCore.DbModels;
 
-public interface IAuditableEntity : IEntity
+public interface IAuditableEntityModel : IEntityModel
 {
     string CreatedBy { get; set; }
     DateTime CreatedAt { get; set; }
@@ -8,7 +8,7 @@ public interface IAuditableEntity : IEntity
     DateTime? ModifiedAt { get; set; }
 }
 
-public abstract class AuditableEntity : Entity, IAuditableEntity
+public abstract class AuditableEntityModel : EntityModel, IAuditableEntityModel
 {
     public string CreatedBy { get; set; } = default!;
     public DateTime CreatedAt { get; set; }
