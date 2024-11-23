@@ -351,7 +351,7 @@ GO
 CREATE TABLE [dbo].[Plugins](
 	[Id] [uniqueidentifier] NOT NULL,
 	[SiteId] [uniqueidentifier] NOT NULL,
-	[DefinitionId] [uniqueidentifier] NOT NULL,
+	[PluginDefinitionId] [uniqueidentifier] NOT NULL,
 	[PageId] [uniqueidentifier] NOT NULL,
 	[Order] [int] NOT NULL,
 	[Cols] [tinyint] NOT NULL,
@@ -397,7 +397,6 @@ SET QUOTED_IDENTIFIER ON
 GO
 CREATE TABLE [dbo].[Settings](
 	[Id] [uniqueidentifier] NOT NULL,
-	[SiteId] [uniqueidentifier] NOT NULL,
 	[CreatedBy] [nvarchar](255) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
 	[ModifiedBy] [nvarchar](255) NULL,
@@ -622,7 +621,7 @@ ON DELETE CASCADE
 GO
 ALTER TABLE [dbo].[Plugins] CHECK CONSTRAINT [FK_Plugins_Pages]
 GO
-ALTER TABLE [dbo].[Plugins]  WITH CHECK ADD  CONSTRAINT [FK_Plugins_PluginDefinitions] FOREIGN KEY([DefinitionId])
+ALTER TABLE [dbo].[Plugins]  WITH CHECK ADD  CONSTRAINT [FK_Plugins_PluginDefinitions] FOREIGN KEY([PluginDefinitionId])
 REFERENCES [dbo].[PluginDefinitions] ([Id])
 ON DELETE CASCADE
 GO
@@ -633,12 +632,6 @@ REFERENCES [dbo].[Sites] ([Id])
 ON DELETE CASCADE
 GO
 ALTER TABLE [dbo].[Roles] CHECK CONSTRAINT [FK_Roles_Sites]
-GO
-ALTER TABLE [dbo].[Settings]  WITH CHECK ADD  CONSTRAINT [FK_Settings_Sites] FOREIGN KEY([SiteId])
-REFERENCES [dbo].[Sites] ([Id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[Settings] CHECK CONSTRAINT [FK_Settings_Sites]
 GO
 ALTER TABLE [dbo].[SettingValues]  WITH CHECK ADD  CONSTRAINT [FK_SettingValues_Settings] FOREIGN KEY([SettingId])
 REFERENCES [dbo].[Settings] ([Id])

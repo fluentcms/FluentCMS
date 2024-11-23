@@ -34,10 +34,12 @@ public class MappingProfile : Profile
 
         // Map between ContentModel and Content
         CreateMap<ContentModel, Content>()
+            .ForMember(dest=> dest.TypeId, opt => opt.MapFrom(src => src.ContentTypeId)) // Map TypeId
             .ForMember(dest => dest.Data, opt => opt.MapFrom(src => src.Data.ToDictionary(
                 data => data.Key,
                 data => JsonSerializer.Deserialize<object?>(data.Value, jsonSerializerOptions))))
             .ReverseMap()
+            .ForMember(dest => dest.ContentTypeId, opt => opt.MapFrom(src => src.TypeId)) // Map TypeId
             .ForMember(dest => dest.Data, opt => opt.MapFrom(src => src.Data.Select(kv => new ContentDataModel
             {
                 Key = kv.Key,
@@ -121,7 +123,10 @@ public class MappingProfile : Profile
                     data => data.Key,
                     data => JsonSerializer.Deserialize<object?>(data.Value, jsonSerializerOptions)) ?? []);
 
-        CreateMap<PluginModel, Plugin>().ReverseMap();
+        CreateMap<PluginModel, Plugin>()
+            .ForMember(dest => dest.DefinitionId, opt => opt.MapFrom(src => src.PluginDefinitionId))
+            .ReverseMap()
+            .ForMember(dest => dest.PluginDefinitionId, opt => opt.MapFrom(src => src.DefinitionId));
 
         CreateMap<RoleModel, Role>().ReverseMap();
 

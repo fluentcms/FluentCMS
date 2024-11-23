@@ -7,5 +7,4 @@ public class ContentTypeModel : SiteAssociatedEntityModel
     public string Title { get; set; } = default!;
     public string? Description { get; set; }
     public ICollection<ContentTypeFieldModel> Fields { get; set; } = [];
-    public ICollection<ContentModel> Contents { get; set; } = [];
 }

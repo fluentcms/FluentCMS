@@ -3,7 +3,7 @@
 [Table("Plugins")]
 public class PluginModel : SiteAssociatedEntityModel
 {
-    public Guid DefinitionId { get; set; }
+    public Guid PluginDefinitionId { get; set; }
     public Guid PageId { get; set; }
     public int Order { get; set; } = 0;
     public int Cols { get; set; } = 12;

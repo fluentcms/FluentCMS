@@ -16,10 +16,10 @@ services.AddCmsServices(configuration);
 //services.AddMongoDbRepositories("MongoDb");
 
 // Use Sqlite as database
-//services.AddSqliteRepositories("Sqlite");
+services.AddSqliteRepositories("Sqlite");
 
 // Use SqlServer as database
-services.AddSqlServerRepositories("SqlServer");
+//services.AddSqlServerRepositories("SqlServer");
 
 // Use Sqlite as database
 //services.AddMySqlRepositories("MySql");

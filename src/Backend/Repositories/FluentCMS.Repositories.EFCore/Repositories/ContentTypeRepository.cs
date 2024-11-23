@@ -4,7 +4,7 @@ public class ContentTypeRepository(FluentCmsDbContext dbContext, IMapper mapper,
 {
     public async Task<ContentType?> GetBySlug(Guid siteId, string contentTypeSlug, CancellationToken cancellationToken = default)
     {
-        var dbEntities = await DbContext.Set<ContentType>().FirstOrDefaultAsync(x => x.SiteId == siteId && x.Slug == contentTypeSlug, cancellationToken);
+        var dbEntities = await DbContext.ContentTypes.FirstOrDefaultAsync(x => x.SiteId == siteId && x.Slug == contentTypeSlug, cancellationToken);
         return Mapper.Map<ContentType>(dbEntities);
     }
 }

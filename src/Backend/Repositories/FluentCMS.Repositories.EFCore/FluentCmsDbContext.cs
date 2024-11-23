@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
 namespace FluentCMS.Repositories.EFCore;
@@ -59,6 +60,41 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                 .HasForeignKey(e => e.ApiTokenId);
         });
 
+        modelBuilder.Entity<ContentTypeModel>(entity =>
+        {
+            entity.HasMany(e => e.Fields)
+                .WithOne(f => f.ContentType)
+                .HasForeignKey(f => f.ContentTypeId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Fields
+
+            entity.Navigation(e => e.Fields).AutoInclude();
+        });
+
+        modelBuilder.Entity<PluginContentModel>(entity =>
+        {
+            entity.HasMany(e => e.Data)
+                .WithOne(f => f.PluginContent)
+                .HasForeignKey(f => f.PluginContentId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Fields
+
+            entity.Navigation(e => e.Data).AutoInclude();
+        });
+
+        modelBuilder.Entity<PluginDefinitionModel>(entity =>
+        {
+            entity.HasMany(e => e.Types)
+                .WithOne(f => f.PluginDefinition)
+                .HasForeignKey(f => f.PluginDefinitionId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Fields
+
+            entity.HasMany(e => e.Plugins)
+                .WithOne(f => f.PluginDefinition)
+                .HasForeignKey(f => f.PluginDefinitionId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Fields
+
+            entity.Navigation(e => e.Types).AutoInclude();
+        });
+
         //modelBuilder.Entity<BlockModel>(entity =>
         //{
         //    entity.HasOne(e => e.Site)
@@ -66,12 +102,14 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
         //        .HasForeignKey(e => e.SiteId);
         //});
 
-        //modelBuilder.Entity<ContentDataModel>(entity =>
-        //{
-        //    entity.HasOne(e => e.Content)
-        //        .WithMany(e => e.ContentData)
-        //        .HasForeignKey(e => e.ContentId);
-        //});
+        modelBuilder.Entity<ContentModel>(entity =>
+        {
+            entity.HasMany(e => e.Data)
+                .WithOne(e => e.Content)
+                .HasForeignKey(e => e.ContentId);
+
+            entity.Navigation(e => e.Data).AutoInclude();
+        });
 
         //modelBuilder.Entity<ContentModel>(entity =>
         //{
