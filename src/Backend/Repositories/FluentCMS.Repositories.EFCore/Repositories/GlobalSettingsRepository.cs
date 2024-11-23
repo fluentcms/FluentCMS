@@ -13,27 +13,26 @@ public class GlobalSettingsRepository(FluentCmsDbContext dbContext, IApiExecutio
         var existingSettings = await Get(cancellationToken);
 
         if (existingSettings == null)
-            return await Create(settings, cancellationToken);
+        {
+            SetAuditableFieldsForCreate(settings);
 
-        // since we have always one record on the table, the id is always the same
-        settings.Id = existingSettings.Id;
+            var dbEntities = mapper.Map<GlobalSettingsModel>(settings);
 
-        SetAuditableFieldsForUpdate(settings);
+            dbContext.GlobalSettings.Add(dbEntities);
+            await dbContext.SaveChangesAsync(cancellationToken);
 
-        dbContext.GlobalSettings.Update(settings);
+            return mapper.Map(dbEntities, settings);
+        }
+        else
+        {
+            // since we have always one record on the table, the id is always the same
+            settings.Id = existingSettings.Id;
+            SetAuditableFieldsForUpdate(settings);
 
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return settings;
-    }
-
-    private async Task<GlobalSettings?> Create(GlobalSettings settings, CancellationToken cancellationToken = default)
-    {
-        SetAuditableFieldsForCreate(settings);
-        dbContext.GlobalSettings.Add(settings);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return settings;
+            var dbEntities = mapper.Map(settings, existingSettings);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return mapper.Map(dbEntities, settings);
+        }
     }
 
     private void SetAuditableFieldsForCreate(GlobalSettings settings)

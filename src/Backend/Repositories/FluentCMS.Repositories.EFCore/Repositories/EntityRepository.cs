@@ -21,7 +21,7 @@ public class EntityRepository<TEntity, TDBEntity>(FluentCmsDbContext dbContext, 
         await _dbSet.AddAsync(dbEntity, cancellationToken);
         await DbContext.SaveChangesAsync(cancellationToken);
 
-        return entity;
+        return Mapper.Map(dbEntity, entity);
     }
 
     public virtual async Task<IEnumerable<TEntity>> CreateMany(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
@@ -33,7 +33,9 @@ public class EntityRepository<TEntity, TDBEntity>(FluentCmsDbContext dbContext, 
         var dbEntities = Mapper.Map<List<TDBEntity>>(entities);
 
         await _dbSet.AddRangeAsync(dbEntities, cancellationToken);
+
         await DbContext.SaveChangesAsync(cancellationToken);
+
         return entities;
     }
 
@@ -48,7 +50,8 @@ public class EntityRepository<TEntity, TDBEntity>(FluentCmsDbContext dbContext, 
         _dbSet.Update(dbEntity);
 
         await DbContext.SaveChangesAsync(cancellationToken);
-        return entity;
+
+        return Mapper.Map(dbEntity, entity);
     }
 
     public virtual async Task<TEntity?> Delete(Guid id, CancellationToken cancellationToken = default)
@@ -58,6 +61,7 @@ public class EntityRepository<TEntity, TDBEntity>(FluentCmsDbContext dbContext, 
             return null;
 
         _dbSet.Remove(dbEntity);
+
         await DbContext.SaveChangesAsync(cancellationToken);
 
         return Mapper.Map<TEntity>(dbEntity);
@@ -68,8 +72,11 @@ public class EntityRepository<TEntity, TDBEntity>(FluentCmsDbContext dbContext, 
         var dbEntities = await _dbSet.Where(x => ids.Contains(x.Id)).ToListAsync(cancellationToken);
         if (dbEntities.Count == 0)
             return [];
+
         _dbSet.RemoveRange(dbEntities);
+
         await DbContext.SaveChangesAsync(cancellationToken);
+
         return Mapper.Map<IEnumerable<TEntity>>(dbEntities);
     }
 

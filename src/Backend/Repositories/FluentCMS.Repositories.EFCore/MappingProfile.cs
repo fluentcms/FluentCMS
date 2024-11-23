@@ -1,6 +1,4 @@
-﻿using AutoMapper;
-using FluentCMS.Repositories.EFCore.DbModels;
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace FluentCMS.Repositories.EFCore;
 
@@ -13,7 +11,12 @@ public class MappingProfile : Profile
 
         // Generic mappings for base entities
         CreateMap<EntityModel, Entity>().ReverseMap();
-        CreateMap<AuditableEntityModel, AuditableEntity>().ReverseMap();
+
+        // CreatedBy and CreatedAt should not be mapped
+        CreateMap<AuditableEntityModel, AuditableEntity>().ReverseMap().
+            ForMember(dest => dest.CreatedBy, opt => opt.Ignore()).
+            ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
+
         CreateMap<SiteAssociatedEntityModel, SiteAssociatedEntity>().ReverseMap();
 
         // Map between ApiTokenModel and ApiToken

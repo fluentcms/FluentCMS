@@ -37,25 +37,25 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        //var jsonSerializerOptions = new JsonSerializerOptions();
-        //jsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
+        var jsonSerializerOptions = new JsonSerializerOptions();
+        jsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
 
-        //modelBuilder.Entity<ApiTokenModel>(entity =>
-        //{
-        //    entity.HasMany(e => e.Policies)
-        //        .WithOne(p => p.ApiToken)
-        //        .HasForeignKey(p => p.ApiTokenId)
-        //        .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Policies
+        modelBuilder.Entity<ApiTokenModel>(entity =>
+        {
+            entity.HasMany(e => e.Policies)
+                .WithOne(p => p.ApiToken)
+                .HasForeignKey(p => p.ApiTokenId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Policies
 
-        //    entity.Navigation(e => e.Policies).AutoInclude();
-        //});
+            entity.Navigation(e => e.Policies).AutoInclude();
+        });
 
-        //modelBuilder.Entity<ApiTokenPolicyModel>(entity =>
-        //{
-        //    entity.HasOne(e => e.ApiToken)
-        //        .WithMany(e => e.Policies)
-        //        .HasForeignKey(e => e.ApiTokenId);
-        //});
+        modelBuilder.Entity<ApiTokenPolicyModel>(entity =>
+        {
+            entity.HasOne(e => e.ApiToken)
+                .WithMany(e => e.Policies)
+                .HasForeignKey(e => e.ApiTokenId);
+        });
 
         //modelBuilder.Entity<BlockModel>(entity =>
         //{
@@ -145,27 +145,31 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
         //    entity.HasOne(e => e.Type).WithMany(ct => ct.Fields).HasForeignKey(e => e.TypeId);
         //});
 
-        //// Settings Configuration
-        //modelBuilder.Entity<SettingsModel>(entity =>
-        //{
-        //    entity.ToTable("Settings");
-        //    entity.HasKey(e => e.Id);
-        //    entity.Property(e => e.Values).HasConversion(
-        //        v => string.Join(';', v.Select(kvp => $"{kvp.Key}:{kvp.Value}")),
-        //        v => v.Split(';', StringSplitOptions.RemoveEmptyEntries)
-        //              .Select(kv => kv.Split(':'))
-        //              .ToDictionary(k => k[0], v => v[1])
-        //    );
-        //});
+        modelBuilder.Entity<SettingsModel>(entity =>
+        {
+            // Configure the relationship with SettingValuesModel
+            entity.HasMany(e => e.Values) // One SettingsModel has many SettingValuesModel
+                .WithOne(e => e.Setting) // Each SettingValuesModel belongs to one SettingsModel
+                .HasForeignKey(e => e.SettingId) // Foreign key in SettingValuesModel
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete
 
-        //// Other Entity Configurations
-        //modelBuilder.Entity<GlobalSettingsModel>().ToTable("GlobalSettings");
-        //modelBuilder.Entity<LayoutModel>().ToTable("Layouts");
-        //modelBuilder.Entity<FileModel>().ToTable("Files");
-        //modelBuilder.Entity<FolderModel>().ToTable("Folders");
-        //modelBuilder.Entity<BlockModel>().ToTable("Blocks");
-        //modelBuilder.Entity<PluginDefinitionModel>().ToTable("PluginDefinitions");
-        //modelBuilder.Entity<ContentTypeModel>().ToTable("ContentTypes");
+            // Enable automatic inclusion of navigation property
+            entity.Navigation(e => e.Values).AutoInclude(); // Always include Values when querying SettingsModel
+        });
+
+        // Configure SettingValuesModel
+        modelBuilder.Entity<SettingValuesModel>(entity =>
+        {
+            // Define the primary key
+            entity.HasKey(e => e.Id);
+
+            // Define the foreign key to SettingsModel
+            entity.HasOne(e => e.Setting) // Each SettingValuesModel belongs to one SettingsModel
+                .WithMany(e => e.Values) // One SettingsModel has many SettingValuesModel
+                .HasForeignKey(e => e.SettingId) // Foreign key in SettingValuesModel
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete on SettingsModel deletion
+
+        });
 
         base.OnModelCreating(modelBuilder);
     }
