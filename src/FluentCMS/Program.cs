@@ -10,7 +10,7 @@ services.AddUIComponents();
 services.AddCmsServices(configuration);
 
 // Use LiteDB as database
-services.AddLiteDbRepositories("LiteDb");
+//services.AddLiteDbRepositories("LiteDb");
 
 // Use MongoDB as database
 //services.AddMongoDbRepositories("MongoDb");
@@ -19,7 +19,7 @@ services.AddLiteDbRepositories("LiteDb");
 //services.AddSqliteRepositories("Sqlite");
 
 // Use SqlServer as database
-//services.AddSqlServerRepositories("SqlServer");
+services.AddSqlServerRepositories("SqlServer");
 
 // Use Sqlite as database
 //services.AddMySqlRepositories("MySql");

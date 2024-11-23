@@ -1,4 +1,4 @@
-﻿using FluentCMS.Repositories.EFCore.DbModels;
+﻿using Microsoft.AspNetCore.Identity;
 using System.Text.Json;
 
 namespace FluentCMS.Repositories.EFCore;
@@ -169,6 +169,30 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                 .HasForeignKey(e => e.SettingId) // Foreign key in SettingValuesModel
                 .OnDelete(DeleteBehavior.Cascade); // Cascade delete on SettingsModel deletion
 
+        });
+
+        modelBuilder.Entity<UserModel>(entity =>
+        {
+
+            entity.Property(u => u.Tokens)
+                .HasConversion(
+                    tokens => JsonSerializer.Serialize(tokens, jsonSerializerOptions),
+                    tokens => JsonSerializer.Deserialize<List<IdentityUserToken<Guid>>>(tokens, jsonSerializerOptions) ?? new List<IdentityUserToken<Guid>>());
+
+            entity.Property(u => u.Logins)
+                .HasConversion(
+                    logins => JsonSerializer.Serialize(logins, jsonSerializerOptions),
+                    logins => JsonSerializer.Deserialize<List<IdentityUserLogin<Guid>>>(logins, jsonSerializerOptions) ?? new List<IdentityUserLogin<Guid>>());
+
+            entity.Property(u => u.RecoveryCodes)
+                .HasConversion(
+                    codes => JsonSerializer.Serialize(codes, jsonSerializerOptions),
+                    codes => JsonSerializer.Deserialize<List<UserTwoFactorRecoveryCode>>(codes, jsonSerializerOptions) ?? new List<UserTwoFactorRecoveryCode>());
+
+            entity.Property(u => u.Claims)
+                .HasConversion(
+                    claims => JsonSerializer.Serialize(claims, jsonSerializerOptions),
+                    claims => JsonSerializer.Deserialize<List<IdentityUserClaim<Guid>>>(claims, jsonSerializerOptions) ?? new List<IdentityUserClaim<Guid>>());
         });
 
         base.OnModelCreating(modelBuilder);

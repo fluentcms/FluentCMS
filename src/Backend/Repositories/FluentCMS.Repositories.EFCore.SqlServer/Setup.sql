@@ -1,285 +1,608 @@
-﻿-- Table for ApiTokens
-CREATE TABLE ApiTokens (
-    Id UNIQUEIDENTIFIER PRIMARY KEY, -- GUID as UNIQUEIDENTIFIER
-    Name NVARCHAR(255) NOT NULL,
-    Description NVARCHAR(MAX),
-    Key NVARCHAR(255) NOT NULL,
-    Secret NVARCHAR(255) NOT NULL,
-    ExpireAt DATETIME,
-    Enabled BIT NOT NULL DEFAULT 1, -- Boolean as BIT
-    CreatedBy NVARCHAR(255) NOT NULL,
-    CreatedAt DATETIME NOT NULL,
-    ModifiedBy NVARCHAR(255),
-    ModifiedAt DATETIME
+﻿SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Users] (
+    [Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY, -- Primary key
+    [UserName] NVARCHAR(256) NULL,             -- From IdentityUser
+    [NormalizedUserName] NVARCHAR(256) NULL,   -- From IdentityUser
+    [Email] NVARCHAR(256) NULL,                -- From IdentityUser
+    [NormalizedEmail] NVARCHAR(256) NULL,      -- From IdentityUser
+    [EmailConfirmed] BIT NOT NULL DEFAULT 0,   -- From IdentityUser
+    [PasswordHash] NVARCHAR(MAX) NULL,         -- From IdentityUser
+    [SecurityStamp] NVARCHAR(MAX) NULL,        -- From IdentityUser
+    [ConcurrencyStamp] NVARCHAR(MAX) NULL,     -- From IdentityUser
+    [PhoneNumber] NVARCHAR(MAX) NULL,          -- From IdentityUser
+    [PhoneNumberConfirmed] BIT NOT NULL DEFAULT 0, -- From IdentityUser
+    [TwoFactorEnabled] BIT NOT NULL DEFAULT 0, -- From IdentityUser
+    [LockoutEnd] DATETIMEOFFSET NULL,          -- From IdentityUser
+    [LockoutEnabled] BIT NOT NULL DEFAULT 0,   -- From IdentityUser
+    [AccessFailedCount] INT NOT NULL DEFAULT 0,-- From IdentityUser
+
+    -- Custom fields
+    [LoginAt] DATETIME NULL,
+    [LoginCount] INT NOT NULL DEFAULT 0,
+    [PasswordChangedAt] DATETIME NULL,
+    [PasswordChangedBy] NVARCHAR(256) NULL,
+    [Enabled] BIT NOT NULL DEFAULT 1,
+    [CreatedBy] NVARCHAR(256) NOT NULL,
+    [CreatedAt] DATETIME NOT NULL DEFAULT GETDATE(),
+    [ModifiedBy] NVARCHAR(256) NULL,
+    [ModifiedAt] DATETIME NULL,
+    [AuthenticatorKey] NVARCHAR(512) NULL,
+    [FirstName] NVARCHAR(256) NULL,
+    [LastName] NVARCHAR(256) NULL,
+
+    -- JSON fields
+    [Logins] NVARCHAR(MAX) NULL,              -- JSON: IdentityUserLogin<Guid>
+    [Tokens] NVARCHAR(MAX) NULL,              -- JSON: IdentityUserToken<Guid>
+    [RecoveryCodes] NVARCHAR(MAX) NULL,       -- JSON: UserTwoFactorRecoveryCode
+    [Claims] NVARCHAR(MAX) NULL               -- JSON: IdentityUserClaim<Guid>
 );
 
--- Table for Policies (related to ApiTokens)
-CREATE TABLE ApiTokenPolicies (
-    Id UNIQUEIDENTIFIER PRIMARY KEY, -- GUID as UNIQUEIDENTIFIER
-    ApiTokenId UNIQUEIDENTIFIER NOT NULL, -- Foreign key to ApiTokens
-    Area NVARCHAR(255) NOT NULL,
-    Actions NVARCHAR(MAX) NOT NULL, -- Comma-separated string to store list of actions
-    CONSTRAINT FK_ApiTokenPolicies_ApiTokens FOREIGN KEY (ApiTokenId) REFERENCES ApiTokens(Id) ON DELETE CASCADE
-);
-
--- Index for ApiTokenPolicies by ApiTokenId for optimized querying
-CREATE INDEX IX_ApiTokenPolicies_ApiTokenId ON ApiTokenPolicies (ApiTokenId);
-
--- Table for GlobalSettings
-CREATE TABLE GlobalSettings (
-    Id UNIQUEIDENTIFIER PRIMARY KEY,
-    SuperAdmins NVARCHAR(MAX), -- Comma-separated string for list of super admins
-    CreatedBy NVARCHAR(255) NOT NULL,
-    CreatedAt DATETIME NOT NULL,
-    ModifiedBy NVARCHAR(255),
-    ModifiedAt DATETIME
-);
-
--- Table for PluginDefinitions
-CREATE TABLE PluginDefinitions (
-    Id UNIQUEIDENTIFIER PRIMARY KEY,
-    Name NVARCHAR(255) NOT NULL,
-    Category NVARCHAR(255) NOT NULL,
-    Assembly NVARCHAR(255) NOT NULL,
-    Icon NVARCHAR(255), -- Nullable field
-    Description NVARCHAR(MAX), -- Nullable field
-    Locked BIT NOT NULL DEFAULT 0, -- Boolean as BIT
-    CreatedBy NVARCHAR(255) NOT NULL,
-    CreatedAt DATETIME NOT NULL,
-    ModifiedBy NVARCHAR(255),
-    ModifiedAt DATETIME
-);
-
--- Table for PluginDefinitionTypes (related to PluginDefinitions)
-CREATE TABLE PluginDefinitionTypes (
-    Id UNIQUEIDENTIFIER PRIMARY KEY, -- GUID as UNIQUEIDENTIFIER
-    PluginDefinitionId UNIQUEIDENTIFIER NOT NULL, -- Foreign key to PluginDefinitions
-    Name NVARCHAR(255) NOT NULL,
-    Type NVARCHAR(255) NOT NULL,
-    IsDefault BIT NOT NULL DEFAULT 0, -- Boolean as BIT
-    CONSTRAINT FK_PluginDefinitionTypes_PluginDefinitions FOREIGN KEY (PluginDefinitionId) REFERENCES PluginDefinitions(Id) ON DELETE CASCADE
-);
-
--- Index for PluginDefinitionTypes by PluginDefinitionId and Name
-CREATE INDEX IX_PluginDefinitionTypes_PluginDefinitionId ON PluginDefinitionTypes (PluginDefinitionId);
-
--- Table for Sites
-CREATE TABLE Sites (
-    Id UNIQUEIDENTIFIER PRIMARY KEY,
-    Name NVARCHAR(255) NOT NULL,
-    Description NVARCHAR(MAX),
-    Urls NVARCHAR(MAX), -- Comma-separated string for URLs list
-    LayoutId UNIQUEIDENTIFIER NOT NULL,
-    DetailLayoutId UNIQUEIDENTIFIER NOT NULL,
-    EditLayoutId UNIQUEIDENTIFIER NOT NULL,
-    CreatedBy NVARCHAR(255) NOT NULL,
-    CreatedAt DATETIME NOT NULL,
-    ModifiedBy NVARCHAR(255),
-    ModifiedAt DATETIME
-);
-
--- Add more tables similarly using UNIQUEIDENTIFIER for GUID and proper constraints...
-
--- Below are some common patterns reused in other table definitions:
--- - UNIQUEIDENTIFIER for GUID fields
--- - NVARCHAR for text fields with appropriate length
--- - CONSTRAINT for foreign keys with ON DELETE CASCADE
--- - BIT for boolean fields
--- - DATETIME for date-time fields
--- - CREATE INDEX for optimizing queries, especially on SiteId fields
-
--- Table for Roles
-CREATE TABLE Roles (
-    Id UNIQUEIDENTIFIER PRIMARY KEY,
-    SiteId UNIQUEIDENTIFIER NOT NULL,
-    Name NVARCHAR(255) NOT NULL,
-    Description NVARCHAR(MAX),
-    Type INT NOT NULL, -- Enum stored as INT
-    CreatedBy NVARCHAR(255) NOT NULL,
-    CreatedAt DATETIME NOT NULL,
-    ModifiedBy NVARCHAR(255),
-    ModifiedAt DATETIME,
-    CONSTRAINT FK_Roles_Sites FOREIGN KEY (SiteId) REFERENCES Sites(Id) ON DELETE CASCADE
-);
-
--- Index for Roles by SiteId and Name
-CREATE INDEX IX_Roles_SiteId_Name ON Roles (SiteId, Name);
-
--- Enable foreign key checks (default in SQL Server)
--- This doesn't require explicit statements like PRAGMA in SQLite.
-
--- Table for Settings
-CREATE TABLE Settings (
-    Id UNIQUEIDENTIFIER PRIMARY KEY, -- The Id of the entity this setting belongs to
-    CreatedBy NVARCHAR(255) NOT NULL,
-    CreatedAt DATETIME NOT NULL,
-    ModifiedBy NVARCHAR(255),
-    ModifiedAt DATETIME
-);
-
--- Table for SettingValues
-CREATE TABLE SettingValues (
-    Id UNIQUEIDENTIFIER PRIMARY KEY,
-    SettingsId UNIQUEIDENTIFIER NOT NULL, -- Foreign key to Settings
-    [Key] NVARCHAR(255) NOT NULL,
-    [Value] NVARCHAR(MAX) NOT NULL,
-    CONSTRAINT FK_SettingValues_Settings FOREIGN KEY (SettingsId) REFERENCES Settings(Id) ON DELETE CASCADE
-);
-
-CREATE INDEX IX_SettingValues_SettingsId_Key ON SettingValues (SettingsId, [Key]);
-
--- Table for Users
-CREATE TABLE Users (
-    Id UNIQUEIDENTIFIER PRIMARY KEY,
-    UserName NVARCHAR(255),
-    NormalizedUserName NVARCHAR(255),
-    Email NVARCHAR(255),
-    NormalizedEmail NVARCHAR(255),
-    EmailConfirmed BIT NOT NULL,
-    PasswordHash NVARCHAR(MAX),
-    SecurityStamp NVARCHAR(255),
-    ConcurrencyStamp NVARCHAR(255),
-    PhoneNumber NVARCHAR(255),
-    PhoneNumberConfirmed BIT NOT NULL,
-    TwoFactorEnabled BIT NOT NULL,
-    LockoutEnd DATETIME,
-    LockoutEnabled BIT NOT NULL,
-    AccessFailedCount INT NOT NULL,
-    LoginAt DATETIME,
-    LoginCount INT NOT NULL,
-    PasswordChangedAt DATETIME,
-    PasswordChangedBy NVARCHAR(255),
-    Enabled BIT NOT NULL DEFAULT 1,
-    CreatedBy NVARCHAR(255) NOT NULL,
-    CreatedAt DATETIME NOT NULL,
-    ModifiedBy NVARCHAR(255),
-    ModifiedAt DATETIME,
-    AuthenticatorKey NVARCHAR(255),
-    FirstName NVARCHAR(255),
-    LastName NVARCHAR(255)
-);
-
-CREATE INDEX IX_Users_UserName_Email ON Users (UserName, Email);
-
--- Table for UserRoles
-CREATE TABLE UserRoles (
-    Id UNIQUEIDENTIFIER PRIMARY KEY,
-    SiteId UNIQUEIDENTIFIER NOT NULL, -- Foreign key to Sites
-    UserId UNIQUEIDENTIFIER NOT NULL,
-    RoleId UNIQUEIDENTIFIER NOT NULL,
-    CreatedBy NVARCHAR(255) NOT NULL,
-    CreatedAt DATETIME NOT NULL,
-    ModifiedBy NVARCHAR(255),
-    ModifiedAt DATETIME,
-    CONSTRAINT FK_UserRoles_Sites FOREIGN KEY (SiteId) REFERENCES Sites(Id) ON DELETE CASCADE,
-    CONSTRAINT FK_UserRoles_Roles FOREIGN KEY (RoleId) REFERENCES Roles(Id) ON DELETE CASCADE
-);
-
-CREATE INDEX IX_UserRoles_UserId_RoleId ON UserRoles (UserId, RoleId);
-
--- Table for Roles
-CREATE TABLE Roles (
-    Id UNIQUEIDENTIFIER PRIMARY KEY,
-    SiteId UNIQUEIDENTIFIER NOT NULL,
-    Name NVARCHAR(255) NOT NULL,
-    Description NVARCHAR(MAX),
-    Type INT NOT NULL,
-    CreatedBy NVARCHAR(255) NOT NULL,
-    CreatedAt DATETIME NOT NULL,
-    ModifiedBy NVARCHAR(255),
-    ModifiedAt DATETIME,
-    CONSTRAINT FK_Roles_Sites FOREIGN KEY (SiteId) REFERENCES Sites(Id) ON DELETE CASCADE
-);
-
-CREATE INDEX IX_Roles_SiteId_Name ON Roles (SiteId, Name);
-
--- Table for Folders
-CREATE TABLE Folders (
-    Id UNIQUEIDENTIFIER PRIMARY KEY,
-    SiteId UNIQUEIDENTIFIER NOT NULL,
-    Name NVARCHAR(255) NOT NULL,
-    NormalizedName NVARCHAR(255) NOT NULL,
-    ParentId UNIQUEIDENTIFIER,
-    CreatedBy NVARCHAR(255) NOT NULL,
-    CreatedAt DATETIME NOT NULL,
-    ModifiedBy NVARCHAR(255),
-    ModifiedAt DATETIME,
-    CONSTRAINT FK_Folders_Sites FOREIGN KEY (SiteId) REFERENCES Sites(Id) ON DELETE CASCADE
-);
-
-CREATE INDEX IX_Folders_SiteId_Name ON Folders (SiteId, Name);
-
--- Table for Files
-CREATE TABLE Files (
-    Id UNIQUEIDENTIFIER PRIMARY KEY,
-    SiteId UNIQUEIDENTIFIER NOT NULL,
-    Name NVARCHAR(255) NOT NULL,
-    NormalizedName NVARCHAR(255) NOT NULL,
-    FolderId UNIQUEIDENTIFIER NOT NULL,
-    Extension NVARCHAR(10) NOT NULL,
-    ContentType NVARCHAR(255) NOT NULL,
-    Size BIGINT NOT NULL,
-    CreatedBy NVARCHAR(255) NOT NULL,
-    CreatedAt DATETIME NOT NULL,
-    ModifiedBy NVARCHAR(255),
-    ModifiedAt DATETIME,
-    CONSTRAINT FK_Files_Sites FOREIGN KEY (SiteId) REFERENCES Sites(Id) ON DELETE CASCADE,
-    CONSTRAINT FK_Files_Folders FOREIGN KEY (FolderId) REFERENCES Folders(Id) ON DELETE CASCADE
-);
-
-CREATE INDEX IX_Files_SiteId_Name ON Files (SiteId, Name);
-
--- Table for Blocks
-CREATE TABLE Blocks (
-    Id UNIQUEIDENTIFIER PRIMARY KEY,
-    SiteId UNIQUEIDENTIFIER NOT NULL,
-    Name NVARCHAR(255) NOT NULL,
-    Category NVARCHAR(255) NOT NULL,
-    Description NVARCHAR(MAX),
-    Content NVARCHAR(MAX) NOT NULL,
-    CreatedBy NVARCHAR(255) NOT NULL,
-    CreatedAt DATETIME NOT NULL,
-    ModifiedBy NVARCHAR(255),
-    ModifiedAt DATETIME,
-    CONSTRAINT FK_Blocks_Sites FOREIGN KEY (SiteId) REFERENCES Sites(Id) ON DELETE CASCADE
-);
-
-CREATE INDEX IX_Blocks_SiteId_Name ON Blocks (SiteId, Name);
-
--- Table for Pages
-CREATE TABLE Pages (
-    Id UNIQUEIDENTIFIER PRIMARY KEY,
-    SiteId UNIQUEIDENTIFIER NOT NULL,
-    Title NVARCHAR(255) NOT NULL,
-    ParentId UNIQUEIDENTIFIER,
-    [Order] INT NOT NULL,
-    Path NVARCHAR(255) NOT NULL,
-    LayoutId UNIQUEIDENTIFIER,
-    EditLayoutId UNIQUEIDENTIFIER,
-    DetailLayoutId UNIQUEIDENTIFIER,
-    Locked BIT NOT NULL DEFAULT 0,
-    CreatedBy NVARCHAR(255) NOT NULL,
-    CreatedAt DATETIME NOT NULL,
-    ModifiedBy NVARCHAR(255),
-    ModifiedAt DATETIME,
-    CONSTRAINT FK_Pages_Sites FOREIGN KEY (SiteId) REFERENCES Sites(Id) ON DELETE CASCADE
-);
-
-CREATE INDEX IX_Pages_SiteId_Path ON Pages (SiteId, Path);
-
--- Table for Layouts
-CREATE TABLE Layouts (
-    Id UNIQUEIDENTIFIER PRIMARY KEY,
-    SiteId UNIQUEIDENTIFIER NOT NULL,
-    Name NVARCHAR(255) NOT NULL,
-    Body NVARCHAR(MAX) NOT NULL,
-    Head NVARCHAR(MAX) NOT NULL,
-    CreatedBy NVARCHAR(255) NOT NULL,
-    CreatedAt DATETIME NOT NULL,
-    ModifiedBy NVARCHAR(255),
-    ModifiedAt DATETIME,
-    CONSTRAINT FK_Layouts_Sites FOREIGN KEY (SiteId) REFERENCES Sites(Id) ON DELETE CASCADE
-);
-
-CREATE INDEX IX_Layouts_SiteId_Name ON Layouts (SiteId, Name);
-
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[ApiTokenPolicies](
+	[Id] [uniqueidentifier] NOT NULL,
+	[ApiTokenId] [uniqueidentifier] NOT NULL,
+	[Area] [nvarchar](max) NOT NULL,
+	[Actions] [nvarchar](max) NOT NULL,
+ CONSTRAINT [PK_ApiTokenPolicies] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[ApiTokens]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[ApiTokens](
+	[Id] [uniqueidentifier] NOT NULL,
+	[Name] [nvarchar](max) NOT NULL,
+	[Description] [nvarchar](max) NULL,
+	[Key] [nvarchar](max) NOT NULL,
+	[Secret] [nvarchar](max) NOT NULL,
+	[ExpireAt] [datetime] NULL,
+	[Enabled] [nchar](10) NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
+	[ModifiedAt] [datetime] NULL,
+ CONSTRAINT [PK_ApiTokens] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Blocks]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Blocks](
+	[Id] [uniqueidentifier] NOT NULL,
+	[SiteId] [uniqueidentifier] NOT NULL,
+	[Name] [nvarchar](max) NOT NULL,
+	[Category] [nvarchar](max) NOT NULL,
+	[Content] [nvarchar](max) NOT NULL,
+	[Description] [nvarchar](max) NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
+	[ModifiedAt] [datetime] NULL,
+ CONSTRAINT [PK_Blocks] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Contents]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Contents](
+	[Id] [uniqueidentifier] NOT NULL,
+	[SiteId] [uniqueidentifier] NOT NULL,
+	[ContentTypeId] [uniqueidentifier] NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
+	[ModifiedAt] [datetime] NULL,
+ CONSTRAINT [PK_Contents] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[ContentTypeFields]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[ContentTypeFields](
+	[Id] [uniqueidentifier] NOT NULL,
+	[ContentTypeId] [uniqueidentifier] NOT NULL,
+	[Name] [nvarchar](max) NOT NULL,
+	[Description] [nvarchar](max) NOT NULL,
+	[Type] [nvarchar](max) NOT NULL,
+	[Required] [bit] NOT NULL,
+	[Unique] [bit] NOT NULL,
+	[Label] [nvarchar](max) NULL,
+ CONSTRAINT [PK_ContentTypeFields] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[ContentTypeFieldSettings]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[ContentTypeFieldSettings](
+	[Id] [uniqueidentifier] NOT NULL,
+	[ContentTypeFieldId] [uniqueidentifier] NOT NULL,
+	[Key] [nvarchar](max) NOT NULL,
+	[Value] [nvarchar](max) NOT NULL,
+ CONSTRAINT [PK_ContentTypeFieldSettings] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[ContentTypes]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[ContentTypes](
+	[Id] [uniqueidentifier] NOT NULL,
+	[SiteId] [uniqueidentifier] NOT NULL,
+	[Slug] [nvarchar](max) NOT NULL,
+	[Title] [nvarchar](max) NOT NULL,
+	[Description] [nvarchar](max) NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
+	[ModifiedAt] [datetime] NULL,
+ CONSTRAINT [PK_ContentTypes] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Files]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Files](
+	[Id] [uniqueidentifier] NOT NULL,
+	[SiteId] [uniqueidentifier] NOT NULL,
+	[Name] [nvarchar](max) NOT NULL,
+	[NormalizedName] [nvarchar](max) NOT NULL,
+	[FolderId] [uniqueidentifier] NOT NULL,
+	[Extension] [nvarchar](256) NOT NULL,
+	[ContentType] [nvarchar](256) NOT NULL,
+	[Size] [bigint] NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
+	[ModifiedAt] [datetime] NULL,
+ CONSTRAINT [PK_Files] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Folders]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Folders](
+	[Id] [uniqueidentifier] NOT NULL,
+	[SiteId] [uniqueidentifier] NOT NULL,
+	[Name] [nvarchar](max) NOT NULL,
+	[NormalizedName] [nvarchar](max) NOT NULL,
+	[ParentId] [uniqueidentifier] NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
+	[ModifiedAt] [datetime] NULL,
+ CONSTRAINT [PK_Folders] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[GlobalSettings]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[GlobalSettings](
+	[Id] [uniqueidentifier] NOT NULL,
+	[SuperAdmins] [nvarchar](max) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
+	[ModifiedAt] [datetime] NULL,
+ CONSTRAINT [PK_GlobalSettings] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Layouts]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Layouts](
+	[Id] [uniqueidentifier] NOT NULL,
+	[SiteId] [uniqueidentifier] NOT NULL,
+	[Name] [nvarchar](max) NOT NULL,
+	[Body] [nvarchar](max) NOT NULL,
+	[Head] [nvarchar](max) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
+	[ModifiedAt] [datetime] NULL,
+ CONSTRAINT [PK_Layouts] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Pages]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Pages](
+	[Id] [uniqueidentifier] NOT NULL,
+	[SiteId] [uniqueidentifier] NOT NULL,
+	[Title] [nvarchar](max) NOT NULL,
+	[ParentId] [uniqueidentifier] NULL,
+	[Order] [int] NOT NULL,
+	[Path] [nvarchar](max) NOT NULL,
+	[LayoutId] [uniqueidentifier] NULL,
+	[EditLayoutId] [uniqueidentifier] NULL,
+	[DetailLayoutId] [uniqueidentifier] NULL,
+	[Locked] [bit] NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
+	[ModifiedAt] [datetime] NULL,
+ CONSTRAINT [PK_Pages] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Permissions]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Permissions](
+	[Id] [uniqueidentifier] NOT NULL,
+	[SiteId] [uniqueidentifier] NOT NULL,
+	[EntityId] [uniqueidentifier] NOT NULL,
+	[EntityType] [nvarchar](max) NOT NULL,
+	[Action] [int] NOT NULL,
+	[RoleId] [nvarchar](max) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
+	[ModifiedAt] [datetime] NULL,
+ CONSTRAINT [PK_Permissions] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[PluginContentData]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[PluginContentData](
+	[Id] [uniqueidentifier] NOT NULL,
+	[PluginContentId] [uniqueidentifier] NOT NULL,
+	[Key] [nvarchar](max) NOT NULL,
+	[Value] [nvarchar](max) NOT NULL,
+ CONSTRAINT [PK_PluginContentData] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[PluginContents]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[PluginContents](
+	[Id] [uniqueidentifier] NOT NULL,
+	[SiteId] [uniqueidentifier] NOT NULL,
+	[PluginId] [uniqueidentifier] NOT NULL,
+	[Type] [nvarchar](max) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
+	[ModifiedAt] [datetime] NULL,
+ CONSTRAINT [PK_PluginContents] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[PluginDefinitions]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[PluginDefinitions](
+	[Id] [uniqueidentifier] NOT NULL,
+	[Name] [nvarchar](max) NOT NULL,
+	[Category] [nvarchar](max) NOT NULL,
+	[Assembly] [nvarchar](max) NOT NULL,
+	[Icon] [nvarchar](max) NULL,
+	[Description] [nvarchar](max) NULL,
+	[Locked] [bit] NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
+	[ModifiedAt] [datetime] NULL,
+ CONSTRAINT [PK_PluginDefinitions] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[PluginDefinitionTypes]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[PluginDefinitionTypes](
+	[Id] [uniqueidentifier] NOT NULL,
+	[Name] [nvarchar](max) NOT NULL,
+	[Type] [nvarchar](max) NOT NULL,
+	[IsDefault] [bit] NOT NULL,
+	[PluginDefinitionId] [uniqueidentifier] NOT NULL,
+ CONSTRAINT [PK_PluginDefinitionTypes] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Plugins]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Plugins](
+	[Id] [uniqueidentifier] NOT NULL,
+	[SiteId] [uniqueidentifier] NOT NULL,
+	[DefinitionId] [uniqueidentifier] NOT NULL,
+	[PageId] [uniqueidentifier] NOT NULL,
+	[Order] [int] NOT NULL,
+	[Cols] [tinyint] NOT NULL,
+	[ColsMd] [tinyint] NULL,
+	[ColsLg] [tinyint] NULL,
+	[Section] [nvarchar](max) NULL,
+	[Locked] [bit] NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
+	[ModifiedAt] [datetime] NULL,
+ CONSTRAINT [PK_Plugins] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Roles]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Roles](
+	[Id] [uniqueidentifier] NOT NULL,
+	[SiteId] [uniqueidentifier] NOT NULL,
+	[Name] [nvarchar](max) NOT NULL,
+	[Description] [nvarchar](max) NULL,
+	[Type] [tinyint] NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
+	[ModifiedAt] [datetime] NULL,
+ CONSTRAINT [PK_Roles] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Settings]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Settings](
+	[Id] [uniqueidentifier] NOT NULL,
+	[SiteId] [uniqueidentifier] NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
+	[ModifiedAt] [datetime] NULL,
+ CONSTRAINT [PK_Settings] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[SettingValues]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[SettingValues](
+	[Id] [uniqueidentifier] NOT NULL,
+	[SettingId] [uniqueidentifier] NOT NULL,
+	[Key] [nvarchar](max) NOT NULL,
+	[Value] [nvarchar](max) NOT NULL,
+ CONSTRAINT [PK_SettingValues] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Sites]    Script Date: 2024-11-22 8:30:58 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Sites](
+	[Id] [uniqueidentifier] NOT NULL,
+	[Name] [nvarchar](max) NOT NULL,
+	[Description] [nvarchar](max) NULL,
+	[Urls] [nvarchar](max) NOT NULL,
+	[LayoutId] [uniqueidentifier] NOT NULL,
+	[DetailLayoutId] [uniqueidentifier] NOT NULL,
+	[EditLayoutId] [uniqueidentifier] NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
+	[ModifiedAt] [datetime] NULL,
+ CONSTRAINT [PK_Sites] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[ApiTokenPolicies]  WITH CHECK ADD  CONSTRAINT [FK_ApiTokenPolicies_ApiTokens] FOREIGN KEY([ApiTokenId])
+REFERENCES [dbo].[ApiTokens] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[ApiTokenPolicies] CHECK CONSTRAINT [FK_ApiTokenPolicies_ApiTokens]
+GO
+ALTER TABLE [dbo].[Blocks]  WITH CHECK ADD  CONSTRAINT [FK_Blocks_Sites] FOREIGN KEY([SiteId])
+REFERENCES [dbo].[Sites] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Blocks] CHECK CONSTRAINT [FK_Blocks_Sites]
+GO
+ALTER TABLE [dbo].[Contents]  WITH CHECK ADD  CONSTRAINT [FK_Contents_ContentTypes] FOREIGN KEY([ContentTypeId])
+REFERENCES [dbo].[ContentTypes] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Contents] CHECK CONSTRAINT [FK_Contents_ContentTypes]
+GO
+ALTER TABLE [dbo].[ContentTypeFields]  WITH CHECK ADD  CONSTRAINT [FK_ContentTypeFields_ContentTypes] FOREIGN KEY([ContentTypeId])
+REFERENCES [dbo].[ContentTypes] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[ContentTypeFields] CHECK CONSTRAINT [FK_ContentTypeFields_ContentTypes]
+GO
+ALTER TABLE [dbo].[ContentTypeFieldSettings]  WITH CHECK ADD  CONSTRAINT [FK_ContentTypeFieldSettings_ContentTypes] FOREIGN KEY([ContentTypeFieldId])
+REFERENCES [dbo].[ContentTypes] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[ContentTypeFieldSettings] CHECK CONSTRAINT [FK_ContentTypeFieldSettings_ContentTypes]
+GO
+ALTER TABLE [dbo].[ContentTypes]  WITH CHECK ADD  CONSTRAINT [FK_ContentTypes_Sites] FOREIGN KEY([SiteId])
+REFERENCES [dbo].[Sites] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[ContentTypes] CHECK CONSTRAINT [FK_ContentTypes_Sites]
+GO
+ALTER TABLE [dbo].[Files]  WITH CHECK ADD  CONSTRAINT [FK_Files_Folders] FOREIGN KEY([FolderId])
+REFERENCES [dbo].[Folders] ([Id])
+GO
+ALTER TABLE [dbo].[Files] CHECK CONSTRAINT [FK_Files_Folders]
+GO
+ALTER TABLE [dbo].[Files]  WITH CHECK ADD  CONSTRAINT [FK_Files_Sites] FOREIGN KEY([SiteId])
+REFERENCES [dbo].[Sites] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Files] CHECK CONSTRAINT [FK_Files_Sites]
+GO
+ALTER TABLE [dbo].[Folders]  WITH CHECK ADD  CONSTRAINT [FK_Folders_Sites] FOREIGN KEY([SiteId])
+REFERENCES [dbo].[Sites] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Folders] CHECK CONSTRAINT [FK_Folders_Sites]
+GO
+ALTER TABLE [dbo].[Layouts]  WITH CHECK ADD  CONSTRAINT [FK_Layouts_Sites] FOREIGN KEY([SiteId])
+REFERENCES [dbo].[Sites] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Layouts] CHECK CONSTRAINT [FK_Layouts_Sites]
+GO
+ALTER TABLE [dbo].[Pages]  WITH CHECK ADD  CONSTRAINT [FK_Pages_Sites] FOREIGN KEY([SiteId])
+REFERENCES [dbo].[Sites] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Pages] CHECK CONSTRAINT [FK_Pages_Sites]
+GO
+ALTER TABLE [dbo].[Permissions]  WITH CHECK ADD  CONSTRAINT [FK_Permissions_Sites] FOREIGN KEY([SiteId])
+REFERENCES [dbo].[Sites] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Permissions] CHECK CONSTRAINT [FK_Permissions_Sites]
+GO
+ALTER TABLE [dbo].[PluginContentData]  WITH CHECK ADD  CONSTRAINT [FK_PluginContentData_PluginContents] FOREIGN KEY([PluginContentId])
+REFERENCES [dbo].[PluginContents] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[PluginContentData] CHECK CONSTRAINT [FK_PluginContentData_PluginContents]
+GO
+ALTER TABLE [dbo].[PluginContents]  WITH CHECK ADD  CONSTRAINT [FK_PluginContents_Plugins] FOREIGN KEY([PluginId])
+REFERENCES [dbo].[Plugins] ([Id])
+GO
+ALTER TABLE [dbo].[PluginContents] CHECK CONSTRAINT [FK_PluginContents_Plugins]
+GO
+ALTER TABLE [dbo].[PluginDefinitionTypes]  WITH CHECK ADD  CONSTRAINT [FK_PluginDefinitionTypes_PluginDefinitions] FOREIGN KEY([PluginDefinitionId])
+REFERENCES [dbo].[PluginDefinitions] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[PluginDefinitionTypes] CHECK CONSTRAINT [FK_PluginDefinitionTypes_PluginDefinitions]
+GO
+ALTER TABLE [dbo].[Plugins]  WITH CHECK ADD  CONSTRAINT [FK_Plugins_Pages] FOREIGN KEY([PageId])
+REFERENCES [dbo].[Pages] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Plugins] CHECK CONSTRAINT [FK_Plugins_Pages]
+GO
+ALTER TABLE [dbo].[Plugins]  WITH CHECK ADD  CONSTRAINT [FK_Plugins_PluginDefinitions] FOREIGN KEY([DefinitionId])
+REFERENCES [dbo].[PluginDefinitions] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Plugins] CHECK CONSTRAINT [FK_Plugins_PluginDefinitions]
+GO
+ALTER TABLE [dbo].[Roles]  WITH CHECK ADD  CONSTRAINT [FK_Roles_Sites] FOREIGN KEY([SiteId])
+REFERENCES [dbo].[Sites] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Roles] CHECK CONSTRAINT [FK_Roles_Sites]
+GO
+ALTER TABLE [dbo].[Settings]  WITH CHECK ADD  CONSTRAINT [FK_Settings_Sites] FOREIGN KEY([SiteId])
+REFERENCES [dbo].[Sites] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Settings] CHECK CONSTRAINT [FK_Settings_Sites]
+GO
+ALTER TABLE [dbo].[SettingValues]  WITH CHECK ADD  CONSTRAINT [FK_SettingValues_Settings] FOREIGN KEY([SettingId])
+REFERENCES [dbo].[Settings] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[SettingValues] CHECK CONSTRAINT [FK_SettingValues_Settings]
+GO
