@@ -33,6 +33,7 @@ public class SetupRepository(FluentCmsDbContext dbContext) : ISetupRepository
             if (await Initialized(cancellationToken))
                 return false; // Database is already initialized
 
+            // Load the SQL script from the embedded resource
             var assembly = Assembly.GetExecutingAssembly();
             var resourceName = "FluentCMS.Repositories.EFCore.SqlServer.Setup.sql";
 
@@ -42,8 +43,12 @@ public class SetupRepository(FluentCmsDbContext dbContext) : ISetupRepository
             using var reader = new StreamReader(stream);
             var sqlScript = await reader.ReadToEndAsync(cancellationToken);
 
-            // Execute the SQL script
-            await dbContext.Database.ExecuteSqlRawAsync(sqlScript, cancellationToken);
+            // Split the script into individual commands
+            foreach (var sqlCommand in sqlScript.Split("GO", StringSplitOptions.RemoveEmptyEntries))
+            {
+                // Execute the SQL script
+                await dbContext.Database.ExecuteSqlRawAsync(sqlCommand, cancellationToken);
+            }
 
             return true;
         }

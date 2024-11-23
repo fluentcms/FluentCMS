@@ -5,7 +5,7 @@ public interface IAuditableEntityRepository<TEntity, TDBEntity> : IEntityReposit
 
 }
 
-public abstract class AuditableEntityRepository<TEntity, TDBEntity>(FluentCmsDbContext dbContext, IMapper mapper, IApiExecutionContext apiExecutionContext) : EntityRepository<TEntity, TDBEntity>(dbContext, mapper), IAuditableEntityRepository<TEntity, TDBEntity> where TEntity : class, IAuditableEntity where TDBEntity : class, IAuditableEntityModel
+public class AuditableEntityRepository<TEntity, TDBEntity>(FluentCmsDbContext dbContext, IMapper mapper, IApiExecutionContext apiExecutionContext) : EntityRepository<TEntity, TDBEntity>(dbContext, mapper), IAuditableEntityRepository<TEntity, TDBEntity> where TEntity : class, IAuditableEntity where TDBEntity : class, IAuditableEntityModel
 {
     protected readonly IApiExecutionContext ApiExecutionContext = apiExecutionContext;
 
