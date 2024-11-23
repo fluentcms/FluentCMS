@@ -26,7 +26,7 @@ CREATE TABLE [dbo].[ApiTokens](
 	[Key] [nvarchar](max) NOT NULL,
 	[Secret] [nvarchar](max) NOT NULL,
 	[ExpireAt] [datetime] NULL,
-	[Enabled] [nchar](10) NULL,
+	[Enabled] [bit] NOT NULL,
 	[CreatedBy] [nvarchar](255) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
 	[ModifiedBy] [nvarchar](255) NULL,

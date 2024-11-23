@@ -8,7 +8,7 @@ public interface IAuditableEntityModel : IEntityModel
     DateTime? ModifiedAt { get; set; }
 }
 
-public abstract class AuditableEntityModel : EntityModel, IAuditableEntityModel
+public class AuditableEntityModel : EntityModel, IAuditableEntityModel
 {
     public string CreatedBy { get; set; } = default!;
     public DateTime CreatedAt { get; set; }
