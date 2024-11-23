@@ -125,6 +125,20 @@ public class MappingProfile : Profile
 
         CreateMap<RoleModel, Role>().ReverseMap();
 
+        // Map from SiteModel to Site
+        CreateMap<SiteModel, Site>()
+            .ForMember(dest => dest.Urls, opt => opt.MapFrom(src =>
+                string.IsNullOrWhiteSpace(src.Urls)
+                    ? new List<string>()
+                    : src.Urls.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()));
+
+        // Map from Site to SiteModel
+        CreateMap<Site, SiteModel>()
+            .ForMember(dest => dest.Urls, opt => opt.MapFrom(src =>
+                src.Urls == null || !src.Urls.Any()
+                    ? string.Empty
+                    : string.Join(',', src.Urls)));
+
         CreateMap<UserRoleModel, UserRole>().ReverseMap();
 
         CreateMap<UserModel, User>().ReverseMap();
