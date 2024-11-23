@@ -32,6 +32,8 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
     public DbSet<SiteModel> Sites { get; set; } = default!;
     public DbSet<SettingsModel> Settings { get; set; } = default!;
     public DbSet<SettingValuesModel> SettingValues { get; set; } = default!;
+    public DbSet<UserModel> Users { get; set; } = default!;
+    public DbSet<UserRoleModel> UserRoles { get; set; } = default!;
 
     #endregion
 

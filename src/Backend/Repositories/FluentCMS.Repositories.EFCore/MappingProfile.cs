@@ -125,6 +125,10 @@ public class MappingProfile : Profile
 
         CreateMap<RoleModel, Role>().ReverseMap();
 
+        CreateMap<UserRoleModel, UserRole>().ReverseMap();
+
+        CreateMap<UserModel, User>().ReverseMap();
+
         // Map between SettingsModel and Settings
         CreateMap<SettingsModel, Settings>()
             .ForMember(dest => dest.Values, opt => opt.MapFrom(src =>

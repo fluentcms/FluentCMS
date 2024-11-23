@@ -8,5 +8,4 @@ public interface ISiteAssociatedEntityModel : IAuditableEntityModel
 public abstract class SiteAssociatedEntityModel : AuditableEntityModel, ISiteAssociatedEntityModel
 {
     public Guid SiteId { get; set; }
-    public SiteModel Site { get; set; } = default!; // Navigation property
 }
