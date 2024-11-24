@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Repositories.Abstractions;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
@@ -33,6 +34,31 @@ public class SetupRepository(FluentCmsDbContext dbContext) : ISetupRepository
             if (await Initialized(cancellationToken))
                 return false; // Database is already initialized
 
+            // Ensure the database exists using a SQL command
+            var connectionString = dbContext.Database.GetConnectionString() ??
+                throw new InvalidOperationException("Connection string not found.");
+
+            var databaseName = ExtractDatabaseName(connectionString);
+
+            if (string.IsNullOrEmpty(databaseName))
+                throw new InvalidOperationException("Unable to extract database name from the connection string.");
+
+            // Use master database to check and create the target database
+            var masterConnectionString = ReplaceDatabaseName(connectionString, "master");
+
+            await using var masterConnection = new SqlConnection(masterConnectionString);
+            await masterConnection.OpenAsync(cancellationToken);
+
+            var checkDbQuery = $@"
+                IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '{databaseName}')
+                BEGIN
+                    CREATE DATABASE [{databaseName}]
+                END";
+
+            await using var command = masterConnection.CreateCommand();
+            command.CommandText = checkDbQuery;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+
             // Load the SQL script from the embedded resource
             var assembly = Assembly.GetExecutingAssembly();
             var resourceName = "FluentCMS.Repositories.EFCore.SqlServer.Setup.sql";
@@ -56,5 +82,22 @@ public class SetupRepository(FluentCmsDbContext dbContext) : ISetupRepository
         {
             throw new InvalidOperationException("Failed to initialize the database.", ex);
         }
+    }
+
+    private static string ExtractDatabaseName(string connectionString)
+    {
+        // Extract the database name from the connection string
+        var builder = new SqlConnectionStringBuilder(connectionString);
+        return builder.InitialCatalog;
+    }
+
+    private string ReplaceDatabaseName(string connectionString, string newDatabaseName)
+    {
+        // Replace the database name in the connection string
+        var builder = new SqlConnectionStringBuilder(connectionString)
+        {
+            InitialCatalog = newDatabaseName
+        };
+        return builder.ConnectionString;
     }
 }

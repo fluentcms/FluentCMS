@@ -241,7 +241,7 @@ CREATE TABLE [dbo].[Permissions](
 	[SiteId] [uniqueidentifier] NOT NULL,
 	[EntityId] [uniqueidentifier] NOT NULL,
 	[EntityType] [nvarchar](max) NOT NULL,
-	[Action] [int] NOT NULL,
+	[Action] [nvarchar](256) NOT NULL,
 	[RoleId] [nvarchar](max) NOT NULL,
 	[CreatedBy] [nvarchar](255) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
