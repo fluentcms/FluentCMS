@@ -69,6 +69,10 @@ public class SetupRepository(FluentCmsDbContext dbContext) : ISetupRepository
             using var reader = new StreamReader(stream);
             var sqlScript = await reader.ReadToEndAsync(cancellationToken);
 
+            // wait until the dbContext is ready
+            while (!await dbContext.Database.CanConnectAsync(cancellationToken))
+                await Task.Delay(1000, cancellationToken);
+
             // Split the script into individual commands
             foreach (var sqlCommand in sqlScript.Split("GO", StringSplitOptions.RemoveEmptyEntries))
             {

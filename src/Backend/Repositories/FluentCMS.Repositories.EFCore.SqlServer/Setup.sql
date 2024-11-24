@@ -1,4 +1,4 @@
-﻿/****** Object:  Table [dbo].[ApiTokenPolicies]    Script Date: 2024-11-24 10:21:42 AM ******/
+﻿/****** Object:  Table [dbo].[ApiTokenPolicies]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -14,7 +14,7 @@ CREATE TABLE [dbo].[ApiTokenPolicies](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[ApiTokens]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[ApiTokens]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -27,9 +27,9 @@ CREATE TABLE [dbo].[ApiTokens](
 	[Secret] [nvarchar](max) NOT NULL,
 	[ExpireAt] [datetime] NULL,
 	[Enabled] [bit] NOT NULL,
-	[CreatedBy] [nvarchar](255) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
-	[ModifiedBy] [nvarchar](255) NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
 	[ModifiedAt] [datetime] NULL,
  CONSTRAINT [PK_ApiTokens] PRIMARY KEY CLUSTERED 
 (
@@ -37,7 +37,7 @@ CREATE TABLE [dbo].[ApiTokens](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[Blocks]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[Blocks]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -49,9 +49,9 @@ CREATE TABLE [dbo].[Blocks](
 	[Category] [nvarchar](max) NOT NULL,
 	[Content] [nvarchar](max) NOT NULL,
 	[Description] [nvarchar](max) NULL,
-	[CreatedBy] [nvarchar](255) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
-	[ModifiedBy] [nvarchar](255) NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
 	[ModifiedAt] [datetime] NULL,
  CONSTRAINT [PK_Blocks] PRIMARY KEY CLUSTERED 
 (
@@ -59,7 +59,7 @@ CREATE TABLE [dbo].[Blocks](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[Contents]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[Contents]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -69,9 +69,9 @@ CREATE TABLE [dbo].[Contents](
 	[SiteId] [uniqueidentifier] NOT NULL,
 	[TypeId] [uniqueidentifier] NOT NULL,
 	[Data] [nvarchar](max) NOT NULL,
-	[CreatedBy] [nvarchar](255) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
-	[ModifiedBy] [nvarchar](255) NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
 	[ModifiedAt] [datetime] NULL,
  CONSTRAINT [PK_Contents] PRIMARY KEY CLUSTERED 
 (
@@ -79,7 +79,7 @@ CREATE TABLE [dbo].[Contents](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[ContentTypeFields]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[ContentTypeFields]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -100,7 +100,7 @@ CREATE TABLE [dbo].[ContentTypeFields](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[ContentTypes]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[ContentTypes]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -111,9 +111,9 @@ CREATE TABLE [dbo].[ContentTypes](
 	[Slug] [nvarchar](max) NOT NULL,
 	[Title] [nvarchar](max) NOT NULL,
 	[Description] [nvarchar](max) NULL,
-	[CreatedBy] [nvarchar](255) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
-	[ModifiedBy] [nvarchar](255) NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
 	[ModifiedAt] [datetime] NULL,
  CONSTRAINT [PK_ContentTypes] PRIMARY KEY CLUSTERED 
 (
@@ -121,7 +121,7 @@ CREATE TABLE [dbo].[ContentTypes](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[Files]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[Files]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -132,12 +132,12 @@ CREATE TABLE [dbo].[Files](
 	[Name] [nvarchar](max) NOT NULL,
 	[NormalizedName] [nvarchar](max) NOT NULL,
 	[FolderId] [uniqueidentifier] NOT NULL,
-	[Extension] [nvarchar](255) NOT NULL,
-	[ContentType] [nvarchar](255) NOT NULL,
+	[Extension] [nvarchar](256) NOT NULL,
+	[ContentType] [nvarchar](256) NOT NULL,
 	[Size] [bigint] NOT NULL,
-	[CreatedBy] [nvarchar](255) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
-	[ModifiedBy] [nvarchar](255) NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
 	[ModifiedAt] [datetime] NULL,
  CONSTRAINT [PK_Files] PRIMARY KEY CLUSTERED 
 (
@@ -145,7 +145,7 @@ CREATE TABLE [dbo].[Files](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[Folders]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[Folders]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -156,9 +156,9 @@ CREATE TABLE [dbo].[Folders](
 	[Name] [nvarchar](max) NOT NULL,
 	[NormalizedName] [nvarchar](max) NOT NULL,
 	[ParentId] [uniqueidentifier] NULL,
-	[CreatedBy] [nvarchar](255) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
-	[ModifiedBy] [nvarchar](255) NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
 	[ModifiedAt] [datetime] NULL,
  CONSTRAINT [PK_Folders] PRIMARY KEY CLUSTERED 
 (
@@ -166,7 +166,7 @@ CREATE TABLE [dbo].[Folders](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[GlobalSettings]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[GlobalSettings]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -174,9 +174,9 @@ GO
 CREATE TABLE [dbo].[GlobalSettings](
 	[Id] [uniqueidentifier] NOT NULL,
 	[SuperAdmins] [nvarchar](max) NOT NULL,
-	[CreatedBy] [nvarchar](255) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
-	[ModifiedBy] [nvarchar](255) NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
 	[ModifiedAt] [datetime] NULL,
  CONSTRAINT [PK_GlobalSettings] PRIMARY KEY CLUSTERED 
 (
@@ -184,7 +184,7 @@ CREATE TABLE [dbo].[GlobalSettings](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[Layouts]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[Layouts]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -195,9 +195,9 @@ CREATE TABLE [dbo].[Layouts](
 	[Name] [nvarchar](max) NOT NULL,
 	[Body] [nvarchar](max) NOT NULL,
 	[Head] [nvarchar](max) NOT NULL,
-	[CreatedBy] [nvarchar](255) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
-	[ModifiedBy] [nvarchar](255) NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
 	[ModifiedAt] [datetime] NULL,
  CONSTRAINT [PK_Layouts] PRIMARY KEY CLUSTERED 
 (
@@ -205,7 +205,7 @@ CREATE TABLE [dbo].[Layouts](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[Pages]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[Pages]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -221,9 +221,9 @@ CREATE TABLE [dbo].[Pages](
 	[EditLayoutId] [uniqueidentifier] NULL,
 	[DetailLayoutId] [uniqueidentifier] NULL,
 	[Locked] [bit] NOT NULL,
-	[CreatedBy] [nvarchar](255) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
-	[ModifiedBy] [nvarchar](255) NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
 	[ModifiedAt] [datetime] NULL,
  CONSTRAINT [PK_Pages] PRIMARY KEY CLUSTERED 
 (
@@ -231,7 +231,7 @@ CREATE TABLE [dbo].[Pages](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[Permissions]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[Permissions]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -241,11 +241,11 @@ CREATE TABLE [dbo].[Permissions](
 	[SiteId] [uniqueidentifier] NOT NULL,
 	[EntityId] [uniqueidentifier] NOT NULL,
 	[EntityType] [nvarchar](max) NOT NULL,
-	[Action] [nvarchar](256) NOT NULL,
-	[RoleId] [nvarchar](max) NOT NULL,
-	[CreatedBy] [nvarchar](255) NOT NULL,
+	[Action] [nvarchar](max) NOT NULL,
+	[RoleId] [uniqueidentifier] NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
-	[ModifiedBy] [nvarchar](255) NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
 	[ModifiedAt] [datetime] NULL,
  CONSTRAINT [PK_Permissions] PRIMARY KEY CLUSTERED 
 (
@@ -253,7 +253,7 @@ CREATE TABLE [dbo].[Permissions](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[PluginContents]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[PluginContents]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -264,9 +264,9 @@ CREATE TABLE [dbo].[PluginContents](
 	[PluginId] [uniqueidentifier] NOT NULL,
 	[Data] [nvarchar](max) NOT NULL,
 	[Type] [nvarchar](max) NULL,
-	[CreatedBy] [nvarchar](255) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
-	[ModifiedBy] [nvarchar](255) NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
 	[ModifiedAt] [datetime] NULL,
  CONSTRAINT [PK_PluginContents] PRIMARY KEY CLUSTERED 
 (
@@ -274,7 +274,7 @@ CREATE TABLE [dbo].[PluginContents](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[PluginDefinitions]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[PluginDefinitions]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -287,9 +287,9 @@ CREATE TABLE [dbo].[PluginDefinitions](
 	[Icon] [nvarchar](max) NULL,
 	[Description] [nvarchar](max) NULL,
 	[Locked] [bit] NOT NULL,
-	[CreatedBy] [nvarchar](255) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
-	[ModifiedBy] [nvarchar](255) NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
 	[ModifiedAt] [datetime] NULL,
  CONSTRAINT [PK_PluginDefinitions] PRIMARY KEY CLUSTERED 
 (
@@ -297,7 +297,7 @@ CREATE TABLE [dbo].[PluginDefinitions](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[PluginDefinitionTypes]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[PluginDefinitionTypes]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -314,7 +314,7 @@ CREATE TABLE [dbo].[PluginDefinitionTypes](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[Plugins]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[Plugins]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -325,14 +325,14 @@ CREATE TABLE [dbo].[Plugins](
 	[DefinitionId] [uniqueidentifier] NOT NULL,
 	[PageId] [uniqueidentifier] NOT NULL,
 	[Order] [int] NOT NULL,
-	[Cols] [tinyint] NOT NULL,
-	[ColsMd] [tinyint] NULL,
-	[ColsLg] [tinyint] NULL,
+	[Cols] [int] NOT NULL,
+	[ColsMd] [int] NULL,
+	[ColsLg] [int] NULL,
 	[Section] [nvarchar](max) NULL,
 	[Locked] [bit] NOT NULL,
-	[CreatedBy] [nvarchar](255) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
-	[ModifiedBy] [nvarchar](255) NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
 	[ModifiedAt] [datetime] NULL,
  CONSTRAINT [PK_Plugins] PRIMARY KEY CLUSTERED 
 (
@@ -340,7 +340,7 @@ CREATE TABLE [dbo].[Plugins](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[Roles]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[Roles]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -350,10 +350,10 @@ CREATE TABLE [dbo].[Roles](
 	[SiteId] [uniqueidentifier] NOT NULL,
 	[Name] [nvarchar](max) NOT NULL,
 	[Description] [nvarchar](max) NULL,
-	[Type] [tinyint] NOT NULL,
-	[CreatedBy] [nvarchar](255) NOT NULL,
+	[Type] [int] NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
-	[ModifiedBy] [nvarchar](255) NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
 	[ModifiedAt] [datetime] NULL,
  CONSTRAINT [PK_Roles] PRIMARY KEY CLUSTERED 
 (
@@ -361,16 +361,16 @@ CREATE TABLE [dbo].[Roles](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[Settings]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[Settings]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
 CREATE TABLE [dbo].[Settings](
 	[Id] [uniqueidentifier] NOT NULL,
-	[CreatedBy] [nvarchar](255) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
-	[ModifiedBy] [nvarchar](255) NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
 	[ModifiedAt] [datetime] NULL,
  CONSTRAINT [PK_Settings] PRIMARY KEY CLUSTERED 
 (
@@ -378,7 +378,7 @@ CREATE TABLE [dbo].[Settings](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[SettingValues]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[SettingValues]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -394,7 +394,7 @@ CREATE TABLE [dbo].[SettingValues](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[Sites]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[Sites]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -407,9 +407,9 @@ CREATE TABLE [dbo].[Sites](
 	[LayoutId] [uniqueidentifier] NOT NULL,
 	[DetailLayoutId] [uniqueidentifier] NOT NULL,
 	[EditLayoutId] [uniqueidentifier] NOT NULL,
-	[CreatedBy] [nvarchar](255) NOT NULL,
+	[CreatedBy] [nvarchar](256) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
-	[ModifiedBy] [nvarchar](255) NULL,
+	[ModifiedBy] [nvarchar](256) NULL,
 	[ModifiedAt] [datetime] NULL,
  CONSTRAINT [PK_Sites] PRIMARY KEY CLUSTERED 
 (
@@ -417,7 +417,7 @@ CREATE TABLE [dbo].[Sites](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[UserRoles]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[UserRoles]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -437,7 +437,7 @@ PRIMARY KEY CLUSTERED
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[Users]    Script Date: 2024-11-24 10:21:42 AM ******/
+/****** Object:  Table [dbo].[Users]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -504,69 +504,11 @@ ON DELETE CASCADE
 GO
 ALTER TABLE [dbo].[ApiTokenPolicies] CHECK CONSTRAINT [FK_ApiTokenPolicies_ApiTokens]
 GO
-ALTER TABLE [dbo].[Blocks]  WITH CHECK ADD  CONSTRAINT [FK_Blocks_Sites] FOREIGN KEY([SiteId])
-REFERENCES [dbo].[Sites] ([Id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[Blocks] CHECK CONSTRAINT [FK_Blocks_Sites]
-GO
-ALTER TABLE [dbo].[Contents]  WITH CHECK ADD  CONSTRAINT [FK_Contents_ContentTypes] FOREIGN KEY([TypeId])
-REFERENCES [dbo].[ContentTypes] ([Id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[Contents] CHECK CONSTRAINT [FK_Contents_ContentTypes]
-GO
 ALTER TABLE [dbo].[ContentTypeFields]  WITH CHECK ADD  CONSTRAINT [FK_ContentTypeFields_ContentTypes] FOREIGN KEY([ContentTypeId])
 REFERENCES [dbo].[ContentTypes] ([Id])
 ON DELETE CASCADE
 GO
 ALTER TABLE [dbo].[ContentTypeFields] CHECK CONSTRAINT [FK_ContentTypeFields_ContentTypes]
-GO
-ALTER TABLE [dbo].[ContentTypes]  WITH CHECK ADD  CONSTRAINT [FK_ContentTypes_Sites] FOREIGN KEY([SiteId])
-REFERENCES [dbo].[Sites] ([Id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[ContentTypes] CHECK CONSTRAINT [FK_ContentTypes_Sites]
-GO
-ALTER TABLE [dbo].[Files]  WITH CHECK ADD  CONSTRAINT [FK_Files_Folders] FOREIGN KEY([FolderId])
-REFERENCES [dbo].[Folders] ([Id])
-GO
-ALTER TABLE [dbo].[Files] CHECK CONSTRAINT [FK_Files_Folders]
-GO
-ALTER TABLE [dbo].[Files]  WITH CHECK ADD  CONSTRAINT [FK_Files_Sites] FOREIGN KEY([SiteId])
-REFERENCES [dbo].[Sites] ([Id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[Files] CHECK CONSTRAINT [FK_Files_Sites]
-GO
-ALTER TABLE [dbo].[Folders]  WITH CHECK ADD  CONSTRAINT [FK_Folders_Sites] FOREIGN KEY([SiteId])
-REFERENCES [dbo].[Sites] ([Id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[Folders] CHECK CONSTRAINT [FK_Folders_Sites]
-GO
-ALTER TABLE [dbo].[Layouts]  WITH CHECK ADD  CONSTRAINT [FK_Layouts_Sites] FOREIGN KEY([SiteId])
-REFERENCES [dbo].[Sites] ([Id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[Layouts] CHECK CONSTRAINT [FK_Layouts_Sites]
-GO
-ALTER TABLE [dbo].[Pages]  WITH CHECK ADD  CONSTRAINT [FK_Pages_Sites] FOREIGN KEY([SiteId])
-REFERENCES [dbo].[Sites] ([Id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[Pages] CHECK CONSTRAINT [FK_Pages_Sites]
-GO
-ALTER TABLE [dbo].[Permissions]  WITH CHECK ADD  CONSTRAINT [FK_Permissions_Sites] FOREIGN KEY([SiteId])
-REFERENCES [dbo].[Sites] ([Id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[Permissions] CHECK CONSTRAINT [FK_Permissions_Sites]
-GO
-ALTER TABLE [dbo].[PluginContents]  WITH CHECK ADD  CONSTRAINT [FK_PluginContents_Plugins] FOREIGN KEY([PluginId])
-REFERENCES [dbo].[Plugins] ([Id])
-GO
-ALTER TABLE [dbo].[PluginContents] CHECK CONSTRAINT [FK_PluginContents_Plugins]
 GO
 ALTER TABLE [dbo].[PluginDefinitionTypes]  WITH CHECK ADD  CONSTRAINT [FK_PluginDefinitionTypes_PluginDefinitions] FOREIGN KEY([PluginDefinitionId])
 REFERENCES [dbo].[PluginDefinitions] ([Id])
@@ -574,39 +516,9 @@ ON DELETE CASCADE
 GO
 ALTER TABLE [dbo].[PluginDefinitionTypes] CHECK CONSTRAINT [FK_PluginDefinitionTypes_PluginDefinitions]
 GO
-ALTER TABLE [dbo].[Plugins]  WITH CHECK ADD  CONSTRAINT [FK_Plugins_Pages] FOREIGN KEY([PageId])
-REFERENCES [dbo].[Pages] ([Id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[Plugins] CHECK CONSTRAINT [FK_Plugins_Pages]
-GO
-ALTER TABLE [dbo].[Plugins]  WITH CHECK ADD  CONSTRAINT [FK_Plugins_PluginDefinitions] FOREIGN KEY([DefinitionId])
-REFERENCES [dbo].[PluginDefinitions] ([Id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[Plugins] CHECK CONSTRAINT [FK_Plugins_PluginDefinitions]
-GO
-ALTER TABLE [dbo].[Roles]  WITH CHECK ADD  CONSTRAINT [FK_Roles_Sites] FOREIGN KEY([SiteId])
-REFERENCES [dbo].[Sites] ([Id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[Roles] CHECK CONSTRAINT [FK_Roles_Sites]
-GO
 ALTER TABLE [dbo].[SettingValues]  WITH CHECK ADD  CONSTRAINT [FK_SettingValues_Settings] FOREIGN KEY([SettingId])
 REFERENCES [dbo].[Settings] ([Id])
 ON DELETE CASCADE
 GO
 ALTER TABLE [dbo].[SettingValues] CHECK CONSTRAINT [FK_SettingValues_Settings]
-GO
-ALTER TABLE [dbo].[UserRoles]  WITH CHECK ADD  CONSTRAINT [FK_UserRoles_Roles] FOREIGN KEY([RoleId])
-REFERENCES [dbo].[Roles] ([Id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[UserRoles] CHECK CONSTRAINT [FK_UserRoles_Roles]
-GO
-ALTER TABLE [dbo].[UserRoles]  WITH CHECK ADD  CONSTRAINT [FK_UserRoles_Users] FOREIGN KEY([UserId])
-REFERENCES [dbo].[Users] ([Id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[UserRoles] CHECK CONSTRAINT [FK_UserRoles_Users]
 GO
