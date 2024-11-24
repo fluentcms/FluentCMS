@@ -1,14 +1,4 @@
-﻿-- Table: GlobalSettings
-CREATE TABLE GlobalSettings (
-    Id TEXT NOT NULL PRIMARY KEY,
-    SuperAdmins TEXT NOT NULL,
-    CreatedBy TEXT NOT NULL,
-    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ModifiedBy TEXT,
-    ModifiedAt DATETIME
-);
-
--- Table: ApiTokenPolicies
+﻿-- Table: ApiTokenPolicies
 CREATE TABLE ApiTokenPolicies (
     Id TEXT NOT NULL PRIMARY KEY,
     ApiTokenId TEXT NOT NULL,
@@ -27,7 +17,7 @@ CREATE TABLE ApiTokens (
     ExpireAt DATETIME,
     Enabled INTEGER NOT NULL,
     CreatedBy TEXT NOT NULL,
-    CreatedAt DATETIME NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ModifiedBy TEXT,
     ModifiedAt DATETIME
 );
@@ -41,10 +31,9 @@ CREATE TABLE Blocks (
     Content TEXT NOT NULL,
     Description TEXT,
     CreatedBy TEXT NOT NULL,
-    CreatedAt DATETIME NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ModifiedBy TEXT,
-    ModifiedAt DATETIME,
-    FOREIGN KEY (SiteId) REFERENCES Sites (Id) ON DELETE CASCADE
+    ModifiedAt DATETIME
 );
 
 -- Table: Contents
@@ -54,10 +43,9 @@ CREATE TABLE Contents (
     TypeId TEXT NOT NULL,
     Data TEXT NOT NULL,
     CreatedBy TEXT NOT NULL,
-    CreatedAt DATETIME NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ModifiedBy TEXT,
-    ModifiedAt DATETIME,
-    FOREIGN KEY (TypeId) REFERENCES ContentTypes (Id) ON DELETE CASCADE
+    ModifiedAt DATETIME
 );
 
 -- Table: ContentTypeFields
@@ -67,10 +55,10 @@ CREATE TABLE ContentTypeFields (
     Name TEXT NOT NULL,
     Description TEXT NOT NULL,
     Type TEXT NOT NULL,
+    Settings TEXT NOT NULL,
     Required INTEGER NOT NULL,
     "Unique" INTEGER NOT NULL,
     Label TEXT,
-    Settings TEXT NOT NULL,
     FOREIGN KEY (ContentTypeId) REFERENCES ContentTypes (Id) ON DELETE CASCADE
 );
 
@@ -82,10 +70,9 @@ CREATE TABLE ContentTypes (
     Title TEXT NOT NULL,
     Description TEXT,
     CreatedBy TEXT NOT NULL,
-    CreatedAt DATETIME NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ModifiedBy TEXT,
-    ModifiedAt DATETIME,
-    FOREIGN KEY (SiteId) REFERENCES Sites (Id) ON DELETE CASCADE
+    ModifiedAt DATETIME
 );
 
 -- Table: Files
@@ -99,11 +86,9 @@ CREATE TABLE Files (
     ContentType TEXT NOT NULL,
     Size INTEGER NOT NULL,
     CreatedBy TEXT NOT NULL,
-    CreatedAt DATETIME NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ModifiedBy TEXT,
-    ModifiedAt DATETIME,
-    FOREIGN KEY (FolderId) REFERENCES Folders (Id),
-    FOREIGN KEY (SiteId) REFERENCES Sites (Id) ON DELETE CASCADE
+    ModifiedAt DATETIME
 );
 
 -- Table: Folders
@@ -114,10 +99,19 @@ CREATE TABLE Folders (
     NormalizedName TEXT NOT NULL,
     ParentId TEXT,
     CreatedBy TEXT NOT NULL,
-    CreatedAt DATETIME NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ModifiedBy TEXT,
-    ModifiedAt DATETIME,
-    FOREIGN KEY (SiteId) REFERENCES Sites (Id) ON DELETE CASCADE
+    ModifiedAt DATETIME
+);
+
+-- Table: GlobalSettings
+CREATE TABLE GlobalSettings (
+    Id TEXT NOT NULL PRIMARY KEY,
+    SuperAdmins TEXT NOT NULL,
+    CreatedBy TEXT NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ModifiedBy TEXT,
+    ModifiedAt DATETIME
 );
 
 -- Table: Layouts
@@ -128,10 +122,9 @@ CREATE TABLE Layouts (
     Body TEXT NOT NULL,
     Head TEXT NOT NULL,
     CreatedBy TEXT NOT NULL,
-    CreatedAt DATETIME NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ModifiedBy TEXT,
-    ModifiedAt DATETIME,
-    FOREIGN KEY (SiteId) REFERENCES Sites (Id) ON DELETE CASCADE
+    ModifiedAt DATETIME
 );
 
 -- Table: Pages
@@ -147,10 +140,9 @@ CREATE TABLE Pages (
     DetailLayoutId TEXT,
     Locked INTEGER NOT NULL,
     CreatedBy TEXT NOT NULL,
-    CreatedAt DATETIME NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ModifiedBy TEXT,
-    ModifiedAt DATETIME,
-    FOREIGN KEY (SiteId) REFERENCES Sites (Id) ON DELETE CASCADE
+    ModifiedAt DATETIME
 );
 
 -- Table: Permissions
@@ -159,27 +151,44 @@ CREATE TABLE Permissions (
     SiteId TEXT NOT NULL,
     EntityId TEXT NOT NULL,
     EntityType TEXT NOT NULL,
-    Action INTEGER NOT NULL,
+    Action TEXT NOT NULL,
     RoleId TEXT NOT NULL,
     CreatedBy TEXT NOT NULL,
-    CreatedAt DATETIME NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ModifiedBy TEXT,
-    ModifiedAt DATETIME,
-    FOREIGN KEY (SiteId) REFERENCES Sites (Id) ON DELETE CASCADE
+    ModifiedAt DATETIME
 );
+
+-- Table: Plugins
+CREATE TABLE Plugins (
+    Id TEXT NOT NULL PRIMARY KEY,                      
+    SiteId TEXT NOT NULL,                              
+    DefinitionId TEXT NOT NULL,                        
+    PageId TEXT NOT NULL,                              
+    "Order" INTEGER NOT NULL,                          
+    Cols INTEGER NOT NULL,                             
+    ColsMd INTEGER,                                    
+    ColsLg INTEGER,                                    
+    Section TEXT,                                      
+    Locked INTEGER NOT NULL DEFAULT 0,                 
+    CreatedBy TEXT NOT NULL,                           
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ModifiedBy TEXT,
+    ModifiedAt DATETIME
+);
+
 
 -- Table: PluginContents
 CREATE TABLE PluginContents (
     Id TEXT NOT NULL PRIMARY KEY,
     SiteId TEXT NOT NULL,
     PluginId TEXT NOT NULL,
-    Type TEXT,
     Data TEXT NOT NULL,
+    Type TEXT,
     CreatedBy TEXT NOT NULL,
-    CreatedAt DATETIME NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ModifiedBy TEXT,
-    ModifiedAt DATETIME,
-    FOREIGN KEY (PluginId) REFERENCES Plugins (Id)
+    ModifiedAt DATETIME
 );
 
 -- Table: PluginDefinitions
@@ -192,7 +201,7 @@ CREATE TABLE PluginDefinitions (
     Description TEXT,
     Locked INTEGER NOT NULL,
     CreatedBy TEXT NOT NULL,
-    CreatedAt DATETIME NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ModifiedBy TEXT,
     ModifiedAt DATETIME
 );
@@ -207,26 +216,6 @@ CREATE TABLE PluginDefinitionTypes (
     FOREIGN KEY (PluginDefinitionId) REFERENCES PluginDefinitions (Id) ON DELETE CASCADE
 );
 
--- Table: Plugins
-CREATE TABLE Plugins (
-    Id TEXT NOT NULL PRIMARY KEY,
-    SiteId TEXT NOT NULL,
-    DefinitionId TEXT NOT NULL,
-    PageId TEXT NOT NULL,
-    `Order` INTEGER NOT NULL,
-    Cols INTEGER NOT NULL,
-    ColsMd INTEGER,
-    ColsLg INTEGER,
-    Section TEXT,
-    Locked INTEGER NOT NULL,
-    CreatedBy TEXT NOT NULL,
-    CreatedAt DATETIME NOT NULL,
-    ModifiedBy TEXT,
-    ModifiedAt DATETIME,
-    FOREIGN KEY (PageId) REFERENCES Pages (Id) ON DELETE CASCADE,
-    FOREIGN KEY (DefinitionId) REFERENCES PluginDefinitions (Id) ON DELETE CASCADE
-);
-
 -- Table: Roles
 CREATE TABLE Roles (
     Id TEXT NOT NULL PRIMARY KEY,
@@ -235,17 +224,16 @@ CREATE TABLE Roles (
     Description TEXT,
     Type INTEGER NOT NULL,
     CreatedBy TEXT NOT NULL,
-    CreatedAt DATETIME NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ModifiedBy TEXT,
-    ModifiedAt DATETIME,
-    FOREIGN KEY (SiteId) REFERENCES Sites (Id) ON DELETE CASCADE
+    ModifiedAt DATETIME
 );
 
 -- Table: Settings
 CREATE TABLE Settings (
     Id TEXT NOT NULL PRIMARY KEY,
     CreatedBy TEXT NOT NULL,
-    CreatedAt DATETIME NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ModifiedBy TEXT,
     ModifiedAt DATETIME
 );
@@ -269,7 +257,7 @@ CREATE TABLE Sites (
     DetailLayoutId TEXT NOT NULL,
     EditLayoutId TEXT NOT NULL,
     CreatedBy TEXT NOT NULL,
-    CreatedAt DATETIME NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ModifiedBy TEXT,
     ModifiedAt DATETIME
 );
@@ -283,9 +271,7 @@ CREATE TABLE UserRoles (
     CreatedBy TEXT NOT NULL,
     CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ModifiedBy TEXT,
-    ModifiedAt DATETIME,
-    FOREIGN KEY (RoleId) REFERENCES Roles (Id) ON DELETE CASCADE,
-    FOREIGN KEY (UserId) REFERENCES Users (Id) ON DELETE CASCADE
+    ModifiedAt DATETIME
 );
 
 -- Table: Users
