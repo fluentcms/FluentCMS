@@ -1,5 +1,10 @@
 ﻿public static class RepositoryServiceExtensions
 {
+    public static void AddRepositoryServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddRepositoryServices(configuration, "DefaultConnection");
+    }
+
     public static void AddRepositoryServices(this IServiceCollection services, IConfiguration configuration, string connectionStringName)
     {
         var dbType = configuration["Database"];
