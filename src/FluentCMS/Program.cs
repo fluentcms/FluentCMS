@@ -21,14 +21,14 @@ services.AddCmsServices(configuration);
 // Use SqlServer as database
 services.AddSqlServerRepositories("SqlServer");
 
-// Use Sqlite as database
+// Use MySql as database
 //services.AddMySqlRepositories("MySql");
 
 // Use PostgreSQL as database
 //services.AddPostgresRepositories("PostgreSQL");
 
 // Enable caching for repository layer
-services.AddCachedRepositories();
+//services.AddCachedRepositories();
 
 #endregion
 
