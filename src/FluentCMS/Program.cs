@@ -28,7 +28,7 @@ services.AddSqlServerRepositories("SqlServer");
 //services.AddPostgresRepositories("PostgreSQL");
 
 // Enable caching for repository layer
-//services.AddCachedRepositories();
+services.AddCachedRepositories();
 
 #endregion
 
