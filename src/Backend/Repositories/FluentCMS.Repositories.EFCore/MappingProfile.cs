@@ -34,7 +34,7 @@ public class MappingProfile : Profile
 
         // Map between ContentModel and Content
         CreateMap<ContentModel, Content>()
-            .ForMember(dest=> dest.TypeId, opt => opt.MapFrom(src => src.ContentTypeId)) // Map TypeId
+            .ForMember(dest => dest.TypeId, opt => opt.MapFrom(src => src.ContentTypeId)) // Map TypeId
             .ForMember(dest => dest.Data, opt => opt.MapFrom(src => src.Data.ToDictionary(
                 data => data.Key,
                 data => JsonSerializer.Deserialize<object?>(data.Value, jsonSerializerOptions))))
@@ -57,10 +57,7 @@ public class MappingProfile : Profile
 
 
         // Map between ContentTypeModel and ContentType
-        CreateMap<ContentTypeModel, ContentType>()
-            .ForMember(dest => dest.Fields, opt => opt.MapFrom(src => src.Fields)) // Map Fields
-            .ReverseMap()
-            .ForMember(dest => dest.Fields, opt => opt.MapFrom(src => src.Fields));
+        CreateMap<ContentTypeModel, ContentType>().ReverseMap();
 
         // Map between ContentTypeFieldModel and ContentTypeField
         CreateMap<ContentTypeFieldModel, ContentTypeField>()
@@ -104,29 +101,25 @@ public class MappingProfile : Profile
         CreateMap<PluginDefinitionModel, PluginDefinition>().ReverseMap();
 
         // Map between PluginDefinitionTypeModel and PluginDefinitionType
-        CreateMap<PluginDefinitionTypeModel, PluginDefinitionType>()
-            .ReverseMap();
+        CreateMap<PluginDefinitionTypeModel, PluginDefinitionType>().ReverseMap();
 
-        // Map between PluginContentDataModel and KeyValuePair<string, object?>
-        CreateMap<PluginContentDataModel, KeyValuePair<string, object?>>()
-            .ConstructUsing(src => new KeyValuePair<string, object?>(
-                src.Key,
-                JsonSerializer.Deserialize<object?>(src.Value, jsonSerializerOptions)))
-            .ReverseMap()
-            .ForMember(dest => dest.Key, opt => opt.MapFrom(src => src.Key))
-            .ForMember(dest => dest.Value, opt => opt.MapFrom(src => JsonSerializer.Serialize(src.Value, jsonSerializerOptions)));
-
-        // Map between PluginContentModel and PluginContent
-        CreateMap<PluginContentModel, Dictionary<string, object?>>()
-            .ConvertUsing((src, dest) =>
-                src.Data?.ToDictionary(
+        // Map from PluginContentModel to PluginContent
+        CreateMap<PluginContentModel, PluginContent>()
+            .ForMember(dest => dest.Data, opt => opt.MapFrom(src =>
+                src.Data.ToDictionary(
                     data => data.Key,
-                    data => JsonSerializer.Deserialize<object?>(data.Value, jsonSerializerOptions)) ?? []);
+                    data => JsonSerializer.Deserialize<object?>(data.Value, jsonSerializerOptions))));
 
-        CreateMap<PluginModel, Plugin>()
-            .ForMember(dest => dest.DefinitionId, opt => opt.MapFrom(src => src.PluginDefinitionId))
-            .ReverseMap()
-            .ForMember(dest => dest.PluginDefinitionId, opt => opt.MapFrom(src => src.DefinitionId));
+        // Map from PluginContent to PluginContentModel
+        CreateMap<PluginContent, PluginContentModel>()
+            .ForMember(dest => dest.Data, opt => opt.MapFrom(src =>
+                src.Data.Select(kv => new PluginContentDataModel
+                {
+                    Key = kv.Key,
+                    Value = JsonSerializer.Serialize(kv.Value, jsonSerializerOptions)
+                }).ToList()));
+
+        CreateMap<PluginModel, Plugin>().ReverseMap();
 
         CreateMap<RoleModel, Role>().ReverseMap();
 

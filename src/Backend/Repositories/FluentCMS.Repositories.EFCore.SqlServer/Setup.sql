@@ -351,7 +351,7 @@ GO
 CREATE TABLE [dbo].[Plugins](
 	[Id] [uniqueidentifier] NOT NULL,
 	[SiteId] [uniqueidentifier] NOT NULL,
-	[PluginDefinitionId] [uniqueidentifier] NOT NULL,
+	[DefinitionId] [uniqueidentifier] NOT NULL,
 	[PageId] [uniqueidentifier] NOT NULL,
 	[Order] [int] NOT NULL,
 	[Cols] [tinyint] NOT NULL,
@@ -621,7 +621,7 @@ ON DELETE CASCADE
 GO
 ALTER TABLE [dbo].[Plugins] CHECK CONSTRAINT [FK_Plugins_Pages]
 GO
-ALTER TABLE [dbo].[Plugins]  WITH CHECK ADD  CONSTRAINT [FK_Plugins_PluginDefinitions] FOREIGN KEY([PluginDefinitionId])
+ALTER TABLE [dbo].[Plugins]  WITH CHECK ADD  CONSTRAINT [FK_Plugins_PluginDefinitions] FOREIGN KEY([DefinitionId])
 REFERENCES [dbo].[PluginDefinitions] ([Id])
 ON DELETE CASCADE
 GO

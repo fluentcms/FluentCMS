@@ -198,7 +198,7 @@ CREATE TABLE PluginContents (
     Id TEXT NOT NULL PRIMARY KEY,
     SiteId TEXT NOT NULL,
     PluginId TEXT NOT NULL,
-    Type TEXT NOT NULL,
+    Type TEXT,
     CreatedBy TEXT NOT NULL,
     CreatedAt DATETIME NOT NULL,
     ModifiedBy TEXT,
@@ -235,7 +235,7 @@ CREATE TABLE PluginDefinitionTypes (
 CREATE TABLE Plugins (
     Id TEXT NOT NULL PRIMARY KEY,
     SiteId TEXT NOT NULL,
-    PluginDefinitionId TEXT NOT NULL,
+    DefinitionId TEXT NOT NULL,
     PageId TEXT NOT NULL,
     `Order` INTEGER NOT NULL,
     Cols INTEGER NOT NULL,
@@ -248,7 +248,7 @@ CREATE TABLE Plugins (
     ModifiedBy TEXT,
     ModifiedAt DATETIME,
     FOREIGN KEY (PageId) REFERENCES Pages (Id) ON DELETE CASCADE,
-    FOREIGN KEY (PluginDefinitionId) REFERENCES PluginDefinitions (Id) ON DELETE CASCADE
+    FOREIGN KEY (DefinitionId) REFERENCES PluginDefinitions (Id) ON DELETE CASCADE
 );
 
 -- Table: Roles

@@ -60,6 +60,16 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                 .HasForeignKey(e => e.ApiTokenId);
         });
 
+        modelBuilder.Entity<ContentModel>(entity =>
+        {
+            entity.HasMany(e => e.Data)
+                .WithOne(p => p.Content)
+                .HasForeignKey(p => p.ContentId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Policies
+
+            entity.Navigation(e => e.Data).AutoInclude();
+        });
+
         modelBuilder.Entity<ContentTypeModel>(entity =>
         {
             entity.HasMany(e => e.Fields)
@@ -68,6 +78,16 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                 .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Fields
 
             entity.Navigation(e => e.Fields).AutoInclude();
+        });
+
+        modelBuilder.Entity<ContentTypeFieldModel>(entity =>
+        {
+            entity.HasMany(e => e.Settings)
+                .WithOne(f => f.ContentTypeField)
+                .HasForeignKey(f => f.ContentTypeFieldId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Fields
+
+            entity.Navigation(e => e.Settings).AutoInclude();
         });
 
         modelBuilder.Entity<PluginContentModel>(entity =>
@@ -87,10 +107,10 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                 .HasForeignKey(f => f.PluginDefinitionId)
                 .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Fields
 
-            entity.HasMany(e => e.Plugins)
-                .WithOne(f => f.PluginDefinition)
-                .HasForeignKey(f => f.PluginDefinitionId)
-                .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Fields
+            //entity.HasMany(e => e.Plugins)
+            //    .WithOne(f => f.PluginDefinition)
+            //    .HasForeignKey(f => f.PluginDefinitionId)
+            //    .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Fields
 
             entity.Navigation(e => e.Types).AutoInclude();
         });
@@ -101,16 +121,7 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
         //        .WithMany(e => e.Blocks)
         //        .HasForeignKey(e => e.SiteId);
         //});
-
-        modelBuilder.Entity<ContentModel>(entity =>
-        {
-            entity.HasMany(e => e.Data)
-                .WithOne(e => e.Content)
-                .HasForeignKey(e => e.ContentId);
-
-            entity.Navigation(e => e.Data).AutoInclude();
-        });
-
+                
         //modelBuilder.Entity<ContentModel>(entity =>
         //{
         //    entity.HasOne(e => e.Type)

@@ -10,5 +10,4 @@ public class PluginDefinitionModel : AuditableEntityModel
     public string? Description { get; set; }
     public bool Locked { get; set; } = false;
     public ICollection<PluginDefinitionTypeModel> Types { get; set; } = []; // Navigation property
-    public ICollection<PluginModel> Plugins { get; set; } = []; // Navigation property
 }
